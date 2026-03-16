@@ -1,0 +1,258 @@
+'use client'
+
+import { createClient } from '@/lib/supabase/client'
+import { useState } from 'react'
+
+export default function LoginPage() {
+  const [loading, setLoading] = useState(false)
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [isSignUp, setIsSignUp] = useState(false)
+  
+  const supabase = createClient()
+
+  const handleEmailAuth = async (e) => {
+    e.preventDefault()
+    try {
+      setLoading(true)
+      
+      const authFn = isSignUp ? supabase.auth.signUp : supabase.auth.signInWithPassword
+      
+      const { data, error } = await authFn({
+        email,
+        password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+        }
+      })
+      
+      if (error) throw error
+
+      if (isSignUp) {
+        alert('Cadastro realizado! Verifique seu email para confirmar (se exigido nas configurações do Supabase) ou tente fazer login.')
+        setIsSignUp(false)
+      } else {
+        // Redireciona via JS para carregar limpar a rota
+        window.location.href = '/'
+      }
+    } catch (error) {
+      alert('Erro na Autenticação: ' + error.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleGoogleLogin = async () => {
+    try {
+      setLoading(true)
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`
+        }
+      })
+      if (error) throw error
+    } catch (error) {
+      alert('Erro ao logar com o Google: ' + error.message)
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="login-container glass-panel">
+      <div className="login-box">
+        <div className="logo login-logo">
+          <i className='bx bxl-meta'></i>
+          <span>Dash</span>
+        </div>
+        
+        <h2>{isSignUp ? 'Crie sua Conta' : 'Bem-vindo de volta'}</h2>
+        <p className="login-subtitle">
+          {isSignUp 
+            ? 'Cadastre-se para conectar suas APIs e ver dados em tempo real.' 
+            : 'Faça login para acessar seu painel de performance de anúncios.'}
+        </p>
+
+        <form onSubmit={handleEmailAuth} className="email-form">
+          <div className="input-group">
+            <i className='bx bx-envelope'></i>
+            <input 
+              type="email" 
+              placeholder="Seu melhor e-mail" 
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+          </div>
+          <div className="input-group">
+            <i className='bx bx-lock-alt'></i>
+            <input 
+              type="password" 
+              placeholder="Sua senha secreta" 
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
+          </div>
+          
+          <button 
+            type="submit" 
+            disabled={loading}
+            className="btn btn-primary email-btn"
+          >
+            {loading 
+              ? 'Aguarde...' 
+              : isSignUp ? 'Criar Conta' : 'Entrar no Painel'
+            }
+          </button>
+        </form>
+
+        <div className="divider">ou continue com</div>
+
+        <button 
+          onClick={handleGoogleLogin} 
+          disabled={loading}
+          className="btn btn-primary google-btn"
+        >
+          <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" width="20" height="20" />
+          {loading ? 'Conectando...' : 'Google'}
+        </button>
+
+        <p className="login-footer">
+          {isSignUp ? 'Já tem uma conta? ' : 'Ainda não é membro? '}
+          <span 
+            className="toggle-auth" 
+            onClick={() => setIsSignUp(!isSignUp)}
+          >
+            {isSignUp ? 'Faça login' : 'Crie sua conta aqui'}
+          </span>
+        </p>
+      </div>
+
+      <style jsx>{`
+        .login-container {
+          min-height: 100vh;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 20px;
+        }
+        .login-box {
+          background: var(--bg-panel);
+          border: 1px solid var(--border-color);
+          border-radius: 24px;
+          padding: 48px 40px;
+          width: 100%;
+          max-width: 440px;
+          text-align: center;
+          box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+          backdrop-filter: blur(20px);
+        }
+        .login-logo {
+          justify-content: center;
+          margin-bottom: 24px;
+          font-size: 28px;
+        }
+        h2 {
+          font-size: 24px;
+          margin-bottom: 12px;
+          color: var(--text-primary);
+        }
+        .login-subtitle {
+          color: var(--text-secondary);
+          font-size: 15px;
+          margin-bottom: 32px;
+          line-height: 1.5;
+        }
+        .email-form {
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+        }
+        .input-group {
+          position: relative;
+          display: flex;
+          align-items: center;
+        }
+        .input-group i {
+          position: absolute;
+          left: 16px;
+          font-size: 20px;
+          color: var(--text-muted);
+        }
+        .input-group input {
+          width: 100%;
+          padding: 14px 14px 14px 44px;
+          border-radius: 12px;
+          background: rgba(255,255,255,0.05);
+          border: 1px solid var(--border-color);
+          color: var(--text-primary);
+          font-family: inherit;
+          font-size: 15px;
+          transition: border-color 0.2s;
+        }
+        .input-group input:focus {
+          outline: none;
+          border-color: var(--accent-blue);
+        }
+        .email-btn {
+          width: 100%;
+          padding: 14px;
+          font-size: 16px;
+          justify-content: center;
+          border-radius: 12px;
+          font-weight: 600;
+        }
+        .divider {
+          margin: 24px 0;
+          position: relative;
+          color: var(--text-muted);
+          font-size: 13px;
+        }
+        .divider::before, .divider::after {
+          content: '';
+          position: absolute;
+          top: 50%;
+          width: 30%;
+          height: 1px;
+          background: var(--border-color);
+        }
+        .divider::before { left: 0; }
+        .divider::after { right: 0; }
+        
+        .google-btn {
+          width: 100%;
+          padding: 12px;
+          font-size: 15px;
+          justify-content: center;
+          border-radius: 12px;
+          background: rgba(255,255,255,0.05);
+          color: var(--text-primary);
+          border: 1px solid var(--border-color);
+          font-weight: 600;
+          transition: all 0.2s ease;
+          display: flex;
+          align-items: center;
+          gap: 10px;
+        }
+        .google-btn:hover {
+          background: rgba(255,255,255,0.1);
+          transform: translateY(-2px);
+        }
+        .login-footer {
+          margin-top: 32px;
+          font-size: 14px;
+          color: var(--text-muted);
+        }
+        .toggle-auth {
+          color: var(--accent-blue);
+          cursor: pointer;
+          font-weight: 600;
+        }
+        .toggle-auth:hover {
+          text-decoration: underline;
+        }
+      `}</style>
+    </div>
+  )
+}
