@@ -451,6 +451,38 @@ function getDealStageOrder(deal) {
   return null
 }
 
+function getDealStageId(deal) {
+  const stageObjects = [
+    deal?.stage,
+    deal?.deal_stage,
+    deal?.pipeline_stage,
+    deal?.current_stage,
+    deal?.funnel_stage,
+  ].filter((value) => value && typeof value === 'object')
+
+  for (const stageObject of stageObjects) {
+    const candidates = [
+      stageObject.id,
+      stageObject.uuid,
+      stageObject.stage_id,
+      stageObject.pipeline_stage_id,
+    ]
+
+    const found = candidates.find((candidate) => candidate !== undefined && candidate !== null && candidate !== '')
+    if (found !== undefined) return String(found).trim()
+  }
+
+  const directCandidates = [
+    deal?.stage_id,
+    deal?.deal_stage_id,
+    deal?.pipeline_stage_id,
+    deal?.current_stage_id,
+  ]
+
+  const found = directCandidates.find((candidate) => candidate !== undefined && candidate !== null && candidate !== '')
+  return found !== undefined ? String(found).trim() : ''
+}
+
 function getCustomFieldTextValue(field) {
   if (!field || typeof field !== 'object') return ''
 
@@ -580,6 +612,7 @@ export async function GET(request) {
     })
 
     const stageOrderMap = new Map()
+    const stageIdOrderMap = new Map()
     const stageFirstSeenMap = new Map()
 
     deals.forEach((deal, index) => {
@@ -597,6 +630,15 @@ export async function GET(request) {
       if (currentOrder === undefined || detectedOrder < currentOrder) {
         stageOrderMap.set(label, detectedOrder)
       }
+
+      const stageId = getDealStageId(deal)
+      if (stageId) {
+        const currentIdOrder = stageIdOrderMap.get(label)
+        const parsedStageId = Number(stageId)
+        if (Number.isFinite(parsedStageId) && (currentIdOrder === undefined || parsedStageId < currentIdOrder)) {
+          stageIdOrderMap.set(label, parsedStageId)
+        }
+      }
     })
 
     const availableStages = Array.from(stageFirstSeenMap.keys()).sort((a, b) => {
@@ -609,6 +651,15 @@ export async function GET(request) {
 
       if (orderA !== undefined && orderB === undefined) return -1
       if (orderA === undefined && orderB !== undefined) return 1
+
+      const stageIdA = stageIdOrderMap.get(a)
+      const stageIdB = stageIdOrderMap.get(b)
+      if (stageIdA !== undefined && stageIdB !== undefined && stageIdA !== stageIdB) {
+        return stageIdA - stageIdB
+      }
+
+      if (stageIdA !== undefined && stageIdB === undefined) return -1
+      if (stageIdA === undefined && stageIdB !== undefined) return 1
 
       return (stageFirstSeenMap.get(a) || 0) - (stageFirstSeenMap.get(b) || 0)
     })
@@ -694,6 +745,7 @@ export async function GET(request) {
           accumulator.stageStats[stageLabel] ||= {
             label: stageLabel,
             order: stageOrderMap.get(stageLabel) ?? stageFirstSeenMap.get(stageLabel) ?? Number.MAX_SAFE_INTEGER,
+            stageIdOrder: stageIdOrderMap.get(stageLabel) ?? Number.MAX_SAFE_INTEGER,
             deals: 0,
             openDeals: 0,
             wonDeals: 0,
@@ -841,6 +893,7 @@ export async function GET(request) {
     const stageRanking = Object.values(summary.stageStats)
       .sort((a, b) => {
         if (a.order !== b.order) return a.order - b.order
+        if (a.stageIdOrder !== b.stageIdOrder) return a.stageIdOrder - b.stageIdOrder
         return a.label.localeCompare(b.label, 'pt-BR')
       })
 
