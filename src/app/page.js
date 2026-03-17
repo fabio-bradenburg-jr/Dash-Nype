@@ -2119,13 +2119,15 @@ export default function DashboardPage() {
                       <p className="source-section-copy">Primeiro bloco de leitura das contas de anúncio e da performance de mídia.</p>
                     </div>
                 <section className="glass-panel meta-filter-panel">
-                  <div className="section-header section-header-stack">
+                  <div className="meta-filter-panel-head">
                     <div>
+                      <span className="meta-filter-kicker">Leitura por objetivo</span>
                       <h2>Filtro por tipo de resultado</h2>
-                      <p className="chart-subtitle">O relatório considera apenas campanhas que geraram o tipo de resultado selecionado. Todos começam marcados por padrão.</p>
+                      <p className="chart-subtitle">O relatório considera apenas campanhas que geraram o tipo de resultado selecionado.</p>
                     </div>
+                    <span className="meta-filter-helper">Todos começam marcados por padrão.</span>
                   </div>
-                  <div className="stage-selector">
+                  <div className="stage-selector meta-filter-chip-row">
                     {META_RESULT_FILTER_OPTIONS.map((filter) => (
                       <label key={filter.key} className={`stage-chip ${normalizedMetaResultFilters.includes(filter.key) ? 'active' : ''}`}>
                         <input
@@ -3356,6 +3358,50 @@ export default function DashboardPage() {
           margin-bottom: 24px;
         }
 
+        .meta-filter-panel {
+          padding: 20px 24px;
+          margin-bottom: 18px;
+          border: 1px solid rgba(255, 255, 255, 0.05);
+          background:
+            linear-gradient(180deg, rgba(255, 255, 255, 0.025), rgba(255, 255, 255, 0.015)),
+            rgba(8, 12, 22, 0.6);
+        }
+
+        .meta-filter-panel-head {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 18px;
+          margin-bottom: 16px;
+        }
+
+        .meta-filter-panel-head h2 {
+          font-size: 26px;
+          margin-bottom: 6px;
+        }
+
+        .meta-filter-kicker {
+          display: inline-block;
+          margin-bottom: 8px;
+          color: #60a5fa;
+          font-size: 11px;
+          font-weight: 700;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+        }
+
+        .meta-filter-helper {
+          color: var(--text-muted);
+          font-size: 13px;
+          line-height: 1.5;
+          white-space: nowrap;
+          padding-top: 22px;
+        }
+
+        .meta-filter-chip-row {
+          padding-top: 2px;
+        }
+
         .result-group {
           margin-top: 10px;
         }
@@ -3985,6 +4031,16 @@ export default function DashboardPage() {
           .source-section-copy {
             text-align: left;
             max-width: none;
+          }
+
+          .meta-filter-panel-head {
+            flex-direction: column;
+            align-items: flex-start;
+          }
+
+          .meta-filter-helper {
+            white-space: normal;
+            padding-top: 0;
           }
 
           .user-directory-grid {
