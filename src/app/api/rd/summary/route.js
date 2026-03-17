@@ -642,10 +642,12 @@ export async function GET(request) {
             openDeals: 0,
             wonDeals: 0,
             lostDeals: 0,
+            totalValue: 0,
             pipelineValue: 0,
             wonRevenue: 0,
           }
           accumulator.stageStats[stageLabel].deals += 1
+          accumulator.stageStats[stageLabel].totalValue += amount
         }
 
         if ((dealMovedInRange || dealCreatedInRange) && sourceMatchesFilter) {

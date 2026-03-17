@@ -1462,21 +1462,6 @@ export default function DashboardPage() {
     },
   ].filter(Boolean)
 
-  const crmGroups = [
-    rdSummary && {
-      title: 'RD Station CRM',
-      subtitle: 'Leitura comercial automática com base no token cadastrado para este cliente.',
-      icon: 'bx-signal-5',
-      tone: 'emerald',
-      stats: [
-        { label: 'Contatos movimentados', value: formatNumber(rdSummary.contactsMoved || 0) },
-        { label: 'Contatos perdidos', value: formatNumber(rdSummary.lostContacts || 0) },
-        { label: 'Negócios em aberto', value: formatNumber(rdSummary.openDeals || 0) },
-        { label: 'Negócios ganhos', value: formatNumber(rdSummary.wonDeals || 0) },
-        { label: 'Receita ganha', value: formatCurrency(rdSummary.wonRevenue || 0) },
-      ],
-    },
-  ].filter(Boolean)
   const rdKpis = [
     { title: 'Contatos movimentados', value: formatNumber(rdSummary?.contactsMoved || 0), icon: 'bx-user-voice', tone: 'blue' },
     { title: 'Contatos perdidos', value: formatNumber(rdSummary?.lostContacts || 0), icon: 'bx-user-x', tone: 'pink' },
@@ -1496,7 +1481,6 @@ export default function DashboardPage() {
     { title: 'Lead para qualificação', value: formatPercent(rdSummary?.leadToQualifiedRate || 0), icon: 'bx-trending-up', tone: 'blue' },
     { title: 'Qualificação para venda', value: formatPercent(rdSummary?.qualifiedToWonRate || 0), icon: 'bx-badge-check', tone: 'emerald' },
     { title: 'Tempo até a compra', value: formatDurationDays(rdSummary?.avgLeadToWonDays || 0), icon: 'bx-time-five', tone: 'orange' },
-    { title: 'Tempo da negociação', value: formatDurationDays(rdSummary?.avgDealToWonDays || 0), icon: 'bx-timer', tone: 'purple' },
   ]
   const userAvatarFallback = `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.user_metadata?.full_name || user?.email || 'Usuario')}&background=0D8ABC&color=fff`
   const userAvatarSrc = user?.user_metadata?.avatar_url || userAvatarFallback
@@ -2734,41 +2718,6 @@ export default function DashboardPage() {
                       </div>
                     </section>
 
-                    {crmGroups.length > 0 && (
-                      <section className="glass-panel grouped-results">
-                        <div className="section-header section-header-stack">
-                          <div>
-                            <h2>Leitura executiva do CRM</h2>
-                            <p className="chart-subtitle">Resumo objetivo para apresentar a evolução comercial do cliente.</p>
-                          </div>
-                        </div>
-
-                        <div className="conversion-groups-grid crm-groups-grid">
-                          {crmGroups.map((group) => (
-                            <div key={group.title} className="glass-panel conversion-group-card">
-                              <div className="conversion-group-head">
-                                <div className={`icon-box ${group.tone}`}>
-                                  <i className={`bx ${group.icon}`}></i>
-                                </div>
-                                <div>
-                                  <h3>{group.title}</h3>
-                                  <p>{group.subtitle}</p>
-                                </div>
-                              </div>
-                              <div className="conversion-stats">
-                                {group.stats.map((stat) => (
-                                  <div key={stat.label} className="conversion-stat">
-                                    <span>{stat.label}</span>
-                                    <strong>{stat.value}</strong>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </section>
-                    )}
-
                     {!!rdSummary?.sellerRanking?.length && (
                       <section className="glass-panel grouped-results">
                         <div className="section-header section-header-stack">
@@ -2821,23 +2770,27 @@ export default function DashboardPage() {
                       <section className="glass-panel grouped-results">
                         <div className="section-header section-header-stack">
                           <div>
-                            <h2>Pipeline por etapa</h2>
-                            <p className="chart-subtitle">Leitura por etapa com volume em aberto, fechamentos e valor atual de pipeline.</p>
+                            <h2>Colunas do pipeline</h2>
+                            <p className="chart-subtitle">Quantidade de cards e valor por coluna do pipeline dentro do período selecionado.</p>
                           </div>
                         </div>
 
-                        <div className="ranking-list">
+                        <div className="pipeline-columns-grid">
                           {rdSummary.stageRanking.map((stage) => (
-                            <div key={stage.label} className="ranking-row ranking-row-rich">
+                            <div key={stage.label} className="pipeline-column-card glass-item">
                               <div>
                                 <strong>{stage.label}</strong>
-                                <span>
-                                  {formatNumber(stage.openDeals)} em aberto, {formatNumber(stage.wonDeals)} ganhos, {formatNumber(stage.lostDeals)} perdidos
-                                </span>
+                                <span>{formatNumber(stage.deals || 0)} card(s)</span>
                               </div>
-                              <div className="ranking-metrics">
-                                <span>{formatCurrency(stage.pipelineValue || 0)} em aberto</span>
-                                <b>{formatCurrency(stage.wonRevenue || 0)} vendido</b>
+                              <div className="pipeline-column-metrics">
+                                <div>
+                                  <small>Valor na coluna</small>
+                                  <b>{formatCurrency(stage.totalValue || 0)}</b>
+                                </div>
+                                <div>
+                                  <small>Em aberto</small>
+                                  <span>{formatNumber(stage.openDeals || 0)}</span>
+                                </div>
                               </div>
                             </div>
                           ))}
@@ -3873,6 +3826,58 @@ export default function DashboardPage() {
           border: 1px dashed rgba(255, 255, 255, 0.12);
           border-radius: 16px;
           text-align: center;
+        }
+
+        .pipeline-columns-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+          gap: 16px;
+          margin-top: 16px;
+        }
+
+        .pipeline-column-card {
+          padding: 18px;
+          border-radius: 18px;
+          display: grid;
+          gap: 16px;
+        }
+
+        .pipeline-column-card strong {
+          display: block;
+          font-size: 18px;
+          margin-bottom: 6px;
+          line-height: 1.25;
+        }
+
+        .pipeline-column-card span {
+          color: var(--text-muted);
+          font-size: 13px;
+        }
+
+        .pipeline-column-metrics {
+          display: grid;
+          gap: 12px;
+        }
+
+        .pipeline-column-metrics div {
+          padding: 12px 14px;
+          border-radius: 14px;
+          background: rgba(255, 255, 255, 0.03);
+          border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .pipeline-column-metrics small {
+          display: block;
+          color: var(--text-muted);
+          font-size: 11px;
+          text-transform: uppercase;
+          letter-spacing: 0.06em;
+          margin-bottom: 6px;
+        }
+
+        .pipeline-column-metrics b {
+          font-size: 22px;
+          line-height: 1.1;
         }
 
         .campaign-filters {
