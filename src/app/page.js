@@ -944,7 +944,7 @@ export default function DashboardPage() {
             rdParams.set('seller_id', rdSellerFilter)
           }
           if (rdLeadSourceFilters.length > 0) {
-            activeRdLeadSources.forEach((source) => {
+            rdLeadSourceFilters.forEach((source) => {
               rdParams.append('lead_source', source)
             })
           }
@@ -997,7 +997,6 @@ export default function DashboardPage() {
     hasMetaConfigured,
     hasRdConfigured,
     rdSellerFilter,
-    activeRdLeadSources,
     rdLeadSourceFilters,
     selectedQualifiedStages,
     metaResultFilters,
