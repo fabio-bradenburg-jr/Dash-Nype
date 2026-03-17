@@ -366,6 +366,13 @@ export default function DashboardPage() {
     () => getAvailableMetaResultFilters(campaigns),
     [campaigns]
   )
+  const activeRdLeadSources = useMemo(() => {
+    const sources = rdSummary?.availableSources || []
+    if (!sources.length) return []
+    if (!rdLeadSourceFilters.length) return sources
+    const normalizedFilters = rdLeadSourceFilters.filter((source) => sources.includes(source))
+    return normalizedFilters.length > 0 ? normalizedFilters : sources
+  }, [rdSummary, rdLeadSourceFilters])
   const normalizedMetaResultFilters = useMemo(
     () => normalizeMetaResultFilters(metaResultFilters, availableMetaResultFilters.map((item) => item.key)),
     [metaResultFilters, availableMetaResultFilters]
@@ -431,20 +438,6 @@ export default function DashboardPage() {
       setRdSellerFilter('all')
     }
   }, [rdSummary, rdSellerFilter])
-
-  useEffect(() => {
-    const sources = rdSummary?.availableSources || []
-
-    if (!sources.length) {
-      setRdLeadSourceFilters([])
-      return
-    }
-
-    setRdLeadSourceFilters((current) => {
-      const normalizedCurrent = current.filter((source) => sources.includes(source))
-      return normalizedCurrent.length > 0 ? normalizedCurrent : sources
-    })
-  }, [rdSummary])
 
   useEffect(() => {
     if (!hasLoadedPreferences || userLoading || !user || hasSyncedServerState) return
@@ -620,14 +613,17 @@ export default function DashboardPage() {
 
   const handleRdLeadSourceToggle = (sourceLabel) => {
     setRdLeadSourceFilters((current) => {
-      const currentSelection = current.length > 0 ? current : rdSummary?.availableSources || []
+      const availableSources = rdSummary?.availableSources || []
+      const currentSelection = current.length > 0 ? current.filter((source) => availableSources.includes(source)) : availableSources
 
       if (currentSelection.includes(sourceLabel)) {
         const nextSelection = currentSelection.filter((item) => item !== sourceLabel)
-        return nextSelection.length > 0 ? nextSelection : currentSelection
+        if (nextSelection.length === 0) return currentSelection
+        return nextSelection.length === availableSources.length ? [] : nextSelection
       }
 
-      return [...currentSelection, sourceLabel]
+      const nextSelection = [...currentSelection, sourceLabel]
+      return nextSelection.length === availableSources.length ? [] : nextSelection
     })
   }
 
@@ -947,9 +943,11 @@ export default function DashboardPage() {
           if (rdSellerFilter && rdSellerFilter !== 'all') {
             rdParams.set('seller_id', rdSellerFilter)
           }
-          rdLeadSourceFilters.forEach((source) => {
-            rdParams.append('lead_source', source)
-          })
+          if (rdLeadSourceFilters.length > 0) {
+            activeRdLeadSources.forEach((source) => {
+              rdParams.append('lead_source', source)
+            })
+          }
           rdParams.set('date_preset', dateRange)
           selectedQualifiedStages.forEach((stage) => {
             rdParams.append('qualified_stage', stage)
@@ -999,6 +997,7 @@ export default function DashboardPage() {
     hasMetaConfigured,
     hasRdConfigured,
     rdSellerFilter,
+    activeRdLeadSources,
     rdLeadSourceFilters,
     selectedQualifiedStages,
     metaResultFilters,
@@ -2684,11 +2683,11 @@ export default function DashboardPage() {
                             {rdSummary.availableSources.map((source) => (
                               <label
                                 key={source}
-                                className={`result-filter-chip ${rdLeadSourceFilters.includes(source) ? 'active' : ''}`}
+                                className={`result-filter-chip ${activeRdLeadSources.includes(source) ? 'active' : ''}`}
                               >
                                 <input
                                   type="checkbox"
-                                  checked={rdLeadSourceFilters.includes(source)}
+                                  checked={activeRdLeadSources.includes(source)}
                                   onChange={() => handleRdLeadSourceToggle(source)}
                                 />
                                 <span>{source}</span>
