@@ -7,6 +7,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [fullName, setFullName] = useState('')
   const [isSignUp, setIsSignUp] = useState(false)
   
   const supabase = createClient()
@@ -16,28 +17,34 @@ export default function LoginPage() {
     try {
       setLoading(true)
 
-      const { error } = isSignUp
-        ? await supabase.auth.signUp({
+      if (isSignUp) {
+        const registerResponse = await fetch('/api/auth/register', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            fullName,
             email,
             password,
-            options: {
-              emailRedirectTo: `${window.location.origin}/auth/callback`,
-            },
-          })
-        : await supabase.auth.signInWithPassword({
-            email,
-            password,
-          })
+          }),
+        })
+
+        const registerData = await registerResponse.json()
+
+        if (!registerResponse.ok) {
+          throw new Error(registerData.error || 'Não foi possível criar a conta.')
+        }
+      }
+
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      })
       
       if (error) throw error
 
-      if (isSignUp) {
-        alert('Cadastro realizado! Verifique seu email para confirmar (se exigido nas configurações do Supabase) ou tente fazer login.')
-        setIsSignUp(false)
-      } else {
-        // Redireciona via JS para carregar limpar a rota
-        window.location.href = '/'
-      }
+      window.location.href = '/'
     } catch (error) {
       alert('Erro na Autenticação: ' + error.message)
     } finally {
@@ -77,6 +84,17 @@ export default function LoginPage() {
         </p>
 
         <form onSubmit={handleEmailAuth} className="email-form">
+          {isSignUp && (
+            <div className="input-group">
+              <i className='bx bx-user'></i>
+              <input
+                type="text"
+                placeholder="Seu nome"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+              />
+            </div>
+          )}
           <div className="input-group">
             <i className='bx bx-envelope'></i>
             <input 
@@ -125,7 +143,10 @@ export default function LoginPage() {
           {isSignUp ? 'Já tem uma conta? ' : 'Ainda não é membro? '}
           <span 
             className="toggle-auth" 
-            onClick={() => setIsSignUp(!isSignUp)}
+            onClick={() => {
+              setIsSignUp(!isSignUp)
+              setFullName('')
+            }}
           >
             {isSignUp ? 'Faça login' : 'Crie sua conta aqui'}
           </span>
