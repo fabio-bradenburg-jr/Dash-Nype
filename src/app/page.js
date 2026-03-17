@@ -3578,22 +3578,35 @@ export default function DashboardPage() {
 
         .input-group input {
           width: 100%;
-          padding: 12px 16px;
+          min-height: 56px;
+          padding: 0 16px;
           border-radius: 10px;
           background: rgba(0, 0, 0, 0.2);
           border: 1px solid var(--border-color);
           color: white;
           font-family: inherit;
+          font-size: 15px;
+          box-sizing: border-box;
         }
 
         .client-select-input {
           width: 100%;
-          padding: 12px 16px;
+          min-height: 56px;
+          padding: 0 16px;
           border-radius: 10px;
           background: rgba(0, 0, 0, 0.2);
           border: 1px solid var(--border-color);
           color: white;
           font-family: inherit;
+          font-size: 15px;
+          box-sizing: border-box;
+          appearance: none;
+        }
+
+        .input-group input[type="file"] {
+          padding-top: 12px;
+          padding-bottom: 12px;
+          line-height: 1.3;
         }
 
         .input-group input:focus {
