@@ -1,15 +1,21 @@
-export const META_RESULT_FILTER_OPTIONS = [
-  { key: 'messages', label: 'Mensagem' },
-  { key: 'leads', label: 'Cadastro' },
-  { key: 'purchases', label: 'Compra' },
-]
+export const META_RESULT_FILTER_LABELS = {
+  messages: 'Mensagem',
+  leads: 'Cadastro',
+  purchases: 'Compra',
+  reach: 'Alcance',
+  traffic: 'Tráfego',
+  engagement: 'Engajamento',
+  awareness: 'Reconhecimento',
+  app: 'App',
+  sales: 'Vendas',
+}
 
 export const META_PURCHASE_EVENTS = ['purchase', 'offsite_conversion.fb_pixel_purchase']
 export const META_LEAD_EVENTS = ['lead', 'onsite_conversion.lead_grouped']
 export const META_MESSAGE_EVENTS = ['onsite_conversion.messaging_conversation_started_7d', 'onsite_conversion.messaging_first_reply']
 
-export function normalizeMetaResultFilters(filters = []) {
-  const validKeys = META_RESULT_FILTER_OPTIONS.map((item) => item.key)
+export function normalizeMetaResultFilters(filters = [], availableFilters = Object.keys(META_RESULT_FILTER_LABELS)) {
+  const validKeys = availableFilters.length > 0 ? availableFilters : Object.keys(META_RESULT_FILTER_LABELS)
   const normalized = filters.filter((item) => validKeys.includes(item))
   return normalized.length > 0 ? normalized : validKeys
 }
@@ -86,6 +92,66 @@ export function matchesMetaResultFilters(insightData, filters = []) {
   const metrics = extractMetaCampaignMetrics(insightData)
 
   return selectedFilters.some((filterKey) => metrics[filterKey] > 0)
+}
+
+export function getMetaCampaignFilterKeys(campaign) {
+  const metrics = extractMetaCampaignMetrics(campaign?.insights?.data?.[0] || {})
+  const keys = []
+
+  if (metrics.messages > 0) keys.push('messages')
+  if (metrics.leads > 0) keys.push('leads')
+  if (metrics.purchases > 0) keys.push('purchases')
+
+  const objective = (campaign?.objective || '').toUpperCase()
+
+  if (objective.includes('AWARENESS') || objective === 'REACH' || objective === 'BRAND_AWARENESS') {
+    keys.push('awareness')
+    if (objective === 'REACH') keys.push('reach')
+  }
+
+  if (objective.includes('TRAFFIC') || objective === 'LINK_CLICKS') {
+    keys.push('traffic')
+  }
+
+  if (
+    objective.includes('ENGAGEMENT') ||
+    objective === 'POST_ENGAGEMENT' ||
+    objective === 'PAGE_LIKES' ||
+    objective === 'EVENT_RESPONSES' ||
+    objective === 'VIDEO_VIEWS'
+  ) {
+    keys.push('engagement')
+  }
+
+  if (objective.includes('APP')) {
+    keys.push('app')
+  }
+
+  if (objective.includes('SALES')) {
+    keys.push('sales')
+  }
+
+  if (keys.length === 0) {
+    keys.push('traffic')
+  }
+
+  return Array.from(new Set(keys))
+}
+
+export function getAvailableMetaResultFilters(campaigns = []) {
+  const keys = campaigns.flatMap((campaign) => getMetaCampaignFilterKeys(campaign))
+  const uniqueKeys = Array.from(new Set(keys))
+
+  return uniqueKeys.map((key) => ({
+    key,
+    label: META_RESULT_FILTER_LABELS[key] || key,
+  }))
+}
+
+export function campaignMatchesMetaResultFilters(campaign, filters = [], availableFilters = []) {
+  const selectedFilters = normalizeMetaResultFilters(filters, availableFilters)
+  const campaignKeys = getMetaCampaignFilterKeys(campaign)
+  return selectedFilters.some((filterKey) => campaignKeys.includes(filterKey))
 }
 
 export function formatInsightsWithConversions(insightData) {

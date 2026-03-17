@@ -25,9 +25,9 @@ import { Doughnut, Line } from 'react-chartjs-2'
 import html2canvas from 'html2canvas'
 import { jsPDF } from 'jspdf'
 import {
+  campaignMatchesMetaResultFilters,
   extractMetaCampaignMetrics,
-  matchesMetaResultFilters,
-  META_RESULT_FILTER_OPTIONS,
+  getAvailableMetaResultFilters,
   normalizeMetaResultFilters,
 } from '@/lib/meta-metrics'
 
@@ -292,7 +292,7 @@ export default function DashboardPage() {
   const [campaignSearch, setCampaignSearch] = useState('')
   const [campaignStatusFilter, setCampaignStatusFilter] = useState('ACTIVE')
   const [campaignSortBy, setCampaignSortBy] = useState('spend')
-  const [metaResultFilters, setMetaResultFilters] = useState(META_RESULT_FILTER_OPTIONS.map((item) => item.key))
+  const [metaResultFilters, setMetaResultFilters] = useState([])
   const [clients, setClients] = useState([])
   const [activeClientId, setActiveClientId] = useState('')
   const [newClientName, setNewClientName] = useState('')
@@ -360,9 +360,13 @@ export default function DashboardPage() {
     () => activeClient?.funnelSteps || [],
     [activeClient]
   )
+  const availableMetaResultFilters = useMemo(
+    () => getAvailableMetaResultFilters(campaigns),
+    [campaigns]
+  )
   const normalizedMetaResultFilters = useMemo(
-    () => normalizeMetaResultFilters(metaResultFilters),
-    [metaResultFilters]
+    () => normalizeMetaResultFilters(metaResultFilters, availableMetaResultFilters.map((item) => item.key)),
+    [metaResultFilters, availableMetaResultFilters]
   )
   const roleLabels = {
     master: 'Master',
@@ -566,13 +570,22 @@ export default function DashboardPage() {
     )
   }, [usersList, userSearch])
 
+  useEffect(() => {
+    if (!availableMetaResultFilters.length) {
+      setMetaResultFilters([])
+      return
+    }
+
+    setMetaResultFilters((current) => normalizeMetaResultFilters(current, availableMetaResultFilters.map((item) => item.key)))
+  }, [availableMetaResultFilters])
+
   const metaFilteredCampaignIds = useMemo(
     () =>
       campaigns
-        .filter((campaign) => matchesMetaResultFilters(campaign.insights?.data?.[0], normalizedMetaResultFilters))
+        .filter((campaign) => campaignMatchesMetaResultFilters(campaign, normalizedMetaResultFilters, availableMetaResultFilters.map((item) => item.key)))
         .map((campaign) => campaign.id)
         .filter(Boolean),
-    [campaigns, normalizedMetaResultFilters]
+    [campaigns, normalizedMetaResultFilters, availableMetaResultFilters]
   )
 
   const handleUserClientToggle = (clientId) => {
@@ -858,7 +871,7 @@ export default function DashboardPage() {
           } else {
             const nextCampaigns = campaignsData || []
             const matchingCampaignIds = nextCampaigns
-              .filter((campaign) => matchesMetaResultFilters(campaign.insights?.data?.[0], normalizedMetaResultFilters))
+              .filter((campaign) => campaignMatchesMetaResultFilters(campaign, normalizedMetaResultFilters, getAvailableMetaResultFilters(nextCampaigns).map((item) => item.key)))
               .map((campaign) => campaign.id)
               .filter(Boolean)
 
@@ -1106,20 +1119,21 @@ export default function DashboardPage() {
   }
 
   const customMetrics = useMemo(() => insights?.custom_metrics || {}, [insights])
-  const spend = parseFloat(insights?.spend || 0)
-  const impressions = parseInt(insights?.impressions || 0, 10)
-  const clicks = parseInt(insights?.clicks || 0, 10)
-  const cpc = parseFloat(insights?.cpc || 0)
-  const ctr = parseFloat(insights?.ctr || 0)
-  const purchases = customMetrics.purchases || 0
-  const costPerPurchase = customMetrics.cost_per_purchase || 0
-  const leads = customMetrics.leads || 0
-  const costPerLead = customMetrics.cost_per_lead || 0
-  const messages = customMetrics.messages || 0
-  const costPerMessage = customMetrics.cost_per_message || 0
-  const totalConversions = customMetrics.totalConversions || 0
-  const roas = customMetrics.roas || 0
-  const purchaseValue = customMetrics.purchaseValue || 0
+
+  const spend = campaignSummary.spend || 0
+  const impressions = campaignSummary.impressions || 0
+  const clicks = campaignSummary.clicks || 0
+  const cpc = campaignSummary.cpc || 0
+  const ctr = campaignSummary.ctr || 0
+  const purchases = campaignSummary.purchases || 0
+  const costPerPurchase = campaignSummary.cost_per_purchase || 0
+  const leads = campaignSummary.leads || 0
+  const costPerLead = campaignSummary.cost_per_lead || 0
+  const messages = campaignSummary.messages || 0
+  const costPerMessage = campaignSummary.cost_per_message || 0
+  const totalConversions = campaignSummary.totalConversions || 0
+  const roas = campaignSummary.roas || 0
+  const purchaseValue = campaignSummary.purchaseValue || 0
 
   const labels = dailyData.map((day) => {
     const date = new Date(day.date_start)
@@ -1249,7 +1263,7 @@ export default function DashboardPage() {
     const filtered = campaigns.filter((campaign) => {
       const matchesSearch = !term || campaign.name?.toLowerCase().includes(term)
       const matchesStatus = campaignStatusFilter === 'all' || campaign.status === campaignStatusFilter
-      const matchesResultType = matchesMetaResultFilters(campaign.insights?.data?.[0], normalizedMetaResultFilters)
+      const matchesResultType = campaignMatchesMetaResultFilters(campaign, normalizedMetaResultFilters, availableMetaResultFilters.map((item) => item.key))
       return matchesSearch && matchesStatus && matchesResultType
     })
 
@@ -1271,7 +1285,66 @@ export default function DashboardPage() {
       if (campaignSortBy === 'conversions') return metricsB.totalConversionsValue - metricsA.totalConversionsValue
       return metricsB.spendValue - metricsA.spendValue
     })
-  }, [campaigns, campaignSearch, campaignStatusFilter, campaignSortBy, normalizedMetaResultFilters])
+  }, [campaigns, campaignSearch, campaignStatusFilter, campaignSortBy, normalizedMetaResultFilters, availableMetaResultFilters])
+
+  const campaignSummary = useMemo(() => {
+    if (!filteredCampaigns.length) {
+      return {
+        spend: parseFloat(insights?.spend || 0),
+        impressions: parseInt(insights?.impressions || 0, 10),
+        clicks: parseInt(insights?.clicks || 0, 10),
+        cpc: parseFloat(insights?.cpc || 0),
+        ctr: parseFloat(insights?.ctr || 0),
+        purchases: customMetrics.purchases || 0,
+        cost_per_purchase: customMetrics.cost_per_purchase || 0,
+        leads: customMetrics.leads || 0,
+        cost_per_lead: customMetrics.cost_per_lead || 0,
+        messages: customMetrics.messages || 0,
+        cost_per_message: customMetrics.cost_per_message || 0,
+        totalConversions: customMetrics.totalConversions || 0,
+        roas: customMetrics.roas || 0,
+        purchaseValue: customMetrics.purchaseValue || 0,
+      }
+    }
+
+    const aggregated = filteredCampaigns.reduce(
+      (accumulator, campaign) => {
+        const insight = campaign.insights?.data?.[0] || {}
+        const metrics = extractMetaCampaignMetrics(insight)
+
+        accumulator.spend += metrics.spend
+        accumulator.impressions += parseInt(insight.impressions || 0, 10)
+        accumulator.clicks += parseInt(insight.clicks || 0, 10)
+        accumulator.purchases += metrics.purchases
+        accumulator.leads += metrics.leads
+        accumulator.messages += metrics.messages
+        accumulator.totalConversions += metrics.totalConversions
+        accumulator.purchaseValue += metrics.purchaseValue
+
+        return accumulator
+      },
+      {
+        spend: 0,
+        impressions: 0,
+        clicks: 0,
+        purchases: 0,
+        leads: 0,
+        messages: 0,
+        totalConversions: 0,
+        purchaseValue: 0,
+      }
+    )
+
+    return {
+      ...aggregated,
+      cpc: aggregated.clicks > 0 ? aggregated.spend / aggregated.clicks : 0,
+      ctr: aggregated.impressions > 0 ? (aggregated.clicks / aggregated.impressions) * 100 : 0,
+      cost_per_purchase: aggregated.purchases > 0 ? aggregated.spend / aggregated.purchases : 0,
+      cost_per_lead: aggregated.leads > 0 ? aggregated.spend / aggregated.leads : 0,
+      cost_per_message: aggregated.messages > 0 ? aggregated.spend / aggregated.messages : 0,
+      roas: aggregated.spend > 0 ? aggregated.purchaseValue / aggregated.spend : 0,
+    }
+  }, [filteredCampaigns, insights, customMetrics])
 
   const availableFunnelMetrics = useMemo(
     () => Object.entries(METRIC_OPTIONS).filter(([key]) => !activeFunnelSteps.includes(key)),
@@ -2128,7 +2201,7 @@ export default function DashboardPage() {
                     <span className="meta-filter-helper">Todos começam marcados por padrão.</span>
                   </div>
                   <div className="stage-selector meta-filter-chip-row">
-                    {META_RESULT_FILTER_OPTIONS.map((filter) => (
+                    {availableMetaResultFilters.map((filter) => (
                       <label key={filter.key} className={`stage-chip ${normalizedMetaResultFilters.includes(filter.key) ? 'active' : ''}`}>
                         <input
                           type="checkbox"
