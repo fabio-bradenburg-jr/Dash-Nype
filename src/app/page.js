@@ -24,6 +24,12 @@ import {
 import { Doughnut, Line } from 'react-chartjs-2'
 import html2canvas from 'html2canvas'
 import { jsPDF } from 'jspdf'
+import {
+  extractMetaCampaignMetrics,
+  matchesMetaResultFilters,
+  META_RESULT_FILTER_OPTIONS,
+  normalizeMetaResultFilters,
+} from '@/lib/meta-metrics'
 
 ChartJS.register(
   CategoryScale,
@@ -286,6 +292,7 @@ export default function DashboardPage() {
   const [campaignSearch, setCampaignSearch] = useState('')
   const [campaignStatusFilter, setCampaignStatusFilter] = useState('ACTIVE')
   const [campaignSortBy, setCampaignSortBy] = useState('spend')
+  const [metaResultFilters, setMetaResultFilters] = useState(META_RESULT_FILTER_OPTIONS.map((item) => item.key))
   const [clients, setClients] = useState([])
   const [activeClientId, setActiveClientId] = useState('')
   const [newClientName, setNewClientName] = useState('')
@@ -352,6 +359,10 @@ export default function DashboardPage() {
   const activeFunnelSteps = useMemo(
     () => activeClient?.funnelSteps || [],
     [activeClient]
+  )
+  const normalizedMetaResultFilters = useMemo(
+    () => normalizeMetaResultFilters(metaResultFilters),
+    [metaResultFilters]
   )
   const roleLabels = {
     master: 'Master',
@@ -555,6 +566,15 @@ export default function DashboardPage() {
     )
   }, [usersList, userSearch])
 
+  const metaFilteredCampaignIds = useMemo(
+    () =>
+      campaigns
+        .filter((campaign) => matchesMetaResultFilters(campaign.insights?.data?.[0], normalizedMetaResultFilters))
+        .map((campaign) => campaign.id)
+        .filter(Boolean),
+    [campaigns, normalizedMetaResultFilters]
+  )
+
   const handleUserClientToggle = (clientId) => {
     setUserForm((current) => ({
       ...current,
@@ -562,6 +582,16 @@ export default function DashboardPage() {
         ? current.clientIds.filter((id) => id !== clientId)
         : [...current.clientIds, clientId],
     }))
+  }
+
+  const handleMetaResultFilterToggle = (filterKey) => {
+    setMetaResultFilters((current) =>
+      current.includes(filterKey)
+        ? current.length === 1
+          ? current
+          : current.filter((item) => item !== filterKey)
+        : [...current, filterKey]
+    )
   }
 
   const handleCreateUser = async (event) => {
@@ -817,25 +847,40 @@ export default function DashboardPage() {
             'x-meta-access-token': globalIntegrations.metaAccessToken,
           }
 
-          const [insightsResponse, campaignsResponse] = await Promise.all([
-            fetch(`/api/meta/insights?${params.toString()}`, { headers }),
-            fetch(`/api/meta/campaigns?${params.toString()}`, { headers }),
-          ])
-
-          const insightsData = await insightsResponse.json()
+          const campaignsResponse = await fetch(`/api/meta/campaigns?${params.toString()}`, { headers })
           const campaignsData = await campaignsResponse.json()
 
-          if (!insightsResponse.ok) {
-            metaError = insightsData.error || 'Não foi possível carregar os indicadores da Meta.'
+          if (!campaignsResponse.ok) {
+            metaError = campaignsData.error || 'Não foi possível carregar as campanhas da Meta.'
             setInsights(null)
             setDailyData([])
+            setCampaigns([])
           } else {
-            setInsights(insightsData.summary || {})
-            setDailyData(insightsData.daily || [])
-            setCampaigns(campaignsResponse.ok ? campaignsData || [] : [])
+            const nextCampaigns = campaignsData || []
+            const matchingCampaignIds = nextCampaigns
+              .filter((campaign) => matchesMetaResultFilters(campaign.insights?.data?.[0], normalizedMetaResultFilters))
+              .map((campaign) => campaign.id)
+              .filter(Boolean)
 
-            if (!campaignsResponse.ok) {
-              metaError = 'Os indicadores principais carregaram, mas a tabela de campanhas não respondeu agora.'
+            setCampaigns(nextCampaigns)
+
+            const insightsParams = new URLSearchParams(params)
+            if (matchingCampaignIds.length > 0) {
+              insightsParams.set('campaign_ids', matchingCampaignIds.join(','))
+            } else {
+              insightsParams.set('campaign_ids', '__none__')
+            }
+
+            const insightsResponse = await fetch(`/api/meta/insights?${insightsParams.toString()}`, { headers })
+            const insightsData = await insightsResponse.json()
+
+            if (!insightsResponse.ok) {
+              metaError = insightsData.error || 'Não foi possível carregar os indicadores da Meta.'
+              setInsights(null)
+              setDailyData([])
+            } else {
+              setInsights(insightsData.summary || {})
+              setDailyData(insightsData.daily || [])
             }
           }
         } else {
@@ -899,6 +944,7 @@ export default function DashboardPage() {
     hasRdConfigured,
     rdSellerFilter,
     selectedQualifiedStages,
+    normalizedMetaResultFilters,
     globalIntegrations.metaAccessToken,
     activeIntegrations.rdStationToken,
   ])
@@ -930,6 +976,12 @@ export default function DashboardPage() {
           params.set('until', customUntil)
         }
 
+        if (metaFilteredCampaignIds.length > 0) {
+          params.set('campaign_ids', metaFilteredCampaignIds.join(','))
+        } else {
+          params.set('campaign_ids', '__none__')
+        }
+
         const response = await fetch(`/api/meta/breakdowns?${params.toString()}`, {
           headers: {
             'x-meta-access-token': globalIntegrations.metaAccessToken,
@@ -958,6 +1010,7 @@ export default function DashboardPage() {
     customSince,
     customUntil,
     hasMetaConfigured,
+    metaFilteredCampaignIds,
     globalIntegrations.metaAccessToken,
   ])
 
@@ -1196,30 +1249,18 @@ export default function DashboardPage() {
     const filtered = campaigns.filter((campaign) => {
       const matchesSearch = !term || campaign.name?.toLowerCase().includes(term)
       const matchesStatus = campaignStatusFilter === 'all' || campaign.status === campaignStatusFilter
-      return matchesSearch && matchesStatus
+      const matchesResultType = matchesMetaResultFilters(campaign.insights?.data?.[0], normalizedMetaResultFilters)
+      return matchesSearch && matchesStatus && matchesResultType
     })
 
     const getCampaignMetrics = (campaign) => {
-      const insight = campaign.insights?.data?.[0] || {}
-      const actions = insight.actions || []
-      const values = insight.action_values || []
-      const spendValue = parseFloat(insight.spend || 0)
-      const purchasesValue = actions
-        .filter((item) => ['purchase', 'offsite_conversion.fb_pixel_purchase'].includes(item.action_type))
-        .reduce((sum, item) => sum + parseInt(item.value || 0, 10), 0)
-      const leadsValue = actions
-        .filter((item) => ['lead', 'onsite_conversion.lead_grouped'].includes(item.action_type))
-        .reduce((sum, item) => sum + parseInt(item.value || 0, 10), 0)
-      const messagesValue = actions
-        .filter((item) => ['onsite_conversion.messaging_conversation_started_7d', 'onsite_conversion.messaging_first_reply'].includes(item.action_type))
-        .reduce((sum, item) => sum + parseInt(item.value || 0, 10), 0)
-      const totalConversionsValue = purchasesValue + leadsValue + messagesValue
-      const revenueValue = values
-        .filter((item) => ['purchase', 'offsite_conversion.fb_pixel_purchase'].includes(item.action_type))
-        .reduce((sum, item) => sum + parseFloat(item.value || 0), 0)
-      const roasValue = spendValue > 0 ? revenueValue / spendValue : 0
+      const metrics = extractMetaCampaignMetrics(campaign.insights?.data?.[0] || {})
 
-      return { spendValue, totalConversionsValue, roasValue }
+      return {
+        spendValue: metrics.spend,
+        totalConversionsValue: metrics.totalConversions,
+        roasValue: metrics.roas,
+      }
     }
 
     return filtered.sort((campaignA, campaignB) => {
@@ -1230,7 +1271,7 @@ export default function DashboardPage() {
       if (campaignSortBy === 'conversions') return metricsB.totalConversionsValue - metricsA.totalConversionsValue
       return metricsB.spendValue - metricsA.spendValue
     })
-  }, [campaigns, campaignSearch, campaignStatusFilter, campaignSortBy])
+  }, [campaigns, campaignSearch, campaignStatusFilter, campaignSortBy, normalizedMetaResultFilters])
 
   const availableFunnelMetrics = useMemo(
     () => Object.entries(METRIC_OPTIONS).filter(([key]) => !activeFunnelSteps.includes(key)),
@@ -1722,12 +1763,6 @@ export default function DashboardPage() {
                   <p>Use a busca para encontrar um acesso e abra a edição em um pop-up, sem ocupar a tela principal.</p>
                 </div>
                 <div className="users-toolbar-actions">
-                  <div className="users-summary-chips">
-                    <span className="users-summary-chip">Master</span>
-                    <span className="users-summary-chip">Operador</span>
-                    <span className="users-summary-chip">Cliente</span>
-                    <span className="users-summary-chip">Visualizador</span>
-                  </div>
                   <button type="button" className="btn btn-primary" onClick={() => setIsCreateUserModalOpen(true)}>
                     Novo usuário
                   </button>
@@ -2083,11 +2118,31 @@ export default function DashboardPage() {
                       </div>
                       <p className="source-section-copy">Primeiro bloco de leitura das contas de anúncio e da performance de mídia.</p>
                     </div>
+                <section className="glass-panel meta-filter-panel">
+                  <div className="section-header section-header-stack">
+                    <div>
+                      <h2>Filtro por tipo de resultado</h2>
+                      <p className="chart-subtitle">O relatório considera apenas campanhas que geraram o tipo de resultado selecionado. Todos começam marcados por padrão.</p>
+                    </div>
+                  </div>
+                  <div className="stage-selector">
+                    {META_RESULT_FILTER_OPTIONS.map((filter) => (
+                      <label key={filter.key} className={`stage-chip ${normalizedMetaResultFilters.includes(filter.key) ? 'active' : ''}`}>
+                        <input
+                          type="checkbox"
+                          checked={normalizedMetaResultFilters.includes(filter.key)}
+                          onChange={() => handleMetaResultFilterToggle(filter.key)}
+                        />
+                        <span>{filter.label}</span>
+                      </label>
+                    ))}
+                  </div>
+                </section>
                 <section className="glass-panel grouped-results">
                   <div className="section-header section-header-stack">
                     <div>
                       <h2>Resumo de resultados</h2>
-                      <p className="chart-subtitle">Os indicadores abaixo são organizados por tipo de resultado para facilitar a leitura da performance.</p>
+                      <p className="chart-subtitle">Os indicadores abaixo consideram somente as campanhas enquadradas no filtro de resultado ativo.</p>
                     </div>
                   </div>
 
@@ -2402,25 +2457,14 @@ export default function DashboardPage() {
                           </tr>
                         ) : (
                           filteredCampaigns.map((campaign, index) => {
-                            const campaignInsights = campaign.insights?.data?.[0] || {}
-                            const actions = campaignInsights.actions || []
-                            const valueActions = campaignInsights.action_values || []
-                            const campaignSpend = parseFloat(campaignInsights.spend || 0)
-                            const campaignPurchases = actions
-                              .filter((item) => ['purchase', 'offsite_conversion.fb_pixel_purchase'].includes(item.action_type))
-                              .reduce((sum, item) => sum + parseInt(item.value || 0, 10), 0)
-                            const campaignLeads = actions
-                              .filter((item) => ['lead', 'onsite_conversion.lead_grouped'].includes(item.action_type))
-                              .reduce((sum, item) => sum + parseInt(item.value || 0, 10), 0)
-                            const campaignMessages = actions
-                              .filter((item) => ['onsite_conversion.messaging_conversation_started_7d', 'onsite_conversion.messaging_first_reply'].includes(item.action_type))
-                              .reduce((sum, item) => sum + parseInt(item.value || 0, 10), 0)
-                            const campaignRevenue = valueActions
-                              .filter((item) => ['purchase', 'offsite_conversion.fb_pixel_purchase'].includes(item.action_type))
-                              .reduce((sum, item) => sum + parseFloat(item.value || 0), 0)
-                            const campaignConversions = campaignPurchases + campaignLeads + campaignMessages
-                            const campaignCpa = campaignConversions > 0 ? campaignSpend / campaignConversions : 0
-                            const campaignRoas = campaignSpend > 0 ? campaignRevenue / campaignSpend : 0
+                            const campaignMetrics = extractMetaCampaignMetrics(campaign.insights?.data?.[0] || {})
+                            const campaignSpend = campaignMetrics.spend
+                            const campaignPurchases = campaignMetrics.purchases
+                            const campaignLeads = campaignMetrics.leads
+                            const campaignMessages = campaignMetrics.messages
+                            const campaignConversions = campaignMetrics.totalConversions
+                            const campaignCpa = campaignMetrics.cpa
+                            const campaignRoas = campaignMetrics.roas
                             const isActive = campaign.status === 'ACTIVE'
 
                             return (

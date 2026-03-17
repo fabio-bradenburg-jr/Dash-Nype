@@ -17,6 +17,7 @@ export async function GET(request) {
     const datePreset = searchParams.get('date_preset') || 'last_7d'
     const since = searchParams.get('since')
     const until = searchParams.get('until')
+    const campaignIds = searchParams.getAll('campaign_ids').flatMap((value) => value.split(',')).filter(Boolean)
     
     const token = getMetaToken(request)
 
@@ -35,6 +36,26 @@ export async function GET(request) {
       baseParams.set('time_range', JSON.stringify({ since, until }))
     } else {
       baseParams.set('date_preset', datePreset)
+    }
+
+    if (campaignIds.includes('__none__')) {
+      return NextResponse.json({
+        summary: formatInsightsWithConversions(null),
+        daily: [],
+      })
+    }
+
+    if (campaignIds.length > 0) {
+      baseParams.set(
+        'filtering',
+        JSON.stringify([
+          {
+            field: 'campaign.id',
+            operator: 'IN',
+            value: campaignIds,
+          },
+        ])
+      )
     }
     
     const dailyParams = new URLSearchParams(baseParams)
