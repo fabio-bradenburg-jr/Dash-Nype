@@ -25,12 +25,13 @@ async function getAuthorizedContext() {
   return { adminSupabase, accessContext, user }
 }
 
-export async function PATCH(request, { params }) {
+export async function PATCH(request, context) {
   try {
     const authorized = await getAuthorizedContext()
     if (authorized.errorResponse) return authorized.errorResponse
 
     const { adminSupabase, accessContext, user } = authorized
+    const params = await context.params
     const { userId } = params
     const body = await request.json()
 
@@ -88,7 +89,8 @@ export async function DELETE(_request, { params }) {
     if (authorized.errorResponse) return authorized.errorResponse
 
     const { adminSupabase, user } = authorized
-    const { userId } = params
+    const resolvedParams = await params
+    const { userId } = resolvedParams
 
     if (user.id === userId) {
       return NextResponse.json({ error: 'A conta master não pode excluir a si mesma.' }, { status: 400 })
