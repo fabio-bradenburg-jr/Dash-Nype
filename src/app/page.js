@@ -814,6 +814,10 @@ export default function DashboardPage() {
   }, [hasLoadedPreferences, activeClient, activeClientId, globalIntegrations.metaAccessToken, activeTab])
 
   useEffect(() => {
+    if (activeTab !== 'apresentacao') {
+      return
+    }
+
     if (!activeClient) {
       setIsLoading(false)
       setInsights(null)
@@ -873,8 +877,10 @@ export default function DashboardPage() {
             setCampaigns([])
           } else {
             const nextCampaigns = campaignsData || []
+            const nextAvailableFilterKeys = getAvailableMetaResultFilters(nextCampaigns).map((item) => item.key)
+            const activeResultFilters = normalizeMetaResultFilters(metaResultFilters, nextAvailableFilterKeys)
             const matchingCampaignIds = nextCampaigns
-              .filter((campaign) => campaignMatchesMetaResultFilters(campaign, normalizedMetaResultFilters, getAvailableMetaResultFilters(nextCampaigns).map((item) => item.key)))
+              .filter((campaign) => campaignMatchesMetaResultFilters(campaign, activeResultFilters, nextAvailableFilterKeys))
               .map((campaign) => campaign.id)
               .filter(Boolean)
 
@@ -963,12 +969,17 @@ export default function DashboardPage() {
     hasRdConfigured,
     rdSellerFilter,
     selectedQualifiedStages,
-    normalizedMetaResultFilters,
+    metaResultFilters,
     globalIntegrations.metaAccessToken,
     activeIntegrations.rdStationToken,
+    activeTab,
   ])
 
   useEffect(() => {
+    if (activeTab !== 'apresentacao') {
+      return
+    }
+
     if (!activeClient || !hasMetaConfigured) {
       setBreakdowns({ ages: [], cities: [], creatives: [] })
       setIsRankingsLoading(false)
@@ -1031,6 +1042,7 @@ export default function DashboardPage() {
     hasMetaConfigured,
     metaFilteredCampaignIds,
     globalIntegrations.metaAccessToken,
+    activeTab,
   ])
 
   const handleSaveIntegrations = async (event) => {
