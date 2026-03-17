@@ -379,20 +379,45 @@ function getDealStageLabel(deal) {
     deal?.stage_name,
     deal?.pipeline_stage,
     deal?.deal_stage_label,
+    deal?.stage_label,
+    deal?.stage_title,
+    deal?.funnel_stage,
+    deal?.pipeline_name,
+    deal?.current_stage,
   ]
 
   const directValue = candidates.find((candidate) => typeof candidate === 'string' && candidate.trim())
   if (directValue) return directValue.trim()
 
-  if (typeof deal?.stage === 'object') {
+  const nestedStageObjects = [
+    deal?.stage,
+    deal?.deal_stage,
+    deal?.pipeline_stage,
+    deal?.current_stage,
+    deal?.funnel_stage,
+  ].filter((value) => value && typeof value === 'object')
+
+  for (const stageObject of nestedStageObjects) {
     const nested = [
-      deal.stage.name,
-      deal.stage.label,
-      deal.stage.title,
+      stageObject.name,
+      stageObject.label,
+      stageObject.title,
+      stageObject.stage_name,
+      stageObject.display_name,
     ].find((candidate) => typeof candidate === 'string' && candidate.trim())
 
     if (nested) return nested.trim()
   }
+
+  const customFieldValue = getTextFromMatchingFields(deal, [
+    'etapa',
+    'estagio',
+    'pipeline',
+    'funil',
+    'stage',
+  ])
+
+  if (customFieldValue) return customFieldValue.trim()
 
   return ''
 }
