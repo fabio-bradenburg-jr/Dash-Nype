@@ -19,6 +19,9 @@ export const DEFAULT_PREFERENCES = {
   activeClientId: '',
   globalIntegrations: {
     metaAccessToken: '',
+    googleAdsToken: '',
+    tiktokAdsToken: '',
+    linkedinAdsToken: '',
   },
   clients: [],
 }

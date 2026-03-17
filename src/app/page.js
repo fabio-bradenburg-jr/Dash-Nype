@@ -68,14 +68,13 @@ const DATE_PRESETS = [
   { value: 'custom', label: 'Período personalizado' },
 ]
 
-const INTEGRATION_GROUPS = [
+const CLIENT_INTEGRATION_GROUPS = [
   {
     title: 'Google Ads',
     icon: 'bxl-google',
     accent: '#ea4335',
-    description: 'Salve a conta e a credencial usadas especificamente por esse cliente.',
+    description: 'Selecione a conta Google Ads referente a este cliente.',
     fields: [
-      { name: 'googleAdsToken', label: 'Token / credencial', placeholder: 'Developer token ou OAuth', storage: 'integrations', type: 'password' },
       { name: 'googleAdsAccountId', label: 'Conta Google Ads do cliente', placeholder: '123-456-7890', storage: 'client', type: 'text' },
     ],
   },
@@ -83,9 +82,8 @@ const INTEGRATION_GROUPS = [
     title: 'TikTok Ads',
     icon: 'bxl-tiktok',
     accent: '#ff0050',
-    description: 'Deixe pronta a seleção da conta que deve compor o dashboard desse cliente.',
+    description: 'Selecione a conta TikTok Ads que deve compor o dashboard deste cliente.',
     fields: [
-      { name: 'tiktokAdsToken', label: 'Token / credencial', placeholder: 'tt_...', storage: 'integrations', type: 'password' },
       { name: 'tiktokAdsAccountId', label: 'Conta TikTok Ads do cliente', placeholder: '987654321', storage: 'client', type: 'text' },
     ],
   },
@@ -93,9 +91,8 @@ const INTEGRATION_GROUPS = [
     title: 'LinkedIn Ads',
     icon: 'bxl-linkedin-square',
     accent: '#0a66c2',
-    description: 'Organize mídia B2B por cliente desde já.',
+    description: 'Selecione a conta LinkedIn Ads usada por este cliente.',
     fields: [
-      { name: 'linkedinAdsToken', label: 'Token OAuth 2.0', placeholder: 'AQV...', storage: 'integrations', type: 'password' },
       { name: 'linkedInAdsAccountId', label: 'Conta LinkedIn Ads do cliente', placeholder: 'urn:li:sponsoredAccount:123', storage: 'client', type: 'text' },
     ],
   },
@@ -128,6 +125,37 @@ const INTEGRATION_GROUPS = [
       { name: 'agendorToken', label: 'Chave / credencial', placeholder: 'Token do Agendor', storage: 'integrations', type: 'password' },
       { name: 'agendorAccountId', label: 'Conta / pipeline do cliente', placeholder: 'Pipeline, funil ou ID da conta', storage: 'client', type: 'text' },
     ],
+  },
+]
+
+const GLOBAL_INTEGRATION_GROUPS = [
+  {
+    title: 'Meta Ads',
+    icon: 'bxl-meta',
+    accent: '#0668E1',
+    description: 'Chave principal da operação para listar contas e puxar dados da Meta.',
+    field: { name: 'metaAccessToken', label: 'Chave da API da Meta', placeholder: 'EAABsbCS1...' },
+  },
+  {
+    title: 'Google Ads',
+    icon: 'bxl-google',
+    accent: '#ea4335',
+    description: 'Credencial global da operação para futuras conexões e listagem de contas.',
+    field: { name: 'googleAdsToken', label: 'Token / credencial do Google Ads', placeholder: 'Developer token ou OAuth' },
+  },
+  {
+    title: 'TikTok Ads',
+    icon: 'bxl-tiktok',
+    accent: '#ff0050',
+    description: 'Credencial global da operação para conectar e gerenciar contas do TikTok Ads.',
+    field: { name: 'tiktokAdsToken', label: 'Token / credencial do TikTok Ads', placeholder: 'tt_...' },
+  },
+  {
+    title: 'LinkedIn Ads',
+    icon: 'bxl-linkedin-square',
+    accent: '#0a66c2',
+    description: 'Credencial global da operação para trabalhar com contas do LinkedIn Ads.',
+    field: { name: 'linkedinAdsToken', label: 'Token OAuth 2.0 do LinkedIn Ads', placeholder: 'AQV...' },
   },
 ]
 
@@ -289,7 +317,12 @@ export default function DashboardPage() {
     clientIds: [],
   })
   const [savingUser, setSavingUser] = useState(false)
-  const [globalIntegrations, setGlobalIntegrations] = useState({ metaAccessToken: '' })
+  const [globalIntegrations, setGlobalIntegrations] = useState({
+    metaAccessToken: '',
+    googleAdsToken: '',
+    tiktokAdsToken: '',
+    linkedinAdsToken: '',
+  })
 
   const currentTheme = THEMES[themeColor] || THEMES.blue
   const role = access?.role || profile?.role || 'visualizador'
@@ -329,7 +362,14 @@ export default function DashboardPage() {
     setThemeColor(preferences.themeColor)
     setMetric1(preferences.metric1)
     setMetric2(preferences.metric2)
-    setGlobalIntegrations(preferences.globalIntegrations || { metaAccessToken: '' })
+    setGlobalIntegrations(
+      preferences.globalIntegrations || {
+        metaAccessToken: '',
+        googleAdsToken: '',
+        tiktokAdsToken: '',
+        linkedinAdsToken: '',
+      }
+    )
     setClients(initialClients)
     setActiveClientId(initialActiveClientId)
     setHasLoadedPreferences(true)
@@ -1563,7 +1603,7 @@ export default function DashboardPage() {
                       </div>
                     </div>
 
-                    {INTEGRATION_GROUPS.map((group) => (
+                    {CLIENT_INTEGRATION_GROUPS.map((group) => (
                       <div key={group.title} className="integration-block">
                         <div className="integration-heading">
                           <div className="integration-icon" style={{ color: group.accent, borderColor: `${group.accent}33` }}>
@@ -1640,33 +1680,35 @@ export default function DashboardPage() {
             <div className="glass-panel client-editor-card">
               <div className="client-editor-header">
                 <div>
-                  <h3>Meta Ads</h3>
-                  <p>Cadastre a chave principal da operação para listar e puxar as contas de anúncio dos clientes.</p>
+                  <h3>Credenciais globais da operação</h3>
+                  <p>Cadastre aqui as chaves centrais. Nos clientes, você mantém apenas a seleção das contas vinculadas a cada operação.</p>
                 </div>
               </div>
 
               <div className="form-grid">
-                <div className="integration-block">
-                  <div className="integration-heading">
-                    <div className="integration-icon" style={{ color: '#0668E1', borderColor: '#0668E133' }}>
-                      <i className="bx bxl-meta"></i>
+                {GLOBAL_INTEGRATION_GROUPS.map((group) => (
+                  <div key={group.title} className="integration-block">
+                    <div className="integration-heading">
+                      <div className="integration-icon" style={{ color: group.accent, borderColor: `${group.accent}33` }}>
+                        <i className={`bx ${group.icon}`}></i>
+                      </div>
+                      <div>
+                        <h3>{group.title}</h3>
+                        <p>{group.description}</p>
+                      </div>
                     </div>
-                    <div>
-                      <h3>Chave global da Meta</h3>
-                      <p>Essa chave fica fora dos clientes e serve para toda a operação.</p>
-                    </div>
-                  </div>
 
-                  <div className="input-group">
-                    <label>Chave da API da Meta</label>
-                    <input
-                      type="password"
-                      value={globalIntegrations.metaAccessToken || ''}
-                      onChange={(event) => handleGlobalIntegrationChange('metaAccessToken', event.target.value)}
-                      placeholder="EAABsbCS1..."
-                    />
+                    <div className="input-group">
+                      <label>{group.field.label}</label>
+                      <input
+                        type="password"
+                        value={globalIntegrations[group.field.name] || ''}
+                        onChange={(event) => handleGlobalIntegrationChange(group.field.name, event.target.value)}
+                        placeholder={group.field.placeholder}
+                      />
+                    </div>
                   </div>
-                </div>
+                ))}
               </div>
             </div>
           </section>
