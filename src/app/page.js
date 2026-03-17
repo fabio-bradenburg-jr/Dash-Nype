@@ -1293,9 +1293,9 @@ export default function DashboardPage() {
       return {
         spend: parseFloat(insights?.spend || 0),
         impressions: parseInt(insights?.impressions || 0, 10),
-        clicks: parseInt(insights?.clicks || 0, 10),
-        cpc: parseFloat(insights?.cpc || 0),
-        ctr: parseFloat(insights?.ctr || 0),
+        clicks: customMetrics.clicks || parseInt(insights?.clicks || 0, 10),
+        cpc: customMetrics.cpc || parseFloat(insights?.cpc || 0),
+        ctr: customMetrics.ctr || parseFloat(insights?.ctr || 0),
         purchases: customMetrics.purchases || 0,
         cost_per_purchase: customMetrics.cost_per_purchase || 0,
         leads: customMetrics.leads || 0,
@@ -1314,8 +1314,8 @@ export default function DashboardPage() {
         const metrics = extractMetaCampaignMetrics(insight)
 
         accumulator.spend += metrics.spend
-        accumulator.impressions += parseInt(insight.impressions || 0, 10)
-        accumulator.clicks += parseInt(insight.clicks || 0, 10)
+        accumulator.impressions += metrics.impressions
+        accumulator.clicks += metrics.clicks
         accumulator.purchases += metrics.purchases
         accumulator.leads += metrics.leads
         accumulator.messages += metrics.messages

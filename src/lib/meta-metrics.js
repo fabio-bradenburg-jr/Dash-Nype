@@ -13,6 +13,13 @@ export const META_RESULT_FILTER_LABELS = {
 export const META_PURCHASE_EVENTS = ['purchase', 'offsite_conversion.fb_pixel_purchase']
 export const META_LEAD_EVENTS = ['lead', 'onsite_conversion.lead_grouped']
 export const META_MESSAGE_EVENTS = ['onsite_conversion.messaging_conversation_started_7d', 'onsite_conversion.messaging_first_reply']
+export const META_LINK_CLICK_EVENTS = ['link_click', 'inline_link_click', 'outbound_click']
+
+function sumActionValues(actions = [], actionTypes = []) {
+  return actions
+    .filter((item) => actionTypes.includes(item.action_type))
+    .reduce((sum, item) => sum + parseInt(item.value || 0, 10), 0)
+}
 
 export function normalizeMetaResultFilters(filters = [], availableFilters = Object.keys(META_RESULT_FILTER_LABELS)) {
   const validKeys = availableFilters.length > 0 ? availableFilters : Object.keys(META_RESULT_FILTER_LABELS)
@@ -24,6 +31,8 @@ export function extractMetaCampaignMetrics(insightData) {
   if (!insightData) {
     return {
       spend: 0,
+      clicks: 0,
+      impressions: 0,
       purchases: 0,
       leads: 0,
       messages: 0,
@@ -33,6 +42,8 @@ export function extractMetaCampaignMetrics(insightData) {
       cost_per_lead: 0,
       cost_per_message: 0,
       cpa: 0,
+      cpc: 0,
+      ctr: 0,
       roas: 0,
       primaryConversionType: 'Nenhuma',
     }
@@ -41,25 +52,34 @@ export function extractMetaCampaignMetrics(insightData) {
   const actions = insightData.actions || []
   const valueActions = insightData.action_values || []
   const spend = parseFloat(insightData.spend || 0)
+  const impressions = parseInt(insightData.impressions || 0, 10)
 
-  const purchases = actions
-    .filter((item) => META_PURCHASE_EVENTS.includes(item.action_type))
-    .reduce((sum, item) => sum + parseInt(item.value || 0, 10), 0)
+  const explicitClicks = parseInt(insightData.clicks || 0, 10)
+  const fallbackClicks = META_CLICK_EVENTS.reduce((bestValue, actionType) => {
+    const actionTotal = actions
+      .filter((item) => item.action_type === actionType)
+      .reduce((sum, item) => sum + parseInt(item.value || 0, 10), 0)
+
+    return Math.max(bestValue, actionTotal)
+  }, 0)
+  const clicks = explicitClicks > 0 ? explicitClicks : fallbackClicks
+
+  const purchases = sumActionValues(actions, META_PURCHASE_EVENTS)
   const purchaseValue = valueActions
     .filter((item) => META_PURCHASE_EVENTS.includes(item.action_type))
     .reduce((sum, item) => sum + parseFloat(item.value || 0), 0)
   const costPerPurchase = purchases > 0 ? spend / purchases : 0
 
-  const leads = actions
-    .filter((item) => META_LEAD_EVENTS.includes(item.action_type))
-    .reduce((sum, item) => sum + parseInt(item.value || 0, 10), 0)
+  const leads = sumActionValues(actions, META_LEAD_EVENTS)
   const costPerLead = leads > 0 ? spend / leads : 0
 
-  const messages = actions
-    .filter((item) => META_MESSAGE_EVENTS.includes(item.action_type))
-    .reduce((sum, item) => sum + parseInt(item.value || 0, 10), 0)
+  const messages = sumActionValues(actions, META_MESSAGE_EVENTS)
   const costPerMessage = messages > 0 ? spend / messages : 0
 
+  const linkClicks = META_LINK_CLICK_EVENTS.reduce((bestValue, actionType) => {
+    const total = sumActionValues(actions, [actionType])
+    return total > 0 ? total : bestValue
+  }, 0)
   const totalConversions = purchases + leads + messages
 
   let primaryConversionType = 'Nenhuma'
@@ -69,10 +89,14 @@ export function extractMetaCampaignMetrics(insightData) {
   else if (totalConversions > 0) primaryConversionType = 'Mistas'
 
   const cpa = totalConversions > 0 ? spend / totalConversions : 0
+  const cpc = linkClicks > 0 ? spend / linkClicks : 0
+  const ctr = impressions > 0 ? (linkClicks / impressions) * 100 : 0
   const roas = spend > 0 ? purchaseValue / spend : 0
 
   return {
     spend,
+    clicks: linkClicks,
+    impressions,
     purchases,
     leads,
     messages,
@@ -82,6 +106,8 @@ export function extractMetaCampaignMetrics(insightData) {
     cost_per_lead: costPerLead,
     cost_per_message: costPerMessage,
     cpa,
+    cpc,
+    ctr,
     roas,
     primaryConversionType,
   }
@@ -94,8 +120,8 @@ export function buildMetaSummaryFromCampaigns(campaigns = []) {
       const metrics = extractMetaCampaignMetrics(insight)
 
       accumulator.spend += metrics.spend
-      accumulator.impressions += parseInt(insight.impressions || 0, 10)
-      accumulator.clicks += parseInt(insight.clicks || 0, 10)
+      accumulator.impressions += metrics.impressions
+      accumulator.clicks += metrics.clicks
       accumulator.purchases += metrics.purchases
       accumulator.leads += metrics.leads
       accumulator.messages += metrics.messages
