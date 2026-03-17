@@ -309,6 +309,8 @@ export default function DashboardPage() {
   const [usersLoading, setUsersLoading] = useState(false)
   const [userSearch, setUserSearch] = useState('')
   const [selectedUserId, setSelectedUserId] = useState('')
+  const [isCreateUserModalOpen, setIsCreateUserModalOpen] = useState(false)
+  const [isEditUserModalOpen, setIsEditUserModalOpen] = useState(false)
   const [userForm, setUserForm] = useState({
     fullName: '',
     email: '',
@@ -351,6 +353,12 @@ export default function DashboardPage() {
     () => activeClient?.funnelSteps || [],
     [activeClient]
   )
+  const roleLabels = {
+    master: 'Master',
+    operador: 'Operador',
+    cliente: 'Cliente',
+    visualizador: 'Visualizador',
+  }
 
   useEffect(() => {
     const preferences = loadDashboardPreferences()
@@ -581,6 +589,7 @@ export default function DashboardPage() {
         role: 'visualizador',
         clientIds: [],
       })
+      setIsCreateUserModalOpen(false)
       await loadUsers()
     } catch (error) {
       alert(error.message || 'Não foi possível criar o usuário.')
@@ -608,6 +617,7 @@ export default function DashboardPage() {
         throw new Error(data.error || 'Não foi possível atualizar o usuário.')
       }
 
+      setIsEditUserModalOpen(false)
       await loadUsers()
     } catch (error) {
       alert(error.message || 'Não foi possível atualizar o usuário.')
@@ -631,6 +641,7 @@ export default function DashboardPage() {
         throw new Error(data.error || 'Não foi possível excluir o usuário.')
       }
 
+      setIsEditUserModalOpen(false)
       setSelectedUserId('')
       await loadUsers()
     } catch (error) {
@@ -1704,204 +1715,262 @@ export default function DashboardPage() {
 
         {activeTab === 'usuarios' && canManageUsers && (
           <section className="clients-layout users-management-layout">
-            <div className="clients-grid users-grid">
-              <div className="clients-sidebar">
-                <form className="glass-panel client-list-card" onSubmit={handleCreateUser}>
-                  <h3>Novo usuário</h3>
-                  <div className="input-group">
-                    <label>Nome</label>
-                    <input type="text" value={userForm.fullName} onChange={(event) => setUserForm((current) => ({ ...current, fullName: event.target.value }))} placeholder="Nome completo" />
-                  </div>
-                  <div className="input-group">
-                    <label>E-mail</label>
-                    <input type="email" value={userForm.email} onChange={(event) => setUserForm((current) => ({ ...current, email: event.target.value }))} placeholder="usuario@empresa.com" />
-                  </div>
-                  <div className="input-group">
-                    <label>Senha inicial</label>
-                    <input type="password" value={userForm.password} onChange={(event) => setUserForm((current) => ({ ...current, password: event.target.value }))} placeholder="Senha provisória" />
-                  </div>
-                  <div className="input-group">
-                    <label>Nível liberado</label>
-                    <select className="client-select-input" value={userForm.role} onChange={(event) => setUserForm((current) => ({ ...current, role: event.target.value }))}>
-                      <option value="visualizador">Visualizador</option>
-                      <option value="operador">Operador</option>
-                      <option value="cliente">Cliente</option>
-                      <option value="master">Master</option>
-                    </select>
-                  </div>
-                  {userForm.role !== 'master' && (
-                    <div className="input-group">
-                      <label>Dashboards liberados</label>
-                      <div className="stage-selector">
-                        {clients.map((client) => (
-                          <label key={`new-user-${client.id}`} className={`stage-chip ${userForm.clientIds.includes(client.id) ? 'active' : ''}`}>
-                            <input
-                              type="checkbox"
-                              checked={userForm.clientIds.includes(client.id)}
-                              onChange={() => handleUserClientToggle(client.id)}
-                            />
-                            <span>{client.name}</span>
-                          </label>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  <button type="submit" className="btn btn-primary" disabled={savingUser}>
-                    {savingUser ? 'Criando...' : 'Adicionar usuário'}
-                  </button>
-                </form>
-
-                <div className="glass-panel client-list-card user-list-compact">
-                  <div className="user-picker-head">
-                    <h3>Usuários cadastrados</h3>
-                    <span>{filteredUsers.length}</span>
-                  </div>
-                  <div className="input-group">
-                    <label>Buscar usuário</label>
-                    <input
-                      type="text"
-                      value={userSearch}
-                      onChange={(event) => setUserSearch(event.target.value)}
-                      placeholder="Nome ou e-mail"
-                    />
-                  </div>
-                  <div className="user-picker-list">
-                    {filteredUsers.map((managedUser) => (
-                      <button
-                        key={`user-list-${managedUser.id}`}
-                        type="button"
-                        className={`user-picker-item ${selectedUserId === managedUser.id ? 'active' : ''}`}
-                        onClick={() => setSelectedUserId(managedUser.id)}
-                      >
-                        <strong>{managedUser.full_name || managedUser.email}</strong>
-                        <span>{managedUser.email}</span>
-                      </button>
-                    ))}
-                  </div>
+            <div className="glass-panel users-toolbar-card">
+              <div className="user-picker-head">
+                <div>
+                  <h3>Usuários cadastrados</h3>
+                  <p>Use a busca para encontrar um acesso e abra a edição em um pop-up, sem ocupar a tela principal.</p>
                 </div>
-              </div>
-
-              <div className="glass-panel client-editor-card users-editor-shell">
-                <div className="client-editor-header">
-                  <div>
-                    <h3>Controle de acessos</h3>
-                    <p>Selecione um usuário na lista para editar o nível e os dashboards liberados.</p>
-                  </div>
+                <div className="users-toolbar-actions">
                   <div className="users-summary-chips">
                     <span className="users-summary-chip">Master</span>
                     <span className="users-summary-chip">Operador</span>
                     <span className="users-summary-chip">Cliente</span>
                     <span className="users-summary-chip">Visualizador</span>
                   </div>
+                  <button type="button" className="btn btn-primary" onClick={() => setIsCreateUserModalOpen(true)}>
+                    Novo usuário
+                  </button>
                 </div>
+              </div>
 
-                {usersLoading ? (
-                  <div className="empty-panel glass-item">
-                    <h3>Carregando usuários</h3>
-                    <p>Estamos buscando os acessos liberados neste workspace.</p>
+              <div className="users-search-row">
+                <div className="input-group users-search-field">
+                  <label>Buscar usuário</label>
+                  <input
+                    type="text"
+                    value={userSearch}
+                    onChange={(event) => setUserSearch(event.target.value)}
+                    placeholder="Nome ou e-mail"
+                  />
+                </div>
+              </div>
+
+              {usersLoading ? (
+                <div className="empty-panel glass-item">
+                  <h3>Carregando usuários</h3>
+                  <p>Estamos buscando os acessos liberados neste workspace.</p>
+                </div>
+              ) : (
+                <div className="user-directory-grid">
+                  {filteredUsers.map((managedUser) => (
+                    <div key={`user-list-${managedUser.id}`} className="user-directory-card glass-item">
+                      <div className="user-directory-main">
+                        <strong>{managedUser.full_name || managedUser.email}</strong>
+                        <span>{managedUser.email}</span>
+                      </div>
+                      <div className="user-directory-meta">
+                        <span className="user-role-badge">{roleLabels[managedUser.role] || managedUser.role}</span>
+                        <small>
+                          {managedUser.role === 'master'
+                            ? 'Acesso total'
+                            : `${managedUser.clientAccess?.length || 0} dashboard(s) liberado(s)`}
+                        </small>
+                      </div>
+                      <div className="user-directory-actions">
+                        <button
+                          type="button"
+                          className="btn btn-secondary"
+                          onClick={() => {
+                            setSelectedUserId(managedUser.id)
+                            setIsEditUserModalOpen(true)
+                          }}
+                        >
+                          Editar
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {!usersLoading && !filteredUsers.length && (
+                <div className="empty-panel glass-item users-empty-state compact-empty-state">
+                  <h3>Nenhum usuário encontrado</h3>
+                  <p>Ajuste a busca ou crie um novo acesso para o workspace.</p>
+                </div>
+              )}
+            </div>
+
+            {isCreateUserModalOpen && (
+              <div className="modal-overlay" onClick={() => setIsCreateUserModalOpen(false)}>
+                <div className="modal-card glass-panel" onClick={(event) => event.stopPropagation()}>
+                  <div className="modal-header">
+                    <div>
+                      <h3>Novo usuário</h3>
+                      <p>Cadastre um novo acesso e defina exatamente quais dashboards ele poderá enxergar.</p>
+                    </div>
+                    <button type="button" className="modal-close" onClick={() => setIsCreateUserModalOpen(false)} aria-label="Fechar cadastro de usuário">
+                      <i className="bx bx-x"></i>
+                    </button>
                   </div>
-                ) : selectedManagedUser ? (
-                  <div className="users-list">
-                      <div key={selectedManagedUser.id} className="glass-item user-admin-card">
-                        <div className="user-admin-head">
-                          <div>
-                            <strong>{selectedManagedUser.full_name || selectedManagedUser.email}</strong>
-                            <span>{selectedManagedUser.email}</span>
-                          </div>
-                          {selectedManagedUser.id !== user?.id && (
-                            <button type="button" className="btn btn-secondary" onClick={() => handleDeleteUser(selectedManagedUser.id)}>
-                              Excluir
-                            </button>
-                          )}
-                        </div>
 
-                        <div className="form-grid user-admin-grid">
-                          <div className="input-group">
-                            <label>Nome</label>
-                            <input
-                              type="text"
-                              value={selectedManagedUser.full_name || ''}
-                              onChange={(event) =>
-                                handleManagedUserChange(selectedManagedUser.id, (item) => ({ ...item, full_name: event.target.value }))
-                              }
-                            />
-                          </div>
-                          <div className="input-group">
-                            <label>Nível</label>
-                            <select
-                              className="client-select-input"
-                              value={selectedManagedUser.role}
-                              onChange={(event) =>
-                                handleManagedUserChange(selectedManagedUser.id, (item) => ({ ...item, role: event.target.value }))
-                              }
-                            >
-                              <option value="visualizador">Visualizador</option>
-                              <option value="operador">Operador</option>
-                              <option value="cliente">Cliente</option>
-                              <option value="master">Master</option>
-                            </select>
-                          </div>
-                        </div>
+                  <form onSubmit={handleCreateUser}>
+                    <div className="form-grid user-admin-grid">
+                      <div className="input-group">
+                        <label>Nome</label>
+                        <input type="text" value={userForm.fullName} onChange={(event) => setUserForm((current) => ({ ...current, fullName: event.target.value }))} placeholder="Nome completo" />
+                      </div>
+                      <div className="input-group">
+                        <label>E-mail</label>
+                        <input type="email" value={userForm.email} onChange={(event) => setUserForm((current) => ({ ...current, email: event.target.value }))} placeholder="usuario@empresa.com" />
+                      </div>
+                      <div className="input-group">
+                        <label>Senha inicial</label>
+                        <input type="password" value={userForm.password} onChange={(event) => setUserForm((current) => ({ ...current, password: event.target.value }))} placeholder="Senha provisória" />
+                      </div>
+                      <div className="input-group">
+                        <label>Nível liberado</label>
+                        <select className="client-select-input" value={userForm.role} onChange={(event) => setUserForm((current) => ({ ...current, role: event.target.value }))}>
+                          <option value="visualizador">Visualizador</option>
+                          <option value="operador">Operador</option>
+                          <option value="cliente">Cliente</option>
+                          <option value="master">Master</option>
+                        </select>
+                      </div>
+                    </div>
 
-                        {selectedManagedUser.role !== 'master' && (
-                          <div className="input-group">
-                            <label>Dashboards liberados</label>
-                            <div className="stage-selector">
-                              {clients.map((client) => {
-                                const currentAccess = selectedManagedUser.clientAccess || []
-                                const hasClient = currentAccess.some((item) => item.client_id === client.id)
-
-                                return (
-                                  <label key={`${selectedManagedUser.id}-${client.id}`} className={`stage-chip ${hasClient ? 'active' : ''}`}>
-                                    <input
-                                      type="checkbox"
-                                      checked={hasClient}
-                                      onChange={() =>
-                                        handleManagedUserChange(selectedManagedUser.id, (item) => {
-                                            const nextAccess = hasClient
-                                              ? currentAccess.filter((accessItem) => accessItem.client_id !== client.id)
-                                              : [
-                                                  ...currentAccess,
-                                                  {
-                                                    client_id: client.id,
-                                                    can_view: true,
-                                                    can_edit: item.role === 'operador',
-                                                  },
-                                                ]
-
-                                            return { ...item, clientAccess: nextAccess }
-                                          })
-                                      }
-                                    />
-                                    <span>{client.name}</span>
-                                  </label>
-                                )
-                              })}
-                            </div>
-                          </div>
-                        )}
-
-                        <div className="form-actions-space">
-                          <span className="form-note">
-                            {selectedManagedUser.role === 'master' && 'Acesso total: usuários, clientes e integrações.'}
-                            {selectedManagedUser.role === 'operador' && 'Pode editar integrações e clientes liberados.'}
-                            {selectedManagedUser.role === 'visualizador' && 'Pode apenas visualizar os dashboards liberados.'}
-                            {selectedManagedUser.role === 'cliente' && 'Acesso externo focado só nos dashboards atribuídos.'}
-                          </span>
-                          <button type="button" className="btn btn-primary" onClick={() => handleUpdateUser(selectedManagedUser)}>
-                            Salvar acesso
-                          </button>
+                    {userForm.role !== 'master' && (
+                      <div className="input-group">
+                        <label>Dashboards liberados</label>
+                        <div className="stage-selector">
+                          {clients.map((client) => (
+                            <label key={`new-user-${client.id}`} className={`stage-chip ${userForm.clientIds.includes(client.id) ? 'active' : ''}`}>
+                              <input
+                                type="checkbox"
+                                checked={userForm.clientIds.includes(client.id)}
+                                onChange={() => handleUserClientToggle(client.id)}
+                              />
+                              <span>{client.name}</span>
+                            </label>
+                          ))}
                         </div>
                       </div>
-                  </div>
-                ) : (
-                  <div className="empty-panel glass-item users-empty-state">
-                    <h3>Selecione um usuário</h3>
-                    <p>Use a busca e clique em um usuário para abrir os detalhes e editar os acessos.</p>
-                  </div>
-                )}
+                    )}
+
+                    <div className="modal-actions">
+                      <button type="button" className="btn btn-secondary" onClick={() => setIsCreateUserModalOpen(false)}>
+                        Cancelar
+                      </button>
+                      <button type="submit" className="btn btn-primary" disabled={savingUser}>
+                        {savingUser ? 'Criando...' : 'Adicionar usuário'}
+                      </button>
+                    </div>
+                  </form>
+                </div>
               </div>
-            </div>
+            )}
+
+            {isEditUserModalOpen && selectedManagedUser && (
+              <div className="modal-overlay" onClick={() => setIsEditUserModalOpen(false)}>
+                <div className="modal-card glass-panel" onClick={(event) => event.stopPropagation()}>
+                  <div className="modal-header">
+                    <div>
+                      <h3>Editar usuário</h3>
+                      <p>Ajuste nível, dashboards liberados e demais permissões deste acesso.</p>
+                    </div>
+                    <button type="button" className="modal-close" onClick={() => setIsEditUserModalOpen(false)} aria-label="Fechar edição de usuário">
+                      <i className="bx bx-x"></i>
+                    </button>
+                  </div>
+
+                  <div className="user-admin-head">
+                    <div>
+                      <strong>{selectedManagedUser.full_name || selectedManagedUser.email}</strong>
+                      <span>{selectedManagedUser.email}</span>
+                    </div>
+                    {selectedManagedUser.id !== user?.id && (
+                      <button type="button" className="btn btn-secondary" onClick={() => handleDeleteUser(selectedManagedUser.id)}>
+                        Excluir
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="form-grid user-admin-grid">
+                    <div className="input-group">
+                      <label>Nome</label>
+                      <input
+                        type="text"
+                        value={selectedManagedUser.full_name || ''}
+                        onChange={(event) =>
+                          handleManagedUserChange(selectedManagedUser.id, (item) => ({ ...item, full_name: event.target.value }))
+                        }
+                      />
+                    </div>
+                    <div className="input-group">
+                      <label>Nível</label>
+                      <select
+                        className="client-select-input"
+                        value={selectedManagedUser.role}
+                        onChange={(event) =>
+                          handleManagedUserChange(selectedManagedUser.id, (item) => ({ ...item, role: event.target.value }))
+                        }
+                      >
+                        <option value="visualizador">Visualizador</option>
+                        <option value="operador">Operador</option>
+                        <option value="cliente">Cliente</option>
+                        <option value="master">Master</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {selectedManagedUser.role !== 'master' && (
+                    <div className="input-group">
+                      <label>Dashboards liberados</label>
+                      <div className="stage-selector">
+                        {clients.map((client) => {
+                          const currentAccess = selectedManagedUser.clientAccess || []
+                          const hasClient = currentAccess.some((item) => item.client_id === client.id)
+
+                          return (
+                            <label key={`${selectedManagedUser.id}-${client.id}`} className={`stage-chip ${hasClient ? 'active' : ''}`}>
+                              <input
+                                type="checkbox"
+                                checked={hasClient}
+                                onChange={() =>
+                                  handleManagedUserChange(selectedManagedUser.id, (item) => {
+                                    const nextAccess = hasClient
+                                      ? currentAccess.filter((accessItem) => accessItem.client_id !== client.id)
+                                      : [
+                                          ...currentAccess,
+                                          {
+                                            client_id: client.id,
+                                            can_view: true,
+                                            can_edit: item.role === 'operador',
+                                          },
+                                        ]
+
+                                    return { ...item, clientAccess: nextAccess }
+                                  })
+                                }
+                              />
+                              <span>{client.name}</span>
+                            </label>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="modal-foot">
+                    <span className="form-note">
+                      {selectedManagedUser.role === 'master' && 'Acesso total: usuários, clientes e integrações.'}
+                      {selectedManagedUser.role === 'operador' && 'Pode editar integrações e clientes liberados.'}
+                      {selectedManagedUser.role === 'visualizador' && 'Pode apenas visualizar os dashboards liberados.'}
+                      {selectedManagedUser.role === 'cliente' && 'Acesso externo focado só nos dashboards atribuídos.'}
+                    </span>
+                    <div className="modal-actions">
+                      <button type="button" className="btn btn-secondary" onClick={() => setIsEditUserModalOpen(false)}>
+                        Cancelar
+                      </button>
+                      <button type="button" className="btn btn-primary" onClick={() => handleUpdateUser(selectedManagedUser)}>
+                        Salvar acesso
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </section>
         )}
 
@@ -2804,6 +2873,155 @@ export default function DashboardPage() {
           font-weight: 600;
         }
 
+        .users-toolbar-card {
+          display: grid;
+          gap: 20px;
+          padding: 24px;
+        }
+
+        .users-toolbar-actions {
+          display: flex;
+          align-items: center;
+          justify-content: flex-end;
+          gap: 12px;
+          flex-wrap: wrap;
+        }
+
+        .users-search-row {
+          display: flex;
+          justify-content: flex-start;
+        }
+
+        .users-search-field {
+          width: min(100%, 360px);
+          margin-bottom: 0;
+        }
+
+        .user-directory-grid {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 14px;
+        }
+
+        .user-directory-card {
+          padding: 18px;
+          border-radius: 20px;
+          display: grid;
+          gap: 14px;
+          border: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .user-directory-main strong {
+          display: block;
+          font-size: 18px;
+          margin-bottom: 6px;
+        }
+
+        .user-directory-main span {
+          color: var(--text-muted);
+          font-size: 13px;
+          display: block;
+          overflow-wrap: anywhere;
+        }
+
+        .user-directory-meta {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          flex-wrap: wrap;
+        }
+
+        .user-directory-meta small {
+          color: var(--text-muted);
+          font-size: 12px;
+        }
+
+        .user-role-badge {
+          padding: 7px 12px;
+          border-radius: 999px;
+          background: rgba(255, 255, 255, 0.05);
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          color: var(--text-secondary);
+          font-size: 12px;
+          font-weight: 700;
+        }
+
+        .user-directory-actions {
+          display: flex;
+          justify-content: flex-end;
+        }
+
+        .compact-empty-state {
+          min-height: 180px;
+        }
+
+        .modal-overlay {
+          position: fixed;
+          inset: 0;
+          background: rgba(4, 9, 18, 0.72);
+          backdrop-filter: blur(8px);
+          display: grid;
+          place-items: center;
+          padding: 24px;
+          z-index: 80;
+        }
+
+        .modal-card {
+          width: min(100%, 880px);
+          max-height: min(88vh, 900px);
+          overflow: auto;
+          padding: 24px;
+          display: grid;
+          gap: 22px;
+        }
+
+        .modal-header {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 16px;
+        }
+
+        .modal-header h3 {
+          font-size: 26px;
+          margin-bottom: 6px;
+        }
+
+        .modal-header p {
+          color: var(--text-secondary);
+          line-height: 1.5;
+        }
+
+        .modal-close {
+          width: 40px;
+          height: 40px;
+          border-radius: 999px;
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          background: rgba(255, 255, 255, 0.03);
+          color: var(--text-secondary);
+          display: grid;
+          place-items: center;
+          cursor: pointer;
+          flex-shrink: 0;
+        }
+
+        .modal-close i {
+          font-size: 20px;
+        }
+
+        .modal-actions {
+          display: flex;
+          justify-content: flex-end;
+          gap: 12px;
+          flex-wrap: wrap;
+        }
+
+        .modal-foot {
+          display: grid;
+          gap: 16px;
+        }
+
         .client-editor-header h3 {
           font-size: 24px;
           margin-bottom: 6px;
@@ -3576,40 +3794,48 @@ export default function DashboardPage() {
           line-height: 1.5;
         }
 
-        .input-group input {
+        .input-group input:not([type="checkbox"]):not([type="file"]) {
           width: 100%;
-          min-height: 56px;
-          padding: 0 16px;
+          min-height: 48px;
+          padding: 0 14px;
           border-radius: 10px;
           background: rgba(0, 0, 0, 0.2);
           border: 1px solid var(--border-color);
           color: white;
           font-family: inherit;
-          font-size: 15px;
+          font-size: 14px;
           box-sizing: border-box;
         }
 
         .client-select-input {
           width: 100%;
-          min-height: 56px;
-          padding: 0 16px;
+          min-height: 48px;
+          padding: 0 14px;
           border-radius: 10px;
           background: rgba(0, 0, 0, 0.2);
           border: 1px solid var(--border-color);
           color: white;
           font-family: inherit;
-          font-size: 15px;
+          font-size: 14px;
           box-sizing: border-box;
           appearance: none;
         }
 
         .input-group input[type="file"] {
-          padding-top: 12px;
-          padding-bottom: 12px;
+          width: 100%;
+          min-height: 48px;
+          padding: 10px 14px;
+          border-radius: 10px;
+          background: rgba(0, 0, 0, 0.2);
+          border: 1px solid var(--border-color);
+          color: white;
+          font-family: inherit;
+          font-size: 14px;
+          box-sizing: border-box;
           line-height: 1.3;
         }
 
-        .input-group input:focus {
+        .input-group input:not([type="checkbox"]):focus {
           outline: none;
           border-color: var(--accent-blue);
         }
@@ -3665,6 +3891,11 @@ export default function DashboardPage() {
           width: 16px;
           height: 16px;
           margin: 0;
+          min-height: 16px;
+          padding: 0;
+          border: none;
+          background: transparent;
+          flex: 0 0 16px;
           accent-color: var(--accent-blue);
         }
 
@@ -3712,9 +3943,22 @@ export default function DashboardPage() {
             max-width: none;
           }
 
+          .user-directory-grid {
+            grid-template-columns: 1fr;
+          }
+
           .users-summary-chips {
             justify-content: flex-start;
             max-width: none;
+          }
+
+          .users-toolbar-actions,
+          .modal-header {
+            justify-content: flex-start;
+          }
+
+          .modal-card {
+            padding: 20px;
           }
 
           .hero-logo-wrap {
@@ -3744,6 +3988,15 @@ export default function DashboardPage() {
           .form-actions-space {
             flex-direction: column;
             align-items: flex-start;
+          }
+
+          .modal-actions {
+            width: 100%;
+            justify-content: stretch;
+          }
+
+          .modal-actions .btn {
+            width: 100%;
           }
         }
       `}</style>
