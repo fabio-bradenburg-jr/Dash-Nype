@@ -17,6 +17,9 @@ export const DEFAULT_PREFERENCES = {
   metric1: 'spend',
   metric2: 'roas',
   activeClientId: '',
+  globalIntegrations: {
+    metaAccessToken: '',
+  },
   clients: [],
 }
 
@@ -56,6 +59,10 @@ export function loadDashboardPreferences() {
     return {
       ...DEFAULT_PREFERENCES,
       ...parsed,
+      globalIntegrations: {
+        ...DEFAULT_PREFERENCES.globalIntegrations,
+        ...parsed.globalIntegrations,
+      },
       clients: Array.isArray(parsed.clients)
         ? parsed.clients.map((client) => ({
             ...createClientRecord(),

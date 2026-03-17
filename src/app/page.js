@@ -70,16 +70,6 @@ const DATE_PRESETS = [
 
 const INTEGRATION_GROUPS = [
   {
-    title: 'Meta Ads',
-    icon: 'bxl-meta',
-    accent: '#0668E1',
-    description: 'Conecta Facebook e Instagram Ads para alimentar o dashboard final.',
-    fields: [
-      { name: 'metaAccessToken', label: 'Chave da API da Meta', placeholder: 'EAABsbCS1...', storage: 'integrations', type: 'password' },
-      { name: 'metaAdAccountId', label: 'Conta do Meta vinculada ao cliente', placeholder: 'act_123456789', storage: 'client', type: 'text' },
-    ],
-  },
-  {
     title: 'Google Ads',
     icon: 'bxl-google',
     accent: '#ea4335',
@@ -289,6 +279,8 @@ export default function DashboardPage() {
   const [rdSellerFilter, setRdSellerFilter] = useState('all')
   const [usersList, setUsersList] = useState([])
   const [usersLoading, setUsersLoading] = useState(false)
+  const [userSearch, setUserSearch] = useState('')
+  const [selectedUserId, setSelectedUserId] = useState('')
   const [userForm, setUserForm] = useState({
     fullName: '',
     email: '',
@@ -297,6 +289,7 @@ export default function DashboardPage() {
     clientIds: [],
   })
   const [savingUser, setSavingUser] = useState(false)
+  const [globalIntegrations, setGlobalIntegrations] = useState({ metaAccessToken: '' })
 
   const currentTheme = THEMES[themeColor] || THEMES.blue
   const role = access?.role || profile?.role || 'visualizador'
@@ -308,13 +301,17 @@ export default function DashboardPage() {
     () => clients.find((client) => client.id === activeClientId) || null,
     [clients, activeClientId]
   )
+  const selectedManagedUser = useMemo(
+    () => usersList.find((managedUser) => managedUser.id === selectedUserId) || null,
+    [usersList, selectedUserId]
+  )
   const activeIntegrations = activeClient?.integrations || DEFAULT_INTEGRATIONS
   const selectedAdAccount = activeClient?.metaAdAccountId || ''
   const selectedQualifiedStages = useMemo(
     () => activeClient?.rdQualifiedStages || [],
     [activeClient]
   )
-  const hasMetaConfigured = Boolean(selectedAdAccount && activeIntegrations.metaAccessToken)
+  const hasMetaConfigured = Boolean(selectedAdAccount && globalIntegrations.metaAccessToken)
   const hasRdConfigured = Boolean(activeIntegrations.rdStationToken)
   const hasAnyPresentationData = hasMetaConfigured || hasRdConfigured
   const activeFunnelSteps = useMemo(
@@ -332,6 +329,7 @@ export default function DashboardPage() {
     setThemeColor(preferences.themeColor)
     setMetric1(preferences.metric1)
     setMetric2(preferences.metric2)
+    setGlobalIntegrations(preferences.globalIntegrations || { metaAccessToken: '' })
     setClients(initialClients)
     setActiveClientId(initialActiveClientId)
     setHasLoadedPreferences(true)
@@ -348,6 +346,10 @@ export default function DashboardPage() {
     }
 
     if (activeTab === 'usuarios' && !canManageUsers) {
+      setActiveTab('apresentacao')
+    }
+
+    if (activeTab === 'integracoes' && !canManageClients) {
       setActiveTab('apresentacao')
     }
   }, [activeTab, canManageClients, canManageUsers])
@@ -401,6 +403,7 @@ export default function DashboardPage() {
       metric1,
       metric2,
       activeClientId,
+      globalIntegrations,
       clients,
     }
 
@@ -421,7 +424,7 @@ export default function DashboardPage() {
     }, 300)
 
     return () => window.clearTimeout(timeoutId)
-  }, [hasLoadedPreferences, themeColor, metric1, metric2, activeClientId, clients, userLoading, user, canManageClients])
+  }, [hasLoadedPreferences, themeColor, metric1, metric2, activeClientId, globalIntegrations, clients, userLoading, user, canManageClients])
 
   useEffect(() => {
     const root = document.documentElement
@@ -484,6 +487,7 @@ export default function DashboardPage() {
       }
 
       setUsersList(data)
+      setSelectedUserId((current) => current || data[0]?.id || '')
     } catch (error) {
       console.error('Erro ao carregar usuários:', error)
       alert(error.message || 'Não foi possível carregar os usuários.')
@@ -491,6 +495,17 @@ export default function DashboardPage() {
       setUsersLoading(false)
     }
   }, [canManageUsers])
+
+  const filteredUsers = useMemo(() => {
+    const term = userSearch.trim().toLowerCase()
+    if (!term) return usersList
+
+    return usersList.filter((managedUser) =>
+      [managedUser.full_name, managedUser.email]
+        .filter(Boolean)
+        .some((value) => value.toLowerCase().includes(term))
+    )
+  }, [usersList, userSearch])
 
   const handleUserClientToggle = (clientId) => {
     setUserForm((current) => ({
@@ -559,6 +574,12 @@ export default function DashboardPage() {
     }
   }
 
+  const handleManagedUserChange = (userId, updater) => {
+    setUsersList((current) =>
+      current.map((item) => (item.id === userId ? updater(item) : item))
+    )
+  }
+
   const handleDeleteUser = async (managedUserId) => {
     try {
       const response = await fetch(`/api/users/${managedUserId}`, {
@@ -570,6 +591,7 @@ export default function DashboardPage() {
         throw new Error(data.error || 'Não foi possível excluir o usuário.')
       }
 
+      setSelectedUserId('')
       await loadUsers()
     } catch (error) {
       alert(error.message || 'Não foi possível excluir o usuário.')
@@ -581,9 +603,29 @@ export default function DashboardPage() {
     loadUsers()
   }, [canManageUsers, activeTab, loadUsers])
 
+  useEffect(() => {
+    if (!usersList.length) {
+      setSelectedUserId('')
+      return
+    }
+
+    if (selectedUserId && usersList.some((managedUser) => managedUser.id === selectedUserId)) {
+      return
+    }
+
+    setSelectedUserId(usersList[0].id)
+  }, [usersList, selectedUserId])
+
   const handleClientFieldChange = (fieldName, value) => {
     updateActiveClient((client) => ({
       ...client,
+      [fieldName]: value,
+    }))
+  }
+
+  const handleGlobalIntegrationChange = (fieldName, value) => {
+    setGlobalIntegrations((current) => ({
+      ...current,
       [fieldName]: value,
     }))
   }
@@ -634,7 +676,7 @@ export default function DashboardPage() {
       return
     }
 
-    if (!activeIntegrations.metaAccessToken) {
+    if (!globalIntegrations.metaAccessToken) {
       setAdAccounts([])
       return
     }
@@ -645,7 +687,7 @@ export default function DashboardPage() {
       try {
         const response = await fetch('/api/meta/adaccounts', {
           headers: {
-            'x-meta-access-token': activeIntegrations.metaAccessToken,
+            'x-meta-access-token': globalIntegrations.metaAccessToken,
           },
         })
         const data = await response.json()
@@ -672,7 +714,7 @@ export default function DashboardPage() {
     }
 
     fetchAdAccounts()
-  }, [hasLoadedPreferences, activeClient, activeClientId, activeIntegrations.metaAccessToken])
+  }, [hasLoadedPreferences, activeClient, activeClientId, globalIntegrations.metaAccessToken])
 
   useEffect(() => {
     if (!activeClient) {
@@ -721,7 +763,7 @@ export default function DashboardPage() {
           }
 
           const headers = {
-            'x-meta-access-token': activeIntegrations.metaAccessToken,
+            'x-meta-access-token': globalIntegrations.metaAccessToken,
           }
 
           const [insightsResponse, campaignsResponse] = await Promise.all([
@@ -806,7 +848,7 @@ export default function DashboardPage() {
     hasRdConfigured,
     rdSellerFilter,
     selectedQualifiedStages,
-    activeIntegrations.metaAccessToken,
+    globalIntegrations.metaAccessToken,
     activeIntegrations.rdStationToken,
   ])
 
@@ -839,7 +881,7 @@ export default function DashboardPage() {
 
         const response = await fetch(`/api/meta/breakdowns?${params.toString()}`, {
           headers: {
-            'x-meta-access-token': activeIntegrations.metaAccessToken,
+            'x-meta-access-token': globalIntegrations.metaAccessToken,
           },
         })
         const data = await response.json()
@@ -865,7 +907,7 @@ export default function DashboardPage() {
     customSince,
     customUntil,
     hasMetaConfigured,
-    activeIntegrations.metaAccessToken,
+    globalIntegrations.metaAccessToken,
   ])
 
   const handleSaveIntegrations = async (event) => {
@@ -1271,6 +1313,11 @@ export default function DashboardPage() {
               <i className="bx bxs-buildings"></i> Clientes
             </button>
           )}
+          {canManageClients && (
+            <button type="button" data-tooltip="Integrações" className={`nav-item nav-button ${activeTab === 'integracoes' ? 'active' : ''}`} onClick={() => setActiveTab('integracoes')}>
+              <i className="bx bx-plug"></i> Integrações
+            </button>
+          )}
           <button type="button" data-tooltip="Apresentação" className={`nav-item nav-button ${activeTab === 'apresentacao' ? 'active' : ''}`} onClick={() => setActiveTab('apresentacao')}>
             <i className="bx bxs-dashboard"></i> Apresentação
           </button>
@@ -1314,11 +1361,13 @@ export default function DashboardPage() {
           <div className="page-title">
             <h1>
               {activeTab === 'clientes' && 'Base de clientes'}
+              {activeTab === 'integracoes' && 'Integrações gerais'}
               {activeTab === 'apresentacao' && `Dashboard ${activeClient?.name || 'do cliente'}`}
               {activeTab === 'usuarios' && 'Gestão de usuários'}
             </h1>
             <p>
               {activeTab === 'clientes' && 'Cadastre seus clientes e mantenha cada operação separada dentro do dashboard.'}
+              {activeTab === 'integracoes' && 'Cadastre aqui as credenciais centrais da operação. Nos clientes, você escolhe apenas as contas referentes a cada um.'}
               {activeTab === 'apresentacao' && 'Uma visão executiva consolidada dos principais resultados do cliente, organizada por fonte de dados.'}
               {activeTab === 'usuarios' && 'Defina quem pode visualizar dashboards, editar integrações e acessar clientes específicos.'}
             </p>
@@ -1371,7 +1420,7 @@ export default function DashboardPage() {
             <div className="glass-panel clients-intro">
               <h2>Organize sua operação por cliente</h2>
               <p>
-                Aqui você edita o cliente inteiro: integrações, cor da dashboard e logo que vai aparecer na apresentação final.
+                Aqui você edita o cliente inteiro: contas vinculadas, cor da dashboard e logo que vai aparecer na apresentação final.
               </p>
             </div>
 
@@ -1395,7 +1444,7 @@ export default function DashboardPage() {
                       <div key={client.id} className={`client-row ${client.id === activeClientId ? 'selected' : ''}`}>
                         <button type="button" className="client-select" onClick={() => setActiveClientId(client.id)}>
                           <strong>{client.name}</strong>
-                          <span>{client.metaAdAccountId || 'Meta não definida'}</span>
+                          <span>{client.metaAdAccountId || 'Conta Meta não selecionada'}</span>
                         </button>
                         {isMaster && clients.length > 1 && (
                           <button type="button" className="client-delete" onClick={() => handleRemoveClient(client.id)}>
@@ -1484,6 +1533,36 @@ export default function DashboardPage() {
                   </div>
 
                   <div className="form-grid">
+                    <div className="integration-block">
+                      <div className="integration-heading">
+                        <div className="integration-icon" style={{ color: '#0668E1', borderColor: '#0668E133' }}>
+                          <i className="bx bxl-meta"></i>
+                        </div>
+                        <div>
+                          <h3>Meta Ads</h3>
+                          <p>Selecione a conta de anúncio deste cliente usando a credencial global cadastrada em Integrações.</p>
+                        </div>
+                      </div>
+
+                      <div className="input-group">
+                        <label>Conta do Meta vinculada ao cliente</label>
+                        <select
+                          className="client-select-input"
+                          value={activeClient.metaAdAccountId || ''}
+                          onChange={(event) => handleClientFieldChange('metaAdAccountId', event.target.value)}
+                        >
+                          <option value="">
+                            {globalIntegrations.metaAccessToken ? 'Selecione uma conta' : 'Cadastre a chave da Meta em Integrações'}
+                          </option>
+                          {adAccounts.map((account) => (
+                            <option key={account.id} value={account.id}>
+                              {account.name ? `${account.name} (${account.id})` : account.id}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
                     {INTEGRATION_GROUPS.map((group) => (
                       <div key={group.title} className="integration-block">
                         <div className="integration-heading">
@@ -1551,6 +1630,48 @@ export default function DashboardPage() {
           </section>
         )}
 
+        {activeTab === 'integracoes' && canManageClients && (
+          <section className="clients-layout">
+            <div className="glass-panel clients-intro">
+              <h2>Integrações da operação</h2>
+              <p>Aqui ficam as credenciais globais. A Meta abastece todos os clientes e, dentro de cada cliente, você escolhe só a conta de anúncio correspondente.</p>
+            </div>
+
+            <div className="glass-panel client-editor-card">
+              <div className="client-editor-header">
+                <div>
+                  <h3>Meta Ads</h3>
+                  <p>Cadastre a chave principal da operação para listar e puxar as contas de anúncio dos clientes.</p>
+                </div>
+              </div>
+
+              <div className="form-grid">
+                <div className="integration-block">
+                  <div className="integration-heading">
+                    <div className="integration-icon" style={{ color: '#0668E1', borderColor: '#0668E133' }}>
+                      <i className="bx bxl-meta"></i>
+                    </div>
+                    <div>
+                      <h3>Chave global da Meta</h3>
+                      <p>Essa chave fica fora dos clientes e serve para toda a operação.</p>
+                    </div>
+                  </div>
+
+                  <div className="input-group">
+                    <label>Chave da API da Meta</label>
+                    <input
+                      type="password"
+                      value={globalIntegrations.metaAccessToken || ''}
+                      onChange={(event) => handleGlobalIntegrationChange('metaAccessToken', event.target.value)}
+                      placeholder="EAABsbCS1..."
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
+
         {activeTab === 'usuarios' && canManageUsers && (
           <section className="clients-layout">
             <div className="glass-panel clients-intro">
@@ -1604,6 +1725,35 @@ export default function DashboardPage() {
                     {savingUser ? 'Criando...' : 'Adicionar usuário'}
                   </button>
                 </form>
+
+                <div className="glass-panel client-list-card user-list-compact">
+                  <div className="user-picker-head">
+                    <h3>Usuários cadastrados</h3>
+                    <span>{filteredUsers.length}</span>
+                  </div>
+                  <div className="input-group">
+                    <label>Buscar usuário</label>
+                    <input
+                      type="text"
+                      value={userSearch}
+                      onChange={(event) => setUserSearch(event.target.value)}
+                      placeholder="Nome ou e-mail"
+                    />
+                  </div>
+                  <div className="user-picker-list">
+                    {filteredUsers.map((managedUser) => (
+                      <button
+                        key={`user-list-${managedUser.id}`}
+                        type="button"
+                        className={`user-picker-item ${selectedUserId === managedUser.id ? 'active' : ''}`}
+                        onClick={() => setSelectedUserId(managedUser.id)}
+                      >
+                        <strong>{managedUser.full_name || managedUser.email}</strong>
+                        <span>{managedUser.email}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
 
               <div className="glass-panel client-editor-card">
@@ -1619,17 +1769,16 @@ export default function DashboardPage() {
                     <h3>Carregando usuários</h3>
                     <p>Estamos buscando os acessos liberados neste workspace.</p>
                   </div>
-                ) : (
+                ) : selectedManagedUser ? (
                   <div className="users-list">
-                    {usersList.map((managedUser) => (
-                      <div key={managedUser.id} className="glass-item user-admin-card">
+                      <div key={selectedManagedUser.id} className="glass-item user-admin-card">
                         <div className="user-admin-head">
                           <div>
-                            <strong>{managedUser.full_name || managedUser.email}</strong>
-                            <span>{managedUser.email}</span>
+                            <strong>{selectedManagedUser.full_name || selectedManagedUser.email}</strong>
+                            <span>{selectedManagedUser.email}</span>
                           </div>
-                          {managedUser.id !== user?.id && (
-                            <button type="button" className="btn btn-secondary" onClick={() => handleDeleteUser(managedUser.id)}>
+                          {selectedManagedUser.id !== user?.id && (
+                            <button type="button" className="btn btn-secondary" onClick={() => handleDeleteUser(selectedManagedUser.id)}>
                               Excluir
                             </button>
                           )}
@@ -1640,11 +1789,9 @@ export default function DashboardPage() {
                             <label>Nome</label>
                             <input
                               type="text"
-                              value={managedUser.full_name || ''}
+                              value={selectedManagedUser.full_name || ''}
                               onChange={(event) =>
-                                setUsersList((current) =>
-                                  current.map((item) => (item.id === managedUser.id ? { ...item, full_name: event.target.value } : item))
-                                )
+                                handleManagedUserChange(selectedManagedUser.id, (item) => ({ ...item, full_name: event.target.value }))
                               }
                             />
                           </div>
@@ -1652,11 +1799,9 @@ export default function DashboardPage() {
                             <label>Nível</label>
                             <select
                               className="client-select-input"
-                              value={managedUser.role}
+                              value={selectedManagedUser.role}
                               onChange={(event) =>
-                                setUsersList((current) =>
-                                  current.map((item) => (item.id === managedUser.id ? { ...item, role: event.target.value } : item))
-                                )
+                                handleManagedUserChange(selectedManagedUser.id, (item) => ({ ...item, role: event.target.value }))
                               }
                             >
                               <option value="visualizador">Visualizador</option>
@@ -1667,24 +1812,21 @@ export default function DashboardPage() {
                           </div>
                         </div>
 
-                        {managedUser.role !== 'master' && (
+                        {selectedManagedUser.role !== 'master' && (
                           <div className="input-group">
                             <label>Dashboards liberados</label>
                             <div className="stage-selector">
                               {clients.map((client) => {
-                                const currentAccess = managedUser.clientAccess || []
+                                const currentAccess = selectedManagedUser.clientAccess || []
                                 const hasClient = currentAccess.some((item) => item.client_id === client.id)
 
                                 return (
-                                  <label key={`${managedUser.id}-${client.id}`} className={`stage-chip ${hasClient ? 'active' : ''}`}>
+                                  <label key={`${selectedManagedUser.id}-${client.id}`} className={`stage-chip ${hasClient ? 'active' : ''}`}>
                                     <input
                                       type="checkbox"
                                       checked={hasClient}
                                       onChange={() =>
-                                        setUsersList((current) =>
-                                          current.map((item) => {
-                                            if (item.id !== managedUser.id) return item
-
+                                        handleManagedUserChange(selectedManagedUser.id, (item) => {
                                             const nextAccess = hasClient
                                               ? currentAccess.filter((accessItem) => accessItem.client_id !== client.id)
                                               : [
@@ -1696,12 +1838,8 @@ export default function DashboardPage() {
                                                   },
                                                 ]
 
-                                            return {
-                                              ...item,
-                                              clientAccess: nextAccess,
-                                            }
+                                            return { ...item, clientAccess: nextAccess }
                                           })
-                                        )
                                       }
                                     />
                                     <span>{client.name}</span>
@@ -1714,17 +1852,21 @@ export default function DashboardPage() {
 
                         <div className="form-actions-space">
                           <span className="form-note">
-                            {managedUser.role === 'master' && 'Acesso total: usuários, clientes e integrações.'}
-                            {managedUser.role === 'operador' && 'Pode editar integrações e clientes liberados.'}
-                            {managedUser.role === 'visualizador' && 'Pode apenas visualizar os dashboards liberados.'}
-                            {managedUser.role === 'cliente' && 'Acesso externo focado só nos dashboards atribuídos.'}
+                            {selectedManagedUser.role === 'master' && 'Acesso total: usuários, clientes e integrações.'}
+                            {selectedManagedUser.role === 'operador' && 'Pode editar integrações e clientes liberados.'}
+                            {selectedManagedUser.role === 'visualizador' && 'Pode apenas visualizar os dashboards liberados.'}
+                            {selectedManagedUser.role === 'cliente' && 'Acesso externo focado só nos dashboards atribuídos.'}
                           </span>
-                          <button type="button" className="btn btn-primary" onClick={() => handleUpdateUser(managedUser)}>
+                          <button type="button" className="btn btn-primary" onClick={() => handleUpdateUser(selectedManagedUser)}>
                             Salvar acesso
                           </button>
                         </div>
                       </div>
-                    ))}
+                  </div>
+                ) : (
+                  <div className="empty-panel glass-item">
+                    <h3>Selecione um usuário</h3>
+                    <p>Use a busca e clique em um usuário para abrir os detalhes e editar os acessos.</p>
                   </div>
                 )}
               </div>
@@ -3271,6 +3413,74 @@ export default function DashboardPage() {
 
         .user-admin-grid {
           grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .user-list-compact {
+          display: grid;
+          gap: 16px;
+        }
+
+        .user-picker-head {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+        }
+
+        .user-picker-head span {
+          min-width: 34px;
+          height: 34px;
+          border-radius: 999px;
+          display: grid;
+          place-items: center;
+          background: rgba(255, 255, 255, 0.06);
+          color: var(--text-secondary);
+          font-size: 12px;
+          font-weight: 700;
+        }
+
+        .user-picker-list {
+          display: grid;
+          gap: 10px;
+          max-height: 420px;
+          overflow: auto;
+        }
+
+        .user-picker-item {
+          width: 100%;
+          padding: 14px 16px;
+          border-radius: 16px;
+          border: 1px solid rgba(255, 255, 255, 0.06);
+          background: rgba(255, 255, 255, 0.02);
+          color: var(--text-primary);
+          text-align: left;
+          cursor: pointer;
+          transition: border-color 0.2s ease, background 0.2s ease, transform 0.2s ease;
+        }
+
+        .user-picker-item.active {
+          border-color: var(--accent-blue);
+          background: var(--theme-surface);
+          transform: translateY(-1px);
+        }
+
+        .user-picker-item strong {
+          display: block;
+          margin-bottom: 4px;
+          font-size: 15px;
+        }
+
+        .user-picker-item span {
+          color: var(--text-muted);
+          font-size: 12px;
+          line-height: 1.4;
+          display: block;
+          overflow-wrap: anywhere;
+        }
+
+        .integration-helper {
+          color: var(--text-muted);
+          font-size: 13px;
         }
 
         .form-note {
