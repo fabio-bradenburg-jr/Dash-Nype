@@ -87,6 +87,53 @@ export function extractMetaCampaignMetrics(insightData) {
   }
 }
 
+export function buildMetaSummaryFromCampaigns(campaigns = []) {
+  const aggregated = campaigns.reduce(
+    (accumulator, campaign) => {
+      const insight = campaign?.insights?.data?.[0] || {}
+      const metrics = extractMetaCampaignMetrics(insight)
+
+      accumulator.spend += metrics.spend
+      accumulator.impressions += parseInt(insight.impressions || 0, 10)
+      accumulator.clicks += parseInt(insight.clicks || 0, 10)
+      accumulator.purchases += metrics.purchases
+      accumulator.leads += metrics.leads
+      accumulator.messages += metrics.messages
+      accumulator.totalConversions += metrics.totalConversions
+      accumulator.purchaseValue += metrics.purchaseValue
+
+      return accumulator
+    },
+    {
+      spend: 0,
+      impressions: 0,
+      clicks: 0,
+      purchases: 0,
+      leads: 0,
+      messages: 0,
+      totalConversions: 0,
+      purchaseValue: 0,
+    }
+  )
+
+  return {
+    spend: aggregated.spend.toString(),
+    impressions: aggregated.impressions.toString(),
+    clicks: aggregated.clicks.toString(),
+    cpc: aggregated.clicks > 0 ? (aggregated.spend / aggregated.clicks).toString() : '0',
+    ctr: aggregated.impressions > 0 ? ((aggregated.clicks / aggregated.impressions) * 100).toString() : '0',
+    custom_metrics: {
+      ...aggregated,
+      cost_per_purchase: aggregated.purchases > 0 ? aggregated.spend / aggregated.purchases : 0,
+      cost_per_lead: aggregated.leads > 0 ? aggregated.spend / aggregated.leads : 0,
+      cost_per_message: aggregated.messages > 0 ? aggregated.spend / aggregated.messages : 0,
+      cpa: aggregated.totalConversions > 0 ? aggregated.spend / aggregated.totalConversions : 0,
+      roas: aggregated.spend > 0 ? aggregated.purchaseValue / aggregated.spend : 0,
+      primaryConversionType: aggregated.totalConversions > 0 ? 'Mistas' : 'Nenhuma',
+    },
+  }
+}
+
 export function matchesMetaResultFilters(insightData, filters = []) {
   const selectedFilters = normalizeMetaResultFilters(filters)
   const metrics = extractMetaCampaignMetrics(insightData)

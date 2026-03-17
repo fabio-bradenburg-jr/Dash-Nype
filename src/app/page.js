@@ -25,6 +25,7 @@ import { Doughnut, Line } from 'react-chartjs-2'
 import html2canvas from 'html2canvas'
 import { jsPDF } from 'jspdf'
 import {
+  buildMetaSummaryFromCampaigns,
   campaignMatchesMetaResultFilters,
   extractMetaCampaignMetrics,
   getAvailableMetaResultFilters,
@@ -570,15 +571,6 @@ export default function DashboardPage() {
     )
   }, [usersList, userSearch])
 
-  useEffect(() => {
-    if (!availableMetaResultFilters.length) {
-      setMetaResultFilters([])
-      return
-    }
-
-    setMetaResultFilters((current) => normalizeMetaResultFilters(current, availableMetaResultFilters.map((item) => item.key)))
-  }, [availableMetaResultFilters])
-
   const metaFilteredCampaignIds = useMemo(
     () =>
       campaigns
@@ -598,14 +590,21 @@ export default function DashboardPage() {
   }
 
   const handleMetaResultFilterToggle = (filterKey) => {
-    setMetaResultFilters((current) =>
-      current.includes(filterKey)
-        ? current.length === 1
-          ? current
-          : current.filter((item) => item !== filterKey)
-        : [...current, filterKey]
-    )
+    setMetaResultFilters((current) => {
+      const availableKeys = availableMetaResultFilters.map((item) => item.key)
+      const normalizedCurrent = normalizeMetaResultFilters(current, availableKeys)
+
+      if (normalizedCurrent.includes(filterKey)) {
+        const nextFilters = normalizedCurrent.filter((item) => item !== filterKey)
+        return nextFilters.length > 0 ? nextFilters : normalizedCurrent
+      }
+
+      return [...normalizedCurrent, filterKey]
+    })
   }
+
+  const isMetaRateLimitMessage = (message = '') =>
+    /rate limit|request limit|too many calls|too many requests/i.test(message)
 
   const handleCreateUser = async (event) => {
     event.preventDefault()
@@ -770,6 +769,10 @@ export default function DashboardPage() {
       return
     }
 
+    if (activeTab !== 'clientes' && activeTab !== 'integracoes') {
+      return
+    }
+
     if (!globalIntegrations.metaAccessToken) {
       setAdAccounts([])
       return
@@ -808,7 +811,7 @@ export default function DashboardPage() {
     }
 
     fetchAdAccounts()
-  }, [hasLoadedPreferences, activeClient, activeClientId, globalIntegrations.metaAccessToken])
+  }, [hasLoadedPreferences, activeClient, activeClientId, globalIntegrations.metaAccessToken, activeTab])
 
   useEffect(() => {
     if (!activeClient) {
@@ -888,9 +891,12 @@ export default function DashboardPage() {
             const insightsData = await insightsResponse.json()
 
             if (!insightsResponse.ok) {
-              metaError = insightsData.error || 'Não foi possível carregar os indicadores da Meta.'
-              setInsights(null)
+              const nextMetaError = insightsData.error || 'Não foi possível carregar os indicadores da Meta.'
+              setInsights(buildMetaSummaryFromCampaigns(nextCampaigns))
               setDailyData([])
+              metaError = isMetaRateLimitMessage(nextMetaError)
+                ? ''
+                : nextMetaError
             } else {
               setInsights(insightsData.summary || {})
               setDailyData(insightsData.daily || [])
