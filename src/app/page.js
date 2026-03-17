@@ -1673,13 +1673,8 @@ export default function DashboardPage() {
         )}
 
         {activeTab === 'usuarios' && canManageUsers && (
-          <section className="clients-layout">
-            <div className="glass-panel clients-intro">
-              <h2>Controle de acessos</h2>
-              <p>O master gerencia a equipe, define níveis de permissão e escolhe quais dashboards cada usuário pode visualizar.</p>
-            </div>
-
-            <div className="clients-grid">
+          <section className="clients-layout users-management-layout">
+            <div className="clients-grid users-grid">
               <div className="clients-sidebar">
                 <form className="glass-panel client-list-card" onSubmit={handleCreateUser}>
                   <h3>Novo usuário</h3>
@@ -1756,11 +1751,17 @@ export default function DashboardPage() {
                 </div>
               </div>
 
-              <div className="glass-panel client-editor-card">
+              <div className="glass-panel client-editor-card users-editor-shell">
                 <div className="client-editor-header">
                   <div>
-                    <h3>Usuários do workspace</h3>
-                    <p>Master gerencia tudo. Operador edita clientes e integrações liberadas. Visualizador e cliente só acessam os dashboards atribuídos.</p>
+                    <h3>Controle de acessos</h3>
+                    <p>Selecione um usuário na lista para editar o nível e os dashboards liberados.</p>
+                  </div>
+                  <div className="users-summary-chips">
+                    <span className="users-summary-chip">Master</span>
+                    <span className="users-summary-chip">Operador</span>
+                    <span className="users-summary-chip">Cliente</span>
+                    <span className="users-summary-chip">Visualizador</span>
                   </div>
                 </div>
 
@@ -1864,7 +1865,7 @@ export default function DashboardPage() {
                       </div>
                   </div>
                 ) : (
-                  <div className="empty-panel glass-item">
+                  <div className="empty-panel glass-item users-empty-state">
                     <h3>Selecione um usuário</h3>
                     <p>Use a busca e clique em um usuário para abrir os detalhes e editar os acessos.</p>
                   </div>
@@ -2694,6 +2695,15 @@ export default function DashboardPage() {
           grid-template-columns: 360px 1fr;
         }
 
+        .users-management-layout {
+          gap: 0;
+        }
+
+        .users-grid {
+          align-items: start;
+          grid-template-columns: 360px minmax(0, 1fr);
+        }
+
         .clients-sidebar {
           display: grid;
           gap: 24px;
@@ -2730,6 +2740,11 @@ export default function DashboardPage() {
           gap: 24px;
         }
 
+        .users-editor-shell {
+          align-self: start;
+          min-height: 0;
+        }
+
         .client-list-card {
           padding: 24px;
         }
@@ -2739,6 +2754,24 @@ export default function DashboardPage() {
           justify-content: space-between;
           align-items: flex-start;
           gap: 16px;
+        }
+
+        .users-summary-chips {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px;
+          justify-content: flex-end;
+          max-width: 320px;
+        }
+
+        .users-summary-chip {
+          padding: 8px 12px;
+          border-radius: 999px;
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          background: rgba(255, 255, 255, 0.04);
+          color: var(--text-secondary);
+          font-size: 12px;
+          font-weight: 600;
         }
 
         .client-editor-header h3 {
@@ -3389,7 +3422,7 @@ export default function DashboardPage() {
           padding: 22px;
           border-radius: 22px;
           border: 1px solid rgba(255, 255, 255, 0.06);
-          background: rgba(255, 255, 255, 0.02);
+          background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.015));
         }
 
         .user-admin-head {
@@ -3442,7 +3475,7 @@ export default function DashboardPage() {
         .user-picker-list {
           display: grid;
           gap: 10px;
-          max-height: 420px;
+          max-height: 340px;
           overflow: auto;
         }
 
@@ -3481,6 +3514,13 @@ export default function DashboardPage() {
         .integration-helper {
           color: var(--text-muted);
           font-size: 13px;
+        }
+
+        .users-empty-state {
+          min-height: 320px;
+          margin-bottom: 0;
+          display: grid;
+          place-items: center;
         }
 
         .form-note {
@@ -3604,6 +3644,7 @@ export default function DashboardPage() {
           .hero-panel,
           .form-grid,
           .clients-grid,
+          .users-grid,
           .branding-grid,
           .funnel-builder,
           .rd-mini-funnel,
@@ -3625,6 +3666,11 @@ export default function DashboardPage() {
 
           .source-section-copy {
             text-align: left;
+            max-width: none;
+          }
+
+          .users-summary-chips {
+            justify-content: flex-start;
             max-width: none;
           }
 
