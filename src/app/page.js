@@ -1120,21 +1120,6 @@ export default function DashboardPage() {
 
   const customMetrics = useMemo(() => insights?.custom_metrics || {}, [insights])
 
-  const spend = campaignSummary.spend || 0
-  const impressions = campaignSummary.impressions || 0
-  const clicks = campaignSummary.clicks || 0
-  const cpc = campaignSummary.cpc || 0
-  const ctr = campaignSummary.ctr || 0
-  const purchases = campaignSummary.purchases || 0
-  const costPerPurchase = campaignSummary.cost_per_purchase || 0
-  const leads = campaignSummary.leads || 0
-  const costPerLead = campaignSummary.cost_per_lead || 0
-  const messages = campaignSummary.messages || 0
-  const costPerMessage = campaignSummary.cost_per_message || 0
-  const totalConversions = campaignSummary.totalConversions || 0
-  const roas = campaignSummary.roas || 0
-  const purchaseValue = campaignSummary.purchaseValue || 0
-
   const labels = dailyData.map((day) => {
     const date = new Date(day.date_start)
     return date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })
@@ -1345,6 +1330,21 @@ export default function DashboardPage() {
       roas: aggregated.spend > 0 ? aggregated.purchaseValue / aggregated.spend : 0,
     }
   }, [filteredCampaigns, insights, customMetrics])
+
+  const spend = campaignSummary.spend || 0
+  const impressions = campaignSummary.impressions || 0
+  const clicks = campaignSummary.clicks || 0
+  const cpc = campaignSummary.cpc || 0
+  const ctr = campaignSummary.ctr || 0
+  const purchases = campaignSummary.purchases || 0
+  const costPerPurchase = campaignSummary.cost_per_purchase || 0
+  const leads = campaignSummary.leads || 0
+  const costPerLead = campaignSummary.cost_per_lead || 0
+  const messages = campaignSummary.messages || 0
+  const costPerMessage = campaignSummary.cost_per_message || 0
+  const totalConversions = campaignSummary.totalConversions || 0
+  const roas = campaignSummary.roas || 0
+  const purchaseValue = campaignSummary.purchaseValue || 0
 
   const availableFunnelMetrics = useMemo(
     () => Object.entries(METRIC_OPTIONS).filter(([key]) => !activeFunnelSteps.includes(key)),
