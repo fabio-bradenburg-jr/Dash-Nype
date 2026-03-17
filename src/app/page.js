@@ -313,6 +313,7 @@ export default function DashboardPage() {
   const [dragMetricKey, setDragMetricKey] = useState('')
   const [dragSourceIndex, setDragSourceIndex] = useState(null)
   const [rdSellerFilter, setRdSellerFilter] = useState('all')
+  const [rdLeadSourceFilters, setRdLeadSourceFilters] = useState([])
   const [usersList, setUsersList] = useState([])
   const [usersLoading, setUsersLoading] = useState(false)
   const [userSearch, setUserSearch] = useState('')
@@ -430,6 +431,20 @@ export default function DashboardPage() {
       setRdSellerFilter('all')
     }
   }, [rdSummary, rdSellerFilter])
+
+  useEffect(() => {
+    const sources = rdSummary?.availableSources || []
+
+    if (!sources.length) {
+      setRdLeadSourceFilters([])
+      return
+    }
+
+    setRdLeadSourceFilters((current) => {
+      const normalizedCurrent = current.filter((source) => sources.includes(source))
+      return normalizedCurrent.length > 0 ? normalizedCurrent : sources
+    })
+  }, [rdSummary])
 
   useEffect(() => {
     if (!hasLoadedPreferences || userLoading || !user || hasSyncedServerState) return
@@ -600,6 +615,19 @@ export default function DashboardPage() {
       }
 
       return [...normalizedCurrent, filterKey]
+    })
+  }
+
+  const handleRdLeadSourceToggle = (sourceLabel) => {
+    setRdLeadSourceFilters((current) => {
+      const currentSelection = current.length > 0 ? current : rdSummary?.availableSources || []
+
+      if (currentSelection.includes(sourceLabel)) {
+        const nextSelection = currentSelection.filter((item) => item !== sourceLabel)
+        return nextSelection.length > 0 ? nextSelection : currentSelection
+      }
+
+      return [...currentSelection, sourceLabel]
     })
   }
 
@@ -919,6 +947,9 @@ export default function DashboardPage() {
           if (rdSellerFilter && rdSellerFilter !== 'all') {
             rdParams.set('seller_id', rdSellerFilter)
           }
+          rdLeadSourceFilters.forEach((source) => {
+            rdParams.append('lead_source', source)
+          })
           rdParams.set('date_preset', dateRange)
           selectedQualifiedStages.forEach((stage) => {
             rdParams.append('qualified_stage', stage)
@@ -968,6 +999,7 @@ export default function DashboardPage() {
     hasMetaConfigured,
     hasRdConfigured,
     rdSellerFilter,
+    rdLeadSourceFilters,
     selectedQualifiedStages,
     metaResultFilters,
     globalIntegrations.metaAccessToken,
@@ -1458,6 +1490,7 @@ export default function DashboardPage() {
     { title: 'Qualificados', value: formatNumber(rdSummary?.qualifiedDeals || 0), icon: 'bx-filter-alt', tone: 'emerald' },
     { title: 'Ticket médio ganho', value: formatCurrency(rdSummary?.avgTicketWon || 0), icon: 'bx-receipt', tone: 'gold' },
     { title: 'Taxa de fechamento', value: formatPercent(rdSummary?.closeRate || 0), icon: 'bx-target-lock', tone: 'pink' },
+    { title: 'Taxa de conversão', value: formatPercent(rdSummary?.sourceConversionRate || 0), icon: 'bx-line-chart', tone: 'blue' },
     { title: 'Lead para qualificação', value: formatPercent(rdSummary?.leadToQualifiedRate || 0), icon: 'bx-trending-up', tone: 'blue' },
     { title: 'Qualificação para venda', value: formatPercent(rdSummary?.qualifiedToWonRate || 0), icon: 'bx-badge-check', tone: 'emerald' },
     { title: 'Tempo até a compra', value: formatDurationDays(rdSummary?.avgLeadToWonDays || 0), icon: 'bx-time-five', tone: 'orange' },
@@ -2641,6 +2674,30 @@ export default function DashboardPage() {
                         </div>
                       </div>
 
+                      {!!rdSummary?.availableSources?.length && (
+                        <div className="rd-source-filter-bar">
+                          <div>
+                            <h3>Fonte do lead para taxa de conversão</h3>
+                            <p>Todos começam marcados. A taxa considera os leads dessas fontes e quantos viraram venda no período.</p>
+                          </div>
+                          <div className="meta-filter-chip-row">
+                            {rdSummary.availableSources.map((source) => (
+                              <label
+                                key={source}
+                                className={`result-filter-chip ${rdLeadSourceFilters.includes(source) ? 'active' : ''}`}
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={rdLeadSourceFilters.includes(source)}
+                                  onChange={() => handleRdLeadSourceToggle(source)}
+                                />
+                                <span>{source}</span>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
                       <div className="kpi-grid compact-kpi-grid">
                         {rdDecisionKpis.map((kpi) => (
                           <div key={kpi.title} className="kpi-card glass-panel">
@@ -3491,6 +3548,27 @@ export default function DashboardPage() {
 
         .meta-filter-chip-row {
           padding-top: 2px;
+        }
+
+        .rd-source-filter-bar {
+          display: grid;
+          gap: 14px;
+          margin-bottom: 18px;
+          padding: 18px;
+          border-radius: 18px;
+          border: 1px solid rgba(255, 255, 255, 0.06);
+          background: rgba(255, 255, 255, 0.02);
+        }
+
+        .rd-source-filter-bar h3 {
+          margin-bottom: 6px;
+          font-size: 16px;
+        }
+
+        .rd-source-filter-bar p {
+          color: var(--text-muted);
+          font-size: 13px;
+          line-height: 1.5;
         }
 
         .result-group {

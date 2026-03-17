@@ -434,8 +434,14 @@ export async function GET(request) {
       .getAll('qualified_stage')
       .map((stage) => stage.trim())
       .filter(Boolean)
+    const leadSources = searchParams
+      .getAll('lead_source')
+      .map((source) => source.trim())
+      .filter(Boolean)
     const normalizedQualifiedStages = new Set(qualifiedStages.map((stage) => normalizeLabel(stage)))
+    const normalizedLeadSources = new Set(leadSources.map((source) => normalizeLabel(source)))
     const hasQualifiedStageFilter = normalizedQualifiedStages.size > 0
+    const hasLeadSourceFilter = normalizedLeadSources.size > 0
     const selectedRange = getDateRangeBounds(datePreset, since, until)
 
     if (!token) {
@@ -486,6 +492,15 @@ export async function GET(request) {
           .filter(Boolean)
       )
     ).sort((a, b) => a.localeCompare(b, 'pt-BR'))
+    const availableSources = Array.from(
+      new Set([
+        ...contacts.map((contact) => buildSourceLabel(null, contact)),
+        ...deals.map((deal) => {
+          const relatedContactId = `${deal?.contact_id || deal?.contact?.id || deal?.contact?.uuid || deal?.deal_contact_id || ''}`
+          return buildSourceLabel(deal, contactsById.get(relatedContactId))
+        }),
+      ].filter(Boolean))
+    ).sort((a, b) => a.localeCompare(b, 'pt-BR'))
 
     const filteredDeals = deals.filter((deal) => {
       if (selectedSellerId === 'all') return true
@@ -493,6 +508,10 @@ export async function GET(request) {
       return owner?.id === selectedSellerId
     })
     const contactsInPeriod = contacts.filter((contact) => isWithinRange(getContactCreatedAt(contact), selectedRange))
+    const contactsInPeriodBySource = contactsInPeriod.filter((contact) => {
+      if (!hasLeadSourceFilter) return true
+      return normalizedLeadSources.has(normalizeLabel(buildSourceLabel(null, contact)))
+    })
 
     const wonLeadToWonDays = []
     const wonDealToWonDays = []
@@ -531,6 +550,7 @@ export async function GET(request) {
         const contactCreatedAt = getContactCreatedAt(relatedContact)
         const contactCreatedInRange = isWithinRange(contactCreatedAt, selectedRange)
         const sourceLabel = buildSourceLabel(deal, relatedContact)
+        const sourceMatchesFilter = !hasLeadSourceFilter || normalizedLeadSources.has(normalizeLabel(sourceLabel))
         const stageLabel = getStageKey(deal)
         const shouldCountWonByClosingDate = type === 'won' && dealClosedInRange
         const shouldCountLostByClosingDate = type === 'lost' && dealClosedInRange
@@ -565,11 +585,11 @@ export async function GET(request) {
           }
         }
 
-        if (dealCreatedInRange && contactCreatedInRange && relatedContactId && (isQualifiedStage || type === 'won')) {
+        if (dealCreatedInRange && contactCreatedInRange && relatedContactId && sourceMatchesFilter && (isQualifiedStage || type === 'won')) {
           accumulator.contactsWithQualifiedDeals.add(relatedContactId)
         }
 
-        if (dealCreatedInRange && contactCreatedInRange && relatedContactId) {
+        if (dealCreatedInRange && contactCreatedInRange && relatedContactId && sourceMatchesFilter) {
           accumulator.contactsWithDeals.add(relatedContactId)
         }
 
@@ -579,7 +599,7 @@ export async function GET(request) {
           accumulator.stageStats[stageLabel].wonDeals += 1
           accumulator.stageStats[stageLabel].wonRevenue += amount
 
-          if (contactCreatedInRange && relatedContactId) {
+          if (contactCreatedInRange && relatedContactId && sourceMatchesFilter) {
             accumulator.contactsWithWonDeals.add(relatedContactId)
           }
 
@@ -652,6 +672,7 @@ export async function GET(request) {
 
     const leadCount = contacts.length
     const leadCountInPeriod = contactsInPeriod.length
+    const leadCountInPeriodBySource = contactsInPeriodBySource.length
     const avgTicketWon = summary.wonDeals > 0 ? summary.wonRevenue / summary.wonDeals : 0
     const closeRate = summary.closedDeals > 0 ? (summary.wonDeals / summary.closedDeals) * 100 : 0
     const qualifiedToWonRate = summary.qualifiedDeals > 0 ? (summary.wonDeals / summary.qualifiedDeals) * 100 : 0
@@ -663,6 +684,7 @@ export async function GET(request) {
     const avgDealToWonDays = average(globalWonDealToWonDays)
     const avgLeadToWonDaysFiltered = average(wonLeadToWonDays)
     const avgDealToWonDaysFiltered = average(wonDealToWonDays)
+    const sourceConversionRate = leadCountInPeriodBySource > 0 ? (summary.contactsWithWonDeals.size / leadCountInPeriodBySource) * 100 : 0
     const sellers = Array.from(sellersMap.values()).sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'))
     const sellerRanking = Object.values(summary.sellerStats)
       .sort((a, b) => {
@@ -687,10 +709,13 @@ export async function GET(request) {
     return NextResponse.json({
       contacts: leadCount,
       contactsInPeriod: leadCountInPeriod,
+      contactsInPeriodBySource: leadCountInPeriodBySource,
       ...summary,
       avgTicketWon,
       closeRate,
       availableStages,
+      availableSources,
+      selectedLeadSources: leadSources,
       qualifiedStages,
       qualifiedDeals: summary.qualifiedDeals,
       qualifiedContacts: summary.contactsWithQualifiedDeals.size,
@@ -700,6 +725,7 @@ export async function GET(request) {
       dealToWonRate,
       leadToDealRate,
       leadToWonRate,
+      sourceConversionRate,
       avgLeadToWonDays,
       avgDealToWonDays,
       avgLeadToWonDaysFiltered,
