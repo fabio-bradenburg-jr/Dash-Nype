@@ -839,7 +839,9 @@ export default function DashboardPage() {
   }, [hasLoadedPreferences, activeClient, activeClientId, globalIntegrations.metaAccessToken, activeTab])
 
   useEffect(() => {
-    if (activeTab !== 'apresentacao') {
+    const shouldLoadOperationalData = activeTab === 'apresentacao' || activeTab === 'clientes'
+
+    if (!shouldLoadOperationalData) {
       return
     }
 
@@ -877,7 +879,7 @@ export default function DashboardPage() {
         let metaError = ''
         let rdError = ''
 
-        if (hasMetaConfigured) {
+        if (activeTab === 'apresentacao' && hasMetaConfigured) {
           const params = new URLSearchParams({
             ad_account_id: selectedAdAccount,
             date_preset: dateRange,
