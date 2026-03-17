@@ -648,7 +648,7 @@ export async function GET(request) {
           accumulator.stageStats[stageLabel].deals += 1
         }
 
-        if (dealMovedInRange || dealCreatedInRange) {
+        if ((dealMovedInRange || dealCreatedInRange) && sourceMatchesFilter) {
           accumulator.createdDeals += 1
 
           if (isQualifiedStage || type === 'won') {
@@ -753,18 +753,20 @@ export async function GET(request) {
     const leadCount = contacts.length
     const leadCountInPeriod = contactsInPeriod.length
     const leadCountInPeriodBySource = contactsInPeriodBySource.length
+    const leadRateBase = hasLeadSourceFilter ? leadCountInPeriodBySource : leadCountInPeriod
+    const qualifiedRateBase = summary.contactsWithQualifiedDeals.size
     const avgTicketWon = summary.wonDeals > 0 ? summary.wonRevenue / summary.wonDeals : 0
     const closeRate = summary.closedDeals > 0 ? (summary.wonDeals / summary.closedDeals) * 100 : 0
-    const qualifiedToWonRate = summary.qualifiedDeals > 0 ? (summary.wonDeals / summary.qualifiedDeals) * 100 : 0
-    const leadToQualifiedRate = leadCountInPeriod > 0 ? (summary.contactsWithQualifiedDeals.size / leadCountInPeriod) * 100 : 0
+    const qualifiedToWonRate = qualifiedRateBase > 0 ? (summary.contactsWithWonDeals.size / qualifiedRateBase) * 100 : 0
+    const leadToQualifiedRate = leadRateBase > 0 ? (summary.contactsWithQualifiedDeals.size / leadRateBase) * 100 : 0
     const dealToWonRate = summary.createdDeals > 0 ? (summary.wonDeals / summary.createdDeals) * 100 : 0
-    const leadToDealRate = leadCountInPeriod > 0 ? (summary.contactsWithDeals.size / leadCountInPeriod) * 100 : 0
-    const leadToWonRate = leadCountInPeriod > 0 ? (summary.contactsWithWonDeals.size / leadCountInPeriod) * 100 : 0
+    const leadToDealRate = leadRateBase > 0 ? (summary.contactsWithDeals.size / leadRateBase) * 100 : 0
+    const leadToWonRate = leadRateBase > 0 ? (summary.contactsWithWonDeals.size / leadRateBase) * 100 : 0
     const avgLeadToWonDays = average(globalWonLeadToWonDays)
     const avgDealToWonDays = average(globalWonDealToWonDays)
     const avgLeadToWonDaysFiltered = average(wonLeadToWonDays)
     const avgDealToWonDaysFiltered = average(wonDealToWonDays)
-    const sourceConversionRate = leadCountInPeriodBySource > 0 ? (summary.contactsWithWonDeals.size / leadCountInPeriodBySource) * 100 : 0
+    const sourceConversionRate = leadRateBase > 0 ? (summary.contactsWithWonDeals.size / leadRateBase) * 100 : 0
     const sellers = Array.from(sellersMap.values()).sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'))
     const sellerRanking = Object.values(summary.sellerStats)
       .sort((a, b) => {
