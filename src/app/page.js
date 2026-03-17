@@ -1208,41 +1208,6 @@ export default function DashboardPage() {
     },
   }
 
-  const doughnutChartData = {
-    labels: ['Compras', 'Leads', 'Mensagens', 'Cliques sem conversão'],
-    datasets: [
-      {
-        data: [purchases, leads, messages, Math.max(clicks - totalConversions, 0)],
-        backgroundColor: [currentTheme.main, '#10b981', '#f59e0b', '#334155'],
-        borderWidth: 0,
-        hoverOffset: 6,
-      },
-    ],
-  }
-
-  const doughnutChartOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    cutout: '72%',
-    plugins: {
-      legend: {
-        position: 'bottom',
-        labels: {
-          color: '#cbd5e1',
-          padding: 18,
-          usePointStyle: true,
-        },
-      },
-      tooltip: {
-        callbacks: {
-          label(context) {
-            return `${context.label}: ${formatNumber(context.parsed)}`
-          },
-        },
-      },
-    },
-  }
-
   const filteredCampaigns = useMemo(() => {
     const term = campaignSearch.trim().toLowerCase()
     const filtered = campaigns.filter((campaign) => {
@@ -1345,6 +1310,41 @@ export default function DashboardPage() {
   const totalConversions = campaignSummary.totalConversions || 0
   const roas = campaignSummary.roas || 0
   const purchaseValue = campaignSummary.purchaseValue || 0
+
+  const doughnutChartData = {
+    labels: ['Compras', 'Leads', 'Mensagens', 'Cliques sem conversão'],
+    datasets: [
+      {
+        data: [purchases, leads, messages, Math.max(clicks - totalConversions, 0)],
+        backgroundColor: [currentTheme.main, '#10b981', '#f59e0b', '#334155'],
+        borderWidth: 0,
+        hoverOffset: 6,
+      },
+    ],
+  }
+
+  const doughnutChartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    cutout: '72%',
+    plugins: {
+      legend: {
+        position: 'bottom',
+        labels: {
+          color: '#cbd5e1',
+          padding: 18,
+          usePointStyle: true,
+        },
+      },
+      tooltip: {
+        callbacks: {
+          label(context) {
+            return `${context.label}: ${formatNumber(context.parsed)}`
+          },
+        },
+      },
+    },
+  }
 
   const availableFunnelMetrics = useMemo(
     () => Object.entries(METRIC_OPTIONS).filter(([key]) => !activeFunnelSteps.includes(key)),
