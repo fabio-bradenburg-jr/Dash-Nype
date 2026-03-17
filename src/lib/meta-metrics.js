@@ -21,6 +21,19 @@ function sumActionValues(actions = [], actionTypes = []) {
     .reduce((sum, item) => sum + parseInt(item.value || 0, 10), 0)
 }
 
+function getDerivedClicksFromCost(costItems = [], spend = 0, actionTypes = []) {
+  for (const actionType of actionTypes) {
+    const costItem = costItems.find((item) => item.action_type === actionType)
+    const costValue = parseFloat(costItem?.value || 0)
+
+    if (costValue > 0 && spend > 0) {
+      return Math.round(spend / costValue)
+    }
+  }
+
+  return 0
+}
+
 export function normalizeMetaResultFilters(filters = [], availableFilters = Object.keys(META_RESULT_FILTER_LABELS)) {
   const validKeys = availableFilters.length > 0 ? availableFilters : Object.keys(META_RESULT_FILTER_LABELS)
   const normalized = filters.filter((item) => validKeys.includes(item))
@@ -51,18 +64,9 @@ export function extractMetaCampaignMetrics(insightData) {
 
   const actions = insightData.actions || []
   const valueActions = insightData.action_values || []
+  const costPerActionType = insightData.cost_per_action_type || []
   const spend = parseFloat(insightData.spend || 0)
   const impressions = parseInt(insightData.impressions || 0, 10)
-
-  const explicitClicks = parseInt(insightData.clicks || 0, 10)
-  const fallbackClicks = META_CLICK_EVENTS.reduce((bestValue, actionType) => {
-    const actionTotal = actions
-      .filter((item) => item.action_type === actionType)
-      .reduce((sum, item) => sum + parseInt(item.value || 0, 10), 0)
-
-    return Math.max(bestValue, actionTotal)
-  }, 0)
-  const clicks = explicitClicks > 0 ? explicitClicks : fallbackClicks
 
   const purchases = sumActionValues(actions, META_PURCHASE_EVENTS)
   const purchaseValue = valueActions
@@ -76,10 +80,13 @@ export function extractMetaCampaignMetrics(insightData) {
   const messages = sumActionValues(actions, META_MESSAGE_EVENTS)
   const costPerMessage = messages > 0 ? spend / messages : 0
 
-  const linkClicks = META_LINK_CLICK_EVENTS.reduce((bestValue, actionType) => {
+  const actionLinkClicks = META_LINK_CLICK_EVENTS.reduce((bestValue, actionType) => {
     const total = sumActionValues(actions, [actionType])
     return total > 0 ? total : bestValue
   }, 0)
+  const derivedLinkClicks = getDerivedClicksFromCost(costPerActionType, spend, META_LINK_CLICK_EVENTS)
+  const explicitClicks = parseInt(insightData.clicks || 0, 10)
+  const linkClicks = actionLinkClicks > 0 ? actionLinkClicks : (derivedLinkClicks > 0 ? derivedLinkClicks : explicitClicks)
   const totalConversions = purchases + leads + messages
 
   let primaryConversionType = 'Nenhuma'
