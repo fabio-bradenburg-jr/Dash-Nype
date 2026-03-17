@@ -1,0 +1,105 @@
+import { NextResponse } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/server/supabase-admin'
+import { getAccessContext, USER_ROLES } from '@/lib/server/access-control'
+
+async function getAuthorizedContext() {
+  const supabase = await createClient()
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser()
+
+  if (error) throw error
+  if (!user) {
+    return { errorResponse: NextResponse.json({ error: 'Não autenticado.' }, { status: 401 }) }
+  }
+
+  const adminSupabase = createAdminClient()
+  const accessContext = await getAccessContext(adminSupabase, user)
+
+  if (!accessContext.canManageUsers || !accessContext.workspaceId) {
+    return { errorResponse: NextResponse.json({ error: 'Sem permissão para gerenciar usuários.' }, { status: 403 }) }
+  }
+
+  return { adminSupabase, accessContext, user }
+}
+
+export async function PATCH(request, { params }) {
+  try {
+    const authorized = await getAuthorizedContext()
+    if (authorized.errorResponse) return authorized.errorResponse
+
+    const { adminSupabase, accessContext, user } = authorized
+    const { userId } = params
+    const body = await request.json()
+
+    if (user.id === userId && body.role && body.role !== USER_ROLES.MASTER) {
+      return NextResponse.json({ error: 'A conta master não pode remover o próprio nível master.' }, { status: 400 })
+    }
+
+    const role = Object.values(USER_ROLES).includes(body.role) ? body.role : USER_ROLES.VIEWER
+    const clientIds = Array.isArray(body.clientIds) ? body.clientIds.filter(Boolean) : []
+
+    const { error: profileError } = await adminSupabase
+      .from('profiles')
+      .update({
+        full_name: String(body.fullName || '').trim(),
+        role,
+        workspace_id: accessContext.workspaceId,
+      })
+      .eq('id', userId)
+
+    if (profileError) throw profileError
+
+    const { error: deleteAccessError } = await adminSupabase
+      .from('user_client_access')
+      .delete()
+      .eq('user_id', userId)
+
+    if (deleteAccessError) throw deleteAccessError
+
+    if (clientIds.length > 0 && role !== USER_ROLES.MASTER) {
+      const { error: insertAccessError } = await adminSupabase
+        .from('user_client_access')
+        .insert(
+          clientIds.map((clientId) => ({
+            workspace_id: accessContext.workspaceId,
+            user_id: userId,
+            client_id: clientId,
+            can_view: true,
+            can_edit: role === USER_ROLES.OPERATOR,
+          }))
+        )
+
+      if (insertAccessError) throw insertAccessError
+    }
+
+    return NextResponse.json({ ok: true })
+  } catch (error) {
+    console.error('Users PATCH error:', error)
+    return NextResponse.json({ error: error.message || 'Não foi possível atualizar o usuário.' }, { status: 500 })
+  }
+}
+
+export async function DELETE(_request, { params }) {
+  try {
+    const authorized = await getAuthorizedContext()
+    if (authorized.errorResponse) return authorized.errorResponse
+
+    const { adminSupabase, user } = authorized
+    const { userId } = params
+
+    if (user.id === userId) {
+      return NextResponse.json({ error: 'A conta master não pode excluir a si mesma.' }, { status: 400 })
+    }
+
+    const { error } = await adminSupabase.auth.admin.deleteUser(userId)
+    if (error) throw error
+
+    return NextResponse.json({ ok: true })
+  } catch (error) {
+    console.error('Users DELETE error:', error)
+    return NextResponse.json({ error: error.message || 'Não foi possível excluir o usuário.' }, { status: 500 })
+  }
+}

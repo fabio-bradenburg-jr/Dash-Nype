@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/server/supabase-admin'
+import { getAccessContext } from '@/lib/server/access-control'
 import { getDashboardState, saveDashboardState } from '@/lib/server/dashboard-store'
 
 export async function GET() {
@@ -18,8 +20,24 @@ export async function GET() {
       return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 })
     }
 
-    const state = await getDashboardState(supabase, user.id)
-    return NextResponse.json(state)
+    const adminSupabase = createAdminClient()
+    const accessContext = await getAccessContext(adminSupabase, user)
+    const state = await getDashboardState(adminSupabase, accessContext)
+
+    return NextResponse.json({
+      ...state,
+      access: {
+        role: accessContext.role,
+        canManageUsers: accessContext.canManageUsers,
+        canManageClients: accessContext.canManageClients,
+        canEditIntegrations: accessContext.canEditIntegrations,
+        canViewDashboard: accessContext.canViewDashboard,
+        isClientRole: accessContext.isClientRole,
+        workspaceId: accessContext.workspaceId,
+        viewableClientIds: accessContext.viewableClientIds,
+        editableClientIds: accessContext.editableClientIds,
+      },
+    })
   } catch (error) {
     console.error('Dashboard state GET error:', error)
     return NextResponse.json({ error: 'Não foi possível carregar o estado do dashboard.' }, { status: 500 })
@@ -43,11 +61,26 @@ export async function PUT(request) {
     }
 
     const body = await request.json()
-    const savedState = await saveDashboardState(supabase, user.id, body)
+    const adminSupabase = createAdminClient()
+    const accessContext = await getAccessContext(adminSupabase, user)
+    const savedState = await saveDashboardState(adminSupabase, accessContext, body)
 
-    return NextResponse.json(savedState)
+    return NextResponse.json({
+      ...savedState,
+      access: {
+        role: accessContext.role,
+        canManageUsers: accessContext.canManageUsers,
+        canManageClients: accessContext.canManageClients,
+        canEditIntegrations: accessContext.canEditIntegrations,
+        canViewDashboard: accessContext.canViewDashboard,
+        isClientRole: accessContext.isClientRole,
+        workspaceId: accessContext.workspaceId,
+        viewableClientIds: accessContext.viewableClientIds,
+        editableClientIds: accessContext.editableClientIds,
+      },
+    })
   } catch (error) {
     console.error('Dashboard state PUT error:', error)
-    return NextResponse.json({ error: 'Não foi possível salvar o estado do dashboard.' }, { status: 500 })
+    return NextResponse.json({ error: error.message || 'Não foi possível salvar o estado do dashboard.' }, { status: 500 })
   }
 }

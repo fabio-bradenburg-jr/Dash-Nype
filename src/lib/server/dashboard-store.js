@@ -1,3 +1,5 @@
+import { USER_ROLES } from '@/lib/server/access-control'
+
 const DEFAULT_FUNNEL_STEPS = ['impressions', 'clicks', 'leads', 'purchases']
 
 function normalizeClientRecord(client) {
@@ -31,76 +33,121 @@ function normalizeClientRecord(client) {
   }
 }
 
-export async function getDashboardState(supabase, userId) {
+function filterClientsByAccess(clients, accessContext) {
+  if (accessContext.role === USER_ROLES.MASTER) return clients
+
+  const allowedIds = new Set(accessContext.viewableClientIds)
+  return clients.filter((client) => allowedIds.has(client.id))
+}
+
+export async function getDashboardState(adminSupabase, accessContext) {
+  if (!accessContext.workspaceId) {
+    return {
+      themeColor: 'blue',
+      metric1: 'spend',
+      metric2: 'roas',
+      activeClientId: '',
+      clients: [],
+    }
+  }
+
   const [{ data: preferenceRow, error: preferenceError }, { data: clientRows, error: clientsError }] = await Promise.all([
-    supabase
-      .from('dashboard_preferences')
-      .select('theme_color, metric_1, metric_2, active_client_id')
-      .eq('user_id', userId)
+    adminSupabase
+      .from('workspace_preferences')
+      .select('theme_color, metric_1, metric_2')
+      .eq('workspace_id', accessContext.workspaceId)
       .maybeSingle(),
-    supabase
-      .from('dashboard_clients')
+    adminSupabase
+      .from('workspace_clients')
       .select('id, name, payload')
-      .eq('user_id', userId)
+      .eq('workspace_id', accessContext.workspaceId)
       .order('name', { ascending: true }),
   ])
 
   if (preferenceError) throw preferenceError
   if (clientsError) throw clientsError
 
-  const clients = (clientRows || []).map(normalizeClientRecord)
+  const filteredClients = filterClientsByAccess((clientRows || []).map(normalizeClientRecord), accessContext)
 
   return {
     themeColor: preferenceRow?.theme_color || 'blue',
     metric1: preferenceRow?.metric_1 || 'spend',
     metric2: preferenceRow?.metric_2 || 'roas',
-    activeClientId: preferenceRow?.active_client_id || clients[0]?.id || '',
-    clients,
+    activeClientId: filteredClients[0]?.id || '',
+    clients: filteredClients,
   }
 }
 
-export async function saveDashboardState(supabase, userId, state) {
-  const clients = Array.isArray(state.clients) ? state.clients : []
+export async function saveDashboardState(adminSupabase, accessContext, state) {
+  if (!accessContext.workspaceId) {
+    throw new Error('Usuario sem workspace vinculado.')
+  }
 
-  const { error: preferenceError } = await supabase
-    .from('dashboard_preferences')
-    .upsert(
-      {
-        user_id: userId,
-        theme_color: state.themeColor || 'blue',
-        metric_1: state.metric1 || 'spend',
-        metric_2: state.metric2 || 'roas',
-        active_client_id: state.activeClientId || clients[0]?.id || null,
-      },
-      { onConflict: 'user_id' }
-    )
+  if (!accessContext.canManageClients) {
+    throw new Error('Seu usuario nao tem permissao para editar os clientes.')
+  }
 
-  if (preferenceError) throw preferenceError
+  const submittedClients = Array.isArray(state.clients) ? state.clients.map(normalizeClientRecord) : []
 
-  const { error: deleteError } = await supabase
-    .from('dashboard_clients')
-    .delete()
-    .eq('user_id', userId)
-  if (deleteError) throw deleteError
+  if (accessContext.role === USER_ROLES.MASTER) {
+    const { error: preferenceError } = await adminSupabase
+      .from('workspace_preferences')
+      .upsert(
+        {
+          workspace_id: accessContext.workspaceId,
+          theme_color: state.themeColor || 'blue',
+          metric_1: state.metric1 || 'spend',
+          metric_2: state.metric2 || 'roas',
+        },
+        { onConflict: 'workspace_id' }
+      )
 
-  if (clients.length > 0) {
-    const rows = clients.map((client) => {
-      const normalized = normalizeClientRecord(client)
+    if (preferenceError) throw preferenceError
 
-      return {
-        user_id: userId,
-        id: normalized.id,
-        name: normalized.name,
-        payload: normalized,
-      }
-    })
+    const { error: deleteError } = await adminSupabase
+      .from('workspace_clients')
+      .delete()
+      .eq('workspace_id', accessContext.workspaceId)
 
-    const { error: upsertError } = await supabase
-      .from('dashboard_clients')
-      .upsert(rows, { onConflict: 'user_id,id' })
+    if (deleteError) throw deleteError
+
+    if (submittedClients.length > 0) {
+      const { error: upsertError } = await adminSupabase
+        .from('workspace_clients')
+        .upsert(
+          submittedClients.map((client) => ({
+            workspace_id: accessContext.workspaceId,
+            id: client.id,
+            name: client.name,
+            payload: client,
+          })),
+          { onConflict: 'workspace_id,id' }
+        )
+
+      if (upsertError) throw upsertError
+    }
+
+    return getDashboardState(adminSupabase, accessContext)
+  }
+
+  const editableIds = new Set(accessContext.editableClientIds)
+  const editableClients = submittedClients.filter((client) => editableIds.has(client.id))
+
+  if (editableClients.length > 0) {
+    const { error: upsertError } = await adminSupabase
+      .from('workspace_clients')
+      .upsert(
+        editableClients.map((client) => ({
+          workspace_id: accessContext.workspaceId,
+          id: client.id,
+          name: client.name,
+          payload: client,
+        })),
+        { onConflict: 'workspace_id,id' }
+      )
 
     if (upsertError) throw upsertError
   }
 
-  return getDashboardState(supabase, userId)
+  return getDashboardState(adminSupabase, accessContext)
 }

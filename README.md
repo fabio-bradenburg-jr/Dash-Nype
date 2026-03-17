@@ -12,6 +12,7 @@ Dashboard multi-cliente com integrações de mídia e CRM, autenticação via Su
 ```env
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
 ```
 
 5. Inicie o projeto:
@@ -27,7 +28,7 @@ Abra [http://localhost:3000](http://localhost:3000).
 O caminho mais simples para colocar no ar é:
 
 1. Subir o código na Vercel
-2. Configurar `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+2. Configurar `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` e `SUPABASE_SERVICE_ROLE_KEY`
 3. Garantir que o SQL de [supabase_schema.sql](/Users/fabiojunior/Documents/Nype/supabase_schema.sql) já foi executado no Supabase
 
-Com isso, o dashboard já salva estado e clientes por usuário autenticado no Supabase.
+Com isso, o dashboard já salva estado, clientes, niveis de acesso e usuarios por workspace no Supabase.

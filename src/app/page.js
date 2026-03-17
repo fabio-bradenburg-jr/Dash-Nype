@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useUser } from '@/lib/contexts/UserContext'
 import { createClient } from '@/lib/supabase/client'
 import {
@@ -141,25 +141,6 @@ const INTEGRATION_GROUPS = [
   },
 ]
 
-const PRESENTATION_VIEW_CONFIG = {
-  meta: {
-    key: 'meta',
-    title: 'Meta Ads',
-    icon: 'bxl-meta',
-    accent: '#0668E1',
-    subtitle: 'Uma visão executiva dos principais resultados de mídia e performance do período selecionado.',
-    heroCopy: 'A seguir, apresentamos um panorama dos principais indicadores de mídia, distribuição e conversão desta operação, com base exclusivamente na conta Meta vinculada ao cliente.',
-  },
-  rd: {
-    key: 'rd',
-    title: 'RD Station CRM',
-    icon: 'bx-signal-5',
-    accent: '#14b8a6',
-    subtitle: 'Uma visão executiva da operação comercial e do avanço do CRM no período analisado.',
-    heroCopy: 'A seguir, apresentamos uma leitura consolidada da operação comercial no RD Station, destacando o volume de contatos, oportunidades e receita vinculados a este cliente.',
-  },
-}
-
 function formatCurrency(value) {
   return new Intl.NumberFormat('pt-BR', {
     style: 'currency',
@@ -271,7 +252,7 @@ function getSummaryMetricValue(metricKey, summary, customMetrics) {
 }
 
 export default function DashboardPage() {
-  const { user, loading: userLoading } = useUser()
+  const { user, profile, access, loading: userLoading } = useUser()
   const supabase = createClient()
   const dashboardRef = useRef(null)
 
@@ -305,10 +286,24 @@ export default function DashboardPage() {
   const [errorMessage, setErrorMessage] = useState('')
   const [dragMetricKey, setDragMetricKey] = useState('')
   const [dragSourceIndex, setDragSourceIndex] = useState(null)
-  const [presentationView, setPresentationView] = useState('meta')
   const [rdSellerFilter, setRdSellerFilter] = useState('all')
+  const [usersList, setUsersList] = useState([])
+  const [usersLoading, setUsersLoading] = useState(false)
+  const [userForm, setUserForm] = useState({
+    fullName: '',
+    email: '',
+    password: '',
+    role: 'visualizador',
+    clientIds: [],
+  })
+  const [savingUser, setSavingUser] = useState(false)
 
   const currentTheme = THEMES[themeColor] || THEMES.blue
+  const role = access?.role || profile?.role || 'visualizador'
+  const canManageUsers = Boolean(access?.canManageUsers)
+  const canManageClients = Boolean(access?.canManageClients)
+  const canViewDashboard = access?.canViewDashboard !== false
+  const isMaster = role === 'master'
   const activeClient = useMemo(
     () => clients.find((client) => client.id === activeClientId) || null,
     [clients, activeClientId]
@@ -321,26 +316,10 @@ export default function DashboardPage() {
   )
   const hasMetaConfigured = Boolean(selectedAdAccount && activeIntegrations.metaAccessToken)
   const hasRdConfigured = Boolean(activeIntegrations.rdStationToken)
+  const hasAnyPresentationData = hasMetaConfigured || hasRdConfigured
   const activeFunnelSteps = useMemo(
     () => activeClient?.funnelSteps || [],
     [activeClient]
-  )
-  const availablePresentationViews = useMemo(() => {
-    const views = []
-
-    if (hasMetaConfigured) {
-      views.push(PRESENTATION_VIEW_CONFIG.meta)
-    }
-
-    if (hasRdConfigured) {
-      views.push(PRESENTATION_VIEW_CONFIG.rd)
-    }
-
-    return views
-  }, [hasMetaConfigured, hasRdConfigured])
-  const activePresentationView = useMemo(
-    () => availablePresentationViews.find((view) => view.key === presentationView) || availablePresentationViews[0] || null,
-    [availablePresentationViews, presentationView]
   )
 
   useEffect(() => {
@@ -364,15 +343,14 @@ export default function DashboardPage() {
   }, [activeClient])
 
   useEffect(() => {
-    if (availablePresentationViews.length === 0) {
-      setPresentationView('meta')
-      return
+    if (activeTab === 'clientes' && !canManageClients) {
+      setActiveTab('apresentacao')
     }
 
-    if (!availablePresentationViews.some((view) => view.key === presentationView)) {
-      setPresentationView(availablePresentationViews[0].key)
+    if (activeTab === 'usuarios' && !canManageUsers) {
+      setActiveTab('apresentacao')
     }
-  }, [availablePresentationViews, presentationView])
+  }, [activeTab, canManageClients, canManageUsers])
 
   useEffect(() => {
     const sellers = rdSummary?.sellers || []
@@ -400,13 +378,11 @@ export default function DashboardPage() {
 
         const state = await response.json()
 
-        if (Array.isArray(state.clients) && state.clients.length > 0) {
-          setThemeColor(state.themeColor || 'blue')
-          setMetric1(state.metric1 || 'spend')
-          setMetric2(state.metric2 || 'roas')
-          setClients(state.clients)
-          setActiveClientId(state.activeClientId || state.clients[0]?.id || '')
-        }
+        setThemeColor(state.themeColor || 'blue')
+        setMetric1(state.metric1 || 'spend')
+        setMetric2(state.metric2 || 'roas')
+        setClients(Array.isArray(state.clients) ? state.clients : [])
+        setActiveClientId(state.activeClientId || state.clients?.[0]?.id || '')
       } catch (error) {
         console.error('Erro ao sincronizar estado do servidor:', error)
       } finally {
@@ -430,7 +406,7 @@ export default function DashboardPage() {
 
     saveDashboardPreferences(state)
 
-    if (userLoading || !user) return
+    if (userLoading || !user || !canManageClients) return
 
     const timeoutId = window.setTimeout(() => {
       fetch('/api/dashboard/state', {
@@ -445,7 +421,7 @@ export default function DashboardPage() {
     }, 300)
 
     return () => window.clearTimeout(timeoutId)
-  }, [hasLoadedPreferences, themeColor, metric1, metric2, activeClientId, clients, userLoading, user])
+  }, [hasLoadedPreferences, themeColor, metric1, metric2, activeClientId, clients, userLoading, user, canManageClients])
 
   useEffect(() => {
     const root = document.documentElement
@@ -474,6 +450,7 @@ export default function DashboardPage() {
 
   const handleCreateClient = (event) => {
     event.preventDefault()
+    if (!isMaster) return
     const trimmedName = newClientName.trim()
     if (!trimmedName) return
 
@@ -485,6 +462,7 @@ export default function DashboardPage() {
   }
 
   const handleRemoveClient = (clientId) => {
+    if (!isMaster) return
     const nextClients = clients.filter((client) => client.id !== clientId)
     setClients(nextClients)
 
@@ -492,6 +470,116 @@ export default function DashboardPage() {
       setActiveClientId(nextClients[0]?.id || '')
     }
   }
+
+  const loadUsers = useCallback(async () => {
+    if (!canManageUsers) return
+
+    try {
+      setUsersLoading(true)
+      const response = await fetch('/api/users', { cache: 'no-store' })
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Não foi possível carregar os usuários.')
+      }
+
+      setUsersList(data)
+    } catch (error) {
+      console.error('Erro ao carregar usuários:', error)
+      alert(error.message || 'Não foi possível carregar os usuários.')
+    } finally {
+      setUsersLoading(false)
+    }
+  }, [canManageUsers])
+
+  const handleUserClientToggle = (clientId) => {
+    setUserForm((current) => ({
+      ...current,
+      clientIds: current.clientIds.includes(clientId)
+        ? current.clientIds.filter((id) => id !== clientId)
+        : [...current.clientIds, clientId],
+    }))
+  }
+
+  const handleCreateUser = async (event) => {
+    event.preventDefault()
+
+    try {
+      setSavingUser(true)
+      const response = await fetch('/api/users', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(userForm),
+      })
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Não foi possível criar o usuário.')
+      }
+
+      setUserForm({
+        fullName: '',
+        email: '',
+        password: '',
+        role: 'visualizador',
+        clientIds: [],
+      })
+      await loadUsers()
+    } catch (error) {
+      alert(error.message || 'Não foi possível criar o usuário.')
+    } finally {
+      setSavingUser(false)
+    }
+  }
+
+  const handleUpdateUser = async (managedUser) => {
+    try {
+      const response = await fetch(`/api/users/${managedUser.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          fullName: managedUser.full_name || '',
+          role: managedUser.role,
+          clientIds: (managedUser.clientAccess || []).map((item) => item.client_id),
+        }),
+      })
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Não foi possível atualizar o usuário.')
+      }
+
+      await loadUsers()
+    } catch (error) {
+      alert(error.message || 'Não foi possível atualizar o usuário.')
+    }
+  }
+
+  const handleDeleteUser = async (managedUserId) => {
+    try {
+      const response = await fetch(`/api/users/${managedUserId}`, {
+        method: 'DELETE',
+      })
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Não foi possível excluir o usuário.')
+      }
+
+      await loadUsers()
+    } catch (error) {
+      alert(error.message || 'Não foi possível excluir o usuário.')
+    }
+  }
+
+  useEffect(() => {
+    if (!canManageUsers || activeTab !== 'usuarios') return
+    loadUsers()
+  }, [canManageUsers, activeTab, loadUsers])
 
   const handleClientFieldChange = (fieldName, value) => {
     updateActiveClient((client) => ({
@@ -694,7 +782,7 @@ export default function DashboardPage() {
           setRdSummary(null)
         }
 
-        setErrorMessage(activePresentationView?.key === 'rd' ? rdError || metaError : metaError || rdError)
+        setErrorMessage(metaError || rdError)
       } catch (error) {
         setInsights(null)
         setDailyData([])
@@ -720,7 +808,6 @@ export default function DashboardPage() {
     selectedQualifiedStages,
     activeIntegrations.metaAccessToken,
     activeIntegrations.rdStationToken,
-    activePresentationView,
   ])
 
   useEffect(() => {
@@ -799,18 +886,35 @@ export default function DashboardPage() {
 
     try {
       setIsExporting(true)
-      const canvas = await html2canvas(dashboardRef.current, {
+      const element = dashboardRef.current
+      const canvas = await html2canvas(element, {
         scale: 2,
         useCORS: true,
         backgroundColor: '#0b0f19',
+        scrollY: -window.scrollY,
+        windowWidth: Math.max(element.scrollWidth, element.clientWidth, window.innerWidth),
+        windowHeight: Math.max(element.scrollHeight, element.clientHeight),
       })
 
       const imgData = canvas.toDataURL('image/png')
       const pdf = new jsPDF('p', 'mm', 'a4')
       const pdfWidth = pdf.internal.pageSize.getWidth()
-      const pdfHeight = (canvas.height * pdfWidth) / canvas.width
+      const pdfPageHeight = pdf.internal.pageSize.getHeight()
+      const scaledImageHeight = (canvas.height * pdfWidth) / canvas.width
 
-      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight)
+      let remainingHeight = scaledImageHeight
+      let currentOffset = 0
+
+      pdf.addImage(imgData, 'PNG', 0, currentOffset, pdfWidth, scaledImageHeight)
+      remainingHeight -= pdfPageHeight
+
+      while (remainingHeight > 0) {
+        currentOffset = remainingHeight - scaledImageHeight
+        pdf.addPage()
+        pdf.addImage(imgData, 'PNG', 0, currentOffset, pdfWidth, scaledImageHeight)
+        remainingHeight -= pdfPageHeight
+      }
+
       pdf.save(`dashboard-${activeClient?.name || 'cliente'}.pdf`)
     } catch (error) {
       console.error('Erro ao exportar PDF:', error)
@@ -1162,12 +1266,19 @@ export default function DashboardPage() {
         </div>
 
         <nav className="nav-menu">
-          <button type="button" data-tooltip="Clientes" className={`nav-item nav-button ${activeTab === 'clientes' ? 'active' : ''}`} onClick={() => setActiveTab('clientes')}>
-            <i className="bx bxs-buildings"></i> Clientes
-          </button>
+          {canManageClients && (
+            <button type="button" data-tooltip="Clientes" className={`nav-item nav-button ${activeTab === 'clientes' ? 'active' : ''}`} onClick={() => setActiveTab('clientes')}>
+              <i className="bx bxs-buildings"></i> Clientes
+            </button>
+          )}
           <button type="button" data-tooltip="Apresentação" className={`nav-item nav-button ${activeTab === 'apresentacao' ? 'active' : ''}`} onClick={() => setActiveTab('apresentacao')}>
             <i className="bx bxs-dashboard"></i> Apresentação
           </button>
+          {canManageUsers && (
+            <button type="button" data-tooltip="Usuários" className={`nav-item nav-button ${activeTab === 'usuarios' ? 'active' : ''}`} onClick={() => setActiveTab('usuarios')}>
+              <i className="bx bxs-user-detail"></i> Usuários
+            </button>
+          )}
         </nav>
 
         {!isSidebarCollapsed && (
@@ -1189,6 +1300,7 @@ export default function DashboardPage() {
           {!isSidebarCollapsed && (
             <div className="user-info">
               <p className="name">{user?.user_metadata?.full_name || user?.email || 'Usuário'}</p>
+              <p className="role">{role}</p>
               <button onClick={handleLogout} style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', fontSize: '11px', cursor: 'pointer', padding: 0, textAlign: 'left', marginTop: '2px' }}>
                 Sair da plataforma
               </button>
@@ -1203,10 +1315,12 @@ export default function DashboardPage() {
             <h1>
               {activeTab === 'clientes' && 'Base de clientes'}
               {activeTab === 'apresentacao' && `Dashboard ${activeClient?.name || 'do cliente'}`}
+              {activeTab === 'usuarios' && 'Gestão de usuários'}
             </h1>
             <p>
               {activeTab === 'clientes' && 'Cadastre seus clientes e mantenha cada operação separada dentro do dashboard.'}
-              {activeTab === 'apresentacao' && (activePresentationView?.subtitle || 'Uma visão executiva dos principais resultados, com base nas contas configuradas para este cliente.')}
+              {activeTab === 'apresentacao' && 'Uma visão executiva consolidada dos principais resultados do cliente, organizada por fonte de dados.'}
+              {activeTab === 'usuarios' && 'Defina quem pode visualizar dashboards, editar integrações e acessar clientes específicos.'}
             </p>
           </div>
 
@@ -1267,8 +1381,8 @@ export default function DashboardPage() {
                 <p>Crie um cliente e depois ajuste a configuração dele logo abaixo.</p>
               </div>
               <div className="client-create-inline">
-                <input type="text" value={newClientName} onChange={(event) => setNewClientName(event.target.value)} placeholder="Ex.: Clínica X, E-commerce Y..." />
-                <button type="submit" className="btn btn-primary">Adicionar cliente</button>
+                <input type="text" value={newClientName} onChange={(event) => setNewClientName(event.target.value)} placeholder="Ex.: Clínica X, E-commerce Y..." disabled={!isMaster} />
+                <button type="submit" className="btn btn-primary" disabled={!isMaster}>Adicionar cliente</button>
               </div>
             </form>
 
@@ -1283,7 +1397,7 @@ export default function DashboardPage() {
                           <strong>{client.name}</strong>
                           <span>{client.metaAdAccountId || 'Meta não definida'}</span>
                         </button>
-                        {clients.length > 1 && (
+                        {isMaster && clients.length > 1 && (
                           <button type="button" className="client-delete" onClick={() => handleRemoveClient(client.id)}>
                             Excluir
                           </button>
@@ -1301,7 +1415,7 @@ export default function DashboardPage() {
                       <h3>Editando: {activeClient.name}</h3>
                       <p>Qualquer ajuste aqui já define como a dash desse cliente vai abrir.</p>
                     </div>
-                    <button type="submit" className="btn btn-primary" disabled={isSavingIntegrations}>
+                    <button type="submit" className="btn btn-primary" disabled={isSavingIntegrations || !canManageClients}>
                       {isSavingIntegrations ? 'Salvando...' : 'Salvar cliente'}
                     </button>
                   </div>
@@ -1437,6 +1551,187 @@ export default function DashboardPage() {
           </section>
         )}
 
+        {activeTab === 'usuarios' && canManageUsers && (
+          <section className="clients-layout">
+            <div className="glass-panel clients-intro">
+              <h2>Controle de acessos</h2>
+              <p>O master gerencia a equipe, define níveis de permissão e escolhe quais dashboards cada usuário pode visualizar.</p>
+            </div>
+
+            <div className="clients-grid">
+              <div className="clients-sidebar">
+                <form className="glass-panel client-list-card" onSubmit={handleCreateUser}>
+                  <h3>Novo usuário</h3>
+                  <div className="input-group">
+                    <label>Nome</label>
+                    <input type="text" value={userForm.fullName} onChange={(event) => setUserForm((current) => ({ ...current, fullName: event.target.value }))} placeholder="Nome completo" />
+                  </div>
+                  <div className="input-group">
+                    <label>E-mail</label>
+                    <input type="email" value={userForm.email} onChange={(event) => setUserForm((current) => ({ ...current, email: event.target.value }))} placeholder="usuario@empresa.com" />
+                  </div>
+                  <div className="input-group">
+                    <label>Senha inicial</label>
+                    <input type="password" value={userForm.password} onChange={(event) => setUserForm((current) => ({ ...current, password: event.target.value }))} placeholder="Senha provisória" />
+                  </div>
+                  <div className="input-group">
+                    <label>Nível liberado</label>
+                    <select className="client-select-input" value={userForm.role} onChange={(event) => setUserForm((current) => ({ ...current, role: event.target.value }))}>
+                      <option value="visualizador">Visualizador</option>
+                      <option value="operador">Operador</option>
+                      <option value="cliente">Cliente</option>
+                      <option value="master">Master</option>
+                    </select>
+                  </div>
+                  {userForm.role !== 'master' && (
+                    <div className="input-group">
+                      <label>Dashboards liberados</label>
+                      <div className="stage-selector">
+                        {clients.map((client) => (
+                          <label key={`new-user-${client.id}`} className={`stage-chip ${userForm.clientIds.includes(client.id) ? 'active' : ''}`}>
+                            <input
+                              type="checkbox"
+                              checked={userForm.clientIds.includes(client.id)}
+                              onChange={() => handleUserClientToggle(client.id)}
+                            />
+                            <span>{client.name}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  <button type="submit" className="btn btn-primary" disabled={savingUser}>
+                    {savingUser ? 'Criando...' : 'Adicionar usuário'}
+                  </button>
+                </form>
+              </div>
+
+              <div className="glass-panel client-editor-card">
+                <div className="client-editor-header">
+                  <div>
+                    <h3>Usuários do workspace</h3>
+                    <p>Master gerencia tudo. Operador edita clientes e integrações liberadas. Visualizador e cliente só acessam os dashboards atribuídos.</p>
+                  </div>
+                </div>
+
+                {usersLoading ? (
+                  <div className="empty-panel glass-item">
+                    <h3>Carregando usuários</h3>
+                    <p>Estamos buscando os acessos liberados neste workspace.</p>
+                  </div>
+                ) : (
+                  <div className="users-list">
+                    {usersList.map((managedUser) => (
+                      <div key={managedUser.id} className="glass-item user-admin-card">
+                        <div className="user-admin-head">
+                          <div>
+                            <strong>{managedUser.full_name || managedUser.email}</strong>
+                            <span>{managedUser.email}</span>
+                          </div>
+                          {managedUser.id !== user?.id && (
+                            <button type="button" className="btn btn-secondary" onClick={() => handleDeleteUser(managedUser.id)}>
+                              Excluir
+                            </button>
+                          )}
+                        </div>
+
+                        <div className="form-grid user-admin-grid">
+                          <div className="input-group">
+                            <label>Nome</label>
+                            <input
+                              type="text"
+                              value={managedUser.full_name || ''}
+                              onChange={(event) =>
+                                setUsersList((current) =>
+                                  current.map((item) => (item.id === managedUser.id ? { ...item, full_name: event.target.value } : item))
+                                )
+                              }
+                            />
+                          </div>
+                          <div className="input-group">
+                            <label>Nível</label>
+                            <select
+                              className="client-select-input"
+                              value={managedUser.role}
+                              onChange={(event) =>
+                                setUsersList((current) =>
+                                  current.map((item) => (item.id === managedUser.id ? { ...item, role: event.target.value } : item))
+                                )
+                              }
+                            >
+                              <option value="visualizador">Visualizador</option>
+                              <option value="operador">Operador</option>
+                              <option value="cliente">Cliente</option>
+                              <option value="master">Master</option>
+                            </select>
+                          </div>
+                        </div>
+
+                        {managedUser.role !== 'master' && (
+                          <div className="input-group">
+                            <label>Dashboards liberados</label>
+                            <div className="stage-selector">
+                              {clients.map((client) => {
+                                const currentAccess = managedUser.clientAccess || []
+                                const hasClient = currentAccess.some((item) => item.client_id === client.id)
+
+                                return (
+                                  <label key={`${managedUser.id}-${client.id}`} className={`stage-chip ${hasClient ? 'active' : ''}`}>
+                                    <input
+                                      type="checkbox"
+                                      checked={hasClient}
+                                      onChange={() =>
+                                        setUsersList((current) =>
+                                          current.map((item) => {
+                                            if (item.id !== managedUser.id) return item
+
+                                            const nextAccess = hasClient
+                                              ? currentAccess.filter((accessItem) => accessItem.client_id !== client.id)
+                                              : [
+                                                  ...currentAccess,
+                                                  {
+                                                    client_id: client.id,
+                                                    can_view: true,
+                                                    can_edit: item.role === 'operador',
+                                                  },
+                                                ]
+
+                                            return {
+                                              ...item,
+                                              clientAccess: nextAccess,
+                                            }
+                                          })
+                                        )
+                                      }
+                                    />
+                                    <span>{client.name}</span>
+                                  </label>
+                                )
+                              })}
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="form-actions-space">
+                          <span className="form-note">
+                            {managedUser.role === 'master' && 'Acesso total: usuários, clientes e integrações.'}
+                            {managedUser.role === 'operador' && 'Pode editar integrações e clientes liberados.'}
+                            {managedUser.role === 'visualizador' && 'Pode apenas visualizar os dashboards liberados.'}
+                            {managedUser.role === 'cliente' && 'Acesso externo focado só nos dashboards atribuídos.'}
+                          </span>
+                          <button type="button" className="btn btn-primary" onClick={() => handleUpdateUser(managedUser)}>
+                            Salvar acesso
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </section>
+        )}
+
         {activeTab === 'apresentacao' && (
           <div ref={dashboardRef}>
             <section className="glass-panel hero-panel">
@@ -1451,81 +1746,58 @@ export default function DashboardPage() {
                 </span>
                 <h2>{activeClient?.name || 'Selecione um cliente'}</h2>
                 <p>
-                  {activePresentationView?.heroCopy || 'A seguir, apresentamos um panorama dos principais indicadores do período selecionado, considerando exclusivamente as integrações configuradas para esta operação.'}
+                  A seguir, apresentamos um panorama consolidado do período selecionado, separando os dados por origem para facilitar a leitura executiva da operação.
                 </p>
               </div>
               <div className="hero-meta">
-                <div className="integration-switcher">
-                  <span className="integration-switcher-label">Visualização disponível</span>
-                  <div className="integration-switcher-list">
-                    {availablePresentationViews.length > 0 ? (
-                      availablePresentationViews.map((view) => (
-                        <button
-                          key={view.key}
-                          type="button"
-                          className={`integration-view-chip ${activePresentationView?.key === view.key ? 'active' : ''}`}
-                          onClick={() => setPresentationView(view.key)}
-                          style={{
-                            color: activePresentationView?.key === view.key ? view.accent : undefined,
-                            borderColor: activePresentationView?.key === view.key ? `${view.accent}66` : undefined,
-                          }}
-                        >
-                          <i className={`bx ${view.icon}`}></i>
-                          <span>{view.title}</span>
-                        </button>
-                      ))
-                    ) : (
-                      <div className="hero-stat hero-stat-empty">
-                        <span>Nenhuma integração ativa</span>
-                        <strong>Cadastre uma operação em Clientes</strong>
+                {!hasAnyPresentationData ? (
+                  <div className="hero-stat hero-stat-empty">
+                    <span>Nenhuma integração ativa</span>
+                    <strong>Cadastre uma operação em Clientes</strong>
+                  </div>
+                ) : (
+                  <>
+                    {hasMetaConfigured && (
+                      <div className="hero-stat">
+                        <span>Conta de anúncio</span>
+                        <strong>{selectedAdAccount || 'Defina a conta do cliente'}</strong>
                       </div>
                     )}
-                  </div>
-                </div>
-
-                {activePresentationView?.key === 'meta' && (
-                  <>
-                    <div className="hero-stat">
-                      <span>Meta Ads</span>
-                      <strong>{selectedAdAccount || 'Defina a conta do cliente'}</strong>
-                    </div>
-                    <div className="hero-stat">
-                      <span>Demais integrações mapeadas</span>
-                      <strong>{[
-                        activeClient?.googleAdsAccountId,
-                        activeClient?.tiktokAdsAccountId,
-                        activeClient?.linkedInAdsAccountId,
-                        activeClient?.rdStationAccountId,
-                        activeClient?.salesforceAccountId,
-                        activeClient?.agendorAccountId,
-                      ].filter(Boolean).length} conta(s) vinculada(s)</strong>
-                    </div>
-                  </>
-                )}
-
-                {activePresentationView?.key === 'rd' && (
-                  <>
-                    <div className="hero-stat">
-                      <span>Vendedor</span>
-                      <div className="hero-select-wrap">
-                        <select value={rdSellerFilter} onChange={(event) => setRdSellerFilter(event.target.value)} className="hero-select">
-                          <option value="all">Todos os vendedores</option>
-                          {(rdSummary?.sellers || []).map((seller) => (
-                            <option key={seller.id} value={seller.id}>
-                              {seller.name}
-                            </option>
-                          ))}
-                        </select>
+                    {Boolean([
+                      activeClient?.googleAdsAccountId,
+                      activeClient?.tiktokAdsAccountId,
+                      activeClient?.linkedInAdsAccountId,
+                    ].filter(Boolean).length) && (
+                      <div className="hero-stat">
+                        <span>Outras contas de anúncio</span>
+                        <strong>{[
+                          activeClient?.googleAdsAccountId,
+                          activeClient?.tiktokAdsAccountId,
+                          activeClient?.linkedInAdsAccountId,
+                        ].filter(Boolean).length} conta(s) vinculada(s)</strong>
                       </div>
-                    </div>
-                    <div className="hero-stat">
-                      <span>RD Station</span>
-                      <strong>{activeClient?.rdStationAccountId || 'Token configurado para este cliente'}</strong>
-                    </div>
-                    <div className="hero-stat">
-                      <span>Etapas qualificadas</span>
-                      <strong>{selectedQualifiedStages.length ? formatNumber(selectedQualifiedStages.length) : 'Todas as criações'}</strong>
-                    </div>
+                    )}
+                    {hasRdConfigured && (
+                      <>
+                        <div className="hero-stat">
+                          <span>CRM</span>
+                          <strong>{activeClient?.rdStationAccountId || 'Token configurado para este cliente'}</strong>
+                        </div>
+                        <div className="hero-stat">
+                          <span>Vendedor</span>
+                          <div className="hero-select-wrap">
+                            <select value={rdSellerFilter} onChange={(event) => setRdSellerFilter(event.target.value)} className="hero-select">
+                              <option value="all">Todos os vendedores</option>
+                              {(rdSummary?.sellers || []).map((seller) => (
+                                <option key={seller.id} value={seller.id}>
+                                  {seller.name}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+                      </>
+                    )}
                   </>
                 )}
               </div>
@@ -1534,16 +1806,23 @@ export default function DashboardPage() {
             {errorMessage && <div className="feedback-banner">{errorMessage}</div>}
 
             {!activeClient ? (
+              !canViewDashboard ? (
+              <div className="empty-panel glass-panel">
+                <h3>Aguardando liberação</h3>
+                <p>Seu usuário já existe, mas ainda não recebeu acesso a nenhum workspace ou dashboard. Peça ao master para liberar sua conta.</p>
+              </div>
+            ) : (
               <div className="empty-panel glass-panel">
                 <h3>Crie um cliente primeiro</h3>
                 <p>Use a aba de clientes para adicionar sua operação antes de abrir a apresentação.</p>
               </div>
+            )
             ) : isLoading ? (
               <div className="empty-panel glass-panel">
                 <h3>Sincronizando com as APIs</h3>
-                <p>Estamos puxando os dados da visualização {activePresentationView?.title || 'selecionada'} para {activeClient.name}.</p>
+                <p>Estamos puxando os dados configurados para {activeClient.name}.</p>
               </div>
-            ) : availablePresentationViews.length === 0 ? (
+            ) : !hasAnyPresentationData ? (
               <div className="empty-panel glass-panel">
                 <h3>Defina a operação do cliente</h3>
                 <p>Cadastre ao menos uma integração do cliente para liberar a apresentação dinâmica da operação.</p>
@@ -1553,8 +1832,15 @@ export default function DashboardPage() {
               </div>
             ) : (
               <>
-                {activePresentationView?.key === 'meta' && (
-                  <>
+                {hasMetaConfigured && (
+                  <section className="source-section">
+                    <div className="source-section-header">
+                      <div className="source-section-badge" style={{ color: '#0668E1', borderColor: '#0668E1' }}>
+                        <i className="bx bxl-meta"></i>
+                        <span>Meta Ads</span>
+                      </div>
+                      <p className="source-section-copy">Primeiro bloco de leitura das contas de anúncio e da performance de mídia.</p>
+                    </div>
                 <section className="glass-panel grouped-results">
                   <div className="section-header section-header-stack">
                     <div>
@@ -1923,11 +2209,18 @@ export default function DashboardPage() {
                     </table>
                   </div>
                 </section>
-                  </>
+                  </section>
                 )}
 
-                {activePresentationView?.key === 'rd' && (
-                  <>
+                {hasRdConfigured && (
+                  <section className="source-section">
+                    <div className="source-section-header">
+                      <div className="source-section-badge" style={{ color: '#14b8a6', borderColor: '#14b8a6' }}>
+                        <i className="bx bx-signal-5"></i>
+                        <span>RD Station CRM</span>
+                      </div>
+                      <p className="source-section-copy">Em seguida, entram os indicadores comerciais e de CRM vinculados ao cliente.</p>
+                    </div>
                     <section className="glass-panel grouped-results">
                       <div className="section-header section-header-stack">
                         <div>
@@ -2098,7 +2391,7 @@ export default function DashboardPage() {
                         </div>
                       </section>
                     )}
-                  </>
+                  </section>
                 )}
               </>
             )}
@@ -2447,51 +2740,41 @@ export default function DashboardPage() {
           gap: 14px;
         }
 
-        .integration-switcher {
+        .source-section {
           display: grid;
-          gap: 10px;
+          gap: 20px;
+          margin-bottom: 24px;
         }
 
-        .integration-switcher-label {
-          color: var(--text-muted);
-          font-size: 12px;
-          text-transform: uppercase;
-          letter-spacing: 0.08em;
-        }
-
-        .integration-switcher-list {
+        .source-section-header {
           display: flex;
-          gap: 10px;
-          flex-wrap: wrap;
+          align-items: center;
+          justify-content: space-between;
+          gap: 16px;
         }
 
-        .integration-view-chip {
+        .source-section-badge {
           display: inline-flex;
           align-items: center;
           gap: 10px;
-          min-height: 52px;
+          min-height: 48px;
           padding: 0 16px;
-          border-radius: 16px;
-          border: 1px solid rgba(255, 255, 255, 0.08);
+          border-radius: 999px;
+          border: 1px solid currentColor;
           background: rgba(255, 255, 255, 0.03);
-          color: var(--text-secondary);
-          cursor: pointer;
-          transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+          font-weight: 700;
         }
 
-        .integration-view-chip:hover {
-          transform: translateY(-1px);
-          border-color: rgba(255, 255, 255, 0.18);
-          background: rgba(255, 255, 255, 0.05);
-        }
-
-        .integration-view-chip.active {
-          background: rgba(255, 255, 255, 0.06);
-          box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
-        }
-
-        .integration-view-chip i {
+        .source-section-badge i {
           font-size: 20px;
+        }
+
+        .source-section-copy {
+          margin: 0;
+          color: var(--text-muted);
+          font-size: 14px;
+          text-align: right;
+          max-width: 520px;
         }
 
         .hero-stat {
@@ -2955,6 +3238,41 @@ export default function DashboardPage() {
           margin-top: 24px;
         }
 
+        .users-list {
+          display: grid;
+          gap: 18px;
+        }
+
+        .user-admin-card {
+          padding: 22px;
+          border-radius: 22px;
+          border: 1px solid rgba(255, 255, 255, 0.06);
+          background: rgba(255, 255, 255, 0.02);
+        }
+
+        .user-admin-head {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          gap: 16px;
+          margin-bottom: 18px;
+        }
+
+        .user-admin-head strong {
+          display: block;
+          font-size: 18px;
+          margin-bottom: 4px;
+        }
+
+        .user-admin-head span {
+          color: var(--text-muted);
+          font-size: 13px;
+        }
+
+        .user-admin-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
         .form-note {
           color: var(--text-muted);
           font-size: 13px;
@@ -3088,6 +3406,16 @@ export default function DashboardPage() {
           .client-create-inline {
             flex-direction: column;
             align-items: stretch;
+          }
+
+          .source-section-header {
+            flex-direction: column;
+            align-items: flex-start;
+          }
+
+          .source-section-copy {
+            text-align: left;
+            max-width: none;
           }
 
           .hero-logo-wrap {

@@ -15,16 +15,19 @@ export default function LoginPage() {
     e.preventDefault()
     try {
       setLoading(true)
-      
-      const authFn = isSignUp ? supabase.auth.signUp : supabase.auth.signInWithPassword
-      
-      const { data, error } = await authFn({
-        email,
-        password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
-        }
-      })
+
+      const { error } = isSignUp
+        ? await supabase.auth.signUp({
+            email,
+            password,
+            options: {
+              emailRedirectTo: `${window.location.origin}/auth/callback`,
+            },
+          })
+        : await supabase.auth.signInWithPassword({
+            email,
+            password,
+          })
       
       if (error) throw error
 
