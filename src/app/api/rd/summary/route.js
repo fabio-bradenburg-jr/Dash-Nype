@@ -177,6 +177,17 @@ function collectTextFragments(input, depth = 0, visited = new WeakSet()) {
 }
 
 function classifyDealStatus(deal) {
+  const explicitStatus = normalizeLabel(
+    getTextFromMatchingFields(deal, [
+      'estado da negociacao',
+      'status da negociacao',
+      'estado do negocio',
+      'status do negocio',
+      'situacao da negociacao',
+      'situacao do negocio',
+    ])
+  )
+
   const fragments = collectTextFragments([
     deal?.status,
     deal?.deal_status,
@@ -189,6 +200,7 @@ function classifyDealStatus(deal) {
     deal?.tag_list,
     deal?.status_label,
     deal?.status_name,
+    explicitStatus,
   ]).map((value) => normalizeLabel(value))
 
   const combinedStatus = fragments.join(' ')
@@ -196,6 +208,8 @@ function classifyDealStatus(deal) {
   if (
     deal?.won === true ||
     deal?.win === true ||
+    explicitStatus.includes('vendid') ||
+    explicitStatus.includes('ganh') ||
     combinedStatus.includes('won') ||
     combinedStatus.includes('ganh') ||
     combinedStatus.includes('vendid') ||
@@ -208,6 +222,8 @@ function classifyDealStatus(deal) {
 
   if (
     deal?.lost === true ||
+    explicitStatus.includes('perd') ||
+    explicitStatus.includes('cancelad') ||
     combinedStatus.includes('lost') ||
     combinedStatus.includes('perd') ||
     combinedStatus.includes('cancelad') ||
@@ -311,6 +327,15 @@ function getContactCreatedAt(contact) {
   )
 }
 
+function getContactUpdatedAt(contact) {
+  return parseDateValue(
+    contact?.updated_at ||
+      contact?.updatedAt ||
+      contact?.last_update ||
+      contact?.last_updated_at
+  )
+}
+
 function getDealCreatedAt(deal) {
   return parseDateValue(
     deal?.created_at ||
@@ -326,8 +351,23 @@ function getDealClosedAt(deal) {
       deal?.wonAt ||
       deal?.closed_at ||
       deal?.closedAt ||
+      deal?.status_changed_at ||
+      deal?.statusChangedAt ||
       deal?.updated_at ||
       deal?.updatedAt
+  )
+}
+
+function getDealMovedAt(deal) {
+  return parseDateValue(
+    deal?.stage_changed_at ||
+      deal?.stageChangedAt ||
+      deal?.status_changed_at ||
+      deal?.statusChangedAt ||
+      deal?.updated_at ||
+      deal?.updatedAt ||
+      deal?.last_activity_at ||
+      deal?.lastActivityAt
   )
 }
 
@@ -507,7 +547,9 @@ export async function GET(request) {
       const owner = getOwnerInfo(deal)
       return owner?.id === selectedSellerId
     })
-    const contactsInPeriod = contacts.filter((contact) => isWithinRange(getContactCreatedAt(contact), selectedRange))
+    const contactsInPeriod = contacts.filter((contact) =>
+      isWithinRange(getContactCreatedAt(contact), selectedRange) || isWithinRange(getContactUpdatedAt(contact), selectedRange)
+    )
     const contactsInPeriodBySource = contactsInPeriod.filter((contact) => {
       if (!hasLeadSourceFilter) return true
       return normalizedLeadSources.has(normalizeLabel(buildSourceLabel(null, contact)))
@@ -543,18 +585,22 @@ export async function GET(request) {
         const owner = getOwnerInfo(deal)
         const dealCreatedAt = getDealCreatedAt(deal)
         const dealClosedAt = getDealClosedAt(deal)
+        const dealMovedAt = getDealMovedAt(deal)
         const dealCreatedInRange = isWithinRange(dealCreatedAt, selectedRange)
         const dealClosedInRange = isWithinRange(dealClosedAt, selectedRange)
+        const dealMovedInRange = isWithinRange(dealMovedAt, selectedRange)
         const relatedContactId = `${deal?.contact_id || deal?.contact?.id || deal?.contact?.uuid || deal?.deal_contact_id || ''}`
         const relatedContact = contactsById.get(relatedContactId)
         const contactCreatedAt = getContactCreatedAt(relatedContact)
+        const contactUpdatedAt = getContactUpdatedAt(relatedContact)
         const contactCreatedInRange = isWithinRange(contactCreatedAt, selectedRange)
+        const contactMovedInRange = isWithinRange(contactUpdatedAt, selectedRange)
         const sourceLabel = buildSourceLabel(deal, relatedContact)
         const sourceMatchesFilter = !hasLeadSourceFilter || normalizedLeadSources.has(normalizeLabel(sourceLabel))
         const stageLabel = getStageKey(deal)
         const shouldCountWonByClosingDate = type === 'won' && dealClosedInRange
         const shouldCountLostByClosingDate = type === 'lost' && dealClosedInRange
-        const shouldCountOpenByCreatedDate = type === 'open' && dealCreatedInRange
+        const shouldCountOpenByMovementDate = type === 'open' && dealMovedInRange
         const isQualifiedStage = hasQualifiedStageFilter
           ? normalizedQualifiedStages.has(normalizeLabel(stageLabel))
           : type !== 'lost'
@@ -562,7 +608,7 @@ export async function GET(request) {
         const shouldTrackStage =
           shouldCountWonByClosingDate ||
           shouldCountLostByClosingDate ||
-          shouldCountOpenByCreatedDate
+          shouldCountOpenByMovementDate
 
         if (shouldTrackStage) {
           accumulator.stageStats[stageLabel] ||= {
@@ -577,7 +623,7 @@ export async function GET(request) {
           accumulator.stageStats[stageLabel].deals += 1
         }
 
-        if (dealCreatedInRange) {
+        if (dealMovedInRange || dealCreatedInRange) {
           accumulator.createdDeals += 1
 
           if (isQualifiedStage || type === 'won') {
@@ -585,12 +631,16 @@ export async function GET(request) {
           }
         }
 
-        if (dealCreatedInRange && contactCreatedInRange && relatedContactId && sourceMatchesFilter && (isQualifiedStage || type === 'won')) {
+        if ((dealMovedInRange || dealCreatedInRange) && (contactCreatedInRange || contactMovedInRange) && relatedContactId && sourceMatchesFilter && (isQualifiedStage || type === 'won')) {
           accumulator.contactsWithQualifiedDeals.add(relatedContactId)
         }
 
-        if (dealCreatedInRange && contactCreatedInRange && relatedContactId && sourceMatchesFilter) {
+        if ((dealMovedInRange || dealCreatedInRange) && (contactCreatedInRange || contactMovedInRange) && relatedContactId && sourceMatchesFilter) {
           accumulator.contactsWithDeals.add(relatedContactId)
+        }
+
+        if (dealMovedInRange && relatedContactId && sourceMatchesFilter) {
+          accumulator.contactsMoved.add(relatedContactId)
         }
 
         if (shouldCountWonByClosingDate) {
@@ -619,7 +669,10 @@ export async function GET(request) {
         } else if (shouldCountLostByClosingDate) {
           accumulator.lostDeals += 1
           accumulator.stageStats[stageLabel].lostDeals += 1
-        } else if (shouldCountOpenByCreatedDate) {
+          if (relatedContactId && sourceMatchesFilter) {
+            accumulator.lostContacts.add(relatedContactId)
+          }
+        } else if (shouldCountOpenByMovementDate) {
           accumulator.openDeals += 1
           accumulator.openPipeline += amount
           accumulator.stageStats[stageLabel].openDeals += 1
@@ -645,7 +698,7 @@ export async function GET(request) {
             accumulator.sellerStats[owner.id].wonRevenue += amount
           } else if (shouldCountLostByClosingDate) {
             accumulator.sellerStats[owner.id].lostDeals += 1
-          } else if (shouldCountOpenByCreatedDate) {
+          } else if (shouldCountOpenByMovementDate) {
             accumulator.sellerStats[owner.id].openDeals += 1
           }
         }
@@ -664,6 +717,8 @@ export async function GET(request) {
         sellerStats: {},
         sourceStats: {},
         stageStats: {},
+        contactsMoved: new Set(),
+        lostContacts: new Set(),
         contactsWithDeals: new Set(),
         contactsWithQualifiedDeals: new Set(),
         contactsWithWonDeals: new Set(),
@@ -710,6 +765,8 @@ export async function GET(request) {
       contacts: leadCount,
       contactsInPeriod: leadCountInPeriod,
       contactsInPeriodBySource: leadCountInPeriodBySource,
+      contactsMoved: summary.contactsMoved.size,
+      lostContacts: summary.lostContacts.size,
       ...summary,
       avgTicketWon,
       closeRate,

@@ -1466,7 +1466,8 @@ export default function DashboardPage() {
       icon: 'bx-signal-5',
       tone: 'emerald',
       stats: [
-        { label: 'Contatos', value: formatNumber(rdSummary.contacts || 0) },
+        { label: 'Contatos movimentados', value: formatNumber(rdSummary.contactsMoved || 0) },
+        { label: 'Contatos perdidos', value: formatNumber(rdSummary.lostContacts || 0) },
         { label: 'Negócios em aberto', value: formatNumber(rdSummary.openDeals || 0) },
         { label: 'Negócios ganhos', value: formatNumber(rdSummary.wonDeals || 0) },
         { label: 'Receita ganha', value: formatCurrency(rdSummary.wonRevenue || 0) },
@@ -1474,8 +1475,8 @@ export default function DashboardPage() {
     },
   ].filter(Boolean)
   const rdKpis = [
-    { title: 'Contatos', value: formatNumber(rdSummary?.contacts || 0), icon: 'bx-user-voice', tone: 'blue' },
-    { title: 'Contatos no período', value: formatNumber(rdSummary?.contactsInPeriod || 0), icon: 'bx-calendar-check', tone: 'cyan' },
+    { title: 'Contatos movimentados', value: formatNumber(rdSummary?.contactsMoved || 0), icon: 'bx-user-voice', tone: 'blue' },
+    { title: 'Contatos perdidos', value: formatNumber(rdSummary?.lostContacts || 0), icon: 'bx-user-x', tone: 'pink' },
     { title: 'Negócios em aberto', value: formatNumber(rdSummary?.openDeals || 0), icon: 'bx-briefcase-alt-2', tone: 'purple' },
     { title: 'Negócios ganhos', value: formatNumber(rdSummary?.wonDeals || 0), icon: 'bx-badge-check', tone: 'emerald' },
     { title: 'Negócios perdidos', value: formatNumber(rdSummary?.lostDeals || 0), icon: 'bx-x-circle', tone: 'pink' },
