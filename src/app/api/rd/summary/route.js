@@ -532,20 +532,30 @@ export async function GET(request) {
         const contactCreatedInRange = isWithinRange(contactCreatedAt, selectedRange)
         const sourceLabel = buildSourceLabel(deal, relatedContact)
         const stageLabel = getStageKey(deal)
+        const shouldCountWonByClosingDate = type === 'won' && dealClosedInRange
+        const shouldCountLostByClosingDate = type === 'lost' && dealClosedInRange
+        const shouldCountOpenByCreatedDate = type === 'open' && dealCreatedInRange
         const isQualifiedStage = hasQualifiedStageFilter
           ? normalizedQualifiedStages.has(normalizeLabel(stageLabel))
           : type !== 'lost'
 
-        accumulator.stageStats[stageLabel] ||= {
-          label: stageLabel,
-          deals: 0,
-          openDeals: 0,
-          wonDeals: 0,
-          lostDeals: 0,
-          pipelineValue: 0,
-          wonRevenue: 0,
+        const shouldTrackStage =
+          shouldCountWonByClosingDate ||
+          shouldCountLostByClosingDate ||
+          shouldCountOpenByCreatedDate
+
+        if (shouldTrackStage) {
+          accumulator.stageStats[stageLabel] ||= {
+            label: stageLabel,
+            deals: 0,
+            openDeals: 0,
+            wonDeals: 0,
+            lostDeals: 0,
+            pipelineValue: 0,
+            wonRevenue: 0,
+          }
+          accumulator.stageStats[stageLabel].deals += 1
         }
-        accumulator.stageStats[stageLabel].deals += 1
 
         if (dealCreatedInRange) {
           accumulator.createdDeals += 1
@@ -563,7 +573,7 @@ export async function GET(request) {
           accumulator.contactsWithDeals.add(relatedContactId)
         }
 
-        if (type === 'won' && dealClosedInRange) {
+        if (shouldCountWonByClosingDate) {
           accumulator.wonDeals += 1
           accumulator.wonRevenue += amount
           accumulator.stageStats[stageLabel].wonDeals += 1
@@ -586,17 +596,17 @@ export async function GET(request) {
           }
           accumulator.sourceStats[sourceLabel].wonDeals += 1
           accumulator.sourceStats[sourceLabel].wonRevenue += amount
-        } else if (type === 'lost' && dealClosedInRange) {
+        } else if (shouldCountLostByClosingDate) {
           accumulator.lostDeals += 1
           accumulator.stageStats[stageLabel].lostDeals += 1
-        } else if (type === 'open') {
+        } else if (shouldCountOpenByCreatedDate) {
           accumulator.openDeals += 1
           accumulator.openPipeline += amount
           accumulator.stageStats[stageLabel].openDeals += 1
           accumulator.stageStats[stageLabel].pipelineValue += amount
         }
 
-        if ((type === 'won' || type === 'lost') && dealClosedInRange) {
+        if ((shouldCountWonByClosingDate || shouldCountLostByClosingDate)) {
           accumulator.closedDeals += 1
         }
 
@@ -610,12 +620,12 @@ export async function GET(request) {
             wonRevenue: 0,
           }
 
-          if (type === 'won' && dealClosedInRange) {
+          if (shouldCountWonByClosingDate) {
             accumulator.sellerStats[owner.id].wonDeals += 1
             accumulator.sellerStats[owner.id].wonRevenue += amount
-          } else if (type === 'lost' && dealClosedInRange) {
+          } else if (shouldCountLostByClosingDate) {
             accumulator.sellerStats[owner.id].lostDeals += 1
-          } else if (type === 'open') {
+          } else if (shouldCountOpenByCreatedDate) {
             accumulator.sellerStats[owner.id].openDeals += 1
           }
         }
