@@ -1509,33 +1509,21 @@ export default function DashboardPage() {
                     </button>
                   </div>
 
-                  <div className="branding-grid">
-                    <div className="integration-block">
-                      <div className="integration-heading">
-                        <div className="integration-icon" style={{ color: currentTheme.main, borderColor: `${currentTheme.main}33` }}>
-                          <i className="bx bx-id-card"></i>
-                        </div>
-                        <div>
-                          <h3>Dados do cliente</h3>
-                          <p>Esses dados organizam a conta e já alimentam a apresentação final.</p>
-                        </div>
+                  <div className="integration-block client-identity-block">
+                    <div className="integration-heading">
+                      <div className="integration-icon" style={{ color: currentTheme.main, borderColor: `${currentTheme.main}33` }}>
+                        <i className="bx bx-id-card"></i>
                       </div>
-
-                      <div className="input-group">
-                        <label>Nome do cliente</label>
-                        <input type="text" value={activeClient.name} onChange={(event) => handleClientFieldChange('name', event.target.value)} placeholder="Nome do cliente" />
+                      <div>
+                        <h3>Identidade do cliente</h3>
+                        <p>Defina nome, cor e logo para organizar a conta e personalizar a apresentação final.</p>
                       </div>
                     </div>
 
-                    <div className="integration-block">
-                      <div className="integration-heading">
-                        <div className="integration-icon" style={{ color: currentTheme.main, borderColor: `${currentTheme.main}33` }}>
-                          <i className="bx bx-palette"></i>
-                        </div>
-                        <div>
-                          <h3>Branding da dash</h3>
-                          <p>Escolha a cor e a logo que vão aparecer no dashboard desse cliente.</p>
-                        </div>
+                    <div className="branding-grid">
+                      <div className="input-group">
+                        <label>Nome do cliente</label>
+                        <input type="text" value={activeClient.name} onChange={(event) => handleClientFieldChange('name', event.target.value)} placeholder="Nome do cliente" />
                       </div>
 
                       <div className="input-group">
@@ -1565,10 +1553,10 @@ export default function DashboardPage() {
                         <label>Ou cole a URL da logo</label>
                         <input type="text" value={activeClient.logoUrl || ''} onChange={(event) => handleClientFieldChange('logoUrl', event.target.value)} placeholder="https://..." />
                       </div>
+                    </div>
 
-                      <div className="logo-preview">
-                        {activeClient.logoUrl ? <img src={activeClient.logoUrl} alt={`Logo ${activeClient.name}`} /> : <span>Sem logo definida</span>}
-                      </div>
+                    <div className="logo-preview">
+                      {activeClient.logoUrl ? <img src={activeClient.logoUrl} alt={`Logo ${activeClient.name}`} /> : <span>Sem logo definida</span>}
                     </div>
                   </div>
 
