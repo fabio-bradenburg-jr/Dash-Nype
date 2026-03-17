@@ -314,6 +314,7 @@ export default function DashboardPage() {
   const [dragSourceIndex, setDragSourceIndex] = useState(null)
   const [rdSellerFilter, setRdSellerFilter] = useState('all')
   const [rdLeadSourceFilters, setRdLeadSourceFilters] = useState([])
+  const [isQualifiedStagesVisible, setIsQualifiedStagesVisible] = useState(false)
   const [usersList, setUsersList] = useState([])
   const [usersLoading, setUsersLoading] = useState(false)
   const [userSearch, setUserSearch] = useState('')
@@ -1795,33 +1796,48 @@ export default function DashboardPage() {
                         })}
 
                         {group.title === 'RD Station' && (
-                          <div className="input-group">
-                            <label>Etapas qualificadas do pipeline</label>
-                            <p className="field-helper">
-                              Selecione quais etapas devem contar como qualificadas. O mini funil e as taxas do CRM vão usar essa definição com base nas criações do período.
-                            </p>
-                            <div className="stage-selector">
-                              {rdSummary?.availableStages?.length ? (
-                                rdSummary.availableStages.map((stage) => {
-                                  const checked = selectedQualifiedStages.includes(stage)
+                          <div className="qualification-config">
+                            <button
+                              type="button"
+                              className="qualification-toggle"
+                              onClick={() => setIsQualifiedStagesVisible((current) => !current)}
+                            >
+                              <div>
+                                <strong>Etapas qualificadas do pipeline</strong>
+                                <span>Configuração operacional usada nos cálculos de qualificação e taxas do CRM. Não aparece no dashboard final.</span>
+                              </div>
+                              <i className={`bx ${isQualifiedStagesVisible ? 'bx-chevron-up' : 'bx-chevron-down'}`}></i>
+                            </button>
 
-                                  return (
-                                    <label key={stage} className={`stage-chip ${checked ? 'active' : ''}`}>
-                                      <input
-                                        type="checkbox"
-                                        checked={checked}
-                                        onChange={() => handleQualifiedStageToggle(stage)}
-                                      />
-                                      <span>{stage}</span>
-                                    </label>
-                                  )
-                                })
-                              ) : (
-                                <div className="stage-empty">
-                                  Salve o token do RD e aguarde a leitura das negociações para listar as etapas disponíveis.
+                            {isQualifiedStagesVisible && (
+                              <div className="qualification-panel">
+                                <p className="field-helper">
+                                  Selecione as etapas que você considera qualificadas. Os cálculos em cascata do CRM passam a usar essa definição automaticamente.
+                                </p>
+                                <div className="stage-selector">
+                                  {rdSummary?.availableStages?.length ? (
+                                    rdSummary.availableStages.map((stage) => {
+                                      const checked = selectedQualifiedStages.includes(stage)
+
+                                      return (
+                                        <label key={stage} className={`stage-chip ${checked ? 'active' : ''}`}>
+                                          <input
+                                            type="checkbox"
+                                            checked={checked}
+                                            onChange={() => handleQualifiedStageToggle(stage)}
+                                          />
+                                          <span>{stage}</span>
+                                        </label>
+                                      )
+                                    })
+                                  ) : (
+                                    <div className="stage-empty">
+                                      Salve o token do RD e aguarde a leitura das negociações para listar automaticamente as etapas do pipeline.
+                                    </div>
+                                  )}
                                 </div>
-                              )}
-                            </div>
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>
@@ -4124,6 +4140,52 @@ export default function DashboardPage() {
           display: flex;
           flex-wrap: wrap;
           gap: 10px;
+        }
+
+        .qualification-config {
+          margin-top: 8px;
+        }
+
+        .qualification-toggle {
+          width: 100%;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 16px;
+          padding: 16px 18px;
+          border-radius: 16px;
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          background: rgba(255, 255, 255, 0.03);
+          color: var(--text-primary);
+          cursor: pointer;
+          text-align: left;
+          font: inherit;
+        }
+
+        .qualification-toggle strong {
+          display: block;
+          margin-bottom: 4px;
+          font-size: 15px;
+        }
+
+        .qualification-toggle span {
+          color: var(--text-muted);
+          font-size: 13px;
+          line-height: 1.5;
+        }
+
+        .qualification-toggle i {
+          font-size: 20px;
+          color: var(--text-secondary);
+          flex: 0 0 auto;
+        }
+
+        .qualification-panel {
+          margin-top: 12px;
+          padding: 16px 18px;
+          border-radius: 16px;
+          border: 1px solid rgba(255, 255, 255, 0.06);
+          background: rgba(255, 255, 255, 0.02);
         }
 
         .stage-chip {
