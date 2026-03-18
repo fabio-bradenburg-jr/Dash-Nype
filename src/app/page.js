@@ -374,18 +374,36 @@ export default function DashboardPage() {
     () => getAvailableMetaResultFilters(campaigns),
     [campaigns]
   )
-  const availableMetaCampaignOptions = useMemo(
-    () =>
-      campaigns
-        .filter((campaign) => Number(campaign.spend || 0) > 0)
-        .map((campaign) => ({
-          id: campaign.id,
-          name: campaign.name || 'Campanha sem nome',
-        }))
-        .filter((campaign) => campaign.id)
-        .sort((campaignA, campaignB) => campaignA.name.localeCompare(campaignB.name, 'pt-BR')),
-    [campaigns]
-  )
+  const availableMetaCampaignOptions = useMemo(() => {
+    const campaignMap = new Map()
+
+    campaigns.forEach((campaign) => {
+      if (!campaign?.id) return
+      campaignMap.set(campaign.id, {
+        id: campaign.id,
+        name: campaign.name || 'Campanha sem nome',
+        spend: Number(campaign.spend || 0),
+        hasSpendInfo: true,
+      })
+    })
+
+    metaHierarchy.forEach((item) => {
+      if (!item?.campaignId) return
+      if (!campaignMap.has(item.campaignId)) {
+        campaignMap.set(item.campaignId, {
+          id: item.campaignId,
+          name: item.campaignName || 'Campanha sem nome',
+          spend: 0,
+          hasSpendInfo: false,
+        })
+      }
+    })
+
+    return Array.from(campaignMap.values())
+      .filter((campaign) => campaign.hasSpendInfo ? campaign.spend > 0 : true)
+      .map(({ id, name }) => ({ id, name }))
+      .sort((campaignA, campaignB) => campaignA.name.localeCompare(campaignB.name, 'pt-BR'))
+  }, [campaigns, metaHierarchy])
   const activeRdLeadSources = useMemo(() => {
     const sources = rdSummary?.availableSources || []
     if (!sources.length) return []
