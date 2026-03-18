@@ -741,7 +741,12 @@ export async function GET(request) {
         const sourceMatchesFilter = !hasLeadSourceFilter || normalizedLeadSources.has(normalizeLabel(sourceLabel))
         const stageLabel = getStageKey(deal)
         const stageSequence = stageSequenceMap.get(normalizeLabel(stageLabel))
+        const createdOpportunityInRange = contactCreatedInRange || dealCreatedInRange
         const shouldCountWonByClosingDate = type === 'won' && dealClosedInRange
+        const shouldCountWonByCreationDate =
+          type === 'won' &&
+          createdOpportunityInRange &&
+          sourceMatchesFilter
         const shouldCountLostByClosingDate = type === 'lost' && dealClosedInRange
         const shouldCountOpenByMovementDate = type === 'open' && dealMovedInRange
         const isQualifiedStage = hasQualifiedStageFilter
@@ -806,9 +811,14 @@ export async function GET(request) {
           accumulator.stageStats[stageLabel].wonDeals += 1
           accumulator.stageStats[stageLabel].wonRevenue += amount
 
-          if (contactCreatedInRange && relatedContactId && sourceMatchesFilter) {
+          if (relatedContactId && sourceMatchesFilter) {
             accumulator.contactsWithWonDeals.add(relatedContactId)
+          }
+
+          if (shouldCountWonByCreationDate && relatedContactId) {
             accumulator.createdPeriodWonContacts.add(relatedContactId)
+          } else if (shouldCountWonByCreationDate && !relatedContactId) {
+            accumulator.createdPeriodWonContacts.add(`deal:${deal?.id || deal?.uuid || dealCreatedAt || Math.random()}`)
           }
 
           const leadToWonDays = diffInDays(contactCreatedAt, dealClosedAt)
