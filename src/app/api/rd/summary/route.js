@@ -576,6 +576,29 @@ function getDealRelatedContactId(deal) {
     .find(Boolean) || ''
 }
 
+function getContactKey(contact) {
+  const identifier = getContactIdentifiers(contact)[0]
+  if (identifier) return `contact:${identifier}`
+
+  const email = `${contact?.email || contact?.emails?.[0]?.email || contact?.emails?.[0] || ''}`.trim().toLowerCase()
+  if (email) return `contact:email:${email}`
+
+  const phone = `${contact?.phone || contact?.mobile_phone || contact?.phones?.[0]?.phone || contact?.phones?.[0] || ''}`
+    .replace(/\D/g, '')
+    .trim()
+  if (phone) return `contact:phone:${phone}`
+
+  const name = normalizeLabel(contact?.name || contact?.full_name || contact?.title || '')
+  if (name) return `contact:name:${name}`
+
+  return ''
+}
+
+function getDealKey(deal, fallback = '') {
+  const identifier = `${deal?.id || deal?.uuid || deal?.deal_id || fallback || ''}`.trim()
+  return identifier ? `deal:${identifier}` : ''
+}
+
 export async function GET(request) {
   try {
     const token = getRdToken(request)
@@ -773,13 +796,12 @@ export async function GET(request) {
           sourceMatchesFilter
         const shouldCountLostByClosingDate = type === 'lost' && dealClosedInRange
         const shouldCountOpenByMovementDate = type === 'open' && dealMovedInRange
-        const isQualifiedStage = hasQualifiedStageFilter
+        const hasReachedQualifiedStage = hasQualifiedStageFilter
           ? (
             normalizedQualifiedStages.has(normalizeLabel(stageLabel)) ||
             (qualifiedStageThreshold !== null &&
               stageSequence !== undefined &&
-              stageSequence >= qualifiedStageThreshold &&
-              type !== 'lost')
+              stageSequence >= qualifiedStageThreshold)
           )
           : type !== 'lost'
 
@@ -808,27 +830,43 @@ export async function GET(request) {
         if ((dealMovedInRange || dealCreatedInRange) && sourceMatchesFilter) {
           accumulator.createdDeals += 1
 
-          if (isQualifiedStage || type === 'won') {
+          if (hasReachedQualifiedStage || type === 'won') {
             accumulator.qualifiedDeals += 1
           }
         }
 
-        if ((dealMovedInRange || dealCreatedInRange) && (contactCreatedInRange || contactMovedInRange) && relatedContactId && sourceMatchesFilter && (isQualifiedStage || type === 'won')) {
-          accumulator.contactsWithQualifiedDeals.add(relatedContactId)
+        const relatedContactKey = getContactKey(relatedContact)
+        const dealKey = getDealKey(
+          deal,
+          dealCreatedAt?.toISOString?.() || dealClosedAt?.toISOString?.() || stageLabel
+        )
+
+        if ((dealMovedInRange || dealCreatedInRange) && (contactCreatedInRange || contactMovedInRange) && relatedContactKey && sourceMatchesFilter && (hasReachedQualifiedStage || type === 'won')) {
+          accumulator.contactsWithQualifiedDeals.add(relatedContactKey)
         }
 
-        if (contactCreatedInRange && relatedContactId && sourceMatchesFilter && (isQualifiedStage || type === 'won')) {
-          accumulator.createdPeriodQualifiedContacts.add(relatedContactId)
-        } else if (!relatedContactId && dealCreatedInRange && sourceMatchesFilter && (isQualifiedStage || type === 'won')) {
-          accumulator.createdPeriodQualifiedContacts.add(`deal:${deal?.id || deal?.uuid || dealCreatedAt?.toISOString?.() || stageLabel}`)
+        if (createdOpportunityInRange && sourceMatchesFilter && (hasReachedQualifiedStage || type === 'won')) {
+          if (relatedContactKey) {
+            accumulator.createdPeriodQualifiedContacts.add(relatedContactKey)
+          } else if (dealCreatedInRange && dealKey) {
+            accumulator.createdPeriodQualifiedContacts.add(dealKey)
+          }
         }
 
-        if ((dealMovedInRange || dealCreatedInRange) && (contactCreatedInRange || contactMovedInRange) && relatedContactId && sourceMatchesFilter) {
-          accumulator.contactsWithDeals.add(relatedContactId)
+        if ((dealMovedInRange || dealCreatedInRange) && (contactCreatedInRange || contactMovedInRange) && relatedContactKey && sourceMatchesFilter) {
+          accumulator.contactsWithDeals.add(relatedContactKey)
         }
 
-        if (dealMovedInRange && relatedContactId && sourceMatchesFilter) {
-          accumulator.contactsMoved.add(relatedContactId)
+        if (dealMovedInRange && relatedContactKey && sourceMatchesFilter) {
+          accumulator.contactsMoved.add(relatedContactKey)
+        }
+
+        if (shouldCountWonByCreationDate) {
+          if (relatedContactKey) {
+            accumulator.createdPeriodWonContacts.add(relatedContactKey)
+          } else if (dealKey) {
+            accumulator.createdPeriodWonContacts.add(dealKey)
+          }
         }
 
         if (shouldCountWonByClosingDate) {
@@ -837,14 +875,8 @@ export async function GET(request) {
           accumulator.stageStats[stageLabel].wonDeals += 1
           accumulator.stageStats[stageLabel].wonRevenue += amount
 
-          if (relatedContactId && sourceMatchesFilter) {
-            accumulator.contactsWithWonDeals.add(relatedContactId)
-          }
-
-          if (shouldCountWonByCreationDate && relatedContactId) {
-            accumulator.createdPeriodWonContacts.add(relatedContactId)
-          } else if (shouldCountWonByCreationDate && !relatedContactId) {
-            accumulator.createdPeriodWonContacts.add(`deal:${deal?.id || deal?.uuid || dealCreatedAt || Math.random()}`)
+          if (relatedContactKey && sourceMatchesFilter) {
+            accumulator.contactsWithWonDeals.add(relatedContactKey)
           }
 
           const leadToWonDays = diffInDays(contactCreatedAt, dealClosedAt)
@@ -875,6 +907,14 @@ export async function GET(request) {
 
         if ((shouldCountWonByClosingDate || shouldCountLostByClosingDate)) {
           accumulator.closedDeals += 1
+        }
+
+        if (type === 'lost' && createdOpportunityInRange && sourceMatchesFilter && hasReachedQualifiedStage) {
+          if (relatedContactKey) {
+            accumulator.createdPeriodLostContacts.add(relatedContactKey)
+          } else if (dealKey) {
+            accumulator.createdPeriodLostContacts.add(dealKey)
+          }
         }
 
         if (owner) {
@@ -918,6 +958,7 @@ export async function GET(request) {
         contactsWithWonDeals: new Set(),
         createdPeriodQualifiedContacts: new Set(),
         createdPeriodWonContacts: new Set(),
+        createdPeriodLostContacts: new Set(),
       }
     )
 
@@ -927,6 +968,7 @@ export async function GET(request) {
     const opportunityCount = hasLeadSourceFilter ? leadCountInPeriodBySource : leadCountInPeriod
     const qualifiedOpportunityCount = summary.createdPeriodQualifiedContacts.size
     const wonOpportunityCount = summary.createdPeriodWonContacts.size
+    const lostOpportunityCount = summary.createdPeriodLostContacts.size
     const leadRateBase = opportunityCount
     const qualifiedRateBase = qualifiedOpportunityCount
     const avgTicketWon = summary.wonDeals > 0 ? summary.wonRevenue / summary.wonDeals : 0
@@ -968,6 +1010,7 @@ export async function GET(request) {
       opportunityCount,
       qualifiedOpportunityCount,
       wonOpportunityCount,
+      lostOpportunityCount,
       contactsMoved: summary.contactsMoved.size,
       lostContacts: summary.lostContacts.size,
       ...summary,

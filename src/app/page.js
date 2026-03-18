@@ -1469,7 +1469,7 @@ export default function DashboardPage() {
     { title: 'Taxa de oportunidade para qualificados', value: formatPercent(rdSummary?.leadToQualifiedRate || 0), icon: 'bx-transfer-alt', tone: 'cyan' },
     { title: 'Taxa de qualificados para venda', value: formatPercent(rdSummary?.qualifiedToWonRate || 0), icon: 'bx-badge-check', tone: 'emerald' },
     { title: 'Taxa de oportunidade para venda', value: formatPercent(rdSummary?.leadToWonRate || 0), icon: 'bx-line-chart', tone: 'blue' },
-    { title: 'Negócios perdidos', value: formatNumber(rdSummary?.lostDeals || 0), icon: 'bx-x-circle', tone: 'pink' },
+    { title: 'Negócios perdidos', value: formatNumber(rdSummary?.lostOpportunityCount || 0), icon: 'bx-x-circle', tone: 'pink' },
   ]
   const rdRevenueKpis = [
     { title: 'Vendas por fechamento', value: formatNumber(rdSummary?.wonDeals || 0), icon: 'bx-calendar-check', tone: 'emerald' },
