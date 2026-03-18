@@ -552,6 +552,30 @@ function getStageKey(deal) {
   return getDealStageLabel(deal) || 'Sem etapa definida'
 }
 
+function getContactIdentifiers(contact) {
+  return [
+    contact?.id,
+    contact?.uuid,
+    contact?.contact_id,
+    contact?.external_id,
+  ]
+    .map((value) => `${value || ''}`.trim())
+    .filter(Boolean)
+}
+
+function getDealRelatedContactId(deal) {
+  return [
+    deal?.contact_id,
+    deal?.contact?.id,
+    deal?.contact?.uuid,
+    deal?.deal_contact_id,
+    deal?.contact_uuid,
+    deal?.contact_external_id,
+  ]
+    .map((value) => `${value || ''}`.trim())
+    .find(Boolean) || ''
+}
+
 export async function GET(request) {
   try {
     const token = getRdToken(request)
@@ -601,12 +625,12 @@ export async function GET(request) {
 
     const contacts = normalizeCollection(contactsPayload, 'contacts')
     const deals = normalizeCollection(dealsPayload, 'deals')
-    const contactsById = new Map(
-      contacts.map((contact) => [
-        `${contact?.id || contact?.uuid || contact?.contact_id || ''}`,
-        contact,
-      ])
-    )
+    const contactsById = new Map()
+    contacts.forEach((contact) => {
+      getContactIdentifiers(contact).forEach((identifier) => {
+        contactsById.set(identifier, contact)
+      })
+    })
     const sellersMap = new Map()
 
     deals.forEach((deal) => {
@@ -678,8 +702,8 @@ export async function GET(request) {
       new Set([
         ...contacts.map((contact) => buildSourceLabel(null, contact)),
         ...deals.map((deal) => {
-          const relatedContactId = `${deal?.contact_id || deal?.contact?.id || deal?.contact?.uuid || deal?.deal_contact_id || ''}`
-          return buildSourceLabel(deal, contactsById.get(relatedContactId))
+          const relatedContactId = getDealRelatedContactId(deal)
+          return buildSourceLabel(deal, contactsById.get(relatedContactId) || deal?.contact || null)
         }),
       ].filter(Boolean))
     ).sort((a, b) => a.localeCompare(b, 'pt-BR'))
@@ -709,8 +733,8 @@ export async function GET(request) {
       const dealCreatedAt = getDealCreatedAt(deal)
       const dealClosedAt = getDealClosedAt(deal)
       if (!isWithinRange(dealClosedAt, selectedRange)) return
-      const relatedContactId = `${deal?.contact_id || deal?.contact?.id || deal?.contact?.uuid || deal?.deal_contact_id || ''}`
-      const relatedContact = contactsById.get(relatedContactId)
+      const relatedContactId = getDealRelatedContactId(deal)
+      const relatedContact = contactsById.get(relatedContactId) || deal?.contact || null
       const contactCreatedAt = getContactCreatedAt(relatedContact)
 
       const leadToWonDays = diffInDays(contactCreatedAt, dealClosedAt)
@@ -731,8 +755,8 @@ export async function GET(request) {
         const dealCreatedInRange = isWithinRange(dealCreatedAt, selectedRange)
         const dealClosedInRange = isWithinRange(dealClosedAt, selectedRange)
         const dealMovedInRange = isWithinRange(dealMovedAt, selectedRange)
-        const relatedContactId = `${deal?.contact_id || deal?.contact?.id || deal?.contact?.uuid || deal?.deal_contact_id || ''}`
-        const relatedContact = contactsById.get(relatedContactId)
+        const relatedContactId = getDealRelatedContactId(deal)
+        const relatedContact = contactsById.get(relatedContactId) || deal?.contact || null
         const contactCreatedAt = getContactCreatedAt(relatedContact)
         const contactUpdatedAt = getContactUpdatedAt(relatedContact)
         const contactCreatedInRange = isWithinRange(contactCreatedAt, selectedRange)
@@ -795,6 +819,8 @@ export async function GET(request) {
 
         if (contactCreatedInRange && relatedContactId && sourceMatchesFilter && (isQualifiedStage || type === 'won')) {
           accumulator.createdPeriodQualifiedContacts.add(relatedContactId)
+        } else if (!relatedContactId && dealCreatedInRange && sourceMatchesFilter && (isQualifiedStage || type === 'won')) {
+          accumulator.createdPeriodQualifiedContacts.add(`deal:${deal?.id || deal?.uuid || dealCreatedAt?.toISOString?.() || stageLabel}`)
         }
 
         if ((dealMovedInRange || dealCreatedInRange) && (contactCreatedInRange || contactMovedInRange) && relatedContactId && sourceMatchesFilter) {
