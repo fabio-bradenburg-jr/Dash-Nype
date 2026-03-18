@@ -875,6 +875,7 @@ export async function GET(request) {
           } else if (dealKey) {
             accumulator.createdPeriodWonContacts.add(dealKey)
           }
+          accumulator.createdPeriodWonRevenue += amount
         }
 
         if (shouldCountWonByClosingDate) {
@@ -900,6 +901,11 @@ export async function GET(request) {
           }
           accumulator.sourceStats[sourceLabel].wonDeals += 1
           accumulator.sourceStats[sourceLabel].wonRevenue += amount
+
+          if (!createdOpportunityInRange || !sourceMatchesFilter) {
+            accumulator.wonDealsFromPreviousCohorts += 1
+            accumulator.wonRevenueFromPreviousCohorts += amount
+          }
         } else if (shouldCountLostByClosingDate) {
           accumulator.lostDeals += 1
           accumulator.stageStats[stageLabel].lostDeals += 1
@@ -956,6 +962,9 @@ export async function GET(request) {
         qualifiedDeals: 0,
         openPipeline: 0,
         wonRevenue: 0,
+        createdPeriodWonRevenue: 0,
+        wonDealsFromPreviousCohorts: 0,
+        wonRevenueFromPreviousCohorts: 0,
         sellerStats: {},
         sourceStats: {},
         stageStats: {},
@@ -986,7 +995,12 @@ export async function GET(request) {
     const lostOpportunityCount = summary.createdPeriodLostContacts.size
     const leadRateBase = opportunityCount
     const qualifiedRateBase = qualifiedOpportunityCount
+    const avgTicketWonByCreation = wonOpportunityCount > 0 ? summary.createdPeriodWonRevenue / wonOpportunityCount : 0
     const avgTicketWon = summary.wonDeals > 0 ? summary.wonRevenue / summary.wonDeals : 0
+    const avgTicketWonPreviousCohorts =
+      summary.wonDealsFromPreviousCohorts > 0
+        ? summary.wonRevenueFromPreviousCohorts / summary.wonDealsFromPreviousCohorts
+        : 0
     const closeRate = summary.closedDeals > 0 ? (summary.wonDeals / summary.closedDeals) * 100 : 0
     const qualifiedToWonRate = qualifiedRateBase > 0 ? (wonOpportunityCount / qualifiedRateBase) * 100 : 0
     const leadToQualifiedRate = leadRateBase > 0 ? (qualifiedOpportunityCount / leadRateBase) * 100 : 0
@@ -1026,10 +1040,13 @@ export async function GET(request) {
       qualifiedOpportunityCount,
       wonOpportunityCount,
       lostOpportunityCount,
+      wonOpportunityRevenue: summary.createdPeriodWonRevenue,
       contactsMoved: summary.contactsMoved.size,
       lostContacts: summary.lostContacts.size,
       ...summary,
+      avgTicketWonByCreation,
       avgTicketWon,
+      avgTicketWonPreviousCohorts,
       closeRate,
       availableStages,
       availableSources,
@@ -1037,6 +1054,8 @@ export async function GET(request) {
       qualifiedStages,
       qualifiedDeals: summary.qualifiedDeals,
       qualifiedContacts: summary.contactsWithQualifiedDeals.size,
+      wonDealsFromPreviousCohorts: summary.wonDealsFromPreviousCohorts,
+      wonRevenueFromPreviousCohorts: summary.wonRevenueFromPreviousCohorts,
       stageRanking,
       leadToQualifiedRate,
       qualifiedToWonRate,

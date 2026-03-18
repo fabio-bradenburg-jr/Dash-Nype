@@ -1465,16 +1465,21 @@ export default function DashboardPage() {
   const rdQualificationKpis = [
     { title: 'Oportunidades', value: formatNumber(rdSummary?.opportunityCount || 0), icon: 'bx-bulb', tone: 'blue' },
     { title: 'Qualificados', value: formatNumber(rdSummary?.qualifiedOpportunityCount || 0), icon: 'bx-filter-alt', tone: 'emerald' },
-    { title: 'Vendas no período', value: formatNumber(rdSummary?.wonOpportunityCount || 0), icon: 'bx-badge-check', tone: 'emerald' },
+    { title: 'Vendas da safra criada no período', value: formatNumber(rdSummary?.wonOpportunityCount || 0), icon: 'bx-badge-check', tone: 'emerald' },
+    { title: 'Faturamento da safra criada', value: formatCurrency(rdSummary?.wonOpportunityRevenue || 0), icon: 'bx-wallet-alt', tone: 'orange' },
+    { title: 'Ticket médio da safra criada', value: formatCurrency(rdSummary?.avgTicketWonByCreation || 0), icon: 'bx-receipt', tone: 'gold' },
     { title: 'Taxa de oportunidade para qualificados', value: formatPercent(rdSummary?.leadToQualifiedRate || 0), icon: 'bx-transfer-alt', tone: 'cyan' },
     { title: 'Taxa de qualificados para venda', value: formatPercent(rdSummary?.qualifiedToWonRate || 0), icon: 'bx-badge-check', tone: 'emerald' },
     { title: 'Taxa de oportunidade para venda', value: formatPercent(rdSummary?.leadToWonRate || 0), icon: 'bx-line-chart', tone: 'blue' },
     { title: 'Negócios perdidos', value: formatNumber(rdSummary?.lostOpportunityCount || 0), icon: 'bx-x-circle', tone: 'pink' },
   ]
   const rdRevenueKpis = [
-    { title: 'Vendas por fechamento', value: formatNumber(rdSummary?.wonDeals || 0), icon: 'bx-calendar-check', tone: 'emerald' },
-    { title: 'Faturamento', value: formatCurrency(rdSummary?.wonRevenue || 0), icon: 'bx-wallet-alt', tone: 'orange' },
-    { title: 'Ticket médio', value: formatCurrency(rdSummary?.avgTicketWon || 0), icon: 'bx-receipt', tone: 'gold' },
+    { title: 'Vendas fechadas no período', value: formatNumber(rdSummary?.wonDeals || 0), icon: 'bx-calendar-check', tone: 'emerald' },
+    { title: 'Vendas de safras anteriores fechadas no período', value: formatNumber(rdSummary?.wonDealsFromPreviousCohorts || 0), icon: 'bx-history', tone: 'blue' },
+    { title: 'Faturamento por fechamento', value: formatCurrency(rdSummary?.wonRevenue || 0), icon: 'bx-wallet-alt', tone: 'orange' },
+    { title: 'Ticket médio por fechamento', value: formatCurrency(rdSummary?.avgTicketWon || 0), icon: 'bx-receipt', tone: 'gold' },
+    { title: 'Faturamento de safras anteriores fechadas', value: formatCurrency(rdSummary?.wonRevenueFromPreviousCohorts || 0), icon: 'bx-coin-stack', tone: 'orange' },
+    { title: 'Ticket médio de safras anteriores', value: formatCurrency(rdSummary?.avgTicketWonPreviousCohorts || 0), icon: 'bx-spreadsheet', tone: 'gold' },
   ]
   const userAvatarFallback = `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.user_metadata?.full_name || user?.email || 'Usuario')}&background=0D8ABC&color=fff`
   const userAvatarSrc = user?.user_metadata?.avatar_url || userAvatarFallback
@@ -2640,13 +2645,13 @@ export default function DashboardPage() {
                         {[
                           {
                             title: 'Qualificação e conversão',
-                            description: 'Leitura da progressão entre oportunidades, qualificação e vendas.',
+                            description: 'Leitura da safra criada no período selecionado: oportunidades, qualificação, perdas e vendas dessa mesma base.',
                             kpis: rdQualificationKpis,
                             withSourceFilter: true,
                           },
                           {
                             title: 'Fechamento e receita',
-                            description: 'Indicadores financeiros consolidados das vendas fechadas no período.',
+                            description: 'Leitura por data de fechamento, incluindo vendas que podem ter sido criadas em períodos anteriores.',
                             kpis: rdRevenueKpis,
                           },
                         ].map((group) => (
