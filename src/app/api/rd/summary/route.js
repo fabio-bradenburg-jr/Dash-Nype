@@ -667,6 +667,13 @@ export async function GET(request) {
 
       return (stageFirstSeenMap.get(a) || 0) - (stageFirstSeenMap.get(b) || 0)
     })
+    const stageSequenceMap = new Map(availableStages.map((stage, index) => [normalizeLabel(stage), index]))
+    const selectedQualifiedStageIndexes = qualifiedStages
+      .map((stage) => stageSequenceMap.get(normalizeLabel(stage)))
+      .filter((value) => value !== undefined)
+    const qualifiedStageThreshold = selectedQualifiedStageIndexes.length
+      ? Math.min(...selectedQualifiedStageIndexes)
+      : null
     const availableSources = Array.from(
       new Set([
         ...contacts.map((contact) => buildSourceLabel(null, contact)),
@@ -733,11 +740,18 @@ export async function GET(request) {
         const sourceLabel = buildSourceLabel(deal, relatedContact)
         const sourceMatchesFilter = !hasLeadSourceFilter || normalizedLeadSources.has(normalizeLabel(sourceLabel))
         const stageLabel = getStageKey(deal)
+        const stageSequence = stageSequenceMap.get(normalizeLabel(stageLabel))
         const shouldCountWonByClosingDate = type === 'won' && dealClosedInRange
         const shouldCountLostByClosingDate = type === 'lost' && dealClosedInRange
         const shouldCountOpenByMovementDate = type === 'open' && dealMovedInRange
         const isQualifiedStage = hasQualifiedStageFilter
-          ? normalizedQualifiedStages.has(normalizeLabel(stageLabel))
+          ? (
+            normalizedQualifiedStages.has(normalizeLabel(stageLabel)) ||
+            (qualifiedStageThreshold !== null &&
+              stageSequence !== undefined &&
+              stageSequence >= qualifiedStageThreshold &&
+              type !== 'lost')
+          )
           : type !== 'lost'
 
         const shouldTrackStage =
