@@ -1469,6 +1469,11 @@ export default function DashboardPage() {
     { title: 'Negócios ganhos', value: formatNumber(rdSummary?.wonDeals || 0), icon: 'bx-badge-check', tone: 'emerald' },
     { title: 'Negócios perdidos', value: formatNumber(rdSummary?.lostDeals || 0), icon: 'bx-x-circle', tone: 'pink' },
     { title: 'Negócios fechados', value: formatNumber(rdSummary?.closedDeals || 0), icon: 'bx-check-double', tone: 'cyan' },
+    { title: 'Oportunidades', value: formatNumber(rdSummary?.opportunityCount || 0), icon: 'bx-bulb', tone: 'blue' },
+    { title: 'Qualificados', value: formatNumber(rdSummary?.qualifiedOpportunityCount || 0), icon: 'bx-filter-alt', tone: 'emerald' },
+    { title: 'Oportunidade para qualificados', value: formatPercent(rdSummary?.leadToQualifiedRate || 0), icon: 'bx-transfer-alt', tone: 'cyan' },
+    { title: 'Qualificados para venda', value: formatPercent(rdSummary?.qualifiedToWonRate || 0), icon: 'bx-badge-check', tone: 'emerald' },
+    { title: 'Oportunidades para venda', value: formatPercent(rdSummary?.leadToWonRate || 0), icon: 'bx-line-chart', tone: 'blue' },
     { title: 'Receita ganha', value: formatCurrency(rdSummary?.wonRevenue || 0), icon: 'bx-wallet-alt', tone: 'orange' },
     { title: 'Ticket médio ganho', value: formatCurrency(rdSummary?.avgTicketWon || 0), icon: 'bx-receipt', tone: 'gold' },
   ]
