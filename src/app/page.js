@@ -2659,58 +2659,53 @@ export default function DashboardPage() {
                       </div>
                     </section>
 
-                    <section className="glass-panel grouped-results">
-                      <div className="section-header section-header-stack">
-                        <div>
-                          <h2>Indicadores para decisão</h2>
-                          <p className="chart-subtitle">Leituras de velocidade, conversão e qualidade da operação comercial para apoiar a próxima decisão.</p>
-                        </div>
-                      </div>
-
-                      {!!rdSummary?.availableSources?.length && (
-                        <div className="rd-source-filter-bar">
-                          <div>
-                            <h3>Fonte do lead para taxa de conversão</h3>
-                            <p>Todos começam marcados. A taxa considera os leads dessas fontes e quantos viraram venda no período.</p>
+                    {(!!rdSummary?.availableSources?.length || !!rdDecisionKpis.length) && (
+                      <section className="glass-panel grouped-results">
+                        {!!rdSummary?.availableSources?.length && (
+                          <div className="rd-source-filter-bar">
+                            <div>
+                              <h3>Fonte do lead para taxa de conversão</h3>
+                              <p>Todos começam marcados. A taxa considera os leads dessas fontes e quantos viraram venda no período.</p>
+                            </div>
+                            <div className="meta-filter-chip-row">
+                              {rdSummary.availableSources.map((source) => (
+                                <label
+                                  key={source}
+                                  className={`result-filter-chip ${activeRdLeadSources.includes(source) ? 'active' : ''}`}
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={activeRdLeadSources.includes(source)}
+                                    onChange={() => handleRdLeadSourceToggle(source)}
+                                  />
+                                  <span>{source}</span>
+                                </label>
+                              ))}
+                            </div>
                           </div>
-                          <div className="meta-filter-chip-row">
-                            {rdSummary.availableSources.map((source) => (
-                              <label
-                                key={source}
-                                className={`result-filter-chip ${activeRdLeadSources.includes(source) ? 'active' : ''}`}
-                              >
-                                <input
-                                  type="checkbox"
-                                  checked={activeRdLeadSources.includes(source)}
-                                  onChange={() => handleRdLeadSourceToggle(source)}
-                                />
-                                <span>{source}</span>
-                              </label>
-                            ))}
-                          </div>
-                        </div>
-                      )}
+                        )}
 
-                      {!!rdDecisionKpis.length && (
-                        <div className="kpi-grid compact-kpi-grid">
-                          {rdDecisionKpis.map((kpi) => (
-                            <div key={kpi.title} className="kpi-card glass-panel">
-                              <div className="kpi-header">
-                                <span className="kpi-title">{kpi.title}</span>
-                                <div className={`icon-box ${kpi.tone}`}>
-                                  <i className={`bx ${kpi.icon}`}></i>
+                        {!!rdDecisionKpis.length && (
+                          <div className="kpi-grid compact-kpi-grid">
+                            {rdDecisionKpis.map((kpi) => (
+                              <div key={kpi.title} className="kpi-card glass-panel">
+                                <div className="kpi-header">
+                                  <span className="kpi-title">{kpi.title}</span>
+                                  <div className={`icon-box ${kpi.tone}`}>
+                                    <i className={`bx ${kpi.icon}`}></i>
+                                  </div>
+                                </div>
+                                <div className="kpi-value">{kpi.value}</div>
+                                <div className="kpi-trend neutral">
+                                  <i className="bx bx-check-circle"></i>
+                                  <span>Leitura com base no vendedor e na integração selecionados</span>
                                 </div>
                               </div>
-                              <div className="kpi-value">{kpi.value}</div>
-                              <div className="kpi-trend neutral">
-                                <i className="bx bx-check-circle"></i>
-                                <span>Leitura com base no vendedor e na integração selecionados</span>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </section>
+                            ))}
+                          </div>
+                        )}
+                      </section>
+                    )}
 
                     {!!rdSummary?.sellerRanking?.length && (
                       <section className="glass-panel grouped-results">
