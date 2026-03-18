@@ -9,6 +9,25 @@ function getMetaToken(request) {
   return headerToken || bearerToken || process.env.META_ACCESS_TOKEN
 }
 
+function normalizeCampaign(campaign) {
+  const insight = campaign?.insights?.data?.[0] || {}
+
+  return {
+    id: campaign?.id || '',
+    name: campaign?.name || 'Campanha sem nome',
+    status: campaign?.status || '',
+    objective: campaign?.objective || '',
+    spend: Number(insight?.spend || 0),
+    impressions: Number(insight?.impressions || 0),
+    cpc: Number(insight?.cpc || 0),
+    actions: Array.isArray(insight?.actions) ? insight.actions : [],
+    action_values: Array.isArray(insight?.action_values) ? insight.action_values : [],
+    cost_per_action_type: Array.isArray(insight?.cost_per_action_type)
+      ? insight.cost_per_action_type
+      : [],
+  }
+}
+
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url)
@@ -37,8 +56,8 @@ export async function GET(request) {
       campaignsUrl,
       'A Meta demorou para responder ao carregar as campanhas. Tente novamente em alguns instantes.'
     )
-      
-    return NextResponse.json(data.data || [])
+
+    return NextResponse.json((data.data || []).map(normalizeCampaign))
   } catch (error) {
     console.error('Meta API Error:', error)
     return NextResponse.json({ error: normalizeMetaError(error) }, { status: 500 })
