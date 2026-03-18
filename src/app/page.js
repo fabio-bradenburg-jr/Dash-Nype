@@ -1462,18 +1462,21 @@ export default function DashboardPage() {
     },
   ].filter(Boolean)
 
-  const rdKpis = [
-    { title: 'Contatos movimentados', value: formatNumber(rdSummary?.contactsMoved || 0), icon: 'bx-user-voice', tone: 'blue' },
+  const rdOperationalKpis = [
     { title: 'Contatos perdidos', value: formatNumber(rdSummary?.lostContacts || 0), icon: 'bx-user-x', tone: 'pink' },
     { title: 'Negócios em aberto', value: formatNumber(rdSummary?.openDeals || 0), icon: 'bx-briefcase-alt-2', tone: 'purple' },
-    { title: 'Negócios ganhos', value: formatNumber(rdSummary?.wonDeals || 0), icon: 'bx-badge-check', tone: 'emerald' },
     { title: 'Negócios perdidos', value: formatNumber(rdSummary?.lostDeals || 0), icon: 'bx-x-circle', tone: 'pink' },
-    { title: 'Negócios fechados', value: formatNumber(rdSummary?.closedDeals || 0), icon: 'bx-check-double', tone: 'cyan' },
     { title: 'Oportunidades', value: formatNumber(rdSummary?.opportunityCount || 0), icon: 'bx-bulb', tone: 'blue' },
+  ]
+  const rdQualificationKpis = [
+    { title: 'Negócios ganhos', value: formatNumber(rdSummary?.wonDeals || 0), icon: 'bx-badge-check', tone: 'emerald' },
     { title: 'Qualificados', value: formatNumber(rdSummary?.qualifiedOpportunityCount || 0), icon: 'bx-filter-alt', tone: 'emerald' },
     { title: 'Oportunidade para qualificados', value: formatPercent(rdSummary?.leadToQualifiedRate || 0), icon: 'bx-transfer-alt', tone: 'cyan' },
     { title: 'Qualificados para venda', value: formatPercent(rdSummary?.qualifiedToWonRate || 0), icon: 'bx-badge-check', tone: 'emerald' },
     { title: 'Oportunidades para venda', value: formatPercent(rdSummary?.leadToWonRate || 0), icon: 'bx-line-chart', tone: 'blue' },
+  ]
+  const rdRevenueKpis = [
+    { title: 'Negócios fechados', value: formatNumber(rdSummary?.closedDeals || 0), icon: 'bx-check-double', tone: 'cyan' },
     { title: 'Receita ganha', value: formatCurrency(rdSummary?.wonRevenue || 0), icon: 'bx-wallet-alt', tone: 'orange' },
     { title: 'Ticket médio ganho', value: formatCurrency(rdSummary?.avgTicketWon || 0), icon: 'bx-receipt', tone: 'gold' },
   ]
@@ -2639,28 +2642,48 @@ export default function DashboardPage() {
                         </div>
                       </div>
 
-                      <div className="result-group">
-                        <div className="result-group-head">
-                          <h3>Pipeline e receita</h3>
-                          <p>Leitura consolidada do avanço comercial no CRM.</p>
-                        </div>
-                        <div className="kpi-grid compact-kpi-grid">
-                          {rdKpis.map((kpi) => (
-                            <div key={kpi.title} className="kpi-card glass-panel">
-                              <div className="kpi-header">
-                                <span className="kpi-title">{kpi.title}</span>
-                                <div className={`icon-box ${kpi.tone}`}>
-                                  <i className={`bx ${kpi.icon}`}></i>
-                                </div>
-                              </div>
-                              <div className="kpi-value">{kpi.value}</div>
-                              <div className="kpi-trend neutral">
-                                <i className="bx bx-check-circle"></i>
-                                <span>Atualizado conforme a integração configurada</span>
-                              </div>
+                      <div className="crm-groups-grid">
+                        {[
+                          {
+                            title: 'Operação comercial',
+                            description: 'Base operacional do período para leitura do funil e dos negócios em andamento.',
+                            kpis: rdOperationalKpis,
+                          },
+                          {
+                            title: 'Qualificação e conversão',
+                            description: 'Leitura da progressão entre oportunidades, qualificação e vendas.',
+                            kpis: rdQualificationKpis,
+                          },
+                          {
+                            title: 'Fechamento e receita',
+                            description: 'Indicadores finais de negócios concluídos e resultado financeiro.',
+                            kpis: rdRevenueKpis,
+                          },
+                        ].map((group) => (
+                          <div key={group.title} className="result-group crm-result-group">
+                            <div className="result-group-head">
+                              <h3>{group.title}</h3>
+                              <p>{group.description}</p>
                             </div>
-                          ))}
-                        </div>
+                            <div className="kpi-grid compact-kpi-grid">
+                              {group.kpis.map((kpi) => (
+                                <div key={kpi.title} className="kpi-card glass-panel">
+                                  <div className="kpi-header">
+                                    <span className="kpi-title">{kpi.title}</span>
+                                    <div className={`icon-box ${kpi.tone}`}>
+                                      <i className={`bx ${kpi.icon}`}></i>
+                                    </div>
+                                  </div>
+                                  <div className="kpi-value">{kpi.value}</div>
+                                  <div className="kpi-trend neutral">
+                                    <i className="bx bx-check-circle"></i>
+                                    <span>Atualizado conforme a integração configurada</span>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     </section>
 
@@ -3542,7 +3565,16 @@ export default function DashboardPage() {
         }
 
         .crm-groups-grid {
+          display: grid;
+          gap: 18px;
           margin-top: 18px;
+        }
+
+        .crm-result-group {
+          padding: 24px;
+          border-radius: 24px;
+          border: 1px solid rgba(255, 255, 255, 0.06);
+          background: rgba(255, 255, 255, 0.025);
         }
 
         .conversion-group-card {
