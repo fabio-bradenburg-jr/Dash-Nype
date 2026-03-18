@@ -22,20 +22,49 @@ function buildBaseParams({ token, datePreset, since, until, fields }) {
   return params
 }
 
-function appendCampaignFiltering(params, campaignIds = []) {
-  if (campaignIds.includes('__none__')) return
-  if (campaignIds.length === 0) return
+function appendMetaEntityFiltering(params, campaignIds = [], adsetIds = [], adIds = []) {
+  if (campaignIds.includes('__none__') || adsetIds.includes('__none__') || adIds.includes('__none__')) return
 
-  params.set(
-    'filtering',
-    JSON.stringify([
-      {
-        field: 'campaign.id',
-        operator: 'IN',
-        value: campaignIds,
-      },
-    ])
-  )
+  if (adIds.length > 0) {
+    params.set(
+      'filtering',
+      JSON.stringify([
+        {
+          field: 'ad.id',
+          operator: 'IN',
+          value: adIds,
+        },
+      ])
+    )
+    return
+  }
+
+  if (adsetIds.length > 0) {
+    params.set(
+      'filtering',
+      JSON.stringify([
+        {
+          field: 'adset.id',
+          operator: 'IN',
+          value: adsetIds,
+        },
+      ])
+    )
+    return
+  }
+
+  if (campaignIds.length > 0) {
+    params.set(
+      'filtering',
+      JSON.stringify([
+        {
+          field: 'campaign.id',
+          operator: 'IN',
+          value: campaignIds,
+        },
+      ])
+    )
+  }
 }
 
 function normalizeBreakdownRows(rows = [], labelKey) {
@@ -76,6 +105,8 @@ export async function GET(request) {
     const since = searchParams.get('since')
     const until = searchParams.get('until')
     const campaignIds = searchParams.getAll('campaign_ids').flatMap((value) => value.split(',')).filter(Boolean)
+    const adsetIds = searchParams.getAll('adset_ids').flatMap((value) => value.split(',')).filter(Boolean)
+    const adIds = searchParams.getAll('ad_ids').flatMap((value) => value.split(',')).filter(Boolean)
     const token = getMetaToken(request)
 
     if (!token || !adAccountId) {
@@ -85,7 +116,7 @@ export async function GET(request) {
     const id = adAccountId.startsWith('act_') ? adAccountId : `act_${adAccountId}`
     const insightFields = 'spend,impressions,clicks,cpc,ctr,actions,action_values,cost_per_action_type'
 
-    if (campaignIds.includes('__none__')) {
+    if (campaignIds.includes('__none__') || adsetIds.includes('__none__') || adIds.includes('__none__')) {
       return NextResponse.json({
         ages: [],
         cities: [],
@@ -95,17 +126,17 @@ export async function GET(request) {
 
     const ageParams = buildBaseParams({ token, datePreset, since, until, fields: insightFields })
     ageParams.set('breakdowns', 'age')
-    appendCampaignFiltering(ageParams, campaignIds)
+    appendMetaEntityFiltering(ageParams, campaignIds, adsetIds, adIds)
 
     const cityParams = buildBaseParams({ token, datePreset, since, until, fields: insightFields })
     cityParams.set('breakdowns', 'city')
-    appendCampaignFiltering(cityParams, campaignIds)
+    appendMetaEntityFiltering(cityParams, campaignIds, adsetIds, adIds)
 
     const creativeTimeFilter = datePreset === 'custom' && since && until
       ? `insights.time_range({"since":"${since}","until":"${until}"})`
       : `insights.date_preset(${datePreset})`
 
-    const creativeUrl = `https://graph.facebook.com/v19.0/${id}/ads?fields=name,campaign_id,creative{name,thumbnail_url,image_url,effective_object_story_id,object_story_spec},${creativeTimeFilter}{spend,impressions,clicks,cpc,ctr,actions,action_values,cost_per_action_type}&limit=100&access_token=${token}`
+    const creativeUrl = `https://graph.facebook.com/v19.0/${id}/ads?fields=id,name,campaign_id,adset_id,creative{name,thumbnail_url,image_url,effective_object_story_id,object_story_spec},${creativeTimeFilter}{spend,impressions,clicks,cpc,ctr,actions,action_values,cost_per_action_type}&limit=100&access_token=${token}`
 
     const [ageData, cityData, creativeData] = await Promise.all([
       fetchMetaJson(
@@ -125,7 +156,7 @@ export async function GET(request) {
     if (cityData.error) {
       const regionParams = buildBaseParams({ token, datePreset, since, until, fields: insightFields })
       regionParams.set('breakdowns', 'region')
-      appendCampaignFiltering(regionParams, campaignIds)
+      appendMetaEntityFiltering(regionParams, campaignIds, adsetIds, adIds)
       const regionData = await fetchMetaJson(
         `https://graph.facebook.com/v19.0/${id}/insights?${regionParams.toString()}`,
         'A Meta demorou para responder ao carregar os rankings detalhados. Tente novamente em alguns instantes.'
@@ -139,7 +170,12 @@ export async function GET(request) {
     if (creativeData.error) throw new Error(creativeData.error.message)
 
     const creatives = (creativeData.data || [])
-      .filter((ad) => campaignIds.length === 0 || campaignIds.includes(ad.campaign_id))
+      .filter((ad) => {
+        if (adIds.length > 0) return adIds.includes(ad.id)
+        if (adsetIds.length > 0) return adsetIds.includes(ad.adset_id)
+        if (campaignIds.length > 0) return campaignIds.includes(ad.campaign_id)
+        return true
+      })
       .map((ad) => {
         const insight = formatInsightsWithConversions(ad.insights?.data?.[0] || {})
         return {

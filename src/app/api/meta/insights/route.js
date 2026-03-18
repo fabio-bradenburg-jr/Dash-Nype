@@ -18,6 +18,8 @@ export async function GET(request) {
     const since = searchParams.get('since')
     const until = searchParams.get('until')
     const campaignIds = searchParams.getAll('campaign_ids').flatMap((value) => value.split(',')).filter(Boolean)
+    const adsetIds = searchParams.getAll('adset_ids').flatMap((value) => value.split(',')).filter(Boolean)
+    const adIds = searchParams.getAll('ad_ids').flatMap((value) => value.split(',')).filter(Boolean)
     
     const token = getMetaToken(request)
 
@@ -38,14 +40,36 @@ export async function GET(request) {
       baseParams.set('date_preset', datePreset)
     }
 
-    if (campaignIds.includes('__none__')) {
+    if (campaignIds.includes('__none__') || adsetIds.includes('__none__') || adIds.includes('__none__')) {
       return NextResponse.json({
         summary: formatInsightsWithConversions(null),
         daily: [],
       })
     }
 
-    if (campaignIds.length > 0) {
+    if (adIds.length > 0) {
+      baseParams.set(
+        'filtering',
+        JSON.stringify([
+          {
+            field: 'ad.id',
+            operator: 'IN',
+            value: adIds,
+          },
+        ])
+      )
+    } else if (adsetIds.length > 0) {
+      baseParams.set(
+        'filtering',
+        JSON.stringify([
+          {
+            field: 'adset.id',
+            operator: 'IN',
+            value: adsetIds,
+          },
+        ])
+      )
+    } else if (campaignIds.length > 0) {
       baseParams.set(
         'filtering',
         JSON.stringify([
