@@ -1476,11 +1476,6 @@ export default function DashboardPage() {
     { title: 'Negócios criados', value: formatNumber(rdSummary?.createdDeals || 0), icon: 'bx-git-branch', tone: 'blue' },
     { title: 'Qualificados', value: formatNumber(rdSummary?.qualifiedDeals || 0), icon: 'bx-filter-alt', tone: 'emerald' },
     { title: 'Ticket médio ganho', value: formatCurrency(rdSummary?.avgTicketWon || 0), icon: 'bx-receipt', tone: 'gold' },
-    { title: 'Taxa de fechamento', value: formatPercent(rdSummary?.closeRate || 0), icon: 'bx-target-lock', tone: 'pink' },
-    { title: 'Taxa de conversão', value: formatPercent(rdSummary?.sourceConversionRate || 0), icon: 'bx-line-chart', tone: 'blue' },
-    { title: 'Lead para qualificação', value: formatPercent(rdSummary?.leadToQualifiedRate || 0), icon: 'bx-trending-up', tone: 'blue' },
-    { title: 'Qualificação para venda', value: formatPercent(rdSummary?.qualifiedToWonRate || 0), icon: 'bx-badge-check', tone: 'emerald' },
-    { title: 'Tempo até a compra', value: formatDurationDays(rdSummary?.avgLeadToWonDays || 0), icon: 'bx-time-five', tone: 'orange' },
   ]
   const userAvatarFallback = `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.user_metadata?.full_name || user?.email || 'Usuario')}&background=0D8ABC&color=fff`
   const userAvatarSrc = user?.user_metadata?.avatar_url || userAvatarFallback
