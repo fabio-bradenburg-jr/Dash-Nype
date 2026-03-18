@@ -377,6 +377,7 @@ export default function DashboardPage() {
   const availableMetaCampaignOptions = useMemo(
     () =>
       campaigns
+        .filter((campaign) => Number(campaign.spend || 0) > 0)
         .map((campaign) => ({
           id: campaign.id,
           name: campaign.name || 'Campanha sem nome',
