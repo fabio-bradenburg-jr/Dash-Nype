@@ -295,6 +295,7 @@ export default function DashboardPage() {
   const [campaignSortBy, setCampaignSortBy] = useState('spend')
   const [metaResultFilters, setMetaResultFilters] = useState([])
   const [metaCampaignFilters, setMetaCampaignFilters] = useState([])
+  const [isMetaCampaignFilterOpen, setIsMetaCampaignFilterOpen] = useState(false)
   const [clients, setClients] = useState([])
   const [activeClientId, setActiveClientId] = useState('')
   const [newClientName, setNewClientName] = useState('')
@@ -399,6 +400,18 @@ export default function DashboardPage() {
     const normalizedSelection = metaCampaignFilters.filter((campaignId) => availableIds.includes(campaignId))
     return normalizedSelection.length > 0 ? normalizedSelection : availableIds
   }, [metaCampaignFilters, availableMetaCampaignOptions])
+  const metaCampaignFilterSummary = useMemo(() => {
+    const totalCampaigns = availableMetaCampaignOptions.length
+    const selectedCount = activeMetaCampaignIds.length
+
+    if (!totalCampaigns) return 'Nenhuma campanha disponível'
+    if (selectedCount === totalCampaigns) return 'Todas as campanhas'
+    if (selectedCount === 1) {
+      return availableMetaCampaignOptions.find((campaign) => campaign.id === activeMetaCampaignIds[0])?.name || '1 campanha selecionada'
+    }
+
+    return `${selectedCount} campanhas selecionadas`
+  }, [availableMetaCampaignOptions, activeMetaCampaignIds])
   const roleLabels = {
     master: 'Master',
     operador: 'Operador',
@@ -2314,23 +2327,39 @@ export default function DashboardPage() {
                     ))}
                   </div>
                   {availableMetaCampaignOptions.length > 0 && (
-                    <div className="rd-source-filter-bar rd-source-filter-inline meta-campaign-filter-block">
-                      <div>
-                        <h3>Filtrar por campanha</h3>
-                        <p>Selecione as campanhas específicas que quer considerar. Todas começam marcadas por padrão.</p>
-                      </div>
-                      <div className="stage-selector meta-filter-chip-row">
-                        {availableMetaCampaignOptions.map((campaign) => (
-                          <label key={campaign.id} className={`stage-chip ${activeMetaCampaignIds.includes(campaign.id) ? 'active' : ''}`}>
-                            <input
-                              type="checkbox"
-                              checked={activeMetaCampaignIds.includes(campaign.id)}
-                              onChange={() => handleMetaCampaignFilterToggle(campaign.id)}
-                            />
-                            <span>{campaign.name}</span>
-                          </label>
-                        ))}
-                      </div>
+                    <div className="meta-campaign-filter-collapsible">
+                      <button
+                        type="button"
+                        className={`meta-campaign-filter-trigger ${isMetaCampaignFilterOpen ? 'open' : ''}`}
+                        onClick={() => setIsMetaCampaignFilterOpen((current) => !current)}
+                      >
+                        <div>
+                          <h3>Filtrar por campanha</h3>
+                          <p>{metaCampaignFilterSummary}</p>
+                        </div>
+                        <span className="meta-campaign-filter-trigger-icon">
+                          <i className={`bx ${isMetaCampaignFilterOpen ? 'bx-chevron-up' : 'bx-chevron-down'}`}></i>
+                        </span>
+                      </button>
+                      {isMetaCampaignFilterOpen && (
+                        <div className="rd-source-filter-bar rd-source-filter-inline meta-campaign-filter-block">
+                          <p className="meta-campaign-filter-note">
+                            Selecione as campanhas específicas que quer considerar. Todas começam marcadas por padrão.
+                          </p>
+                          <div className="stage-selector meta-filter-chip-row">
+                            {availableMetaCampaignOptions.map((campaign) => (
+                              <label key={campaign.id} className={`stage-chip ${activeMetaCampaignIds.includes(campaign.id) ? 'active' : ''}`}>
+                                <input
+                                  type="checkbox"
+                                  checked={activeMetaCampaignIds.includes(campaign.id)}
+                                  onChange={() => handleMetaCampaignFilterToggle(campaign.id)}
+                                />
+                                <span>{campaign.name}</span>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
                 </section>
@@ -3557,6 +3586,67 @@ export default function DashboardPage() {
 
         .meta-filter-chip-row {
           padding-top: 2px;
+        }
+
+        .meta-campaign-filter-collapsible {
+          margin-top: 18px;
+        }
+
+        .meta-campaign-filter-trigger {
+          width: 100%;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 18px;
+          padding: 16px 18px;
+          border: 1px solid rgba(255, 255, 255, 0.06);
+          border-radius: 18px;
+          background: rgba(255, 255, 255, 0.02);
+          color: inherit;
+          text-align: left;
+          transition: border-color 0.2s ease, background 0.2s ease, transform 0.2s ease;
+        }
+
+        .meta-campaign-filter-trigger:hover,
+        .meta-campaign-filter-trigger.open {
+          border-color: rgba(59, 130, 246, 0.35);
+          background: rgba(59, 130, 246, 0.06);
+        }
+
+        .meta-campaign-filter-trigger h3 {
+          margin: 0 0 4px;
+          font-size: 17px;
+        }
+
+        .meta-campaign-filter-trigger p {
+          margin: 0;
+          color: var(--text-muted);
+          font-size: 14px;
+          line-height: 1.5;
+        }
+
+        .meta-campaign-filter-trigger-icon {
+          width: 36px;
+          height: 36px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: 12px;
+          border: 1px solid rgba(255, 255, 255, 0.06);
+          background: rgba(255, 255, 255, 0.04);
+          color: #dbeafe;
+          flex-shrink: 0;
+        }
+
+        .meta-campaign-filter-trigger-icon i {
+          font-size: 20px;
+        }
+
+        .meta-campaign-filter-note {
+          margin: 0;
+          color: var(--text-muted);
+          font-size: 14px;
+          line-height: 1.6;
         }
 
         .rd-source-filter-bar {
