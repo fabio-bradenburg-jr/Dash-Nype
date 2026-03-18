@@ -1026,11 +1026,7 @@ export default function DashboardPage() {
   }, [hasLoadedPreferences, activeClient, activeClientId, globalIntegrations.metaAccessToken, activeTab])
 
   useEffect(() => {
-    const shouldLoadOperationalData = activeTab === 'apresentacao' || activeTab === 'clientes'
-
-    if (!shouldLoadOperationalData) {
-      return
-    }
+    if (activeTab !== 'apresentacao') return
 
     if (!activeClient) {
       setIsLoading(false)
@@ -1043,15 +1039,89 @@ export default function DashboardPage() {
       return
     }
 
+    if (dateRange === 'custom' && (!customSince || !customUntil)) {
+      return
+    }
+
+    let cancelled = false
+
+    const loadMetaStructure = async () => {
+      if (!hasMetaConfigured) {
+        setCampaigns([])
+        setMetaHierarchy([])
+        return
+      }
+
+      try {
+        const params = new URLSearchParams({
+          ad_account_id: selectedAdAccount,
+          date_preset: dateRange,
+        })
+
+        if (dateRange === 'custom') {
+          params.set('since', customSince)
+          params.set('until', customUntil)
+        }
+
+        const headers = {
+          'x-meta-access-token': globalIntegrations.metaAccessToken,
+        }
+
+        const campaignsResponse = await fetch(`/api/meta/campaigns?${params.toString()}`, { headers })
+        const campaignsData = await campaignsResponse.json()
+
+        if (!campaignsResponse.ok) {
+          throw new Error(campaignsData.error || 'Não foi possível carregar as campanhas da Meta.')
+        }
+
+        if (cancelled) return
+        setCampaigns(campaignsData || [])
+
+        const structureResponse = await fetch(`/api/meta/structure?${params.toString()}`, { headers })
+        const structureData = await structureResponse.json()
+
+        if (cancelled) return
+        setMetaHierarchy(structureResponse.ok ? structureData || [] : [])
+      } catch (error) {
+        if (!cancelled) {
+          setCampaigns([])
+          setMetaHierarchy([])
+          setErrorMessage(error.message || 'Não foi possível carregar a estrutura da Meta.')
+        }
+      }
+    }
+
+    loadMetaStructure()
+
+    return () => {
+      cancelled = true
+    }
+  }, [
+    activeTab,
+    activeClient,
+    selectedAdAccount,
+    dateRange,
+    customSince,
+    customUntil,
+    hasMetaConfigured,
+    globalIntegrations.metaAccessToken,
+  ])
+
+  useEffect(() => {
+    if (activeTab !== 'apresentacao') return
+
+    if (!activeClient) {
+      setIsLoading(false)
+      setInsights(null)
+      setDailyData([])
+      setRdSummary(null)
+      return
+    }
+
     if (!hasMetaConfigured && !hasRdConfigured) {
       setIsLoading(false)
       setInsights(null)
       setDailyData([])
-      setCampaigns([])
-      setMetaHierarchy([])
-      setBreakdowns({ ages: [], cities: [], creatives: [] })
-      setIsRankingsLoading(false)
-      setRankingsError('')
       setRdSummary(null)
       return
     }
@@ -1059,6 +1129,8 @@ export default function DashboardPage() {
     if (dateRange === 'custom' && (!customSince || !customUntil)) {
       return
     }
+
+    let cancelled = false
 
     const fetchDashboardData = async () => {
       setIsLoading(true)
@@ -1068,7 +1140,7 @@ export default function DashboardPage() {
         let metaError = ''
         let rdError = ''
 
-        if (activeTab === 'apresentacao' && hasMetaConfigured) {
+        if (hasMetaConfigured) {
           const params = new URLSearchParams({
             ad_account_id: selectedAdAccount,
             date_preset: dateRange,
@@ -1079,72 +1151,47 @@ export default function DashboardPage() {
             params.set('until', customUntil)
           }
 
+          const nextAvailableFilterKeys = getAvailableMetaResultFilters(campaigns).map((item) => item.key)
+          const activeResultFilters = normalizeMetaResultFilters(metaResultFilters, nextAvailableFilterKeys)
+          const matchingCampaignIds = campaigns
+            .filter((campaign) => campaignMatchesMetaResultFilters(campaign, activeResultFilters, nextAvailableFilterKeys))
+            .map((campaign) => campaign.id)
+            .filter(Boolean)
+
+          const insightsParams = new URLSearchParams(params)
+          if (matchingCampaignIds.length > 0) {
+            insightsParams.set('campaign_ids', matchingCampaignIds.join(','))
+          } else {
+            insightsParams.set('campaign_ids', '__none__')
+          }
+          if (metaFilteredAdsetIds.length > 0) {
+            insightsParams.set('adset_ids', metaFilteredAdsetIds.join(','))
+          }
+          if (metaFilteredAdIds.length > 0) {
+            insightsParams.set('ad_ids', metaFilteredAdIds.join(','))
+          }
+
           const headers = {
             'x-meta-access-token': globalIntegrations.metaAccessToken,
           }
 
-          const campaignsResponse = await fetch(`/api/meta/campaigns?${params.toString()}`, { headers })
-          const campaignsData = await campaignsResponse.json()
+          const insightsResponse = await fetch(`/api/meta/insights?${insightsParams.toString()}`, { headers })
+          const insightsData = await insightsResponse.json()
 
-          if (!campaignsResponse.ok) {
-            metaError = campaignsData.error || 'Não foi possível carregar as campanhas da Meta.'
-            setInsights(null)
-            setDailyData([])
-            setCampaigns([])
-            setMetaHierarchy([])
-          } else {
-            const nextCampaigns = campaignsData || []
-            const nextAvailableFilterKeys = getAvailableMetaResultFilters(nextCampaigns).map((item) => item.key)
-            const activeResultFilters = normalizeMetaResultFilters(metaResultFilters, nextAvailableFilterKeys)
-            const matchingCampaignIds = nextCampaigns
-              .filter((campaign) => campaignMatchesMetaResultFilters(campaign, activeResultFilters, nextAvailableFilterKeys))
-              .map((campaign) => campaign.id)
-              .filter(Boolean)
-
-            setCampaigns(nextCampaigns)
-
-            const structureResponse = await fetch(`/api/meta/structure?${params.toString()}`, { headers })
-            const structureData = await structureResponse.json()
-
-            if (structureResponse.ok) {
-              setMetaHierarchy(structureData || [])
-            } else {
-              setMetaHierarchy([])
-            }
-
-            const insightsParams = new URLSearchParams(params)
-            if (matchingCampaignIds.length > 0) {
-              insightsParams.set('campaign_ids', matchingCampaignIds.join(','))
-            } else {
-              insightsParams.set('campaign_ids', '__none__')
-            }
-            if (metaFilteredAdsetIds.length > 0) {
-              insightsParams.set('adset_ids', metaFilteredAdsetIds.join(','))
-            }
-            if (metaFilteredAdIds.length > 0) {
-              insightsParams.set('ad_ids', metaFilteredAdIds.join(','))
-            }
-
-            const insightsResponse = await fetch(`/api/meta/insights?${insightsParams.toString()}`, { headers })
-            const insightsData = await insightsResponse.json()
-
-            if (!insightsResponse.ok) {
-              const nextMetaError = insightsData.error || 'Não foi possível carregar os indicadores da Meta.'
-              setInsights(buildMetaSummaryFromCampaigns(nextCampaigns))
+          if (!insightsResponse.ok) {
+            const nextMetaError = insightsData.error || 'Não foi possível carregar os indicadores da Meta.'
+            if (!cancelled) {
+              setInsights(buildMetaSummaryFromCampaigns(campaigns))
               setDailyData([])
-              metaError = isMetaRateLimitMessage(nextMetaError)
-                ? ''
-                : nextMetaError
-            } else {
-              setInsights(insightsData.summary || {})
-              setDailyData(insightsData.daily || [])
             }
+            metaError = isMetaRateLimitMessage(nextMetaError) ? '' : nextMetaError
+          } else if (!cancelled) {
+            setInsights(insightsData.summary || {})
+            setDailyData(insightsData.daily || [])
           }
-        } else {
+        } else if (!cancelled) {
           setInsights(null)
           setDailyData([])
-          setCampaigns([])
-          setMetaHierarchy([])
         }
 
         if (hasRdConfigured) {
@@ -1175,30 +1222,41 @@ export default function DashboardPage() {
 
           if (!rdResponse.ok) {
             rdError = rdData.error || 'Não foi possível carregar os dados do RD Station.'
-            setRdSummary(null)
-          } else {
+            if (!cancelled) {
+              setRdSummary(null)
+            }
+          } else if (!cancelled) {
             setRdSummary(rdData || null)
           }
-        } else {
+        } else if (!cancelled) {
           setRdSummary(null)
         }
 
-        setErrorMessage(metaError || rdError)
+        if (!cancelled) {
+          setErrorMessage(metaError || rdError)
+        }
       } catch (error) {
-        setInsights(null)
-        setDailyData([])
-        setCampaigns([])
-        setMetaHierarchy([])
-        setBreakdowns({ ages: [], cities: [], creatives: [] })
-        setRdSummary(null)
-        setErrorMessage(error.message || 'Falha ao puxar os dados da integração.')
+        if (!cancelled) {
+          setInsights(null)
+          setDailyData([])
+          setBreakdowns({ ages: [], cities: [], creatives: [] })
+          setRdSummary(null)
+          setErrorMessage(error.message || 'Falha ao puxar os dados da integração.')
+        }
       } finally {
-        setIsLoading(false)
+        if (!cancelled) {
+          setIsLoading(false)
+        }
       }
     }
 
     fetchDashboardData()
+
+    return () => {
+      cancelled = true
+    }
   }, [
+    activeTab,
     activeClient,
     selectedAdAccount,
     dateRange,
@@ -1214,7 +1272,7 @@ export default function DashboardPage() {
     metaFilteredAdsetIds,
     globalIntegrations.metaAccessToken,
     activeIntegrations.rdStationToken,
-    activeTab,
+    campaigns,
   ])
 
   useEffect(() => {

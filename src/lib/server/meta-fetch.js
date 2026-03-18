@@ -3,7 +3,7 @@ function isTimeoutError(error) {
 }
 
 const META_RESPONSE_CACHE = new Map()
-const META_CACHE_TTL_MS = 20_000
+const META_CACHE_TTL_MS = 60_000
 
 export function normalizeMetaError(error, fallbackMessage) {
   const message = error?.message || ''
