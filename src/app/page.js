@@ -1470,12 +1470,9 @@ export default function DashboardPage() {
     { title: 'Negócios perdidos', value: formatNumber(rdSummary?.lostDeals || 0), icon: 'bx-x-circle', tone: 'pink' },
     { title: 'Negócios fechados', value: formatNumber(rdSummary?.closedDeals || 0), icon: 'bx-check-double', tone: 'cyan' },
     { title: 'Receita ganha', value: formatCurrency(rdSummary?.wonRevenue || 0), icon: 'bx-wallet-alt', tone: 'orange' },
+    { title: 'Ticket médio ganho', value: formatCurrency(rdSummary?.avgTicketWon || 0), icon: 'bx-receipt', tone: 'gold' },
   ]
   const rdDecisionKpis = [
-    { title: 'Pipeline aberto', value: formatCurrency(rdSummary?.openPipeline || 0), icon: 'bx-layer', tone: 'cyan' },
-    { title: 'Negócios criados', value: formatNumber(rdSummary?.createdDeals || 0), icon: 'bx-git-branch', tone: 'blue' },
-    { title: 'Qualificados', value: formatNumber(rdSummary?.qualifiedDeals || 0), icon: 'bx-filter-alt', tone: 'emerald' },
-    { title: 'Ticket médio ganho', value: formatCurrency(rdSummary?.avgTicketWon || 0), icon: 'bx-receipt', tone: 'gold' },
   ]
   const userAvatarFallback = `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.user_metadata?.full_name || user?.email || 'Usuario')}&background=0D8ABC&color=fff`
   const userAvatarSrc = user?.user_metadata?.avatar_url || userAvatarFallback
@@ -2694,23 +2691,25 @@ export default function DashboardPage() {
                         </div>
                       )}
 
-                      <div className="kpi-grid compact-kpi-grid">
-                        {rdDecisionKpis.map((kpi) => (
-                          <div key={kpi.title} className="kpi-card glass-panel">
-                            <div className="kpi-header">
-                              <span className="kpi-title">{kpi.title}</span>
-                              <div className={`icon-box ${kpi.tone}`}>
-                                <i className={`bx ${kpi.icon}`}></i>
+                      {!!rdDecisionKpis.length && (
+                        <div className="kpi-grid compact-kpi-grid">
+                          {rdDecisionKpis.map((kpi) => (
+                            <div key={kpi.title} className="kpi-card glass-panel">
+                              <div className="kpi-header">
+                                <span className="kpi-title">{kpi.title}</span>
+                                <div className={`icon-box ${kpi.tone}`}>
+                                  <i className={`bx ${kpi.icon}`}></i>
+                                </div>
+                              </div>
+                              <div className="kpi-value">{kpi.value}</div>
+                              <div className="kpi-trend neutral">
+                                <i className="bx bx-check-circle"></i>
+                                <span>Leitura com base no vendedor e na integração selecionados</span>
                               </div>
                             </div>
-                            <div className="kpi-value">{kpi.value}</div>
-                            <div className="kpi-trend neutral">
-                              <i className="bx bx-check-circle"></i>
-                              <span>Leitura com base no vendedor e na integração selecionados</span>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
+                          ))}
+                        </div>
+                      )}
                     </section>
 
                     {!!rdSummary?.sellerRanking?.length && (
@@ -2732,29 +2731,6 @@ export default function DashboardPage() {
                                 </span>
                               </div>
                               <b>{formatCurrency(seller.wonRevenue)}</b>
-                            </div>
-                          ))}
-                        </div>
-                      </section>
-                    )}
-
-                    {!!rdSummary?.sourceRanking?.length && (
-                      <section className="glass-panel grouped-results">
-                        <div className="section-header section-header-stack">
-                          <div>
-                            <h2>Vendas por origem / UTM</h2>
-                            <p className="chart-subtitle">Leitura das vendas agrupadas pelas origens e UTMs identificadas no CRM.</p>
-                          </div>
-                        </div>
-
-                        <div className="ranking-list">
-                          {rdSummary.sourceRanking.map((source) => (
-                            <div key={source.label} className="ranking-row">
-                              <div>
-                                <strong>{source.label}</strong>
-                                <span>{formatNumber(source.wonDeals)} venda(s)</span>
-                              </div>
-                              <b>{formatCurrency(source.wonRevenue)}</b>
                             </div>
                           ))}
                         </div>
