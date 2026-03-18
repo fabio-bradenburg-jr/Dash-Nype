@@ -294,6 +294,7 @@ export default function DashboardPage() {
   const [campaignStatusFilter, setCampaignStatusFilter] = useState('ACTIVE')
   const [campaignSortBy, setCampaignSortBy] = useState('spend')
   const [metaResultFilters, setMetaResultFilters] = useState([])
+  const [metaCampaignFilters, setMetaCampaignFilters] = useState([])
   const [clients, setClients] = useState([])
   const [activeClientId, setActiveClientId] = useState('')
   const [newClientName, setNewClientName] = useState('')
@@ -367,6 +368,17 @@ export default function DashboardPage() {
     () => getAvailableMetaResultFilters(campaigns),
     [campaigns]
   )
+  const availableMetaCampaignOptions = useMemo(
+    () =>
+      campaigns
+        .map((campaign) => ({
+          id: campaign.id,
+          name: campaign.name || 'Campanha sem nome',
+        }))
+        .filter((campaign) => campaign.id)
+        .sort((campaignA, campaignB) => campaignA.name.localeCompare(campaignB.name, 'pt-BR')),
+    [campaigns]
+  )
   const activeRdLeadSources = useMemo(() => {
     const sources = rdSummary?.availableSources || []
     if (!sources.length) return []
@@ -378,6 +390,15 @@ export default function DashboardPage() {
     () => normalizeMetaResultFilters(metaResultFilters, availableMetaResultFilters.map((item) => item.key)),
     [metaResultFilters, availableMetaResultFilters]
   )
+  const activeMetaCampaignIds = useMemo(() => {
+    const availableIds = availableMetaCampaignOptions.map((campaign) => campaign.id)
+
+    if (!availableIds.length) return []
+    if (!metaCampaignFilters.length) return availableIds
+
+    const normalizedSelection = metaCampaignFilters.filter((campaignId) => availableIds.includes(campaignId))
+    return normalizedSelection.length > 0 ? normalizedSelection : availableIds
+  }, [metaCampaignFilters, availableMetaCampaignOptions])
   const roleLabels = {
     master: 'Master',
     operador: 'Operador',
@@ -584,9 +605,10 @@ export default function DashboardPage() {
     () =>
       campaigns
         .filter((campaign) => campaignMatchesMetaResultFilters(campaign, normalizedMetaResultFilters, availableMetaResultFilters.map((item) => item.key)))
+        .filter((campaign) => activeMetaCampaignIds.length === 0 || activeMetaCampaignIds.includes(campaign.id))
         .map((campaign) => campaign.id)
         .filter(Boolean),
-    [campaigns, normalizedMetaResultFilters, availableMetaResultFilters]
+    [campaigns, normalizedMetaResultFilters, availableMetaResultFilters, activeMetaCampaignIds]
   )
 
   const handleUserClientToggle = (clientId) => {
@@ -609,6 +631,25 @@ export default function DashboardPage() {
       }
 
       return [...normalizedCurrent, filterKey]
+    })
+  }
+
+  const handleMetaCampaignFilterToggle = (campaignId) => {
+    setMetaCampaignFilters((current) => {
+      const availableIds = availableMetaCampaignOptions.map((campaign) => campaign.id)
+      if (!availableIds.length) return current
+
+      const normalizedCurrent = current.length > 0
+        ? current.filter((currentId) => availableIds.includes(currentId))
+        : availableIds
+
+      if (normalizedCurrent.includes(campaignId)) {
+        const nextFilters = normalizedCurrent.filter((currentId) => currentId !== campaignId)
+        return nextFilters.length > 0 ? nextFilters : normalizedCurrent
+      }
+
+      const nextFilters = [...normalizedCurrent, campaignId]
+      return nextFilters.length === availableIds.length ? [] : nextFilters
     })
   }
 
@@ -1265,7 +1306,8 @@ export default function DashboardPage() {
       const matchesSearch = !term || campaign.name?.toLowerCase().includes(term)
       const matchesStatus = campaignStatusFilter === 'all' || campaign.status === campaignStatusFilter
       const matchesResultType = campaignMatchesMetaResultFilters(campaign, normalizedMetaResultFilters, availableMetaResultFilters.map((item) => item.key))
-      return matchesSearch && matchesStatus && matchesResultType
+      const matchesCampaignFilter = activeMetaCampaignIds.length === 0 || activeMetaCampaignIds.includes(campaign.id)
+      return matchesSearch && matchesStatus && matchesResultType && matchesCampaignFilter
     })
 
     const getCampaignMetrics = (campaign) => {
@@ -1286,7 +1328,7 @@ export default function DashboardPage() {
       if (campaignSortBy === 'conversions') return metricsB.totalConversionsValue - metricsA.totalConversionsValue
       return metricsB.spendValue - metricsA.spendValue
     })
-  }, [campaigns, campaignSearch, campaignStatusFilter, campaignSortBy, normalizedMetaResultFilters, availableMetaResultFilters])
+  }, [campaigns, campaignSearch, campaignStatusFilter, campaignSortBy, normalizedMetaResultFilters, availableMetaResultFilters, activeMetaCampaignIds])
 
   const campaignSummary = useMemo(() => {
     if (!filteredCampaigns.length) {
@@ -2271,6 +2313,26 @@ export default function DashboardPage() {
                       </label>
                     ))}
                   </div>
+                  {availableMetaCampaignOptions.length > 0 && (
+                    <div className="rd-source-filter-bar rd-source-filter-inline meta-campaign-filter-block">
+                      <div>
+                        <h3>Filtrar por campanha</h3>
+                        <p>Selecione as campanhas específicas que quer considerar. Todas começam marcadas por padrão.</p>
+                      </div>
+                      <div className="stage-selector meta-filter-chip-row">
+                        {availableMetaCampaignOptions.map((campaign) => (
+                          <label key={campaign.id} className={`stage-chip ${activeMetaCampaignIds.includes(campaign.id) ? 'active' : ''}`}>
+                            <input
+                              type="checkbox"
+                              checked={activeMetaCampaignIds.includes(campaign.id)}
+                              onChange={() => handleMetaCampaignFilterToggle(campaign.id)}
+                            />
+                            <span>{campaign.name}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </section>
                 <section className="glass-panel grouped-results">
                   <div className="section-header section-header-stack">
