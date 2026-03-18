@@ -1462,25 +1462,18 @@ export default function DashboardPage() {
     },
   ].filter(Boolean)
 
-  const rdOperationalKpis = [
-    { title: 'Contatos perdidos', value: formatNumber(rdSummary?.lostContacts || 0), icon: 'bx-user-x', tone: 'pink' },
-    { title: 'Negócios em aberto', value: formatNumber(rdSummary?.openDeals || 0), icon: 'bx-briefcase-alt-2', tone: 'purple' },
-    { title: 'Negócios perdidos', value: formatNumber(rdSummary?.lostDeals || 0), icon: 'bx-x-circle', tone: 'pink' },
-    { title: 'Oportunidades', value: formatNumber(rdSummary?.opportunityCount || 0), icon: 'bx-bulb', tone: 'blue' },
-  ]
   const rdQualificationKpis = [
-    { title: 'Negócios ganhos', value: formatNumber(rdSummary?.wonDeals || 0), icon: 'bx-badge-check', tone: 'emerald' },
+    { title: 'Oportunidades', value: formatNumber(rdSummary?.opportunityCount || 0), icon: 'bx-bulb', tone: 'blue' },
     { title: 'Qualificados', value: formatNumber(rdSummary?.qualifiedOpportunityCount || 0), icon: 'bx-filter-alt', tone: 'emerald' },
-    { title: 'Oportunidade para qualificados', value: formatPercent(rdSummary?.leadToQualifiedRate || 0), icon: 'bx-transfer-alt', tone: 'cyan' },
-    { title: 'Qualificados para venda', value: formatPercent(rdSummary?.qualifiedToWonRate || 0), icon: 'bx-badge-check', tone: 'emerald' },
-    { title: 'Oportunidades para venda', value: formatPercent(rdSummary?.leadToWonRate || 0), icon: 'bx-line-chart', tone: 'blue' },
+    { title: 'Negócios ganhos', value: formatNumber(rdSummary?.wonDeals || 0), icon: 'bx-badge-check', tone: 'emerald' },
+    { title: 'Taxa de oportunidade para qualificados', value: formatPercent(rdSummary?.leadToQualifiedRate || 0), icon: 'bx-transfer-alt', tone: 'cyan' },
+    { title: 'Taxa de qualificados para venda', value: formatPercent(rdSummary?.qualifiedToWonRate || 0), icon: 'bx-badge-check', tone: 'emerald' },
+    { title: 'Taxa de oportunidade para venda', value: formatPercent(rdSummary?.leadToWonRate || 0), icon: 'bx-line-chart', tone: 'blue' },
+    { title: 'Negócios perdidos', value: formatNumber(rdSummary?.lostDeals || 0), icon: 'bx-x-circle', tone: 'pink' },
   ]
   const rdRevenueKpis = [
-    { title: 'Negócios fechados', value: formatNumber(rdSummary?.closedDeals || 0), icon: 'bx-check-double', tone: 'cyan' },
-    { title: 'Receita ganha', value: formatCurrency(rdSummary?.wonRevenue || 0), icon: 'bx-wallet-alt', tone: 'orange' },
-    { title: 'Ticket médio ganho', value: formatCurrency(rdSummary?.avgTicketWon || 0), icon: 'bx-receipt', tone: 'gold' },
-  ]
-  const rdDecisionKpis = [
+    { title: 'Faturamento', value: formatCurrency(rdSummary?.wonRevenue || 0), icon: 'bx-wallet-alt', tone: 'orange' },
+    { title: 'Ticket médio', value: formatCurrency(rdSummary?.avgTicketWon || 0), icon: 'bx-receipt', tone: 'gold' },
   ]
   const userAvatarFallback = `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.user_metadata?.full_name || user?.email || 'Usuario')}&background=0D8ABC&color=fff`
   const userAvatarSrc = user?.user_metadata?.avatar_url || userAvatarFallback
@@ -2645,18 +2638,14 @@ export default function DashboardPage() {
                       <div className="crm-groups-grid">
                         {[
                           {
-                            title: 'Operação comercial',
-                            description: 'Base operacional do período para leitura do funil e dos negócios em andamento.',
-                            kpis: rdOperationalKpis,
-                          },
-                          {
                             title: 'Qualificação e conversão',
                             description: 'Leitura da progressão entre oportunidades, qualificação e vendas.',
                             kpis: rdQualificationKpis,
+                            withSourceFilter: true,
                           },
                           {
                             title: 'Fechamento e receita',
-                            description: 'Indicadores finais de negócios concluídos e resultado financeiro.',
+                            description: 'Indicadores financeiros consolidados das vendas fechadas no período.',
                             kpis: rdRevenueKpis,
                           },
                         ].map((group) => (
@@ -2665,6 +2654,29 @@ export default function DashboardPage() {
                               <h3>{group.title}</h3>
                               <p>{group.description}</p>
                             </div>
+                            {group.withSourceFilter && !!rdSummary?.availableSources?.length && (
+                              <div className="rd-source-filter-bar rd-source-filter-inline">
+                                <div>
+                                  <h3>Filtrar por origem</h3>
+                                  <p>Selecione as origens e UTMs que quer considerar na base das oportunidades, qualificação e conversão.</p>
+                                </div>
+                                <div className="meta-filter-chip-row">
+                                  {rdSummary.availableSources.map((source) => (
+                                    <label
+                                      key={source}
+                                      className={`result-filter-chip ${activeRdLeadSources.includes(source) ? 'active' : ''}`}
+                                    >
+                                      <input
+                                        type="checkbox"
+                                        checked={activeRdLeadSources.includes(source)}
+                                        onChange={() => handleRdLeadSourceToggle(source)}
+                                      />
+                                      <span>{source}</span>
+                                    </label>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
                             <div className="kpi-grid compact-kpi-grid">
                               {group.kpis.map((kpi) => (
                                 <div key={kpi.title} className="kpi-card glass-panel">
@@ -2686,54 +2698,6 @@ export default function DashboardPage() {
                         ))}
                       </div>
                     </section>
-
-                    {(!!rdSummary?.availableSources?.length || !!rdDecisionKpis.length) && (
-                      <section className="glass-panel grouped-results">
-                        {!!rdSummary?.availableSources?.length && (
-                          <div className="rd-source-filter-bar">
-                            <div>
-                              <h3>Fonte do lead para taxa de conversão</h3>
-                              <p>Todos começam marcados. A taxa considera os leads dessas fontes e quantos viraram venda no período.</p>
-                            </div>
-                            <div className="meta-filter-chip-row">
-                              {rdSummary.availableSources.map((source) => (
-                                <label
-                                  key={source}
-                                  className={`result-filter-chip ${activeRdLeadSources.includes(source) ? 'active' : ''}`}
-                                >
-                                  <input
-                                    type="checkbox"
-                                    checked={activeRdLeadSources.includes(source)}
-                                    onChange={() => handleRdLeadSourceToggle(source)}
-                                  />
-                                  <span>{source}</span>
-                                </label>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-
-                        {!!rdDecisionKpis.length && (
-                          <div className="kpi-grid compact-kpi-grid">
-                            {rdDecisionKpis.map((kpi) => (
-                              <div key={kpi.title} className="kpi-card glass-panel">
-                                <div className="kpi-header">
-                                  <span className="kpi-title">{kpi.title}</span>
-                                  <div className={`icon-box ${kpi.tone}`}>
-                                    <i className={`bx ${kpi.icon}`}></i>
-                                  </div>
-                                </div>
-                                <div className="kpi-value">{kpi.value}</div>
-                                <div className="kpi-trend neutral">
-                                  <i className="bx bx-check-circle"></i>
-                                  <span>Leitura com base no vendedor e na integração selecionados</span>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </section>
-                    )}
 
                     {!!rdSummary?.sellerRanking?.length && (
                       <section className="glass-panel grouped-results">
@@ -3522,6 +3486,10 @@ export default function DashboardPage() {
           border-radius: 18px;
           border: 1px solid rgba(255, 255, 255, 0.06);
           background: rgba(255, 255, 255, 0.02);
+        }
+
+        .rd-source-filter-inline {
+          margin-top: 18px;
         }
 
         .rd-source-filter-bar h3 {

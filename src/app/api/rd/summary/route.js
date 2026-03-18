@@ -532,10 +532,14 @@ function getTextFromMatchingFields(record, matchers = []) {
 }
 
 function buildSourceLabel(deal, contact) {
-  const utmSource = getTextFromMatchingFields(deal, ['utm_source']).trim() || getTextFromMatchingFields(contact, ['utm_source']).trim()
-  const utmMedium = getTextFromMatchingFields(deal, ['utm_medium']).trim() || getTextFromMatchingFields(contact, ['utm_medium']).trim()
-  const utmCampaign = getTextFromMatchingFields(deal, ['utm_campaign', 'campanha']).trim() || getTextFromMatchingFields(contact, ['utm_campaign', 'campanha']).trim()
-  const source = getTextFromMatchingFields(deal, ['origem', 'fonte', 'source']).trim() || getTextFromMatchingFields(contact, ['origem', 'fonte', 'source']).trim()
+  const utmSourceMatchers = ['utm_source', 'utm source', 'source', 'origem', 'fonte', 'trafego', 'traffic source']
+  const utmMediumMatchers = ['utm_medium', 'utm medium', 'medium', 'midia', 'media']
+  const utmCampaignMatchers = ['utm_campaign', 'utm campaign', 'campaign', 'campanha', 'nome da campanha']
+
+  const utmSource = getTextFromMatchingFields(deal, utmSourceMatchers).trim() || getTextFromMatchingFields(contact, utmSourceMatchers).trim()
+  const utmMedium = getTextFromMatchingFields(deal, utmMediumMatchers).trim() || getTextFromMatchingFields(contact, utmMediumMatchers).trim()
+  const utmCampaign = getTextFromMatchingFields(deal, utmCampaignMatchers).trim() || getTextFromMatchingFields(contact, utmCampaignMatchers).trim()
+  const source = getTextFromMatchingFields(deal, ['origem', 'fonte', 'source', 'origem do lead', 'canal']).trim() || getTextFromMatchingFields(contact, ['origem', 'fonte', 'source', 'origem do lead', 'canal']).trim()
 
   const utmLabel = [utmSource, utmMedium, utmCampaign].filter(Boolean).join(' / ')
   if (utmLabel) return utmLabel
