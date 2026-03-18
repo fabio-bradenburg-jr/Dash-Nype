@@ -841,6 +841,14 @@ export async function GET(request) {
           dealCreatedAt?.toISOString?.() || dealClosedAt?.toISOString?.() || stageLabel
         )
 
+        if (createdOpportunityInRange && sourceMatchesFilter) {
+          if (relatedContactKey) {
+            accumulator.createdPeriodOpportunityContacts.add(relatedContactKey)
+          } else if (dealKey) {
+            accumulator.createdPeriodOpportunityContacts.add(dealKey)
+          }
+        }
+
         if ((dealMovedInRange || dealCreatedInRange) && (contactCreatedInRange || contactMovedInRange) && relatedContactKey && sourceMatchesFilter && (hasReachedQualifiedStage || type === 'won')) {
           accumulator.contactsWithQualifiedDeals.add(relatedContactKey)
         }
@@ -909,7 +917,7 @@ export async function GET(request) {
           accumulator.closedDeals += 1
         }
 
-        if (type === 'lost' && createdOpportunityInRange && sourceMatchesFilter && hasReachedQualifiedStage) {
+        if (type === 'lost' && createdOpportunityInRange && sourceMatchesFilter) {
           if (relatedContactKey) {
             accumulator.createdPeriodLostContacts.add(relatedContactKey)
           } else if (dealKey) {
@@ -956,6 +964,7 @@ export async function GET(request) {
         contactsWithDeals: new Set(),
         contactsWithQualifiedDeals: new Set(),
         contactsWithWonDeals: new Set(),
+        createdPeriodOpportunityContacts: new Set(),
         createdPeriodQualifiedContacts: new Set(),
         createdPeriodWonContacts: new Set(),
         createdPeriodLostContacts: new Set(),
@@ -965,7 +974,13 @@ export async function GET(request) {
     const leadCount = contacts.length
     const leadCountInPeriod = contactsCreatedInPeriod.length
     const leadCountInPeriodBySource = contactsCreatedInPeriodBySource.length
-    const opportunityCount = hasLeadSourceFilter ? leadCountInPeriodBySource : leadCountInPeriod
+    const opportunityKeys = new Set(
+      contactsCreatedInPeriodBySource.map((contact) => getContactKey(contact)).filter(Boolean)
+    )
+    summary.createdPeriodOpportunityContacts.forEach((key) => {
+      opportunityKeys.add(key)
+    })
+    const opportunityCount = opportunityKeys.size
     const qualifiedOpportunityCount = summary.createdPeriodQualifiedContacts.size
     const wonOpportunityCount = summary.createdPeriodWonContacts.size
     const lostOpportunityCount = summary.createdPeriodLostContacts.size
