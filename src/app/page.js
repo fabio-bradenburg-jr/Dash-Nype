@@ -1481,6 +1481,14 @@ export default function DashboardPage() {
     { title: 'Faturamento de safras anteriores fechadas', value: formatCurrency(rdSummary?.wonRevenueFromPreviousCohorts || 0), icon: 'bx-coin-stack', tone: 'orange' },
     { title: 'Ticket médio de safras anteriores', value: formatCurrency(rdSummary?.avgTicketWonPreviousCohorts || 0), icon: 'bx-spreadsheet', tone: 'gold' },
   ]
+  const rdFinalSalesCount = (rdSummary?.wonOpportunityCount || 0) + (rdSummary?.wonDealsFromPreviousCohorts || 0)
+  const rdFinalRevenue = (rdSummary?.wonOpportunityRevenue || 0) + (rdSummary?.wonRevenueFromPreviousCohorts || 0)
+  const rdFinalAvgTicket = rdFinalSalesCount > 0 ? rdFinalRevenue / rdFinalSalesCount : 0
+  const rdFinalKpis = [
+    { title: 'Vendas totais do resultado final', value: formatNumber(rdFinalSalesCount), icon: 'bx-trophy', tone: 'emerald' },
+    { title: 'Faturamento total do resultado final', value: formatCurrency(rdFinalRevenue), icon: 'bx-wallet-alt', tone: 'orange' },
+    { title: 'Ticket médio do resultado final', value: formatCurrency(rdFinalAvgTicket), icon: 'bx-receipt', tone: 'gold' },
+  ]
   const userAvatarFallback = `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.user_metadata?.full_name || user?.email || 'Usuario')}&background=0D8ABC&color=fff`
   const userAvatarSrc = user?.user_metadata?.avatar_url || userAvatarFallback
 
@@ -2653,6 +2661,11 @@ export default function DashboardPage() {
                             title: 'Fechamento e receita',
                             description: 'Leitura por data de fechamento, incluindo vendas que podem ter sido criadas em períodos anteriores.',
                             kpis: rdRevenueKpis,
+                          },
+                          {
+                            title: 'Resultado final',
+                            description: 'Consolidado final somando vendas da safra criada no período com vendas de safras anteriores fechadas dentro do período selecionado.',
+                            kpis: rdFinalKpis,
                           },
                         ].map((group) => (
                           <div key={group.title} className="result-group crm-result-group">
