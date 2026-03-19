@@ -5,6 +5,7 @@ import { useUser } from '@/lib/contexts/UserContext'
 import { createClient } from '@/lib/supabase/client'
 import {
   createClientRecord,
+  createDashboardTemplate,
   DEFAULT_INTEGRATIONS,
   loadDashboardPreferences,
   saveDashboardPreferences,
@@ -166,6 +167,187 @@ const GLOBAL_INTEGRATION_GROUPS = [
   },
 ]
 
+const META_TEMPLATE_METRIC_OPTIONS = {
+  purchaseValue: {
+    label: 'Faturamento atribuído',
+    type: 'currency',
+    icon: 'bx-money',
+    tone: 'emerald',
+    description: 'Valor total das compras atribuídas no período.',
+  },
+  purchases: {
+    label: 'Compras',
+    type: 'number',
+    icon: 'bx-cart',
+    tone: 'emerald',
+    description: 'Total de compras atribuídas no período.',
+  },
+  costPerPurchase: {
+    label: 'Custo por compra',
+    type: 'currency',
+    icon: 'bx-receipt',
+    tone: 'gold',
+    description: 'Investimento dividido pelas compras atribuídas.',
+  },
+  leads: {
+    label: 'Leads',
+    type: 'number',
+    icon: 'bx-user-plus',
+    tone: 'cyan',
+    description: 'Cadastros gerados nas campanhas filtradas.',
+  },
+  costPerLead: {
+    label: 'Custo por lead',
+    type: 'currency',
+    icon: 'bx-purchase-tag',
+    tone: 'orange',
+    description: 'Investimento dividido pelos leads gerados.',
+  },
+  messages: {
+    label: 'Mensagens iniciadas',
+    type: 'number',
+    icon: 'bx-chat',
+    tone: 'blue',
+    description: 'Conversas iniciadas em canais de mensagem.',
+  },
+  costPerMessage: {
+    label: 'Custo por mensagem',
+    type: 'currency',
+    icon: 'bx-message-square-dots',
+    tone: 'pink',
+    description: 'Investimento dividido pelas mensagens iniciadas.',
+  },
+  clicksWithoutConversion: {
+    label: 'Cliques sem conversão',
+    type: 'number',
+    icon: 'bx-pointer',
+    tone: 'purple',
+    description: 'Cliques que não viraram compra, lead ou mensagem.',
+  },
+  roas: {
+    label: 'ROAS consolidado',
+    type: 'multiplier',
+    icon: 'bx-line-chart',
+    tone: 'blue',
+    description: 'Retorno sobre investimento da leitura filtrada.',
+  },
+}
+
+const RD_TEMPLATE_METRIC_OPTIONS = {
+  contacts: {
+    label: 'Leads totais',
+    type: 'number',
+    icon: 'bx-user',
+    tone: 'blue',
+    description: 'Contatos totais retornados pelo RD.',
+  },
+  contactsInPeriod: {
+    label: 'Leads criados no período',
+    type: 'number',
+    icon: 'bx-calendar',
+    tone: 'cyan',
+    description: 'Contatos que entraram na base dentro do período.',
+  },
+  contactsMoved: {
+    label: 'Leads movimentados',
+    type: 'number',
+    icon: 'bx-transfer',
+    tone: 'purple',
+    description: 'Contatos que avançaram em alguma etapa comercial.',
+  },
+  qualifiedDeals: {
+    label: 'Negócios qualificados',
+    type: 'number',
+    icon: 'bx-filter-alt',
+    tone: 'emerald',
+    description: 'Total de negócios que passaram pelas etapas qualificadas.',
+  },
+  qualifiedContacts: {
+    label: 'Contatos qualificados',
+    type: 'number',
+    icon: 'bx-check-shield',
+    tone: 'emerald',
+    description: 'Contatos que chegaram em etapas qualificadas.',
+  },
+  closeRate: {
+    label: 'Taxa de fechamento',
+    type: 'percent',
+    icon: 'bx-badge-check',
+    tone: 'emerald',
+    description: 'Percentual de negócios fechados com ganho.',
+  },
+  dealToWonRate: {
+    label: 'Taxa de negócio para venda',
+    type: 'percent',
+    icon: 'bx-line-chart',
+    tone: 'blue',
+    description: 'Conversão de negócios em vendas.',
+  },
+  leadToDealRate: {
+    label: 'Taxa de lead para negócio',
+    type: 'percent',
+    icon: 'bx-trending-up',
+    tone: 'cyan',
+    description: 'Percentual de leads que viraram negócio.',
+  },
+  sourceConversionRate: {
+    label: 'Conversão por origem',
+    type: 'percent',
+    icon: 'bx-git-branch',
+    tone: 'gold',
+    description: 'Conversão média da origem filtrada.',
+  },
+  avgLeadToWonDays: {
+    label: 'Tempo médio lead -> venda',
+    type: 'duration',
+    icon: 'bx-time-five',
+    tone: 'orange',
+    description: 'Tempo médio total entre entrada do lead e venda.',
+  },
+  avgDealToWonDays: {
+    label: 'Tempo médio negócio -> venda',
+    type: 'duration',
+    icon: 'bx-timer',
+    tone: 'orange',
+    description: 'Tempo médio entre criação do negócio e venda.',
+  },
+  avgLeadToWonDaysFiltered: {
+    label: 'Tempo médio lead -> venda (filtro)',
+    type: 'duration',
+    icon: 'bx-time',
+    tone: 'pink',
+    description: 'Tempo médio considerando o filtro atual.',
+  },
+  avgDealToWonDaysFiltered: {
+    label: 'Tempo médio negócio -> venda (filtro)',
+    type: 'duration',
+    icon: 'bx-stopwatch',
+    tone: 'pink',
+    description: 'Tempo médio por venda dentro do filtro atual.',
+  },
+  contactsWithDeals: {
+    label: 'Contatos com negócio',
+    type: 'number',
+    icon: 'bx-briefcase-alt',
+    tone: 'blue',
+    description: 'Quantidade de contatos que geraram negócios.',
+  },
+  contactsWithWonDeals: {
+    label: 'Contatos com venda',
+    type: 'number',
+    icon: 'bx-trophy',
+    tone: 'emerald',
+    description: 'Quantidade de contatos com venda ganha.',
+  },
+  lostContacts: {
+    label: 'Contatos perdidos',
+    type: 'number',
+    icon: 'bx-x-circle',
+    tone: 'pink',
+    description: 'Contatos marcados como perda na operação.',
+  },
+}
+
 function formatCurrency(value) {
   return new Intl.NumberFormat('pt-BR', {
     style: 'currency',
@@ -198,6 +380,14 @@ function formatMetricValue(value, metricKey) {
   if (type === 'currency') return formatCurrency(value)
   if (type === 'percent') return formatPercent(value)
   if (type === 'multiplier') return formatMultiplier(value)
+  return formatNumber(value)
+}
+
+function formatDashboardMetricValue(value, type) {
+  if (type === 'currency') return formatCurrency(value)
+  if (type === 'percent') return formatPercent(value)
+  if (type === 'multiplier') return formatMultiplier(value)
+  if (type === 'duration') return formatDurationDays(value)
   return formatNumber(value)
 }
 
@@ -338,6 +528,8 @@ export default function DashboardPage() {
   const [rdLeadSourceFilters, setRdLeadSourceFilters] = useState([])
   const [draftRdLeadSourceFilters, setDraftRdLeadSourceFilters] = useState([])
   const [draftFunnelSteps, setDraftFunnelSteps] = useState([])
+  const [isMetaMetricLibraryOpen, setIsMetaMetricLibraryOpen] = useState(false)
+  const [isRdMetricLibraryOpen, setIsRdMetricLibraryOpen] = useState(false)
   const [isQualifiedStagesVisible, setIsQualifiedStagesVisible] = useState(false)
   const [usersList, setUsersList] = useState([])
   const [usersLoading, setUsersLoading] = useState(false)
@@ -370,6 +562,17 @@ export default function DashboardPage() {
     () => clients.find((client) => client.id === activeClientId) || null,
     [clients, activeClientId]
   )
+  const activeDashboardTemplates = useMemo(
+    () => (Array.isArray(activeClient?.dashboardTemplates) ? activeClient.dashboardTemplates : []),
+    [activeClient]
+  )
+  const activeDashboardTemplate = useMemo(() => {
+    if (!activeDashboardTemplates.length) return null
+    return (
+      activeDashboardTemplates.find((template) => template.id === activeClient?.activeDashboardTemplateId) ||
+      activeDashboardTemplates[0]
+    )
+  }, [activeDashboardTemplates, activeClient])
   const selectedManagedUser = useMemo(
     () => usersList.find((managedUser) => managedUser.id === selectedUserId) || null,
     [usersList, selectedUserId]
@@ -383,6 +586,14 @@ export default function DashboardPage() {
   const hasMetaConfigured = Boolean(selectedAdAccount && globalIntegrations.metaAccessToken)
   const hasRdConfigured = Boolean(activeIntegrations.rdStationToken)
   const hasAnyPresentationData = hasMetaConfigured || hasRdConfigured
+  const activeMetaDashboardMetricKeys = useMemo(
+    () => (Array.isArray(activeDashboardTemplate?.metaMetricKeys) ? activeDashboardTemplate.metaMetricKeys : []),
+    [activeDashboardTemplate]
+  )
+  const activeRdDashboardMetricKeys = useMemo(
+    () => (Array.isArray(activeDashboardTemplate?.rdMetricKeys) ? activeDashboardTemplate.rdMetricKeys : []),
+    [activeDashboardTemplate]
+  )
   const activeFunnelSteps = useMemo(
     () => activeClient?.funnelSteps || [],
     [activeClient]
@@ -740,6 +951,11 @@ export default function DashboardPage() {
   ])
 
   useEffect(() => {
+    setIsMetaMetricLibraryOpen(false)
+    setIsRdMetricLibraryOpen(false)
+  }, [activeClientId, activeDashboardTemplate?.id])
+
+  useEffect(() => {
     if (activeTab === 'clientes' && !canManageClients) {
       setActiveTab('apresentacao')
     }
@@ -852,6 +1068,83 @@ export default function DashboardPage() {
         return updater(client)
       })
     )
+  }
+
+  const updateActiveDashboardTemplate = (updater) => {
+    if (!activeDashboardTemplate) return
+
+    updateActiveClient((client) => ({
+      ...client,
+      dashboardTemplates: (client.dashboardTemplates || []).map((template) =>
+        template.id === activeDashboardTemplate.id ? updater(template) : template
+      ),
+    }))
+  }
+
+  const handleDashboardTemplateChange = (templateId) => {
+    if (!templateId) return
+
+    updateActiveClient((client) => ({
+      ...client,
+      activeDashboardTemplateId: templateId,
+    }))
+    setIsMetaMetricLibraryOpen(false)
+    setIsRdMetricLibraryOpen(false)
+  }
+
+  const handleSaveDashboardTemplate = () => {
+    if (!activeDashboardTemplate) return
+
+    const suggestedName =
+      activeDashboardTemplates.length <= 1
+        ? 'Modelo 2'
+        : `Modelo ${activeDashboardTemplates.length + 1}`
+    const templateName = window.prompt('Nome do modelo', suggestedName)
+    const trimmedName = templateName?.trim()
+
+    if (!trimmedName) return
+
+    const newTemplate = createDashboardTemplate({
+      name: trimmedName,
+      metaMetricKeys: activeMetaDashboardMetricKeys,
+      rdMetricKeys: activeRdDashboardMetricKeys,
+    })
+
+    updateActiveClient((client) => ({
+      ...client,
+      dashboardTemplates: [...(client.dashboardTemplates || []), newTemplate],
+      activeDashboardTemplateId: newTemplate.id,
+    }))
+    setIsMetaMetricLibraryOpen(false)
+    setIsRdMetricLibraryOpen(false)
+  }
+
+  const handleAddMetaDashboardMetric = (metricKey) => {
+    updateActiveDashboardTemplate((template) => ({
+      ...template,
+      metaMetricKeys: Array.from(new Set([...(template.metaMetricKeys || []), metricKey])),
+    }))
+  }
+
+  const handleRemoveMetaDashboardMetric = (metricKey) => {
+    updateActiveDashboardTemplate((template) => ({
+      ...template,
+      metaMetricKeys: (template.metaMetricKeys || []).filter((item) => item !== metricKey),
+    }))
+  }
+
+  const handleAddRdDashboardMetric = (metricKey) => {
+    updateActiveDashboardTemplate((template) => ({
+      ...template,
+      rdMetricKeys: Array.from(new Set([...(template.rdMetricKeys || []), metricKey])),
+    }))
+  }
+
+  const handleRemoveRdDashboardMetric = (metricKey) => {
+    updateActiveDashboardTemplate((template) => ({
+      ...template,
+      rdMetricKeys: (template.rdMetricKeys || []).filter((item) => item !== metricKey),
+    }))
   }
 
   const handleCreateClient = (event) => {
@@ -2011,6 +2304,87 @@ export default function DashboardPage() {
     { title: 'Faturamento total do resultado final', value: formatCurrency(rdFinalRevenue), icon: 'bx-wallet-alt', tone: 'orange' },
     { title: 'Ticket médio do resultado final', value: formatCurrency(rdFinalAvgTicket), icon: 'bx-receipt', tone: 'gold' },
   ]
+  const metaDashboardMetricValues = useMemo(
+    () => ({
+      purchaseValue,
+      purchases,
+      costPerPurchase,
+      leads,
+      costPerLead,
+      messages,
+      costPerMessage,
+      clicksWithoutConversion: Math.max(clicks - totalConversions, 0),
+      roas,
+    }),
+    [purchaseValue, purchases, costPerPurchase, leads, costPerLead, messages, costPerMessage, clicks, totalConversions, roas]
+  )
+  const metaDashboardMetricCards = useMemo(
+    () =>
+      activeMetaDashboardMetricKeys
+        .map((metricKey) => {
+          const metric = META_TEMPLATE_METRIC_OPTIONS[metricKey]
+          if (!metric) return null
+
+          return {
+            key: metricKey,
+            title: metric.label,
+            description: metric.description,
+            icon: metric.icon,
+            tone: metric.tone,
+            value: formatDashboardMetricValue(metaDashboardMetricValues[metricKey], metric.type),
+          }
+        })
+        .filter(Boolean),
+    [activeMetaDashboardMetricKeys, metaDashboardMetricValues]
+  )
+  const availableMetaDashboardMetricOptions = useMemo(
+    () => Object.entries(META_TEMPLATE_METRIC_OPTIONS).filter(([metricKey]) => !activeMetaDashboardMetricKeys.includes(metricKey)),
+    [activeMetaDashboardMetricKeys]
+  )
+  const rdDashboardMetricValues = useMemo(
+    () => ({
+      contacts: rdSummary?.contacts || 0,
+      contactsInPeriod: rdSummary?.contactsInPeriod || 0,
+      contactsMoved: rdSummary?.contactsMoved || 0,
+      qualifiedDeals: rdSummary?.qualifiedDeals || 0,
+      qualifiedContacts: rdSummary?.qualifiedContacts || 0,
+      closeRate: rdSummary?.closeRate || 0,
+      dealToWonRate: rdSummary?.dealToWonRate || 0,
+      leadToDealRate: rdSummary?.leadToDealRate || 0,
+      sourceConversionRate: rdSummary?.sourceConversionRate || 0,
+      avgLeadToWonDays: rdSummary?.avgLeadToWonDays || 0,
+      avgDealToWonDays: rdSummary?.avgDealToWonDays || 0,
+      avgLeadToWonDaysFiltered: rdSummary?.avgLeadToWonDaysFiltered || 0,
+      avgDealToWonDaysFiltered: rdSummary?.avgDealToWonDaysFiltered || 0,
+      contactsWithDeals: rdSummary?.contactsWithDeals || 0,
+      contactsWithWonDeals: rdSummary?.contactsWithWonDeals || 0,
+      lostContacts: rdSummary?.lostContacts || 0,
+    }),
+    [rdSummary]
+  )
+  const rdDashboardMetricCards = useMemo(
+    () =>
+      activeRdDashboardMetricKeys
+        .map((metricKey) => {
+          const metric = RD_TEMPLATE_METRIC_OPTIONS[metricKey]
+          if (!metric) return null
+
+          return {
+            key: metricKey,
+            title: metric.label,
+            description: metric.description,
+            icon: metric.icon,
+            tone: metric.tone,
+            value: formatDashboardMetricValue(rdDashboardMetricValues[metricKey], metric.type),
+          }
+        })
+        .filter(Boolean),
+    [activeRdDashboardMetricKeys, rdDashboardMetricValues]
+  )
+  const availableRdDashboardMetricOptions = useMemo(
+    () => Object.entries(RD_TEMPLATE_METRIC_OPTIONS).filter(([metricKey]) => !activeRdDashboardMetricKeys.includes(metricKey)),
+    [activeRdDashboardMetricKeys]
+  )
   const userAvatarFallback = `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.user_metadata?.full_name || user?.email || 'Usuario')}&background=0D8ABC&color=fff`
   const userAvatarSrc = user?.user_metadata?.avatar_url || userAvatarFallback
 
@@ -2118,6 +2492,26 @@ export default function DashboardPage() {
 
             {activeTab === 'apresentacao' && (
               <>
+                {activeClient && activeDashboardTemplates.length > 0 && (
+                  <>
+                    <div className="date-picker glass-item">
+                      <i className="bx bx-layout"></i>
+                      <select value={activeDashboardTemplate?.id || ''} onChange={(event) => handleDashboardTemplateChange(event.target.value)}>
+                        {activeDashboardTemplates.map((template) => (
+                          <option key={template.id} value={template.id}>
+                            {template.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <button type="button" onClick={handleSaveDashboardTemplate} className="btn btn-secondary">
+                      <i className="bx bx-bookmark-plus"></i>
+                      Salvar modelo
+                    </button>
+                  </>
+                )}
+
                 {draftDateRange === 'custom' && (
                   <div className="date-picker glass-item custom-range">
                     <input type="date" value={draftCustomSince} onChange={(event) => setDraftCustomSince(event.target.value)} />
@@ -2903,12 +3297,83 @@ export default function DashboardPage() {
                   )}
                 </section>
                 <section className="glass-panel grouped-results">
-                  <div className="section-header section-header-stack">
+                  <div className="section-header section-header-stack section-header-with-action">
                     <div>
                       <h2>Resumo de resultados</h2>
                       <p className="chart-subtitle">Os indicadores abaixo consideram somente as campanhas enquadradas no filtro de resultado ativo.</p>
                     </div>
+                    {activeDashboardTemplate && (
+                      <button
+                        type="button"
+                        className="btn btn-secondary"
+                        onClick={() => setIsMetaMetricLibraryOpen((current) => !current)}
+                        disabled={!availableMetaDashboardMetricOptions.length}
+                      >
+                        <i className="bx bx-plus"></i>
+                        Adicionar métrica
+                      </button>
+                    )}
                   </div>
+
+                  {(metaDashboardMetricCards.length > 0 || isMetaMetricLibraryOpen) && (
+                    <div className="template-metrics-shell">
+                      {metaDashboardMetricCards.length > 0 && (
+                        <div className="kpi-grid compact-kpi-grid template-metrics-grid">
+                          {metaDashboardMetricCards.map((metric) => (
+                            <div key={metric.key} className="kpi-card glass-panel template-metric-card">
+                              <div className="kpi-header">
+                                <span className="kpi-title">{metric.title}</span>
+                                <div className="template-metric-actions">
+                                  <div className={`icon-box ${metric.tone}`}>
+                                    <i className={`bx ${metric.icon}`}></i>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    className="template-metric-remove"
+                                    onClick={() => handleRemoveMetaDashboardMetric(metric.key)}
+                                    aria-label={`Remover ${metric.title}`}
+                                  >
+                                    <i className="bx bx-x"></i>
+                                  </button>
+                                </div>
+                              </div>
+                              <div className="kpi-value">{metric.value}</div>
+                              <div className="kpi-trend neutral">
+                                <i className="bx bx-check-circle"></i>
+                                <span>{metric.description}</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {isMetaMetricLibraryOpen && (
+                        <div className="metric-library-panel glass-item">
+                          <div>
+                            <strong>Métricas Meta disponíveis</strong>
+                            <p>Essas métricas já vêm da API e podem entrar neste modelo do dashboard.</p>
+                          </div>
+                          <div className="metric-library-list">
+                            {availableMetaDashboardMetricOptions.length > 0 ? (
+                              availableMetaDashboardMetricOptions.map(([metricKey, metric]) => (
+                                <button
+                                  key={metricKey}
+                                  type="button"
+                                  className="metric-library-chip"
+                                  onClick={() => handleAddMetaDashboardMetric(metricKey)}
+                                >
+                                  <span>{metric.label}</span>
+                                  <small>{metric.description}</small>
+                                </button>
+                              ))
+                            ) : (
+                              <div className="metric-library-empty">Todas as métricas da Meta já estão visíveis neste modelo.</div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   <div className="result-group">
                     <div className="result-group-head">
@@ -3271,13 +3736,84 @@ export default function DashboardPage() {
                       </div>
                       <p className="source-section-copy">Em seguida, entram os indicadores comerciais e de CRM vinculados ao cliente.</p>
                     </div>
-                    <section className="glass-panel grouped-results">
-                      <div className="section-header section-header-stack">
+                  <section className="glass-panel grouped-results">
+                      <div className="section-header section-header-stack section-header-with-action">
                         <div>
                           <h2>Resumo comercial</h2>
                           <p className="chart-subtitle">Os indicadores abaixo resumem o desempenho comercial identificado no RD Station para este cliente.</p>
                         </div>
+                        {activeDashboardTemplate && (
+                          <button
+                            type="button"
+                            className="btn btn-secondary"
+                            onClick={() => setIsRdMetricLibraryOpen((current) => !current)}
+                            disabled={!availableRdDashboardMetricOptions.length}
+                          >
+                            <i className="bx bx-plus"></i>
+                            Adicionar métrica
+                          </button>
+                        )}
                       </div>
+
+                      {(rdDashboardMetricCards.length > 0 || isRdMetricLibraryOpen) && (
+                        <div className="template-metrics-shell">
+                          {rdDashboardMetricCards.length > 0 && (
+                            <div className="kpi-grid compact-kpi-grid template-metrics-grid">
+                              {rdDashboardMetricCards.map((metric) => (
+                                <div key={metric.key} className="kpi-card glass-panel template-metric-card">
+                                  <div className="kpi-header">
+                                    <span className="kpi-title">{metric.title}</span>
+                                    <div className="template-metric-actions">
+                                      <div className={`icon-box ${metric.tone}`}>
+                                        <i className={`bx ${metric.icon}`}></i>
+                                      </div>
+                                      <button
+                                        type="button"
+                                        className="template-metric-remove"
+                                        onClick={() => handleRemoveRdDashboardMetric(metric.key)}
+                                        aria-label={`Remover ${metric.title}`}
+                                      >
+                                        <i className="bx bx-x"></i>
+                                      </button>
+                                    </div>
+                                  </div>
+                                  <div className="kpi-value">{metric.value}</div>
+                                  <div className="kpi-trend neutral">
+                                    <i className="bx bx-check-circle"></i>
+                                    <span>{metric.description}</span>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                          {isRdMetricLibraryOpen && (
+                            <div className="metric-library-panel glass-item">
+                              <div>
+                                <strong>Métricas RD disponíveis</strong>
+                                <p>Essas métricas já estão na leitura do CRM e podem entrar no modelo atual.</p>
+                              </div>
+                              <div className="metric-library-list">
+                                {availableRdDashboardMetricOptions.length > 0 ? (
+                                  availableRdDashboardMetricOptions.map(([metricKey, metric]) => (
+                                    <button
+                                      key={metricKey}
+                                      type="button"
+                                      className="metric-library-chip"
+                                      onClick={() => handleAddRdDashboardMetric(metricKey)}
+                                    >
+                                      <span>{metric.label}</span>
+                                      <small>{metric.description}</small>
+                                    </button>
+                                  ))
+                                ) : (
+                                  <div className="metric-library-empty">Todas as métricas do RD já estão visíveis neste modelo.</div>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
 
                       <div className="crm-groups-grid">
                         {[
@@ -4069,6 +4605,13 @@ export default function DashboardPage() {
           gap: 20px;
         }
 
+        .section-header-with-action {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          gap: 20px;
+        }
+
         .intro-list {
           margin-top: 18px;
           padding-left: 18px;
@@ -4091,6 +4634,90 @@ export default function DashboardPage() {
         .grouped-results {
           padding: 24px;
           margin-bottom: 24px;
+        }
+
+        .template-metrics-shell {
+          display: grid;
+          gap: 16px;
+          margin-bottom: 24px;
+        }
+
+        .template-metrics-grid {
+          margin-top: 0;
+        }
+
+        .template-metric-card {
+          gap: 0;
+        }
+
+        .template-metric-actions {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+        }
+
+        .template-metric-remove {
+          width: 34px;
+          height: 34px;
+          border-radius: 999px;
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          background: rgba(255, 255, 255, 0.03);
+          color: var(--text-muted);
+          display: grid;
+          place-items: center;
+          cursor: pointer;
+        }
+
+        .metric-library-panel {
+          padding: 18px;
+          border-radius: 18px;
+          display: grid;
+          gap: 14px;
+        }
+
+        .metric-library-panel strong {
+          display: block;
+          margin-bottom: 4px;
+        }
+
+        .metric-library-panel p {
+          color: var(--text-muted);
+          font-size: 13px;
+          line-height: 1.5;
+        }
+
+        .metric-library-list {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 10px;
+        }
+
+        .metric-library-chip {
+          min-width: 220px;
+          padding: 14px 16px;
+          border-radius: 16px;
+          border: 1px dashed rgba(59, 130, 246, 0.38);
+          background: rgba(15, 23, 42, 0.6);
+          color: var(--text-primary);
+          text-align: left;
+          cursor: pointer;
+          display: grid;
+          gap: 4px;
+          flex: 1 1 220px;
+        }
+
+        .metric-library-chip span {
+          font-weight: 700;
+        }
+
+        .metric-library-chip small,
+        .metric-library-empty {
+          color: var(--text-muted);
+          line-height: 1.5;
+        }
+
+        .metric-library-empty {
+          font-size: 13px;
         }
 
         .meta-filter-panel {
@@ -4990,6 +5617,11 @@ export default function DashboardPage() {
             align-items: flex-start;
           }
 
+          .section-header-with-action {
+            flex-direction: column;
+            align-items: flex-start;
+          }
+
           .source-section-copy {
             text-align: left;
             max-width: none;
@@ -5058,6 +5690,11 @@ export default function DashboardPage() {
           .header-actions-wrap {
             width: 100%;
             justify-content: flex-start;
+          }
+
+          .metric-library-chip {
+            min-width: 0;
+            width: 100%;
           }
 
           .form-actions-space {

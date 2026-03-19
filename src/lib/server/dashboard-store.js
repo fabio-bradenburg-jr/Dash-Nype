@@ -1,9 +1,47 @@
 import { USER_ROLES } from '@/lib/server/access-control'
 
 const DEFAULT_FUNNEL_STEPS = ['impressions', 'clicks', 'leads', 'purchases']
+const DEFAULT_DASHBOARD_TEMPLATE_NAME = 'Principal'
+
+function createRecordId(prefix) {
+  return globalThis.crypto?.randomUUID?.() || `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2, 10)}`
+}
+
+function normalizeTemplateMetricKeys(metricKeys) {
+  if (!Array.isArray(metricKeys)) return []
+  return Array.from(new Set(metricKeys.filter((metricKey) => typeof metricKey === 'string' && metricKey.trim())))
+}
+
+function normalizeDashboardTemplate(template, fallbackName = DEFAULT_DASHBOARD_TEMPLATE_NAME) {
+  return {
+    id: template?.id || createRecordId('dashboard-template'),
+    name: String(template?.name || fallbackName).trim() || fallbackName,
+    metaMetricKeys: normalizeTemplateMetricKeys(template?.metaMetricKeys),
+    rdMetricKeys: normalizeTemplateMetricKeys(template?.rdMetricKeys),
+  }
+}
+
+function normalizeClientDashboardTemplates(payload) {
+  const rawTemplates = Array.isArray(payload?.dashboardTemplates) ? payload.dashboardTemplates : []
+  const dashboardTemplates = rawTemplates.length
+    ? rawTemplates.map((template, index) =>
+        normalizeDashboardTemplate(template, index === 0 ? DEFAULT_DASHBOARD_TEMPLATE_NAME : `Modelo ${index + 1}`)
+      )
+    : [normalizeDashboardTemplate(null, DEFAULT_DASHBOARD_TEMPLATE_NAME)]
+
+  const activeDashboardTemplateId = dashboardTemplates.some((template) => template.id === payload?.activeDashboardTemplateId)
+    ? payload.activeDashboardTemplateId
+    : dashboardTemplates[0].id
+
+  return {
+    dashboardTemplates,
+    activeDashboardTemplateId,
+  }
+}
 
 function normalizeClientRecord(client) {
   const payload = client?.payload && typeof client.payload === 'object' ? client.payload : client || {}
+  const { dashboardTemplates, activeDashboardTemplateId } = normalizeClientDashboardTemplates(payload)
 
   return {
     id: client?.id || payload.id || '',
@@ -19,6 +57,8 @@ function normalizeClientRecord(client) {
     agendorAccountId: payload.agendorAccountId || '',
     rdQualifiedStages: Array.isArray(payload.rdQualifiedStages) ? payload.rdQualifiedStages : [],
     funnelSteps: Array.isArray(payload.funnelSteps) ? payload.funnelSteps : DEFAULT_FUNNEL_STEPS,
+    dashboardTemplates,
+    activeDashboardTemplateId,
     integrations: {
       metaAccessToken: payload.integrations?.metaAccessToken || '',
       metaAdAccountId: payload.integrations?.metaAdAccountId || '',

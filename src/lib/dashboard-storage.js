@@ -26,9 +26,59 @@ export const DEFAULT_PREFERENCES = {
   clients: [],
 }
 
-export function createClientRecord(overrides = {}) {
+export const DEFAULT_DASHBOARD_TEMPLATE_NAME = 'Principal'
+
+function createRecordId(prefix) {
+  return globalThis.crypto?.randomUUID?.() || `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2, 10)}`
+}
+
+function normalizeTemplateMetricKeys(metricKeys) {
+  if (!Array.isArray(metricKeys)) return []
+  return Array.from(new Set(metricKeys.filter((metricKey) => typeof metricKey === 'string' && metricKey.trim())))
+}
+
+export function createDashboardTemplate(overrides = {}) {
   return {
-    id: globalThis.crypto?.randomUUID?.() || `client-${Date.now()}`,
+    id: createRecordId('dashboard-template'),
+    name: DEFAULT_DASHBOARD_TEMPLATE_NAME,
+    metaMetricKeys: [],
+    rdMetricKeys: [],
+    ...overrides,
+  }
+}
+
+export function normalizeDashboardTemplate(template, fallbackName = DEFAULT_DASHBOARD_TEMPLATE_NAME) {
+  return {
+    id: template?.id || createRecordId('dashboard-template'),
+    name: String(template?.name || fallbackName).trim() || fallbackName,
+    metaMetricKeys: normalizeTemplateMetricKeys(template?.metaMetricKeys),
+    rdMetricKeys: normalizeTemplateMetricKeys(template?.rdMetricKeys),
+  }
+}
+
+function normalizeClientDashboardTemplates(client) {
+  const rawTemplates = Array.isArray(client?.dashboardTemplates) ? client.dashboardTemplates : []
+  const dashboardTemplates = rawTemplates.length
+    ? rawTemplates.map((template, index) =>
+        normalizeDashboardTemplate(template, index === 0 ? DEFAULT_DASHBOARD_TEMPLATE_NAME : `Modelo ${index + 1}`)
+      )
+    : [createDashboardTemplate({ name: DEFAULT_DASHBOARD_TEMPLATE_NAME })]
+
+  const activeDashboardTemplateId = dashboardTemplates.some((template) => template.id === client?.activeDashboardTemplateId)
+    ? client.activeDashboardTemplateId
+    : dashboardTemplates[0].id
+
+  return {
+    dashboardTemplates,
+    activeDashboardTemplateId,
+  }
+}
+
+export function createClientRecord(overrides = {}) {
+  const { dashboardTemplates, activeDashboardTemplateId } = normalizeClientDashboardTemplates(overrides)
+
+  return {
+    id: overrides.id || createRecordId('client'),
     name: 'Novo cliente',
     dashboardColor: 'blue',
     logoUrl: '',
@@ -42,7 +92,15 @@ export function createClientRecord(overrides = {}) {
     rdQualifiedStages: [],
     funnelSteps: ['impressions', 'clicks', 'leads', 'purchases'],
     integrations: { ...DEFAULT_INTEGRATIONS },
+    dashboardTemplates,
+    activeDashboardTemplateId,
     ...overrides,
+    integrations: {
+      ...DEFAULT_INTEGRATIONS,
+      ...overrides.integrations,
+    },
+    dashboardTemplates,
+    activeDashboardTemplateId,
   }
 }
 
@@ -67,14 +125,7 @@ export function loadDashboardPreferences() {
         ...parsed.globalIntegrations,
       },
       clients: Array.isArray(parsed.clients)
-        ? parsed.clients.map((client) => ({
-            ...createClientRecord(),
-            ...client,
-            integrations: {
-              ...DEFAULT_INTEGRATIONS,
-              ...client.integrations,
-            },
-          }))
+        ? parsed.clients.map((client) => createClientRecord(client))
         : [],
     }
   } catch (error) {
