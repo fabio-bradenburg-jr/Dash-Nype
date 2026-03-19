@@ -3404,13 +3404,7 @@ export default function DashboardPage() {
             onClick={handleApplyDashboardFilters}
             disabled={isApplyDashboardFiltersDisabled}
           >
-            <span className="floating-filter-apply-kicker">Filtros pendentes</span>
-            <strong>Aplicar no dashboard</strong>
-            <small>
-              {isApplyDashboardFiltersDisabled && draftDateRange === 'custom' && (!draftCustomSince || !draftCustomUntil)
-                ? 'Preencha o período personalizado'
-                : 'Atualize a leitura com as mudanças atuais'}
-            </small>
+            Aplicar filtro
           </button>
         )}
       </main>
@@ -4128,22 +4122,25 @@ export default function DashboardPage() {
 
         .floating-filter-apply {
           position: fixed;
-          top: 50%;
+          top: 72%;
           right: 24px;
           transform: translateY(-50%);
           z-index: 220;
-          min-width: 220px;
-          display: grid;
-          gap: 4px;
-          padding: 14px 16px;
+          min-width: 168px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          padding: 14px 18px;
           border: 1px solid rgba(59, 130, 246, 0.34);
-          border-radius: 18px;
+          border-radius: 999px;
           background:
             linear-gradient(180deg, rgba(59, 130, 246, 0.18), rgba(15, 23, 42, 0.94)),
             rgba(15, 23, 42, 0.96);
           box-shadow: 0 18px 42px rgba(2, 8, 23, 0.45);
           color: #eff6ff;
-          text-align: left;
+          font-size: 15px;
+          font-weight: 700;
+          text-align: center;
           transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
         }
 
@@ -4155,23 +4152,6 @@ export default function DashboardPage() {
         .floating-filter-apply:disabled {
           opacity: 0.72;
           cursor: not-allowed;
-        }
-
-        .floating-filter-apply-kicker {
-          font-size: 11px;
-          letter-spacing: 0.08em;
-          text-transform: uppercase;
-          color: rgba(191, 219, 254, 0.88);
-        }
-
-        .floating-filter-apply strong {
-          font-size: 16px;
-          line-height: 1.2;
-        }
-
-        .floating-filter-apply small {
-          color: rgba(191, 219, 254, 0.82);
-          line-height: 1.4;
         }
 
         .meta-filter-chip-row {
