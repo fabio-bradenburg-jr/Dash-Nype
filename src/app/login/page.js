@@ -52,22 +52,6 @@ export default function LoginPage() {
     }
   }
 
-  const handleGoogleLogin = async () => {
-    try {
-      setLoading(true)
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback`
-        }
-      })
-      if (error) throw error
-    } catch (error) {
-      alert('Erro ao logar com o Google: ' + error.message)
-      setLoading(false)
-    }
-  }
-
   return (
     <div className="login-container glass-panel">
       <div className="login-box">
@@ -127,17 +111,6 @@ export default function LoginPage() {
             }
           </button>
         </form>
-
-        <div className="divider">ou continue com</div>
-
-        <button 
-          onClick={handleGoogleLogin} 
-          disabled={loading}
-          className="btn btn-primary google-btn"
-        >
-          <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" width="20" height="20" />
-          {loading ? 'Conectando...' : 'Google'}
-        </button>
 
         <p className="login-footer">
           {isSignUp ? 'Já tem uma conta? ' : 'Ainda não é membro? '}
@@ -226,42 +199,6 @@ export default function LoginPage() {
           justify-content: center;
           border-radius: 12px;
           font-weight: 600;
-        }
-        .divider {
-          margin: 24px 0;
-          position: relative;
-          color: var(--text-muted);
-          font-size: 13px;
-        }
-        .divider::before, .divider::after {
-          content: '';
-          position: absolute;
-          top: 50%;
-          width: 30%;
-          height: 1px;
-          background: var(--border-color);
-        }
-        .divider::before { left: 0; }
-        .divider::after { right: 0; }
-        
-        .google-btn {
-          width: 100%;
-          padding: 12px;
-          font-size: 15px;
-          justify-content: center;
-          border-radius: 12px;
-          background: rgba(255,255,255,0.05);
-          color: var(--text-primary);
-          border: 1px solid var(--border-color);
-          font-weight: 600;
-          transition: all 0.2s ease;
-          display: flex;
-          align-items: center;
-          gap: 10px;
-        }
-        .google-btn:hover {
-          background: rgba(255,255,255,0.1);
-          transform: translateY(-2px);
         }
         .login-footer {
           margin-top: 32px;
