@@ -789,11 +789,12 @@ export async function GET(request) {
         const stageLabel = getStageKey(deal)
         const stageSequence = stageSequenceMap.get(normalizeLabel(stageLabel))
         const createdOpportunityInRange = contactCreatedInRange || dealCreatedInRange
+        const createdLeadInRange = contactCreatedInRange && sourceMatchesFilter
         const shouldCountWonByClosingDate = type === 'won' && dealClosedInRange
         const shouldCountWonByCreationDate =
           type === 'won' &&
-          createdOpportunityInRange &&
-          sourceMatchesFilter
+          createdLeadInRange &&
+          dealClosedInRange
         const shouldCountLostByClosingDate = type === 'lost' && dealClosedInRange
         const shouldCountOpenByMovementDate = type === 'open' && dealMovedInRange
         const hasReachedQualifiedStage = hasQualifiedStageFilter
@@ -902,7 +903,7 @@ export async function GET(request) {
           accumulator.sourceStats[sourceLabel].wonDeals += 1
           accumulator.sourceStats[sourceLabel].wonRevenue += amount
 
-          if (!createdOpportunityInRange || !sourceMatchesFilter) {
+          if (!createdLeadInRange) {
             accumulator.wonDealsFromPreviousCohorts += 1
             accumulator.wonRevenueFromPreviousCohorts += amount
           }
