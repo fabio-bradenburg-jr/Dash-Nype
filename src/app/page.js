@@ -168,6 +168,41 @@ const GLOBAL_INTEGRATION_GROUPS = [
 ]
 
 const META_TEMPLATE_METRIC_OPTIONS = {
+  reach: {
+    label: 'Alcance',
+    type: 'number',
+    icon: 'bx-radar',
+    tone: 'blue',
+    description: 'Pessoas alcançadas no período filtrado.',
+  },
+  cpm: {
+    label: 'CPM',
+    type: 'currency',
+    icon: 'bx-bar-chart-alt-2',
+    tone: 'purple',
+    description: 'Custo por mil impressões.',
+  },
+  frequency: {
+    label: 'Frequência',
+    type: 'decimal',
+    icon: 'bx-repeat',
+    tone: 'gold',
+    description: 'Média de exibições por pessoa alcançada.',
+  },
+  conversionRate: {
+    label: 'Taxa de conversão',
+    type: 'percent',
+    icon: 'bx-git-compare',
+    tone: 'emerald',
+    description: 'Conversões totais divididas pelos cliques.',
+  },
+  averageTicket: {
+    label: 'Ticket médio',
+    type: 'currency',
+    icon: 'bx-receipt',
+    tone: 'orange',
+    description: 'Faturamento atribuído dividido pelas compras.',
+  },
   purchaseValue: {
     label: 'Faturamento atribuído',
     type: 'currency',
@@ -387,6 +422,7 @@ function formatDashboardMetricValue(value, type) {
   if (type === 'currency') return formatCurrency(value)
   if (type === 'percent') return formatPercent(value)
   if (type === 'multiplier') return formatMultiplier(value)
+  if (type === 'decimal') return Number(value || 0).toFixed(2).replace('.', ',')
   if (type === 'duration') return formatDurationDays(value)
   return formatNumber(value)
 }
@@ -2211,10 +2247,15 @@ export default function DashboardPage() {
     if (!filteredCampaigns.length) {
       return {
         spend: parseFloat(insights?.spend || 0),
+        reach: parseInt(insights?.reach || 0, 10),
         impressions: parseInt(insights?.impressions || 0, 10),
         clicks: customMetrics.clicks || parseInt(insights?.clicks || 0, 10),
         cpc: customMetrics.cpc || parseFloat(insights?.cpc || 0),
         ctr: customMetrics.ctr || parseFloat(insights?.ctr || 0),
+        cpm: customMetrics.cpm || 0,
+        frequency: customMetrics.frequency || 0,
+        conversionRate: customMetrics.conversionRate || 0,
+        averageTicket: customMetrics.averageTicket || 0,
         purchases: customMetrics.purchases || 0,
         cost_per_purchase: customMetrics.cost_per_purchase || 0,
         leads: customMetrics.leads || 0,
@@ -2229,10 +2270,10 @@ export default function DashboardPage() {
 
     const aggregated = filteredCampaigns.reduce(
       (accumulator, campaign) => {
-        const insight = campaign.insights?.data?.[0] || {}
-        const metrics = extractMetaCampaignMetrics(insight)
+        const metrics = extractMetaCampaignMetrics(campaign)
 
         accumulator.spend += metrics.spend
+        accumulator.reach += metrics.reach
         accumulator.impressions += metrics.impressions
         accumulator.clicks += metrics.clicks
         accumulator.purchases += metrics.purchases
@@ -2245,6 +2286,7 @@ export default function DashboardPage() {
       },
       {
         spend: 0,
+        reach: 0,
         impressions: 0,
         clicks: 0,
         purchases: 0,
@@ -2258,7 +2300,11 @@ export default function DashboardPage() {
     return {
       ...aggregated,
       cpc: aggregated.clicks > 0 ? aggregated.spend / aggregated.clicks : 0,
+      cpm: aggregated.impressions > 0 ? (aggregated.spend / aggregated.impressions) * 1000 : 0,
+      frequency: aggregated.reach > 0 ? aggregated.impressions / aggregated.reach : 0,
       ctr: aggregated.impressions > 0 ? (aggregated.clicks / aggregated.impressions) * 100 : 0,
+      conversionRate: aggregated.clicks > 0 ? (aggregated.totalConversions / aggregated.clicks) * 100 : 0,
+      averageTicket: aggregated.purchases > 0 ? aggregated.purchaseValue / aggregated.purchases : 0,
       cost_per_purchase: aggregated.purchases > 0 ? aggregated.spend / aggregated.purchases : 0,
       cost_per_lead: aggregated.leads > 0 ? aggregated.spend / aggregated.leads : 0,
       cost_per_message: aggregated.messages > 0 ? aggregated.spend / aggregated.messages : 0,
@@ -2267,10 +2313,15 @@ export default function DashboardPage() {
   }, [filteredCampaigns, insights, customMetrics])
 
   const spend = campaignSummary.spend || 0
+  const reach = campaignSummary.reach || 0
   const impressions = campaignSummary.impressions || 0
   const clicks = campaignSummary.clicks || 0
   const cpc = campaignSummary.cpc || 0
+  const cpm = campaignSummary.cpm || 0
+  const frequency = campaignSummary.frequency || 0
   const ctr = campaignSummary.ctr || 0
+  const conversionRate = campaignSummary.conversionRate || 0
+  const averageTicket = campaignSummary.averageTicket || 0
   const purchases = campaignSummary.purchases || 0
   const costPerPurchase = campaignSummary.cost_per_purchase || 0
   const leads = campaignSummary.leads || 0
@@ -2410,6 +2461,11 @@ export default function DashboardPage() {
   ]
   const metaDashboardMetricValues = useMemo(
     () => ({
+      reach,
+      cpm,
+      frequency,
+      conversionRate,
+      averageTicket,
       purchaseValue,
       purchases,
       costPerPurchase,
@@ -2420,7 +2476,7 @@ export default function DashboardPage() {
       clicksWithoutConversion: Math.max(clicks - totalConversions, 0),
       roas,
     }),
-    [purchaseValue, purchases, costPerPurchase, leads, costPerLead, messages, costPerMessage, clicks, totalConversions, roas]
+    [reach, cpm, frequency, conversionRate, averageTicket, purchaseValue, purchases, costPerPurchase, leads, costPerLead, messages, costPerMessage, clicks, totalConversions, roas]
   )
   const metaDashboardMetricCards = useMemo(
     () =>

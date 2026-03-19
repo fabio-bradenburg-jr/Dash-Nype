@@ -52,6 +52,7 @@ export function extractMetaCampaignMetrics(insightData) {
   if (!normalizedInsightData) {
     return {
       spend: 0,
+      reach: 0,
       clicks: 0,
       impressions: 0,
       purchases: 0,
@@ -64,7 +65,11 @@ export function extractMetaCampaignMetrics(insightData) {
       cost_per_message: 0,
       cpa: 0,
       cpc: 0,
+      cpm: 0,
+      frequency: 0,
       ctr: 0,
+      conversionRate: 0,
+      averageTicket: 0,
       roas: 0,
       primaryConversionType: 'Nenhuma',
     }
@@ -74,6 +79,7 @@ export function extractMetaCampaignMetrics(insightData) {
   const valueActions = normalizedInsightData.action_values || []
   const costPerActionType = normalizedInsightData.cost_per_action_type || []
   const spend = parseFloat(normalizedInsightData.spend || 0)
+  const reach = parseInt(normalizedInsightData.reach || 0, 10)
   const impressions = parseInt(normalizedInsightData.impressions || 0, 10)
 
   const purchases = sumActionValues(actions, META_PURCHASE_EVENTS)
@@ -105,11 +111,16 @@ export function extractMetaCampaignMetrics(insightData) {
 
   const cpa = totalConversions > 0 ? spend / totalConversions : 0
   const cpc = linkClicks > 0 ? spend / linkClicks : 0
+  const cpm = impressions > 0 ? (spend / impressions) * 1000 : 0
+  const frequency = reach > 0 ? impressions / reach : 0
   const ctr = impressions > 0 ? (linkClicks / impressions) * 100 : 0
+  const conversionRate = linkClicks > 0 ? (totalConversions / linkClicks) * 100 : 0
+  const averageTicket = purchases > 0 ? purchaseValue / purchases : 0
   const roas = spend > 0 ? purchaseValue / spend : 0
 
   return {
     spend,
+    reach,
     clicks: linkClicks,
     impressions,
     purchases,
@@ -122,7 +133,11 @@ export function extractMetaCampaignMetrics(insightData) {
     cost_per_message: costPerMessage,
     cpa,
     cpc,
+    cpm,
+    frequency,
     ctr,
+    conversionRate,
+    averageTicket,
     roas,
     primaryConversionType,
   }
@@ -134,6 +149,7 @@ export function buildMetaSummaryFromCampaigns(campaigns = []) {
       const metrics = extractMetaCampaignMetrics(campaign)
 
       accumulator.spend += metrics.spend
+      accumulator.reach += metrics.reach
       accumulator.impressions += metrics.impressions
       accumulator.clicks += metrics.clicks
       accumulator.purchases += metrics.purchases
@@ -146,6 +162,7 @@ export function buildMetaSummaryFromCampaigns(campaigns = []) {
     },
     {
       spend: 0,
+      reach: 0,
       impressions: 0,
       clicks: 0,
       purchases: 0,
@@ -158,6 +175,7 @@ export function buildMetaSummaryFromCampaigns(campaigns = []) {
 
   return {
     spend: aggregated.spend.toString(),
+    reach: aggregated.reach.toString(),
     impressions: aggregated.impressions.toString(),
     clicks: aggregated.clicks.toString(),
     cpc: aggregated.clicks > 0 ? (aggregated.spend / aggregated.clicks).toString() : '0',
@@ -168,6 +186,10 @@ export function buildMetaSummaryFromCampaigns(campaigns = []) {
       cost_per_lead: aggregated.leads > 0 ? aggregated.spend / aggregated.leads : 0,
       cost_per_message: aggregated.messages > 0 ? aggregated.spend / aggregated.messages : 0,
       cpa: aggregated.totalConversions > 0 ? aggregated.spend / aggregated.totalConversions : 0,
+      cpm: aggregated.impressions > 0 ? (aggregated.spend / aggregated.impressions) * 1000 : 0,
+      frequency: aggregated.reach > 0 ? aggregated.impressions / aggregated.reach : 0,
+      conversionRate: aggregated.clicks > 0 ? (aggregated.totalConversions / aggregated.clicks) * 100 : 0,
+      averageTicket: aggregated.purchases > 0 ? aggregated.purchaseValue / aggregated.purchases : 0,
       roas: aggregated.spend > 0 ? aggregated.purchaseValue / aggregated.spend : 0,
       primaryConversionType: aggregated.totalConversions > 0 ? 'Mistas' : 'Nenhuma',
     },

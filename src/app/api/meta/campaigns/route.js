@@ -17,6 +17,7 @@ function normalizeCampaign(campaign) {
     name: campaign?.name || 'Campanha sem nome',
     status: campaign?.status || '',
     objective: campaign?.objective || '',
+    reach: Number(insight?.reach || 0),
     spend: Number(insight?.spend || 0),
     impressions: Number(insight?.impressions || 0),
     cpc: Number(insight?.cpc || 0),
@@ -54,7 +55,7 @@ export async function GET(request) {
     }
     
     // We use the time filter syntax to fetch campaign details along with their metrics in one call
-    const campaignsUrl = `https://graph.facebook.com/v19.0/${id}/campaigns?fields=id,name,status,objective,${timeFilter}{spend,impressions,cpc,actions,action_values,cost_per_action_type}&limit=50&access_token=${token}`
+    const campaignsUrl = `https://graph.facebook.com/v19.0/${id}/campaigns?fields=id,name,status,objective,${timeFilter}{spend,reach,impressions,cpc,actions,action_values,cost_per_action_type}&limit=50&access_token=${token}`
     
     const data = await fetchMetaJson(
       campaignsUrl,

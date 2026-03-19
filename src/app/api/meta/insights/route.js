@@ -31,7 +31,7 @@ export async function GET(request) {
     const id = adAccountId.startsWith('act_') ? adAccountId : `act_${adAccountId}`
     
     // Facebook API Fields for KPIs
-    const fields = 'spend,impressions,clicks,cpc,ctr,actions,action_values,cost_per_action_type'
+    const fields = 'spend,reach,impressions,clicks,cpc,ctr,actions,action_values,cost_per_action_type'
     const baseParams = new URLSearchParams({ fields, access_token: token })
 
     if (datePreset === 'custom' && since && until) {
@@ -110,6 +110,7 @@ export async function GET(request) {
     const rawDailyRows = dailyData.data || []
     const summaryBase = rawDailyRows.reduce((accumulator, row) => {
       accumulator.spend += parseFloat(row.spend || 0)
+      accumulator.reach += parseInt(row.reach || 0, 10)
       accumulator.impressions += parseInt(row.impressions || 0, 10)
       accumulator.clicks += parseInt(row.clicks || 0, 10)
       accumulator.actions.push(row.actions || [])
@@ -118,6 +119,7 @@ export async function GET(request) {
       return accumulator
     }, {
       spend: 0,
+      reach: 0,
       impressions: 0,
       clicks: 0,
       actions: [],
@@ -127,6 +129,7 @@ export async function GET(request) {
 
     const summaryRaw = rawDailyRows.length > 0 ? {
       spend: summaryBase.spend.toString(),
+      reach: summaryBase.reach.toString(),
       impressions: summaryBase.impressions.toString(),
       clicks: summaryBase.clicks.toString(),
       cpc: summaryBase.clicks > 0 ? (summaryBase.spend / summaryBase.clicks).toString() : '0',
