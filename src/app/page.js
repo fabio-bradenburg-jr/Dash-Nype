@@ -222,6 +222,13 @@ function formatChartAxis(value, metricKey) {
   }).format(Number(value || 0))
 }
 
+function haveSameSelection(left = [], right = []) {
+  if (left.length !== right.length) return false
+
+  const leftSet = new Set(left)
+  return right.every((item) => leftSet.has(item))
+}
+
 function getMetricData(metricKey, dayData) {
   switch (metricKey) {
     case 'spend':
@@ -284,8 +291,11 @@ export default function DashboardPage() {
   const [hasLoadedPreferences, setHasLoadedPreferences] = useState(false)
   const [activeTab, setActiveTab] = useState('apresentacao')
   const [dateRange, setDateRange] = useState('last_7d')
+  const [draftDateRange, setDraftDateRange] = useState('last_7d')
   const [customSince, setCustomSince] = useState('')
+  const [draftCustomSince, setDraftCustomSince] = useState('')
   const [customUntil, setCustomUntil] = useState('')
+  const [draftCustomUntil, setDraftCustomUntil] = useState('')
   const [themeColor, setThemeColor] = useState('blue')
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
   const [metric1, setMetric1] = useState('spend')
@@ -294,9 +304,13 @@ export default function DashboardPage() {
   const [campaignStatusFilter, setCampaignStatusFilter] = useState('ACTIVE')
   const [campaignSortBy, setCampaignSortBy] = useState('spend')
   const [metaResultFilters, setMetaResultFilters] = useState([])
+  const [draftMetaResultFilters, setDraftMetaResultFilters] = useState([])
   const [metaCampaignFilters, setMetaCampaignFilters] = useState([])
+  const [draftMetaCampaignFilters, setDraftMetaCampaignFilters] = useState([])
   const [metaAdsetFilters, setMetaAdsetFilters] = useState([])
+  const [draftMetaAdsetFilters, setDraftMetaAdsetFilters] = useState([])
   const [metaAdFilters, setMetaAdFilters] = useState([])
+  const [draftMetaAdFilters, setDraftMetaAdFilters] = useState([])
   const [isMetaCampaignFilterOpen, setIsMetaCampaignFilterOpen] = useState(false)
   const [isMetaAdsetFilterOpen, setIsMetaAdsetFilterOpen] = useState(false)
   const [isMetaAdFilterOpen, setIsMetaAdFilterOpen] = useState(false)
@@ -320,7 +334,9 @@ export default function DashboardPage() {
   const [dragMetricKey, setDragMetricKey] = useState('')
   const [dragSourceIndex, setDragSourceIndex] = useState(null)
   const [rdSellerFilter, setRdSellerFilter] = useState('all')
+  const [draftRdSellerFilter, setDraftRdSellerFilter] = useState('all')
   const [rdLeadSourceFilters, setRdLeadSourceFilters] = useState([])
+  const [draftRdLeadSourceFilters, setDraftRdLeadSourceFilters] = useState([])
   const [isQualifiedStagesVisible, setIsQualifiedStagesVisible] = useState(false)
   const [usersList, setUsersList] = useState([])
   const [usersLoading, setUsersLoading] = useState(false)
@@ -416,9 +432,20 @@ export default function DashboardPage() {
     const normalizedFilters = rdLeadSourceFilters.filter((source) => sources.includes(source))
     return normalizedFilters.length > 0 ? normalizedFilters : sources
   }, [rdSummary, rdLeadSourceFilters])
+  const activeDraftRdLeadSources = useMemo(() => {
+    const sources = rdSummary?.availableSources || []
+    if (!sources.length) return []
+    if (!draftRdLeadSourceFilters.length) return sources
+    const normalizedFilters = draftRdLeadSourceFilters.filter((source) => sources.includes(source))
+    return normalizedFilters.length > 0 ? normalizedFilters : sources
+  }, [rdSummary, draftRdLeadSourceFilters])
   const normalizedMetaResultFilters = useMemo(
     () => normalizeMetaResultFilters(metaResultFilters, availableMetaResultFilters.map((item) => item.key)),
     [metaResultFilters, availableMetaResultFilters]
+  )
+  const normalizedDraftMetaResultFilters = useMemo(
+    () => normalizeMetaResultFilters(draftMetaResultFilters, availableMetaResultFilters.map((item) => item.key)),
+    [draftMetaResultFilters, availableMetaResultFilters]
   )
   const activeMetaCampaignIds = useMemo(() => {
     const availableIds = availableMetaCampaignOptions.map((campaign) => campaign.id)
@@ -429,6 +456,15 @@ export default function DashboardPage() {
     const normalizedSelection = metaCampaignFilters.filter((campaignId) => availableIds.includes(campaignId))
     return normalizedSelection.length > 0 ? normalizedSelection : availableIds
   }, [metaCampaignFilters, availableMetaCampaignOptions])
+  const activeDraftMetaCampaignIds = useMemo(() => {
+    const availableIds = availableMetaCampaignOptions.map((campaign) => campaign.id)
+
+    if (!availableIds.length) return []
+    if (!draftMetaCampaignFilters.length) return availableIds
+
+    const normalizedSelection = draftMetaCampaignFilters.filter((campaignId) => availableIds.includes(campaignId))
+    return normalizedSelection.length > 0 ? normalizedSelection : availableIds
+  }, [draftMetaCampaignFilters, availableMetaCampaignOptions])
   const metaFilteredCampaignIds = useMemo(
     () =>
       campaigns
@@ -437,6 +473,15 @@ export default function DashboardPage() {
         .map((campaign) => campaign.id)
         .filter(Boolean),
     [campaigns, normalizedMetaResultFilters, availableMetaResultFilters, activeMetaCampaignIds]
+  )
+  const draftMetaFilteredCampaignIds = useMemo(
+    () =>
+      campaigns
+        .filter((campaign) => campaignMatchesMetaResultFilters(campaign, normalizedDraftMetaResultFilters, availableMetaResultFilters.map((item) => item.key)))
+        .filter((campaign) => activeDraftMetaCampaignIds.length === 0 || activeDraftMetaCampaignIds.includes(campaign.id))
+        .map((campaign) => campaign.id)
+        .filter(Boolean),
+    [campaigns, normalizedDraftMetaResultFilters, availableMetaResultFilters, activeDraftMetaCampaignIds]
   )
   const availableMetaAdsetOptions = useMemo(() => {
     const adsetMap = new Map()
@@ -455,6 +500,23 @@ export default function DashboardPage() {
 
     return Array.from(adsetMap.values()).sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'))
   }, [metaHierarchy, metaFilteredCampaignIds])
+  const draftAvailableMetaAdsetOptions = useMemo(() => {
+    const adsetMap = new Map()
+
+    metaHierarchy
+      .filter((item) => draftMetaFilteredCampaignIds.length === 0 || draftMetaFilteredCampaignIds.includes(item.campaignId))
+      .forEach((item) => {
+        if (!item.adsetId) return
+        if (!adsetMap.has(item.adsetId)) {
+          adsetMap.set(item.adsetId, {
+            id: item.adsetId,
+            name: item.adsetName || 'Conjunto sem nome',
+          })
+        }
+      })
+
+    return Array.from(adsetMap.values()).sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'))
+  }, [metaHierarchy, draftMetaFilteredCampaignIds])
   const activeMetaAdsetIds = useMemo(() => {
     const availableIds = availableMetaAdsetOptions.map((adset) => adset.id)
 
@@ -464,6 +526,15 @@ export default function DashboardPage() {
     const normalizedSelection = metaAdsetFilters.filter((adsetId) => availableIds.includes(adsetId))
     return normalizedSelection.length > 0 ? normalizedSelection : availableIds
   }, [metaAdsetFilters, availableMetaAdsetOptions])
+  const activeDraftMetaAdsetIds = useMemo(() => {
+    const availableIds = draftAvailableMetaAdsetOptions.map((adset) => adset.id)
+
+    if (!availableIds.length) return []
+    if (!draftMetaAdsetFilters.length) return availableIds
+
+    const normalizedSelection = draftMetaAdsetFilters.filter((adsetId) => availableIds.includes(adsetId))
+    return normalizedSelection.length > 0 ? normalizedSelection : availableIds
+  }, [draftMetaAdsetFilters, draftAvailableMetaAdsetOptions])
   const availableMetaAdOptions = useMemo(() => {
     const adMap = new Map()
 
@@ -482,6 +553,24 @@ export default function DashboardPage() {
 
     return Array.from(adMap.values()).sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'))
   }, [metaHierarchy, metaFilteredCampaignIds, activeMetaAdsetIds])
+  const draftAvailableMetaAdOptions = useMemo(() => {
+    const adMap = new Map()
+
+    metaHierarchy
+      .filter((item) => draftMetaFilteredCampaignIds.length === 0 || draftMetaFilteredCampaignIds.includes(item.campaignId))
+      .filter((item) => activeDraftMetaAdsetIds.length === 0 || activeDraftMetaAdsetIds.includes(item.adsetId))
+      .forEach((item) => {
+        if (!item.adId) return
+        if (!adMap.has(item.adId)) {
+          adMap.set(item.adId, {
+            id: item.adId,
+            name: item.adName || 'Anúncio sem nome',
+          })
+        }
+      })
+
+    return Array.from(adMap.values()).sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'))
+  }, [metaHierarchy, draftMetaFilteredCampaignIds, activeDraftMetaAdsetIds])
   const activeMetaAdIds = useMemo(() => {
     const availableIds = availableMetaAdOptions.map((ad) => ad.id)
 
@@ -491,42 +580,95 @@ export default function DashboardPage() {
     const normalizedSelection = metaAdFilters.filter((adId) => availableIds.includes(adId))
     return normalizedSelection.length > 0 ? normalizedSelection : availableIds
   }, [metaAdFilters, availableMetaAdOptions])
+  const activeDraftMetaAdIds = useMemo(() => {
+    const availableIds = draftAvailableMetaAdOptions.map((ad) => ad.id)
+
+    if (!availableIds.length) return []
+    if (!draftMetaAdFilters.length) return availableIds
+
+    const normalizedSelection = draftMetaAdFilters.filter((adId) => availableIds.includes(adId))
+    return normalizedSelection.length > 0 ? normalizedSelection : availableIds
+  }, [draftMetaAdFilters, draftAvailableMetaAdOptions])
   const metaCampaignFilterSummary = useMemo(() => {
     const totalCampaigns = availableMetaCampaignOptions.length
-    const selectedCount = activeMetaCampaignIds.length
+    const selectedCount = activeDraftMetaCampaignIds.length
 
     if (!totalCampaigns) return 'Nenhuma campanha disponível'
     if (selectedCount === totalCampaigns) return 'Todas as campanhas'
     if (selectedCount === 1) {
-      return availableMetaCampaignOptions.find((campaign) => campaign.id === activeMetaCampaignIds[0])?.name || '1 campanha selecionada'
+      return availableMetaCampaignOptions.find((campaign) => campaign.id === activeDraftMetaCampaignIds[0])?.name || '1 campanha selecionada'
     }
 
     return `${selectedCount} campanhas selecionadas`
-  }, [availableMetaCampaignOptions, activeMetaCampaignIds])
+  }, [availableMetaCampaignOptions, activeDraftMetaCampaignIds])
   const metaAdsetFilterSummary = useMemo(() => {
-    const totalAdsets = availableMetaAdsetOptions.length
-    const selectedCount = activeMetaAdsetIds.length
+    const totalAdsets = draftAvailableMetaAdsetOptions.length
+    const selectedCount = activeDraftMetaAdsetIds.length
 
     if (!totalAdsets) return 'Nenhum conjunto disponível'
     if (selectedCount === totalAdsets) return 'Todos os conjuntos'
     if (selectedCount === 1) {
-      return availableMetaAdsetOptions.find((adset) => adset.id === activeMetaAdsetIds[0])?.name || '1 conjunto selecionado'
+      return draftAvailableMetaAdsetOptions.find((adset) => adset.id === activeDraftMetaAdsetIds[0])?.name || '1 conjunto selecionado'
     }
 
     return `${selectedCount} conjuntos selecionados`
-  }, [availableMetaAdsetOptions, activeMetaAdsetIds])
+  }, [draftAvailableMetaAdsetOptions, activeDraftMetaAdsetIds])
   const metaAdFilterSummary = useMemo(() => {
-    const totalAds = availableMetaAdOptions.length
-    const selectedCount = activeMetaAdIds.length
+    const totalAds = draftAvailableMetaAdOptions.length
+    const selectedCount = activeDraftMetaAdIds.length
 
     if (!totalAds) return 'Nenhum anúncio disponível'
     if (selectedCount === totalAds) return 'Todos os anúncios'
     if (selectedCount === 1) {
-      return availableMetaAdOptions.find((ad) => ad.id === activeMetaAdIds[0])?.name || '1 anúncio selecionado'
+      return draftAvailableMetaAdOptions.find((ad) => ad.id === activeDraftMetaAdIds[0])?.name || '1 anúncio selecionado'
     }
 
     return `${selectedCount} anúncios selecionados`
-  }, [availableMetaAdOptions, activeMetaAdIds])
+  }, [draftAvailableMetaAdOptions, activeDraftMetaAdIds])
+  const hasPendingDashboardFilters = useMemo(() => {
+    const hasDateRangeChanges = draftDateRange !== dateRange
+    const hasCustomDateChanges =
+      (draftDateRange === 'custom' || dateRange === 'custom') &&
+      (draftCustomSince !== customSince || draftCustomUntil !== customUntil)
+    const hasResultChanges = !haveSameSelection(normalizedDraftMetaResultFilters, normalizedMetaResultFilters)
+    const hasCampaignChanges = !haveSameSelection(activeDraftMetaCampaignIds, activeMetaCampaignIds)
+    const hasAdsetChanges = !haveSameSelection(activeDraftMetaAdsetIds, activeMetaAdsetIds)
+    const hasAdChanges = !haveSameSelection(activeDraftMetaAdIds, activeMetaAdIds)
+    const hasSellerChanges = draftRdSellerFilter !== rdSellerFilter
+    const hasLeadSourceChanges = !haveSameSelection(activeDraftRdLeadSources, activeRdLeadSources)
+
+    return (
+      hasDateRangeChanges ||
+      hasCustomDateChanges ||
+      hasResultChanges ||
+      hasCampaignChanges ||
+      hasAdsetChanges ||
+      hasAdChanges ||
+      hasSellerChanges ||
+      hasLeadSourceChanges
+    )
+  }, [
+    draftDateRange,
+    dateRange,
+    draftCustomSince,
+    customSince,
+    draftCustomUntil,
+    customUntil,
+    normalizedDraftMetaResultFilters,
+    normalizedMetaResultFilters,
+    activeDraftMetaCampaignIds,
+    activeMetaCampaignIds,
+    activeDraftMetaAdsetIds,
+    activeMetaAdsetIds,
+    activeDraftMetaAdIds,
+    activeMetaAdIds,
+    draftRdSellerFilter,
+    rdSellerFilter,
+    activeDraftRdLeadSources,
+    activeRdLeadSources,
+  ])
+  const isApplyDashboardFiltersDisabled =
+    !hasPendingDashboardFilters || (draftDateRange === 'custom' && (!draftCustomSince || !draftCustomUntil))
   const roleLabels = {
     master: 'Master',
     operador: 'Operador',
@@ -563,6 +705,30 @@ export default function DashboardPage() {
   }, [activeClient])
 
   useEffect(() => {
+    setDraftDateRange(dateRange)
+    setDraftCustomSince(customSince)
+    setDraftCustomUntil(customUntil)
+    setDraftMetaResultFilters(metaResultFilters)
+    setDraftMetaCampaignFilters(metaCampaignFilters)
+    setDraftMetaAdsetFilters(metaAdsetFilters)
+    setDraftMetaAdFilters(metaAdFilters)
+    setDraftRdSellerFilter(rdSellerFilter)
+    setDraftRdLeadSourceFilters(rdLeadSourceFilters)
+  }, [
+    dateRange,
+    customSince,
+    customUntil,
+    metaResultFilters,
+    metaCampaignFilters,
+    metaAdsetFilters,
+    metaAdFilters,
+    rdSellerFilter,
+    rdLeadSourceFilters,
+    activeClientId,
+    selectedAdAccount,
+  ])
+
+  useEffect(() => {
     if (activeTab === 'clientes' && !canManageClients) {
       setActiveTab('apresentacao')
     }
@@ -581,13 +747,17 @@ export default function DashboardPage() {
 
     if (!sellers.length) {
       setRdSellerFilter('all')
+      setDraftRdSellerFilter('all')
       return
     }
 
     if (rdSellerFilter !== 'all' && !sellers.some((seller) => seller.id === rdSellerFilter)) {
       setRdSellerFilter('all')
     }
-  }, [rdSummary, rdSellerFilter])
+    if (draftRdSellerFilter !== 'all' && !sellers.some((seller) => seller.id === draftRdSellerFilter)) {
+      setDraftRdSellerFilter('all')
+    }
+  }, [rdSummary, rdSellerFilter, draftRdSellerFilter])
 
   useEffect(() => {
     if (!hasLoadedPreferences || userLoading || !user || hasSyncedServerState) return
@@ -753,7 +923,7 @@ export default function DashboardPage() {
   }
 
   const handleMetaResultFilterToggle = (filterKey) => {
-    setMetaResultFilters((current) => {
+    setDraftMetaResultFilters((current) => {
       const availableKeys = availableMetaResultFilters.map((item) => item.key)
       const normalizedCurrent = normalizeMetaResultFilters(current, availableKeys)
 
@@ -767,7 +937,7 @@ export default function DashboardPage() {
   }
 
   const handleMetaCampaignFilterToggle = (campaignId) => {
-    setMetaCampaignFilters((current) => {
+    setDraftMetaCampaignFilters((current) => {
       const availableIds = availableMetaCampaignOptions.map((campaign) => campaign.id)
       if (!availableIds.length) return current
 
@@ -785,9 +955,53 @@ export default function DashboardPage() {
     })
   }
 
+  const handleApplyDashboardFilters = () => {
+    const availableResultKeys = availableMetaResultFilters.map((item) => item.key)
+    const availableCampaignIds = availableMetaCampaignOptions.map((campaign) => campaign.id)
+    const availableAdsetIds = draftAvailableMetaAdsetOptions.map((adset) => adset.id)
+    const availableAdIds = draftAvailableMetaAdOptions.map((ad) => ad.id)
+    const availableLeadSources = rdSummary?.availableSources || []
+
+    const normalizedResultSelection = draftMetaResultFilters.length > 0
+      ? draftMetaResultFilters.filter((filterKey) => availableResultKeys.includes(filterKey))
+      : []
+    const normalizedCampaignSelection = draftMetaCampaignFilters.length > 0
+      ? draftMetaCampaignFilters.filter((campaignId) => availableCampaignIds.includes(campaignId))
+      : []
+    const normalizedAdsetSelection = draftMetaAdsetFilters.length > 0
+      ? draftMetaAdsetFilters.filter((adsetId) => availableAdsetIds.includes(adsetId))
+      : []
+    const normalizedAdSelection = draftMetaAdFilters.length > 0
+      ? draftMetaAdFilters.filter((adId) => availableAdIds.includes(adId))
+      : []
+    const normalizedLeadSourceSelection = draftRdLeadSourceFilters.length > 0
+      ? draftRdLeadSourceFilters.filter((source) => availableLeadSources.includes(source))
+      : []
+
+    setDateRange(draftDateRange)
+    setCustomSince(draftCustomSince)
+    setCustomUntil(draftCustomUntil)
+    setMetaResultFilters(
+      normalizedResultSelection.length === availableResultKeys.length ? [] : normalizedResultSelection
+    )
+    setMetaCampaignFilters(
+      normalizedCampaignSelection.length === availableCampaignIds.length ? [] : normalizedCampaignSelection
+    )
+    setMetaAdsetFilters(
+      normalizedAdsetSelection.length === availableAdsetIds.length ? [] : normalizedAdsetSelection
+    )
+    setMetaAdFilters(
+      normalizedAdSelection.length === availableAdIds.length ? [] : normalizedAdSelection
+    )
+    setRdSellerFilter(draftRdSellerFilter)
+    setRdLeadSourceFilters(
+      normalizedLeadSourceSelection.length === availableLeadSources.length ? [] : normalizedLeadSourceSelection
+    )
+  }
+
   const handleMetaAdsetFilterToggle = (adsetId) => {
-    setMetaAdsetFilters((current) => {
-      const availableIds = availableMetaAdsetOptions.map((adset) => adset.id)
+    setDraftMetaAdsetFilters((current) => {
+      const availableIds = draftAvailableMetaAdsetOptions.map((adset) => adset.id)
       if (!availableIds.length) return current
 
       const normalizedCurrent = current.length > 0
@@ -805,8 +1019,8 @@ export default function DashboardPage() {
   }
 
   const handleMetaAdFilterToggle = (adId) => {
-    setMetaAdFilters((current) => {
-      const availableIds = availableMetaAdOptions.map((ad) => ad.id)
+    setDraftMetaAdFilters((current) => {
+      const availableIds = draftAvailableMetaAdOptions.map((ad) => ad.id)
       if (!availableIds.length) return current
 
       const normalizedCurrent = current.length > 0
@@ -824,7 +1038,7 @@ export default function DashboardPage() {
   }
 
   const handleRdLeadSourceToggle = (sourceLabel) => {
-    setRdLeadSourceFilters((current) => {
+    setDraftRdLeadSourceFilters((current) => {
       const availableSources = rdSummary?.availableSources || []
       const currentSelection = current.length > 0 ? current.filter((source) => availableSources.includes(source)) : availableSources
 
@@ -1891,17 +2105,17 @@ export default function DashboardPage() {
 
             {activeTab === 'apresentacao' && (
               <>
-                {dateRange === 'custom' && (
+                {draftDateRange === 'custom' && (
                   <div className="date-picker glass-item custom-range">
-                    <input type="date" value={customSince} onChange={(event) => setCustomSince(event.target.value)} />
+                    <input type="date" value={draftCustomSince} onChange={(event) => setDraftCustomSince(event.target.value)} />
                     <span>até</span>
-                    <input type="date" value={customUntil} onChange={(event) => setCustomUntil(event.target.value)} />
+                    <input type="date" value={draftCustomUntil} onChange={(event) => setDraftCustomUntil(event.target.value)} />
                   </div>
                 )}
 
                 <div className="date-picker glass-item">
                   <i className="bx bx-calendar"></i>
-                  <select value={dateRange} onChange={(event) => setDateRange(event.target.value)}>
+                  <select value={draftDateRange} onChange={(event) => setDraftDateRange(event.target.value)}>
                     {DATE_PRESETS.map((preset) => (
                       <option key={preset.value} value={preset.value}>
                         {preset.label}
@@ -2490,7 +2704,7 @@ export default function DashboardPage() {
                         <div className="hero-stat">
                           <span>Vendedor</span>
                           <div className="hero-select-wrap">
-                            <select value={rdSellerFilter} onChange={(event) => setRdSellerFilter(event.target.value)} className="hero-select">
+                            <select value={draftRdSellerFilter} onChange={(event) => setDraftRdSellerFilter(event.target.value)} className="hero-select">
                               <option value="all">Todos os vendedores</option>
                               {(rdSummary?.sellers || []).map((seller) => (
                                 <option key={seller.id} value={seller.id}>
@@ -2556,10 +2770,10 @@ export default function DashboardPage() {
                   </div>
                   <div className="stage-selector meta-filter-chip-row">
                     {availableMetaResultFilters.map((filter) => (
-                      <label key={filter.key} className={`stage-chip ${normalizedMetaResultFilters.includes(filter.key) ? 'active' : ''}`}>
+                      <label key={filter.key} className={`stage-chip ${normalizedDraftMetaResultFilters.includes(filter.key) ? 'active' : ''}`}>
                         <input
                           type="checkbox"
-                          checked={normalizedMetaResultFilters.includes(filter.key)}
+                          checked={normalizedDraftMetaResultFilters.includes(filter.key)}
                           onChange={() => handleMetaResultFilterToggle(filter.key)}
                         />
                         <span>{filter.label}</span>
@@ -2588,10 +2802,10 @@ export default function DashboardPage() {
                           </p>
                           <div className="stage-selector meta-filter-chip-row">
                             {availableMetaCampaignOptions.map((campaign) => (
-                              <label key={campaign.id} className={`stage-chip ${activeMetaCampaignIds.includes(campaign.id) ? 'active' : ''}`}>
+                              <label key={campaign.id} className={`stage-chip ${activeDraftMetaCampaignIds.includes(campaign.id) ? 'active' : ''}`}>
                                 <input
                                   type="checkbox"
-                                  checked={activeMetaCampaignIds.includes(campaign.id)}
+                                  checked={activeDraftMetaCampaignIds.includes(campaign.id)}
                                   onChange={() => handleMetaCampaignFilterToggle(campaign.id)}
                                 />
                                 <span>{campaign.name}</span>
@@ -2602,7 +2816,7 @@ export default function DashboardPage() {
                       )}
                     </div>
                   )}
-                  {availableMetaAdsetOptions.length > 0 && (
+                  {draftAvailableMetaAdsetOptions.length > 0 && (
                     <div className="meta-campaign-filter-collapsible">
                       <button
                         type="button"
@@ -2623,11 +2837,11 @@ export default function DashboardPage() {
                             Os conjuntos seguem a campanha selecionada. Todos começam marcados por padrão.
                           </p>
                           <div className="stage-selector meta-filter-chip-row">
-                            {availableMetaAdsetOptions.map((adset) => (
-                              <label key={adset.id} className={`stage-chip ${activeMetaAdsetIds.includes(adset.id) ? 'active' : ''}`}>
+                            {draftAvailableMetaAdsetOptions.map((adset) => (
+                              <label key={adset.id} className={`stage-chip ${activeDraftMetaAdsetIds.includes(adset.id) ? 'active' : ''}`}>
                                 <input
                                   type="checkbox"
-                                  checked={activeMetaAdsetIds.includes(adset.id)}
+                                  checked={activeDraftMetaAdsetIds.includes(adset.id)}
                                   onChange={() => handleMetaAdsetFilterToggle(adset.id)}
                                 />
                                 <span>{adset.name}</span>
@@ -2638,7 +2852,7 @@ export default function DashboardPage() {
                       )}
                     </div>
                   )}
-                  {availableMetaAdOptions.length > 0 && (
+                  {draftAvailableMetaAdOptions.length > 0 && (
                     <div className="meta-campaign-filter-collapsible">
                       <button
                         type="button"
@@ -2659,11 +2873,11 @@ export default function DashboardPage() {
                             Os anúncios seguem campanha e conjunto selecionados. Todos começam marcados por padrão.
                           </p>
                           <div className="stage-selector meta-filter-chip-row">
-                            {availableMetaAdOptions.map((ad) => (
-                              <label key={ad.id} className={`stage-chip ${activeMetaAdIds.includes(ad.id) ? 'active' : ''}`}>
+                            {draftAvailableMetaAdOptions.map((ad) => (
+                              <label key={ad.id} className={`stage-chip ${activeDraftMetaAdIds.includes(ad.id) ? 'active' : ''}`}>
                                 <input
                                   type="checkbox"
-                                  checked={activeMetaAdIds.includes(ad.id)}
+                                  checked={activeDraftMetaAdIds.includes(ad.id)}
                                   onChange={() => handleMetaAdFilterToggle(ad.id)}
                                 />
                                 <span>{ad.name}</span>
@@ -3086,11 +3300,11 @@ export default function DashboardPage() {
                                   {rdSummary.availableSources.map((source) => (
                                     <label
                                       key={source}
-                                      className={`result-filter-chip ${activeRdLeadSources.includes(source) ? 'active' : ''}`}
+                                      className={`result-filter-chip ${activeDraftRdLeadSources.includes(source) ? 'active' : ''}`}
                                     >
                                       <input
                                         type="checkbox"
-                                        checked={activeRdLeadSources.includes(source)}
+                                        checked={activeDraftRdLeadSources.includes(source)}
                                         onChange={() => handleRdLeadSourceToggle(source)}
                                       />
                                       <span>{source}</span>
@@ -3182,6 +3396,22 @@ export default function DashboardPage() {
               </>
             )}
           </div>
+        )}
+        {activeTab === 'apresentacao' && hasPendingDashboardFilters && (
+          <button
+            type="button"
+            className="floating-filter-apply"
+            onClick={handleApplyDashboardFilters}
+            disabled={isApplyDashboardFiltersDisabled}
+          >
+            <span className="floating-filter-apply-kicker">Filtros pendentes</span>
+            <strong>Aplicar no dashboard</strong>
+            <small>
+              {isApplyDashboardFiltersDisabled && draftDateRange === 'custom' && (!draftCustomSince || !draftCustomUntil)
+                ? 'Preencha o período personalizado'
+                : 'Atualize a leitura com as mudanças atuais'}
+            </small>
+          </button>
         )}
       </main>
 
@@ -3894,6 +4124,54 @@ export default function DashboardPage() {
           line-height: 1.5;
           white-space: nowrap;
           padding-top: 22px;
+        }
+
+        .floating-filter-apply {
+          position: fixed;
+          top: 50%;
+          right: 24px;
+          transform: translateY(-50%);
+          z-index: 220;
+          min-width: 220px;
+          display: grid;
+          gap: 4px;
+          padding: 14px 16px;
+          border: 1px solid rgba(59, 130, 246, 0.34);
+          border-radius: 18px;
+          background:
+            linear-gradient(180deg, rgba(59, 130, 246, 0.18), rgba(15, 23, 42, 0.94)),
+            rgba(15, 23, 42, 0.96);
+          box-shadow: 0 18px 42px rgba(2, 8, 23, 0.45);
+          color: #eff6ff;
+          text-align: left;
+          transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+        }
+
+        .floating-filter-apply:hover:not(:disabled) {
+          transform: translateY(calc(-50% - 2px));
+          box-shadow: 0 22px 48px rgba(2, 8, 23, 0.52);
+        }
+
+        .floating-filter-apply:disabled {
+          opacity: 0.72;
+          cursor: not-allowed;
+        }
+
+        .floating-filter-apply-kicker {
+          font-size: 11px;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+          color: rgba(191, 219, 254, 0.88);
+        }
+
+        .floating-filter-apply strong {
+          font-size: 16px;
+          line-height: 1.2;
+        }
+
+        .floating-filter-apply small {
+          color: rgba(191, 219, 254, 0.82);
+          line-height: 1.4;
         }
 
         .meta-filter-chip-row {
@@ -4732,6 +5010,19 @@ export default function DashboardPage() {
           .meta-filter-helper {
             white-space: normal;
             padding-top: 0;
+          }
+
+          .floating-filter-apply {
+            top: auto;
+            right: 16px;
+            bottom: 16px;
+            left: 16px;
+            min-width: 0;
+            transform: none;
+          }
+
+          .floating-filter-apply:hover:not(:disabled) {
+            transform: translateY(-2px);
           }
 
           .user-directory-grid {
