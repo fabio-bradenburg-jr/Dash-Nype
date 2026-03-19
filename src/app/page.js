@@ -1063,18 +1063,6 @@ export default function DashboardPage() {
   }, [rdLeadSourceFilters])
 
   useEffect(() => {
-    metaFilteredCampaignIdsRef.current = metaFilteredCampaignIds
-  }, [metaFilteredCampaignIds])
-
-  useEffect(() => {
-    metaFilteredAdsetIdsRef.current = metaFilteredAdsetIds
-  }, [metaFilteredAdsetIds])
-
-  useEffect(() => {
-    metaFilteredAdIdsRef.current = metaFilteredAdIds
-  }, [metaFilteredAdIds])
-
-  useEffect(() => {
     setDraftDateRange(dateRange)
     setDraftCustomSince(customSince)
     setDraftCustomUntil(customUntil)
@@ -1386,6 +1374,18 @@ export default function DashboardPage() {
     if (!availableIds.length) return false
     return metaFilteredAdIds.length !== availableIds.length
   }, [availableMetaAdOptions, metaFilteredAdIds])
+
+  useEffect(() => {
+    metaFilteredCampaignIdsRef.current = metaFilteredCampaignIds
+  }, [metaFilteredCampaignIds])
+
+  useEffect(() => {
+    metaFilteredAdsetIdsRef.current = metaFilteredAdsetIds
+  }, [metaFilteredAdsetIds])
+
+  useEffect(() => {
+    metaFilteredAdIdsRef.current = metaFilteredAdIds
+  }, [metaFilteredAdIds])
 
   const handleUserClientToggle = (clientId) => {
     setUserForm((current) => ({
