@@ -1175,16 +1175,9 @@ export default function DashboardPage() {
             params.set('until', customUntil)
           }
 
-          const nextAvailableFilterKeys = getAvailableMetaResultFilters(campaigns).map((item) => item.key)
-          const activeResultFilters = normalizeMetaResultFilters(metaResultFilters, nextAvailableFilterKeys)
-          const matchingCampaignIds = campaigns
-            .filter((campaign) => campaignMatchesMetaResultFilters(campaign, activeResultFilters, nextAvailableFilterKeys))
-            .map((campaign) => campaign.id)
-            .filter(Boolean)
-
           const insightsParams = new URLSearchParams(params)
-          if (matchingCampaignIds.length > 0) {
-            insightsParams.set('campaign_ids', matchingCampaignIds.join(','))
+          if (metaFilteredCampaignIds.length > 0) {
+            insightsParams.set('campaign_ids', metaFilteredCampaignIds.join(','))
           } else {
             insightsParams.set('campaign_ids', '__none__')
           }
@@ -1292,6 +1285,7 @@ export default function DashboardPage() {
     rdLeadSourceFilters,
     selectedQualifiedStages,
     metaResultFilters,
+    metaFilteredCampaignIds,
     metaFilteredAdIds,
     metaFilteredAdsetIds,
     globalIntegrations.metaAccessToken,
