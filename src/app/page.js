@@ -4029,6 +4029,7 @@ export default function DashboardPage() {
                             title: 'Fechamento e receita',
                             description: 'Leitura por data de fechamento de todas as negociações ganhas no período, incluindo safras criadas antes do intervalo selecionado.',
                             kpis: rdRevenueKpis,
+                            showDiagnostics: true,
                           },
                           {
                             title: 'Resultado final',
@@ -4081,6 +4082,45 @@ export default function DashboardPage() {
                                 </div>
                               ))}
                             </div>
+                            {group.showDiagnostics && rdSummary?.diagnostics && (
+                              <div className="rd-diagnostic-panel glass-item">
+                                <div className="rd-diagnostic-head">
+                                  <h4>Diagnóstico da leitura do RD</h4>
+                                  <p>Esses números ajudam a identificar onde as negociações estão sendo filtradas antes de entrar no card.</p>
+                                </div>
+                                <div className="rd-diagnostic-grid">
+                                  <div className="conversion-stat">
+                                    <span>Negociações recebidas do RD</span>
+                                    <strong>{formatNumber(rdSummary.diagnostics.allDeals?.totalDeals || 0)}</strong>
+                                  </div>
+                                  <div className="conversion-stat">
+                                    <span>Ganhas reconhecidas em todos os vendedores</span>
+                                    <strong>{formatNumber(rdSummary.diagnostics.allDeals?.wonClassified || 0)}</strong>
+                                  </div>
+                                  <div className="conversion-stat">
+                                    <span>Ganhas fechadas no período em todos os vendedores</span>
+                                    <strong>{formatNumber(rdSummary.diagnostics.allDeals?.wonClosedInRange || 0)}</strong>
+                                  </div>
+                                  <div className="conversion-stat">
+                                    <span>Ganhas fechadas no período após filtro atual</span>
+                                    <strong>{formatNumber(rdSummary.diagnostics.filteredDeals?.wonClosedInRange || 0)}</strong>
+                                  </div>
+                                  <div className="conversion-stat">
+                                    <span>Ganhas fora do período</span>
+                                    <strong>{formatNumber(rdSummary.diagnostics.filteredDeals?.wonClosedOutOfRange || 0)}</strong>
+                                  </div>
+                                  <div className="conversion-stat">
+                                    <span>Ganhas sem data de fechamento</span>
+                                    <strong>{formatNumber(rdSummary.diagnostics.filteredDeals?.wonWithoutCloseDate || 0)}</strong>
+                                  </div>
+                                </div>
+                                <div className="rd-diagnostic-meta">
+                                  <span>Filtro de vendedor: <b>{rdSummary.diagnostics.sellerFilterApplied ? 'Aplicado' : 'Todos os vendedores'}</b></span>
+                                  <span>Filtro de origem: <b>{rdSummary.diagnostics.leadSourceFilterApplied ? 'Aplicado' : 'Não afeta este bloco'}</b></span>
+                                  <span>Filtro de etapas qualificadas: <b>{rdSummary.diagnostics.qualifiedStageFilterApplied ? 'Aplicado' : 'Não afeta este bloco'}</b></span>
+                                </div>
+                              </div>
+                            )}
                           </div>
                         ))}
                       </div>
@@ -5152,6 +5192,49 @@ export default function DashboardPage() {
           border-radius: 24px;
           border: 1px solid rgba(255, 255, 255, 0.06);
           background: rgba(255, 255, 255, 0.025);
+        }
+
+        .rd-diagnostic-panel {
+          margin-top: 18px;
+          padding: 18px;
+          border-radius: 18px;
+          border: 1px solid rgba(255, 255, 255, 0.05);
+          background: rgba(255, 255, 255, 0.02);
+        }
+
+        .rd-diagnostic-head {
+          margin-bottom: 14px;
+        }
+
+        .rd-diagnostic-head h4 {
+          font-size: 16px;
+          margin-bottom: 4px;
+        }
+
+        .rd-diagnostic-head p {
+          color: var(--text-muted);
+          font-size: 13px;
+          line-height: 1.5;
+        }
+
+        .rd-diagnostic-grid {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 12px;
+        }
+
+        .rd-diagnostic-meta {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 12px 18px;
+          margin-top: 14px;
+          color: var(--text-muted);
+          font-size: 12px;
+        }
+
+        .rd-diagnostic-meta b {
+          color: var(--text-main);
+          font-weight: 700;
         }
 
         .conversion-group-card {

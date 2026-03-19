@@ -4,6 +4,44 @@ function getRdToken(request) {
   return request.headers.get('x-rd-station-token') || ''
 }
 
+function extractNextPageToken(payload) {
+  if (!payload || typeof payload !== 'object') return ''
+
+  return (
+    payload.next_page ||
+    payload.pagination?.next_page ||
+    payload.meta?.next_page ||
+    ''
+  )
+}
+
+async function fetchPagedRdCollection(baseUrl, preferredKey, errorMessage) {
+  const collectedItems = []
+  let requestUrl = baseUrl
+  let pageCount = 0
+
+  while (requestUrl && pageCount < 100) {
+    const response = await fetch(requestUrl)
+    const payload = await response.json()
+
+    if (!response.ok) {
+      throw new Error(payload?.message || payload?.error || errorMessage)
+    }
+
+    collectedItems.push(...normalizeCollection(payload, preferredKey))
+    pageCount += 1
+
+    const nextPageToken = extractNextPageToken(payload)
+    if (!nextPageToken) break
+
+    const nextUrl = new URL(baseUrl)
+    nextUrl.searchParams.set('next_page', nextPageToken)
+    requestUrl = nextUrl.toString()
+  }
+
+  return collectedItems
+}
+
 function normalizeCollection(payload, preferredKey) {
   if (Array.isArray(payload)) return payload
   if (Array.isArray(payload?.[preferredKey])) return payload[preferredKey]
@@ -296,6 +334,45 @@ function isWithinRange(date, range) {
   if (!range) return true
   if (!date) return false
   return date >= range.start && date <= range.end
+}
+
+function summarizeDealDiagnostics(deals, selectedRange) {
+  return deals.reduce(
+    (accumulator, deal) => {
+      const type = classifyDealStatus(deal)
+      const closedAt = getDealClosedAt(deal)
+      const closedInRange = isWithinRange(closedAt, selectedRange)
+
+      accumulator.totalDeals += 1
+
+      if (type === 'won') {
+        accumulator.wonClassified += 1
+
+        if (!closedAt) {
+          accumulator.wonWithoutCloseDate += 1
+        } else if (closedInRange) {
+          accumulator.wonClosedInRange += 1
+        } else {
+          accumulator.wonClosedOutOfRange += 1
+        }
+      } else if (type === 'lost') {
+        accumulator.lostClassified += 1
+      } else {
+        accumulator.openClassified += 1
+      }
+
+      return accumulator
+    },
+    {
+      totalDeals: 0,
+      wonClassified: 0,
+      lostClassified: 0,
+      openClassified: 0,
+      wonClosedInRange: 0,
+      wonClosedOutOfRange: 0,
+      wonWithoutCloseDate: 0,
+    }
+  )
 }
 
 function getOwnerInfo(deal) {
@@ -628,26 +705,18 @@ export async function GET(request) {
     const contactsUrl = `https://crm.rdstation.com/api/v1/contacts?token=${encodeURIComponent(token)}&limit=200`
     const dealsUrl = `https://crm.rdstation.com/api/v1/deals?token=${encodeURIComponent(token)}&limit=200`
 
-    const [contactsRes, dealsRes] = await Promise.all([
-      fetch(contactsUrl),
-      fetch(dealsUrl),
+    const [contacts, deals] = await Promise.all([
+      fetchPagedRdCollection(
+        contactsUrl,
+        'contacts',
+        'Não foi possível consultar os contatos do RD Station.'
+      ),
+      fetchPagedRdCollection(
+        dealsUrl,
+        'deals',
+        'Não foi possível consultar as negociações do RD Station.'
+      ),
     ])
-
-    const [contactsPayload, dealsPayload] = await Promise.all([
-      contactsRes.json(),
-      dealsRes.json(),
-    ])
-
-    if (!contactsRes.ok) {
-      throw new Error(contactsPayload?.message || contactsPayload?.error || 'Não foi possível consultar os contatos do RD Station.')
-    }
-
-    if (!dealsRes.ok) {
-      throw new Error(dealsPayload?.message || dealsPayload?.error || 'Não foi possível consultar as negociações do RD Station.')
-    }
-
-    const contacts = normalizeCollection(contactsPayload, 'contacts')
-    const deals = normalizeCollection(dealsPayload, 'deals')
     const contactsById = new Map()
     contacts.forEach((contact) => {
       getContactIdentifiers(contact).forEach((identifier) => {
@@ -736,6 +805,8 @@ export async function GET(request) {
       const owner = getOwnerInfo(deal)
       return owner?.id === selectedSellerId
     })
+    const allDealsDiagnostics = summarizeDealDiagnostics(deals, selectedRange)
+    const filteredDealsDiagnostics = summarizeDealDiagnostics(filteredDeals, selectedRange)
     const contactsCreatedInPeriod = contacts.filter((contact) =>
       isWithinRange(getContactCreatedAt(contact), selectedRange)
     )
@@ -1080,6 +1151,21 @@ export async function GET(request) {
       sellerRanking,
       sourceRanking,
       selectedSellerId,
+      diagnostics: {
+        sellerFilterApplied: selectedSellerId !== 'all',
+        selectedSellerId,
+        sellerOptionsCount: sellersMap.size,
+        leadSourceFilterApplied: hasLeadSourceFilter,
+        qualifiedStageFilterApplied: hasQualifiedStageFilter,
+        dateRange: selectedRange
+          ? {
+              start: selectedRange.start.toISOString(),
+              end: selectedRange.end.toISOString(),
+            }
+          : null,
+        allDeals: allDealsDiagnostics,
+        filteredDeals: filteredDealsDiagnostics,
+      },
     })
   } catch (error) {
     console.error('RD Station summary error:', error)
