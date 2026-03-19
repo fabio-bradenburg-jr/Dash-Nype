@@ -1922,6 +1922,11 @@ export default function DashboardPage() {
       try {
         let metaError = ''
         let rdError = ''
+        const currentMetaFilteredCampaignIds = metaFilteredCampaignIdsRef.current
+        const currentMetaFilteredAdsetIds = metaFilteredAdsetIdsRef.current
+        const currentMetaFilteredAdIds = metaFilteredAdIdsRef.current
+        const currentRdLeadSourceFilters = rdLeadSourceFiltersRef.current
+        const currentSelectedQualifiedStages = selectedQualifiedStagesRef.current
 
         if (hasMetaConfigured) {
           const params = new URLSearchParams({
@@ -1935,11 +1940,6 @@ export default function DashboardPage() {
           }
 
           const insightsParams = new URLSearchParams(params)
-          const currentMetaFilteredCampaignIds = metaFilteredCampaignIdsRef.current
-          const currentMetaFilteredAdsetIds = metaFilteredAdsetIdsRef.current
-          const currentMetaFilteredAdIds = metaFilteredAdIdsRef.current
-          const currentRdLeadSourceFilters = rdLeadSourceFiltersRef.current
-          const currentSelectedQualifiedStages = selectedQualifiedStagesRef.current
 
           if (currentMetaFilteredCampaignIds.length === 0) {
             insightsParams.set('campaign_ids', '__none__')
