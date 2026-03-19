@@ -2639,19 +2639,19 @@ export default function DashboardPage() {
           </div>
 
           <div className="header-actions header-actions-wrap">
-            <div className="date-picker glass-item">
-              <i className="bx bx-user-pin"></i>
-              <select value={activeClientId} onChange={(event) => setActiveClientId(event.target.value)}>
-                {clients.map((client) => (
-                  <option key={client.id} value={client.id}>
-                    {client.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
             {activeTab === 'apresentacao' && (
               <>
+                <div className="date-picker glass-item">
+                  <i className="bx bx-user-pin"></i>
+                  <select value={activeClientId} onChange={(event) => setActiveClientId(event.target.value)}>
+                    {clients.map((client) => (
+                      <option key={client.id} value={client.id}>
+                        {client.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
                 {activeClient && activeDraftDashboardTemplates.length > 0 && (
                   <>
                     <div className="date-picker glass-item">
