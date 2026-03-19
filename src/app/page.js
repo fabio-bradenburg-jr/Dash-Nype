@@ -375,33 +375,32 @@ export default function DashboardPage() {
     [campaigns]
   )
   const availableMetaCampaignOptions = useMemo(() => {
-    const campaignMap = new Map()
-
-    campaigns.forEach((campaign) => {
-      if (!campaign?.id) return
-      campaignMap.set(campaign.id, {
-        id: campaign.id,
-        name: campaign.name || 'Campanha sem nome',
-        spend: Number(campaign.spend || 0),
-        hasSpendInfo: true,
-      })
-    })
+    const hierarchyCampaignMap = new Map()
 
     metaHierarchy.forEach((item) => {
       if (!item?.campaignId) return
-      if (!campaignMap.has(item.campaignId)) {
-        campaignMap.set(item.campaignId, {
+      if (!hierarchyCampaignMap.has(item.campaignId)) {
+        hierarchyCampaignMap.set(item.campaignId, {
           id: item.campaignId,
           name: item.campaignName || 'Campanha sem nome',
-          spend: 0,
-          hasSpendInfo: false,
         })
       }
     })
 
-    return Array.from(campaignMap.values())
-      .filter((campaign) => campaign.hasSpendInfo ? campaign.spend > 0 : true)
-      .map(({ id, name }) => ({ id, name }))
+    const hierarchyOptions = Array.from(hierarchyCampaignMap.values())
+
+    if (hierarchyOptions.length > 0) {
+      return hierarchyOptions.sort((campaignA, campaignB) =>
+        campaignA.name.localeCompare(campaignB.name, 'pt-BR')
+      )
+    }
+
+    return campaigns
+      .filter((campaign) => campaign?.id && Number(campaign.spend || 0) > 0)
+      .map((campaign) => ({
+        id: campaign.id,
+        name: campaign.name || 'Campanha sem nome',
+      }))
       .sort((campaignA, campaignB) => campaignA.name.localeCompare(campaignB.name, 'pt-BR'))
   }, [campaigns, metaHierarchy])
   const activeRdLeadSources = useMemo(() => {
