@@ -538,6 +538,14 @@ export default function DashboardPage() {
   const supabase = createClient()
   const dashboardRef = useRef(null)
   const campaignsRef = useRef([])
+  const lastMetaStructureFetchKeyRef = useRef('')
+  const lastDashboardFetchKeyRef = useRef('')
+  const lastBreakdownsFetchKeyRef = useRef('')
+  const selectedQualifiedStagesRef = useRef([])
+  const rdLeadSourceFiltersRef = useRef([])
+  const metaFilteredCampaignIdsRef = useRef([])
+  const metaFilteredAdsetIdsRef = useRef([])
+  const metaFilteredAdIdsRef = useRef([])
 
   const [hasLoadedPreferences, setHasLoadedPreferences] = useState(false)
   const [activeTab, setActiveTab] = useState('apresentacao')
@@ -660,6 +668,10 @@ export default function DashboardPage() {
     () => activeClient?.rdQualifiedStages || [],
     [activeClient]
   )
+  const selectedQualifiedStagesKey = useMemo(
+    () => JSON.stringify([...selectedQualifiedStages].sort()),
+    [selectedQualifiedStages]
+  )
   const hasMetaConfigured = Boolean(selectedAdAccount && globalIntegrations.metaAccessToken)
   const hasRdConfigured = Boolean(activeIntegrations.rdStationToken)
   const hasAnyPresentationData = hasMetaConfigured || hasRdConfigured
@@ -735,6 +747,10 @@ export default function DashboardPage() {
     const normalizedFilters = rdLeadSourceFilters.filter((source) => sources.includes(source))
     return normalizedFilters.length > 0 ? normalizedFilters : sources
   }, [rdSummary, rdLeadSourceFilters])
+  const rdLeadSourceFiltersKey = useMemo(
+    () => JSON.stringify([...rdLeadSourceFilters].sort()),
+    [rdLeadSourceFilters]
+  )
   const activeDraftRdLeadSources = useMemo(() => {
     const sources = rdSummary?.availableSources || []
     if (!sources.length) return []
@@ -776,6 +792,10 @@ export default function DashboardPage() {
         .map((campaign) => campaign.id)
         .filter(Boolean),
     [campaigns, normalizedMetaResultFilters, availableMetaResultFilters, activeMetaCampaignIds]
+  )
+  const metaFilteredCampaignIdsKey = useMemo(
+    () => JSON.stringify(metaFilteredCampaignIds),
+    [metaFilteredCampaignIds]
   )
   const draftMetaFilteredCampaignIds = useMemo(
     () =>
@@ -1022,6 +1042,26 @@ export default function DashboardPage() {
   useEffect(() => {
     campaignsRef.current = campaigns
   }, [campaigns])
+
+  useEffect(() => {
+    selectedQualifiedStagesRef.current = selectedQualifiedStages
+  }, [selectedQualifiedStages])
+
+  useEffect(() => {
+    rdLeadSourceFiltersRef.current = rdLeadSourceFilters
+  }, [rdLeadSourceFilters])
+
+  useEffect(() => {
+    metaFilteredCampaignIdsRef.current = metaFilteredCampaignIds
+  }, [metaFilteredCampaignIds])
+
+  useEffect(() => {
+    metaFilteredAdsetIdsRef.current = metaFilteredAdsetIds
+  }, [metaFilteredAdsetIds])
+
+  useEffect(() => {
+    metaFilteredAdIdsRef.current = metaFilteredAdIds
+  }, [metaFilteredAdIds])
 
   useEffect(() => {
     setDraftDateRange(dateRange)
@@ -1305,12 +1345,20 @@ export default function DashboardPage() {
         .map((adset) => adset.id),
     [availableMetaAdsetOptions, activeMetaAdsetIds]
   )
+  const metaFilteredAdsetIdsKey = useMemo(
+    () => JSON.stringify(metaFilteredAdsetIds),
+    [metaFilteredAdsetIds]
+  )
   const metaFilteredAdIds = useMemo(
     () =>
       availableMetaAdOptions
         .filter((ad) => activeMetaAdIds.length === 0 || activeMetaAdIds.includes(ad.id))
         .map((ad) => ad.id),
     [availableMetaAdOptions, activeMetaAdIds]
+  )
+  const metaFilteredAdIdsKey = useMemo(
+    () => JSON.stringify(metaFilteredAdIds),
+    [metaFilteredAdIds]
   )
   const hasActiveMetaCampaignNarrowing = useMemo(() => {
     const availableIds = availableMetaCampaignOptions.map((campaign) => campaign.id)
@@ -1691,6 +1739,7 @@ export default function DashboardPage() {
     if (activeTab !== 'apresentacao') return
 
     if (!activeClientId) {
+      lastMetaStructureFetchKeyRef.current = ''
       setIsLoading(false)
       setInsights(null)
       setDailyData([])
@@ -1719,6 +1768,22 @@ export default function DashboardPage() {
       setIsMetaStructureReady(false)
 
       try {
+        const fetchKey = JSON.stringify({
+          activeClientId,
+          selectedAdAccount,
+          dateRange,
+          customSince,
+          customUntil,
+          metaToken: globalIntegrations.metaAccessToken,
+        })
+
+        if (lastMetaStructureFetchKeyRef.current === fetchKey) {
+          setIsMetaStructureReady(true)
+          return
+        }
+
+        lastMetaStructureFetchKeyRef.current = fetchKey
+
         const params = new URLSearchParams({
           ad_account_id: selectedAdAccount,
           date_preset: dateRange,
@@ -1785,6 +1850,7 @@ export default function DashboardPage() {
     if (activeTab !== 'apresentacao') return
 
     if (!activeClientId) {
+      lastDashboardFetchKeyRef.current = ''
       setIsLoading(false)
       setInsights(null)
       setDailyData([])
@@ -1793,6 +1859,7 @@ export default function DashboardPage() {
     }
 
     if (!hasMetaConfigured && !hasRdConfigured) {
+      lastDashboardFetchKeyRef.current = ''
       setIsLoading(false)
       setInsights(null)
       setDailyData([])
@@ -1811,6 +1878,33 @@ export default function DashboardPage() {
     let cancelled = false
 
     const fetchDashboardData = async () => {
+      const fetchKey = JSON.stringify({
+        activeClientId,
+        selectedAdAccount,
+        dateRange,
+        customSince,
+        customUntil,
+        hasMetaConfigured,
+        hasRdConfigured,
+        rdSellerFilter,
+        rdLeadSourceFiltersKey,
+        selectedQualifiedStagesKey,
+        metaFilteredCampaignIdsKey,
+        metaFilteredAdsetIdsKey,
+        metaFilteredAdIdsKey,
+        hasActiveMetaCampaignNarrowing,
+        hasActiveMetaAdsetNarrowing,
+        hasActiveMetaAdNarrowing,
+        isMetaStructureReady,
+        metaToken: globalIntegrations.metaAccessToken,
+        rdToken: activeIntegrations.rdStationToken,
+      })
+
+      if (lastDashboardFetchKeyRef.current === fetchKey) {
+        return
+      }
+
+      lastDashboardFetchKeyRef.current = fetchKey
       setIsLoading(true)
       setErrorMessage('')
 
@@ -1830,16 +1924,22 @@ export default function DashboardPage() {
           }
 
           const insightsParams = new URLSearchParams(params)
-          if (metaFilteredCampaignIds.length === 0) {
+          const currentMetaFilteredCampaignIds = metaFilteredCampaignIdsRef.current
+          const currentMetaFilteredAdsetIds = metaFilteredAdsetIdsRef.current
+          const currentMetaFilteredAdIds = metaFilteredAdIdsRef.current
+          const currentRdLeadSourceFilters = rdLeadSourceFiltersRef.current
+          const currentSelectedQualifiedStages = selectedQualifiedStagesRef.current
+
+          if (currentMetaFilteredCampaignIds.length === 0) {
             insightsParams.set('campaign_ids', '__none__')
           } else if (hasActiveMetaCampaignNarrowing) {
-            insightsParams.set('campaign_ids', metaFilteredCampaignIds.join(','))
+            insightsParams.set('campaign_ids', currentMetaFilteredCampaignIds.join(','))
           }
-          if (hasActiveMetaAdsetNarrowing && metaFilteredAdsetIds.length > 0) {
-            insightsParams.set('adset_ids', metaFilteredAdsetIds.join(','))
+          if (hasActiveMetaAdsetNarrowing && currentMetaFilteredAdsetIds.length > 0) {
+            insightsParams.set('adset_ids', currentMetaFilteredAdsetIds.join(','))
           }
-          if (hasActiveMetaAdNarrowing && metaFilteredAdIds.length > 0) {
-            insightsParams.set('ad_ids', metaFilteredAdIds.join(','))
+          if (hasActiveMetaAdNarrowing && currentMetaFilteredAdIds.length > 0) {
+            insightsParams.set('ad_ids', currentMetaFilteredAdIds.join(','))
           }
 
           const headers = {
@@ -1870,13 +1970,13 @@ export default function DashboardPage() {
           if (rdSellerFilter && rdSellerFilter !== 'all') {
             rdParams.set('seller_id', rdSellerFilter)
           }
-          if (rdLeadSourceFilters.length > 0) {
-            rdLeadSourceFilters.forEach((source) => {
+          if (currentRdLeadSourceFilters.length > 0) {
+            currentRdLeadSourceFilters.forEach((source) => {
               rdParams.append('lead_source', source)
             })
           }
           rdParams.set('date_preset', dateRange)
-          selectedQualifiedStages.forEach((stage) => {
+          currentSelectedQualifiedStages.forEach((stage) => {
             rdParams.append('qualified_stage', stage)
           })
           if (dateRange === 'custom') {
@@ -1936,12 +2036,12 @@ export default function DashboardPage() {
     hasMetaConfigured,
     hasRdConfigured,
     rdSellerFilter,
-    rdLeadSourceFilters,
-    selectedQualifiedStages,
+    rdLeadSourceFiltersKey,
+    selectedQualifiedStagesKey,
     metaResultFilters,
-    metaFilteredCampaignIds,
-    metaFilteredAdIds,
-    metaFilteredAdsetIds,
+    metaFilteredCampaignIdsKey,
+    metaFilteredAdIdsKey,
+    metaFilteredAdsetIdsKey,
     hasActiveMetaCampaignNarrowing,
     hasActiveMetaAdsetNarrowing,
     hasActiveMetaAdNarrowing,
@@ -1952,10 +2052,12 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (activeTab !== 'apresentacao') {
+      lastBreakdownsFetchKeyRef.current = ''
       return
     }
 
     if (!activeClientId || !hasMetaConfigured) {
+      lastBreakdownsFetchKeyRef.current = ''
       setBreakdowns({ ages: [], cities: [], creatives: [] })
       setIsRankingsLoading(false)
       setRankingsError('')
@@ -1971,6 +2073,28 @@ export default function DashboardPage() {
     }
 
     const fetchRankings = async () => {
+      const fetchKey = JSON.stringify({
+        activeClientId,
+        selectedAdAccount,
+        dateRange,
+        customSince,
+        customUntil,
+        hasMetaConfigured,
+        metaFilteredCampaignIdsKey,
+        metaFilteredAdsetIdsKey,
+        metaFilteredAdIdsKey,
+        hasActiveMetaCampaignNarrowing,
+        hasActiveMetaAdsetNarrowing,
+        hasActiveMetaAdNarrowing,
+        isMetaStructureReady,
+        metaToken: globalIntegrations.metaAccessToken,
+      })
+
+      if (lastBreakdownsFetchKeyRef.current === fetchKey) {
+        return
+      }
+
+      lastBreakdownsFetchKeyRef.current = fetchKey
       setIsRankingsLoading(true)
       setRankingsError('')
 
@@ -1985,16 +2109,20 @@ export default function DashboardPage() {
           params.set('until', customUntil)
         }
 
-        if (metaFilteredCampaignIds.length === 0) {
+        const currentMetaFilteredCampaignIds = metaFilteredCampaignIdsRef.current
+        const currentMetaFilteredAdsetIds = metaFilteredAdsetIdsRef.current
+        const currentMetaFilteredAdIds = metaFilteredAdIdsRef.current
+
+        if (currentMetaFilteredCampaignIds.length === 0) {
           params.set('campaign_ids', '__none__')
         } else if (hasActiveMetaCampaignNarrowing) {
-          params.set('campaign_ids', metaFilteredCampaignIds.join(','))
+          params.set('campaign_ids', currentMetaFilteredCampaignIds.join(','))
         }
-        if (hasActiveMetaAdsetNarrowing && metaFilteredAdsetIds.length > 0) {
-          params.set('adset_ids', metaFilteredAdsetIds.join(','))
+        if (hasActiveMetaAdsetNarrowing && currentMetaFilteredAdsetIds.length > 0) {
+          params.set('adset_ids', currentMetaFilteredAdsetIds.join(','))
         }
-        if (hasActiveMetaAdNarrowing && metaFilteredAdIds.length > 0) {
-          params.set('ad_ids', metaFilteredAdIds.join(','))
+        if (hasActiveMetaAdNarrowing && currentMetaFilteredAdIds.length > 0) {
+          params.set('ad_ids', currentMetaFilteredAdIds.join(','))
         }
 
         const response = await fetch(`/api/meta/breakdowns?${params.toString()}`, {
@@ -2025,9 +2153,9 @@ export default function DashboardPage() {
     customSince,
     customUntil,
     hasMetaConfigured,
-    metaFilteredCampaignIds,
-    metaFilteredAdsetIds,
-    metaFilteredAdIds,
+    metaFilteredCampaignIdsKey,
+    metaFilteredAdsetIdsKey,
+    metaFilteredAdIdsKey,
     hasActiveMetaCampaignNarrowing,
     hasActiveMetaAdsetNarrowing,
     hasActiveMetaAdNarrowing,
