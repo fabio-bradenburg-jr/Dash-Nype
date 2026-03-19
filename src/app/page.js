@@ -337,6 +337,7 @@ export default function DashboardPage() {
   const [draftRdSellerFilter, setDraftRdSellerFilter] = useState('all')
   const [rdLeadSourceFilters, setRdLeadSourceFilters] = useState([])
   const [draftRdLeadSourceFilters, setDraftRdLeadSourceFilters] = useState([])
+  const [draftFunnelSteps, setDraftFunnelSteps] = useState([])
   const [isQualifiedStagesVisible, setIsQualifiedStagesVisible] = useState(false)
   const [usersList, setUsersList] = useState([])
   const [usersLoading, setUsersLoading] = useState(false)
@@ -385,6 +386,10 @@ export default function DashboardPage() {
   const activeFunnelSteps = useMemo(
     () => activeClient?.funnelSteps || [],
     [activeClient]
+  )
+  const activeDraftFunnelSteps = useMemo(
+    () => (Array.isArray(draftFunnelSteps) ? draftFunnelSteps : []),
+    [draftFunnelSteps]
   )
   const availableMetaResultFilters = useMemo(
     () => getAvailableMetaResultFilters(campaigns),
@@ -636,6 +641,7 @@ export default function DashboardPage() {
     const hasAdChanges = !haveSameSelection(activeDraftMetaAdIds, activeMetaAdIds)
     const hasSellerChanges = draftRdSellerFilter !== rdSellerFilter
     const hasLeadSourceChanges = !haveSameSelection(activeDraftRdLeadSources, activeRdLeadSources)
+    const hasFunnelChanges = !haveSameSelection(activeDraftFunnelSteps, activeFunnelSteps)
 
     return (
       hasDateRangeChanges ||
@@ -645,7 +651,8 @@ export default function DashboardPage() {
       hasAdsetChanges ||
       hasAdChanges ||
       hasSellerChanges ||
-      hasLeadSourceChanges
+      hasLeadSourceChanges ||
+      hasFunnelChanges
     )
   }, [
     draftDateRange,
@@ -666,6 +673,8 @@ export default function DashboardPage() {
     rdSellerFilter,
     activeDraftRdLeadSources,
     activeRdLeadSources,
+    activeDraftFunnelSteps,
+    activeFunnelSteps,
   ])
   const isApplyDashboardFiltersDisabled =
     !hasPendingDashboardFilters || (draftDateRange === 'custom' && (!draftCustomSince || !draftCustomUntil))
@@ -714,6 +723,7 @@ export default function DashboardPage() {
     setDraftMetaAdFilters(metaAdFilters)
     setDraftRdSellerFilter(rdSellerFilter)
     setDraftRdLeadSourceFilters(rdLeadSourceFilters)
+    setDraftFunnelSteps(activeFunnelSteps)
   }, [
     dateRange,
     customSince,
@@ -724,6 +734,7 @@ export default function DashboardPage() {
     metaAdFilters,
     rdSellerFilter,
     rdLeadSourceFilters,
+    activeFunnelSteps,
     activeClientId,
     selectedAdAccount,
   ])
@@ -997,6 +1008,10 @@ export default function DashboardPage() {
     setRdLeadSourceFilters(
       normalizedLeadSourceSelection.length === availableLeadSources.length ? [] : normalizedLeadSourceSelection
     )
+    updateActiveClient((client) => ({
+      ...client,
+      funnelSteps: activeDraftFunnelSteps,
+    }))
   }
 
   const handleMetaAdsetFilterToggle = (adsetId) => {
@@ -1305,8 +1320,14 @@ export default function DashboardPage() {
           'x-meta-access-token': globalIntegrations.metaAccessToken,
         }
 
-        const campaignsResponse = await fetch(`/api/meta/campaigns?${params.toString()}`, { headers })
-        const campaignsData = await campaignsResponse.json()
+        const [campaignsResponse, structureResponse] = await Promise.all([
+          fetch(`/api/meta/campaigns?${params.toString()}`, { headers }),
+          fetch(`/api/meta/structure?${params.toString()}`, { headers }),
+        ])
+        const [campaignsData, structureData] = await Promise.all([
+          campaignsResponse.json(),
+          structureResponse.json(),
+        ])
 
         if (!campaignsResponse.ok) {
           throw new Error(campaignsData.error || 'Não foi possível carregar as campanhas da Meta.')
@@ -1314,11 +1335,6 @@ export default function DashboardPage() {
 
         if (cancelled) return
         setCampaigns(campaignsData || [])
-
-        const structureResponse = await fetch(`/api/meta/structure?${params.toString()}`, { headers })
-        const structureData = await structureResponse.json()
-
-        if (cancelled) return
         setMetaHierarchy(structureResponse.ok ? structureData || [] : [])
       } catch (error) {
         if (!cancelled) {
@@ -1641,11 +1657,8 @@ export default function DashboardPage() {
     }
   }
 
-  const replaceFunnelSteps = (steps) => {
-    updateActiveClient((client) => ({
-      ...client,
-      funnelSteps: steps,
-    }))
+  const replaceDraftFunnelSteps = (steps) => {
+    setDraftFunnelSteps(steps)
   }
 
   const handleFunnelDragStart = (metricKey, sourceIndex = null) => {
@@ -1653,19 +1666,19 @@ export default function DashboardPage() {
     setDragSourceIndex(sourceIndex)
   }
 
-  const handleFunnelDrop = (targetIndex = activeFunnelSteps.length) => {
+  const handleFunnelDrop = (targetIndex = activeDraftFunnelSteps.length) => {
     if (!dragMetricKey) return
 
-    const currentSteps = [...activeFunnelSteps]
+    const currentSteps = [...activeDraftFunnelSteps]
 
     if (dragSourceIndex !== null) {
       const [movedStep] = currentSteps.splice(dragSourceIndex, 1)
       const adjustedIndex = dragSourceIndex < targetIndex ? targetIndex - 1 : targetIndex
       currentSteps.splice(adjustedIndex, 0, movedStep)
-      replaceFunnelSteps(currentSteps)
+      replaceDraftFunnelSteps(currentSteps)
     } else if (!currentSteps.includes(dragMetricKey)) {
       currentSteps.splice(targetIndex, 0, dragMetricKey)
-      replaceFunnelSteps(currentSteps)
+      replaceDraftFunnelSteps(currentSteps)
     }
 
     setDragMetricKey('')
@@ -1673,7 +1686,7 @@ export default function DashboardPage() {
   }
 
   const handleRemoveFunnelStep = (metricKey) => {
-    replaceFunnelSteps(activeFunnelSteps.filter((step) => step !== metricKey))
+    replaceDraftFunnelSteps(activeDraftFunnelSteps.filter((step) => step !== metricKey))
   }
 
   const customMetrics = useMemo(() => insights?.custom_metrics || {}, [insights])
@@ -1907,15 +1920,15 @@ export default function DashboardPage() {
   }
 
   const availableFunnelMetrics = useMemo(
-    () => Object.entries(METRIC_OPTIONS).filter(([key]) => !activeFunnelSteps.includes(key)),
-    [activeFunnelSteps]
+    () => Object.entries(METRIC_OPTIONS).filter(([key]) => !activeDraftFunnelSteps.includes(key)),
+    [activeDraftFunnelSteps]
   )
 
   const funnelCards = useMemo(
     () =>
-      activeFunnelSteps.map((metricKey, index) => {
+      activeDraftFunnelSteps.map((metricKey, index) => {
         const value = getSummaryMetricValue(metricKey, insights, customMetrics)
-        const previousKey = activeFunnelSteps[index - 1]
+        const previousKey = activeDraftFunnelSteps[index - 1]
         const previousValue = previousKey ? getSummaryMetricValue(previousKey, insights, customMetrics) : 0
 
         return {
@@ -1925,7 +1938,7 @@ export default function DashboardPage() {
           conversionRate: index === 0 || previousValue <= 0 ? null : (value / previousValue) * 100,
         }
       }),
-    [activeFunnelSteps, insights, customMetrics]
+    [activeDraftFunnelSteps, insights, customMetrics]
   )
 
   const mediaKpis = [
@@ -3012,7 +3025,7 @@ export default function DashboardPage() {
                             className="funnel-chip"
                             draggable
                             onDragStart={() => handleFunnelDragStart(key)}
-                            onClick={() => replaceFunnelSteps([...activeFunnelSteps, key])}
+                            onClick={() => replaceDraftFunnelSteps([...activeDraftFunnelSteps, key])}
                           >
                             <i className="bx bx-move"></i>
                             {metric.label}
@@ -3024,7 +3037,7 @@ export default function DashboardPage() {
                     <div
                       className="funnel-dropzone"
                       onDragOver={(event) => event.preventDefault()}
-                      onDrop={() => handleFunnelDrop(activeFunnelSteps.length)}
+                      onDrop={() => handleFunnelDrop(activeDraftFunnelSteps.length)}
                     >
                       {funnelCards.length === 0 ? (
                         <div className="funnel-empty">
