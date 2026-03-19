@@ -2436,21 +2436,21 @@ export default function DashboardPage() {
   const rdQualificationKpis = [
     { title: 'Oportunidades', value: formatNumber(rdSummary?.opportunityCount || 0), icon: 'bx-bulb', tone: 'blue' },
     { title: 'Qualificados', value: formatNumber(rdSummary?.qualifiedOpportunityCount || 0), icon: 'bx-filter-alt', tone: 'emerald' },
-    { title: 'Vendas da safra criada no período', value: formatNumber(rdSummary?.wonOpportunityCount || 0), icon: 'bx-badge-check', tone: 'emerald' },
-    { title: 'Faturamento da safra criada', value: formatCurrency(rdSummary?.wonOpportunityRevenue || 0), icon: 'bx-wallet-alt', tone: 'orange' },
-    { title: 'Ticket médio da safra criada', value: formatCurrency(rdSummary?.avgTicketWonByCreation || 0), icon: 'bx-receipt', tone: 'gold' },
+    { title: 'Vendas da safra criada e fechada no período', value: formatNumber(rdSummary?.wonOpportunityCount || 0), icon: 'bx-badge-check', tone: 'emerald' },
+    { title: 'Faturamento da safra criada e fechada', value: formatCurrency(rdSummary?.wonOpportunityRevenue || 0), icon: 'bx-wallet-alt', tone: 'orange' },
+    { title: 'Ticket médio da safra criada e fechada', value: formatCurrency(rdSummary?.avgTicketWonByCreation || 0), icon: 'bx-receipt', tone: 'gold' },
     { title: 'Taxa de oportunidade para qualificados', value: formatPercent(rdSummary?.leadToQualifiedRate || 0), icon: 'bx-transfer-alt', tone: 'cyan' },
     { title: 'Taxa de qualificados para venda', value: formatPercent(rdSummary?.qualifiedToWonRate || 0), icon: 'bx-badge-check', tone: 'emerald' },
     { title: 'Taxa de oportunidade para venda', value: formatPercent(rdSummary?.leadToWonRate || 0), icon: 'bx-line-chart', tone: 'blue' },
     { title: 'Negócios perdidos', value: formatNumber(rdSummary?.lostOpportunityCount || 0), icon: 'bx-x-circle', tone: 'pink' },
   ]
   const rdRevenueKpis = [
-    { title: 'Vendas fechadas no período', value: formatNumber(rdSummary?.wonDeals || 0), icon: 'bx-calendar-check', tone: 'emerald' },
-    { title: 'Vendas de safras anteriores fechadas no período', value: formatNumber(rdSummary?.wonDealsFromPreviousCohorts || 0), icon: 'bx-history', tone: 'blue' },
-    { title: 'Faturamento por fechamento', value: formatCurrency(rdSummary?.wonRevenue || 0), icon: 'bx-wallet-alt', tone: 'orange' },
-    { title: 'Ticket médio por fechamento', value: formatCurrency(rdSummary?.avgTicketWon || 0), icon: 'bx-receipt', tone: 'gold' },
+    { title: 'Negociações ganhas fechadas no período', value: formatNumber(rdSummary?.wonDeals || 0), icon: 'bx-calendar-check', tone: 'emerald' },
+    { title: 'Negociações ganhas de safras anteriores', value: formatNumber(rdSummary?.wonDealsFromPreviousCohorts || 0), icon: 'bx-history', tone: 'blue' },
+    { title: 'Faturamento das negociações fechadas', value: formatCurrency(rdSummary?.wonRevenue || 0), icon: 'bx-wallet-alt', tone: 'orange' },
+    { title: 'Ticket médio das negociações fechadas', value: formatCurrency(rdSummary?.avgTicketWon || 0), icon: 'bx-receipt', tone: 'gold' },
     { title: 'Faturamento de safras anteriores fechadas', value: formatCurrency(rdSummary?.wonRevenueFromPreviousCohorts || 0), icon: 'bx-coin-stack', tone: 'orange' },
-    { title: 'Ticket médio de safras anteriores', value: formatCurrency(rdSummary?.avgTicketWonPreviousCohorts || 0), icon: 'bx-spreadsheet', tone: 'gold' },
+    { title: 'Ticket médio de safras anteriores fechadas', value: formatCurrency(rdSummary?.avgTicketWonPreviousCohorts || 0), icon: 'bx-spreadsheet', tone: 'gold' },
   ]
   const rdFinalSalesCount = (rdSummary?.wonOpportunityCount || 0) + (rdSummary?.wonDealsFromPreviousCohorts || 0)
   const rdFinalRevenue = (rdSummary?.wonOpportunityRevenue || 0) + (rdSummary?.wonRevenueFromPreviousCohorts || 0)
@@ -4021,13 +4021,13 @@ export default function DashboardPage() {
                         {[
                           {
                             title: 'Qualificação e conversão',
-                            description: 'Leitura da safra criada no período selecionado: oportunidades, qualificação, perdas e vendas dessa mesma base.',
+                            description: 'Leitura da safra criada no período selecionado: oportunidades, qualificação, perdas e vendas da mesma base que entrou e fechou dentro do período.',
                             kpis: rdQualificationKpis,
                             withSourceFilter: true,
                           },
                           {
                             title: 'Fechamento e receita',
-                            description: 'Leitura por data de fechamento, incluindo vendas que podem ter sido criadas em períodos anteriores.',
+                            description: 'Leitura por data de fechamento de todas as negociações ganhas no período, incluindo safras criadas antes do intervalo selecionado.',
                             kpis: rdRevenueKpis,
                           },
                           {
