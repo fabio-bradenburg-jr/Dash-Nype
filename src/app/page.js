@@ -565,6 +565,7 @@ export default function DashboardPage() {
   const [isMetaCampaignFilterOpen, setIsMetaCampaignFilterOpen] = useState(false)
   const [isMetaAdsetFilterOpen, setIsMetaAdsetFilterOpen] = useState(false)
   const [isMetaAdFilterOpen, setIsMetaAdFilterOpen] = useState(false)
+  const [isRdDiagnosticsOpen, setIsRdDiagnosticsOpen] = useState(false)
   const [clients, setClients] = useState([])
   const [activeClientId, setActiveClientId] = useState('')
   const [newClientName, setNewClientName] = useState('')
@@ -2452,6 +2453,18 @@ export default function DashboardPage() {
     { title: 'Faturamento de safras anteriores fechadas', value: formatCurrency(rdSummary?.wonRevenueFromPreviousCohorts || 0), icon: 'bx-coin-stack', tone: 'orange' },
     { title: 'Ticket médio de safras anteriores fechadas', value: formatCurrency(rdSummary?.avgTicketWonPreviousCohorts || 0), icon: 'bx-spreadsheet', tone: 'gold' },
   ]
+  const rdDiagnosticsSummary = useMemo(() => {
+    if (!rdSummary?.diagnostics) return 'Aguardando leitura técnica das negociações do RD.'
+
+    const allWonInRange = rdSummary.diagnostics.allDeals?.wonClosedInRange || 0
+    const filteredWonInRange = rdSummary.diagnostics.filteredDeals?.wonClosedInRange || 0
+
+    if (rdSummary.diagnostics.sellerFilterApplied) {
+      return `${formatNumber(filteredWonInRange)} negociações no período após o filtro atual de vendedor.`
+    }
+
+    return `${formatNumber(allWonInRange)} negociações ganhas reconhecidas no período selecionado.`
+  }, [rdSummary])
   const rdFinalSalesCount = (rdSummary?.wonOpportunityCount || 0) + (rdSummary?.wonDealsFromPreviousCohorts || 0)
   const rdFinalRevenue = (rdSummary?.wonOpportunityRevenue || 0) + (rdSummary?.wonRevenueFromPreviousCohorts || 0)
   const rdFinalAvgTicket = rdFinalSalesCount > 0 ? rdFinalRevenue / rdFinalSalesCount : 0
@@ -4083,42 +4096,58 @@ export default function DashboardPage() {
                               ))}
                             </div>
                             {group.showDiagnostics && rdSummary?.diagnostics && (
-                              <div className="rd-diagnostic-panel glass-item">
-                                <div className="rd-diagnostic-head">
-                                  <h4>Diagnóstico da leitura do RD</h4>
-                                  <p>Esses números ajudam a identificar onde as negociações estão sendo filtradas antes de entrar no card.</p>
-                                </div>
-                                <div className="rd-diagnostic-grid">
-                                  <div className="conversion-stat">
-                                    <span>Negociações recebidas do RD</span>
-                                    <strong>{formatNumber(rdSummary.diagnostics.allDeals?.totalDeals || 0)}</strong>
+                              <div className="meta-campaign-filter-collapsible rd-diagnostics-collapsible">
+                                <button
+                                  type="button"
+                                  className={`meta-campaign-filter-trigger ${isRdDiagnosticsOpen ? 'open' : ''}`}
+                                  onClick={() => setIsRdDiagnosticsOpen((current) => !current)}
+                                >
+                                  <div>
+                                    <h3>Como as negociações estão sendo filtradas</h3>
+                                    <p>{rdDiagnosticsSummary}</p>
                                   </div>
-                                  <div className="conversion-stat">
-                                    <span>Ganhas reconhecidas em todos os vendedores</span>
-                                    <strong>{formatNumber(rdSummary.diagnostics.allDeals?.wonClassified || 0)}</strong>
+                                  <span className="meta-campaign-filter-trigger-icon">
+                                    <i className={`bx ${isRdDiagnosticsOpen ? 'bx-chevron-up' : 'bx-chevron-down'}`}></i>
+                                  </span>
+                                </button>
+                                {isRdDiagnosticsOpen && (
+                                  <div className="rd-source-filter-bar rd-source-filter-inline rd-diagnostic-panel">
+                                    <p className="meta-campaign-filter-note">
+                                      Esses números mostram em que etapa as negociações do RD estão sendo reduzidas antes de entrar no card final.
+                                    </p>
+                                    <div className="rd-diagnostic-grid">
+                                      <div className="conversion-stat">
+                                        <span>Negociações recebidas do RD</span>
+                                        <strong>{formatNumber(rdSummary.diagnostics.allDeals?.totalDeals || 0)}</strong>
+                                      </div>
+                                      <div className="conversion-stat">
+                                        <span>Ganhas reconhecidas em todos os vendedores</span>
+                                        <strong>{formatNumber(rdSummary.diagnostics.allDeals?.wonClassified || 0)}</strong>
+                                      </div>
+                                      <div className="conversion-stat">
+                                        <span>Ganhas fechadas no período em todos os vendedores</span>
+                                        <strong>{formatNumber(rdSummary.diagnostics.allDeals?.wonClosedInRange || 0)}</strong>
+                                      </div>
+                                      <div className="conversion-stat">
+                                        <span>Ganhas fechadas no período após filtro atual</span>
+                                        <strong>{formatNumber(rdSummary.diagnostics.filteredDeals?.wonClosedInRange || 0)}</strong>
+                                      </div>
+                                      <div className="conversion-stat">
+                                        <span>Ganhas fora do período</span>
+                                        <strong>{formatNumber(rdSummary.diagnostics.filteredDeals?.wonClosedOutOfRange || 0)}</strong>
+                                      </div>
+                                      <div className="conversion-stat">
+                                        <span>Ganhas sem data de fechamento</span>
+                                        <strong>{formatNumber(rdSummary.diagnostics.filteredDeals?.wonWithoutCloseDate || 0)}</strong>
+                                      </div>
+                                    </div>
+                                    <div className="rd-diagnostic-meta">
+                                      <span>Filtro de vendedor: <b>{rdSummary.diagnostics.sellerFilterApplied ? 'Aplicado' : 'Todos os vendedores'}</b></span>
+                                      <span>Filtro de origem: <b>{rdSummary.diagnostics.leadSourceFilterApplied ? 'Aplicado' : 'Não afeta este bloco'}</b></span>
+                                      <span>Filtro de etapas qualificadas: <b>{rdSummary.diagnostics.qualifiedStageFilterApplied ? 'Aplicado' : 'Não afeta este bloco'}</b></span>
+                                    </div>
                                   </div>
-                                  <div className="conversion-stat">
-                                    <span>Ganhas fechadas no período em todos os vendedores</span>
-                                    <strong>{formatNumber(rdSummary.diagnostics.allDeals?.wonClosedInRange || 0)}</strong>
-                                  </div>
-                                  <div className="conversion-stat">
-                                    <span>Ganhas fechadas no período após filtro atual</span>
-                                    <strong>{formatNumber(rdSummary.diagnostics.filteredDeals?.wonClosedInRange || 0)}</strong>
-                                  </div>
-                                  <div className="conversion-stat">
-                                    <span>Ganhas fora do período</span>
-                                    <strong>{formatNumber(rdSummary.diagnostics.filteredDeals?.wonClosedOutOfRange || 0)}</strong>
-                                  </div>
-                                  <div className="conversion-stat">
-                                    <span>Ganhas sem data de fechamento</span>
-                                    <strong>{formatNumber(rdSummary.diagnostics.filteredDeals?.wonWithoutCloseDate || 0)}</strong>
-                                  </div>
-                                </div>
-                                <div className="rd-diagnostic-meta">
-                                  <span>Filtro de vendedor: <b>{rdSummary.diagnostics.sellerFilterApplied ? 'Aplicado' : 'Todos os vendedores'}</b></span>
-                                  <span>Filtro de origem: <b>{rdSummary.diagnostics.leadSourceFilterApplied ? 'Aplicado' : 'Não afeta este bloco'}</b></span>
-                                  <span>Filtro de etapas qualificadas: <b>{rdSummary.diagnostics.qualifiedStageFilterApplied ? 'Aplicado' : 'Não afeta este bloco'}</b></span>
-                                </div>
+                                )}
                               </div>
                             )}
                           </div>
