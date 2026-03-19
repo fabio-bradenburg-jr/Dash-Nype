@@ -5378,6 +5378,15 @@ export default function DashboardPage() {
           background: rgba(255, 255, 255, 0.025);
         }
 
+        .rd-source-filter-collapsible {
+          margin-top: 12px;
+          margin-bottom: 12px;
+        }
+
+        .rd-source-filter-collapsible + .compact-kpi-grid {
+          margin-top: 0;
+        }
+
         .rd-diagnostic-panel {
           margin-top: 18px;
           padding: 18px;
