@@ -419,6 +419,30 @@ function haveSameSelection(left = [], right = []) {
   return right.every((item) => leftSet.has(item))
 }
 
+function cloneDashboardTemplates(templates = []) {
+  return templates.map((template) => ({
+    ...template,
+    metaMetricKeys: Array.isArray(template?.metaMetricKeys) ? [...template.metaMetricKeys] : [],
+    rdMetricKeys: Array.isArray(template?.rdMetricKeys) ? [...template.rdMetricKeys] : [],
+  }))
+}
+
+function haveSameDashboardTemplates(left = [], right = []) {
+  if (left.length !== right.length) return false
+
+  return left.every((leftTemplate, index) => {
+    const rightTemplate = right[index]
+    if (!rightTemplate) return false
+
+    return (
+      leftTemplate.id === rightTemplate.id &&
+      leftTemplate.name === rightTemplate.name &&
+      haveSameSelection(leftTemplate.metaMetricKeys || [], rightTemplate.metaMetricKeys || []) &&
+      haveSameSelection(leftTemplate.rdMetricKeys || [], rightTemplate.rdMetricKeys || [])
+    )
+  })
+}
+
 function getMetricData(metricKey, dayData) {
   switch (metricKey) {
     case 'spend':
@@ -477,6 +501,7 @@ export default function DashboardPage() {
   const { user, profile, access, loading: userLoading } = useUser()
   const supabase = createClient()
   const dashboardRef = useRef(null)
+  const campaignsRef = useRef([])
 
   const [hasLoadedPreferences, setHasLoadedPreferences] = useState(false)
   const [activeTab, setActiveTab] = useState('apresentacao')
@@ -517,6 +542,7 @@ export default function DashboardPage() {
   const [rankingsError, setRankingsError] = useState('')
   const [rdSummary, setRdSummary] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [isMetaStructureReady, setIsMetaStructureReady] = useState(false)
   const [isSavingIntegrations, setIsSavingIntegrations] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
   const [hasSyncedServerState, setHasSyncedServerState] = useState(false)
@@ -528,6 +554,8 @@ export default function DashboardPage() {
   const [rdLeadSourceFilters, setRdLeadSourceFilters] = useState([])
   const [draftRdLeadSourceFilters, setDraftRdLeadSourceFilters] = useState([])
   const [draftFunnelSteps, setDraftFunnelSteps] = useState([])
+  const [draftDashboardTemplates, setDraftDashboardTemplates] = useState([])
+  const [draftDashboardTemplateId, setDraftDashboardTemplateId] = useState('')
   const [isMetaMetricLibraryOpen, setIsMetaMetricLibraryOpen] = useState(false)
   const [isRdMetricLibraryOpen, setIsRdMetricLibraryOpen] = useState(false)
   const [isQualifiedStagesVisible, setIsQualifiedStagesVisible] = useState(false)
@@ -573,6 +601,17 @@ export default function DashboardPage() {
       activeDashboardTemplates[0]
     )
   }, [activeDashboardTemplates, activeClient])
+  const activeDraftDashboardTemplates = useMemo(
+    () => (Array.isArray(draftDashboardTemplates) ? draftDashboardTemplates : []),
+    [draftDashboardTemplates]
+  )
+  const activeDraftDashboardTemplate = useMemo(() => {
+    if (!activeDraftDashboardTemplates.length) return null
+    return (
+      activeDraftDashboardTemplates.find((template) => template.id === draftDashboardTemplateId) ||
+      activeDraftDashboardTemplates[0]
+    )
+  }, [activeDraftDashboardTemplates, draftDashboardTemplateId])
   const selectedManagedUser = useMemo(
     () => usersList.find((managedUser) => managedUser.id === selectedUserId) || null,
     [usersList, selectedUserId]
@@ -586,6 +625,7 @@ export default function DashboardPage() {
   const hasMetaConfigured = Boolean(selectedAdAccount && globalIntegrations.metaAccessToken)
   const hasRdConfigured = Boolean(activeIntegrations.rdStationToken)
   const hasAnyPresentationData = hasMetaConfigured || hasRdConfigured
+  const activeDashboardTemplateId = activeDashboardTemplate?.id || activeDashboardTemplates[0]?.id || ''
   const activeMetaDashboardMetricKeys = useMemo(
     () => (Array.isArray(activeDashboardTemplate?.metaMetricKeys) ? activeDashboardTemplate.metaMetricKeys : []),
     [activeDashboardTemplate]
@@ -593,6 +633,15 @@ export default function DashboardPage() {
   const activeRdDashboardMetricKeys = useMemo(
     () => (Array.isArray(activeDashboardTemplate?.rdMetricKeys) ? activeDashboardTemplate.rdMetricKeys : []),
     [activeDashboardTemplate]
+  )
+  const activeDraftDashboardTemplateId = activeDraftDashboardTemplate?.id || activeDraftDashboardTemplates[0]?.id || ''
+  const draftMetaDashboardMetricKeys = useMemo(
+    () => (Array.isArray(activeDraftDashboardTemplate?.metaMetricKeys) ? activeDraftDashboardTemplate.metaMetricKeys : []),
+    [activeDraftDashboardTemplate]
+  )
+  const draftRdDashboardMetricKeys = useMemo(
+    () => (Array.isArray(activeDraftDashboardTemplate?.rdMetricKeys) ? activeDraftDashboardTemplate.rdMetricKeys : []),
+    [activeDraftDashboardTemplate]
   )
   const activeFunnelSteps = useMemo(
     () => activeClient?.funnelSteps || [],
@@ -853,6 +902,8 @@ export default function DashboardPage() {
     const hasSellerChanges = draftRdSellerFilter !== rdSellerFilter
     const hasLeadSourceChanges = !haveSameSelection(activeDraftRdLeadSources, activeRdLeadSources)
     const hasFunnelChanges = !haveSameSelection(activeDraftFunnelSteps, activeFunnelSteps)
+    const hasTemplateSelectionChanges = activeDraftDashboardTemplateId !== activeDashboardTemplateId
+    const hasTemplateContentChanges = !haveSameDashboardTemplates(activeDraftDashboardTemplates, activeDashboardTemplates)
 
     return (
       hasDateRangeChanges ||
@@ -863,7 +914,9 @@ export default function DashboardPage() {
       hasAdChanges ||
       hasSellerChanges ||
       hasLeadSourceChanges ||
-      hasFunnelChanges
+      hasFunnelChanges ||
+      hasTemplateSelectionChanges ||
+      hasTemplateContentChanges
     )
   }, [
     draftDateRange,
@@ -886,6 +939,10 @@ export default function DashboardPage() {
     activeRdLeadSources,
     activeDraftFunnelSteps,
     activeFunnelSteps,
+    activeDraftDashboardTemplateId,
+    activeDashboardTemplateId,
+    activeDraftDashboardTemplates,
+    activeDashboardTemplates,
   ])
   const isApplyDashboardFiltersDisabled =
     !hasPendingDashboardFilters || (draftDateRange === 'custom' && (!draftCustomSince || !draftCustomUntil))
@@ -925,6 +982,10 @@ export default function DashboardPage() {
   }, [activeClient])
 
   useEffect(() => {
+    campaignsRef.current = campaigns
+  }, [campaigns])
+
+  useEffect(() => {
     setDraftDateRange(dateRange)
     setDraftCustomSince(customSince)
     setDraftCustomUntil(customUntil)
@@ -935,6 +996,8 @@ export default function DashboardPage() {
     setDraftRdSellerFilter(rdSellerFilter)
     setDraftRdLeadSourceFilters(rdLeadSourceFilters)
     setDraftFunnelSteps(activeFunnelSteps)
+    setDraftDashboardTemplates(cloneDashboardTemplates(activeDashboardTemplates))
+    setDraftDashboardTemplateId(activeDashboardTemplateId)
   }, [
     dateRange,
     customSince,
@@ -946,6 +1009,8 @@ export default function DashboardPage() {
     rdSellerFilter,
     rdLeadSourceFilters,
     activeFunnelSteps,
+    activeDashboardTemplates,
+    activeDashboardTemplateId,
     activeClientId,
     selectedAdAccount,
   ])
@@ -1070,35 +1135,31 @@ export default function DashboardPage() {
     )
   }
 
-  const updateActiveDashboardTemplate = (updater) => {
-    if (!activeDashboardTemplate) return
+  const updateDraftDashboardTemplate = (updater) => {
+    if (!activeDraftDashboardTemplateId) return
 
-    updateActiveClient((client) => ({
-      ...client,
-      dashboardTemplates: (client.dashboardTemplates || []).map((template) =>
-        template.id === activeDashboardTemplate.id ? updater(template) : template
-      ),
-    }))
+    setDraftDashboardTemplates((currentTemplates) =>
+      currentTemplates.map((template) =>
+        template.id === activeDraftDashboardTemplateId ? updater(template) : template
+      )
+    )
   }
 
   const handleDashboardTemplateChange = (templateId) => {
     if (!templateId) return
 
-    updateActiveClient((client) => ({
-      ...client,
-      activeDashboardTemplateId: templateId,
-    }))
+    setDraftDashboardTemplateId(templateId)
     setIsMetaMetricLibraryOpen(false)
     setIsRdMetricLibraryOpen(false)
   }
 
   const handleSaveDashboardTemplate = () => {
-    if (!activeDashboardTemplate) return
+    if (!activeDraftDashboardTemplate) return
 
     const suggestedName =
-      activeDashboardTemplates.length <= 1
+      activeDraftDashboardTemplates.length <= 1
         ? 'Modelo 2'
-        : `Modelo ${activeDashboardTemplates.length + 1}`
+        : `Modelo ${activeDraftDashboardTemplates.length + 1}`
     const templateName = window.prompt('Nome do modelo', suggestedName)
     const trimmedName = templateName?.trim()
 
@@ -1106,42 +1167,39 @@ export default function DashboardPage() {
 
     const newTemplate = createDashboardTemplate({
       name: trimmedName,
-      metaMetricKeys: activeMetaDashboardMetricKeys,
-      rdMetricKeys: activeRdDashboardMetricKeys,
+      metaMetricKeys: draftMetaDashboardMetricKeys,
+      rdMetricKeys: draftRdDashboardMetricKeys,
     })
 
-    updateActiveClient((client) => ({
-      ...client,
-      dashboardTemplates: [...(client.dashboardTemplates || []), newTemplate],
-      activeDashboardTemplateId: newTemplate.id,
-    }))
+    setDraftDashboardTemplates((currentTemplates) => [...currentTemplates, newTemplate])
+    setDraftDashboardTemplateId(newTemplate.id)
     setIsMetaMetricLibraryOpen(false)
     setIsRdMetricLibraryOpen(false)
   }
 
   const handleAddMetaDashboardMetric = (metricKey) => {
-    updateActiveDashboardTemplate((template) => ({
+    updateDraftDashboardTemplate((template) => ({
       ...template,
       metaMetricKeys: Array.from(new Set([...(template.metaMetricKeys || []), metricKey])),
     }))
   }
 
   const handleRemoveMetaDashboardMetric = (metricKey) => {
-    updateActiveDashboardTemplate((template) => ({
+    updateDraftDashboardTemplate((template) => ({
       ...template,
       metaMetricKeys: (template.metaMetricKeys || []).filter((item) => item !== metricKey),
     }))
   }
 
   const handleAddRdDashboardMetric = (metricKey) => {
-    updateActiveDashboardTemplate((template) => ({
+    updateDraftDashboardTemplate((template) => ({
       ...template,
       rdMetricKeys: Array.from(new Set([...(template.rdMetricKeys || []), metricKey])),
     }))
   }
 
   const handleRemoveRdDashboardMetric = (metricKey) => {
-    updateActiveDashboardTemplate((template) => ({
+    updateDraftDashboardTemplate((template) => ({
       ...template,
       rdMetricKeys: (template.rdMetricKeys || []).filter((item) => item !== metricKey),
     }))
@@ -1304,6 +1362,11 @@ export default function DashboardPage() {
     updateActiveClient((client) => ({
       ...client,
       funnelSteps: activeDraftFunnelSteps,
+      dashboardTemplates: cloneDashboardTemplates(activeDraftDashboardTemplates),
+      activeDashboardTemplateId:
+        draftDashboardTemplateId ||
+        activeDraftDashboardTemplates[0]?.id ||
+        client.activeDashboardTemplateId,
     }))
   }
 
@@ -1574,7 +1637,7 @@ export default function DashboardPage() {
   useEffect(() => {
     if (activeTab !== 'apresentacao') return
 
-    if (!activeClient) {
+    if (!activeClientId) {
       setIsLoading(false)
       setInsights(null)
       setDailyData([])
@@ -1582,6 +1645,7 @@ export default function DashboardPage() {
       setMetaHierarchy([])
       setBreakdowns({ ages: [], cities: [], creatives: [] })
       setRdSummary(null)
+      setIsMetaStructureReady(false)
       return
     }
 
@@ -1595,8 +1659,11 @@ export default function DashboardPage() {
       if (!hasMetaConfigured) {
         setCampaigns([])
         setMetaHierarchy([])
+        setIsMetaStructureReady(true)
         return
       }
+
+      setIsMetaStructureReady(false)
 
       try {
         const params = new URLSearchParams({
@@ -1629,10 +1696,12 @@ export default function DashboardPage() {
         if (cancelled) return
         setCampaigns(campaignsData || [])
         setMetaHierarchy(structureResponse.ok ? structureData || [] : [])
+        setIsMetaStructureReady(true)
       } catch (error) {
         if (!cancelled) {
           setCampaigns([])
           setMetaHierarchy([])
+          setIsMetaStructureReady(true)
           setErrorMessage(error.message || 'Não foi possível carregar a estrutura da Meta.')
         }
       }
@@ -1645,7 +1714,7 @@ export default function DashboardPage() {
     }
   }, [
     activeTab,
-    activeClient,
+    activeClientId,
     selectedAdAccount,
     dateRange,
     customSince,
@@ -1657,7 +1726,7 @@ export default function DashboardPage() {
   useEffect(() => {
     if (activeTab !== 'apresentacao') return
 
-    if (!activeClient) {
+    if (!activeClientId) {
       setIsLoading(false)
       setInsights(null)
       setDailyData([])
@@ -1674,6 +1743,10 @@ export default function DashboardPage() {
     }
 
     if (dateRange === 'custom' && (!customSince || !customUntil)) {
+      return
+    }
+
+    if (hasMetaConfigured && !isMetaStructureReady) {
       return
     }
 
@@ -1721,7 +1794,7 @@ export default function DashboardPage() {
           if (!insightsResponse.ok) {
             const nextMetaError = insightsData.error || 'Não foi possível carregar os indicadores da Meta.'
             if (!cancelled) {
-              setInsights(buildMetaSummaryFromCampaigns(campaigns))
+              setInsights(buildMetaSummaryFromCampaigns(campaignsRef.current))
               setDailyData([])
             }
             metaError = isMetaRateLimitMessage(nextMetaError) ? '' : nextMetaError
@@ -1797,7 +1870,7 @@ export default function DashboardPage() {
     }
   }, [
     activeTab,
-    activeClient,
+    activeClientId,
     selectedAdAccount,
     dateRange,
     customSince,
@@ -1811,9 +1884,9 @@ export default function DashboardPage() {
     metaFilteredCampaignIds,
     metaFilteredAdIds,
     metaFilteredAdsetIds,
+    isMetaStructureReady,
     globalIntegrations.metaAccessToken,
     activeIntegrations.rdStationToken,
-    campaigns,
   ])
 
   useEffect(() => {
@@ -1821,7 +1894,7 @@ export default function DashboardPage() {
       return
     }
 
-    if (!activeClient || !hasMetaConfigured) {
+    if (!activeClientId || !hasMetaConfigured) {
       setBreakdowns({ ages: [], cities: [], creatives: [] })
       setIsRankingsLoading(false)
       setRankingsError('')
@@ -1829,6 +1902,10 @@ export default function DashboardPage() {
     }
 
     if (dateRange === 'custom' && (!customSince || !customUntil)) {
+      return
+    }
+
+    if (!isMetaStructureReady) {
       return
     }
 
@@ -1881,7 +1958,7 @@ export default function DashboardPage() {
 
     fetchRankings()
   }, [
-    activeClient,
+    activeClientId,
     selectedAdAccount,
     dateRange,
     customSince,
@@ -1890,6 +1967,7 @@ export default function DashboardPage() {
     metaFilteredCampaignIds,
     metaFilteredAdsetIds,
     metaFilteredAdIds,
+    isMetaStructureReady,
     globalIntegrations.metaAccessToken,
     activeTab,
   ])
@@ -2320,7 +2398,7 @@ export default function DashboardPage() {
   )
   const metaDashboardMetricCards = useMemo(
     () =>
-      activeMetaDashboardMetricKeys
+      draftMetaDashboardMetricKeys
         .map((metricKey) => {
           const metric = META_TEMPLATE_METRIC_OPTIONS[metricKey]
           if (!metric) return null
@@ -2335,11 +2413,11 @@ export default function DashboardPage() {
           }
         })
         .filter(Boolean),
-    [activeMetaDashboardMetricKeys, metaDashboardMetricValues]
+    [draftMetaDashboardMetricKeys, metaDashboardMetricValues]
   )
   const availableMetaDashboardMetricOptions = useMemo(
-    () => Object.entries(META_TEMPLATE_METRIC_OPTIONS).filter(([metricKey]) => !activeMetaDashboardMetricKeys.includes(metricKey)),
-    [activeMetaDashboardMetricKeys]
+    () => Object.entries(META_TEMPLATE_METRIC_OPTIONS).filter(([metricKey]) => !draftMetaDashboardMetricKeys.includes(metricKey)),
+    [draftMetaDashboardMetricKeys]
   )
   const rdDashboardMetricValues = useMemo(
     () => ({
@@ -2364,7 +2442,7 @@ export default function DashboardPage() {
   )
   const rdDashboardMetricCards = useMemo(
     () =>
-      activeRdDashboardMetricKeys
+      draftRdDashboardMetricKeys
         .map((metricKey) => {
           const metric = RD_TEMPLATE_METRIC_OPTIONS[metricKey]
           if (!metric) return null
@@ -2379,11 +2457,11 @@ export default function DashboardPage() {
           }
         })
         .filter(Boolean),
-    [activeRdDashboardMetricKeys, rdDashboardMetricValues]
+    [draftRdDashboardMetricKeys, rdDashboardMetricValues]
   )
   const availableRdDashboardMetricOptions = useMemo(
-    () => Object.entries(RD_TEMPLATE_METRIC_OPTIONS).filter(([metricKey]) => !activeRdDashboardMetricKeys.includes(metricKey)),
-    [activeRdDashboardMetricKeys]
+    () => Object.entries(RD_TEMPLATE_METRIC_OPTIONS).filter(([metricKey]) => !draftRdDashboardMetricKeys.includes(metricKey)),
+    [draftRdDashboardMetricKeys]
   )
   const userAvatarFallback = `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.user_metadata?.full_name || user?.email || 'Usuario')}&background=0D8ABC&color=fff`
   const userAvatarSrc = user?.user_metadata?.avatar_url || userAvatarFallback
@@ -2492,12 +2570,12 @@ export default function DashboardPage() {
 
             {activeTab === 'apresentacao' && (
               <>
-                {activeClient && activeDashboardTemplates.length > 0 && (
+                {activeClient && activeDraftDashboardTemplates.length > 0 && (
                   <>
                     <div className="date-picker glass-item">
                       <i className="bx bx-layout"></i>
-                      <select value={activeDashboardTemplate?.id || ''} onChange={(event) => handleDashboardTemplateChange(event.target.value)}>
-                        {activeDashboardTemplates.map((template) => (
+                      <select value={draftDashboardTemplateId || activeDraftDashboardTemplateId} onChange={(event) => handleDashboardTemplateChange(event.target.value)}>
+                        {activeDraftDashboardTemplates.map((template) => (
                           <option key={template.id} value={template.id}>
                             {template.name}
                           </option>
@@ -3302,7 +3380,7 @@ export default function DashboardPage() {
                       <h2>Resumo de resultados</h2>
                       <p className="chart-subtitle">Os indicadores abaixo consideram somente as campanhas enquadradas no filtro de resultado ativo.</p>
                     </div>
-                    {activeDashboardTemplate && (
+                    {activeDraftDashboardTemplate && (
                       <button
                         type="button"
                         className="btn btn-secondary"
@@ -3742,7 +3820,7 @@ export default function DashboardPage() {
                           <h2>Resumo comercial</h2>
                           <p className="chart-subtitle">Os indicadores abaixo resumem o desempenho comercial identificado no RD Station para este cliente.</p>
                         </div>
-                        {activeDashboardTemplate && (
+                        {activeDraftDashboardTemplate && (
                           <button
                             type="button"
                             className="btn btn-secondary"
