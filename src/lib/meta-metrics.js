@@ -15,6 +15,12 @@ export const META_LEAD_EVENTS = ['lead', 'onsite_conversion.lead_grouped']
 export const META_MESSAGE_EVENTS = ['onsite_conversion.messaging_conversation_started_7d', 'onsite_conversion.messaging_first_reply']
 export const META_LINK_CLICK_EVENTS = ['link_click', 'inline_link_click', 'outbound_click']
 
+function resolveMetaInsightData(input) {
+  if (!input) return null
+  if (input?.insights?.data?.[0]) return input.insights.data[0]
+  return input
+}
+
 function sumActionValues(actions = [], actionTypes = []) {
   return actions
     .filter((item) => actionTypes.includes(item.action_type))
@@ -41,7 +47,9 @@ export function normalizeMetaResultFilters(filters = [], availableFilters = Obje
 }
 
 export function extractMetaCampaignMetrics(insightData) {
-  if (!insightData) {
+  const normalizedInsightData = resolveMetaInsightData(insightData)
+
+  if (!normalizedInsightData) {
     return {
       spend: 0,
       clicks: 0,
@@ -62,11 +70,11 @@ export function extractMetaCampaignMetrics(insightData) {
     }
   }
 
-  const actions = insightData.actions || []
-  const valueActions = insightData.action_values || []
-  const costPerActionType = insightData.cost_per_action_type || []
-  const spend = parseFloat(insightData.spend || 0)
-  const impressions = parseInt(insightData.impressions || 0, 10)
+  const actions = normalizedInsightData.actions || []
+  const valueActions = normalizedInsightData.action_values || []
+  const costPerActionType = normalizedInsightData.cost_per_action_type || []
+  const spend = parseFloat(normalizedInsightData.spend || 0)
+  const impressions = parseInt(normalizedInsightData.impressions || 0, 10)
 
   const purchases = sumActionValues(actions, META_PURCHASE_EVENTS)
   const purchaseValue = valueActions
@@ -85,7 +93,7 @@ export function extractMetaCampaignMetrics(insightData) {
     return total > 0 ? total : bestValue
   }, 0)
   const derivedLinkClicks = getDerivedClicksFromCost(costPerActionType, spend, META_LINK_CLICK_EVENTS)
-  const explicitClicks = parseInt(insightData.clicks || 0, 10)
+  const explicitClicks = parseInt(normalizedInsightData.clicks || 0, 10)
   const linkClicks = actionLinkClicks > 0 ? actionLinkClicks : (derivedLinkClicks > 0 ? derivedLinkClicks : explicitClicks)
   const totalConversions = purchases + leads + messages
 
@@ -123,8 +131,7 @@ export function extractMetaCampaignMetrics(insightData) {
 export function buildMetaSummaryFromCampaigns(campaigns = []) {
   const aggregated = campaigns.reduce(
     (accumulator, campaign) => {
-      const insight = campaign?.insights?.data?.[0] || {}
-      const metrics = extractMetaCampaignMetrics(insight)
+      const metrics = extractMetaCampaignMetrics(campaign)
 
       accumulator.spend += metrics.spend
       accumulator.impressions += metrics.impressions
@@ -175,7 +182,7 @@ export function matchesMetaResultFilters(insightData, filters = []) {
 }
 
 export function getMetaCampaignFilterKeys(campaign) {
-  const metrics = extractMetaCampaignMetrics(campaign?.insights?.data?.[0] || {})
+  const metrics = extractMetaCampaignMetrics(campaign)
   const keys = []
 
   if (metrics.messages > 0) keys.push('messages')

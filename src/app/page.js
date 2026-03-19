@@ -1555,15 +1555,16 @@ export default function DashboardPage() {
   const filteredCampaigns = useMemo(() => {
     const term = campaignSearch.trim().toLowerCase()
     const filtered = campaigns.filter((campaign) => {
+      const hasSpendInSelectedPeriod = Number(campaign?.spend || 0) > 0
       const matchesSearch = !term || campaign.name?.toLowerCase().includes(term)
       const matchesStatus = campaignStatusFilter === 'all' || campaign.status === campaignStatusFilter
       const matchesResultType = campaignMatchesMetaResultFilters(campaign, normalizedMetaResultFilters, availableMetaResultFilters.map((item) => item.key))
       const matchesCampaignFilter = activeMetaCampaignIds.length === 0 || activeMetaCampaignIds.includes(campaign.id)
-      return matchesSearch && matchesStatus && matchesResultType && matchesCampaignFilter
+      return hasSpendInSelectedPeriod && matchesSearch && matchesStatus && matchesResultType && matchesCampaignFilter
     })
 
     const getCampaignMetrics = (campaign) => {
-      const metrics = extractMetaCampaignMetrics(campaign.insights?.data?.[0] || {})
+      const metrics = extractMetaCampaignMetrics(campaign)
 
       return {
         spendValue: metrics.spend,
@@ -2993,7 +2994,7 @@ export default function DashboardPage() {
                           </tr>
                         ) : (
                           filteredCampaigns.map((campaign, index) => {
-                            const campaignMetrics = extractMetaCampaignMetrics(campaign.insights?.data?.[0] || {})
+                            const campaignMetrics = extractMetaCampaignMetrics(campaign)
                             const campaignSpend = campaignMetrics.spend
                             const campaignPurchases = campaignMetrics.purchases
                             const campaignLeads = campaignMetrics.leads

@@ -28,6 +28,10 @@ function normalizeCampaign(campaign) {
   }
 }
 
+function hasSpendInSelectedPeriod(campaign) {
+  return Number(campaign?.spend || 0) > 0
+}
+
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url)
@@ -57,7 +61,11 @@ export async function GET(request) {
       'A Meta demorou para responder ao carregar as campanhas. Tente novamente em alguns instantes.'
     )
 
-    return NextResponse.json((data.data || []).map(normalizeCampaign))
+    return NextResponse.json(
+      (data.data || [])
+        .map(normalizeCampaign)
+        .filter(hasSpendInSelectedPeriod)
+    )
   } catch (error) {
     console.error('Meta API Error:', error)
     return NextResponse.json({ error: normalizeMetaError(error) }, { status: 500 })
