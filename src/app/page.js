@@ -1685,8 +1685,8 @@ export default function DashboardPage() {
           fetch(`/api/meta/structure?${params.toString()}`, { headers }),
         ])
         const [campaignsData, structureData] = await Promise.all([
-          campaignsResponse.json(),
-          structureResponse.json(),
+          campaignsResponse.json().catch(() => ({ error: 'Não foi possível interpretar a resposta das campanhas da Meta.' })),
+          structureResponse.json().catch(() => ({ error: 'Não foi possível interpretar a resposta da estrutura da Meta.' })),
         ])
 
         if (!campaignsResponse.ok) {
@@ -1696,6 +1696,11 @@ export default function DashboardPage() {
         if (cancelled) return
         setCampaigns(campaignsData || [])
         setMetaHierarchy(structureResponse.ok ? structureData || [] : [])
+
+        if (!structureResponse.ok) {
+          setErrorMessage(structureData?.error || 'Não foi possível carregar conjuntos e anúncios da Meta.')
+        }
+
         setIsMetaStructureReady(true)
       } catch (error) {
         if (!cancelled) {
