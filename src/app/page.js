@@ -1274,6 +1274,21 @@ export default function DashboardPage() {
         .map((ad) => ad.id),
     [availableMetaAdOptions, activeMetaAdIds]
   )
+  const hasActiveMetaCampaignNarrowing = useMemo(() => {
+    const availableIds = availableMetaCampaignOptions.map((campaign) => campaign.id)
+    if (!availableIds.length) return false
+    return metaFilteredCampaignIds.length !== availableIds.length
+  }, [availableMetaCampaignOptions, metaFilteredCampaignIds])
+  const hasActiveMetaAdsetNarrowing = useMemo(() => {
+    const availableIds = availableMetaAdsetOptions.map((adset) => adset.id)
+    if (!availableIds.length) return false
+    return metaFilteredAdsetIds.length !== availableIds.length
+  }, [availableMetaAdsetOptions, metaFilteredAdsetIds])
+  const hasActiveMetaAdNarrowing = useMemo(() => {
+    const availableIds = availableMetaAdOptions.map((ad) => ad.id)
+    if (!availableIds.length) return false
+    return metaFilteredAdIds.length !== availableIds.length
+  }, [availableMetaAdOptions, metaFilteredAdIds])
 
   const handleUserClientToggle = (clientId) => {
     setUserForm((current) => ({
@@ -1777,15 +1792,15 @@ export default function DashboardPage() {
           }
 
           const insightsParams = new URLSearchParams(params)
-          if (metaFilteredCampaignIds.length > 0) {
-            insightsParams.set('campaign_ids', metaFilteredCampaignIds.join(','))
-          } else {
+          if (metaFilteredCampaignIds.length === 0) {
             insightsParams.set('campaign_ids', '__none__')
+          } else if (hasActiveMetaCampaignNarrowing) {
+            insightsParams.set('campaign_ids', metaFilteredCampaignIds.join(','))
           }
-          if (metaFilteredAdsetIds.length > 0) {
+          if (hasActiveMetaAdsetNarrowing && metaFilteredAdsetIds.length > 0) {
             insightsParams.set('adset_ids', metaFilteredAdsetIds.join(','))
           }
-          if (metaFilteredAdIds.length > 0) {
+          if (hasActiveMetaAdNarrowing && metaFilteredAdIds.length > 0) {
             insightsParams.set('ad_ids', metaFilteredAdIds.join(','))
           }
 
@@ -1889,6 +1904,9 @@ export default function DashboardPage() {
     metaFilteredCampaignIds,
     metaFilteredAdIds,
     metaFilteredAdsetIds,
+    hasActiveMetaCampaignNarrowing,
+    hasActiveMetaAdsetNarrowing,
+    hasActiveMetaAdNarrowing,
     isMetaStructureReady,
     globalIntegrations.metaAccessToken,
     activeIntegrations.rdStationToken,
@@ -1929,15 +1947,15 @@ export default function DashboardPage() {
           params.set('until', customUntil)
         }
 
-        if (metaFilteredCampaignIds.length > 0) {
-          params.set('campaign_ids', metaFilteredCampaignIds.join(','))
-        } else {
+        if (metaFilteredCampaignIds.length === 0) {
           params.set('campaign_ids', '__none__')
+        } else if (hasActiveMetaCampaignNarrowing) {
+          params.set('campaign_ids', metaFilteredCampaignIds.join(','))
         }
-        if (metaFilteredAdsetIds.length > 0) {
+        if (hasActiveMetaAdsetNarrowing && metaFilteredAdsetIds.length > 0) {
           params.set('adset_ids', metaFilteredAdsetIds.join(','))
         }
-        if (metaFilteredAdIds.length > 0) {
+        if (hasActiveMetaAdNarrowing && metaFilteredAdIds.length > 0) {
           params.set('ad_ids', metaFilteredAdIds.join(','))
         }
 
@@ -1972,6 +1990,9 @@ export default function DashboardPage() {
     metaFilteredCampaignIds,
     metaFilteredAdsetIds,
     metaFilteredAdIds,
+    hasActiveMetaCampaignNarrowing,
+    hasActiveMetaAdsetNarrowing,
+    hasActiveMetaAdNarrowing,
     isMetaStructureReady,
     globalIntegrations.metaAccessToken,
     activeTab,
