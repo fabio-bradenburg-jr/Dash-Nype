@@ -574,6 +574,7 @@ export default function DashboardPage() {
   const [isMetaAdsetFilterOpen, setIsMetaAdsetFilterOpen] = useState(false)
   const [isMetaAdFilterOpen, setIsMetaAdFilterOpen] = useState(false)
   const [isRdDiagnosticsOpen, setIsRdDiagnosticsOpen] = useState(false)
+  const [isRdSourceFilterOpen, setIsRdSourceFilterOpen] = useState(false)
   const [clients, setClients] = useState([])
   const [activeClientId, setActiveClientId] = useState('')
   const [newClientName, setNewClientName] = useState('')
@@ -948,6 +949,16 @@ export default function DashboardPage() {
 
     return `${selectedCount} anúncios selecionados`
   }, [draftAvailableMetaAdOptions, activeDraftMetaAdIds])
+  const rdLeadSourceFilterSummary = useMemo(() => {
+    const totalSources = rdSummary?.availableSources?.length || 0
+    const selectedCount = activeDraftRdLeadSources.length
+
+    if (!totalSources) return 'Nenhuma origem disponível'
+    if (selectedCount === totalSources) return 'Todas as origens'
+    if (selectedCount === 1) return activeDraftRdLeadSources[0] || '1 origem selecionada'
+
+    return `${selectedCount} origens selecionadas`
+  }, [rdSummary, activeDraftRdLeadSources])
   const hasPendingDashboardFilters = useMemo(() => {
     const hasDateRangeChanges = draftDateRange !== dateRange
     const hasCustomDateChanges =
@@ -4184,26 +4195,42 @@ export default function DashboardPage() {
                               <p>{group.description}</p>
                             </div>
                             {group.withSourceFilter && !!rdSummary?.availableSources?.length && (
-                              <div className="rd-source-filter-bar rd-source-filter-inline">
-                                <div>
-                                  <h3>Filtrar por origem</h3>
-                                  <p>Selecione as origens e UTMs que quer considerar na base das oportunidades, qualificação e conversão.</p>
-                                </div>
-                                <div className="meta-filter-chip-row">
-                                  {rdSummary.availableSources.map((source) => (
-                                    <label
-                                      key={source}
-                                      className={`result-filter-chip ${activeDraftRdLeadSources.includes(source) ? 'active' : ''}`}
-                                    >
-                                      <input
-                                        type="checkbox"
-                                        checked={activeDraftRdLeadSources.includes(source)}
-                                        onChange={() => handleRdLeadSourceToggle(source)}
-                                      />
-                                      <span>{source}</span>
-                                    </label>
-                                  ))}
-                                </div>
+                              <div className="meta-campaign-filter-collapsible rd-source-filter-collapsible">
+                                <button
+                                  type="button"
+                                  className={`meta-campaign-filter-trigger ${isRdSourceFilterOpen ? 'open' : ''}`}
+                                  onClick={() => setIsRdSourceFilterOpen((current) => !current)}
+                                >
+                                  <div>
+                                    <h3>Filtrar por origem</h3>
+                                    <p>{rdLeadSourceFilterSummary}</p>
+                                  </div>
+                                  <span className="meta-campaign-filter-trigger-icon">
+                                    <i className={`bx ${isRdSourceFilterOpen ? 'bx-chevron-up' : 'bx-chevron-down'}`}></i>
+                                  </span>
+                                </button>
+                                {isRdSourceFilterOpen && (
+                                  <div className="rd-source-filter-bar rd-source-filter-inline">
+                                    <div>
+                                      <p>Selecione as origens e UTMs que quer considerar na base das oportunidades, qualificação e conversão.</p>
+                                    </div>
+                                    <div className="meta-filter-chip-row">
+                                      {rdSummary.availableSources.map((source) => (
+                                        <label
+                                          key={source}
+                                          className={`result-filter-chip ${activeDraftRdLeadSources.includes(source) ? 'active' : ''}`}
+                                        >
+                                          <input
+                                            type="checkbox"
+                                            checked={activeDraftRdLeadSources.includes(source)}
+                                            onChange={() => handleRdLeadSourceToggle(source)}
+                                          />
+                                          <span>{source}</span>
+                                        </label>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
                               </div>
                             )}
                             <div className="kpi-grid compact-kpi-grid">
