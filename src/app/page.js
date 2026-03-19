@@ -4214,11 +4214,11 @@ export default function DashboardPage() {
                                     <div>
                                       <p>Selecione as origens e UTMs que quer considerar na base das oportunidades, qualificação e conversão.</p>
                                     </div>
-                                    <div className="meta-filter-chip-row">
+                                    <div className="rd-source-list">
                                       {rdSummary.availableSources.map((source) => (
                                         <label
                                           key={source}
-                                          className={`result-filter-chip ${activeDraftRdLeadSources.includes(source) ? 'active' : ''}`}
+                                          className={`result-filter-chip rd-source-list-item ${activeDraftRdLeadSources.includes(source) ? 'active' : ''}`}
                                         >
                                           <input
                                             type="checkbox"
@@ -5385,6 +5385,26 @@ export default function DashboardPage() {
 
         .rd-source-filter-collapsible + .compact-kpi-grid {
           margin-top: 0;
+        }
+
+        .rd-source-list {
+          display: grid;
+          gap: 10px;
+        }
+
+        .rd-source-list-item {
+          width: 100%;
+          display: flex;
+          align-items: flex-start;
+          gap: 10px;
+          padding: 14px 16px;
+          border-radius: 16px;
+        }
+
+        .rd-source-list-item span {
+          line-height: 1.45;
+          overflow-wrap: anywhere;
+          word-break: break-word;
         }
 
         .rd-diagnostic-panel {
