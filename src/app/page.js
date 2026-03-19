@@ -599,6 +599,7 @@ export default function DashboardPage() {
   const [usersLoading, setUsersLoading] = useState(false)
   const [userSearch, setUserSearch] = useState('')
   const [selectedUserId, setSelectedUserId] = useState('')
+  const [isEditClientModalOpen, setIsEditClientModalOpen] = useState(false)
   const [isCreateUserModalOpen, setIsCreateUserModalOpen] = useState(false)
   const [isEditUserModalOpen, setIsEditUserModalOpen] = useState(false)
   const [userForm, setUserForm] = useState({
@@ -2720,202 +2721,243 @@ export default function DashboardPage() {
               </div>
             </form>
 
-            <div className="clients-grid">
-              <div className="clients-sidebar">
-                <div className="glass-panel client-list-card">
-                  <h3>Clientes cadastrados</h3>
-                  <div className="client-list">
-                    {clients.map((client) => (
-                      <div key={client.id} className={`client-row ${client.id === activeClientId ? 'selected' : ''}`}>
-                        <button type="button" className="client-select" onClick={() => setActiveClientId(client.id)}>
-                          <strong>{client.name}</strong>
-                          <span>{client.metaAdAccountId || 'Conta Meta não selecionada'}</span>
+            <div className="clients-grid clients-grid-single">
+              <div className="glass-panel users-toolbar-card">
+                <div className="user-picker-head">
+                  <div>
+                    <h3>Clientes cadastrados</h3>
+                    <p>Abra a edição de um cliente somente quando precisar ajustar contas, identidade ou integrações.</p>
+                  </div>
+                </div>
+
+                <div className="user-directory-grid client-directory-grid">
+                  {clients.map((client) => (
+                    <div key={client.id} className={`user-directory-card glass-item ${client.id === activeClientId ? 'client-directory-card-active' : ''}`}>
+                      <div className="user-directory-main">
+                        <strong>{client.name}</strong>
+                        <span>{client.metaAdAccountId || 'Conta Meta não selecionada'}</span>
+                      </div>
+                      <div className="user-directory-meta">
+                        <span className="user-role-badge">{client.dashboardColor || 'blue'}</span>
+                        <small>{client.logoUrl ? 'Logo configurada' : 'Sem logo configurada'}</small>
+                      </div>
+                      <div className="user-directory-actions client-directory-actions">
+                        <button
+                          type="button"
+                          className="btn btn-secondary"
+                          onClick={() => {
+                            setActiveClientId(client.id)
+                            setIsEditClientModalOpen(true)
+                          }}
+                        >
+                          Editar
                         </button>
                         {isMaster && clients.length > 1 && (
-                          <button type="button" className="client-delete" onClick={() => handleRemoveClient(client.id)}>
+                          <button type="button" className="btn btn-secondary" onClick={() => handleRemoveClient(client.id)}>
                             Excluir
                           </button>
                         )}
                       </div>
-                    ))}
-                  </div>
+                    </div>
+                  ))}
                 </div>
+
+                {!clients.length && (
+                  <div className="empty-panel glass-item users-empty-state compact-empty-state">
+                    <h3>Nenhum cliente encontrado</h3>
+                    <p>Crie um cliente novo para começar a configurar a operação.</p>
+                  </div>
+                )}
               </div>
-
-              {activeClient && (
-                <form className="glass-panel client-editor-card" onSubmit={handleSaveIntegrations}>
-                  <div className="client-editor-header">
-                    <div>
-                      <h3>Editando: {activeClient.name}</h3>
-                      <p>Qualquer ajuste aqui já define como a dash desse cliente vai abrir.</p>
-                    </div>
-                    <button type="submit" className="btn btn-primary" disabled={isSavingIntegrations || !canManageClients}>
-                      {isSavingIntegrations ? 'Salvando...' : 'Salvar cliente'}
-                    </button>
-                  </div>
-
-                  <div className="integration-block client-identity-block">
-                    <div className="integration-heading">
-                      <div className="integration-icon" style={{ color: currentTheme.main, borderColor: `${currentTheme.main}33` }}>
-                        <i className="bx bx-id-card"></i>
-                      </div>
-                      <div>
-                        <h3>Identidade do cliente</h3>
-                        <p>Defina nome, cor e logo para organizar a conta e personalizar a apresentação final.</p>
-                      </div>
-                    </div>
-
-                    <div className="branding-grid">
-                      <div className="input-group">
-                        <label>Nome do cliente</label>
-                        <input type="text" value={activeClient.name} onChange={(event) => handleClientFieldChange('name', event.target.value)} placeholder="Nome do cliente" />
-                      </div>
-
-                      <div className="input-group">
-                        <label>Cor da dashboard</label>
-                        <select
-                          className="client-select-input"
-                          value={activeClient.dashboardColor || 'blue'}
-                          onChange={(event) => {
-                            handleClientFieldChange('dashboardColor', event.target.value)
-                            setThemeColor(event.target.value)
-                          }}
-                        >
-                          <option value="blue">Azul</option>
-                          <option value="emerald">Esmeralda</option>
-                          <option value="orange">Laranja</option>
-                          <option value="rose">Rosa</option>
-                          <option value="slate">Ciano</option>
-                        </select>
-                      </div>
-
-                      <div className="input-group">
-                        <label>Logo do cliente</label>
-                        <input type="file" accept="image/*" onChange={handleClientLogoUpload} />
-                      </div>
-
-                      <div className="input-group">
-                        <label>Ou cole a URL da logo</label>
-                        <input type="text" value={activeClient.logoUrl || ''} onChange={(event) => handleClientFieldChange('logoUrl', event.target.value)} placeholder="https://..." />
-                      </div>
-                    </div>
-
-                    <div className="logo-preview">
-                      {activeClient.logoUrl ? <img src={activeClient.logoUrl} alt={`Logo ${activeClient.name}`} /> : <span>Sem logo definida</span>}
-                    </div>
-                  </div>
-
-                  <div className="form-grid">
-                    <div className="integration-block">
-                      <div className="integration-heading">
-                        <div className="integration-icon" style={{ color: '#0668E1', borderColor: '#0668E133' }}>
-                          <i className="bx bxl-meta"></i>
-                        </div>
-                        <div>
-                          <h3>Meta Ads</h3>
-                          <p>Selecione a conta de anúncio deste cliente usando a credencial global cadastrada em Integrações.</p>
-                        </div>
-                      </div>
-
-                      <div className="input-group">
-                        <label>Conta do Meta vinculada ao cliente</label>
-                        <select
-                          className="client-select-input"
-                          value={activeClient.metaAdAccountId || ''}
-                          onChange={(event) => handleClientFieldChange('metaAdAccountId', event.target.value)}
-                        >
-                          <option value="">
-                            {globalIntegrations.metaAccessToken ? 'Selecione uma conta' : 'Cadastre a chave da Meta em Integrações'}
-                          </option>
-                          {adAccounts.map((account) => (
-                            <option key={account.id} value={account.id}>
-                              {account.name ? `${account.name} (${account.id})` : account.id}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-
-                    {CLIENT_INTEGRATION_GROUPS.map((group) => (
-                      <div key={group.title} className="integration-block">
-                        <div className="integration-heading">
-                          <div className="integration-icon" style={{ color: group.accent, borderColor: `${group.accent}33` }}>
-                            <i className={`bx ${group.icon}`}></i>
-                          </div>
-                          <div>
-                            <h3>{group.title}</h3>
-                            <p>{group.description}</p>
-                          </div>
-                        </div>
-
-                        {group.fields.map((field) => {
-                          const value = field.storage === 'client' ? activeClient[field.name] || '' : activeIntegrations[field.name] || ''
-
-                          return (
-                            <div key={field.name} className="input-group">
-                              <label>{field.label}</label>
-                              <input
-                                type={field.type}
-                                value={value}
-                                onChange={(event) => handleIntegrationChange(field.name, event.target.value, field.storage)}
-                                placeholder={field.placeholder}
-                              />
-                            </div>
-                          )
-                        })}
-
-                        {group.title === 'RD Station' && (
-                          <div className="qualification-config">
-                            <button
-                              type="button"
-                              className="qualification-toggle"
-                              onClick={() => setIsQualifiedStagesVisible((current) => !current)}
-                            >
-                              <div>
-                                <strong>Etapas qualificadas do pipeline</strong>
-                                <span>Configuração operacional usada nos cálculos de qualificação e taxas do CRM. Não aparece no dashboard final.</span>
-                              </div>
-                              <i className={`bx ${isQualifiedStagesVisible ? 'bx-chevron-up' : 'bx-chevron-down'}`}></i>
-                            </button>
-
-                            {isQualifiedStagesVisible && (
-                              <div className="qualification-panel">
-                                <p className="field-helper">
-                                  Selecione as etapas que você considera qualificadas. Os cálculos em cascata do CRM passam a usar essa definição automaticamente.
-                                </p>
-                                <div className="stage-selector">
-                                  {rdSummary?.availableStages?.length ? (
-                                    rdSummary.availableStages.map((stage) => {
-                                      const checked = selectedQualifiedStages.includes(stage)
-
-                                      return (
-                                        <label key={stage} className={`stage-chip ${checked ? 'active' : ''}`}>
-                                          <input
-                                            type="checkbox"
-                                            checked={checked}
-                                            onChange={() => handleQualifiedStageToggle(stage)}
-                                          />
-                                          <span>{stage}</span>
-                                        </label>
-                                      )
-                                    })
-                                  ) : (
-                                    <div className="stage-empty">
-                                      Salve o token do RD e aguarde a leitura das negociações para listar automaticamente as etapas do pipeline.
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </form>
-              )}
             </div>
           </section>
+        )}
+
+        {activeTab === 'clientes' && isEditClientModalOpen && activeClient && (
+          <div className="modal-overlay" onClick={() => setIsEditClientModalOpen(false)}>
+            <div className="modal-card modal-card-wide glass-panel" onClick={(event) => event.stopPropagation()}>
+              <div className="modal-header">
+                <div>
+                  <h3>Editar cliente</h3>
+                  <p>Atualize identidade, contas vinculadas e integrações específicas desse cliente.</p>
+                </div>
+                <button type="button" className="modal-close" onClick={() => setIsEditClientModalOpen(false)} aria-label="Fechar edição de cliente">
+                  <i className="bx bx-x"></i>
+                </button>
+              </div>
+
+              <form className="client-editor-card modal-client-editor" onSubmit={handleSaveIntegrations}>
+                <div className="client-editor-header">
+                  <div>
+                    <h3>Editando: {activeClient.name}</h3>
+                    <p>Qualquer ajuste aqui já define como a dash desse cliente vai abrir.</p>
+                  </div>
+                  <button type="submit" className="btn btn-primary" disabled={isSavingIntegrations || !canManageClients}>
+                    {isSavingIntegrations ? 'Salvando...' : 'Salvar cliente'}
+                  </button>
+                </div>
+
+                <div className="integration-block client-identity-block">
+                  <div className="integration-heading">
+                    <div className="integration-icon" style={{ color: currentTheme.main, borderColor: `${currentTheme.main}33` }}>
+                      <i className="bx bx-id-card"></i>
+                    </div>
+                    <div>
+                      <h3>Identidade do cliente</h3>
+                      <p>Defina nome, cor e logo para organizar a conta e personalizar a apresentação final.</p>
+                    </div>
+                  </div>
+
+                  <div className="branding-grid">
+                    <div className="input-group">
+                      <label>Nome do cliente</label>
+                      <input type="text" value={activeClient.name} onChange={(event) => handleClientFieldChange('name', event.target.value)} placeholder="Nome do cliente" />
+                    </div>
+
+                    <div className="input-group">
+                      <label>Cor da dashboard</label>
+                      <select
+                        className="client-select-input"
+                        value={activeClient.dashboardColor || 'blue'}
+                        onChange={(event) => {
+                          handleClientFieldChange('dashboardColor', event.target.value)
+                          setThemeColor(event.target.value)
+                        }}
+                      >
+                        <option value="blue">Azul</option>
+                        <option value="emerald">Esmeralda</option>
+                        <option value="orange">Laranja</option>
+                        <option value="rose">Rosa</option>
+                        <option value="slate">Ciano</option>
+                      </select>
+                    </div>
+
+                    <div className="input-group">
+                      <label>Logo do cliente</label>
+                      <input type="file" accept="image/*" onChange={handleClientLogoUpload} />
+                    </div>
+
+                    <div className="input-group">
+                      <label>Ou cole a URL da logo</label>
+                      <input type="text" value={activeClient.logoUrl || ''} onChange={(event) => handleClientFieldChange('logoUrl', event.target.value)} placeholder="https://..." />
+                    </div>
+                  </div>
+
+                  <div className="logo-preview">
+                    {activeClient.logoUrl ? <img src={activeClient.logoUrl} alt={`Logo ${activeClient.name}`} /> : <span>Sem logo definida</span>}
+                  </div>
+                </div>
+
+                <div className="form-grid">
+                  <div className="integration-block">
+                    <div className="integration-heading">
+                      <div className="integration-icon" style={{ color: '#0668E1', borderColor: '#0668E133' }}>
+                        <i className="bx bxl-meta"></i>
+                      </div>
+                      <div>
+                        <h3>Meta Ads</h3>
+                        <p>Selecione a conta de anúncio deste cliente usando a credencial global cadastrada em Integrações.</p>
+                      </div>
+                    </div>
+
+                    <div className="input-group">
+                      <label>Conta do Meta vinculada ao cliente</label>
+                      <select
+                        className="client-select-input"
+                        value={activeClient.metaAdAccountId || ''}
+                        onChange={(event) => handleClientFieldChange('metaAdAccountId', event.target.value)}
+                      >
+                        <option value="">
+                          {globalIntegrations.metaAccessToken ? 'Selecione uma conta' : 'Cadastre a chave da Meta em Integrações'}
+                        </option>
+                        {adAccounts.map((account) => (
+                          <option key={account.id} value={account.id}>
+                            {account.name ? `${account.name} (${account.id})` : account.id}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  {CLIENT_INTEGRATION_GROUPS.map((group) => (
+                    <div key={group.title} className="integration-block">
+                      <div className="integration-heading">
+                        <div className="integration-icon" style={{ color: group.accent, borderColor: `${group.accent}33` }}>
+                          <i className={`bx ${group.icon}`}></i>
+                        </div>
+                        <div>
+                          <h3>{group.title}</h3>
+                          <p>{group.description}</p>
+                        </div>
+                      </div>
+
+                      {group.fields.map((field) => {
+                        const value = field.storage === 'client' ? activeClient[field.name] || '' : activeIntegrations[field.name] || ''
+
+                        return (
+                          <div key={field.name} className="input-group">
+                            <label>{field.label}</label>
+                            <input
+                              type={field.type}
+                              value={value}
+                              onChange={(event) => handleIntegrationChange(field.name, event.target.value, field.storage)}
+                              placeholder={field.placeholder}
+                            />
+                          </div>
+                        )
+                      })}
+
+                      {group.title === 'RD Station' && (
+                        <div className="qualification-config">
+                          <button
+                            type="button"
+                            className="qualification-toggle"
+                            onClick={() => setIsQualifiedStagesVisible((current) => !current)}
+                          >
+                            <div>
+                              <strong>Etapas qualificadas do pipeline</strong>
+                              <span>Configuração operacional usada nos cálculos de qualificação e taxas do CRM. Não aparece no dashboard final.</span>
+                            </div>
+                            <i className={`bx ${isQualifiedStagesVisible ? 'bx-chevron-up' : 'bx-chevron-down'}`}></i>
+                          </button>
+
+                          {isQualifiedStagesVisible && (
+                            <div className="qualification-panel">
+                              <p className="field-helper">
+                                Selecione as etapas que você considera qualificadas. Os cálculos em cascata do CRM passam a usar essa definição automaticamente.
+                              </p>
+                              <div className="stage-selector">
+                                {rdSummary?.availableStages?.length ? (
+                                  rdSummary.availableStages.map((stage) => {
+                                    const checked = selectedQualifiedStages.includes(stage)
+
+                                    return (
+                                      <label key={stage} className={`stage-chip ${checked ? 'active' : ''}`}>
+                                        <input
+                                          type="checkbox"
+                                          checked={checked}
+                                          onChange={() => handleQualifiedStageToggle(stage)}
+                                        />
+                                        <span>{stage}</span>
+                                      </label>
+                                    )
+                                  })
+                                ) : (
+                                  <div className="stage-empty">
+                                    Salve o token do RD e aguarde a leitura das negociações para listar automaticamente as etapas do pipeline.
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </form>
+            </div>
+          </div>
         )}
 
         {activeTab === 'integracoes' && canManageClients && (
@@ -4271,6 +4313,10 @@ export default function DashboardPage() {
           grid-template-columns: 360px 1fr;
         }
 
+        .clients-grid-single {
+          grid-template-columns: 1fr;
+        }
+
         .users-management-layout {
           gap: 0;
         }
@@ -4380,6 +4426,10 @@ export default function DashboardPage() {
           gap: 14px;
         }
 
+        .client-directory-grid {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+
         .user-directory-card {
           padding: 18px;
           border-radius: 20px;
@@ -4429,6 +4479,16 @@ export default function DashboardPage() {
           justify-content: flex-end;
         }
 
+        .client-directory-card-active {
+          border-color: var(--accent-blue);
+          background: var(--theme-surface);
+        }
+
+        .client-directory-actions {
+          gap: 10px;
+          flex-wrap: wrap;
+        }
+
         .compact-empty-state {
           min-height: 180px;
         }
@@ -4451,6 +4511,10 @@ export default function DashboardPage() {
           padding: 24px;
           display: grid;
           gap: 22px;
+        }
+
+        .modal-card-wide {
+          width: min(100%, 1180px);
         }
 
         .modal-header {
@@ -4506,6 +4570,10 @@ export default function DashboardPage() {
 
         .client-editor-header p {
           color: var(--text-secondary);
+        }
+
+        .modal-client-editor {
+          padding: 0;
         }
 
         .branding-grid {
@@ -5811,6 +5879,10 @@ export default function DashboardPage() {
           }
 
           .user-directory-grid {
+            grid-template-columns: 1fr;
+          }
+
+          .client-directory-grid {
             grid-template-columns: 1fr;
           }
 
