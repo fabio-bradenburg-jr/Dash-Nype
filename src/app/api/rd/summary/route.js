@@ -795,6 +795,12 @@ export async function GET(request) {
           type === 'won' &&
           createdLeadInRange &&
           dealClosedInRange
+        const shouldCountWonFromPreviousCohort =
+          type === 'won' &&
+          dealClosedInRange &&
+          sourceMatchesFilter &&
+          Boolean(contactCreatedAt) &&
+          !contactCreatedInRange
         const shouldCountLostByClosingDate = type === 'lost' && dealClosedInRange
         const shouldCountOpenByMovementDate = type === 'open' && dealMovedInRange
         const hasReachedQualifiedStage = hasQualifiedStageFilter
@@ -903,7 +909,7 @@ export async function GET(request) {
           accumulator.sourceStats[sourceLabel].wonDeals += 1
           accumulator.sourceStats[sourceLabel].wonRevenue += amount
 
-          if (!createdLeadInRange) {
+          if (shouldCountWonFromPreviousCohort) {
             accumulator.wonDealsFromPreviousCohorts += 1
             accumulator.wonRevenueFromPreviousCohorts += amount
           }
