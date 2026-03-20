@@ -61,6 +61,17 @@ const THEME_LABELS = {
   slate: 'Ciano',
 }
 
+const EMPTY_META_BREAKDOWNS = {
+  ages: [],
+  cities: [],
+  creatives: [],
+  errors: {
+    ages: '',
+    cities: '',
+    creatives: '',
+  },
+}
+
 function clampColorChannel(value) {
   const numericValue = Number.parseInt(value, 10)
   if (!Number.isFinite(numericValue)) return 0
@@ -664,7 +675,7 @@ export default function DashboardPage() {
   const [dailyData, setDailyData] = useState([])
   const [campaigns, setCampaigns] = useState([])
   const [metaHierarchy, setMetaHierarchy] = useState([])
-  const [breakdowns, setBreakdowns] = useState({ ages: [], cities: [], creatives: [] })
+  const [breakdowns, setBreakdowns] = useState(EMPTY_META_BREAKDOWNS)
   const [isRankingsLoading, setIsRankingsLoading] = useState(false)
   const [rankingsError, setRankingsError] = useState('')
   const [rdSummary, setRdSummary] = useState(null)
@@ -1978,7 +1989,7 @@ export default function DashboardPage() {
       setDailyData([])
       setCampaigns([])
       setMetaHierarchy([])
-      setBreakdowns({ ages: [], cities: [], creatives: [] })
+      setBreakdowns(EMPTY_META_BREAKDOWNS)
       setRdSummary(null)
       setIsMetaStructureReady(false)
       return
@@ -2247,7 +2258,7 @@ export default function DashboardPage() {
         if (!cancelled) {
           setInsights(null)
           setDailyData([])
-          setBreakdowns({ ages: [], cities: [], creatives: [] })
+          setBreakdowns(EMPTY_META_BREAKDOWNS)
           setRdSummary(null)
           setErrorMessage(error.message || 'Falha ao puxar os dados da integração.')
         }
@@ -2296,7 +2307,7 @@ export default function DashboardPage() {
 
     if (!activeClientId || !hasMetaConfigured) {
       lastBreakdownsFetchKeyRef.current = ''
-      setBreakdowns({ ages: [], cities: [], creatives: [] })
+      setBreakdowns(EMPTY_META_BREAKDOWNS)
       setIsRankingsLoading(false)
       setRankingsError('')
       return
@@ -2374,9 +2385,9 @@ export default function DashboardPage() {
           throw new Error(data.error || 'Os rankings detalhados não responderam agora.')
         }
 
-        setBreakdowns(data || { ages: [], cities: [], creatives: [] })
+        setBreakdowns(data || EMPTY_META_BREAKDOWNS)
       } catch (error) {
-        setBreakdowns({ ages: [], cities: [], creatives: [] })
+        setBreakdowns(EMPTY_META_BREAKDOWNS)
         setRankingsError(error.message || 'Os rankings detalhados não responderam agora.')
       } finally {
         setIsRankingsLoading(false)
@@ -4225,6 +4236,8 @@ export default function DashboardPage() {
                         <div className="ranking-empty">Carregando ranking de cidades...</div>
                       ) : rankingsError ? (
                         <div className="ranking-empty">{rankingsError}</div>
+                      ) : breakdowns.errors?.cities ? (
+                        <div className="ranking-empty">{breakdowns.errors.cities}</div>
                       ) : breakdowns.cities.length === 0 ? (
                         <div className="ranking-empty">Sem dados por cidade para o período.</div>
                       ) : (
@@ -4253,6 +4266,8 @@ export default function DashboardPage() {
                         <div className="ranking-empty">Carregando ranking de criativos...</div>
                       ) : rankingsError ? (
                         <div className="ranking-empty">{rankingsError}</div>
+                      ) : breakdowns.errors?.creatives ? (
+                        <div className="ranking-empty">{breakdowns.errors.creatives}</div>
                       ) : breakdowns.creatives.length === 0 ? (
                         <div className="ranking-empty">Sem dados por criativo para o período.</div>
                       ) : (
@@ -4289,6 +4304,8 @@ export default function DashboardPage() {
                         <div className="ranking-empty">Carregando ranking por idade...</div>
                       ) : rankingsError ? (
                         <div className="ranking-empty">{rankingsError}</div>
+                      ) : breakdowns.errors?.ages ? (
+                        <div className="ranking-empty">{breakdowns.errors.ages}</div>
                       ) : breakdowns.ages.length === 0 ? (
                         <div className="ranking-empty">Sem dados por idade para o período.</div>
                       ) : (

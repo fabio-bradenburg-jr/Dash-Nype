@@ -92,6 +92,21 @@ function normalizeCreativeLabel(ad) {
     .trim()
 }
 
+async function fetchMetaBreakdownSafely(url, fallbackMessage) {
+  try {
+    const data = await fetchMetaJson(url, fallbackMessage)
+    return {
+      data,
+      error: '',
+    }
+  } catch (error) {
+    return {
+      data: null,
+      error: normalizeMetaError(error, fallbackMessage),
+    }
+  }
+}
+
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url)
@@ -133,41 +148,40 @@ export async function GET(request) {
 
     const creativeUrl = `https://graph.facebook.com/v19.0/${id}/ads?fields=id,name,campaign_id,adset_id,creative{name,thumbnail_url,image_url,effective_object_story_id,object_story_spec},${creativeTimeFilter}{spend,impressions,clicks,cpc,ctr,actions,action_values,cost_per_action_type}&limit=100&access_token=${token}`
 
-    const [ageData, cityData, creativeData] = await Promise.all([
-      fetchMetaJson(
+    const [ageResult, cityResult, creativeResult] = await Promise.all([
+      fetchMetaBreakdownSafely(
         `https://graph.facebook.com/v19.0/${id}/insights?${ageParams.toString()}`,
         'A Meta demorou para responder ao carregar os rankings detalhados. Tente novamente em alguns instantes.'
       ),
-      fetchMetaJson(
+      fetchMetaBreakdownSafely(
         `https://graph.facebook.com/v19.0/${id}/insights?${cityParams.toString()}`,
         'A Meta demorou para responder ao carregar os rankings detalhados. Tente novamente em alguns instantes.'
       ),
-      fetchMetaJson(
+      fetchMetaBreakdownSafely(
         creativeUrl,
         'A Meta demorou para responder ao carregar os rankings detalhados. Tente novamente em alguns instantes.'
       ),
     ])
 
-    let cityRows = cityData.data || []
+    let cityRows = cityResult.data?.data || []
     let cityLabelKey = 'city'
+    let cityError = cityResult.error || ''
 
-    if (cityData.error) {
+    if (!cityRows.length && cityError) {
       const regionParams = buildBaseParams({ token, datePreset, since, until, fields: insightFields })
       regionParams.set('breakdowns', 'region')
       appendMetaEntityFiltering(regionParams, campaignIds, adsetIds, adIds)
-      const regionData = await fetchMetaJson(
+      const regionResult = await fetchMetaBreakdownSafely(
         `https://graph.facebook.com/v19.0/${id}/insights?${regionParams.toString()}`,
         'A Meta demorou para responder ao carregar os rankings detalhados. Tente novamente em alguns instantes.'
       )
 
-      cityRows = regionData.data || []
+      cityRows = regionResult.data?.data || []
       cityLabelKey = 'region'
+      cityError = regionResult.error || cityError
     }
 
-    if (ageData.error) throw new Error(ageData.error.message)
-    if (creativeData.error) throw new Error(creativeData.error.message)
-
-    const creatives = (creativeData.data || [])
+    const creatives = (creativeResult.data?.data || [])
       .filter((ad) => {
         if (adIds.length > 0) return adIds.includes(ad.id)
         if (adsetIds.length > 0) return adsetIds.includes(ad.adset_id)
@@ -189,9 +203,14 @@ export async function GET(request) {
       .slice(0, 5)
 
     return NextResponse.json({
-      ages: normalizeBreakdownRows(ageData.data || [], 'age'),
+      ages: normalizeBreakdownRows(ageResult.data?.data || [], 'age'),
       cities: normalizeBreakdownRows(cityRows, cityLabelKey),
       creatives,
+      errors: {
+        ages: ageResult.error || '',
+        cities: cityError,
+        creatives: creativeResult.error || '',
+      },
     })
   } catch (error) {
     console.error('Meta breakdowns error:', error)
