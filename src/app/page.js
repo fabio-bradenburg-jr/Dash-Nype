@@ -4964,19 +4964,19 @@ export default function DashboardPage() {
 
         .dashboard-color-editor {
           display: grid;
-          gap: 14px;
+          gap: 12px;
         }
 
         .dashboard-color-preview-row {
           display: flex;
-          align-items: center;
-          gap: 14px;
+          align-items: stretch;
+          gap: 12px;
         }
 
         .dashboard-color-preview-row input[type="color"] {
-          width: 72px;
-          min-width: 72px;
-          height: 48px;
+          width: 64px;
+          min-width: 64px;
+          height: 56px;
           padding: 0;
           border-radius: 12px;
           border: 1px solid var(--border-color);
@@ -4986,27 +4986,31 @@ export default function DashboardPage() {
 
         .dashboard-color-code {
           display: grid;
-          gap: 4px;
+          gap: 2px;
+          align-content: center;
+          min-width: 0;
         }
 
         .dashboard-color-code strong {
-          font-size: 16px;
+          font-size: 15px;
+          line-height: 1.1;
         }
 
         .dashboard-color-code span {
           color: var(--text-muted);
-          font-size: 13px;
+          font-size: 12px;
+          overflow-wrap: anywhere;
         }
 
         .dashboard-rgb-grid {
           display: grid;
           grid-template-columns: repeat(3, minmax(0, 1fr));
-          gap: 12px;
+          gap: 10px;
         }
 
         .dashboard-rgb-field {
           display: grid;
-          gap: 8px;
+          gap: 6px;
         }
 
         .dashboard-rgb-field span {
@@ -5019,8 +5023,8 @@ export default function DashboardPage() {
 
         .dashboard-rgb-field input {
           width: 100%;
-          min-height: 46px;
-          padding: 0 12px;
+          min-height: 42px;
+          padding: 0 10px;
           border-radius: 10px;
           background: rgba(0, 0, 0, 0.2);
           border: 1px solid var(--border-color);
@@ -5031,13 +5035,14 @@ export default function DashboardPage() {
         }
 
         .dashboard-theme-presets {
-          display: flex;
-          flex-wrap: wrap;
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
           gap: 10px;
         }
 
         .dashboard-theme-preset {
-          min-width: 92px;
+          width: 100%;
+          min-width: 0;
           padding: 10px 12px;
           border-radius: 14px;
           border: 1px solid rgba(255, 255, 255, 0.08);
@@ -5045,6 +5050,7 @@ export default function DashboardPage() {
           color: var(--text-primary);
           display: inline-flex;
           align-items: center;
+          justify-content: center;
           gap: 8px;
           cursor: pointer;
         }
@@ -5057,6 +5063,7 @@ export default function DashboardPage() {
         .dashboard-theme-preset small {
           font-size: 12px;
           line-height: 1;
+          text-transform: capitalize;
         }
 
         .dashboard-theme-swatch {
@@ -6465,6 +6472,10 @@ export default function DashboardPage() {
           .hero-panel h2 {
             font-size: 30px;
           }
+
+          .dashboard-theme-presets {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
         }
 
         @media (max-width: 768px) {
@@ -6474,6 +6485,16 @@ export default function DashboardPage() {
 
           .main-content-expanded {
             margin-left: 0;
+          }
+
+          .dashboard-color-preview-row {
+            display: grid;
+            grid-template-columns: 1fr;
+          }
+
+          .dashboard-rgb-grid,
+          .dashboard-theme-presets {
+            grid-template-columns: 1fr;
           }
 
           .header-actions-wrap {
