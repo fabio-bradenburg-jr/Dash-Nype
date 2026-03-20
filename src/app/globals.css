@@ -35,6 +35,15 @@
     --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+:root[data-ui-mode='light'] {
+    --bg-dark: #f3f7fb;
+    --bg-panel: rgba(255, 255, 255, 0.82);
+    --border-color: rgba(15, 23, 42, 0.08);
+    --text-primary: #0f172a;
+    --text-secondary: #475569;
+    --text-muted: #64748b;
+}
+
 * {
     margin: 0;
     padding: 0;
@@ -51,6 +60,12 @@ body {
         radial-gradient(circle at 15% 50%, rgba(59, 130, 246, 0.08) 0%, transparent 50%),
         radial-gradient(circle at 85% 30%, rgba(139, 92, 246, 0.08) 0%, transparent 50%);
     background-attachment: fixed;
+}
+
+:root[data-ui-mode='light'] body {
+    background-image:
+        radial-gradient(circle at 15% 50%, rgba(59, 130, 246, 0.09) 0%, transparent 42%),
+        radial-gradient(circle at 85% 30%, rgba(14, 165, 233, 0.08) 0%, transparent 42%);
 }
 
 /* Scrollbar */
@@ -79,10 +94,19 @@ body {
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
 }
 
+:root[data-ui-mode='light'] .glass-panel {
+    box-shadow: 0 20px 48px rgba(15, 23, 42, 0.08);
+}
+
 .glass-item {
     background: rgba(255, 255, 255, 0.03);
     border: 1px solid rgba(255, 255, 255, 0.05);
     border-radius: 8px;
+}
+
+:root[data-ui-mode='light'] .glass-item {
+    background: rgba(15, 23, 42, 0.02);
+    border-color: rgba(15, 23, 42, 0.08);
 }
 
 /* Layout */
@@ -152,6 +176,10 @@ body {
     background: rgba(255, 255, 255, 0.05);
     color: var(--text-primary);
     transform: translateX(4px);
+}
+
+:root[data-ui-mode='light'] .nav-item:hover {
+    background: rgba(15, 23, 42, 0.04);
 }
 
 .nav-item.active {

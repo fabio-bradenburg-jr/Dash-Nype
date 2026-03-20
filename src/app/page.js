@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import Link from 'next/link'
 import { useUser } from '@/lib/contexts/UserContext'
 import { createClient } from '@/lib/supabase/client'
 import {
@@ -1670,8 +1671,6 @@ export default function DashboardPage() {
 
   useEffect(() => {
     const root = document.documentElement
-    root.style.setProperty('--accent-blue', currentTheme.main)
-    root.style.setProperty('--glow-blue', currentTheme.glow)
     root.style.setProperty('--theme-surface', currentTheme.surface)
     ChartJS.defaults.color = '#94a3b8'
     ChartJS.defaults.font.family = "'Inter', sans-serif"
@@ -3456,6 +3455,9 @@ export default function DashboardPage() {
               <i className="bx bxs-user-detail"></i> Usuários
             </button>
           )}
+          <Link href="/settings" data-tooltip="Configurações" className="nav-item">
+            <i className="bx bx-cog"></i> Configurações
+          </Link>
         </nav>
 
         {!isSidebarCollapsed && (
@@ -5415,9 +5417,8 @@ export default function DashboardPage() {
 
         .client-create-bar {
           padding: 24px 28px;
-          display: flex;
-          justify-content: space-between;
-          align-items: end;
+          display: grid;
+          align-content: start;
           gap: 18px;
           min-height: 100%;
         }
@@ -5427,7 +5428,10 @@ export default function DashboardPage() {
           align-items: center;
           gap: 12px;
           width: 100%;
-          max-width: 560px;
+        }
+
+        .client-create-bar h3 {
+          margin-bottom: 8px;
         }
 
         .client-create-inline input {

@@ -2,6 +2,13 @@
 
 import { createContext, useContext, useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import {
+  applyUserAppearance,
+  DEFAULT_USER_APPEARANCE,
+  loadUserAppearance,
+  normalizeUserAppearance,
+  saveUserAppearance,
+} from '@/lib/user-appearance-storage'
 
 const UserContext = createContext({})
 
@@ -9,6 +16,7 @@ export function UserProvider({ children }) {
   const [user, setUser] = useState(null)
   const [profile, setProfile] = useState(null)
   const [access, setAccess] = useState(null)
+  const [appearance, setAppearance] = useState(DEFAULT_USER_APPEARANCE)
   const [loading, setLoading] = useState(true)
   const supabase = createClient()
 
@@ -36,6 +44,11 @@ export function UserProvider({ children }) {
     const getSession = async () => {
       const { data: { session } } = await supabase.auth.getSession()
       setUser(session?.user ?? null)
+      if (session?.user?.id) {
+        setAppearance(loadUserAppearance(session.user.id))
+      } else {
+        setAppearance(DEFAULT_USER_APPEARANCE)
+      }
       if (session?.user) {
         await loadProfile()
       }
@@ -49,10 +62,12 @@ export function UserProvider({ children }) {
       async (_event, session) => {
         setUser(session?.user ?? null)
         if (session?.user) {
+          setAppearance(loadUserAppearance(session.user.id))
           await loadProfile()
         } else {
           setProfile(null)
           setAccess(null)
+          setAppearance(DEFAULT_USER_APPEARANCE)
         }
       }
     )
@@ -60,8 +75,26 @@ export function UserProvider({ children }) {
     return () => subscription.unsubscribe()
   }, [])
 
+  useEffect(() => {
+    applyUserAppearance(appearance)
+  }, [appearance])
+
+  const updateAppearance = (updater) => {
+    setAppearance((current) => {
+      const nextAppearance = normalizeUserAppearance(
+        typeof updater === 'function' ? updater(current) : updater
+      )
+
+      if (user?.id) {
+        saveUserAppearance(user.id, nextAppearance)
+      }
+
+      return nextAppearance
+    })
+  }
+
   return (
-    <UserContext.Provider value={{ user, profile, access, loading }}>
+    <UserContext.Provider value={{ user, profile, access, appearance, updateAppearance, loading }}>
       {children}
     </UserContext.Provider>
   )
