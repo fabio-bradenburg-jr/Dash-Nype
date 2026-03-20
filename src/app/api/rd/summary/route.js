@@ -448,6 +448,67 @@ function getDealMovedAt(deal) {
   )
 }
 
+function getDealPipelineInfo(deal) {
+  const pipelineObjects = [
+    deal?.pipeline,
+    deal?.deal_pipeline,
+    deal?.funnel,
+    deal?.sales_pipeline,
+  ].filter((value) => value && typeof value === 'object')
+
+  for (const pipelineObject of pipelineObjects) {
+    const idCandidate = [
+      pipelineObject.id,
+      pipelineObject.uuid,
+      pipelineObject.pipeline_id,
+      pipelineObject.funnel_id,
+    ].find((candidate) => candidate !== undefined && candidate !== null && `${candidate}`.trim())
+
+    const nameCandidate = [
+      pipelineObject.name,
+      pipelineObject.label,
+      pipelineObject.title,
+      pipelineObject.pipeline_name,
+      pipelineObject.display_name,
+    ].find((candidate) => typeof candidate === 'string' && candidate.trim())
+
+    if (idCandidate || nameCandidate) {
+      const normalizedName = nameCandidate?.trim() || 'Funil sem nome'
+      return {
+        id: `${idCandidate || `name:${normalizeLabel(normalizedName)}`}`.trim(),
+        name: normalizedName,
+      }
+    }
+  }
+
+  const directName = [
+    deal?.pipeline_name,
+    deal?.deal_pipeline_name,
+    deal?.funnel_name,
+    typeof deal?.pipeline === 'string' ? deal.pipeline : '',
+    typeof deal?.funnel === 'string' ? deal.funnel : '',
+  ].find((candidate) => typeof candidate === 'string' && candidate.trim())
+
+  const directId = [
+    deal?.pipeline_id,
+    deal?.deal_pipeline_id,
+    deal?.funnel_id,
+  ].find((candidate) => candidate !== undefined && candidate !== null && `${candidate}`.trim())
+
+  if (!directId && !directName) {
+    return {
+      id: 'unknown',
+      name: 'Funil não identificado',
+    }
+  }
+
+  const normalizedName = directName?.trim() || 'Funil sem nome'
+  return {
+    id: `${directId || `name:${normalizeLabel(normalizedName)}`}`.trim(),
+    name: normalizedName,
+  }
+}
+
 function getDealStageLabel(deal) {
   const candidates = [
     deal?.deal_stage_name,
@@ -680,6 +741,7 @@ export async function GET(request) {
   try {
     const token = getRdToken(request)
     const { searchParams } = new URL(request.url)
+    const selectedPipelineId = searchParams.get('pipeline_id') || ''
     const selectedSellerId = searchParams.get('seller_id') || 'all'
     const datePreset = searchParams.get('date_preset') || 'last_7d'
     const since = searchParams.get('since')
@@ -723,9 +785,65 @@ export async function GET(request) {
         contactsById.set(identifier, contact)
       })
     })
-    const sellersMap = new Map()
+    const pipelineMap = new Map()
 
     deals.forEach((deal) => {
+      const pipeline = getDealPipelineInfo(deal)
+      const currentPipeline = pipelineMap.get(pipeline.id)
+
+      if (currentPipeline) {
+        currentPipeline.deals += 1
+        return
+      }
+
+      pipelineMap.set(pipeline.id, {
+        id: pipeline.id,
+        name: pipeline.name,
+        deals: 1,
+      })
+    })
+
+    const availablePipelines = Array.from(pipelineMap.values()).sort((a, b) =>
+      a.name.localeCompare(b.name, 'pt-BR')
+    )
+    const pipelineFilteredDeals = selectedPipelineId
+      ? deals.filter((deal) => getDealPipelineInfo(deal).id === selectedPipelineId)
+      : deals
+    const pipelineContactIdentifiers = new Set()
+    const pipelineContactKeys = new Set()
+
+    pipelineFilteredDeals.forEach((deal) => {
+      const relatedContactId = getDealRelatedContactId(deal)
+      const relatedContact = contactsById.get(relatedContactId) || deal?.contact || null
+
+      if (relatedContactId) {
+        pipelineContactIdentifiers.add(relatedContactId)
+      }
+
+      if (relatedContact) {
+        getContactIdentifiers(relatedContact).forEach((identifier) => {
+          pipelineContactIdentifiers.add(identifier)
+        })
+
+        const contactKey = getContactKey(relatedContact)
+        if (contactKey) {
+          pipelineContactKeys.add(contactKey)
+        }
+      }
+    })
+    const contactsForSelectedPipeline = selectedPipelineId
+      ? contacts.filter((contact) => {
+          const identifiers = getContactIdentifiers(contact)
+          const hasIdentifierMatch = identifiers.some((identifier) => pipelineContactIdentifiers.has(identifier))
+          if (hasIdentifierMatch) return true
+
+          const contactKey = getContactKey(contact)
+          return contactKey ? pipelineContactKeys.has(contactKey) : false
+        })
+      : contacts
+    const sellersMap = new Map()
+
+    pipelineFilteredDeals.forEach((deal) => {
       const owner = getOwnerInfo(deal)
       if (!owner) return
       sellersMap.set(owner.id, owner)
@@ -735,7 +853,7 @@ export async function GET(request) {
     const stageIdOrderMap = new Map()
     const stageFirstSeenMap = new Map()
 
-    deals.forEach((deal, index) => {
+    pipelineFilteredDeals.forEach((deal, index) => {
       const label = getDealStageLabel(deal)
       if (!label) return
 
@@ -792,22 +910,23 @@ export async function GET(request) {
       : null
     const availableSources = Array.from(
       new Set([
-        ...contacts.map((contact) => buildSourceLabel(null, contact)),
-        ...deals.map((deal) => {
+        ...contactsForSelectedPipeline.map((contact) => buildSourceLabel(null, contact)),
+        ...pipelineFilteredDeals.map((deal) => {
           const relatedContactId = getDealRelatedContactId(deal)
           return buildSourceLabel(deal, contactsById.get(relatedContactId) || deal?.contact || null)
         }),
       ].filter(Boolean))
     ).sort((a, b) => a.localeCompare(b, 'pt-BR'))
 
-    const filteredDeals = deals.filter((deal) => {
+    const filteredDeals = pipelineFilteredDeals.filter((deal) => {
       if (selectedSellerId === 'all') return true
       const owner = getOwnerInfo(deal)
       return owner?.id === selectedSellerId
     })
     const allDealsDiagnostics = summarizeDealDiagnostics(deals, selectedRange)
+    const pipelineDealsDiagnostics = summarizeDealDiagnostics(pipelineFilteredDeals, selectedRange)
     const filteredDealsDiagnostics = summarizeDealDiagnostics(filteredDeals, selectedRange)
-    const contactsCreatedInPeriod = contacts.filter((contact) =>
+    const contactsCreatedInPeriod = contactsForSelectedPipeline.filter((contact) =>
       isWithinRange(getContactCreatedAt(contact), selectedRange)
     )
     const contactsCreatedInPeriodBySource = contactsCreatedInPeriod.filter((contact) => {
@@ -820,7 +939,7 @@ export async function GET(request) {
     const globalWonLeadToWonDays = []
     const globalWonDealToWonDays = []
 
-    deals.forEach((deal) => {
+    pipelineFilteredDeals.forEach((deal) => {
       const type = classifyDealStatus(deal)
       if (type !== 'won') return
 
@@ -1058,7 +1177,7 @@ export async function GET(request) {
       }
     )
 
-    const leadCount = contacts.length
+    const leadCount = contactsForSelectedPipeline.length
     const leadCountInPeriod = contactsCreatedInPeriod.length
     const leadCountInPeriodBySource = contactsCreatedInPeriodBySource.length
     const opportunityKeys = new Set(
@@ -1127,8 +1246,10 @@ export async function GET(request) {
       avgTicketWonPreviousCohorts,
       closeRate,
       availableStages,
+      availablePipelines,
       availableSources,
       selectedLeadSources: leadSources,
+      selectedPipelineId,
       qualifiedStages,
       qualifiedDeals: summary.qualifiedDeals,
       qualifiedContacts: summary.contactsWithQualifiedDeals.size,
@@ -1152,6 +1273,9 @@ export async function GET(request) {
       sourceRanking,
       selectedSellerId,
       diagnostics: {
+        pipelineFilterApplied: Boolean(selectedPipelineId),
+        selectedPipelineId,
+        pipelineOptionsCount: pipelineMap.size,
         sellerFilterApplied: selectedSellerId !== 'all',
         selectedSellerId,
         sellerOptionsCount: sellersMap.size,
@@ -1164,6 +1288,7 @@ export async function GET(request) {
             }
           : null,
         allDeals: allDealsDiagnostics,
+        pipelineDeals: pipelineDealsDiagnostics,
         filteredDeals: filteredDealsDiagnostics,
       },
     })

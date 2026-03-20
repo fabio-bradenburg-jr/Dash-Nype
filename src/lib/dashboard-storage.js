@@ -87,6 +87,7 @@ export function createClientRecord(overrides = {}) {
     tiktokAdsAccountId: '',
     linkedInAdsAccountId: '',
     rdStationAccountId: '',
+    rdPipelineId: '',
     salesforceAccountId: '',
     agendorAccountId: '',
     rdQualifiedStages: [],

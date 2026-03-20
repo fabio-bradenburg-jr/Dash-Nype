@@ -619,6 +619,7 @@ export default function DashboardPage() {
   const dashboardRef = useRef(null)
   const campaignsRef = useRef([])
   const lastMetaStructureFetchKeyRef = useRef('')
+  const lastRdPipelinesFetchKeyRef = useRef('')
   const lastDashboardFetchKeyRef = useRef('')
   const lastBreakdownsFetchKeyRef = useRef('')
   const selectedQualifiedStagesRef = useRef([])
@@ -667,6 +668,8 @@ export default function DashboardPage() {
   const [isRankingsLoading, setIsRankingsLoading] = useState(false)
   const [rankingsError, setRankingsError] = useState('')
   const [rdSummary, setRdSummary] = useState(null)
+  const [rdPipelines, setRdPipelines] = useState([])
+  const [rdPipelineStages, setRdPipelineStages] = useState([])
   const [isLoading, setIsLoading] = useState(true)
   const [isMetaStructureReady, setIsMetaStructureReady] = useState(false)
   const [isSavingIntegrations, setIsSavingIntegrations] = useState(false)
@@ -675,6 +678,8 @@ export default function DashboardPage() {
   const [errorMessage, setErrorMessage] = useState('')
   const [dragMetricKey, setDragMetricKey] = useState('')
   const [dragSourceIndex, setDragSourceIndex] = useState(null)
+  const [rdPipelineFilter, setRdPipelineFilter] = useState('')
+  const [draftRdPipelineFilter, setDraftRdPipelineFilter] = useState('')
   const [rdSellerFilter, setRdSellerFilter] = useState('all')
   const [draftRdSellerFilter, setDraftRdSellerFilter] = useState('all')
   const [rdLeadSourceFilters, setRdLeadSourceFilters] = useState([])
@@ -764,6 +769,22 @@ export default function DashboardPage() {
   const hasMetaConfigured = Boolean(selectedAdAccount && globalIntegrations.metaAccessToken)
   const hasRdConfigured = Boolean(activeIntegrations.rdStationToken)
   const hasAnyPresentationData = hasMetaConfigured || hasRdConfigured
+  const rdPipelineOptions = useMemo(
+    () => (rdPipelines.length ? rdPipelines : rdSummary?.availablePipelines || []),
+    [rdPipelines, rdSummary]
+  )
+  const selectedRdPipeline = useMemo(
+    () => rdPipelineOptions.find((pipeline) => pipeline.id === rdPipelineFilter) || null,
+    [rdPipelineOptions, rdPipelineFilter]
+  )
+  const draftSelectedRdPipeline = useMemo(
+    () => rdPipelineOptions.find((pipeline) => pipeline.id === draftRdPipelineFilter) || null,
+    [rdPipelineOptions, draftRdPipelineFilter]
+  )
+  const availableRdStages = useMemo(
+    () => (rdPipelineStages.length ? rdPipelineStages : rdSummary?.availableStages || []),
+    [rdPipelineStages, rdSummary]
+  )
   const activeDashboardTemplateId = activeDashboardTemplate?.id || activeDashboardTemplates[0]?.id || ''
   const activeMetaDashboardMetricKeys = useMemo(
     () => (Array.isArray(activeDashboardTemplate?.metaMetricKeys) ? activeDashboardTemplate.metaMetricKeys : []),
@@ -1047,6 +1068,20 @@ export default function DashboardPage() {
 
     return `${selectedCount} origens selecionadas`
   }, [rdSummary, activeDraftRdLeadSources])
+  const rdPipelineFilterSummary = useMemo(() => {
+    const totalPipelines = rdPipelineOptions.length
+
+    if (!totalPipelines) return 'Nenhum funil disponível'
+    if (!draftRdPipelineFilter) return 'Todos os funis'
+    return draftSelectedRdPipeline?.name || 'Funil selecionado'
+  }, [rdPipelineOptions, draftRdPipelineFilter, draftSelectedRdPipeline])
+  const rdAppliedPipelineSummary = useMemo(() => {
+    const totalPipelines = rdPipelineOptions.length
+
+    if (!totalPipelines) return 'Nenhum funil disponível'
+    if (!rdPipelineFilter) return 'Todos os funis'
+    return selectedRdPipeline?.name || 'Funil selecionado'
+  }, [rdPipelineOptions, rdPipelineFilter, selectedRdPipeline])
   const hasPendingDashboardFilters = useMemo(() => {
     const hasDateRangeChanges = draftDateRange !== dateRange
     const hasCustomDateChanges =
@@ -1056,6 +1091,7 @@ export default function DashboardPage() {
     const hasCampaignChanges = !haveSameSelection(activeDraftMetaCampaignIds, activeMetaCampaignIds)
     const hasAdsetChanges = !haveSameSelection(activeDraftMetaAdsetIds, activeMetaAdsetIds)
     const hasAdChanges = !haveSameSelection(activeDraftMetaAdIds, activeMetaAdIds)
+    const hasPipelineChanges = draftRdPipelineFilter !== rdPipelineFilter
     const hasSellerChanges = draftRdSellerFilter !== rdSellerFilter
     const hasLeadSourceChanges = !haveSameSelection(activeDraftRdLeadSources, activeRdLeadSources)
     const hasFunnelChanges = !haveSameSelection(activeDraftFunnelSteps, activeFunnelSteps)
@@ -1069,6 +1105,7 @@ export default function DashboardPage() {
       hasCampaignChanges ||
       hasAdsetChanges ||
       hasAdChanges ||
+      hasPipelineChanges ||
       hasSellerChanges ||
       hasLeadSourceChanges ||
       hasFunnelChanges ||
@@ -1090,6 +1127,8 @@ export default function DashboardPage() {
     activeMetaAdsetIds,
     activeDraftMetaAdIds,
     activeMetaAdIds,
+    draftRdPipelineFilter,
+    rdPipelineFilter,
     draftRdSellerFilter,
     rdSellerFilter,
     activeDraftRdLeadSources,
@@ -1147,6 +1186,12 @@ export default function DashboardPage() {
   }, [selectedQualifiedStages])
 
   useEffect(() => {
+    const nextPipelineId = activeClient?.rdPipelineId || ''
+    setRdPipelineFilter(nextPipelineId)
+    setDraftRdPipelineFilter(nextPipelineId)
+  }, [activeClientId, activeClient?.rdPipelineId])
+
+  useEffect(() => {
     rdLeadSourceFiltersRef.current = rdLeadSourceFilters
   }, [rdLeadSourceFilters])
 
@@ -1158,6 +1203,7 @@ export default function DashboardPage() {
     setDraftMetaCampaignFilters(metaCampaignFilters)
     setDraftMetaAdsetFilters(metaAdsetFilters)
     setDraftMetaAdFilters(metaAdFilters)
+    setDraftRdPipelineFilter(rdPipelineFilter)
     setDraftRdSellerFilter(rdSellerFilter)
     setDraftRdLeadSourceFilters(rdLeadSourceFilters)
     setDraftFunnelSteps(activeFunnelSteps)
@@ -1171,6 +1217,7 @@ export default function DashboardPage() {
     metaCampaignFilters,
     metaAdsetFilters,
     metaAdFilters,
+    rdPipelineFilter,
     rdSellerFilter,
     rdLeadSourceFilters,
     activeFunnelSteps,
@@ -1215,6 +1262,71 @@ export default function DashboardPage() {
       setDraftRdSellerFilter('all')
     }
   }, [rdSummary, rdSellerFilter, draftRdSellerFilter])
+
+  useEffect(() => {
+    if (activeTab !== 'clientes' && activeTab !== 'apresentacao') {
+      lastRdPipelinesFetchKeyRef.current = ''
+      return
+    }
+
+    if (!activeClientId || !activeIntegrations.rdStationToken) {
+      lastRdPipelinesFetchKeyRef.current = ''
+      setRdPipelines([])
+      setRdPipelineStages([])
+      return
+    }
+
+    let cancelled = false
+
+    const loadRdPipelines = async () => {
+      try {
+        const selectedPipelineId = activeClient?.rdPipelineId || ''
+        const fetchKey = JSON.stringify({
+          activeClientId,
+          rdToken: activeIntegrations.rdStationToken,
+          selectedPipelineId,
+        })
+
+        if (lastRdPipelinesFetchKeyRef.current === fetchKey) {
+          return
+        }
+
+        lastRdPipelinesFetchKeyRef.current = fetchKey
+
+        const params = new URLSearchParams()
+        if (selectedPipelineId) {
+          params.set('pipeline_id', selectedPipelineId)
+        }
+
+        const response = await fetch(`/api/rd/pipelines${params.toString() ? `?${params.toString()}` : ''}`, {
+          headers: {
+            'x-rd-station-token': activeIntegrations.rdStationToken,
+          },
+        })
+        const data = await response.json()
+
+        if (!response.ok) {
+          throw new Error(data.error || 'Não foi possível carregar os funis do RD Station.')
+        }
+
+        if (cancelled) return
+
+        setRdPipelines(Array.isArray(data?.pipelines) ? data.pipelines : [])
+        setRdPipelineStages(Array.isArray(data?.stages) ? data.stages : [])
+      } catch (error) {
+        if (cancelled) return
+        setRdPipelines([])
+        setRdPipelineStages([])
+        setErrorMessage(error.message || 'Não foi possível carregar os funis do RD Station.')
+      }
+    }
+
+    loadRdPipelines()
+
+    return () => {
+      cancelled = true
+    }
+  }, [activeTab, activeClientId, activeClient?.rdPipelineId, activeIntegrations.rdStationToken])
 
   useEffect(() => {
     if (!hasLoadedPreferences || userLoading || !user || hasSyncedServerState) return
@@ -1555,12 +1667,14 @@ export default function DashboardPage() {
     setMetaAdFilters(
       normalizedAdSelection.length === availableAdIds.length ? [] : normalizedAdSelection
     )
+    setRdPipelineFilter(draftRdPipelineFilter)
     setRdSellerFilter(draftRdSellerFilter)
     setRdLeadSourceFilters(
       normalizedLeadSourceSelection.length === availableLeadSources.length ? [] : normalizedLeadSourceSelection
     )
     updateActiveClient((client) => ({
       ...client,
+      rdPipelineId: draftRdPipelineFilter,
       funnelSteps: activeDraftFunnelSteps,
       dashboardTemplates: cloneDashboardTemplates(activeDraftDashboardTemplates),
       activeDashboardTemplateId:
@@ -2005,6 +2119,7 @@ export default function DashboardPage() {
         customUntil,
         hasMetaConfigured,
         hasRdConfigured,
+        rdPipelineFilter,
         rdSellerFilter,
         rdLeadSourceFiltersKey,
         selectedQualifiedStagesKey,
@@ -2086,6 +2201,9 @@ export default function DashboardPage() {
 
         if (hasRdConfigured) {
           const rdParams = new URLSearchParams()
+          if (rdPipelineFilter) {
+            rdParams.set('pipeline_id', rdPipelineFilter)
+          }
           if (rdSellerFilter && rdSellerFilter !== 'all') {
             rdParams.set('seller_id', rdSellerFilter)
           }
@@ -2154,6 +2272,7 @@ export default function DashboardPage() {
     customUntil,
     hasMetaConfigured,
     hasRdConfigured,
+    rdPipelineFilter,
     rdSellerFilter,
     rdLeadSourceFiltersKey,
     selectedQualifiedStagesKey,
@@ -2704,7 +2823,16 @@ export default function DashboardPage() {
     if (!rdSummary?.diagnostics) return 'Aguardando leitura técnica das negociações do RD.'
 
     const allWonInRange = rdSummary.diagnostics.allDeals?.wonClosedInRange || 0
+    const pipelineWonInRange = rdSummary.diagnostics.pipelineDeals?.wonClosedInRange || 0
     const filteredWonInRange = rdSummary.diagnostics.filteredDeals?.wonClosedInRange || 0
+
+    if (rdSummary.diagnostics.pipelineFilterApplied && rdSummary.diagnostics.sellerFilterApplied) {
+      return `${formatNumber(filteredWonInRange)} negociações no período após funil e vendedor.`
+    }
+
+    if (rdSummary.diagnostics.pipelineFilterApplied) {
+      return `${formatNumber(pipelineWonInRange)} negociações ganhas no período dentro do funil selecionado.`
+    }
 
     if (rdSummary.diagnostics.sellerFilterApplied) {
       return `${formatNumber(filteredWonInRange)} negociações no período após o filtro atual de vendedor.`
@@ -3216,49 +3344,69 @@ export default function DashboardPage() {
                       })}
 
                       {group.title === 'RD Station' && (
-                        <div className="qualification-config">
-                          <button
-                            type="button"
-                            className="qualification-toggle"
-                            onClick={() => setIsQualifiedStagesVisible((current) => !current)}
-                          >
-                            <div>
-                              <strong>Etapas qualificadas do pipeline</strong>
-                              <span>Configuração operacional usada nos cálculos de qualificação e taxas do CRM. Não aparece no dashboard final.</span>
-                            </div>
-                            <i className={`bx ${isQualifiedStagesVisible ? 'bx-chevron-up' : 'bx-chevron-down'}`}></i>
-                          </button>
+                        <>
+                          <div className="input-group">
+                            <label>Funil do RD para este cliente</label>
+                            <select
+                              value={activeClient?.rdPipelineId || ''}
+                              onChange={(event) => handleClientFieldChange('rdPipelineId', event.target.value)}
+                            >
+                              <option value="">Todos os funis</option>
+                              {rdPipelineOptions.map((pipeline) => (
+                                <option key={pipeline.id} value={pipeline.id}>
+                                  {pipeline.name}
+                                </option>
+                              ))}
+                            </select>
+                            <span className="field-helper">
+                              Escolha o pipeline que este cliente usa no RD. As métricas do CRM passam a considerar só esse funil.
+                            </span>
+                          </div>
 
-                          {isQualifiedStagesVisible && (
-                            <div className="qualification-panel">
-                              <p className="field-helper">
-                                Selecione as etapas que você considera qualificadas. Os cálculos em cascata do CRM passam a usar essa definição automaticamente.
-                              </p>
-                              <div className="stage-selector">
-                                {rdSummary?.availableStages?.length ? (
-                                  rdSummary.availableStages.map((stage) => {
-                                    const checked = selectedQualifiedStages.includes(stage)
-
-                                    return (
-                                      <label key={stage} className={`stage-chip ${checked ? 'active' : ''}`}>
-                                        <input
-                                          type="checkbox"
-                                          checked={checked}
-                                          onChange={() => handleQualifiedStageToggle(stage)}
-                                        />
-                                        <span>{stage}</span>
-                                      </label>
-                                    )
-                                  })
-                                ) : (
-                                  <div className="stage-empty">
-                                    Salve o token do RD e aguarde a leitura das negociações para listar automaticamente as etapas do pipeline.
-                                  </div>
-                                )}
+                          <div className="qualification-config">
+                            <button
+                              type="button"
+                              className="qualification-toggle"
+                              onClick={() => setIsQualifiedStagesVisible((current) => !current)}
+                            >
+                              <div>
+                                <strong>Etapas qualificadas do pipeline</strong>
+                                <span>Configuração operacional usada nos cálculos de qualificação e taxas do CRM. Não aparece no dashboard final.</span>
                               </div>
-                            </div>
-                          )}
-                        </div>
+                              <i className={`bx ${isQualifiedStagesVisible ? 'bx-chevron-up' : 'bx-chevron-down'}`}></i>
+                            </button>
+
+                            {isQualifiedStagesVisible && (
+                              <div className="qualification-panel">
+                                <p className="field-helper">
+                                  Selecione as etapas que você considera qualificadas. Os cálculos em cascata do CRM passam a usar essa definição automaticamente.
+                                </p>
+                                <div className="stage-selector">
+                                  {availableRdStages.length ? (
+                                    availableRdStages.map((stage) => {
+                                      const checked = selectedQualifiedStages.includes(stage)
+
+                                      return (
+                                        <label key={stage} className={`stage-chip ${checked ? 'active' : ''}`}>
+                                          <input
+                                            type="checkbox"
+                                            checked={checked}
+                                            onChange={() => handleQualifiedStageToggle(stage)}
+                                          />
+                                          <span>{stage}</span>
+                                        </label>
+                                      )
+                                    })
+                                  ) : (
+                                    <div className="stage-empty">
+                                      Salve o token do RD e aguarde a leitura do funil para listar automaticamente as etapas do pipeline.
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </>
                       )}
                     </div>
                   ))}
@@ -3617,6 +3765,19 @@ export default function DashboardPage() {
                         <div className="hero-stat">
                           <span>CRM</span>
                           <strong>{activeClient?.rdStationAccountId || 'Token configurado para este cliente'}</strong>
+                        </div>
+                        <div className="hero-stat">
+                          <span>Funil</span>
+                          <div className="hero-select-wrap">
+                            <select value={draftRdPipelineFilter} onChange={(event) => setDraftRdPipelineFilter(event.target.value)} className="hero-select">
+                              <option value="">Todos os funis</option>
+                              {rdPipelineOptions.map((pipeline) => (
+                                <option key={pipeline.id} value={pipeline.id}>
+                                  {pipeline.name}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
                         </div>
                         <div className="hero-stat">
                           <span>Vendedor</span>
@@ -4432,8 +4593,16 @@ export default function DashboardPage() {
                                         <strong>{formatNumber(rdSummary.diagnostics.allDeals?.totalDeals || 0)}</strong>
                                       </div>
                                       <div className="conversion-stat">
+                                        <span>Negociações após o funil atual</span>
+                                        <strong>{formatNumber(rdSummary.diagnostics.pipelineDeals?.totalDeals || 0)}</strong>
+                                      </div>
+                                      <div className="conversion-stat">
                                         <span>Ganhas reconhecidas em todos os vendedores</span>
                                         <strong>{formatNumber(rdSummary.diagnostics.allDeals?.wonClassified || 0)}</strong>
+                                      </div>
+                                      <div className="conversion-stat">
+                                        <span>Ganhas no período após o funil atual</span>
+                                        <strong>{formatNumber(rdSummary.diagnostics.pipelineDeals?.wonClosedInRange || 0)}</strong>
                                       </div>
                                       <div className="conversion-stat">
                                         <span>Ganhas fechadas no período em todos os vendedores</span>
@@ -4453,6 +4622,7 @@ export default function DashboardPage() {
                                       </div>
                                     </div>
                                     <div className="rd-diagnostic-meta">
+                                      <span>Filtro de funil: <b>{rdSummary.diagnostics.pipelineFilterApplied ? rdAppliedPipelineSummary : 'Todos os funis'}</b></span>
                                       <span>Filtro de vendedor: <b>{rdSummary.diagnostics.sellerFilterApplied ? 'Aplicado' : 'Todos os vendedores'}</b></span>
                                       <span>Filtro de origem: <b>{rdSummary.diagnostics.leadSourceFilterApplied ? 'Aplicado' : 'Não afeta este bloco'}</b></span>
                                       <span>Filtro de etapas qualificadas: <b>{rdSummary.diagnostics.qualifiedStageFilterApplied ? 'Aplicado' : 'Não afeta este bloco'}</b></span>

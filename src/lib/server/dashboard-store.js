@@ -53,6 +53,7 @@ function normalizeClientRecord(client) {
     tiktokAdsAccountId: payload.tiktokAdsAccountId || '',
     linkedInAdsAccountId: payload.linkedInAdsAccountId || '',
     rdStationAccountId: payload.rdStationAccountId || '',
+    rdPipelineId: payload.rdPipelineId || '',
     salesforceAccountId: payload.salesforceAccountId || '',
     agendorAccountId: payload.agendorAccountId || '',
     rdQualifiedStages: Array.isArray(payload.rdQualifiedStages) ? payload.rdQualifiedStages : [],
