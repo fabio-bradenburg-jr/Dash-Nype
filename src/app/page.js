@@ -3331,27 +3331,29 @@ export default function DashboardPage() {
               </p>
             </div>
 
-            <form className="glass-panel client-create-bar" onSubmit={handleCreateClient}>
-              <div>
-                <h3>Novo cliente</h3>
-                <p>Crie um cliente e depois ajuste a configuração dele logo abaixo.</p>
-              </div>
-              <div className="client-create-inline">
-                <input type="text" value={newClientName} onChange={(event) => setNewClientName(event.target.value)} placeholder="Ex.: Clínica X, E-commerce Y..." disabled={!isMaster} />
-                <button type="submit" className="btn btn-primary" disabled={!isMaster}>Adicionar cliente</button>
-              </div>
-            </form>
+            <div className="client-create-grid">
+              <form className="glass-panel client-create-bar" onSubmit={handleCreateClient}>
+                <div>
+                  <h3>Novo cliente</h3>
+                  <p>Crie um cliente e depois ajuste a configuração dele logo abaixo.</p>
+                </div>
+                <div className="client-create-inline">
+                  <input type="text" value={newClientName} onChange={(event) => setNewClientName(event.target.value)} placeholder="Ex.: Clínica X, E-commerce Y..." disabled={!isMaster} />
+                  <button type="submit" className="btn btn-primary" disabled={!isMaster}>Adicionar cliente</button>
+                </div>
+              </form>
 
-            <form className="glass-panel client-create-bar" onSubmit={handleCreateClientGroup}>
-              <div>
-                <h3>Novo grupo de clientes</h3>
-                <p>Monte grupos para liberar acesso em lote e organizar dashboards relacionados.</p>
-              </div>
-              <div className="client-create-inline">
-                <input type="text" value={newClientGroupName} onChange={(event) => setNewClientGroupName(event.target.value)} placeholder="Ex.: Franquias, Comercial, Clínicas..." disabled={!isMaster} />
-                <button type="submit" className="btn btn-primary" disabled={!isMaster}>Adicionar grupo</button>
-              </div>
-            </form>
+              <form className="glass-panel client-create-bar" onSubmit={handleCreateClientGroup}>
+                <div>
+                  <h3>Novo grupo de clientes</h3>
+                  <p>Monte grupos para liberar acesso em lote e organizar dashboards relacionados.</p>
+                </div>
+                <div className="client-create-inline">
+                  <input type="text" value={newClientGroupName} onChange={(event) => setNewClientGroupName(event.target.value)} placeholder="Ex.: Franquias, Comercial, Clínicas..." disabled={!isMaster} />
+                  <button type="submit" className="btn btn-primary" disabled={!isMaster}>Adicionar grupo</button>
+                </div>
+              </form>
+            </div>
 
             <div className="clients-grid clients-grid-single">
               <div className="glass-panel users-toolbar-card">
@@ -3506,91 +3508,97 @@ export default function DashboardPage() {
                     </div>
                   </div>
 
-                  <div className="branding-grid">
-                    <div className="input-group">
-                      <label>Nome do cliente</label>
-                      <input type="text" value={activeClient.name} onChange={(event) => handleClientFieldChange('name', event.target.value)} placeholder="Nome do cliente" />
-                    </div>
+                  <div className="client-identity-layout">
+                    <div className="client-identity-main">
+                      <div className="input-group">
+                        <label>Nome do cliente</label>
+                        <input type="text" value={activeClient.name} onChange={(event) => handleClientFieldChange('name', event.target.value)} placeholder="Nome do cliente" />
+                      </div>
 
-                    <div className="input-group">
-                      <label>Cor da dashboard</label>
-                      <div className="dashboard-color-editor">
-                        <div className="dashboard-color-preview-row">
-                          <input
-                            type="color"
-                            value={activeClientDashboardHex}
-                            onChange={(event) => handleClientDashboardHexChange(event.target.value)}
-                            aria-label="Selecionar cor da dashboard"
-                          />
-                          <div className="dashboard-color-code">
-                            <strong>{activeClientDashboardHex.toUpperCase()}</strong>
-                            <span>{`rgb(${activeClientDashboardRgb.r}, ${activeClientDashboardRgb.g}, ${activeClientDashboardRgb.b})`}</span>
-                          </div>
+                      <div className="branding-grid">
+                        <div className="input-group">
+                          <label>Logo do cliente</label>
+                          <input type="file" accept="image/*" onChange={handleClientLogoUpload} />
                         </div>
-                        <div className="dashboard-rgb-grid">
-                          <label className="dashboard-rgb-field">
-                            <span>R</span>
-                            <input
-                              type="number"
-                              min="0"
-                              max="255"
-                              value={activeClientDashboardRgb.r}
-                              onChange={(event) => handleClientDashboardRgbChange('r', event.target.value)}
-                            />
-                          </label>
-                          <label className="dashboard-rgb-field">
-                            <span>G</span>
-                            <input
-                              type="number"
-                              min="0"
-                              max="255"
-                              value={activeClientDashboardRgb.g}
-                              onChange={(event) => handleClientDashboardRgbChange('g', event.target.value)}
-                            />
-                          </label>
-                          <label className="dashboard-rgb-field">
-                            <span>B</span>
-                            <input
-                              type="number"
-                              min="0"
-                              max="255"
-                              value={activeClientDashboardRgb.b}
-                              onChange={(event) => handleClientDashboardRgbChange('b', event.target.value)}
-                            />
-                          </label>
+
+                        <div className="input-group">
+                          <label>Ou cole a URL da logo</label>
+                          <input type="text" value={activeClient.logoUrl || ''} onChange={(event) => handleClientFieldChange('logoUrl', event.target.value)} placeholder="https://..." />
                         </div>
-                        <div className="dashboard-theme-presets">
-                          {Object.entries(THEMES).map(([themeKey, theme]) => (
-                            <button
-                              key={themeKey}
-                              type="button"
-                              className={`dashboard-theme-preset ${activeClient.dashboardColor === themeKey ? 'active' : ''}`}
-                              onClick={() => {
-                                handleClientFieldChange('dashboardColor', themeKey)
-                                setThemeColor(themeKey)
-                              }}
-                            >
-                              <span className="dashboard-theme-swatch" style={{ background: theme.main }}></span>
-                              <small>{themeKey}</small>
-                            </button>
-                          ))}
-                        </div>
+                      </div>
+
+                      <div className="logo-preview">
+                        {activeClient.logoUrl ? <img src={activeClient.logoUrl} alt={`Logo ${activeClient.name}`} /> : <span>Sem logo definida</span>}
                       </div>
                     </div>
 
-                    <div className="input-group">
-                      <label>Logo do cliente</label>
-                      <input type="file" accept="image/*" onChange={handleClientLogoUpload} />
+                    <div className="client-identity-side">
+                      <div className="input-group">
+                        <label>Cor da dashboard</label>
+                        <div className="dashboard-color-editor">
+                          <div className="dashboard-color-preview-row">
+                            <input
+                              type="color"
+                              value={activeClientDashboardHex}
+                              onChange={(event) => handleClientDashboardHexChange(event.target.value)}
+                              aria-label="Selecionar cor da dashboard"
+                            />
+                            <div className="dashboard-color-code">
+                              <strong>{activeClientDashboardHex.toUpperCase()}</strong>
+                              <span>{`rgb(${activeClientDashboardRgb.r}, ${activeClientDashboardRgb.g}, ${activeClientDashboardRgb.b})`}</span>
+                            </div>
+                          </div>
+                          <div className="dashboard-rgb-grid">
+                            <label className="dashboard-rgb-field">
+                              <span>R</span>
+                              <input
+                                type="number"
+                                min="0"
+                                max="255"
+                                value={activeClientDashboardRgb.r}
+                                onChange={(event) => handleClientDashboardRgbChange('r', event.target.value)}
+                              />
+                            </label>
+                            <label className="dashboard-rgb-field">
+                              <span>G</span>
+                              <input
+                                type="number"
+                                min="0"
+                                max="255"
+                                value={activeClientDashboardRgb.g}
+                                onChange={(event) => handleClientDashboardRgbChange('g', event.target.value)}
+                              />
+                            </label>
+                            <label className="dashboard-rgb-field">
+                              <span>B</span>
+                              <input
+                                type="number"
+                                min="0"
+                                max="255"
+                                value={activeClientDashboardRgb.b}
+                                onChange={(event) => handleClientDashboardRgbChange('b', event.target.value)}
+                              />
+                            </label>
+                          </div>
+                          <div className="dashboard-theme-presets">
+                            {Object.entries(THEMES).map(([themeKey, theme]) => (
+                              <button
+                                key={themeKey}
+                                type="button"
+                                className={`dashboard-theme-preset ${activeClient.dashboardColor === themeKey ? 'active' : ''}`}
+                                onClick={() => {
+                                  handleClientFieldChange('dashboardColor', themeKey)
+                                  setThemeColor(themeKey)
+                                }}
+                              >
+                                <span className="dashboard-theme-swatch" style={{ background: theme.main }}></span>
+                                <small>{themeKey}</small>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
                     </div>
-
-                    <div className="input-group">
-                      <label>Ou cole a URL da logo</label>
-                      <input type="text" value={activeClient.logoUrl || ''} onChange={(event) => handleClientFieldChange('logoUrl', event.target.value)} placeholder="https://..." />
-                    </div>
-                  </div>
-
-                  <div className="logo-preview">
-                    {activeClient.logoUrl ? <img src={activeClient.logoUrl} alt={`Logo ${activeClient.name}`} /> : <span>Sem logo definida</span>}
                   </div>
                 </div>
 
@@ -5237,6 +5245,17 @@ export default function DashboardPage() {
           gap: 24px;
         }
 
+        .client-create-grid {
+          display: flex;
+          flex-wrap: wrap;
+          align-items: stretch;
+          gap: 24px;
+        }
+
+        .client-create-grid > .client-create-bar {
+          flex: 1 1 520px;
+        }
+
         .clients-intro,
         .integrations-intro,
         .integrations-form {
@@ -5273,13 +5292,15 @@ export default function DashboardPage() {
           justify-content: space-between;
           align-items: end;
           gap: 18px;
+          min-height: 100%;
         }
 
         .client-create-inline {
           display: flex;
           align-items: center;
           gap: 12px;
-          width: min(100%, 560px);
+          width: 100%;
+          max-width: 560px;
         }
 
         .client-create-inline input {
@@ -5561,9 +5582,27 @@ export default function DashboardPage() {
           gap: 18px;
         }
 
+        .client-identity-layout {
+          display: grid;
+          grid-template-columns: minmax(0, 1.1fr) minmax(320px, 0.9fr);
+          gap: 24px;
+          align-items: start;
+        }
+
+        .client-identity-main,
+        .client-identity-side {
+          display: grid;
+          gap: 18px;
+          min-width: 0;
+        }
+
         .dashboard-color-editor {
           display: grid;
           gap: 12px;
+          padding: 18px;
+          border-radius: 20px;
+          border: 1px solid rgba(255, 255, 255, 0.06);
+          background: rgba(255, 255, 255, 0.02);
         }
 
         .dashboard-color-preview-row {
@@ -5588,6 +5627,7 @@ export default function DashboardPage() {
           gap: 2px;
           align-content: center;
           min-width: 0;
+          flex: 1;
         }
 
         .dashboard-color-code strong {
@@ -6990,11 +7030,16 @@ export default function DashboardPage() {
           .clients-grid,
           .users-grid,
           .branding-grid,
+          .client-identity-layout,
           .funnel-builder,
           .rd-mini-funnel,
           .rankings-grid,
           .conversion-groups-grid {
             grid-template-columns: 1fr;
+          }
+
+          .client-create-grid {
+            flex-direction: column;
           }
 
           .client-create-bar,
