@@ -24,6 +24,7 @@ export const DEFAULT_PREFERENCES = {
     linkedinAdsToken: '',
   },
   clients: [],
+  clientGroups: [],
 }
 
 export const DEFAULT_DASHBOARD_TEMPLATE_NAME = 'Principal'
@@ -44,6 +45,27 @@ export function createDashboardTemplate(overrides = {}) {
     metaMetricKeys: [],
     rdMetricKeys: [],
     ...overrides,
+  }
+}
+
+function normalizeClientGroupClientIds(clientIds) {
+  if (!Array.isArray(clientIds)) return []
+  return Array.from(new Set(clientIds.filter((clientId) => typeof clientId === 'string' && clientId.trim())))
+}
+
+export function createClientGroupRecord(overrides = {}) {
+  return {
+    id: overrides.id || createRecordId('client-group'),
+    name: String(overrides.name || 'Novo grupo').trim() || 'Novo grupo',
+    clientIds: normalizeClientGroupClientIds(overrides.clientIds),
+  }
+}
+
+export function normalizeClientGroupRecord(group) {
+  return {
+    id: group?.id || createRecordId('client-group'),
+    name: String(group?.name || 'Novo grupo').trim() || 'Novo grupo',
+    clientIds: normalizeClientGroupClientIds(group?.clientIds),
   }
 }
 
@@ -127,6 +149,9 @@ export function loadDashboardPreferences() {
       },
       clients: Array.isArray(parsed.clients)
         ? parsed.clients.map((client) => createClientRecord(client))
+        : [],
+      clientGroups: Array.isArray(parsed.clientGroups)
+        ? parsed.clientGroups.map((group) => normalizeClientGroupRecord(group))
         : [],
     }
   } catch (error) {

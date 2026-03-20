@@ -32,7 +32,11 @@ export async function GET() {
 
     const { adminSupabase, accessContext } = authorized
 
-    const [{ data: profiles, error: profilesError }, { data: accessRows, error: accessError }] = await Promise.all([
+    const [
+      { data: profiles, error: profilesError },
+      { data: accessRows, error: accessError },
+      { data: groupAccessRows, error: groupAccessError },
+    ] = await Promise.all([
       adminSupabase
         .from('profiles')
         .select('id, email, full_name, avatar_url, role, workspace_id, created_at')
@@ -42,10 +46,15 @@ export async function GET() {
         .from('user_client_access')
         .select('user_id, client_id, can_view, can_edit')
         .eq('workspace_id', accessContext.workspaceId),
+      adminSupabase
+        .from('user_client_group_access')
+        .select('user_id, group_id, can_view, can_edit')
+        .eq('workspace_id', accessContext.workspaceId),
     ])
 
     if (profilesError) throw profilesError
     if (accessError) throw accessError
+    if (groupAccessError) throw groupAccessError
 
     const accessByUser = new Map()
     ;(accessRows || []).forEach((row) => {
@@ -53,11 +62,18 @@ export async function GET() {
       current.push(row)
       accessByUser.set(row.user_id, current)
     })
+    const groupAccessByUser = new Map()
+    ;(groupAccessRows || []).forEach((row) => {
+      const current = groupAccessByUser.get(row.user_id) || []
+      current.push(row)
+      groupAccessByUser.set(row.user_id, current)
+    })
 
     return NextResponse.json(
       (profiles || []).map((profile) => ({
         ...profile,
         clientAccess: accessByUser.get(profile.id) || [],
+        clientGroupAccess: groupAccessByUser.get(profile.id) || [],
       }))
     )
   } catch (error) {
@@ -78,6 +94,7 @@ export async function POST(request) {
     const fullName = String(body.fullName || '').trim()
     const role = Object.values(USER_ROLES).includes(body.role) ? body.role : USER_ROLES.VIEWER
     const clientIds = Array.isArray(body.clientIds) ? body.clientIds.filter(Boolean) : []
+    const clientGroupIds = Array.isArray(body.clientGroupIds) ? body.clientGroupIds.filter(Boolean) : []
 
     if (!email || !password) {
       return NextResponse.json({ error: 'Informe email e senha para criar o usuário.' }, { status: 400 })
@@ -125,6 +142,22 @@ export async function POST(request) {
         )
 
       if (accessInsertError) throw accessInsertError
+    }
+
+    if (clientGroupIds.length > 0 && role !== USER_ROLES.MASTER) {
+      const { error: groupAccessInsertError } = await adminSupabase
+        .from('user_client_group_access')
+        .insert(
+          clientGroupIds.map((groupId) => ({
+            workspace_id: accessContext.workspaceId,
+            user_id: userId,
+            group_id: groupId,
+            can_view: true,
+            can_edit: role === USER_ROLES.OPERATOR,
+          }))
+        )
+
+      if (groupAccessInsertError) throw groupAccessInsertError
     }
 
     return NextResponse.json({ ok: true, userId })

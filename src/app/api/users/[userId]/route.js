@@ -41,6 +41,7 @@ export async function PATCH(request, context) {
 
     const role = Object.values(USER_ROLES).includes(body.role) ? body.role : USER_ROLES.VIEWER
     const clientIds = Array.isArray(body.clientIds) ? body.clientIds.filter(Boolean) : []
+    const clientGroupIds = Array.isArray(body.clientGroupIds) ? body.clientGroupIds.filter(Boolean) : []
 
     const { error: profileError } = await adminSupabase
       .from('profiles')
@@ -60,6 +61,13 @@ export async function PATCH(request, context) {
 
     if (deleteAccessError) throw deleteAccessError
 
+    const { error: deleteGroupAccessError } = await adminSupabase
+      .from('user_client_group_access')
+      .delete()
+      .eq('user_id', userId)
+
+    if (deleteGroupAccessError) throw deleteGroupAccessError
+
     if (clientIds.length > 0 && role !== USER_ROLES.MASTER) {
       const { error: insertAccessError } = await adminSupabase
         .from('user_client_access')
@@ -74,6 +82,22 @@ export async function PATCH(request, context) {
         )
 
       if (insertAccessError) throw insertAccessError
+    }
+
+    if (clientGroupIds.length > 0 && role !== USER_ROLES.MASTER) {
+      const { error: insertGroupAccessError } = await adminSupabase
+        .from('user_client_group_access')
+        .insert(
+          clientGroupIds.map((groupId) => ({
+            workspace_id: accessContext.workspaceId,
+            user_id: userId,
+            group_id: groupId,
+            can_view: true,
+            can_edit: role === USER_ROLES.OPERATOR,
+          }))
+        )
+
+      if (insertGroupAccessError) throw insertGroupAccessError
     }
 
     return NextResponse.json({ ok: true })

@@ -5,6 +5,7 @@ import { useUser } from '@/lib/contexts/UserContext'
 import { createClient } from '@/lib/supabase/client'
 import {
   createClientRecord,
+  createClientGroupRecord,
   createDashboardTemplate,
   DEFAULT_INTEGRATIONS,
   loadDashboardPreferences,
@@ -571,6 +572,33 @@ function haveSameDashboardTemplates(left = [], right = []) {
   })
 }
 
+function normalizeClientGroupClientIds(clientIds = []) {
+  if (!Array.isArray(clientIds)) return []
+  return Array.from(new Set(clientIds.filter((clientId) => typeof clientId === 'string' && clientId.trim())))
+}
+
+function cloneClientGroups(groups = []) {
+  return groups.map((group) => ({
+    ...group,
+    clientIds: normalizeClientGroupClientIds(group?.clientIds),
+  }))
+}
+
+function haveSameClientGroups(left = [], right = []) {
+  if (left.length !== right.length) return false
+
+  return left.every((leftGroup, index) => {
+    const rightGroup = right[index]
+    if (!rightGroup) return false
+
+    return (
+      leftGroup.id === rightGroup.id &&
+      leftGroup.name === rightGroup.name &&
+      haveSameSelection(normalizeClientGroupClientIds(leftGroup.clientIds), normalizeClientGroupClientIds(rightGroup.clientIds))
+    )
+  })
+}
+
 function getMetricData(metricKey, dayData) {
   switch (metricKey) {
     case 'spend':
@@ -670,8 +698,10 @@ export default function DashboardPage() {
   const [isRdDiagnosticsOpen, setIsRdDiagnosticsOpen] = useState(false)
   const [isRdSourceFilterOpen, setIsRdSourceFilterOpen] = useState(false)
   const [clients, setClients] = useState([])
+  const [clientGroups, setClientGroups] = useState([])
   const [activeClientId, setActiveClientId] = useState('')
   const [newClientName, setNewClientName] = useState('')
+  const [newClientGroupName, setNewClientGroupName] = useState('')
   const [adAccounts, setAdAccounts] = useState([])
   const [insights, setInsights] = useState(null)
   const [dailyData, setDailyData] = useState([])
@@ -718,6 +748,7 @@ export default function DashboardPage() {
     password: '',
     role: 'visualizador',
     clientIds: [],
+    clientGroupIds: [],
   })
   const [savingUser, setSavingUser] = useState(false)
   const [globalIntegrations, setGlobalIntegrations] = useState({
@@ -763,6 +794,20 @@ export default function DashboardPage() {
     () => usersList.find((managedUser) => managedUser.id === selectedUserId) || null,
     [usersList, selectedUserId]
   )
+  const clientGroupsById = useMemo(
+    () =>
+      new Map(
+        clientGroups.map((group) => [
+          group.id,
+          {
+            ...group,
+            clientIds: normalizeClientGroupClientIds(group.clientIds),
+          },
+        ])
+    ),
+    [clientGroups]
+  )
+  const clientIdsSet = useMemo(() => new Set(clients.map((client) => client.id)), [clients])
   const activeIntegrations = activeClient?.integrations || DEFAULT_INTEGRATIONS
   const selectedAdAccount = activeClient?.metaAdAccountId || ''
   const selectedQualifiedStages = useMemo(
@@ -1183,6 +1228,7 @@ export default function DashboardPage() {
       }
     )
     setClients(initialClients)
+    setClientGroups(Array.isArray(preferences.clientGroups) ? cloneClientGroups(preferences.clientGroups) : [])
     setActiveClientId(initialActiveClientId)
     setHasLoadedPreferences(true)
   }, [])
@@ -1381,6 +1427,7 @@ export default function DashboardPage() {
         setMetric1(state.metric1 || 'spend')
         setMetric2(state.metric2 || 'roas')
         setClients(Array.isArray(state.clients) ? state.clients : [])
+        setClientGroups(Array.isArray(state.clientGroups) ? cloneClientGroups(state.clientGroups) : [])
         setActiveClientId(state.activeClientId || state.clients?.[0]?.id || '')
       } catch (error) {
         console.error('Erro ao sincronizar estado do servidor:', error)
@@ -1402,6 +1449,7 @@ export default function DashboardPage() {
       activeClientId,
       globalIntegrations,
       clients,
+      clientGroups,
     }
 
     saveDashboardPreferences(state)
@@ -1421,7 +1469,7 @@ export default function DashboardPage() {
     }, 300)
 
     return () => window.clearTimeout(timeoutId)
-  }, [hasLoadedPreferences, themeColor, metric1, metric2, activeClientId, globalIntegrations, clients, userLoading, user, canManageClients])
+  }, [hasLoadedPreferences, themeColor, metric1, metric2, activeClientId, globalIntegrations, clients, clientGroups, userLoading, user, canManageClients])
 
   useEffect(() => {
     const root = document.documentElement
@@ -1535,10 +1583,69 @@ export default function DashboardPage() {
     if (!isMaster) return
     const nextClients = clients.filter((client) => client.id !== clientId)
     setClients(nextClients)
+    setClientGroups((currentGroups) =>
+      currentGroups.map((group) => ({
+        ...group,
+        clientIds: group.clientIds.filter((currentClientId) => currentClientId !== clientId),
+      }))
+    )
 
     if (clientId === activeClientId) {
       setActiveClientId(nextClients[0]?.id || '')
     }
+  }
+
+  const handleCreateClientGroup = (event) => {
+    event.preventDefault()
+    if (!isMaster) return
+
+    const trimmedName = newClientGroupName.trim()
+    if (!trimmedName) return
+
+    setClientGroups((currentGroups) => [...currentGroups, createClientGroupRecord({ name: trimmedName })])
+    setNewClientGroupName('')
+  }
+
+  const handleClientGroupFieldChange = (groupId, fieldName, value) => {
+    setClientGroups((currentGroups) =>
+      currentGroups.map((group) =>
+        group.id === groupId
+          ? {
+              ...group,
+              [fieldName]: value,
+            }
+          : group
+      )
+    )
+  }
+
+  const handleClientGroupClientToggle = (groupId, clientId) => {
+    setClientGroups((currentGroups) =>
+      currentGroups.map((group) => {
+        if (group.id !== groupId) return group
+
+        const currentClientIds = normalizeClientGroupClientIds(group.clientIds)
+        const nextClientIds = currentClientIds.includes(clientId)
+          ? currentClientIds.filter((currentClientId) => currentClientId !== clientId)
+          : [...currentClientIds, clientId]
+
+        return {
+          ...group,
+          clientIds: nextClientIds,
+        }
+      })
+    )
+  }
+
+  const handleRemoveClientGroup = (groupId) => {
+    if (!isMaster) return
+    setClientGroups((currentGroups) => currentGroups.filter((group) => group.id !== groupId))
+    setUsersList((currentUsers) =>
+      currentUsers.map((managedUser) => ({
+        ...managedUser,
+        clientGroupAccess: (managedUser.clientGroupAccess || []).filter((groupAccess) => groupAccess.group_id !== groupId),
+      }))
+    )
   }
 
   const loadUsers = useCallback(async () => {
@@ -1631,6 +1738,40 @@ export default function DashboardPage() {
         : [...current.clientIds, clientId],
     }))
   }
+
+  const handleUserClientGroupToggle = (groupId) => {
+    setUserForm((current) => ({
+      ...current,
+      clientGroupIds: current.clientGroupIds.includes(groupId)
+        ? current.clientGroupIds.filter((id) => id !== groupId)
+        : [...current.clientGroupIds, groupId],
+    }))
+  }
+
+  const getManagedUserAccessibleClientCount = useCallback((managedUser) => {
+    if (!managedUser) return 0
+    if (managedUser.role === 'master') return clients.length
+
+    const accessibleClientIds = new Set(
+      (managedUser.clientAccess || [])
+        .filter((item) => item.can_view)
+        .map((item) => item.client_id)
+        .filter((clientId) => clientIdsSet.has(clientId))
+    )
+
+    ;(managedUser.clientGroupAccess || [])
+      .filter((item) => item.can_view)
+      .forEach((groupAccess) => {
+        const group = clientGroupsById.get(groupAccess.group_id)
+        ;(group?.clientIds || []).forEach((clientId) => {
+          if (clientIdsSet.has(clientId)) {
+            accessibleClientIds.add(clientId)
+          }
+        })
+      })
+
+    return accessibleClientIds.size
+  }, [clients.length, clientGroupsById, clientIdsSet])
 
   const handleMetaResultFilterToggle = (filterKey) => {
     setDraftMetaResultFilters((current) => {
@@ -1801,6 +1942,7 @@ export default function DashboardPage() {
         password: '',
         role: 'visualizador',
         clientIds: [],
+        clientGroupIds: [],
       })
       setIsCreateUserModalOpen(false)
       await loadUsers()
@@ -1822,6 +1964,7 @@ export default function DashboardPage() {
           fullName: managedUser.full_name || '',
           role: managedUser.role,
           clientIds: (managedUser.clientAccess || []).map((item) => item.client_id),
+          clientGroupIds: (managedUser.clientGroupAccess || []).map((item) => item.group_id),
         }),
       })
       const data = await response.json()
@@ -3199,6 +3342,17 @@ export default function DashboardPage() {
               </div>
             </form>
 
+            <form className="glass-panel client-create-bar" onSubmit={handleCreateClientGroup}>
+              <div>
+                <h3>Novo grupo de clientes</h3>
+                <p>Monte grupos para liberar acesso em lote e organizar dashboards relacionados.</p>
+              </div>
+              <div className="client-create-inline">
+                <input type="text" value={newClientGroupName} onChange={(event) => setNewClientGroupName(event.target.value)} placeholder="Ex.: Franquias, Comercial, Clínicas..." disabled={!isMaster} />
+                <button type="submit" className="btn btn-primary" disabled={!isMaster}>Adicionar grupo</button>
+              </div>
+            </form>
+
             <div className="clients-grid clients-grid-single">
               <div className="glass-panel users-toolbar-card">
                 <div className="user-picker-head">
@@ -3244,6 +3398,72 @@ export default function DashboardPage() {
                   <div className="empty-panel glass-item users-empty-state compact-empty-state">
                     <h3>Nenhum cliente encontrado</h3>
                     <p>Crie um cliente novo para começar a configurar a operação.</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="clients-grid clients-grid-single">
+              <div className="glass-panel users-toolbar-card">
+                <div className="user-picker-head">
+                  <div>
+                    <h3>Grupos de clientes</h3>
+                    <p>Escolha os dashboards que pertencem a cada grupo para depois liberar acesso por grupo aos usuários.</p>
+                  </div>
+                </div>
+
+                <div className="client-groups-grid">
+                  {clientGroups.map((group) => (
+                    <div key={group.id} className="glass-item client-group-card">
+                      <div className="client-group-head">
+                        <div className="input-group">
+                          <label>Nome do grupo</label>
+                          <input
+                            type="text"
+                            value={group.name}
+                            onChange={(event) => handleClientGroupFieldChange(group.id, 'name', event.target.value)}
+                            placeholder="Nome do grupo"
+                            disabled={!isMaster}
+                          />
+                        </div>
+                        {isMaster && (
+                          <button type="button" className="btn btn-secondary" onClick={() => handleRemoveClientGroup(group.id)}>
+                            Excluir
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="input-group">
+                        <label>Dashboards dentro do grupo</label>
+                        <div className="stage-selector">
+                          {clients.map((client) => {
+                            const hasClient = normalizeClientGroupClientIds(group.clientIds).includes(client.id)
+
+                            return (
+                              <label key={`${group.id}-${client.id}`} className={`stage-chip ${hasClient ? 'active' : ''}`}>
+                                <input
+                                  type="checkbox"
+                                  checked={hasClient}
+                                  onChange={() => handleClientGroupClientToggle(group.id, client.id)}
+                                  disabled={!isMaster}
+                                />
+                                <span>{client.name}</span>
+                              </label>
+                            )
+                          })}
+                        </div>
+                        <span className="field-helper">
+                          {group.clientIds.length} dashboard(s) vinculado(s) a este grupo.
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {!clientGroups.length && (
+                  <div className="empty-panel glass-item users-empty-state compact-empty-state">
+                    <h3>Nenhum grupo criado</h3>
+                    <p>Crie grupos para conceder acesso em lote aos dashboards.</p>
                   </div>
                 )}
               </div>
@@ -3595,7 +3815,7 @@ export default function DashboardPage() {
                         <small>
                           {managedUser.role === 'master'
                             ? 'Acesso total'
-                            : `${managedUser.clientAccess?.length || 0} dashboard(s) liberado(s)`}
+                            : `${getManagedUserAccessibleClientCount(managedUser)} dashboard(s) liberado(s)`}
                         </small>
                       </div>
                       <div className="user-directory-actions">
@@ -3662,21 +3882,45 @@ export default function DashboardPage() {
                     </div>
 
                     {userForm.role !== 'master' && (
-                      <div className="input-group">
-                        <label>Dashboards liberados</label>
-                        <div className="stage-selector">
-                          {clients.map((client) => (
-                            <label key={`new-user-${client.id}`} className={`stage-chip ${userForm.clientIds.includes(client.id) ? 'active' : ''}`}>
-                              <input
-                                type="checkbox"
-                                checked={userForm.clientIds.includes(client.id)}
-                                onChange={() => handleUserClientToggle(client.id)}
-                              />
-                              <span>{client.name}</span>
-                            </label>
-                          ))}
+                      <>
+                        <div className="input-group">
+                          <label>Dashboards liberados</label>
+                          <div className="stage-selector">
+                            {clients.map((client) => (
+                              <label key={`new-user-${client.id}`} className={`stage-chip ${userForm.clientIds.includes(client.id) ? 'active' : ''}`}>
+                                <input
+                                  type="checkbox"
+                                  checked={userForm.clientIds.includes(client.id)}
+                                  onChange={() => handleUserClientToggle(client.id)}
+                                />
+                                <span>{client.name}</span>
+                              </label>
+                            ))}
+                          </div>
                         </div>
-                      </div>
+
+                        <div className="input-group">
+                          <label>Grupos liberados</label>
+                          <div className="stage-selector">
+                            {clientGroups.length ? (
+                              clientGroups.map((group) => (
+                                <label key={`new-user-group-${group.id}`} className={`stage-chip ${userForm.clientGroupIds.includes(group.id) ? 'active' : ''}`}>
+                                  <input
+                                    type="checkbox"
+                                    checked={userForm.clientGroupIds.includes(group.id)}
+                                    onChange={() => handleUserClientGroupToggle(group.id)}
+                                  />
+                                  <span>{group.name}</span>
+                                </label>
+                              ))
+                            ) : (
+                              <div className="stage-empty">
+                                Nenhum grupo criado ainda. Crie grupos na aba de clientes para liberar acesso por grupo.
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </>
                     )}
 
                     <div className="modal-actions">
@@ -3746,41 +3990,87 @@ export default function DashboardPage() {
                   </div>
 
                   {selectedManagedUser.role !== 'master' && (
-                    <div className="input-group">
-                      <label>Dashboards liberados</label>
-                      <div className="stage-selector">
-                        {clients.map((client) => {
-                          const currentAccess = selectedManagedUser.clientAccess || []
-                          const hasClient = currentAccess.some((item) => item.client_id === client.id)
+                    <>
+                      <div className="input-group">
+                        <label>Dashboards liberados</label>
+                        <div className="stage-selector">
+                          {clients.map((client) => {
+                            const currentAccess = selectedManagedUser.clientAccess || []
+                            const hasClient = currentAccess.some((item) => item.client_id === client.id)
 
-                          return (
-                            <label key={`${selectedManagedUser.id}-${client.id}`} className={`stage-chip ${hasClient ? 'active' : ''}`}>
-                              <input
-                                type="checkbox"
-                                checked={hasClient}
-                                onChange={() =>
-                                  handleManagedUserChange(selectedManagedUser.id, (item) => {
-                                    const nextAccess = hasClient
-                                      ? currentAccess.filter((accessItem) => accessItem.client_id !== client.id)
-                                      : [
-                                          ...currentAccess,
-                                          {
-                                            client_id: client.id,
-                                            can_view: true,
-                                            can_edit: item.role === 'operador',
-                                          },
-                                        ]
+                            return (
+                              <label key={`${selectedManagedUser.id}-${client.id}`} className={`stage-chip ${hasClient ? 'active' : ''}`}>
+                                <input
+                                  type="checkbox"
+                                  checked={hasClient}
+                                  onChange={() =>
+                                    handleManagedUserChange(selectedManagedUser.id, (item) => {
+                                      const baseAccess = item.clientAccess || []
+                                      const nextAccess = hasClient
+                                        ? baseAccess.filter((accessItem) => accessItem.client_id !== client.id)
+                                        : [
+                                            ...baseAccess,
+                                            {
+                                              client_id: client.id,
+                                              can_view: true,
+                                              can_edit: item.role === 'operador',
+                                            },
+                                          ]
 
-                                    return { ...item, clientAccess: nextAccess }
-                                  })
-                                }
-                              />
-                              <span>{client.name}</span>
-                            </label>
-                          )
-                        })}
+                                      return { ...item, clientAccess: nextAccess }
+                                    })
+                                  }
+                                />
+                                <span>{client.name}</span>
+                              </label>
+                            )
+                          })}
+                        </div>
                       </div>
-                    </div>
+
+                      <div className="input-group">
+                        <label>Grupos liberados</label>
+                        <div className="stage-selector">
+                          {clientGroups.length ? (
+                            clientGroups.map((group) => {
+                              const currentGroupAccess = selectedManagedUser.clientGroupAccess || []
+                              const hasGroup = currentGroupAccess.some((item) => item.group_id === group.id)
+
+                              return (
+                                <label key={`${selectedManagedUser.id}-group-${group.id}`} className={`stage-chip ${hasGroup ? 'active' : ''}`}>
+                                  <input
+                                    type="checkbox"
+                                    checked={hasGroup}
+                                    onChange={() =>
+                                      handleManagedUserChange(selectedManagedUser.id, (item) => {
+                                        const baseGroupAccess = item.clientGroupAccess || []
+                                        const nextGroupAccess = hasGroup
+                                          ? baseGroupAccess.filter((groupAccess) => groupAccess.group_id !== group.id)
+                                          : [
+                                              ...baseGroupAccess,
+                                              {
+                                                group_id: group.id,
+                                                can_view: true,
+                                                can_edit: item.role === 'operador',
+                                              },
+                                            ]
+
+                                        return { ...item, clientGroupAccess: nextGroupAccess }
+                                      })
+                                    }
+                                  />
+                                  <span>{group.name}</span>
+                                </label>
+                              )
+                            })
+                          ) : (
+                            <div className="stage-empty">
+                              Nenhum grupo criado ainda. Crie grupos na aba de clientes para liberar acesso por grupo.
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </>
                   )}
 
                   <div className="modal-foot">
@@ -5133,6 +5423,32 @@ export default function DashboardPage() {
         .client-directory-actions {
           gap: 10px;
           flex-wrap: wrap;
+        }
+
+        .client-groups-grid {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 16px;
+        }
+
+        .client-group-card {
+          display: grid;
+          gap: 16px;
+          padding: 20px;
+          border-radius: 20px;
+          border: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .client-group-head {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 14px;
+        }
+
+        .client-group-head .input-group {
+          flex: 1;
+          margin-bottom: 0;
         }
 
         .compact-empty-state {
@@ -6730,6 +7046,10 @@ export default function DashboardPage() {
           }
 
           .client-directory-grid {
+            grid-template-columns: 1fr;
+          }
+
+          .client-groups-grid {
             grid-template-columns: 1fr;
           }
 

@@ -52,11 +52,58 @@ create table if not exists public.user_client_access (
   primary key (user_id, client_id)
 );
 
+create table if not exists public.workspace_client_groups (
+  workspace_id uuid not null references public.workspaces(id) on delete cascade,
+  id text not null,
+  name text not null,
+  created_at timestamptz not null default timezone('utc', now()),
+  updated_at timestamptz not null default timezone('utc', now()),
+  primary key (workspace_id, id)
+);
+
+create table if not exists public.workspace_client_group_members (
+  workspace_id uuid not null references public.workspaces(id) on delete cascade,
+  group_id text not null,
+  client_id text not null,
+  created_at timestamptz not null default timezone('utc', now()),
+  updated_at timestamptz not null default timezone('utc', now()),
+  primary key (workspace_id, group_id, client_id),
+  constraint workspace_client_group_members_group_fk
+    foreign key (workspace_id, group_id)
+    references public.workspace_client_groups(workspace_id, id)
+    on delete cascade,
+  constraint workspace_client_group_members_client_fk
+    foreign key (workspace_id, client_id)
+    references public.workspace_clients(workspace_id, id)
+    on delete cascade
+);
+
+create table if not exists public.user_client_group_access (
+  workspace_id uuid not null references public.workspaces(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  group_id text not null,
+  can_view boolean not null default true,
+  can_edit boolean not null default false,
+  created_at timestamptz not null default timezone('utc', now()),
+  updated_at timestamptz not null default timezone('utc', now()),
+  primary key (user_id, group_id),
+  constraint user_client_group_access_group_fk
+    foreign key (workspace_id, group_id)
+    references public.workspace_client_groups(workspace_id, id)
+    on delete cascade
+);
+
+create index if not exists workspace_client_groups_name_idx
+  on public.workspace_client_groups (workspace_id, name);
+
 alter table public.workspaces enable row level security;
 alter table public.profiles enable row level security;
 alter table public.workspace_preferences enable row level security;
 alter table public.workspace_clients enable row level security;
 alter table public.user_client_access enable row level security;
+alter table public.workspace_client_groups enable row level security;
+alter table public.workspace_client_group_members enable row level security;
+alter table public.user_client_group_access enable row level security;
 
 drop policy if exists "profiles_select_own" on public.profiles;
 create policy "profiles_select_own"
@@ -104,4 +151,19 @@ for each row execute procedure public.set_updated_at();
 drop trigger if exists user_client_access_set_updated_at on public.user_client_access;
 create trigger user_client_access_set_updated_at
 before update on public.user_client_access
+for each row execute procedure public.set_updated_at();
+
+drop trigger if exists workspace_client_groups_set_updated_at on public.workspace_client_groups;
+create trigger workspace_client_groups_set_updated_at
+before update on public.workspace_client_groups
+for each row execute procedure public.set_updated_at();
+
+drop trigger if exists workspace_client_group_members_set_updated_at on public.workspace_client_group_members;
+create trigger workspace_client_group_members_set_updated_at
+before update on public.workspace_client_group_members
+for each row execute procedure public.set_updated_at();
+
+drop trigger if exists user_client_group_access_set_updated_at on public.user_client_group_access;
+create trigger user_client_group_access_set_updated_at
+before update on public.user_client_group_access
 for each row execute procedure public.set_updated_at();

@@ -74,11 +74,37 @@ function normalizeClientRecord(client) {
   }
 }
 
+function normalizeClientGroupClientIds(clientIds) {
+  if (!Array.isArray(clientIds)) return []
+  return Array.from(new Set(clientIds.filter((clientId) => typeof clientId === 'string' && clientId.trim())))
+}
+
+function normalizeClientGroupRecord(group) {
+  return {
+    id: group?.id || createRecordId('client-group'),
+    name: String(group?.name || 'Novo grupo').trim() || 'Novo grupo',
+    clientIds: normalizeClientGroupClientIds(group?.clientIds),
+  }
+}
+
 function filterClientsByAccess(clients, accessContext) {
   if (accessContext.role === USER_ROLES.MASTER) return clients
 
   const allowedIds = new Set(accessContext.viewableClientIds)
   return clients.filter((client) => allowedIds.has(client.id))
+}
+
+function filterClientGroupsByAccess(clientGroups, accessContext) {
+  if (accessContext.role === USER_ROLES.MASTER) return clientGroups
+
+  const allowedIds = new Set(accessContext.viewableClientIds)
+
+  return clientGroups
+    .map((group) => ({
+      ...group,
+      clientIds: group.clientIds.filter((clientId) => allowedIds.has(clientId)),
+    }))
+    .filter((group) => group.clientIds.length > 0)
 }
 
 export async function getDashboardState(adminSupabase, accessContext) {
@@ -89,10 +115,16 @@ export async function getDashboardState(adminSupabase, accessContext) {
       metric2: 'roas',
       activeClientId: '',
       clients: [],
+      clientGroups: [],
     }
   }
 
-  const [{ data: preferenceRow, error: preferenceError }, { data: clientRows, error: clientsError }] = await Promise.all([
+  const [
+    { data: preferenceRow, error: preferenceError },
+    { data: clientRows, error: clientsError },
+    { data: groupRows, error: groupsError },
+    { data: groupMemberRows, error: groupMembersError },
+  ] = await Promise.all([
     adminSupabase
       .from('workspace_preferences')
       .select('theme_color, metric_1, metric_2')
@@ -103,12 +135,40 @@ export async function getDashboardState(adminSupabase, accessContext) {
       .select('id, name, payload')
       .eq('workspace_id', accessContext.workspaceId)
       .order('name', { ascending: true }),
+    adminSupabase
+      .from('workspace_client_groups')
+      .select('id, name')
+      .eq('workspace_id', accessContext.workspaceId)
+      .order('name', { ascending: true }),
+    adminSupabase
+      .from('workspace_client_group_members')
+      .select('group_id, client_id')
+      .eq('workspace_id', accessContext.workspaceId),
   ])
 
   if (preferenceError) throw preferenceError
   if (clientsError) throw clientsError
+  if (groupsError) throw groupsError
+  if (groupMembersError) throw groupMembersError
 
   const filteredClients = filterClientsByAccess((clientRows || []).map(normalizeClientRecord), accessContext)
+  const groupMembersByGroupId = new Map()
+
+  ;(groupMemberRows || []).forEach((row) => {
+    const current = groupMembersByGroupId.get(row.group_id) || []
+    current.push(row.client_id)
+    groupMembersByGroupId.set(row.group_id, current)
+  })
+
+  const clientGroups = filterClientGroupsByAccess(
+    (groupRows || []).map((group) =>
+      normalizeClientGroupRecord({
+        ...group,
+        clientIds: groupMembersByGroupId.get(group.id) || [],
+      })
+    ),
+    accessContext
+  )
 
   return {
     themeColor: preferenceRow?.theme_color || 'blue',
@@ -116,6 +176,7 @@ export async function getDashboardState(adminSupabase, accessContext) {
     metric2: preferenceRow?.metric_2 || 'roas',
     activeClientId: filteredClients[0]?.id || '',
     clients: filteredClients,
+    clientGroups,
   }
 }
 
@@ -129,6 +190,9 @@ export async function saveDashboardState(adminSupabase, accessContext, state) {
   }
 
   const submittedClients = Array.isArray(state.clients) ? state.clients.map(normalizeClientRecord) : []
+  const submittedClientGroups = Array.isArray(state.clientGroups)
+    ? state.clientGroups.map(normalizeClientGroupRecord)
+    : []
 
   if (accessContext.role === USER_ROLES.MASTER) {
     const { error: preferenceError } = await adminSupabase
@@ -152,6 +216,13 @@ export async function saveDashboardState(adminSupabase, accessContext, state) {
 
     if (deleteError) throw deleteError
 
+    const { error: deleteGroupError } = await adminSupabase
+      .from('workspace_client_groups')
+      .delete()
+      .eq('workspace_id', accessContext.workspaceId)
+
+    if (deleteGroupError) throw deleteGroupError
+
     if (submittedClients.length > 0) {
       const { error: upsertError } = await adminSupabase
         .from('workspace_clients')
@@ -166,6 +237,37 @@ export async function saveDashboardState(adminSupabase, accessContext, state) {
         )
 
       if (upsertError) throw upsertError
+    }
+
+    if (submittedClientGroups.length > 0) {
+      const { error: upsertGroupError } = await adminSupabase
+        .from('workspace_client_groups')
+        .upsert(
+          submittedClientGroups.map((group) => ({
+            workspace_id: accessContext.workspaceId,
+            id: group.id,
+            name: group.name,
+          })),
+          { onConflict: 'workspace_id,id' }
+        )
+
+      if (upsertGroupError) throw upsertGroupError
+
+      const groupMembershipRows = submittedClientGroups.flatMap((group) =>
+        group.clientIds.map((clientId) => ({
+          workspace_id: accessContext.workspaceId,
+          group_id: group.id,
+          client_id: clientId,
+        }))
+      )
+
+      if (groupMembershipRows.length > 0) {
+        const { error: upsertGroupMemberError } = await adminSupabase
+          .from('workspace_client_group_members')
+          .upsert(groupMembershipRows, { onConflict: 'workspace_id,group_id,client_id' })
+
+        if (upsertGroupMemberError) throw upsertGroupMemberError
+      }
     }
 
     return getDashboardState(adminSupabase, accessContext)

@@ -101,19 +101,61 @@ export async function getAccessContext(adminSupabase, user) {
   const workspaceId = profile.workspace_id || null
 
   let accessRows = []
+  let groupAccessRows = []
+  let groupMemberRows = []
 
   if (workspaceId && role !== USER_ROLES.MASTER) {
-    const { data, error } = await adminSupabase
-      .from('user_client_access')
-      .select('client_id, can_view, can_edit')
-      .eq('user_id', user.id)
+    const [
+      { data: directAccessData, error: directAccessError },
+      { data: groupAccessData, error: groupAccessError },
+      { data: groupMemberData, error: groupMemberError },
+    ] = await Promise.all([
+      adminSupabase
+        .from('user_client_access')
+        .select('client_id, can_view, can_edit')
+        .eq('workspace_id', workspaceId)
+        .eq('user_id', user.id),
+      adminSupabase
+        .from('user_client_group_access')
+        .select('group_id, can_view, can_edit')
+        .eq('workspace_id', workspaceId)
+        .eq('user_id', user.id),
+      adminSupabase
+        .from('workspace_client_group_members')
+        .select('group_id, client_id')
+        .eq('workspace_id', workspaceId),
+    ])
 
-    if (error) throw error
-    accessRows = data || []
+    if (directAccessError) throw directAccessError
+    if (groupAccessError) throw groupAccessError
+    if (groupMemberError) throw groupMemberError
+
+    accessRows = directAccessData || []
+    groupAccessRows = groupAccessData || []
+    groupMemberRows = groupMemberData || []
   }
 
-  const viewableClientIds = accessRows.filter((row) => row.can_view).map((row) => row.client_id)
-  const editableClientIds = accessRows.filter((row) => row.can_edit).map((row) => row.client_id)
+  const viewableClientIds = new Set(accessRows.filter((row) => row.can_view).map((row) => row.client_id))
+  const editableClientIds = new Set(accessRows.filter((row) => row.can_edit).map((row) => row.client_id))
+  const membersByGroupId = new Map()
+
+  groupMemberRows.forEach((row) => {
+    const current = membersByGroupId.get(row.group_id) || []
+    current.push(row.client_id)
+    membersByGroupId.set(row.group_id, current)
+  })
+
+  groupAccessRows.forEach((row) => {
+    const memberClientIds = membersByGroupId.get(row.group_id) || []
+
+    if (row.can_view) {
+      memberClientIds.forEach((clientId) => viewableClientIds.add(clientId))
+    }
+
+    if (row.can_edit) {
+      memberClientIds.forEach((clientId) => editableClientIds.add(clientId))
+    }
+  })
 
   return {
     profile,
@@ -124,7 +166,7 @@ export async function getAccessContext(adminSupabase, user) {
     canEditIntegrations: role === USER_ROLES.MASTER || role === USER_ROLES.OPERATOR,
     canViewDashboard: Boolean(workspaceId),
     isClientRole: role === USER_ROLES.CLIENT,
-    viewableClientIds,
-    editableClientIds,
+    viewableClientIds: Array.from(viewableClientIds),
+    editableClientIds: Array.from(editableClientIds),
   }
 }
