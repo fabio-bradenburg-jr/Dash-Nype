@@ -8,6 +8,55 @@ function isMissingRelationError(error) {
   return error?.code === 'PGRST205' || message.includes('schema cache') || message.includes('could not find the table')
 }
 
+async function validateClientGroups(adminSupabase, workspaceId, clientGroupIds) {
+  if (!clientGroupIds.length) return
+
+  const [
+    { data: groups, error: groupsError },
+    { data: members, error: membersError },
+  ] = await Promise.all([
+    adminSupabase
+      .from('workspace_client_groups')
+      .select('id')
+      .eq('workspace_id', workspaceId)
+      .in('id', clientGroupIds),
+    adminSupabase
+      .from('workspace_client_group_members')
+      .select('group_id, client_id')
+      .eq('workspace_id', workspaceId)
+      .in('group_id', clientGroupIds),
+  ])
+
+  if (groupsError && isMissingRelationError(groupsError)) {
+    throw new Error('As tabelas de grupos de clientes ainda nao foram criadas no Supabase. Rode a migration antes de liberar acesso por grupo.')
+  }
+
+  if (membersError && isMissingRelationError(membersError)) {
+    throw new Error('As tabelas de grupos de clientes ainda nao foram criadas no Supabase. Rode a migration antes de liberar acesso por grupo.')
+  }
+
+  if (groupsError) throw groupsError
+  if (membersError) throw membersError
+
+  const existingGroupIds = new Set((groups || []).map((group) => group.id))
+  const membersByGroupId = new Map()
+
+  ;(members || []).forEach((member) => {
+    const current = membersByGroupId.get(member.group_id) || 0
+    membersByGroupId.set(member.group_id, current + 1)
+  })
+
+  const missingGroupId = clientGroupIds.find((groupId) => !existingGroupIds.has(groupId))
+  if (missingGroupId) {
+    throw new Error('O grupo selecionado ainda nao foi salvo no Supabase. Abra a aba de clientes, ajuste o grupo e aguarde o salvamento antes de liberar acesso.')
+  }
+
+  const emptyGroupId = clientGroupIds.find((groupId) => !membersByGroupId.get(groupId))
+  if (emptyGroupId) {
+    throw new Error('O grupo selecionado ainda nao possui dashboards salvos no Supabase. Abra a aba de clientes e salve novamente os dashboards dentro do grupo antes de liberar acesso.')
+  }
+}
+
 async function getAuthorizedContext() {
   const supabase = await createClient()
   const {
@@ -150,6 +199,8 @@ export async function POST(request) {
     }
 
     if (clientGroupIds.length > 0 && role !== USER_ROLES.MASTER) {
+      await validateClientGroups(adminSupabase, accessContext.workspaceId, clientGroupIds)
+
       const { error: groupAccessInsertError } = await adminSupabase
         .from('user_client_group_access')
         .insert(
