@@ -17,6 +17,21 @@ const DEFAULT_META_DASHBOARD_METRIC_KEYS = [
   'messages',
   'costPerMessage',
 ]
+const DEFAULT_META_DASHBOARD_METRIC_LAYOUTS = [
+  { metricKey: 'spend', size: 'sm' },
+  { metricKey: 'impressions', size: 'sm' },
+  { metricKey: 'clicks', size: 'sm' },
+  { metricKey: 'cpc', size: 'sm' },
+  { metricKey: 'ctr', size: 'sm' },
+  { metricKey: 'totalConversions', size: 'sm' },
+  { metricKey: 'purchases', size: 'sm' },
+  { metricKey: 'costPerPurchase', size: 'sm' },
+  { metricKey: 'roas', size: 'sm' },
+  { metricKey: 'leads', size: 'sm' },
+  { metricKey: 'costPerLead', size: 'sm' },
+  { metricKey: 'messages', size: 'sm' },
+  { metricKey: 'costPerMessage', size: 'sm' },
+]
 const DEFAULT_RD_DASHBOARD_METRIC_KEYS = [
   'opportunityCount',
   'qualifiedOpportunityCount',
@@ -36,6 +51,26 @@ const DEFAULT_RD_DASHBOARD_METRIC_KEYS = [
   'rdFinalSalesCount',
   'rdFinalRevenue',
   'rdFinalAvgTicket',
+]
+const DEFAULT_RD_DASHBOARD_METRIC_LAYOUTS = [
+  { metricKey: 'opportunityCount', size: 'sm' },
+  { metricKey: 'qualifiedOpportunityCount', size: 'sm' },
+  { metricKey: 'wonOpportunityCount', size: 'sm' },
+  { metricKey: 'wonOpportunityRevenue', size: 'sm' },
+  { metricKey: 'avgTicketWonByCreation', size: 'sm' },
+  { metricKey: 'leadToQualifiedRate', size: 'sm' },
+  { metricKey: 'qualifiedToWonRate', size: 'sm' },
+  { metricKey: 'leadToWonRate', size: 'sm' },
+  { metricKey: 'lostOpportunityCount', size: 'sm' },
+  { metricKey: 'wonDeals', size: 'sm' },
+  { metricKey: 'wonDealsFromPreviousCohorts', size: 'sm' },
+  { metricKey: 'wonRevenue', size: 'sm' },
+  { metricKey: 'avgTicketWon', size: 'sm' },
+  { metricKey: 'wonRevenueFromPreviousCohorts', size: 'sm' },
+  { metricKey: 'avgTicketWonPreviousCohorts', size: 'sm' },
+  { metricKey: 'rdFinalSalesCount', size: 'sm' },
+  { metricKey: 'rdFinalRevenue', size: 'sm' },
+  { metricKey: 'rdFinalAvgTicket', size: 'sm' },
 ]
 
 function isMissingRelationError(error) {
@@ -69,9 +104,19 @@ function normalizeDashboardMetricLayouts(layouts, fallbackMetricKeys = []) {
 
   if (normalizedLayouts.length > 0) return normalizedLayouts
 
-  return normalizeTemplateMetricKeys(fallbackMetricKeys).map((metricKey) =>
-    createDashboardMetricLayout(metricKey)
-  )
+  if (fallbackMetricKeys === DEFAULT_META_DASHBOARD_METRIC_KEYS) {
+    return DEFAULT_META_DASHBOARD_METRIC_LAYOUTS.map((item) =>
+      createDashboardMetricLayout(item.metricKey, item)
+    )
+  }
+
+  if (fallbackMetricKeys === DEFAULT_RD_DASHBOARD_METRIC_KEYS) {
+    return DEFAULT_RD_DASHBOARD_METRIC_LAYOUTS.map((item) =>
+      createDashboardMetricLayout(item.metricKey, item)
+    )
+  }
+
+  return normalizeTemplateMetricKeys(fallbackMetricKeys).map((metricKey) => createDashboardMetricLayout(metricKey))
 }
 
 function normalizeDashboardTemplate(template, fallbackName = DEFAULT_DASHBOARD_TEMPLATE_NAME) {

@@ -6142,7 +6142,7 @@ export default function DashboardPage() {
 
         .dashboard-metrics-grid {
           display: grid;
-          grid-template-columns: repeat(4, minmax(0, 1fr));
+          grid-template-columns: repeat(12, minmax(0, 1fr));
           gap: 18px;
         }
 
@@ -6151,11 +6151,11 @@ export default function DashboardPage() {
         }
 
         .dashboard-metric-card-sm {
-          grid-column: span 1;
+          grid-column: span 3;
         }
 
         .dashboard-metric-card-lg {
-          grid-column: span 2;
+          grid-column: span 6;
         }
 
         .template-metric-actions {
@@ -7287,12 +7287,12 @@ export default function DashboardPage() {
           }
 
           .dashboard-metrics-grid {
-            grid-template-columns: repeat(2, minmax(0, 1fr));
+            grid-template-columns: repeat(6, minmax(0, 1fr));
           }
 
           .dashboard-metric-card-sm,
           .dashboard-metric-card-lg {
-            grid-column: span 1;
+            grid-column: span 3;
           }
         }
 
@@ -7314,6 +7314,11 @@ export default function DashboardPage() {
           .dashboard-theme-presets,
           .dashboard-metrics-grid {
             grid-template-columns: 1fr;
+          }
+
+          .dashboard-metric-card-sm,
+          .dashboard-metric-card-lg {
+            grid-column: span 1;
           }
 
           .header-actions-wrap {
