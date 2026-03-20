@@ -27,6 +27,23 @@ function sumActionValues(actions = [], actionTypes = []) {
     .reduce((sum, item) => sum + parseInt(item.value || 0, 10), 0)
 }
 
+function getBestActionValue(actions = [], actionTypes = []) {
+  return actionTypes.reduce((bestValue, actionType) => {
+    const total = sumActionValues(actions, [actionType])
+    return total > bestValue ? total : bestValue
+  }, 0)
+}
+
+function getBestFloatActionValue(actions = [], actionTypes = []) {
+  return actionTypes.reduce((bestValue, actionType) => {
+    const total = actions
+      .filter((item) => item.action_type === actionType)
+      .reduce((sum, item) => sum + parseFloat(item.value || 0), 0)
+
+    return total > bestValue ? total : bestValue
+  }, 0)
+}
+
 function getDerivedClicksFromCost(costItems = [], spend = 0, actionTypes = []) {
   for (const actionType of actionTypes) {
     const costItem = costItems.find((item) => item.action_type === actionType)
@@ -82,16 +99,14 @@ export function extractMetaCampaignMetrics(insightData) {
   const reach = parseInt(normalizedInsightData.reach || 0, 10)
   const impressions = parseInt(normalizedInsightData.impressions || 0, 10)
 
-  const purchases = sumActionValues(actions, META_PURCHASE_EVENTS)
-  const purchaseValue = valueActions
-    .filter((item) => META_PURCHASE_EVENTS.includes(item.action_type))
-    .reduce((sum, item) => sum + parseFloat(item.value || 0), 0)
+  const purchases = getBestActionValue(actions, META_PURCHASE_EVENTS)
+  const purchaseValue = getBestFloatActionValue(valueActions, META_PURCHASE_EVENTS)
   const costPerPurchase = purchases > 0 ? spend / purchases : 0
 
-  const leads = sumActionValues(actions, META_LEAD_EVENTS)
+  const leads = getBestActionValue(actions, META_LEAD_EVENTS)
   const costPerLead = leads > 0 ? spend / leads : 0
 
-  const messages = sumActionValues(actions, META_MESSAGE_EVENTS)
+  const messages = getBestActionValue(actions, META_MESSAGE_EVENTS)
   const costPerMessage = messages > 0 ? spend / messages : 0
 
   const actionLinkClicks = META_LINK_CLICK_EVENTS.reduce((bestValue, actionType) => {
