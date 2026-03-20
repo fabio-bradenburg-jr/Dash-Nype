@@ -3,6 +3,11 @@ import { USER_ROLES } from '@/lib/server/access-control'
 const DEFAULT_FUNNEL_STEPS = ['impressions', 'clicks', 'leads', 'purchases']
 const DEFAULT_DASHBOARD_TEMPLATE_NAME = 'Principal'
 
+function isMissingRelationError(error) {
+  const message = String(error?.message || '').toLowerCase()
+  return error?.code === 'PGRST205' || message.includes('schema cache') || message.includes('could not find the table')
+}
+
 function createRecordId(prefix) {
   return globalThis.crypto?.randomUUID?.() || `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2, 10)}`
 }
@@ -148,8 +153,8 @@ export async function getDashboardState(adminSupabase, accessContext) {
 
   if (preferenceError) throw preferenceError
   if (clientsError) throw clientsError
-  if (groupsError) throw groupsError
-  if (groupMembersError) throw groupMembersError
+  if (groupsError && !isMissingRelationError(groupsError)) throw groupsError
+  if (groupMembersError && !isMissingRelationError(groupMembersError)) throw groupMembersError
 
   const filteredClients = filterClientsByAccess((clientRows || []).map(normalizeClientRecord), accessContext)
   const groupMembersByGroupId = new Map()
@@ -161,10 +166,10 @@ export async function getDashboardState(adminSupabase, accessContext) {
   })
 
   const clientGroups = filterClientGroupsByAccess(
-    (groupRows || []).map((group) =>
+    (isMissingRelationError(groupsError) ? [] : groupRows || []).map((group) =>
       normalizeClientGroupRecord({
         ...group,
-        clientIds: groupMembersByGroupId.get(group.id) || [],
+        clientIds: isMissingRelationError(groupMembersError) ? [] : groupMembersByGroupId.get(group.id) || [],
       })
     ),
     accessContext
@@ -221,7 +226,10 @@ export async function saveDashboardState(adminSupabase, accessContext, state) {
       .delete()
       .eq('workspace_id', accessContext.workspaceId)
 
-    if (deleteGroupError) throw deleteGroupError
+    if (deleteGroupError && !isMissingRelationError(deleteGroupError)) throw deleteGroupError
+    if (deleteGroupError && isMissingRelationError(deleteGroupError) && submittedClientGroups.length > 0) {
+      throw new Error('As tabelas de grupos de clientes ainda nao foram criadas no Supabase. Rode a migration antes de salvar grupos.')
+    }
 
     if (submittedClients.length > 0) {
       const { error: upsertError } = await adminSupabase
@@ -251,7 +259,12 @@ export async function saveDashboardState(adminSupabase, accessContext, state) {
           { onConflict: 'workspace_id,id' }
         )
 
-      if (upsertGroupError) throw upsertGroupError
+      if (upsertGroupError) {
+        if (isMissingRelationError(upsertGroupError)) {
+          throw new Error('As tabelas de grupos de clientes ainda nao foram criadas no Supabase. Rode a migration antes de salvar grupos.')
+        }
+        throw upsertGroupError
+      }
 
       const groupMembershipRows = submittedClientGroups.flatMap((group) =>
         group.clientIds.map((clientId) => ({
@@ -266,7 +279,12 @@ export async function saveDashboardState(adminSupabase, accessContext, state) {
           .from('workspace_client_group_members')
           .upsert(groupMembershipRows, { onConflict: 'workspace_id,group_id,client_id' })
 
-        if (upsertGroupMemberError) throw upsertGroupMemberError
+        if (upsertGroupMemberError) {
+          if (isMissingRelationError(upsertGroupMemberError)) {
+            throw new Error('As tabelas de grupos de clientes ainda nao foram criadas no Supabase. Rode a migration antes de salvar grupos.')
+          }
+          throw upsertGroupMemberError
+        }
       }
     }
 

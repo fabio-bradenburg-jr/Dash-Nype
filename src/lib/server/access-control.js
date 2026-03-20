@@ -5,6 +5,11 @@ export const USER_ROLES = {
   CLIENT: 'cliente',
 }
 
+function isMissingRelationError(error) {
+  const message = String(error?.message || '').toLowerCase()
+  return error?.code === 'PGRST205' || message.includes('schema cache') || message.includes('could not find the table')
+}
+
 function buildProfilePayload(user, role, workspaceId) {
   return {
     id: user.id,
@@ -127,12 +132,12 @@ export async function getAccessContext(adminSupabase, user) {
     ])
 
     if (directAccessError) throw directAccessError
-    if (groupAccessError) throw groupAccessError
-    if (groupMemberError) throw groupMemberError
+    if (groupAccessError && !isMissingRelationError(groupAccessError)) throw groupAccessError
+    if (groupMemberError && !isMissingRelationError(groupMemberError)) throw groupMemberError
 
     accessRows = directAccessData || []
-    groupAccessRows = groupAccessData || []
-    groupMemberRows = groupMemberData || []
+    groupAccessRows = isMissingRelationError(groupAccessError) ? [] : groupAccessData || []
+    groupMemberRows = isMissingRelationError(groupMemberError) ? [] : groupMemberData || []
   }
 
   const viewableClientIds = new Set(accessRows.filter((row) => row.can_view).map((row) => row.client_id))

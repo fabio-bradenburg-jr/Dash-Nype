@@ -3,6 +3,11 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/server/supabase-admin'
 import { getAccessContext, USER_ROLES } from '@/lib/server/access-control'
 
+function isMissingRelationError(error) {
+  const message = String(error?.message || '').toLowerCase()
+  return error?.code === 'PGRST205' || message.includes('schema cache') || message.includes('could not find the table')
+}
+
 async function getAuthorizedContext() {
   const supabase = await createClient()
   const {
@@ -54,7 +59,7 @@ export async function GET() {
 
     if (profilesError) throw profilesError
     if (accessError) throw accessError
-    if (groupAccessError) throw groupAccessError
+    if (groupAccessError && !isMissingRelationError(groupAccessError)) throw groupAccessError
 
     const accessByUser = new Map()
     ;(accessRows || []).forEach((row) => {
@@ -63,7 +68,7 @@ export async function GET() {
       accessByUser.set(row.user_id, current)
     })
     const groupAccessByUser = new Map()
-    ;(groupAccessRows || []).forEach((row) => {
+    ;((isMissingRelationError(groupAccessError) ? [] : groupAccessRows) || []).forEach((row) => {
       const current = groupAccessByUser.get(row.user_id) || []
       current.push(row)
       groupAccessByUser.set(row.user_id, current)
@@ -157,7 +162,12 @@ export async function POST(request) {
           }))
         )
 
-      if (groupAccessInsertError) throw groupAccessInsertError
+      if (groupAccessInsertError) {
+        if (isMissingRelationError(groupAccessInsertError)) {
+          throw new Error('As tabelas de grupos de clientes ainda nao foram criadas no Supabase. Rode a migration antes de liberar acesso por grupo.')
+        }
+        throw groupAccessInsertError
+      }
     }
 
     return NextResponse.json({ ok: true, userId })

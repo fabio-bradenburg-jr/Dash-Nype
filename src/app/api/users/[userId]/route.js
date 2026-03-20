@@ -3,6 +3,11 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/server/supabase-admin'
 import { getAccessContext, USER_ROLES } from '@/lib/server/access-control'
 
+function isMissingRelationError(error) {
+  const message = String(error?.message || '').toLowerCase()
+  return error?.code === 'PGRST205' || message.includes('schema cache') || message.includes('could not find the table')
+}
+
 async function getAuthorizedContext() {
   const supabase = await createClient()
   const {
@@ -66,7 +71,10 @@ export async function PATCH(request, context) {
       .delete()
       .eq('user_id', userId)
 
-    if (deleteGroupAccessError) throw deleteGroupAccessError
+    if (deleteGroupAccessError && !isMissingRelationError(deleteGroupAccessError)) throw deleteGroupAccessError
+    if (deleteGroupAccessError && isMissingRelationError(deleteGroupAccessError) && clientGroupIds.length > 0) {
+      throw new Error('As tabelas de grupos de clientes ainda nao foram criadas no Supabase. Rode a migration antes de liberar acesso por grupo.')
+    }
 
     if (clientIds.length > 0 && role !== USER_ROLES.MASTER) {
       const { error: insertAccessError } = await adminSupabase
@@ -97,7 +105,12 @@ export async function PATCH(request, context) {
           }))
         )
 
-      if (insertGroupAccessError) throw insertGroupAccessError
+      if (insertGroupAccessError) {
+        if (isMissingRelationError(insertGroupAccessError)) {
+          throw new Error('As tabelas de grupos de clientes ainda nao foram criadas no Supabase. Rode a migration antes de liberar acesso por grupo.')
+        }
+        throw insertGroupAccessError
+      }
     }
 
     return NextResponse.json({ ok: true })
