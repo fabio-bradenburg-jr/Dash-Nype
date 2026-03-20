@@ -53,6 +53,86 @@ const THEMES = {
   slate: { main: '#38bdf8', glow: 'rgba(56, 189, 248, 0.18)', surface: 'rgba(56, 189, 248, 0.10)' },
 }
 
+const THEME_LABELS = {
+  blue: 'Azul',
+  emerald: 'Esmeralda',
+  orange: 'Laranja',
+  rose: 'Rosa',
+  slate: 'Ciano',
+}
+
+function clampColorChannel(value) {
+  const numericValue = Number.parseInt(value, 10)
+  if (!Number.isFinite(numericValue)) return 0
+  return Math.max(0, Math.min(255, numericValue))
+}
+
+function hexToRgb(hexValue) {
+  const normalized = String(hexValue || '').trim().replace('#', '')
+  if (!/^[\da-fA-F]{6}$/.test(normalized)) return null
+
+  return {
+    r: Number.parseInt(normalized.slice(0, 2), 16),
+    g: Number.parseInt(normalized.slice(2, 4), 16),
+    b: Number.parseInt(normalized.slice(4, 6), 16),
+  }
+}
+
+function rgbToHex({ r, g, b }) {
+  const channels = [r, g, b].map((value) => clampColorChannel(value).toString(16).padStart(2, '0'))
+  return `#${channels.join('')}`
+}
+
+function parseDashboardColor(value) {
+  if (!value) return null
+
+  if (THEMES[value]?.main) {
+    return hexToRgb(THEMES[value].main)
+  }
+
+  const hexMatch = String(value).trim().match(/^#([\da-fA-F]{6})$/)
+  if (hexMatch) {
+    return hexToRgb(hexMatch[0])
+  }
+
+  const rgbMatch = String(value)
+    .trim()
+    .match(/^rgb\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})\s*\)$/i)
+
+  if (rgbMatch) {
+    return {
+      r: clampColorChannel(rgbMatch[1]),
+      g: clampColorChannel(rgbMatch[2]),
+      b: clampColorChannel(rgbMatch[3]),
+    }
+  }
+
+  return null
+}
+
+function buildCustomTheme(colorValue) {
+  const parsedColor = parseDashboardColor(colorValue) || hexToRgb(THEMES.blue.main)
+  const { r, g, b } = parsedColor
+
+  return {
+    main: `rgb(${r}, ${g}, ${b})`,
+    glow: `rgba(${r}, ${g}, ${b}, 0.18)`,
+    surface: `rgba(${r}, ${g}, ${b}, 0.10)`,
+  }
+}
+
+function resolveDashboardTheme(colorValue) {
+  if (THEMES[colorValue]) return THEMES[colorValue]
+  return buildCustomTheme(colorValue)
+}
+
+function getDashboardColorLabel(colorValue) {
+  if (THEME_LABELS[colorValue]) return THEME_LABELS[colorValue]
+
+  const parsedColor = parseDashboardColor(colorValue)
+  return parsedColor ? rgbToHex(parsedColor).toUpperCase() : 'Azul'
+}
+
 const METRIC_OPTIONS = {
   spend: { label: 'Investimento', type: 'currency' },
   impressions: { label: 'Impressões', type: 'number' },
@@ -627,7 +707,7 @@ export default function DashboardPage() {
     linkedinAdsToken: '',
   })
 
-  const currentTheme = THEMES[themeColor] || THEMES.blue
+  const currentTheme = useMemo(() => resolveDashboardTheme(themeColor), [themeColor])
   const role = access?.role || profile?.role || 'visualizador'
   const canManageUsers = Boolean(access?.canManageUsers)
   const canManageClients = Boolean(access?.canManageClients)
@@ -668,6 +748,14 @@ export default function DashboardPage() {
   const selectedQualifiedStages = useMemo(
     () => activeClient?.rdQualifiedStages || [],
     [activeClient]
+  )
+  const activeClientDashboardRgb = useMemo(
+    () => parseDashboardColor(activeClient?.dashboardColor || themeColor || 'blue') || hexToRgb(THEMES.blue.main),
+    [activeClient?.dashboardColor, themeColor]
+  )
+  const activeClientDashboardHex = useMemo(
+    () => rgbToHex(activeClientDashboardRgb),
+    [activeClientDashboardRgb]
   )
   const selectedQualifiedStagesKey = useMemo(
     () => JSON.stringify([...selectedQualifiedStages].sort()),
@@ -1647,6 +1735,26 @@ export default function DashboardPage() {
       ...client,
       [fieldName]: value,
     }))
+  }
+
+  const handleClientDashboardRgbChange = (channel, value) => {
+    const nextRgb = {
+      ...activeClientDashboardRgb,
+      [channel]: clampColorChannel(value),
+    }
+    const nextColor = `rgb(${nextRgb.r}, ${nextRgb.g}, ${nextRgb.b})`
+
+    handleClientFieldChange('dashboardColor', nextColor)
+    setThemeColor(nextColor)
+  }
+
+  const handleClientDashboardHexChange = (value) => {
+    const parsedColor = hexToRgb(value)
+    if (!parsedColor) return
+
+    const nextColor = `rgb(${parsedColor.r}, ${parsedColor.g}, ${parsedColor.b})`
+    handleClientFieldChange('dashboardColor', nextColor)
+    setThemeColor(nextColor)
   }
 
   const handleGlobalIntegrationChange = (fieldName, value) => {
@@ -2890,7 +2998,7 @@ export default function DashboardPage() {
                         <span>{client.metaAdAccountId || 'Conta Meta não selecionada'}</span>
                       </div>
                       <div className="user-directory-meta">
-                        <span className="user-role-badge">{client.dashboardColor || 'blue'}</span>
+                        <span className="user-role-badge">{getDashboardColorLabel(client.dashboardColor || 'blue')}</span>
                         <small>{client.logoUrl ? 'Logo configurada' : 'Sem logo configurada'}</small>
                       </div>
                       <div className="user-directory-actions client-directory-actions">
@@ -2968,20 +3076,68 @@ export default function DashboardPage() {
 
                     <div className="input-group">
                       <label>Cor da dashboard</label>
-                      <select
-                        className="client-select-input"
-                        value={activeClient.dashboardColor || 'blue'}
-                        onChange={(event) => {
-                          handleClientFieldChange('dashboardColor', event.target.value)
-                          setThemeColor(event.target.value)
-                        }}
-                      >
-                        <option value="blue">Azul</option>
-                        <option value="emerald">Esmeralda</option>
-                        <option value="orange">Laranja</option>
-                        <option value="rose">Rosa</option>
-                        <option value="slate">Ciano</option>
-                      </select>
+                      <div className="dashboard-color-editor">
+                        <div className="dashboard-color-preview-row">
+                          <input
+                            type="color"
+                            value={activeClientDashboardHex}
+                            onChange={(event) => handleClientDashboardHexChange(event.target.value)}
+                            aria-label="Selecionar cor da dashboard"
+                          />
+                          <div className="dashboard-color-code">
+                            <strong>{activeClientDashboardHex.toUpperCase()}</strong>
+                            <span>{`rgb(${activeClientDashboardRgb.r}, ${activeClientDashboardRgb.g}, ${activeClientDashboardRgb.b})`}</span>
+                          </div>
+                        </div>
+                        <div className="dashboard-rgb-grid">
+                          <label className="dashboard-rgb-field">
+                            <span>R</span>
+                            <input
+                              type="number"
+                              min="0"
+                              max="255"
+                              value={activeClientDashboardRgb.r}
+                              onChange={(event) => handleClientDashboardRgbChange('r', event.target.value)}
+                            />
+                          </label>
+                          <label className="dashboard-rgb-field">
+                            <span>G</span>
+                            <input
+                              type="number"
+                              min="0"
+                              max="255"
+                              value={activeClientDashboardRgb.g}
+                              onChange={(event) => handleClientDashboardRgbChange('g', event.target.value)}
+                            />
+                          </label>
+                          <label className="dashboard-rgb-field">
+                            <span>B</span>
+                            <input
+                              type="number"
+                              min="0"
+                              max="255"
+                              value={activeClientDashboardRgb.b}
+                              onChange={(event) => handleClientDashboardRgbChange('b', event.target.value)}
+                            />
+                          </label>
+                        </div>
+                        <div className="dashboard-theme-presets">
+                          {Object.entries(THEMES).map(([themeKey, theme]) => (
+                            <button
+                              key={themeKey}
+                              type="button"
+                              className={`dashboard-theme-preset ${activeClient.dashboardColor === themeKey ? 'active' : ''}`}
+                              onClick={() => {
+                                handleClientFieldChange('dashboardColor', themeKey)
+                                setThemeColor(themeKey)
+                              }}
+                            >
+                              <span className="dashboard-theme-swatch" style={{ background: theme.main }}></span>
+                              <small>{themeKey}</small>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
                     </div>
 
                     <div className="input-group">
@@ -4804,6 +4960,111 @@ export default function DashboardPage() {
           display: grid;
           grid-template-columns: repeat(2, minmax(0, 1fr));
           gap: 18px;
+        }
+
+        .dashboard-color-editor {
+          display: grid;
+          gap: 14px;
+        }
+
+        .dashboard-color-preview-row {
+          display: flex;
+          align-items: center;
+          gap: 14px;
+        }
+
+        .dashboard-color-preview-row input[type="color"] {
+          width: 72px;
+          min-width: 72px;
+          height: 48px;
+          padding: 0;
+          border-radius: 12px;
+          border: 1px solid var(--border-color);
+          background: rgba(0, 0, 0, 0.2);
+          cursor: pointer;
+        }
+
+        .dashboard-color-code {
+          display: grid;
+          gap: 4px;
+        }
+
+        .dashboard-color-code strong {
+          font-size: 16px;
+        }
+
+        .dashboard-color-code span {
+          color: var(--text-muted);
+          font-size: 13px;
+        }
+
+        .dashboard-rgb-grid {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 12px;
+        }
+
+        .dashboard-rgb-field {
+          display: grid;
+          gap: 8px;
+        }
+
+        .dashboard-rgb-field span {
+          color: var(--text-secondary);
+          font-size: 12px;
+          font-weight: 700;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+        }
+
+        .dashboard-rgb-field input {
+          width: 100%;
+          min-height: 46px;
+          padding: 0 12px;
+          border-radius: 10px;
+          background: rgba(0, 0, 0, 0.2);
+          border: 1px solid var(--border-color);
+          color: white;
+          font-family: inherit;
+          font-size: 14px;
+          box-sizing: border-box;
+        }
+
+        .dashboard-theme-presets {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 10px;
+        }
+
+        .dashboard-theme-preset {
+          min-width: 92px;
+          padding: 10px 12px;
+          border-radius: 14px;
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          background: rgba(255, 255, 255, 0.03);
+          color: var(--text-primary);
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          cursor: pointer;
+        }
+
+        .dashboard-theme-preset.active {
+          border-color: var(--accent-blue);
+          background: var(--theme-surface);
+        }
+
+        .dashboard-theme-preset small {
+          font-size: 12px;
+          line-height: 1;
+        }
+
+        .dashboard-theme-swatch {
+          width: 18px;
+          height: 18px;
+          border-radius: 999px;
+          border: 1px solid rgba(255, 255, 255, 0.18);
+          flex-shrink: 0;
         }
 
         .client-list-card h3,
