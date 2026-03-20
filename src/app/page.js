@@ -1558,8 +1558,8 @@ export default function DashboardPage() {
       setActiveTab('apresentacao')
     }
 
-    if (activeTab === 'integracoes' && !canManageClients) {
-      setActiveTab('apresentacao')
+    if (activeTab === 'integracoes') {
+      setActiveTab(canManageClients ? 'clientes' : 'apresentacao')
     }
   }, [activeTab, canManageClients, canManageUsers])
 
@@ -3585,11 +3585,6 @@ export default function DashboardPage() {
               <i className="bx bxs-buildings"></i> Clientes
             </button>
           )}
-          {canManageClients && (
-            <button type="button" data-tooltip="Integrações" className={`nav-item nav-button ${activeTab === 'integracoes' ? 'active' : ''}`} onClick={() => setActiveTab('integracoes')}>
-              <i className="bx bx-plug"></i> Integrações
-            </button>
-          )}
           <button type="button" data-tooltip="Apresentação" className={`nav-item nav-button ${activeTab === 'apresentacao' ? 'active' : ''}`} onClick={() => setActiveTab('apresentacao')}>
             <i className="bx bxs-dashboard"></i> Apresentação
           </button>
@@ -3636,13 +3631,11 @@ export default function DashboardPage() {
           <div className="page-title">
             <h1>
               {activeTab === 'clientes' && 'Base de clientes'}
-              {activeTab === 'integracoes' && 'Integrações gerais'}
               {activeTab === 'apresentacao' && `Dashboard ${activeClient?.name || 'do cliente'}`}
               {activeTab === 'usuarios' && 'Gestão de usuários'}
             </h1>
             <p>
               {activeTab === 'clientes' && 'Cadastre seus clientes e mantenha cada operação separada dentro do dashboard.'}
-              {activeTab === 'integracoes' && 'Cadastre aqui as credenciais centrais da operação. Nos clientes, você escolhe apenas as contas referentes a cada um.'}
               {activeTab === 'apresentacao' && 'Uma visão executiva consolidada dos principais resultados do cliente, organizada por fonte de dados.'}
               {activeTab === 'usuarios' && 'Defina quem pode visualizar dashboards, editar integrações e acessar clientes específicos.'}
             </p>
@@ -4036,7 +4029,7 @@ export default function DashboardPage() {
                       </div>
                       <div>
                         <h3>Meta Ads</h3>
-                        <p>Selecione a conta de anúncio deste cliente usando a credencial global cadastrada em Integrações.</p>
+                        <p>Selecione a conta de anúncio deste cliente usando a credencial global cadastrada em Configurações.</p>
                       </div>
                     </div>
 
@@ -4048,7 +4041,7 @@ export default function DashboardPage() {
                         onChange={(event) => handleClientFieldChange('metaAdAccountId', event.target.value)}
                       >
                         <option value="">
-                          {globalIntegrations.metaAccessToken ? 'Selecione uma conta' : 'Cadastre a chave da Meta em Integrações'}
+                          {globalIntegrations.metaAccessToken ? 'Selecione uma conta' : 'Cadastre a chave da Meta em Configurações'}
                         </option>
                         {adAccounts.map((account) => (
                           <option key={account.id} value={account.id}>
@@ -4158,50 +4151,6 @@ export default function DashboardPage() {
               </form>
             </div>
           </div>
-        )}
-
-        {activeTab === 'integracoes' && canManageClients && (
-          <section className="clients-layout">
-            <div className="glass-panel clients-intro">
-              <h2>Integrações da operação</h2>
-              <p>Aqui ficam as credenciais globais. A Meta abastece todos os clientes e, dentro de cada cliente, você escolhe só a conta de anúncio correspondente.</p>
-            </div>
-
-            <div className="glass-panel client-editor-card">
-              <div className="client-editor-header">
-                <div>
-                  <h3>Credenciais globais da operação</h3>
-                  <p>Cadastre aqui as chaves centrais. Nos clientes, você mantém apenas a seleção das contas vinculadas a cada operação.</p>
-                </div>
-              </div>
-
-              <div className="form-grid">
-                {GLOBAL_INTEGRATION_GROUPS.map((group) => (
-                  <div key={group.title} className="integration-block">
-                    <div className="integration-heading">
-                      <div className="integration-icon" style={{ color: group.accent, borderColor: `${group.accent}33` }}>
-                        <i className={`bx ${group.icon}`}></i>
-                      </div>
-                      <div>
-                        <h3>{group.title}</h3>
-                        <p>{group.description}</p>
-                      </div>
-                    </div>
-
-                    <div className="input-group">
-                      <label>{group.field.label}</label>
-                      <input
-                        type="password"
-                        value={globalIntegrations[group.field.name] || ''}
-                        onChange={(event) => handleGlobalIntegrationChange(group.field.name, event.target.value)}
-                        placeholder={group.field.placeholder}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </section>
         )}
 
         {activeTab === 'usuarios' && canManageUsers && (
@@ -5816,7 +5765,7 @@ export default function DashboardPage() {
           display: grid;
           place-items: center;
           padding: 24px;
-          z-index: 80;
+          z-index: 320;
         }
 
         .modal-card {
@@ -5826,6 +5775,8 @@ export default function DashboardPage() {
           padding: 24px;
           display: grid;
           gap: 22px;
+          position: relative;
+          z-index: 321;
         }
 
         .modal-card-wide {
