@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { fetchMetaJson, normalizeMetaError } from '@/lib/server/meta-fetch'
+import { buildMetaInsightsFilterExpression } from '@/lib/server/meta-date-range'
 
 function getMetaToken(request) {
   const headerToken = request.headers.get('x-meta-access-token')
@@ -49,10 +50,7 @@ export async function GET(request) {
 
     const id = adAccountId.startsWith('act_') ? adAccountId : `act_${adAccountId}`
     
-    let timeFilter = `insights.date_preset(${datePreset})`
-    if (datePreset === 'custom' && since && until) {
-      timeFilter = `insights.time_range({"since":"${since}","until":"${until}"})`
-    }
+    const timeFilter = buildMetaInsightsFilterExpression(datePreset, since, until)
     
     // We use the time filter syntax to fetch campaign details along with their metrics in one call
     const campaignsUrl = `https://graph.facebook.com/v19.0/${id}/campaigns?fields=id,name,status,objective,${timeFilter}{spend,reach,impressions,cpc,actions,action_values,cost_per_action_type}&limit=50&access_token=${token}`

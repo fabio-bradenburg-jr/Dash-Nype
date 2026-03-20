@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { formatInsightsWithConversions } from '@/lib/meta-metrics'
 import { fetchMetaJson, normalizeMetaError } from '@/lib/server/meta-fetch'
+import { buildMetaInsightsFilterExpression, resolveMetaDateSelection } from '@/lib/server/meta-date-range'
 
 function getMetaToken(request) {
   const headerToken = request.headers.get('x-meta-access-token')
@@ -12,11 +13,15 @@ function getMetaToken(request) {
 
 function buildBaseParams({ token, datePreset, since, until, fields }) {
   const params = new URLSearchParams({ access_token: token, fields })
+  const resolvedDateSelection = resolveMetaDateSelection(datePreset, since, until)
 
-  if (datePreset === 'custom' && since && until) {
-    params.set('time_range', JSON.stringify({ since, until }))
+  if (resolvedDateSelection.mode === 'time_range') {
+    params.set(
+      'time_range',
+      JSON.stringify({ since: resolvedDateSelection.since, until: resolvedDateSelection.until })
+    )
   } else {
-    params.set('date_preset', datePreset)
+    params.set('date_preset', resolvedDateSelection.datePreset)
   }
 
   return params
@@ -124,7 +129,8 @@ export async function GET(request) {
     }
 
     const id = adAccountId.startsWith('act_') ? adAccountId : `act_${adAccountId}`
-    const insightFields = 'spend,impressions,clicks,cpc,ctr,actions,action_values,cost_per_action_type'
+    const geographicInsightFields = 'spend,impressions,clicks,actions,action_values'
+    const creativeInsightFields = 'spend,impressions,clicks,actions,action_values,cost_per_action_type'
 
     if (campaignIds.includes('__none__') || adsetIds.includes('__none__') || adIds.includes('__none__')) {
       return NextResponse.json({
@@ -134,19 +140,17 @@ export async function GET(request) {
       })
     }
 
-    const ageParams = buildBaseParams({ token, datePreset, since, until, fields: insightFields })
+    const ageParams = buildBaseParams({ token, datePreset, since, until, fields: geographicInsightFields })
     ageParams.set('breakdowns', 'age')
     appendMetaEntityFiltering(ageParams, campaignIds, adsetIds, adIds)
 
-    const cityParams = buildBaseParams({ token, datePreset, since, until, fields: insightFields })
+    const cityParams = buildBaseParams({ token, datePreset, since, until, fields: geographicInsightFields })
     cityParams.set('breakdowns', 'city')
     appendMetaEntityFiltering(cityParams, campaignIds, adsetIds, adIds)
 
-    const creativeTimeFilter = datePreset === 'custom' && since && until
-      ? `insights.time_range({"since":"${since}","until":"${until}"})`
-      : `insights.date_preset(${datePreset})`
+    const creativeTimeFilter = buildMetaInsightsFilterExpression(datePreset, since, until)
 
-    const creativeUrl = `https://graph.facebook.com/v19.0/${id}/ads?fields=id,name,campaign_id,adset_id,creative{name,thumbnail_url,image_url,effective_object_story_id,object_story_spec},${creativeTimeFilter}{spend,impressions,clicks,cpc,ctr,actions,action_values,cost_per_action_type}&limit=100&access_token=${token}`
+    const creativeUrl = `https://graph.facebook.com/v19.0/${id}/ads?fields=id,name,campaign_id,adset_id,creative{name,thumbnail_url,image_url,effective_object_story_id,object_story_spec},${creativeTimeFilter}{${creativeInsightFields}}&limit=100&access_token=${token}`
 
     const [ageResult, cityResult, creativeResult] = await Promise.all([
       fetchMetaBreakdownSafely(
@@ -166,9 +170,10 @@ export async function GET(request) {
     let cityRows = cityResult.data?.data || []
     let cityLabelKey = 'city'
     let cityError = cityResult.error || ''
+    let geoScope = 'city'
 
     if (!cityRows.length && cityError) {
-      const regionParams = buildBaseParams({ token, datePreset, since, until, fields: insightFields })
+      const regionParams = buildBaseParams({ token, datePreset, since, until, fields: geographicInsightFields })
       regionParams.set('breakdowns', 'region')
       appendMetaEntityFiltering(regionParams, campaignIds, adsetIds, adIds)
       const regionResult = await fetchMetaBreakdownSafely(
@@ -178,7 +183,23 @@ export async function GET(request) {
 
       cityRows = regionResult.data?.data || []
       cityLabelKey = 'region'
+      geoScope = 'region'
       cityError = regionResult.error || cityError
+
+      if (!cityRows.length && cityError) {
+        const countryParams = buildBaseParams({ token, datePreset, since, until, fields: geographicInsightFields })
+        countryParams.set('breakdowns', 'country')
+        appendMetaEntityFiltering(countryParams, campaignIds, adsetIds, adIds)
+        const countryResult = await fetchMetaBreakdownSafely(
+          `https://graph.facebook.com/v19.0/${id}/insights?${countryParams.toString()}`,
+          'A Meta demorou para responder ao carregar os rankings detalhados. Tente novamente em alguns instantes.'
+        )
+
+        cityRows = countryResult.data?.data || []
+        cityLabelKey = 'country'
+        geoScope = 'country'
+        cityError = countryResult.error || cityError
+      }
     }
 
     const creatives = (creativeResult.data?.data || [])
@@ -206,6 +227,7 @@ export async function GET(request) {
       ages: normalizeBreakdownRows(ageResult.data?.data || [], 'age'),
       cities: normalizeBreakdownRows(cityRows, cityLabelKey),
       creatives,
+      geoScope,
       errors: {
         ages: ageResult.error || '',
         cities: cityError,

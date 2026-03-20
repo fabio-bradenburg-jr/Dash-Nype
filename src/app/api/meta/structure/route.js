@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { fetchMetaJson, normalizeMetaError } from '@/lib/server/meta-fetch'
+import { buildMetaInsightsFilterExpression } from '@/lib/server/meta-date-range'
 
 function getMetaToken(request) {
   const headerToken = request.headers.get('x-meta-access-token')
@@ -13,12 +14,7 @@ function buildInsightsField(searchParams) {
   const since = searchParams.get('since')
   const until = searchParams.get('until')
   const datePreset = searchParams.get('date_preset') || 'last_7d'
-
-  if (since && until) {
-    return `insights.time_range(${JSON.stringify({ since, until })}).limit(1){spend}`
-  }
-
-  return `insights.date_preset(${datePreset}).limit(1){spend}`
+  return `${buildMetaInsightsFilterExpression(datePreset, since, until)}.limit(1){spend}`
 }
 
 export async function GET(request) {

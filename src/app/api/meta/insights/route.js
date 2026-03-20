@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { formatInsightsWithConversions } from '@/lib/meta-metrics'
 import { fetchMetaJson, normalizeMetaError } from '@/lib/server/meta-fetch'
+import { resolveMetaDateSelection } from '@/lib/server/meta-date-range'
 
 function getMetaToken(request) {
   const headerToken = request.headers.get('x-meta-access-token')
@@ -33,11 +34,15 @@ export async function GET(request) {
     // Facebook API Fields for KPIs
     const fields = 'spend,reach,impressions,clicks,cpc,ctr,actions,action_values,cost_per_action_type'
     const baseParams = new URLSearchParams({ fields, access_token: token })
+    const resolvedDateSelection = resolveMetaDateSelection(datePreset, since, until)
 
-    if (datePreset === 'custom' && since && until) {
-      baseParams.set('time_range', JSON.stringify({ since, until }))
+    if (resolvedDateSelection.mode === 'time_range') {
+      baseParams.set(
+        'time_range',
+        JSON.stringify({ since: resolvedDateSelection.since, until: resolvedDateSelection.until })
+      )
     } else {
-      baseParams.set('date_preset', datePreset)
+      baseParams.set('date_preset', resolvedDateSelection.datePreset)
     }
 
     if (campaignIds.includes('__none__') || adsetIds.includes('__none__') || adIds.includes('__none__')) {
