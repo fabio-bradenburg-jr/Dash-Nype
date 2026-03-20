@@ -5889,28 +5889,39 @@ export default function DashboardPage() {
         }
 
         .dashboard-color-preview-row {
-          display: flex;
-          align-items: stretch;
-          gap: 12px;
+          display: grid;
+          grid-template-columns: 1fr;
+          gap: 10px;
         }
 
         .dashboard-color-preview-row input[type="color"] {
-          width: 64px;
-          min-width: 64px;
+          width: 100%;
           height: 56px;
           padding: 0;
           border-radius: 12px;
           border: 1px solid var(--border-color);
           background: rgba(0, 0, 0, 0.2);
           cursor: pointer;
+          appearance: none;
+          -webkit-appearance: none;
+          overflow: hidden;
+          box-sizing: border-box;
+        }
+
+        .dashboard-color-preview-row input[type="color"]::-webkit-color-swatch-wrapper {
+          padding: 0;
+        }
+
+        .dashboard-color-preview-row input[type="color"]::-webkit-color-swatch {
+          border: none;
+          border-radius: 10px;
         }
 
         .dashboard-color-code {
           display: grid;
-          gap: 2px;
-          align-content: center;
+          gap: 4px;
           min-width: 0;
-          flex: 1;
+          justify-items: start;
         }
 
         .dashboard-color-code strong {
