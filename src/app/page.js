@@ -404,6 +404,22 @@ const META_TEMPLATE_METRIC_OPTIONS = {
   },
 }
 
+const FIXED_META_METRIC_KEYS = new Set([
+  'spend',
+  'impressions',
+  'clicks',
+  'cpc',
+  'ctr',
+  'totalConversions',
+  'purchases',
+  'costPerPurchase',
+  'roas',
+  'leads',
+  'costPerLead',
+  'messages',
+  'costPerMessage',
+])
+
 const RD_TEMPLATE_METRIC_OPTIONS = {
   opportunityCount: {
     label: 'Oportunidades',
@@ -644,6 +660,27 @@ const RD_TEMPLATE_METRIC_OPTIONS = {
     description: 'Contatos marcados como perda na operação.',
   },
 }
+
+const FIXED_RD_METRIC_KEYS = new Set([
+  'opportunityCount',
+  'qualifiedOpportunityCount',
+  'wonOpportunityCount',
+  'wonOpportunityRevenue',
+  'avgTicketWonByCreation',
+  'leadToQualifiedRate',
+  'qualifiedToWonRate',
+  'leadToWonRate',
+  'lostOpportunityCount',
+  'wonDeals',
+  'wonDealsFromPreviousCohorts',
+  'wonRevenue',
+  'avgTicketWon',
+  'wonRevenueFromPreviousCohorts',
+  'avgTicketWonPreviousCohorts',
+  'rdFinalSalesCount',
+  'rdFinalRevenue',
+  'rdFinalAvgTicket',
+])
 
 function formatCurrency(value) {
   return new Intl.NumberFormat('pt-BR', {
@@ -3282,8 +3319,17 @@ export default function DashboardPage() {
         .filter(Boolean),
     [draftMetaDashboardMetricLayouts, metaDashboardMetricValues]
   )
+  const metaExtraDashboardMetricCards = useMemo(
+    () => metaDashboardMetricCards.filter((card) => !FIXED_META_METRIC_KEYS.has(card.key)),
+    [metaDashboardMetricCards]
+  )
   const availableMetaDashboardMetricOptions = useMemo(
-    () => Object.entries(META_TEMPLATE_METRIC_OPTIONS).filter(([metricKey]) => !draftMetaDashboardMetricLayouts.some((item) => item.metricKey === metricKey)),
+    () =>
+      Object.entries(META_TEMPLATE_METRIC_OPTIONS).filter(
+        ([metricKey]) =>
+          !FIXED_META_METRIC_KEYS.has(metricKey)
+          && !draftMetaDashboardMetricLayouts.some((item) => item.metricKey === metricKey)
+      ),
     [draftMetaDashboardMetricLayouts]
   )
   const rdDashboardMetricValues = useMemo(
@@ -3346,10 +3392,87 @@ export default function DashboardPage() {
         .filter(Boolean),
     [draftRdDashboardMetricLayouts, rdDashboardMetricValues]
   )
+  const rdExtraDashboardMetricCards = useMemo(
+    () => rdDashboardMetricCards.filter((card) => !FIXED_RD_METRIC_KEYS.has(card.key)),
+    [rdDashboardMetricCards]
+  )
   const availableRdDashboardMetricOptions = useMemo(
-    () => Object.entries(RD_TEMPLATE_METRIC_OPTIONS).filter(([metricKey]) => !draftRdDashboardMetricLayouts.some((item) => item.metricKey === metricKey)),
+    () =>
+      Object.entries(RD_TEMPLATE_METRIC_OPTIONS).filter(
+        ([metricKey]) =>
+          !FIXED_RD_METRIC_KEYS.has(metricKey)
+          && !draftRdDashboardMetricLayouts.some((item) => item.metricKey === metricKey)
+      ),
     [draftRdDashboardMetricLayouts]
   )
+  const metaMediaKpis = [
+    { key: 'spend', title: 'Investimento', value: formatCurrency(spend), icon: 'bx-wallet-alt', tone: 'blue' },
+    { key: 'impressions', title: 'Impressões', value: formatNumber(impressions), icon: 'bx-show', tone: 'purple' },
+    { key: 'clicks', title: 'Cliques', value: formatNumber(clicks), icon: 'bx-pointer', tone: 'cyan' },
+    { key: 'cpc', title: 'CPC', value: formatCurrency(cpc), icon: 'bx-purchase-tag', tone: 'orange' },
+    { key: 'ctr', title: 'CTR', value: formatPercent(ctr), icon: 'bx-mouse', tone: 'pink' },
+    { key: 'totalConversions', title: 'Conversões totais', value: formatNumber(totalConversions), icon: 'bx-line-chart', tone: 'gold' },
+  ]
+  const metaConversionGroups = [
+    {
+      key: 'purchases',
+      title: 'Compras',
+      description: 'Resultado de vendas atribuídas no período',
+      icon: 'bx-cart',
+      tone: 'emerald',
+      stats: [
+        { label: 'Compras', value: formatNumber(purchases) },
+        { label: 'Custo por compra', value: formatCurrency(costPerPurchase) },
+        { label: 'ROAS', value: formatMultiplier(roas) },
+      ],
+    },
+    {
+      key: 'leads',
+      title: 'Cadastros',
+      description: 'Conversões em leads atribuídas no período',
+      icon: 'bx-user-plus',
+      tone: 'gold',
+      stats: [
+        { label: 'Cadastros', value: formatNumber(leads) },
+        { label: 'Custo por cadastro', value: formatCurrency(costPerLead) },
+      ],
+    },
+    {
+      key: 'messages',
+      title: 'Mensagens iniciadas',
+      description: 'Conversas iniciadas em canais de mensagem',
+      icon: 'bx-message-rounded-dots',
+      tone: 'blue',
+      stats: [
+        { label: 'Mensagens iniciadas', value: formatNumber(messages) },
+        { label: 'Custo por mensagem iniciada', value: formatCurrency(costPerMessage) },
+      ],
+    },
+  ]
+  const rdQualificationKpis = [
+    { key: 'opportunityCount', title: 'Oportunidades', value: formatNumber(rdSummary?.opportunityCount || 0), icon: 'bx-bulb', tone: 'blue' },
+    { key: 'qualifiedOpportunityCount', title: 'Qualificados', value: formatNumber(rdSummary?.qualifiedOpportunityCount || 0), icon: 'bx-filter-alt', tone: 'emerald' },
+    { key: 'wonOpportunityCount', title: 'Vendas da safra criada e fechada no período', value: formatNumber(rdSummary?.wonOpportunityCount || 0), icon: 'bx-badge-check', tone: 'emerald' },
+    { key: 'wonOpportunityRevenue', title: 'Faturamento da safra criada e fechada', value: formatCurrency(rdSummary?.wonOpportunityRevenue || 0), icon: 'bx-wallet-alt', tone: 'orange' },
+    { key: 'avgTicketWonByCreation', title: 'Ticket médio da safra criada e fechada', value: formatCurrency(rdSummary?.avgTicketWonByCreation || 0), icon: 'bx-receipt', tone: 'gold' },
+    { key: 'leadToQualifiedRate', title: 'Taxa de oportunidade para qualificados', value: formatPercent(rdSummary?.leadToQualifiedRate || 0), icon: 'bx-transfer-alt', tone: 'cyan' },
+    { key: 'qualifiedToWonRate', title: 'Taxa de qualificados para venda', value: formatPercent(rdSummary?.qualifiedToWonRate || 0), icon: 'bx-badge-check', tone: 'emerald' },
+    { key: 'leadToWonRate', title: 'Taxa de oportunidade para venda', value: formatPercent(rdSummary?.leadToWonRate || 0), icon: 'bx-line-chart', tone: 'blue' },
+    { key: 'lostOpportunityCount', title: 'Negócios perdidos', value: formatNumber(rdSummary?.lostOpportunityCount || 0), icon: 'bx-x-circle', tone: 'pink' },
+  ]
+  const rdRevenueKpis = [
+    { key: 'wonDeals', title: 'Negociações ganhas fechadas no período', value: formatNumber(rdSummary?.wonDeals || 0), icon: 'bx-calendar-check', tone: 'emerald' },
+    { key: 'wonDealsFromPreviousCohorts', title: 'Negociações ganhas de safras anteriores', value: formatNumber(rdSummary?.wonDealsFromPreviousCohorts || 0), icon: 'bx-history', tone: 'blue' },
+    { key: 'wonRevenue', title: 'Faturamento das negociações fechadas', value: formatCurrency(rdSummary?.wonRevenue || 0), icon: 'bx-wallet-alt', tone: 'orange' },
+    { key: 'avgTicketWon', title: 'Ticket médio das negociações fechadas', value: formatCurrency(rdSummary?.avgTicketWon || 0), icon: 'bx-receipt', tone: 'gold' },
+    { key: 'wonRevenueFromPreviousCohorts', title: 'Faturamento de safras anteriores fechadas', value: formatCurrency(rdSummary?.wonRevenueFromPreviousCohorts || 0), icon: 'bx-coin-stack', tone: 'orange' },
+    { key: 'avgTicketWonPreviousCohorts', title: 'Ticket médio de safras anteriores fechadas', value: formatCurrency(rdSummary?.avgTicketWonPreviousCohorts || 0), icon: 'bx-spreadsheet', tone: 'gold' },
+  ]
+  const rdFinalKpis = [
+    { key: 'rdFinalSalesCount', title: 'Vendas totais do resultado final', value: formatNumber(rdFinalSalesCount), icon: 'bx-trophy', tone: 'emerald' },
+    { key: 'rdFinalRevenue', title: 'Faturamento total do resultado final', value: formatCurrency(rdFinalRevenue), icon: 'bx-wallet-alt', tone: 'orange' },
+    { key: 'rdFinalAvgTicket', title: 'Ticket médio do resultado final', value: formatCurrency(rdFinalAvgTicket), icon: 'bx-receipt', tone: 'gold' },
+  ]
   const userAvatarFallback = `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.user_metadata?.full_name || user?.email || 'Usuario')}&background=0D8ABC&color=fff`
   const userAvatarSrc = user?.user_metadata?.avatar_url || userAvatarFallback
 
@@ -3411,6 +3534,26 @@ export default function DashboardPage() {
       </div>
     )
   }
+
+  const renderFixedKpiGrid = (items) => (
+    <div className="kpi-grid compact-kpi-grid">
+      {items.map((metric) => (
+        <article key={metric.key} className="kpi-card glass-panel">
+          <div className="kpi-header">
+            <span className="kpi-title">{metric.title}</span>
+            <div className={`icon-box ${metric.tone}`}>
+              <i className={`bx ${metric.icon}`}></i>
+            </div>
+          </div>
+          <div className="kpi-value">{metric.value}</div>
+          <div className="kpi-trend neutral">
+            <i className="bx bx-check-circle"></i>
+            <span>Atualizado conforme a integração configurada.</span>
+          </div>
+        </article>
+      ))}
+    </div>
+  )
 
   if (userLoading || !hasLoadedPreferences) {
     return <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', color: 'white' }}>Carregando painel...</div>
@@ -4658,7 +4801,39 @@ export default function DashboardPage() {
                   </div>
 
                   <div className="template-metrics-shell">
-                    {renderDashboardMetricGrid(metaDashboardMetricCards, 'meta')}
+                    <div className="result-group">
+                      <div className="result-group-head">
+                        <h3>Mídia e distribuição</h3>
+                        <p>Visão geral do investimento e da entrega da campanha.</p>
+                      </div>
+                      {renderFixedKpiGrid(metaMediaKpis)}
+                    </div>
+
+                    <div className="conversion-groups-grid">
+                      {metaConversionGroups.map((group) => (
+                        <article key={group.key} className="conversion-group-card glass-panel">
+                          <div className="conversion-group-head">
+                            <div className={`icon-box ${group.tone}`}>
+                              <i className={`bx ${group.icon}`}></i>
+                            </div>
+                            <div>
+                              <h3>{group.title}</h3>
+                              <p>{group.description}</p>
+                            </div>
+                          </div>
+                          <div className="conversion-stats">
+                            {group.stats.map((stat) => (
+                              <div key={stat.label} className="conversion-stat">
+                                <span>{stat.label}</span>
+                                <strong>{stat.value}</strong>
+                              </div>
+                            ))}
+                          </div>
+                        </article>
+                      ))}
+                    </div>
+
+                    {metaExtraDashboardMetricCards.length > 0 && renderDashboardMetricGrid(metaExtraDashboardMetricCards, 'meta')}
 
                     {isMetaMetricLibraryOpen && (
                       <div className="metric-library-panel glass-item">
@@ -5064,7 +5239,33 @@ export default function DashboardPage() {
                           </div>
                         )}
 
-                        {renderDashboardMetricGrid(rdDashboardMetricCards, 'rd')}
+                        <div className="crm-groups-grid">
+                          <section className="crm-result-group">
+                            <div className="result-group-head">
+                              <h3>Qualificação e conversão</h3>
+                              <p>Leitura da safra criada no período selecionado: oportunidades, qualificação, perdas e vendas da mesma base.</p>
+                            </div>
+                            {renderFixedKpiGrid(rdQualificationKpis)}
+                          </section>
+
+                          <section className="crm-result-group">
+                            <div className="result-group-head">
+                              <h3>Fechamento e receita</h3>
+                              <p>Leitura por data de fechamento de todas as negociações ganhas no período, incluindo safras criadas antes do intervalo selecionado.</p>
+                            </div>
+                            {renderFixedKpiGrid(rdRevenueKpis)}
+                          </section>
+
+                          <section className="crm-result-group">
+                            <div className="result-group-head">
+                              <h3>Resultado final</h3>
+                              <p>Consolidado final somando safras criadas no período e safras anteriores fechadas no mesmo intervalo.</p>
+                            </div>
+                            {renderFixedKpiGrid(rdFinalKpis)}
+                          </section>
+                        </div>
+
+                        {rdExtraDashboardMetricCards.length > 0 && renderDashboardMetricGrid(rdExtraDashboardMetricCards, 'rd')}
 
                         {isRdMetricLibraryOpen && (
                           <div className="metric-library-panel glass-item">
