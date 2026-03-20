@@ -65,6 +65,7 @@ const EMPTY_META_BREAKDOWNS = {
   ages: [],
   cities: [],
   creatives: [],
+  geoScope: 'city',
   errors: {
     ages: '',
     cities: '',
@@ -629,6 +630,7 @@ export default function DashboardPage() {
   const supabase = createClient()
   const dashboardRef = useRef(null)
   const campaignsRef = useRef([])
+  const hasOpenedDashboardEntryRef = useRef(false)
   const lastMetaStructureFetchKeyRef = useRef('')
   const lastRdPipelinesFetchKeyRef = useRef('')
   const lastDashboardFetchKeyRef = useRef('')
@@ -708,6 +710,8 @@ export default function DashboardPage() {
   const [isEditClientModalOpen, setIsEditClientModalOpen] = useState(false)
   const [isCreateUserModalOpen, setIsCreateUserModalOpen] = useState(false)
   const [isEditUserModalOpen, setIsEditUserModalOpen] = useState(false)
+  const [isDashboardEntryModalOpen, setIsDashboardEntryModalOpen] = useState(false)
+  const [dashboardEntryClientId, setDashboardEntryClientId] = useState('')
   const [userForm, setUserForm] = useState({
     fullName: '',
     email: '',
@@ -1242,6 +1246,27 @@ export default function DashboardPage() {
     setIsMetaMetricLibraryOpen(false)
     setIsRdMetricLibraryOpen(false)
   }, [activeClientId, activeDashboardTemplate?.id])
+
+  useEffect(() => {
+    if (activeTab !== 'apresentacao') {
+      hasOpenedDashboardEntryRef.current = false
+      setIsDashboardEntryModalOpen(false)
+      return
+    }
+
+    if (clients.length <= 1) {
+      setIsDashboardEntryModalOpen(false)
+      return
+    }
+
+    if (hasOpenedDashboardEntryRef.current) {
+      return
+    }
+
+    hasOpenedDashboardEntryRef.current = true
+    setDashboardEntryClientId(activeClientId || clients[0]?.id || '')
+    setIsDashboardEntryModalOpen(true)
+  }, [activeTab, activeClientId, clients])
 
   useEffect(() => {
     if (activeTab === 'clientes' && !canManageClients) {
@@ -1860,6 +1885,12 @@ export default function DashboardPage() {
       ...client,
       [fieldName]: value,
     }))
+  }
+
+  const handleConfirmDashboardEntry = () => {
+    if (!dashboardEntryClientId) return
+    setActiveClientId(dashboardEntryClientId)
+    setIsDashboardEntryModalOpen(false)
   }
 
   const handleClientDashboardRgbChange = (channel, value) => {
@@ -2859,6 +2890,16 @@ export default function DashboardPage() {
     { title: 'Faturamento total do resultado final', value: formatCurrency(rdFinalRevenue), icon: 'bx-wallet-alt', tone: 'orange' },
     { title: 'Ticket médio do resultado final', value: formatCurrency(rdFinalAvgTicket), icon: 'bx-receipt', tone: 'gold' },
   ]
+  const metaGeoRankingTitle = breakdowns.geoScope === 'country'
+    ? 'Top 5 por países'
+    : breakdowns.geoScope === 'region'
+      ? 'Top 5 por regiões'
+      : 'Top 5 por cidades'
+  const metaGeoRankingDescription = breakdowns.geoScope === 'country'
+    ? 'Ranking territorial com base nas conversões por país da conta Meta.'
+    : breakdowns.geoScope === 'region'
+      ? 'Ranking territorial com base nas conversões por região da conta Meta.'
+      : 'Ranking com base nas conversões da conta Meta do cliente.'
   const metaDashboardMetricValues = useMemo(
     () => ({
       reach,
@@ -3099,6 +3140,44 @@ export default function DashboardPage() {
             )}
           </div>
         </header>
+
+        {activeTab === 'apresentacao' && isDashboardEntryModalOpen && clients.length > 1 && (
+          <div className="modal-overlay" onClick={() => setIsDashboardEntryModalOpen(false)}>
+            <div className="modal-card glass-panel dashboard-entry-modal" onClick={(event) => event.stopPropagation()}>
+              <div className="modal-header">
+                <div>
+                  <h3>Selecionar dashboard</h3>
+                  <p>Escolha qual dashboard você quer abrir nesta entrada.</p>
+                </div>
+                <button type="button" className="modal-close" onClick={() => setIsDashboardEntryModalOpen(false)} aria-label="Fechar seleção de dashboard">
+                  <i className="bx bx-x"></i>
+                </button>
+              </div>
+
+              <div className="dashboard-entry-content">
+                <div className="date-picker glass-item dashboard-entry-picker">
+                  <i className="bx bx-user-pin"></i>
+                  <select value={dashboardEntryClientId} onChange={(event) => setDashboardEntryClientId(event.target.value)}>
+                    {clients.map((client) => (
+                      <option key={`entry-${client.id}`} value={client.id}>
+                        {client.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="modal-actions">
+                  <button type="button" className="btn btn-secondary" onClick={() => setIsDashboardEntryModalOpen(false)}>
+                    Agora não
+                  </button>
+                  <button type="button" className="btn btn-primary" onClick={handleConfirmDashboardEntry} disabled={!dashboardEntryClientId}>
+                    Abrir dashboard
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {activeTab === 'clientes' && (
           <section className="clients-layout">
@@ -4227,8 +4306,8 @@ export default function DashboardPage() {
                   <div className="glass-panel ranking-card">
                     <div className="section-header section-header-stack">
                       <div>
-                        <h2>Top 5 por cidades</h2>
-                        <p className="chart-subtitle">Ranking com base nas conversões da conta Meta do cliente.</p>
+                        <h2>{metaGeoRankingTitle}</h2>
+                        <p className="chart-subtitle">{metaGeoRankingDescription}</p>
                       </div>
                     </div>
                     <div className="ranking-list">
@@ -5082,6 +5161,23 @@ export default function DashboardPage() {
 
         .modal-card-wide {
           width: min(100%, 1180px);
+        }
+
+        .dashboard-entry-modal {
+          width: min(100%, 560px);
+        }
+
+        .dashboard-entry-content {
+          display: grid;
+          gap: 18px;
+        }
+
+        .dashboard-entry-picker {
+          width: 100%;
+        }
+
+        .dashboard-entry-picker select {
+          width: 100%;
         }
 
         .modal-header {
