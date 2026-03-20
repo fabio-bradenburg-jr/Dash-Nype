@@ -261,6 +261,48 @@ const GLOBAL_INTEGRATION_GROUPS = [
 ]
 
 const META_TEMPLATE_METRIC_OPTIONS = {
+  spend: {
+    label: 'Investimento',
+    type: 'currency',
+    icon: 'bx-wallet',
+    tone: 'blue',
+    description: 'Valor total investido no período filtrado.',
+  },
+  impressions: {
+    label: 'Impressões',
+    type: 'number',
+    icon: 'bx-show',
+    tone: 'purple',
+    description: 'Total de impressões entregues no período.',
+  },
+  clicks: {
+    label: 'Cliques',
+    type: 'number',
+    icon: 'bx-pointer',
+    tone: 'cyan',
+    description: 'Cliques totais nas campanhas filtradas.',
+  },
+  cpc: {
+    label: 'CPC',
+    type: 'currency',
+    icon: 'bx-purchase-tag',
+    tone: 'orange',
+    description: 'Custo médio por clique.',
+  },
+  ctr: {
+    label: 'CTR',
+    type: 'percent',
+    icon: 'bx-mouse',
+    tone: 'pink',
+    description: 'Taxa de cliques sobre impressões.',
+  },
+  totalConversions: {
+    label: 'Conversões totais',
+    type: 'number',
+    icon: 'bx-line-chart',
+    tone: 'gold',
+    description: 'Compras, leads e mensagens somadas.',
+  },
   reach: {
     label: 'Alcance',
     type: 'number',
@@ -362,6 +404,132 @@ const META_TEMPLATE_METRIC_OPTIONS = {
 }
 
 const RD_TEMPLATE_METRIC_OPTIONS = {
+  opportunityCount: {
+    label: 'Oportunidades',
+    type: 'number',
+    icon: 'bx-bulb',
+    tone: 'blue',
+    description: 'Leads da safra criada no período que viraram oportunidade.',
+  },
+  qualifiedOpportunityCount: {
+    label: 'Qualificados',
+    type: 'number',
+    icon: 'bx-filter-alt',
+    tone: 'emerald',
+    description: 'Oportunidades que passaram pelas etapas qualificadas.',
+  },
+  wonOpportunityCount: {
+    label: 'Vendas da safra criada e fechada no período',
+    type: 'number',
+    icon: 'bx-badge-check',
+    tone: 'emerald',
+    description: 'Leads criados no período e vendidos dentro do mesmo período.',
+  },
+  wonOpportunityRevenue: {
+    label: 'Faturamento da safra criada e fechada',
+    type: 'currency',
+    icon: 'bx-wallet-alt',
+    tone: 'orange',
+    description: 'Receita da safra criada e convertida dentro do período.',
+  },
+  avgTicketWonByCreation: {
+    label: 'Ticket médio da safra criada e fechada',
+    type: 'currency',
+    icon: 'bx-receipt',
+    tone: 'gold',
+    description: 'Ticket médio das vendas da safra criada no período.',
+  },
+  leadToQualifiedRate: {
+    label: 'Taxa de oportunidade para qualificados',
+    type: 'percent',
+    icon: 'bx-transfer-alt',
+    tone: 'cyan',
+    description: 'Conversão da oportunidade em qualificação.',
+  },
+  qualifiedToWonRate: {
+    label: 'Taxa de qualificados para venda',
+    type: 'percent',
+    icon: 'bx-badge-check',
+    tone: 'emerald',
+    description: 'Conversão dos qualificados em venda.',
+  },
+  leadToWonRate: {
+    label: 'Taxa de oportunidade para venda',
+    type: 'percent',
+    icon: 'bx-line-chart',
+    tone: 'blue',
+    description: 'Conversão da safra criada em venda.',
+  },
+  lostOpportunityCount: {
+    label: 'Negócios perdidos',
+    type: 'number',
+    icon: 'bx-x-circle',
+    tone: 'pink',
+    description: 'Oportunidades perdidas dentro da leitura da safra.',
+  },
+  wonDeals: {
+    label: 'Negociações ganhas fechadas no período',
+    type: 'number',
+    icon: 'bx-calendar-check',
+    tone: 'emerald',
+    description: 'Negociações ganhas com fechamento no período selecionado.',
+  },
+  wonDealsFromPreviousCohorts: {
+    label: 'Negociações ganhas de safras anteriores',
+    type: 'number',
+    icon: 'bx-history',
+    tone: 'blue',
+    description: 'Negociações fechadas no período de leads criados antes do intervalo.',
+  },
+  wonRevenue: {
+    label: 'Faturamento das negociações fechadas',
+    type: 'currency',
+    icon: 'bx-wallet-alt',
+    tone: 'orange',
+    description: 'Receita total das negociações ganhas fechadas no período.',
+  },
+  avgTicketWon: {
+    label: 'Ticket médio das negociações fechadas',
+    type: 'currency',
+    icon: 'bx-receipt',
+    tone: 'gold',
+    description: 'Ticket médio das negociações ganhas no período.',
+  },
+  wonRevenueFromPreviousCohorts: {
+    label: 'Faturamento de safras anteriores fechadas',
+    type: 'currency',
+    icon: 'bx-coin-stack',
+    tone: 'orange',
+    description: 'Receita das negociações de leads de safras anteriores.',
+  },
+  avgTicketWonPreviousCohorts: {
+    label: 'Ticket médio de safras anteriores fechadas',
+    type: 'currency',
+    icon: 'bx-spreadsheet',
+    tone: 'gold',
+    description: 'Ticket médio das negociações de safras anteriores.',
+  },
+  rdFinalSalesCount: {
+    label: 'Vendas totais do resultado final',
+    type: 'number',
+    icon: 'bx-trophy',
+    tone: 'emerald',
+    description: 'Soma de vendas da safra com vendas de safras anteriores no período.',
+  },
+  rdFinalRevenue: {
+    label: 'Faturamento total do resultado final',
+    type: 'currency',
+    icon: 'bx-wallet-alt',
+    tone: 'orange',
+    description: 'Receita final consolidada da leitura comercial.',
+  },
+  rdFinalAvgTicket: {
+    label: 'Ticket médio do resultado final',
+    type: 'currency',
+    icon: 'bx-receipt',
+    tone: 'gold',
+    description: 'Ticket médio do consolidado final do período.',
+  },
   contacts: {
     label: 'Leads totais',
     type: 'number',
@@ -548,11 +716,47 @@ function haveSameSelection(left = [], right = []) {
   return right.every((item) => leftSet.has(item))
 }
 
+function normalizeDashboardMetricLayouts(layouts = []) {
+  if (!Array.isArray(layouts)) return []
+
+  return layouts
+    .filter((item) => typeof item?.metricKey === 'string' && item.metricKey.trim())
+    .map((item, index) => ({
+      id: item?.id || `dashboard-card-${item.metricKey}-${index}`,
+      metricKey: item.metricKey,
+      size: item?.size === 'lg' ? 'lg' : 'sm',
+    }))
+}
+
+function cloneDashboardMetricLayouts(layouts = []) {
+  return normalizeDashboardMetricLayouts(layouts).map((item) => ({ ...item }))
+}
+
+function haveSameDashboardMetricLayouts(left = [], right = []) {
+  const normalizedLeft = normalizeDashboardMetricLayouts(left)
+  const normalizedRight = normalizeDashboardMetricLayouts(right)
+
+  if (normalizedLeft.length !== normalizedRight.length) return false
+
+  return normalizedLeft.every((leftItem, index) => {
+    const rightItem = normalizedRight[index]
+    if (!rightItem) return false
+
+    return (
+      leftItem.id === rightItem.id &&
+      leftItem.metricKey === rightItem.metricKey &&
+      leftItem.size === rightItem.size
+    )
+  })
+}
+
 function cloneDashboardTemplates(templates = []) {
   return templates.map((template) => ({
     ...template,
     metaMetricKeys: Array.isArray(template?.metaMetricKeys) ? [...template.metaMetricKeys] : [],
     rdMetricKeys: Array.isArray(template?.rdMetricKeys) ? [...template.rdMetricKeys] : [],
+    metaMetricLayouts: cloneDashboardMetricLayouts(template?.metaMetricLayouts),
+    rdMetricLayouts: cloneDashboardMetricLayouts(template?.rdMetricLayouts),
   }))
 }
 
@@ -566,8 +770,8 @@ function haveSameDashboardTemplates(left = [], right = []) {
     return (
       leftTemplate.id === rightTemplate.id &&
       leftTemplate.name === rightTemplate.name &&
-      haveSameSelection(leftTemplate.metaMetricKeys || [], rightTemplate.metaMetricKeys || []) &&
-      haveSameSelection(leftTemplate.rdMetricKeys || [], rightTemplate.rdMetricKeys || [])
+      haveSameDashboardMetricLayouts(leftTemplate.metaMetricLayouts || [], rightTemplate.metaMetricLayouts || []) &&
+      haveSameDashboardMetricLayouts(leftTemplate.rdMetricLayouts || [], rightTemplate.rdMetricLayouts || [])
     )
   })
 }
@@ -721,6 +925,7 @@ export default function DashboardPage() {
   const [errorMessage, setErrorMessage] = useState('')
   const [dragMetricKey, setDragMetricKey] = useState('')
   const [dragSourceIndex, setDragSourceIndex] = useState(null)
+  const [dashboardMetricDragState, setDashboardMetricDragState] = useState(null)
   const [rdPipelineFilter, setRdPipelineFilter] = useState('')
   const [draftRdPipelineFilter, setDraftRdPipelineFilter] = useState('')
   const [rdSellerFilter, setRdSellerFilter] = useState('all')
@@ -846,21 +1051,13 @@ export default function DashboardPage() {
     [rdPipelineStages, rdSummary]
   )
   const activeDashboardTemplateId = activeDashboardTemplate?.id || activeDashboardTemplates[0]?.id || ''
-  const activeMetaDashboardMetricKeys = useMemo(
-    () => (Array.isArray(activeDashboardTemplate?.metaMetricKeys) ? activeDashboardTemplate.metaMetricKeys : []),
-    [activeDashboardTemplate]
-  )
-  const activeRdDashboardMetricKeys = useMemo(
-    () => (Array.isArray(activeDashboardTemplate?.rdMetricKeys) ? activeDashboardTemplate.rdMetricKeys : []),
-    [activeDashboardTemplate]
-  )
   const activeDraftDashboardTemplateId = activeDraftDashboardTemplate?.id || activeDraftDashboardTemplates[0]?.id || ''
-  const draftMetaDashboardMetricKeys = useMemo(
-    () => (Array.isArray(activeDraftDashboardTemplate?.metaMetricKeys) ? activeDraftDashboardTemplate.metaMetricKeys : []),
+  const draftMetaDashboardMetricLayouts = useMemo(
+    () => normalizeDashboardMetricLayouts(activeDraftDashboardTemplate?.metaMetricLayouts),
     [activeDraftDashboardTemplate]
   )
-  const draftRdDashboardMetricKeys = useMemo(
-    () => (Array.isArray(activeDraftDashboardTemplate?.rdMetricKeys) ? activeDraftDashboardTemplate.rdMetricKeys : []),
+  const draftRdDashboardMetricLayouts = useMemo(
+    () => normalizeDashboardMetricLayouts(activeDraftDashboardTemplate?.rdMetricLayouts),
     [activeDraftDashboardTemplate]
   )
   const activeFunnelSteps = useMemo(
@@ -1528,8 +1725,8 @@ export default function DashboardPage() {
 
     const newTemplate = createDashboardTemplate({
       name: trimmedName,
-      metaMetricKeys: draftMetaDashboardMetricKeys,
-      rdMetricKeys: draftRdDashboardMetricKeys,
+      metaMetricLayouts: cloneDashboardMetricLayouts(draftMetaDashboardMetricLayouts),
+      rdMetricLayouts: cloneDashboardMetricLayouts(draftRdDashboardMetricLayouts),
     })
 
     setDraftDashboardTemplates((currentTemplates) => [...currentTemplates, newTemplate])
@@ -1541,29 +1738,93 @@ export default function DashboardPage() {
   const handleAddMetaDashboardMetric = (metricKey) => {
     updateDraftDashboardTemplate((template) => ({
       ...template,
-      metaMetricKeys: Array.from(new Set([...(template.metaMetricKeys || []), metricKey])),
+      metaMetricLayouts: [
+        ...normalizeDashboardMetricLayouts(template.metaMetricLayouts),
+        {
+          id: globalThis.crypto?.randomUUID?.() || `dashboard-card-${metricKey}-${Date.now()}`,
+          metricKey,
+          size: 'sm',
+        },
+      ],
     }))
   }
 
-  const handleRemoveMetaDashboardMetric = (metricKey) => {
+  const handleRemoveMetaDashboardMetric = (layoutId) => {
     updateDraftDashboardTemplate((template) => ({
       ...template,
-      metaMetricKeys: (template.metaMetricKeys || []).filter((item) => item !== metricKey),
+      metaMetricLayouts: normalizeDashboardMetricLayouts(template.metaMetricLayouts).filter((item) => item.id !== layoutId),
     }))
   }
 
   const handleAddRdDashboardMetric = (metricKey) => {
     updateDraftDashboardTemplate((template) => ({
       ...template,
-      rdMetricKeys: Array.from(new Set([...(template.rdMetricKeys || []), metricKey])),
+      rdMetricLayouts: [
+        ...normalizeDashboardMetricLayouts(template.rdMetricLayouts),
+        {
+          id: globalThis.crypto?.randomUUID?.() || `dashboard-card-${metricKey}-${Date.now()}`,
+          metricKey,
+          size: 'sm',
+        },
+      ],
     }))
   }
 
-  const handleRemoveRdDashboardMetric = (metricKey) => {
+  const handleRemoveRdDashboardMetric = (layoutId) => {
     updateDraftDashboardTemplate((template) => ({
       ...template,
-      rdMetricKeys: (template.rdMetricKeys || []).filter((item) => item !== metricKey),
+      rdMetricLayouts: normalizeDashboardMetricLayouts(template.rdMetricLayouts).filter((item) => item.id !== layoutId),
     }))
+  }
+
+  const handleDashboardMetricSizeToggle = (source, layoutId) => {
+    const fieldName = source === 'meta' ? 'metaMetricLayouts' : 'rdMetricLayouts'
+
+    updateDraftDashboardTemplate((template) => ({
+      ...template,
+      [fieldName]: normalizeDashboardMetricLayouts(template[fieldName]).map((item) =>
+        item.id === layoutId
+          ? {
+              ...item,
+              size: item.size === 'lg' ? 'sm' : 'lg',
+            }
+          : item
+      ),
+    }))
+  }
+
+  const handleDashboardMetricDragStart = (source, layoutId) => {
+    setDashboardMetricDragState({ source, layoutId })
+  }
+
+  const handleDashboardMetricDrop = (source, targetLayoutId) => {
+    if (!dashboardMetricDragState || dashboardMetricDragState.source !== source) return
+    if (dashboardMetricDragState.layoutId === targetLayoutId) return
+
+    const fieldName = source === 'meta' ? 'metaMetricLayouts' : 'rdMetricLayouts'
+
+    updateDraftDashboardTemplate((template) => {
+      const currentLayouts = normalizeDashboardMetricLayouts(template[fieldName])
+      const sourceIndex = currentLayouts.findIndex((item) => item.id === dashboardMetricDragState.layoutId)
+      const targetIndex = currentLayouts.findIndex((item) => item.id === targetLayoutId)
+
+      if (sourceIndex === -1 || targetIndex === -1) return template
+
+      const nextLayouts = [...currentLayouts]
+      const [movedItem] = nextLayouts.splice(sourceIndex, 1)
+      nextLayouts.splice(targetIndex, 0, movedItem)
+
+      return {
+        ...template,
+        [fieldName]: nextLayouts,
+      }
+    })
+
+    setDashboardMetricDragState(null)
+  }
+
+  const handleDashboardMetricDragEnd = () => {
+    setDashboardMetricDragState(null)
   }
 
   const handleCreateClient = (event) => {
@@ -2942,68 +3203,6 @@ export default function DashboardPage() {
     [activeDraftFunnelSteps, insights, customMetrics]
   )
 
-  const mediaKpis = [
-    { title: 'Investimento', value: formatCurrency(spend), icon: 'bx-wallet', tone: 'blue' },
-    { title: 'Impressões', value: formatNumber(impressions), icon: 'bx-show', tone: 'purple' },
-    { title: 'Cliques', value: formatNumber(clicks), icon: 'bx-pointer', tone: 'cyan' },
-    { title: 'CPC', value: formatCurrency(cpc), icon: 'bx-purchase-tag', tone: 'orange' },
-    { title: 'CTR', value: formatPercent(ctr), icon: 'bx-mouse', tone: 'pink' },
-    { title: 'Conversões totais', value: formatNumber(totalConversions), icon: 'bx-line-chart', tone: 'gold' },
-  ]
-
-  const conversionGroups = [
-    purchases > 0 && {
-      title: 'Compras',
-      subtitle: 'Resultado de vendas atribuídas no período',
-      icon: 'bx-cart',
-      tone: 'emerald',
-      stats: [
-        { label: 'Compras', value: formatNumber(purchases) },
-        { label: 'Custo por compra', value: formatCurrency(costPerPurchase) },
-        { label: 'ROAS', value: formatMultiplier(roas) },
-      ],
-    },
-    leads > 0 && {
-      title: 'Cadastros',
-      subtitle: 'Leads captados ao longo do período',
-      icon: 'bx-user-plus',
-      tone: 'cyan',
-      stats: [
-        { label: 'Cadastros', value: formatNumber(leads) },
-        { label: 'Custo por cadastro', value: formatCurrency(costPerLead) },
-      ],
-    },
-    messages > 0 && {
-      title: 'Mensagens iniciadas',
-      subtitle: 'Conversas iniciadas em canais de mensagem',
-      icon: 'bx-chat',
-      tone: 'blue',
-      stats: [
-        { label: 'Mensagens iniciadas', value: formatNumber(messages) },
-        { label: 'Custo por mensagem iniciada', value: formatCurrency(costPerMessage) },
-      ],
-    },
-  ].filter(Boolean)
-
-  const rdQualificationKpis = [
-    { title: 'Oportunidades', value: formatNumber(rdSummary?.opportunityCount || 0), icon: 'bx-bulb', tone: 'blue' },
-    { title: 'Qualificados', value: formatNumber(rdSummary?.qualifiedOpportunityCount || 0), icon: 'bx-filter-alt', tone: 'emerald' },
-    { title: 'Vendas da safra criada e fechada no período', value: formatNumber(rdSummary?.wonOpportunityCount || 0), icon: 'bx-badge-check', tone: 'emerald' },
-    { title: 'Faturamento da safra criada e fechada', value: formatCurrency(rdSummary?.wonOpportunityRevenue || 0), icon: 'bx-wallet-alt', tone: 'orange' },
-    { title: 'Ticket médio da safra criada e fechada', value: formatCurrency(rdSummary?.avgTicketWonByCreation || 0), icon: 'bx-receipt', tone: 'gold' },
-    { title: 'Taxa de oportunidade para qualificados', value: formatPercent(rdSummary?.leadToQualifiedRate || 0), icon: 'bx-transfer-alt', tone: 'cyan' },
-    { title: 'Taxa de qualificados para venda', value: formatPercent(rdSummary?.qualifiedToWonRate || 0), icon: 'bx-badge-check', tone: 'emerald' },
-    { title: 'Taxa de oportunidade para venda', value: formatPercent(rdSummary?.leadToWonRate || 0), icon: 'bx-line-chart', tone: 'blue' },
-    { title: 'Negócios perdidos', value: formatNumber(rdSummary?.lostOpportunityCount || 0), icon: 'bx-x-circle', tone: 'pink' },
-  ]
-  const rdRevenueKpis = [
-    { title: 'Negociações ganhas fechadas no período', value: formatNumber(rdSummary?.wonDeals || 0), icon: 'bx-calendar-check', tone: 'emerald' },
-    { title: 'Negociações ganhas de safras anteriores', value: formatNumber(rdSummary?.wonDealsFromPreviousCohorts || 0), icon: 'bx-history', tone: 'blue' },
-    { title: 'Faturamento das negociações fechadas', value: formatCurrency(rdSummary?.wonRevenue || 0), icon: 'bx-wallet-alt', tone: 'orange' },
-    { title: 'Ticket médio das negociações fechadas', value: formatCurrency(rdSummary?.avgTicketWon || 0), icon: 'bx-receipt', tone: 'gold' },
-    { title: 'Faturamento de safras anteriores fechadas', value: formatCurrency(rdSummary?.wonRevenueFromPreviousCohorts || 0), icon: 'bx-coin-stack', tone: 'orange' },
-    { title: 'Ticket médio de safras anteriores fechadas', value: formatCurrency(rdSummary?.avgTicketWonPreviousCohorts || 0), icon: 'bx-spreadsheet', tone: 'gold' },
-  ]
   const rdDiagnosticsSummary = useMemo(() => {
     if (!rdSummary?.diagnostics) return 'Aguardando leitura técnica das negociações do RD.'
 
@@ -3028,11 +3227,6 @@ export default function DashboardPage() {
   const rdFinalSalesCount = (rdSummary?.wonOpportunityCount || 0) + (rdSummary?.wonDealsFromPreviousCohorts || 0)
   const rdFinalRevenue = (rdSummary?.wonOpportunityRevenue || 0) + (rdSummary?.wonRevenueFromPreviousCohorts || 0)
   const rdFinalAvgTicket = rdFinalSalesCount > 0 ? rdFinalRevenue / rdFinalSalesCount : 0
-  const rdFinalKpis = [
-    { title: 'Vendas totais do resultado final', value: formatNumber(rdFinalSalesCount), icon: 'bx-trophy', tone: 'emerald' },
-    { title: 'Faturamento total do resultado final', value: formatCurrency(rdFinalRevenue), icon: 'bx-wallet-alt', tone: 'orange' },
-    { title: 'Ticket médio do resultado final', value: formatCurrency(rdFinalAvgTicket), icon: 'bx-receipt', tone: 'gold' },
-  ]
   const metaGeoRankingTitle = breakdowns.geoScope === 'country'
     ? 'Top 5 por países'
     : breakdowns.geoScope === 'region'
@@ -3045,6 +3239,12 @@ export default function DashboardPage() {
       : 'Ranking com base nas conversões da conta Meta do cliente.'
   const metaDashboardMetricValues = useMemo(
     () => ({
+      spend,
+      impressions,
+      clicks,
+      cpc,
+      ctr,
+      totalConversions,
       reach,
       cpm,
       frequency,
@@ -3060,33 +3260,53 @@ export default function DashboardPage() {
       clicksWithoutConversion: Math.max(clicks - totalConversions, 0),
       roas,
     }),
-    [reach, cpm, frequency, conversionRate, averageTicket, purchaseValue, purchases, costPerPurchase, leads, costPerLead, messages, costPerMessage, clicks, totalConversions, roas]
+    [spend, impressions, clicks, cpc, ctr, totalConversions, reach, cpm, frequency, conversionRate, averageTicket, purchaseValue, purchases, costPerPurchase, leads, costPerLead, messages, costPerMessage, roas]
   )
   const metaDashboardMetricCards = useMemo(
     () =>
-      draftMetaDashboardMetricKeys
-        .map((metricKey) => {
-          const metric = META_TEMPLATE_METRIC_OPTIONS[metricKey]
+      draftMetaDashboardMetricLayouts
+        .map((layoutItem) => {
+          const metric = META_TEMPLATE_METRIC_OPTIONS[layoutItem.metricKey]
           if (!metric) return null
 
           return {
-            key: metricKey,
+            id: layoutItem.id,
+            key: layoutItem.metricKey,
+            size: layoutItem.size,
             title: metric.label,
             description: metric.description,
             icon: metric.icon,
             tone: metric.tone,
-            value: formatDashboardMetricValue(metaDashboardMetricValues[metricKey], metric.type),
+            value: formatDashboardMetricValue(metaDashboardMetricValues[layoutItem.metricKey], metric.type),
           }
         })
         .filter(Boolean),
-    [draftMetaDashboardMetricKeys, metaDashboardMetricValues]
+    [draftMetaDashboardMetricLayouts, metaDashboardMetricValues]
   )
   const availableMetaDashboardMetricOptions = useMemo(
-    () => Object.entries(META_TEMPLATE_METRIC_OPTIONS).filter(([metricKey]) => !draftMetaDashboardMetricKeys.includes(metricKey)),
-    [draftMetaDashboardMetricKeys]
+    () => Object.entries(META_TEMPLATE_METRIC_OPTIONS).filter(([metricKey]) => !draftMetaDashboardMetricLayouts.some((item) => item.metricKey === metricKey)),
+    [draftMetaDashboardMetricLayouts]
   )
   const rdDashboardMetricValues = useMemo(
     () => ({
+      opportunityCount: rdSummary?.opportunityCount || 0,
+      qualifiedOpportunityCount: rdSummary?.qualifiedOpportunityCount || 0,
+      wonOpportunityCount: rdSummary?.wonOpportunityCount || 0,
+      wonOpportunityRevenue: rdSummary?.wonOpportunityRevenue || 0,
+      avgTicketWonByCreation: rdSummary?.avgTicketWonByCreation || 0,
+      leadToQualifiedRate: rdSummary?.leadToQualifiedRate || 0,
+      qualifiedToWonRate: rdSummary?.qualifiedToWonRate || 0,
+      leadToWonRate: rdSummary?.leadToWonRate || 0,
+      lostOpportunityCount: rdSummary?.lostOpportunityCount || 0,
+      wonDeals: rdSummary?.wonDeals || 0,
+      wonDealsFromPreviousCohorts: rdSummary?.wonDealsFromPreviousCohorts || 0,
+      wonRevenue: rdSummary?.wonRevenue || 0,
+      avgTicketWon: rdSummary?.avgTicketWon || 0,
+      wonRevenueFromPreviousCohorts: rdSummary?.wonRevenueFromPreviousCohorts || 0,
+      avgTicketWonPreviousCohorts: rdSummary?.avgTicketWonPreviousCohorts || 0,
+      rdFinalSalesCount,
+      rdFinalRevenue,
+      rdFinalAvgTicket,
       contacts: rdSummary?.contacts || 0,
       contactsInPeriod: rdSummary?.contactsInPeriod || 0,
       contactsMoved: rdSummary?.contactsMoved || 0,
@@ -3104,33 +3324,94 @@ export default function DashboardPage() {
       contactsWithWonDeals: rdSummary?.contactsWithWonDeals || 0,
       lostContacts: rdSummary?.lostContacts || 0,
     }),
-    [rdSummary]
+    [rdSummary, rdFinalSalesCount, rdFinalRevenue, rdFinalAvgTicket]
   )
   const rdDashboardMetricCards = useMemo(
     () =>
-      draftRdDashboardMetricKeys
-        .map((metricKey) => {
-          const metric = RD_TEMPLATE_METRIC_OPTIONS[metricKey]
+      draftRdDashboardMetricLayouts
+        .map((layoutItem) => {
+          const metric = RD_TEMPLATE_METRIC_OPTIONS[layoutItem.metricKey]
           if (!metric) return null
 
           return {
-            key: metricKey,
+            id: layoutItem.id,
+            key: layoutItem.metricKey,
+            size: layoutItem.size,
             title: metric.label,
             description: metric.description,
             icon: metric.icon,
             tone: metric.tone,
-            value: formatDashboardMetricValue(rdDashboardMetricValues[metricKey], metric.type),
+            value: formatDashboardMetricValue(rdDashboardMetricValues[layoutItem.metricKey], metric.type),
           }
         })
         .filter(Boolean),
-    [draftRdDashboardMetricKeys, rdDashboardMetricValues]
+    [draftRdDashboardMetricLayouts, rdDashboardMetricValues]
   )
   const availableRdDashboardMetricOptions = useMemo(
-    () => Object.entries(RD_TEMPLATE_METRIC_OPTIONS).filter(([metricKey]) => !draftRdDashboardMetricKeys.includes(metricKey)),
-    [draftRdDashboardMetricKeys]
+    () => Object.entries(RD_TEMPLATE_METRIC_OPTIONS).filter(([metricKey]) => !draftRdDashboardMetricLayouts.some((item) => item.metricKey === metricKey)),
+    [draftRdDashboardMetricLayouts]
   )
   const userAvatarFallback = `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.user_metadata?.full_name || user?.email || 'Usuario')}&background=0D8ABC&color=fff`
   const userAvatarSrc = user?.user_metadata?.avatar_url || userAvatarFallback
+
+  const renderDashboardMetricGrid = (cards, source) => {
+    if (!cards.length) return null
+
+    return (
+      <div className="dashboard-metrics-grid">
+        {cards.map((metric) => (
+          <div
+            key={metric.id}
+            className={`kpi-card glass-panel template-metric-card dashboard-metric-card dashboard-metric-card-${metric.size}`}
+            draggable
+            onDragStart={() => handleDashboardMetricDragStart(source, metric.id)}
+            onDragOver={(event) => event.preventDefault()}
+            onDrop={() => handleDashboardMetricDrop(source, metric.id)}
+            onDragEnd={handleDashboardMetricDragEnd}
+          >
+            <div className="kpi-header">
+              <span className="kpi-title">{metric.title}</span>
+              <div className="template-metric-actions">
+                <button
+                  type="button"
+                  className="dashboard-metric-handle"
+                  aria-label={`Mover ${metric.title}`}
+                  title="Arraste para reposicionar"
+                >
+                  <i className="bx bx-move"></i>
+                </button>
+                <button
+                  type="button"
+                  className="dashboard-metric-size"
+                  onClick={() => handleDashboardMetricSizeToggle(source, metric.id)}
+                  aria-label={`Alterar tamanho de ${metric.title}`}
+                  title={metric.size === 'lg' ? 'Voltar para tamanho compacto' : 'Expandir card'}
+                >
+                  <i className={`bx ${metric.size === 'lg' ? 'bx-collapse-alt' : 'bx-expand-alt'}`}></i>
+                </button>
+                <div className={`icon-box ${metric.tone}`}>
+                  <i className={`bx ${metric.icon}`}></i>
+                </div>
+                <button
+                  type="button"
+                  className="template-metric-remove"
+                  onClick={() => (source === 'meta' ? handleRemoveMetaDashboardMetric(metric.id) : handleRemoveRdDashboardMetric(metric.id))}
+                  aria-label={`Remover ${metric.title}`}
+                >
+                  <i className="bx bx-x"></i>
+                </button>
+              </div>
+            </div>
+            <div className="kpi-value">{metric.value}</div>
+            <div className="kpi-trend neutral">
+              <i className="bx bx-check-circle"></i>
+              <span>{metric.description}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    )
+  }
 
   if (userLoading || !hasLoadedPreferences) {
     return <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', color: 'white' }}>Carregando painel...</div>
@@ -4374,115 +4655,35 @@ export default function DashboardPage() {
                     )}
                   </div>
 
-                  {(metaDashboardMetricCards.length > 0 || isMetaMetricLibraryOpen) && (
-                    <div className="template-metrics-shell">
-                      {metaDashboardMetricCards.length > 0 && (
-                        <div className="kpi-grid compact-kpi-grid template-metrics-grid">
-                          {metaDashboardMetricCards.map((metric) => (
-                            <div key={metric.key} className="kpi-card glass-panel template-metric-card">
-                              <div className="kpi-header">
-                                <span className="kpi-title">{metric.title}</span>
-                                <div className="template-metric-actions">
-                                  <div className={`icon-box ${metric.tone}`}>
-                                    <i className={`bx ${metric.icon}`}></i>
-                                  </div>
-                                  <button
-                                    type="button"
-                                    className="template-metric-remove"
-                                    onClick={() => handleRemoveMetaDashboardMetric(metric.key)}
-                                    aria-label={`Remover ${metric.title}`}
-                                  >
-                                    <i className="bx bx-x"></i>
-                                  </button>
-                                </div>
-                              </div>
-                              <div className="kpi-value">{metric.value}</div>
-                              <div className="kpi-trend neutral">
-                                <i className="bx bx-check-circle"></i>
-                                <span>{metric.description}</span>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
+                  <div className="template-metrics-shell">
+                    {renderDashboardMetricGrid(metaDashboardMetricCards, 'meta')}
 
-                      {isMetaMetricLibraryOpen && (
-                        <div className="metric-library-panel glass-item">
-                          <div>
-                            <strong>Métricas Meta disponíveis</strong>
-                            <p>Essas métricas já vêm da API e podem entrar neste modelo do dashboard.</p>
-                          </div>
-                          <div className="metric-library-list">
-                            {availableMetaDashboardMetricOptions.length > 0 ? (
-                              availableMetaDashboardMetricOptions.map(([metricKey, metric]) => (
-                                <button
-                                  key={metricKey}
-                                  type="button"
-                                  className="metric-library-chip"
-                                  onClick={() => handleAddMetaDashboardMetric(metricKey)}
-                                >
-                                  <span>{metric.label}</span>
-                                  <small>{metric.description}</small>
-                                </button>
-                              ))
-                            ) : (
-                              <div className="metric-library-empty">Todas as métricas da Meta já estão visíveis neste modelo.</div>
-                            )}
-                          </div>
+                    {isMetaMetricLibraryOpen && (
+                      <div className="metric-library-panel glass-item">
+                        <div>
+                          <strong>Métricas Meta disponíveis</strong>
+                          <p>Arraste para reposicionar, altere o tamanho de cada card e monte o layout do jeito que quiser.</p>
                         </div>
-                      )}
-                    </div>
-                  )}
-
-                  <div className="result-group">
-                    <div className="result-group-head">
-                      <h3>Mídia e distribuição</h3>
-                      <p>Visão geral do investimento e da entrega da campanha.</p>
-                    </div>
-                    <div className="kpi-grid compact-kpi-grid">
-                      {mediaKpis.map((kpi) => (
-                        <div key={kpi.title} className="kpi-card glass-panel">
-                          <div className="kpi-header">
-                            <span className="kpi-title">{kpi.title}</span>
-                            <div className={`icon-box ${kpi.tone}`}>
-                              <i className={`bx ${kpi.icon}`}></i>
-                            </div>
-                          </div>
-                          <div className="kpi-value">{kpi.value}</div>
-                          <div className="kpi-trend neutral">
-                            <i className="bx bx-check-circle"></i>
-                            <span>Atualizado conforme o período selecionado</span>
-                          </div>
+                        <div className="metric-library-list">
+                          {availableMetaDashboardMetricOptions.length > 0 ? (
+                            availableMetaDashboardMetricOptions.map(([metricKey, metric]) => (
+                              <button
+                                key={metricKey}
+                                type="button"
+                                className="metric-library-chip"
+                                onClick={() => handleAddMetaDashboardMetric(metricKey)}
+                              >
+                                <span>{metric.label}</span>
+                                <small>{metric.description}</small>
+                              </button>
+                            ))
+                          ) : (
+                            <div className="metric-library-empty">Todas as métricas da Meta já estão visíveis neste modelo.</div>
+                          )}
                         </div>
-                      ))}
-                    </div>
+                      </div>
+                    )}
                   </div>
-
-                  {conversionGroups.length > 0 && (
-                    <div className="conversion-groups-grid">
-                      {conversionGroups.map((group) => (
-                        <div key={group.title} className="glass-panel conversion-group-card">
-                          <div className="conversion-group-head">
-                            <div className={`icon-box ${group.tone}`}>
-                              <i className={`bx ${group.icon}`}></i>
-                            </div>
-                            <div>
-                              <h3>{group.title}</h3>
-                              <p>{group.subtitle}</p>
-                            </div>
-                          </div>
-                          <div className="conversion-stats">
-                            {group.stats.map((stat) => (
-                              <div key={stat.label} className="conversion-stat">
-                                <span>{stat.label}</span>
-                                <strong>{stat.value}</strong>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
 
                 </section>
 
@@ -4820,213 +5021,139 @@ export default function DashboardPage() {
                         )}
                       </div>
 
-                      {(rdDashboardMetricCards.length > 0 || isRdMetricLibraryOpen) && (
-                        <div className="template-metrics-shell">
-                          {rdDashboardMetricCards.length > 0 && (
-                            <div className="kpi-grid compact-kpi-grid template-metrics-grid">
-                              {rdDashboardMetricCards.map((metric) => (
-                                <div key={metric.key} className="kpi-card glass-panel template-metric-card">
-                                  <div className="kpi-header">
-                                    <span className="kpi-title">{metric.title}</span>
-                                    <div className="template-metric-actions">
-                                      <div className={`icon-box ${metric.tone}`}>
-                                        <i className={`bx ${metric.icon}`}></i>
-                                      </div>
-                                      <button
-                                        type="button"
-                                        className="template-metric-remove"
-                                        onClick={() => handleRemoveRdDashboardMetric(metric.key)}
-                                        aria-label={`Remover ${metric.title}`}
-                                      >
-                                        <i className="bx bx-x"></i>
-                                      </button>
-                                    </div>
-                                  </div>
-                                  <div className="kpi-value">{metric.value}</div>
-                                  <div className="kpi-trend neutral">
-                                    <i className="bx bx-check-circle"></i>
-                                    <span>{metric.description}</span>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-
-                          {isRdMetricLibraryOpen && (
-                            <div className="metric-library-panel glass-item">
+                      <div className="template-metrics-shell">
+                        {!!rdSummary?.availableSources?.length && (
+                          <div className="meta-campaign-filter-collapsible rd-source-filter-collapsible">
+                            <button
+                              type="button"
+                              className={`meta-campaign-filter-trigger ${isRdSourceFilterOpen ? 'open' : ''}`}
+                              onClick={() => setIsRdSourceFilterOpen((current) => !current)}
+                            >
                               <div>
-                                <strong>Métricas RD disponíveis</strong>
-                                <p>Essas métricas já estão na leitura do CRM e podem entrar no modelo atual.</p>
+                                <h3>Filtrar por origem</h3>
+                                <p>{rdLeadSourceFilterSummary}</p>
                               </div>
-                              <div className="metric-library-list">
-                                {availableRdDashboardMetricOptions.length > 0 ? (
-                                  availableRdDashboardMetricOptions.map(([metricKey, metric]) => (
-                                    <button
-                                      key={metricKey}
-                                      type="button"
-                                      className="metric-library-chip"
-                                      onClick={() => handleAddRdDashboardMetric(metricKey)}
-                                    >
-                                      <span>{metric.label}</span>
-                                      <small>{metric.description}</small>
-                                    </button>
-                                  ))
-                                ) : (
-                                  <div className="metric-library-empty">Todas as métricas do RD já estão visíveis neste modelo.</div>
-                                )}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      )}
-
-                      <div className="crm-groups-grid">
-                        {[
-                          {
-                            title: 'Qualificação e conversão',
-                            description: 'Leitura da safra criada no período selecionado: oportunidades, qualificação, perdas e vendas da mesma base que entrou e fechou dentro do período.',
-                            kpis: rdQualificationKpis,
-                            withSourceFilter: true,
-                          },
-                          {
-                            title: 'Fechamento e receita',
-                            description: 'Leitura por data de fechamento de todas as negociações ganhas no período, incluindo safras criadas antes do intervalo selecionado.',
-                            kpis: rdRevenueKpis,
-                            showDiagnostics: true,
-                          },
-                          {
-                            title: 'Resultado final',
-                            description: 'Consolidado final somando vendas da safra criada no período com vendas de safras anteriores fechadas dentro do período selecionado.',
-                            kpis: rdFinalKpis,
-                          },
-                        ].map((group) => (
-                          <div key={group.title} className="result-group crm-result-group">
-                            <div className="result-group-head">
-                              <h3>{group.title}</h3>
-                              <p>{group.description}</p>
-                            </div>
-                            {group.withSourceFilter && !!rdSummary?.availableSources?.length && (
-                              <div className="meta-campaign-filter-collapsible rd-source-filter-collapsible">
-                                <button
-                                  type="button"
-                                  className={`meta-campaign-filter-trigger ${isRdSourceFilterOpen ? 'open' : ''}`}
-                                  onClick={() => setIsRdSourceFilterOpen((current) => !current)}
-                                >
-                                  <div>
-                                    <h3>Filtrar por origem</h3>
-                                    <p>{rdLeadSourceFilterSummary}</p>
-                                  </div>
-                                  <span className="meta-campaign-filter-trigger-icon">
-                                    <i className={`bx ${isRdSourceFilterOpen ? 'bx-chevron-up' : 'bx-chevron-down'}`}></i>
-                                  </span>
-                                </button>
-                                {isRdSourceFilterOpen && (
-                                  <div className="rd-source-filter-bar rd-source-filter-inline">
-                                    <div>
-                                      <p>Selecione as origens e UTMs que quer considerar na base das oportunidades, qualificação e conversão.</p>
-                                    </div>
-                                    <div className="rd-source-list">
-                                      {rdSummary.availableSources.map((source) => (
-                                        <label
-                                          key={source}
-                                          className={`result-filter-chip rd-source-list-item ${activeDraftRdLeadSources.includes(source) ? 'active' : ''}`}
-                                        >
-                                          <input
-                                            type="checkbox"
-                                            checked={activeDraftRdLeadSources.includes(source)}
-                                            onChange={() => handleRdLeadSourceToggle(source)}
-                                          />
-                                          <span>{source}</span>
-                                        </label>
-                                      ))}
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-                            )}
-                            <div className="kpi-grid compact-kpi-grid">
-                              {group.kpis.map((kpi) => (
-                                <div key={kpi.title} className="kpi-card glass-panel">
-                                  <div className="kpi-header">
-                                    <span className="kpi-title">{kpi.title}</span>
-                                    <div className={`icon-box ${kpi.tone}`}>
-                                      <i className={`bx ${kpi.icon}`}></i>
-                                    </div>
-                                  </div>
-                                  <div className="kpi-value">{kpi.value}</div>
-                                  <div className="kpi-trend neutral">
-                                    <i className="bx bx-check-circle"></i>
-                                    <span>Atualizado conforme a integração configurada</span>
-                                  </div>
+                              <span className="meta-campaign-filter-trigger-icon">
+                                <i className={`bx ${isRdSourceFilterOpen ? 'bx-chevron-up' : 'bx-chevron-down'}`}></i>
+                              </span>
+                            </button>
+                            {isRdSourceFilterOpen && (
+                              <div className="rd-source-filter-bar rd-source-filter-inline">
+                                <div>
+                                  <p>Selecione as origens e UTMs que quer considerar na base das oportunidades, qualificação e conversão.</p>
                                 </div>
-                              ))}
-                            </div>
-                            {group.showDiagnostics && rdSummary?.diagnostics && (
-                              <div className="meta-campaign-filter-collapsible rd-diagnostics-collapsible">
-                                <button
-                                  type="button"
-                                  className={`meta-campaign-filter-trigger ${isRdDiagnosticsOpen ? 'open' : ''}`}
-                                  onClick={() => setIsRdDiagnosticsOpen((current) => !current)}
-                                >
-                                  <div>
-                                    <h3>Como as negociações estão sendo filtradas</h3>
-                                    <p>{rdDiagnosticsSummary}</p>
-                                  </div>
-                                  <span className="meta-campaign-filter-trigger-icon">
-                                    <i className={`bx ${isRdDiagnosticsOpen ? 'bx-chevron-up' : 'bx-chevron-down'}`}></i>
-                                  </span>
-                                </button>
-                                {isRdDiagnosticsOpen && (
-                                  <div className="rd-source-filter-bar rd-source-filter-inline rd-diagnostic-panel">
-                                    <p className="meta-campaign-filter-note">
-                                      Esses números mostram em que etapa as negociações do RD estão sendo reduzidas antes de entrar no card final.
-                                    </p>
-                                    <div className="rd-diagnostic-grid">
-                                      <div className="conversion-stat">
-                                        <span>Negociações recebidas do RD</span>
-                                        <strong>{formatNumber(rdSummary.diagnostics.allDeals?.totalDeals || 0)}</strong>
-                                      </div>
-                                      <div className="conversion-stat">
-                                        <span>Negociações após o funil atual</span>
-                                        <strong>{formatNumber(rdSummary.diagnostics.pipelineDeals?.totalDeals || 0)}</strong>
-                                      </div>
-                                      <div className="conversion-stat">
-                                        <span>Ganhas reconhecidas em todos os vendedores</span>
-                                        <strong>{formatNumber(rdSummary.diagnostics.allDeals?.wonClassified || 0)}</strong>
-                                      </div>
-                                      <div className="conversion-stat">
-                                        <span>Ganhas no período após o funil atual</span>
-                                        <strong>{formatNumber(rdSummary.diagnostics.pipelineDeals?.wonClosedInRange || 0)}</strong>
-                                      </div>
-                                      <div className="conversion-stat">
-                                        <span>Ganhas fechadas no período em todos os vendedores</span>
-                                        <strong>{formatNumber(rdSummary.diagnostics.allDeals?.wonClosedInRange || 0)}</strong>
-                                      </div>
-                                      <div className="conversion-stat">
-                                        <span>Ganhas fechadas no período após filtro atual</span>
-                                        <strong>{formatNumber(rdSummary.diagnostics.filteredDeals?.wonClosedInRange || 0)}</strong>
-                                      </div>
-                                      <div className="conversion-stat">
-                                        <span>Ganhas fora do período</span>
-                                        <strong>{formatNumber(rdSummary.diagnostics.filteredDeals?.wonClosedOutOfRange || 0)}</strong>
-                                      </div>
-                                      <div className="conversion-stat">
-                                        <span>Ganhas sem data de fechamento</span>
-                                        <strong>{formatNumber(rdSummary.diagnostics.filteredDeals?.wonWithoutCloseDate || 0)}</strong>
-                                      </div>
-                                    </div>
-                                    <div className="rd-diagnostic-meta">
-                                      <span>Filtro de funil: <b>{rdSummary.diagnostics.pipelineFilterApplied ? rdAppliedPipelineSummary : 'Todos os funis'}</b></span>
-                                      <span>Filtro de vendedor: <b>{rdSummary.diagnostics.sellerFilterApplied ? 'Aplicado' : 'Todos os vendedores'}</b></span>
-                                      <span>Filtro de origem: <b>{rdSummary.diagnostics.leadSourceFilterApplied ? 'Aplicado' : 'Não afeta este bloco'}</b></span>
-                                      <span>Filtro de etapas qualificadas: <b>{rdSummary.diagnostics.qualifiedStageFilterApplied ? 'Aplicado' : 'Não afeta este bloco'}</b></span>
-                                    </div>
-                                  </div>
-                                )}
+                                <div className="rd-source-list">
+                                  {rdSummary.availableSources.map((source) => (
+                                    <label
+                                      key={source}
+                                      className={`result-filter-chip rd-source-list-item ${activeDraftRdLeadSources.includes(source) ? 'active' : ''}`}
+                                    >
+                                      <input
+                                        type="checkbox"
+                                        checked={activeDraftRdLeadSources.includes(source)}
+                                        onChange={() => handleRdLeadSourceToggle(source)}
+                                      />
+                                      <span>{source}</span>
+                                    </label>
+                                  ))}
+                                </div>
                               </div>
                             )}
                           </div>
-                        ))}
+                        )}
+
+                        {renderDashboardMetricGrid(rdDashboardMetricCards, 'rd')}
+
+                        {isRdMetricLibraryOpen && (
+                          <div className="metric-library-panel glass-item">
+                            <div>
+                              <strong>Métricas RD disponíveis</strong>
+                              <p>Monte o painel comercial com qualquer card do CRM, mudando ordem e tamanho por modelo.</p>
+                            </div>
+                            <div className="metric-library-list">
+                              {availableRdDashboardMetricOptions.length > 0 ? (
+                                availableRdDashboardMetricOptions.map(([metricKey, metric]) => (
+                                  <button
+                                    key={metricKey}
+                                    type="button"
+                                    className="metric-library-chip"
+                                    onClick={() => handleAddRdDashboardMetric(metricKey)}
+                                  >
+                                    <span>{metric.label}</span>
+                                    <small>{metric.description}</small>
+                                  </button>
+                                ))
+                              ) : (
+                                <div className="metric-library-empty">Todas as métricas do RD já estão visíveis neste modelo.</div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        {rdSummary?.diagnostics && (
+                          <div className="meta-campaign-filter-collapsible rd-diagnostics-collapsible">
+                            <button
+                              type="button"
+                              className={`meta-campaign-filter-trigger ${isRdDiagnosticsOpen ? 'open' : ''}`}
+                              onClick={() => setIsRdDiagnosticsOpen((current) => !current)}
+                            >
+                              <div>
+                                <h3>Como as negociações estão sendo filtradas</h3>
+                                <p>{rdDiagnosticsSummary}</p>
+                              </div>
+                              <span className="meta-campaign-filter-trigger-icon">
+                                <i className={`bx ${isRdDiagnosticsOpen ? 'bx-chevron-up' : 'bx-chevron-down'}`}></i>
+                              </span>
+                            </button>
+                            {isRdDiagnosticsOpen && (
+                              <div className="rd-source-filter-bar rd-source-filter-inline rd-diagnostic-panel">
+                                <p className="meta-campaign-filter-note">
+                                  Esses números mostram em que etapa as negociações do RD estão sendo reduzidas antes de entrar nos cards finais.
+                                </p>
+                                <div className="rd-diagnostic-grid">
+                                  <div className="conversion-stat">
+                                    <span>Negociações recebidas do RD</span>
+                                    <strong>{formatNumber(rdSummary.diagnostics.allDeals?.totalDeals || 0)}</strong>
+                                  </div>
+                                  <div className="conversion-stat">
+                                    <span>Negociações após o funil atual</span>
+                                    <strong>{formatNumber(rdSummary.diagnostics.pipelineDeals?.totalDeals || 0)}</strong>
+                                  </div>
+                                  <div className="conversion-stat">
+                                    <span>Ganhas reconhecidas em todos os vendedores</span>
+                                    <strong>{formatNumber(rdSummary.diagnostics.allDeals?.wonClassified || 0)}</strong>
+                                  </div>
+                                  <div className="conversion-stat">
+                                    <span>Ganhas no período após o funil atual</span>
+                                    <strong>{formatNumber(rdSummary.diagnostics.pipelineDeals?.wonClosedInRange || 0)}</strong>
+                                  </div>
+                                  <div className="conversion-stat">
+                                    <span>Ganhas fechadas no período em todos os vendedores</span>
+                                    <strong>{formatNumber(rdSummary.diagnostics.allDeals?.wonClosedInRange || 0)}</strong>
+                                  </div>
+                                  <div className="conversion-stat">
+                                    <span>Ganhas fechadas no período após filtro atual</span>
+                                    <strong>{formatNumber(rdSummary.diagnostics.filteredDeals?.wonClosedInRange || 0)}</strong>
+                                  </div>
+                                  <div className="conversion-stat">
+                                    <span>Ganhas fora do período</span>
+                                    <strong>{formatNumber(rdSummary.diagnostics.filteredDeals?.wonClosedOutOfRange || 0)}</strong>
+                                  </div>
+                                  <div className="conversion-stat">
+                                    <span>Ganhas sem data de fechamento</span>
+                                    <strong>{formatNumber(rdSummary.diagnostics.filteredDeals?.wonWithoutCloseDate || 0)}</strong>
+                                  </div>
+                                </div>
+                                <div className="rd-diagnostic-meta">
+                                  <span>Filtro de funil: <b>{rdSummary.diagnostics.pipelineFilterApplied ? rdAppliedPipelineSummary : 'Todos os funis'}</b></span>
+                                  <span>Filtro de vendedor: <b>{rdSummary.diagnostics.sellerFilterApplied ? 'Aplicado' : 'Todos os vendedores'}</b></span>
+                                  <span>Filtro de origem: <b>{rdSummary.diagnostics.leadSourceFilterApplied ? 'Aplicado' : 'Nao afeta este bloco'}</b></span>
+                                  <span>Filtro de etapas qualificadas: <b>{rdSummary.diagnostics.qualifiedStageFilterApplied ? 'Aplicado' : 'Nao afeta este bloco'}</b></span>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </section>
 
@@ -6009,12 +6136,34 @@ export default function DashboardPage() {
           gap: 0;
         }
 
+        .dashboard-metrics-grid {
+          display: grid;
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+          gap: 18px;
+        }
+
+        .dashboard-metric-card {
+          min-width: 0;
+        }
+
+        .dashboard-metric-card-sm {
+          grid-column: span 1;
+        }
+
+        .dashboard-metric-card-lg {
+          grid-column: span 2;
+        }
+
         .template-metric-actions {
           display: flex;
           align-items: center;
           gap: 10px;
+          flex-wrap: wrap;
+          justify-content: flex-end;
         }
 
+        .dashboard-metric-handle,
+        .dashboard-metric-size,
         .template-metric-remove {
           width: 34px;
           height: 34px;
@@ -6025,6 +6174,14 @@ export default function DashboardPage() {
           display: grid;
           place-items: center;
           cursor: pointer;
+        }
+
+        .dashboard-metric-handle {
+          cursor: grab;
+        }
+
+        .dashboard-metric-card:active .dashboard-metric-handle {
+          cursor: grabbing;
         }
 
         .metric-library-panel {
@@ -7124,6 +7281,15 @@ export default function DashboardPage() {
           .dashboard-theme-presets {
             grid-template-columns: repeat(2, minmax(0, 1fr));
           }
+
+          .dashboard-metrics-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
+
+          .dashboard-metric-card-sm,
+          .dashboard-metric-card-lg {
+            grid-column: span 1;
+          }
         }
 
         @media (max-width: 768px) {
@@ -7141,7 +7307,8 @@ export default function DashboardPage() {
           }
 
           .dashboard-rgb-grid,
-          .dashboard-theme-presets {
+          .dashboard-theme-presets,
+          .dashboard-metrics-grid {
             grid-template-columns: 1fr;
           }
 

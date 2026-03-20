@@ -28,6 +28,41 @@ export const DEFAULT_PREFERENCES = {
 }
 
 export const DEFAULT_DASHBOARD_TEMPLATE_NAME = 'Principal'
+const DEFAULT_META_DASHBOARD_METRIC_KEYS = [
+  'spend',
+  'impressions',
+  'clicks',
+  'cpc',
+  'ctr',
+  'totalConversions',
+  'purchases',
+  'costPerPurchase',
+  'roas',
+  'leads',
+  'costPerLead',
+  'messages',
+  'costPerMessage',
+]
+const DEFAULT_RD_DASHBOARD_METRIC_KEYS = [
+  'opportunityCount',
+  'qualifiedOpportunityCount',
+  'wonOpportunityCount',
+  'wonOpportunityRevenue',
+  'avgTicketWonByCreation',
+  'leadToQualifiedRate',
+  'qualifiedToWonRate',
+  'leadToWonRate',
+  'lostOpportunityCount',
+  'wonDeals',
+  'wonDealsFromPreviousCohorts',
+  'wonRevenue',
+  'avgTicketWon',
+  'wonRevenueFromPreviousCohorts',
+  'avgTicketWonPreviousCohorts',
+  'rdFinalSalesCount',
+  'rdFinalRevenue',
+  'rdFinalAvgTicket',
+]
 
 function createRecordId(prefix) {
   return globalThis.crypto?.randomUUID?.() || `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2, 10)}`
@@ -38,13 +73,50 @@ function normalizeTemplateMetricKeys(metricKeys) {
   return Array.from(new Set(metricKeys.filter((metricKey) => typeof metricKey === 'string' && metricKey.trim())))
 }
 
+function createDashboardMetricLayout(metricKey, overrides = {}) {
+  return {
+    id: overrides.id || createRecordId('dashboard-card'),
+    metricKey,
+    size: overrides.size === 'lg' ? 'lg' : 'sm',
+  }
+}
+
+function normalizeDashboardMetricLayouts(layouts, fallbackMetricKeys = []) {
+  const normalizedLayouts = Array.isArray(layouts)
+    ? layouts
+        .filter((item) => typeof item?.metricKey === 'string' && item.metricKey.trim())
+        .map((item) => createDashboardMetricLayout(item.metricKey, item))
+    : []
+
+  if (normalizedLayouts.length > 0) return normalizedLayouts
+
+  return normalizeTemplateMetricKeys(fallbackMetricKeys).map((metricKey) =>
+    createDashboardMetricLayout(metricKey)
+  )
+}
+
 export function createDashboardTemplate(overrides = {}) {
+  const metaMetricLayouts = normalizeDashboardMetricLayouts(
+    overrides.metaMetricLayouts,
+    overrides.metaMetricKeys || DEFAULT_META_DASHBOARD_METRIC_KEYS
+  )
+  const rdMetricLayouts = normalizeDashboardMetricLayouts(
+    overrides.rdMetricLayouts,
+    overrides.rdMetricKeys || DEFAULT_RD_DASHBOARD_METRIC_KEYS
+  )
+
   return {
     id: createRecordId('dashboard-template'),
     name: DEFAULT_DASHBOARD_TEMPLATE_NAME,
-    metaMetricKeys: [],
-    rdMetricKeys: [],
+    metaMetricKeys: metaMetricLayouts.map((item) => item.metricKey),
+    rdMetricKeys: rdMetricLayouts.map((item) => item.metricKey),
+    metaMetricLayouts,
+    rdMetricLayouts,
     ...overrides,
+    metaMetricKeys: metaMetricLayouts.map((item) => item.metricKey),
+    rdMetricKeys: rdMetricLayouts.map((item) => item.metricKey),
+    metaMetricLayouts,
+    rdMetricLayouts,
   }
 }
 
@@ -70,11 +142,22 @@ export function normalizeClientGroupRecord(group) {
 }
 
 export function normalizeDashboardTemplate(template, fallbackName = DEFAULT_DASHBOARD_TEMPLATE_NAME) {
+  const metaMetricLayouts = normalizeDashboardMetricLayouts(
+    template?.metaMetricLayouts,
+    template?.metaMetricKeys || DEFAULT_META_DASHBOARD_METRIC_KEYS
+  )
+  const rdMetricLayouts = normalizeDashboardMetricLayouts(
+    template?.rdMetricLayouts,
+    template?.rdMetricKeys || DEFAULT_RD_DASHBOARD_METRIC_KEYS
+  )
+
   return {
     id: template?.id || createRecordId('dashboard-template'),
     name: String(template?.name || fallbackName).trim() || fallbackName,
-    metaMetricKeys: normalizeTemplateMetricKeys(template?.metaMetricKeys),
-    rdMetricKeys: normalizeTemplateMetricKeys(template?.rdMetricKeys),
+    metaMetricKeys: metaMetricLayouts.map((item) => item.metricKey),
+    rdMetricKeys: rdMetricLayouts.map((item) => item.metricKey),
+    metaMetricLayouts,
+    rdMetricLayouts,
   }
 }
 
