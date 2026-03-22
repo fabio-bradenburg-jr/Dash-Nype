@@ -6,6 +6,16 @@ const DEFAULT_META_DASHBOARD_METRIC_KEYS = []
 const DEFAULT_META_DASHBOARD_METRIC_LAYOUTS = []
 const DEFAULT_RD_DASHBOARD_METRIC_KEYS = []
 const DEFAULT_RD_DASHBOARD_METRIC_LAYOUTS = []
+const DEFAULT_GLOBAL_INTEGRATIONS = {
+  metaAccessToken: '',
+  googleAdsToken: '',
+  tiktokAdsToken: '',
+  linkedinAdsToken: '',
+  clickUpToken: '',
+  rdStationToken: '',
+  salesforceToken: '',
+  agendorToken: '',
+}
 
 function isMissingRelationError(error) {
   const message = String(error?.message || '').toLowerCase()
@@ -126,6 +136,28 @@ function normalizeClientRecord(client) {
   }
 }
 
+function normalizeGlobalIntegrations(globalIntegrations) {
+  return {
+    ...DEFAULT_GLOBAL_INTEGRATIONS,
+    ...(globalIntegrations && typeof globalIntegrations === 'object' ? globalIntegrations : {}),
+  }
+}
+
+function extractGlobalIntegrations(clients) {
+  return clients.reduce((current, client) => {
+    const next = { ...current }
+    const integrations = client?.integrations || {}
+
+    Object.keys(DEFAULT_GLOBAL_INTEGRATIONS).forEach((fieldName) => {
+      if (!next[fieldName] && integrations[fieldName]) {
+        next[fieldName] = integrations[fieldName]
+      }
+    })
+
+    return next
+  }, { ...DEFAULT_GLOBAL_INTEGRATIONS })
+}
+
 function normalizeClientGroupClientIds(clientIds) {
   if (!Array.isArray(clientIds)) return []
   return Array.from(new Set(clientIds.filter((clientId) => typeof clientId === 'string' && clientId.trim())))
@@ -166,6 +198,7 @@ export async function getDashboardState(adminSupabase, accessContext) {
       metric1: 'spend',
       metric2: 'roas',
       activeClientId: '',
+      globalIntegrations: { ...DEFAULT_GLOBAL_INTEGRATIONS },
       clients: [],
       clientGroups: [],
     }
@@ -227,6 +260,7 @@ export async function getDashboardState(adminSupabase, accessContext) {
     metric1: preferenceRow?.metric_1 || 'spend',
     metric2: preferenceRow?.metric_2 || 'roas',
     activeClientId: filteredClients[0]?.id || '',
+    globalIntegrations: extractGlobalIntegrations(filteredClients),
     clients: filteredClients,
     clientGroups,
   }
@@ -245,6 +279,7 @@ export async function saveDashboardState(adminSupabase, accessContext, state) {
   const submittedClientGroups = Array.isArray(state.clientGroups)
     ? state.clientGroups.map(normalizeClientGroupRecord)
     : []
+  const submittedGlobalIntegrations = normalizeGlobalIntegrations(state.globalIntegrations)
 
   if (accessContext.role === USER_ROLES.MASTER) {
     const [
@@ -292,7 +327,13 @@ export async function saveDashboardState(adminSupabase, accessContext, state) {
             workspace_id: accessContext.workspaceId,
             id: client.id,
             name: client.name,
-            payload: client,
+            payload: {
+              ...client,
+              integrations: {
+                ...client.integrations,
+                ...submittedGlobalIntegrations,
+              },
+            },
           })),
           { onConflict: 'workspace_id,id' }
         )
@@ -400,7 +441,13 @@ export async function saveDashboardState(adminSupabase, accessContext, state) {
           workspace_id: accessContext.workspaceId,
           id: client.id,
           name: client.name,
-          payload: client,
+          payload: {
+            ...client,
+            integrations: {
+              ...client.integrations,
+              ...submittedGlobalIntegrations,
+            },
+          },
         })),
         { onConflict: 'workspace_id,id' }
       )

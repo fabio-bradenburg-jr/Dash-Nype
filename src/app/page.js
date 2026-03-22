@@ -985,6 +985,8 @@ export default function DashboardPage() {
   const [isEditUserModalOpen, setIsEditUserModalOpen] = useState(false)
   const [isDashboardEntryModalOpen, setIsDashboardEntryModalOpen] = useState(false)
   const [dashboardEntryClientId, setDashboardEntryClientId] = useState('')
+  const [createUserError, setCreateUserError] = useState('')
+  const [editUserError, setEditUserError] = useState('')
   const [userForm, setUserForm] = useState({
     fullName: '',
     email: '',
@@ -1661,6 +1663,10 @@ export default function DashboardPage() {
         setThemeColor(state.themeColor || 'blue')
         setMetric1(state.metric1 || 'spend')
         setMetric2(state.metric2 || 'roas')
+        setGlobalIntegrations((current) => ({
+          ...current,
+          ...(state.globalIntegrations || {}),
+        }))
         setClients(Array.isArray(state.clients) ? state.clients : [])
         setClientGroups(Array.isArray(state.clientGroups) ? cloneClientGroups(state.clientGroups) : [])
         setActiveClientId(state.activeClientId || state.clients?.[0]?.id || '')
@@ -1689,7 +1695,7 @@ export default function DashboardPage() {
 
     saveDashboardPreferences(state)
 
-    if (userLoading || !user || !canManageClients) return
+    if (userLoading || !user || !canManageClients || !hasSyncedServerState) return
 
     const timeoutId = window.setTimeout(() => {
       fetch('/api/dashboard/state', {
@@ -1704,7 +1710,7 @@ export default function DashboardPage() {
     }, 300)
 
     return () => window.clearTimeout(timeoutId)
-  }, [hasLoadedPreferences, themeColor, metric1, metric2, activeClientId, globalIntegrations, clients, clientGroups, userLoading, user, canManageClients])
+  }, [hasLoadedPreferences, themeColor, metric1, metric2, activeClientId, globalIntegrations, clients, clientGroups, userLoading, user, canManageClients, hasSyncedServerState])
 
   useEffect(() => {
     const root = document.documentElement
@@ -2219,6 +2225,7 @@ export default function DashboardPage() {
     event.preventDefault()
 
     try {
+      setCreateUserError('')
       setSavingUser(true)
       const response = await fetch('/api/users', {
         method: 'POST',
@@ -2244,7 +2251,7 @@ export default function DashboardPage() {
       setIsCreateUserModalOpen(false)
       await loadUsers()
     } catch (error) {
-      alert(error.message || 'Não foi possível criar o usuário.')
+      setCreateUserError(error.message || 'Não foi possível criar o usuário.')
     } finally {
       setSavingUser(false)
     }
@@ -2252,6 +2259,7 @@ export default function DashboardPage() {
 
   const handleUpdateUser = async (managedUser) => {
     try {
+      setEditUserError('')
       const response = await fetch(`/api/users/${managedUser.id}`, {
         method: 'PATCH',
         headers: {
@@ -2273,7 +2281,7 @@ export default function DashboardPage() {
       setIsEditUserModalOpen(false)
       await loadUsers()
     } catch (error) {
-      alert(error.message || 'Não foi possível atualizar o usuário.')
+      setEditUserError(error.message || 'Não foi possível atualizar o usuário.')
     }
   }
 
@@ -2319,6 +2327,18 @@ export default function DashboardPage() {
 
     setSelectedUserId(usersList[0].id)
   }, [usersList, selectedUserId])
+
+  useEffect(() => {
+    if (!isCreateUserModalOpen) {
+      setCreateUserError('')
+    }
+  }, [isCreateUserModalOpen])
+
+  useEffect(() => {
+    if (!isEditUserModalOpen) {
+      setEditUserError('')
+    }
+  }, [isEditUserModalOpen])
 
   const handleClientFieldChange = (fieldName, value) => {
     updateActiveClient((client) => ({
@@ -4240,6 +4260,8 @@ export default function DashboardPage() {
                   </div>
 
                   <form onSubmit={handleCreateUser}>
+                    {createUserError && <div className="form-alert">{createUserError}</div>}
+
                     <div className="form-grid user-admin-grid">
                       <div className="input-group">
                         <label>Nome</label>
@@ -4302,6 +4324,11 @@ export default function DashboardPage() {
                               </div>
                             )}
                           </div>
+                          {createUserError.includes('grupos de clientes') && (
+                            <span className="field-helper">
+                              O restante do cadastro continua funcionando. Para liberar grupos, aplique a migration do Supabase primeiro.
+                            </span>
+                          )}
                         </div>
                       </>
                     )}
@@ -4331,6 +4358,8 @@ export default function DashboardPage() {
                       <i className="bx bx-x"></i>
                     </button>
                   </div>
+
+                  {editUserError && <div className="form-alert">{editUserError}</div>}
 
                   <div className="user-admin-head">
                     <div>
@@ -4452,6 +4481,11 @@ export default function DashboardPage() {
                             </div>
                           )}
                         </div>
+                        {editUserError.includes('grupos de clientes') && (
+                          <span className="field-helper">
+                            O acesso por dashboard segue funcionando. Para liberar grupos, aplique a migration do Supabase primeiro.
+                          </span>
+                        )}
                       </div>
                     </>
                   )}
@@ -7180,6 +7214,16 @@ export default function DashboardPage() {
           color: var(--text-muted);
           font-size: 13px;
           line-height: 1.5;
+        }
+
+        .form-alert {
+          padding: 14px 16px;
+          border-radius: 16px;
+          border: 1px solid rgba(245, 158, 11, 0.28);
+          background: rgba(245, 158, 11, 0.08);
+          color: #fde68a;
+          font-size: 14px;
+          line-height: 1.6;
         }
 
         .input-group input:not([type="checkbox"]):not([type="file"]) {

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useUser } from '@/lib/contexts/UserContext'
 import { USER_APPEARANCE_PRESETS } from '@/lib/user-appearance-storage'
@@ -100,6 +100,7 @@ const GLOBAL_INTEGRATION_GROUPS = [
 export default function SettingsPage() {
   const { appearance, updateAppearance, access } = useUser()
   const canManageClients = Boolean(access?.canManageClients)
+  const [serverState, setServerState] = useState(null)
   const [globalIntegrations, setGlobalIntegrations] = useState(() => {
     const preferences = loadDashboardPreferences()
     return {
@@ -107,6 +108,37 @@ export default function SettingsPage() {
       ...(preferences.globalIntegrations || {}),
     }
   })
+
+  useEffect(() => {
+    if (!canManageClients) return
+
+    let cancelled = false
+
+    const loadServerState = async () => {
+      try {
+        const response = await fetch('/api/dashboard/state', { cache: 'no-store' })
+        if (!response.ok) return
+
+        const state = await response.json()
+        if (cancelled) return
+
+        setServerState(state)
+        setGlobalIntegrations((current) => ({
+          ...DEFAULT_PREFERENCES.globalIntegrations,
+          ...current,
+          ...(state.globalIntegrations || {}),
+        }))
+      } catch (error) {
+        console.error('Erro ao carregar integrações globais do servidor:', error)
+      }
+    }
+
+    loadServerState()
+
+    return () => {
+      cancelled = true
+    }
+  }, [canManageClients])
 
   const handleGlobalIntegrationChange = (fieldName, value) => {
     setGlobalIntegrations((current) => {
@@ -120,6 +152,29 @@ export default function SettingsPage() {
         ...preferences,
         globalIntegrations: nextIntegrations,
       })
+
+      if (canManageClients && serverState) {
+        fetch('/api/dashboard/state', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            ...serverState,
+            globalIntegrations: nextIntegrations,
+          }),
+        })
+          .then(async (response) => {
+            const data = await response.json().catch(() => null)
+            if (!response.ok) {
+              throw new Error(data?.error || 'Não foi possível salvar as integrações globais.')
+            }
+            setServerState(data)
+          })
+          .catch((error) => {
+            console.error('Erro ao salvar integrações globais no servidor:', error)
+          })
+      }
 
       return nextIntegrations
     })
