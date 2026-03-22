@@ -6365,8 +6365,8 @@ export default function DashboardPage() {
         .client-create-grid {
           display: flex;
           flex-wrap: wrap;
-          align-items: stretch;
-          gap: 24px;
+          align-items: flex-start;
+          gap: 18px;
         }
 
         .client-create-grid > .client-create-bar {
@@ -6404,32 +6404,38 @@ export default function DashboardPage() {
         }
 
         .client-create-bar {
-          padding: 24px 28px;
+          padding: 18px 22px;
           display: grid;
           align-content: start;
-          gap: 18px;
-          min-height: 100%;
+          gap: 12px;
         }
 
         .client-create-inline {
           display: flex;
           align-items: center;
-          gap: 12px;
+          gap: 10px;
           width: 100%;
         }
 
         .client-create-bar h3 {
-          margin-bottom: 8px;
+          margin-bottom: 4px;
         }
 
         .client-create-inline input {
           flex: 1;
-          padding: 12px 16px;
+          min-height: 44px;
+          padding: 10px 14px;
           border-radius: 10px;
           background: rgba(0, 0, 0, 0.2);
           border: 1px solid var(--border-color);
           color: white;
           font-family: inherit;
+        }
+
+        .client-create-inline .btn {
+          min-height: 44px;
+          padding: 0 18px;
+          white-space: nowrap;
         }
 
         .client-editor-card {
