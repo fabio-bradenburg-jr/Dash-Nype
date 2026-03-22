@@ -3608,6 +3608,9 @@ export default function DashboardPage() {
           <button type="button" data-tooltip="Apresentação" className={`nav-item nav-button ${activeTab === 'apresentacao' ? 'active' : ''}`} onClick={() => setActiveTab('apresentacao')}>
             <i className="bx bxs-dashboard"></i> Apresentação
           </button>
+          <Link href="/calendar" data-tooltip="Agenda" className="nav-item">
+            <i className="bx bx-calendar-event"></i> Agenda
+          </Link>
           {canManageUsers && (
             <button type="button" data-tooltip="Usuários" className={`nav-item nav-button ${activeTab === 'usuarios' ? 'active' : ''}`} onClick={() => setActiveTab('usuarios')}>
               <i className="bx bxs-user-detail"></i> Usuários

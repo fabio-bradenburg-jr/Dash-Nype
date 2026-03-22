@@ -93,6 +93,20 @@ create table if not exists public.user_client_group_access (
     on delete cascade
 );
 
+create table if not exists public.workspace_google_calendar_connections (
+  workspace_id uuid primary key references public.workspaces(id) on delete cascade,
+  google_email text,
+  access_token text not null,
+  refresh_token text,
+  token_type text not null default 'Bearer',
+  scope text,
+  expiry_date timestamptz,
+  selected_calendar_id text not null default 'primary',
+  selected_calendar_summary text,
+  created_at timestamptz not null default timezone('utc', now()),
+  updated_at timestamptz not null default timezone('utc', now())
+);
+
 create index if not exists workspace_client_groups_name_idx
   on public.workspace_client_groups (workspace_id, name);
 
@@ -104,6 +118,7 @@ alter table public.user_client_access enable row level security;
 alter table public.workspace_client_groups enable row level security;
 alter table public.workspace_client_group_members enable row level security;
 alter table public.user_client_group_access enable row level security;
+alter table public.workspace_google_calendar_connections enable row level security;
 
 drop policy if exists "profiles_select_own" on public.profiles;
 create policy "profiles_select_own"
@@ -166,4 +181,9 @@ for each row execute procedure public.set_updated_at();
 drop trigger if exists user_client_group_access_set_updated_at on public.user_client_group_access;
 create trigger user_client_group_access_set_updated_at
 before update on public.user_client_group_access
+for each row execute procedure public.set_updated_at();
+
+drop trigger if exists workspace_google_calendar_connections_set_updated_at on public.workspace_google_calendar_connections;
+create trigger workspace_google_calendar_connections_set_updated_at
+before update on public.workspace_google_calendar_connections
 for each row execute procedure public.set_updated_at();

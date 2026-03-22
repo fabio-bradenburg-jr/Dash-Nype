@@ -193,6 +193,10 @@ export default function SettingsPage() {
             <i className="bx bx-arrow-back"></i>
             Voltar ao dashboard
           </Link>
+          <Link href="/calendar" className="nav-item">
+            <i className="bx bx-calendar-event"></i>
+            Agenda
+          </Link>
           <span className="nav-item active">
             <i className="bx bx-cog"></i>
             Configurações
