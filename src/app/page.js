@@ -693,6 +693,34 @@ const FIXED_RD_METRIC_KEYS = new Set([
   'rdFinalAvgTicket',
 ])
 
+const LOWER_IS_BETTER_METRIC_KEYS = new Set([
+  'cpc',
+  'cpm',
+  'cpa',
+  'costPerPurchase',
+  'costPerLead',
+  'costPerMessage',
+  'cost_per_purchase',
+  'cost_per_lead',
+  'cost_per_message',
+  'avgLeadToWonDays',
+  'avgDealToWonDays',
+  'avgLeadToWonDaysFiltered',
+  'avgDealToWonDaysFiltered',
+  'lostOpportunityCount',
+  'lostContacts',
+])
+
+const NEUTRAL_TREND_METRIC_KEYS = new Set([
+  'spend',
+  'impressions',
+  'clicks',
+  'reach',
+  'contacts',
+  'contactsInPeriod',
+  'contactsMoved',
+])
+
 function formatCurrency(value) {
   return new Intl.NumberFormat('pt-BR', {
     style: 'currency',
@@ -718,6 +746,139 @@ function formatDurationDays(value) {
   if (!days) return 'Sem base'
   if (days < 1) return 'Menos de 1 dia'
   return `${days.toFixed(1).replace('.', ',')} dias`
+}
+
+function parseLocalDateInput(value) {
+  const [year, month, day] = String(value || '').split('-').map(Number)
+  if (!year || !month || !day) return null
+  return new Date(year, month - 1, day)
+}
+
+function formatLocalDateInput(date) {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+function shiftLocalDays(date, amount) {
+  const nextDate = new Date(date)
+  nextDate.setDate(nextDate.getDate() + amount)
+  return nextDate
+}
+
+function getRangeLengthInDays(start, end) {
+  const startOfDay = new Date(start.getFullYear(), start.getMonth(), start.getDate())
+  const endOfDay = new Date(end.getFullYear(), end.getMonth(), end.getDate())
+  return Math.max(1, Math.round((endOfDay - startOfDay) / 86400000) + 1)
+}
+
+function resolveDateWindow(datePreset, since, until, { excludeTodayForLast30d = false } = {}) {
+  const today = new Date()
+  const endOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+
+  if (datePreset === 'custom' && since && until) {
+    const start = parseLocalDateInput(since)
+    const end = parseLocalDateInput(until)
+    if (!start || !end) return null
+    return { start, end }
+  }
+
+  switch (datePreset) {
+    case 'today':
+      return { start: endOfToday, end: endOfToday }
+    case 'yesterday': {
+      const yesterday = shiftLocalDays(endOfToday, -1)
+      return { start: yesterday, end: yesterday }
+    }
+    case 'last_7d':
+      return {
+        start: shiftLocalDays(endOfToday, -6),
+        end: endOfToday,
+      }
+    case 'last_30d':
+      return excludeTodayForLast30d
+        ? {
+            start: shiftLocalDays(endOfToday, -30),
+            end: shiftLocalDays(endOfToday, -1),
+          }
+        : {
+            start: shiftLocalDays(endOfToday, -29),
+            end: endOfToday,
+          }
+    case 'this_month':
+      return {
+        start: new Date(today.getFullYear(), today.getMonth(), 1),
+        end: endOfToday,
+      }
+    default:
+      return null
+  }
+}
+
+function buildPreviousWindow(currentWindow) {
+  if (!currentWindow?.start || !currentWindow?.end) return null
+
+  const totalDays = getRangeLengthInDays(currentWindow.start, currentWindow.end)
+  const previousEnd = shiftLocalDays(currentWindow.start, -1)
+  const previousStart = shiftLocalDays(previousEnd, -(totalDays - 1))
+
+  return {
+    start: previousStart,
+    end: previousEnd,
+  }
+}
+
+function getMetricTrendDirection(metricKey) {
+  if (LOWER_IS_BETTER_METRIC_KEYS.has(metricKey)) return 'down'
+  if (NEUTRAL_TREND_METRIC_KEYS.has(metricKey)) return 'neutral'
+  return 'up'
+}
+
+function formatTrendChange(value, type) {
+  const absoluteValue = Math.abs(Number(value || 0))
+
+  if (type === 'currency') return formatCurrency(absoluteValue)
+  if (type === 'percent') return `${absoluteValue.toFixed(2).replace('.', ',')} p.p.`
+  if (type === 'multiplier') return `${absoluteValue.toFixed(2).replace('.', ',')}x`
+  if (type === 'decimal') return absoluteValue.toFixed(2).replace('.', ',')
+  if (type === 'duration') return formatDurationDays(absoluteValue)
+  return formatNumber(absoluteValue)
+}
+
+function buildMetricTrend(metricKey, currentValue, previousValue, type) {
+  const current = Number(currentValue || 0)
+  const previous = Number(previousValue ?? 0)
+
+  if (!Number.isFinite(current) || !Number.isFinite(previous)) return null
+
+  if (current === previous) {
+    return {
+      tone: 'neutral',
+      icon: 'bx-minus',
+      label: 'Sem variação vs período anterior',
+    }
+  }
+
+  const direction = getMetricTrendDirection(metricKey)
+  const delta = current - previous
+  const movedUp = delta > 0
+
+  if (direction === 'neutral') {
+    return {
+      tone: 'neutral',
+      icon: movedUp ? 'bx-up-arrow-alt' : 'bx-down-arrow-alt',
+      label: `${movedUp ? 'Subiu' : 'Caiu'} ${formatTrendChange(delta, type)} vs período anterior`,
+    }
+  }
+
+  const isPositive = (direction === 'up' && delta > 0) || (direction === 'down' && delta < 0)
+
+  return {
+    tone: isPositive ? 'positive' : 'negative',
+    icon: isPositive ? 'bx-up-arrow-alt' : 'bx-down-arrow-alt',
+    label: `${isPositive ? 'Movimento positivo' : 'Movimento negativo'} de ${formatTrendChange(delta, type)}`,
+  }
 }
 
 function formatMetricValue(value, metricKey) {
@@ -961,6 +1122,7 @@ export default function DashboardPage() {
   const [newClientGroupName, setNewClientGroupName] = useState('')
   const [adAccounts, setAdAccounts] = useState([])
   const [insights, setInsights] = useState(null)
+  const [previousInsights, setPreviousInsights] = useState(null)
   const [dailyData, setDailyData] = useState([])
   const [campaigns, setCampaigns] = useState([])
   const [metaHierarchy, setMetaHierarchy] = useState([])
@@ -968,6 +1130,7 @@ export default function DashboardPage() {
   const [isRankingsLoading, setIsRankingsLoading] = useState(false)
   const [rankingsError, setRankingsError] = useState('')
   const [rdSummary, setRdSummary] = useState(null)
+  const [previousRdSummary, setPreviousRdSummary] = useState(null)
   const [googleSheetsSummary, setGoogleSheetsSummary] = useState(null)
   const [googleSheetsError, setGoogleSheetsError] = useState('')
   const [rdPipelines, setRdPipelines] = useState([])
@@ -2748,7 +2911,36 @@ export default function DashboardPage() {
             'x-meta-access-token': globalIntegrations.metaAccessToken,
           }
 
-          const insightsResponse = await fetch(`/api/meta/insights?${insightsParams.toString()}`, { headers })
+          const currentMetaWindow = resolveDateWindow(dateRange, customSince, customUntil, {
+            excludeTodayForLast30d: dateRange === 'last_30d',
+          })
+          const previousMetaWindow = buildPreviousWindow(currentMetaWindow)
+
+          const previousInsightsParams = new URLSearchParams({
+            ad_account_id: selectedAdAccount,
+            date_preset: 'custom',
+          })
+          if (previousMetaWindow) {
+            previousInsightsParams.set('since', formatLocalDateInput(previousMetaWindow.start))
+            previousInsightsParams.set('until', formatLocalDateInput(previousMetaWindow.end))
+          }
+          if (currentMetaFilteredCampaignIds.length === 0) {
+            previousInsightsParams.set('campaign_ids', '__none__')
+          } else if (hasActiveMetaCampaignNarrowing) {
+            previousInsightsParams.set('campaign_ids', currentMetaFilteredCampaignIds.join(','))
+          }
+          if (hasActiveMetaAdsetNarrowing && currentMetaFilteredAdsetIds.length > 0) {
+            previousInsightsParams.set('adset_ids', currentMetaFilteredAdsetIds.join(','))
+          }
+          if (hasActiveMetaAdNarrowing && currentMetaFilteredAdIds.length > 0) {
+            previousInsightsParams.set('ad_ids', currentMetaFilteredAdIds.join(','))
+          }
+
+          const [insightsResponse, previousInsightsResponse] = await Promise.all([
+            fetch(`/api/meta/insights?${insightsParams.toString()}`, { headers }),
+            previousMetaWindow ? fetch(`/api/meta/insights?${previousInsightsParams.toString()}`, { headers }) : Promise.resolve(null),
+          ])
+
           const insightsData = await insightsResponse.json()
 
           if (!insightsResponse.ok) {
@@ -2756,14 +2948,23 @@ export default function DashboardPage() {
             if (!cancelled) {
               setInsights(buildMetaSummaryFromCampaigns(campaignsRef.current))
               setDailyData([])
+              setPreviousInsights(null)
             }
             metaError = isMetaRateLimitMessage(nextMetaError) ? '' : nextMetaError
           } else if (!cancelled) {
             setInsights(insightsData.summary || {})
             setDailyData(insightsData.daily || [])
+
+            if (previousInsightsResponse) {
+              const previousInsightsData = await previousInsightsResponse.json()
+              setPreviousInsights(previousInsightsResponse.ok ? (previousInsightsData.summary || {}) : null)
+            } else {
+              setPreviousInsights(null)
+            }
           }
         } else if (!cancelled) {
           setInsights(null)
+          setPreviousInsights(null)
           setDailyData([])
         }
 
@@ -2789,23 +2990,52 @@ export default function DashboardPage() {
             rdParams.set('until', customUntil)
           }
 
-          const rdResponse = await fetch(`/api/rd/summary${rdParams.toString() ? `?${rdParams.toString()}` : ''}`, {
-            headers: {
-              'x-rd-station-token': activeIntegrations.rdStationToken,
-            },
-          })
+          const currentRdWindow = resolveDateWindow(dateRange, customSince, customUntil)
+          const previousRdWindow = buildPreviousWindow(currentRdWindow)
+          const previousRdParams = new URLSearchParams(rdParams)
+
+          if (previousRdWindow) {
+            previousRdParams.set('date_preset', 'custom')
+            previousRdParams.set('since', formatLocalDateInput(previousRdWindow.start))
+            previousRdParams.set('until', formatLocalDateInput(previousRdWindow.end))
+          }
+
+          const rdHeaders = {
+            'x-rd-station-token': activeIntegrations.rdStationToken,
+          }
+
+          const [rdResponse, previousRdResponse] = await Promise.all([
+            fetch(`/api/rd/summary${rdParams.toString() ? `?${rdParams.toString()}` : ''}`, {
+              headers: rdHeaders,
+            }),
+            previousRdWindow
+              ? fetch(`/api/rd/summary?${previousRdParams.toString()}`, {
+                  headers: rdHeaders,
+                })
+              : Promise.resolve(null),
+          ])
+
           const rdData = await rdResponse.json()
 
           if (!rdResponse.ok) {
             rdError = rdData.error || 'Não foi possível carregar os dados do RD Station.'
             if (!cancelled) {
               setRdSummary(null)
+              setPreviousRdSummary(null)
             }
           } else if (!cancelled) {
             setRdSummary(rdData || null)
+
+            if (previousRdResponse) {
+              const previousRdData = await previousRdResponse.json()
+              setPreviousRdSummary(previousRdResponse.ok ? (previousRdData || null) : null)
+            } else {
+              setPreviousRdSummary(null)
+            }
           }
         } else if (!cancelled) {
           setRdSummary(null)
+          setPreviousRdSummary(null)
         }
 
         if (hasSheetsConfigured) {
@@ -2862,9 +3092,11 @@ export default function DashboardPage() {
         if (!cancelled) {
           lastGoogleSheetsFetchKeyRef.current = ''
           setInsights(null)
+          setPreviousInsights(null)
           setDailyData([])
           setBreakdowns(EMPTY_META_BREAKDOWNS)
           setRdSummary(null)
+          setPreviousRdSummary(null)
           setGoogleSheetsSummary(null)
           setGoogleSheetsError('')
           setErrorMessage(error.message || 'Falha ao puxar os dados da integração.')
@@ -3113,6 +3345,7 @@ export default function DashboardPage() {
   }
 
   const customMetrics = useMemo(() => insights?.custom_metrics || {}, [insights])
+  const previousCustomMetrics = useMemo(() => previousInsights?.custom_metrics || {}, [previousInsights])
 
   const labels = dailyData.map((day) => {
     const date = new Date(day.date_start)
@@ -3438,6 +3671,31 @@ export default function DashboardPage() {
     }),
     [spend, impressions, clicks, cpc, ctr, totalConversions, reach, cpm, frequency, conversionRate, averageTicket, purchaseValue, purchases, costPerPurchase, leads, costPerLead, messages, costPerMessage, roas]
   )
+  const previousMetaDashboardMetricValues = useMemo(
+    () => ({
+      spend: parseFloat(previousInsights?.spend || 0),
+      impressions: parseInt(previousInsights?.impressions || 0, 10),
+      clicks: previousCustomMetrics.clicks || parseInt(previousInsights?.clicks || 0, 10),
+      cpc: previousCustomMetrics.cpc || parseFloat(previousInsights?.cpc || 0),
+      ctr: previousCustomMetrics.ctr || parseFloat(previousInsights?.ctr || 0),
+      totalConversions: previousCustomMetrics.totalConversions || 0,
+      reach: parseInt(previousInsights?.reach || 0, 10),
+      cpm: previousCustomMetrics.cpm || 0,
+      frequency: previousCustomMetrics.frequency || 0,
+      conversionRate: previousCustomMetrics.conversionRate || 0,
+      averageTicket: previousCustomMetrics.averageTicket || 0,
+      purchaseValue: previousCustomMetrics.purchaseValue || 0,
+      purchases: previousCustomMetrics.purchases || 0,
+      costPerPurchase: previousCustomMetrics.cost_per_purchase || 0,
+      leads: previousCustomMetrics.leads || 0,
+      costPerLead: previousCustomMetrics.cost_per_lead || 0,
+      messages: previousCustomMetrics.messages || 0,
+      costPerMessage: previousCustomMetrics.cost_per_message || 0,
+      clicksWithoutConversion: Math.max((previousCustomMetrics.clicks || parseInt(previousInsights?.clicks || 0, 10)) - (previousCustomMetrics.totalConversions || 0), 0),
+      roas: previousCustomMetrics.roas || 0,
+    }),
+    [previousInsights, previousCustomMetrics]
+  )
   const metaDashboardMetricCards = useMemo(
     () =>
       draftMetaDashboardMetricLayouts
@@ -3454,10 +3712,16 @@ export default function DashboardPage() {
             icon: metric.icon,
             tone: metric.tone,
             value: formatDashboardMetricValue(metaDashboardMetricValues[layoutItem.metricKey], metric.type),
+            trend: buildMetricTrend(
+              layoutItem.metricKey,
+              metaDashboardMetricValues[layoutItem.metricKey],
+              previousMetaDashboardMetricValues[layoutItem.metricKey],
+              metric.type
+            ),
           }
         })
         .filter(Boolean),
-    [draftMetaDashboardMetricLayouts, metaDashboardMetricValues]
+    [draftMetaDashboardMetricLayouts, metaDashboardMetricValues, previousMetaDashboardMetricValues]
   )
   const metaExtraDashboardMetricCards = useMemo(
     () => metaDashboardMetricCards.filter((card) => !FIXED_META_METRIC_KEYS.has(card.key)),
@@ -3511,6 +3775,48 @@ export default function DashboardPage() {
     }),
     [rdSummary, rdFinalSalesCount, rdFinalRevenue, rdFinalAvgTicket]
   )
+  const previousRdFinalSalesCount = (previousRdSummary?.wonOpportunityCount || 0) + (previousRdSummary?.wonDealsFromPreviousCohorts || 0)
+  const previousRdFinalRevenue = (previousRdSummary?.wonOpportunityRevenue || 0) + (previousRdSummary?.wonRevenueFromPreviousCohorts || 0)
+  const previousRdFinalAvgTicket = previousRdFinalSalesCount > 0 ? previousRdFinalRevenue / previousRdFinalSalesCount : 0
+  const previousRdDashboardMetricValues = useMemo(
+    () => ({
+      opportunityCount: previousRdSummary?.opportunityCount || 0,
+      qualifiedOpportunityCount: previousRdSummary?.qualifiedOpportunityCount || 0,
+      wonOpportunityCount: previousRdSummary?.wonOpportunityCount || 0,
+      wonOpportunityRevenue: previousRdSummary?.wonOpportunityRevenue || 0,
+      avgTicketWonByCreation: previousRdSummary?.avgTicketWonByCreation || 0,
+      leadToQualifiedRate: previousRdSummary?.leadToQualifiedRate || 0,
+      qualifiedToWonRate: previousRdSummary?.qualifiedToWonRate || 0,
+      leadToWonRate: previousRdSummary?.leadToWonRate || 0,
+      lostOpportunityCount: previousRdSummary?.lostOpportunityCount || 0,
+      wonDeals: previousRdSummary?.wonDeals || 0,
+      wonDealsFromPreviousCohorts: previousRdSummary?.wonDealsFromPreviousCohorts || 0,
+      wonRevenue: previousRdSummary?.wonRevenue || 0,
+      avgTicketWon: previousRdSummary?.avgTicketWon || 0,
+      wonRevenueFromPreviousCohorts: previousRdSummary?.wonRevenueFromPreviousCohorts || 0,
+      avgTicketWonPreviousCohorts: previousRdSummary?.avgTicketWonPreviousCohorts || 0,
+      rdFinalSalesCount: previousRdFinalSalesCount,
+      rdFinalRevenue: previousRdFinalRevenue,
+      rdFinalAvgTicket: previousRdFinalAvgTicket,
+      contacts: previousRdSummary?.contacts || 0,
+      contactsInPeriod: previousRdSummary?.contactsInPeriod || 0,
+      contactsMoved: previousRdSummary?.contactsMoved || 0,
+      qualifiedDeals: previousRdSummary?.qualifiedDeals || 0,
+      qualifiedContacts: previousRdSummary?.qualifiedContacts || 0,
+      closeRate: previousRdSummary?.closeRate || 0,
+      dealToWonRate: previousRdSummary?.dealToWonRate || 0,
+      leadToDealRate: previousRdSummary?.leadToDealRate || 0,
+      sourceConversionRate: previousRdSummary?.sourceConversionRate || 0,
+      avgLeadToWonDays: previousRdSummary?.avgLeadToWonDays || 0,
+      avgDealToWonDays: previousRdSummary?.avgDealToWonDays || 0,
+      avgLeadToWonDaysFiltered: previousRdSummary?.avgLeadToWonDaysFiltered || 0,
+      avgDealToWonDaysFiltered: previousRdSummary?.avgDealToWonDaysFiltered || 0,
+      contactsWithDeals: previousRdSummary?.contactsWithDeals || 0,
+      contactsWithWonDeals: previousRdSummary?.contactsWithWonDeals || 0,
+      lostContacts: previousRdSummary?.lostContacts || 0,
+    }),
+    [previousRdSummary, previousRdFinalSalesCount, previousRdFinalRevenue, previousRdFinalAvgTicket]
+  )
   const rdDashboardMetricCards = useMemo(
     () =>
       draftRdDashboardMetricLayouts
@@ -3527,10 +3833,16 @@ export default function DashboardPage() {
             icon: metric.icon,
             tone: metric.tone,
             value: formatDashboardMetricValue(rdDashboardMetricValues[layoutItem.metricKey], metric.type),
+            trend: buildMetricTrend(
+              layoutItem.metricKey,
+              rdDashboardMetricValues[layoutItem.metricKey],
+              previousRdDashboardMetricValues[layoutItem.metricKey],
+              metric.type
+            ),
           }
         })
         .filter(Boolean),
-    [draftRdDashboardMetricLayouts, rdDashboardMetricValues]
+    [draftRdDashboardMetricLayouts, rdDashboardMetricValues, previousRdDashboardMetricValues]
   )
   const rdExtraDashboardMetricCards = useMemo(
     () => rdDashboardMetricCards.filter((card) => !FIXED_RD_METRIC_KEYS.has(card.key)),
@@ -3666,12 +3978,12 @@ export default function DashboardPage() {
     [googleSheetsSummary]
   )
   const metaMediaKpis = [
-    { key: 'spend', title: 'Investimento', value: formatCurrency(spend), icon: 'bx-wallet-alt', tone: 'blue' },
-    { key: 'impressions', title: 'Impressões', value: formatNumber(impressions), icon: 'bx-show', tone: 'purple' },
-    { key: 'clicks', title: 'Cliques', value: formatNumber(clicks), icon: 'bx-pointer', tone: 'cyan' },
-    { key: 'cpc', title: 'CPC', value: formatCurrency(cpc), icon: 'bx-purchase-tag', tone: 'orange' },
-    { key: 'ctr', title: 'CTR', value: formatPercent(ctr), icon: 'bx-mouse', tone: 'pink' },
-    { key: 'totalConversions', title: 'Conversões totais', value: formatNumber(totalConversions), icon: 'bx-line-chart', tone: 'gold' },
+    { key: 'spend', title: 'Investimento', value: formatCurrency(spend), rawValue: spend, type: 'currency', icon: 'bx-wallet-alt', tone: 'blue' },
+    { key: 'impressions', title: 'Impressões', value: formatNumber(impressions), rawValue: impressions, type: 'number', icon: 'bx-show', tone: 'purple' },
+    { key: 'clicks', title: 'Cliques', value: formatNumber(clicks), rawValue: clicks, type: 'number', icon: 'bx-pointer', tone: 'cyan' },
+    { key: 'cpc', title: 'CPC', value: formatCurrency(cpc), rawValue: cpc, type: 'currency', icon: 'bx-purchase-tag', tone: 'orange' },
+    { key: 'ctr', title: 'CTR', value: formatPercent(ctr), rawValue: ctr, type: 'percent', icon: 'bx-mouse', tone: 'pink' },
+    { key: 'totalConversions', title: 'Conversões totais', value: formatNumber(totalConversions), rawValue: totalConversions, type: 'number', icon: 'bx-line-chart', tone: 'gold' },
   ]
   const metaConversionGroups = [
     {
@@ -3710,29 +4022,45 @@ export default function DashboardPage() {
     },
   ]
   const rdQualificationKpis = [
-    { key: 'opportunityCount', title: 'Oportunidades', value: formatNumber(rdSummary?.opportunityCount || 0), icon: 'bx-bulb', tone: 'blue' },
-    { key: 'qualifiedOpportunityCount', title: 'Qualificados', value: formatNumber(rdSummary?.qualifiedOpportunityCount || 0), icon: 'bx-filter-alt', tone: 'emerald' },
-    { key: 'wonOpportunityCount', title: 'Vendas da safra criada e fechada no período', value: formatNumber(rdSummary?.wonOpportunityCount || 0), icon: 'bx-badge-check', tone: 'emerald' },
-    { key: 'wonOpportunityRevenue', title: 'Faturamento da safra criada e fechada', value: formatCurrency(rdSummary?.wonOpportunityRevenue || 0), icon: 'bx-wallet-alt', tone: 'orange' },
-    { key: 'avgTicketWonByCreation', title: 'Ticket médio da safra criada e fechada', value: formatCurrency(rdSummary?.avgTicketWonByCreation || 0), icon: 'bx-receipt', tone: 'gold' },
-    { key: 'leadToQualifiedRate', title: 'Taxa de oportunidade para qualificados', value: formatPercent(rdSummary?.leadToQualifiedRate || 0), icon: 'bx-transfer-alt', tone: 'cyan' },
-    { key: 'qualifiedToWonRate', title: 'Taxa de qualificados para venda', value: formatPercent(rdSummary?.qualifiedToWonRate || 0), icon: 'bx-badge-check', tone: 'emerald' },
-    { key: 'leadToWonRate', title: 'Taxa de oportunidade para venda', value: formatPercent(rdSummary?.leadToWonRate || 0), icon: 'bx-line-chart', tone: 'blue' },
-    { key: 'lostOpportunityCount', title: 'Negócios perdidos', value: formatNumber(rdSummary?.lostOpportunityCount || 0), icon: 'bx-x-circle', tone: 'pink' },
+    { key: 'opportunityCount', title: 'Oportunidades', value: formatNumber(rdSummary?.opportunityCount || 0), rawValue: rdSummary?.opportunityCount || 0, type: 'number', icon: 'bx-bulb', tone: 'blue' },
+    { key: 'qualifiedOpportunityCount', title: 'Qualificados', value: formatNumber(rdSummary?.qualifiedOpportunityCount || 0), rawValue: rdSummary?.qualifiedOpportunityCount || 0, type: 'number', icon: 'bx-filter-alt', tone: 'emerald' },
+    { key: 'wonOpportunityCount', title: 'Vendas da safra criada e fechada no período', value: formatNumber(rdSummary?.wonOpportunityCount || 0), rawValue: rdSummary?.wonOpportunityCount || 0, type: 'number', icon: 'bx-badge-check', tone: 'emerald' },
+    { key: 'wonOpportunityRevenue', title: 'Faturamento da safra criada e fechada', value: formatCurrency(rdSummary?.wonOpportunityRevenue || 0), rawValue: rdSummary?.wonOpportunityRevenue || 0, type: 'currency', icon: 'bx-wallet-alt', tone: 'orange' },
+    { key: 'avgTicketWonByCreation', title: 'Ticket médio da safra criada e fechada', value: formatCurrency(rdSummary?.avgTicketWonByCreation || 0), rawValue: rdSummary?.avgTicketWonByCreation || 0, type: 'currency', icon: 'bx-receipt', tone: 'gold' },
+    { key: 'leadToQualifiedRate', title: 'Taxa de oportunidade para qualificados', value: formatPercent(rdSummary?.leadToQualifiedRate || 0), rawValue: rdSummary?.leadToQualifiedRate || 0, type: 'percent', icon: 'bx-transfer-alt', tone: 'cyan' },
+    { key: 'qualifiedToWonRate', title: 'Taxa de qualificados para venda', value: formatPercent(rdSummary?.qualifiedToWonRate || 0), rawValue: rdSummary?.qualifiedToWonRate || 0, type: 'percent', icon: 'bx-badge-check', tone: 'emerald' },
+    { key: 'leadToWonRate', title: 'Taxa de oportunidade para venda', value: formatPercent(rdSummary?.leadToWonRate || 0), rawValue: rdSummary?.leadToWonRate || 0, type: 'percent', icon: 'bx-line-chart', tone: 'blue' },
+    { key: 'lostOpportunityCount', title: 'Negócios perdidos', value: formatNumber(rdSummary?.lostOpportunityCount || 0), rawValue: rdSummary?.lostOpportunityCount || 0, type: 'number', icon: 'bx-x-circle', tone: 'pink' },
   ]
   const rdRevenueKpis = [
-    { key: 'wonDeals', title: 'Negociações ganhas fechadas no período', value: formatNumber(rdSummary?.wonDeals || 0), icon: 'bx-calendar-check', tone: 'emerald' },
-    { key: 'wonDealsFromPreviousCohorts', title: 'Negociações ganhas de safras anteriores', value: formatNumber(rdSummary?.wonDealsFromPreviousCohorts || 0), icon: 'bx-history', tone: 'blue' },
-    { key: 'wonRevenue', title: 'Faturamento das negociações fechadas', value: formatCurrency(rdSummary?.wonRevenue || 0), icon: 'bx-wallet-alt', tone: 'orange' },
-    { key: 'avgTicketWon', title: 'Ticket médio das negociações fechadas', value: formatCurrency(rdSummary?.avgTicketWon || 0), icon: 'bx-receipt', tone: 'gold' },
-    { key: 'wonRevenueFromPreviousCohorts', title: 'Faturamento de safras anteriores fechadas', value: formatCurrency(rdSummary?.wonRevenueFromPreviousCohorts || 0), icon: 'bx-coin-stack', tone: 'orange' },
-    { key: 'avgTicketWonPreviousCohorts', title: 'Ticket médio de safras anteriores fechadas', value: formatCurrency(rdSummary?.avgTicketWonPreviousCohorts || 0), icon: 'bx-spreadsheet', tone: 'gold' },
+    { key: 'wonDeals', title: 'Negociações ganhas fechadas no período', value: formatNumber(rdSummary?.wonDeals || 0), rawValue: rdSummary?.wonDeals || 0, type: 'number', icon: 'bx-calendar-check', tone: 'emerald' },
+    { key: 'wonDealsFromPreviousCohorts', title: 'Negociações ganhas de safras anteriores', value: formatNumber(rdSummary?.wonDealsFromPreviousCohorts || 0), rawValue: rdSummary?.wonDealsFromPreviousCohorts || 0, type: 'number', icon: 'bx-history', tone: 'blue' },
+    { key: 'wonRevenue', title: 'Faturamento das negociações fechadas', value: formatCurrency(rdSummary?.wonRevenue || 0), rawValue: rdSummary?.wonRevenue || 0, type: 'currency', icon: 'bx-wallet-alt', tone: 'orange' },
+    { key: 'avgTicketWon', title: 'Ticket médio das negociações fechadas', value: formatCurrency(rdSummary?.avgTicketWon || 0), rawValue: rdSummary?.avgTicketWon || 0, type: 'currency', icon: 'bx-receipt', tone: 'gold' },
+    { key: 'wonRevenueFromPreviousCohorts', title: 'Faturamento de safras anteriores fechadas', value: formatCurrency(rdSummary?.wonRevenueFromPreviousCohorts || 0), rawValue: rdSummary?.wonRevenueFromPreviousCohorts || 0, type: 'currency', icon: 'bx-coin-stack', tone: 'orange' },
+    { key: 'avgTicketWonPreviousCohorts', title: 'Ticket médio de safras anteriores fechadas', value: formatCurrency(rdSummary?.avgTicketWonPreviousCohorts || 0), rawValue: rdSummary?.avgTicketWonPreviousCohorts || 0, type: 'currency', icon: 'bx-spreadsheet', tone: 'gold' },
   ]
   const rdFinalKpis = [
-    { key: 'rdFinalSalesCount', title: 'Vendas totais do resultado final', value: formatNumber(rdFinalSalesCount), icon: 'bx-trophy', tone: 'emerald' },
-    { key: 'rdFinalRevenue', title: 'Faturamento total do resultado final', value: formatCurrency(rdFinalRevenue), icon: 'bx-wallet-alt', tone: 'orange' },
-    { key: 'rdFinalAvgTicket', title: 'Ticket médio do resultado final', value: formatCurrency(rdFinalAvgTicket), icon: 'bx-receipt', tone: 'gold' },
+    { key: 'rdFinalSalesCount', title: 'Vendas totais do resultado final', value: formatNumber(rdFinalSalesCount), rawValue: rdFinalSalesCount, type: 'number', icon: 'bx-trophy', tone: 'emerald' },
+    { key: 'rdFinalRevenue', title: 'Faturamento total do resultado final', value: formatCurrency(rdFinalRevenue), rawValue: rdFinalRevenue, type: 'currency', icon: 'bx-wallet-alt', tone: 'orange' },
+    { key: 'rdFinalAvgTicket', title: 'Ticket médio do resultado final', value: formatCurrency(rdFinalAvgTicket), rawValue: rdFinalAvgTicket, type: 'currency', icon: 'bx-receipt', tone: 'gold' },
   ]
+  const metaMediaKpisWithTrend = metaMediaKpis.map((metric) => ({
+    ...metric,
+    trend: buildMetricTrend(metric.key, metric.rawValue, previousMetaDashboardMetricValues[metric.key], metric.type),
+  }))
+  const rdQualificationKpisWithTrend = rdQualificationKpis.map((metric) => ({
+    ...metric,
+    trend: buildMetricTrend(metric.key, metric.rawValue, previousRdDashboardMetricValues[metric.key], metric.type),
+  }))
+  const rdRevenueKpisWithTrend = rdRevenueKpis.map((metric) => ({
+    ...metric,
+    trend: buildMetricTrend(metric.key, metric.rawValue, previousRdDashboardMetricValues[metric.key], metric.type),
+  }))
+  const rdFinalKpisWithTrend = rdFinalKpis.map((metric) => ({
+    ...metric,
+    trend: buildMetricTrend(metric.key, metric.rawValue, previousRdDashboardMetricValues[metric.key], metric.type),
+  }))
   const userAvatarFallback = `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.user_metadata?.full_name || user?.email || 'Usuario')}&background=0D8ABC&color=fff`
   const userAvatarSrc = user?.user_metadata?.avatar_url || userAvatarFallback
 
@@ -3791,9 +4119,9 @@ export default function DashboardPage() {
               </div>
             </div>
             <div className="kpi-value">{metric.value}</div>
-            <div className="kpi-trend neutral">
-              <i className="bx bx-check-circle"></i>
-              <span>{metric.description}</span>
+            <div className={`kpi-trend ${metric.trend?.tone || 'neutral'}`}>
+              <i className={`bx ${metric.trend?.icon || 'bx-check-circle'}`}></i>
+              <span>{metric.trend?.label || metric.description}</span>
             </div>
           </div>
         ))}
@@ -3812,9 +4140,9 @@ export default function DashboardPage() {
             </div>
           </div>
           <div className="kpi-value">{metric.value}</div>
-          <div className="kpi-trend neutral">
-            <i className="bx bx-check-circle"></i>
-            <span>Atualizado conforme a integração configurada.</span>
+          <div className={`kpi-trend ${metric.trend?.tone || 'neutral'}`}>
+            <i className={`bx ${metric.trend?.icon || 'bx-check-circle'}`}></i>
+            <span>{metric.trend?.label || 'Atualizado conforme a integração configurada.'}</span>
           </div>
         </article>
       ))}
@@ -5050,7 +5378,7 @@ export default function DashboardPage() {
                         <h3>Mídia e distribuição</h3>
                         <p>Visão geral do investimento e da entrega da campanha.</p>
                       </div>
-                      {renderFixedKpiGrid(metaMediaKpis)}
+                      {renderFixedKpiGrid(metaMediaKpisWithTrend)}
                     </div>
 
                     <div className="conversion-groups-grid">
@@ -5620,7 +5948,7 @@ export default function DashboardPage() {
                               <h3>Qualificação e conversão</h3>
                               <p>Leitura da safra criada no período selecionado: oportunidades, qualificação, perdas e vendas da mesma base.</p>
                             </div>
-                            {renderFixedKpiGrid(rdQualificationKpis)}
+                            {renderFixedKpiGrid(rdQualificationKpisWithTrend)}
                           </section>
 
                           <section className="crm-result-group">
@@ -5628,7 +5956,7 @@ export default function DashboardPage() {
                               <h3>Fechamento e receita</h3>
                               <p>Leitura por data de fechamento de todas as negociações ganhas no período, incluindo safras criadas antes do intervalo selecionado.</p>
                             </div>
-                            {renderFixedKpiGrid(rdRevenueKpis)}
+                            {renderFixedKpiGrid(rdRevenueKpisWithTrend)}
                           </section>
 
                           <section className="crm-result-group">
@@ -5636,7 +5964,7 @@ export default function DashboardPage() {
                               <h3>Resultado final</h3>
                               <p>Consolidado final somando safras criadas no período e safras anteriores fechadas no mesmo intervalo.</p>
                             </div>
-                            {renderFixedKpiGrid(rdFinalKpis)}
+                            {renderFixedKpiGrid(rdFinalKpisWithTrend)}
                           </section>
                         </div>
 
