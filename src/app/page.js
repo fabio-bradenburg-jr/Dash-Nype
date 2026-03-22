@@ -199,6 +199,16 @@ const CLIENT_INTEGRATION_GROUPS = [
     ],
   },
   {
+    title: 'Google Sheets',
+    icon: 'bx-spreadsheet',
+    accent: '#22c55e',
+    description: 'Cole a URL pública da planilha para transformar colunas numéricas em métricas personalizadas no dashboard.',
+    fields: [
+      { name: 'googleSheetsUrl', label: 'URL da planilha ou CSV publicado', placeholder: 'https://docs.google.com/spreadsheets/d/...', storage: 'client', type: 'text' },
+      { name: 'googleSheetsHeaderRow', label: 'Linha do cabeçalho', placeholder: '1', storage: 'client', type: 'number' },
+    ],
+  },
+  {
     title: 'RD Station',
     icon: 'bx-signal-5',
     accent: '#14b8a6',
@@ -793,8 +803,10 @@ function cloneDashboardTemplates(templates = []) {
     ...template,
     metaMetricKeys: Array.isArray(template?.metaMetricKeys) ? [...template.metaMetricKeys] : [],
     rdMetricKeys: Array.isArray(template?.rdMetricKeys) ? [...template.rdMetricKeys] : [],
+    sheetsMetricKeys: Array.isArray(template?.sheetsMetricKeys) ? [...template.sheetsMetricKeys] : [],
     metaMetricLayouts: cloneDashboardMetricLayouts(template?.metaMetricLayouts),
     rdMetricLayouts: cloneDashboardMetricLayouts(template?.rdMetricLayouts),
+    sheetsMetricLayouts: cloneDashboardMetricLayouts(template?.sheetsMetricLayouts),
   }))
 }
 
@@ -809,7 +821,8 @@ function haveSameDashboardTemplates(left = [], right = []) {
       leftTemplate.id === rightTemplate.id &&
       leftTemplate.name === rightTemplate.name &&
       haveSameDashboardMetricLayouts(leftTemplate.metaMetricLayouts || [], rightTemplate.metaMetricLayouts || []) &&
-      haveSameDashboardMetricLayouts(leftTemplate.rdMetricLayouts || [], rightTemplate.rdMetricLayouts || [])
+      haveSameDashboardMetricLayouts(leftTemplate.rdMetricLayouts || [], rightTemplate.rdMetricLayouts || []) &&
+      haveSameDashboardMetricLayouts(leftTemplate.sheetsMetricLayouts || [], rightTemplate.sheetsMetricLayouts || [])
     )
   })
 }
@@ -905,6 +918,7 @@ export default function DashboardPage() {
   const lastRdPipelinesFetchKeyRef = useRef('')
   const lastDashboardFetchKeyRef = useRef('')
   const lastBreakdownsFetchKeyRef = useRef('')
+  const lastGoogleSheetsFetchKeyRef = useRef('')
   const selectedQualifiedStagesRef = useRef([])
   const rdLeadSourceFiltersRef = useRef([])
   const metaFilteredCampaignIdsRef = useRef([])
@@ -953,6 +967,7 @@ export default function DashboardPage() {
   const [isRankingsLoading, setIsRankingsLoading] = useState(false)
   const [rankingsError, setRankingsError] = useState('')
   const [rdSummary, setRdSummary] = useState(null)
+  const [googleSheetsSummary, setGoogleSheetsSummary] = useState(null)
   const [rdPipelines, setRdPipelines] = useState([])
   const [rdPipelineStages, setRdPipelineStages] = useState([])
   const [isLoading, setIsLoading] = useState(true)
@@ -975,6 +990,7 @@ export default function DashboardPage() {
   const [draftDashboardTemplateId, setDraftDashboardTemplateId] = useState('')
   const [isMetaMetricLibraryOpen, setIsMetaMetricLibraryOpen] = useState(false)
   const [isRdMetricLibraryOpen, setIsRdMetricLibraryOpen] = useState(false)
+  const [isSheetsMetricLibraryOpen, setIsSheetsMetricLibraryOpen] = useState(false)
   const [isQualifiedStagesVisible, setIsQualifiedStagesVisible] = useState(false)
   const [usersList, setUsersList] = useState([])
   const [usersLoading, setUsersLoading] = useState(false)
@@ -1073,7 +1089,8 @@ export default function DashboardPage() {
   )
   const hasMetaConfigured = Boolean(selectedAdAccount && globalIntegrations.metaAccessToken)
   const hasRdConfigured = Boolean(activeIntegrations.rdStationToken)
-  const hasAnyPresentationData = hasMetaConfigured || hasRdConfigured
+  const hasSheetsConfigured = Boolean(String(activeClient?.googleSheetsUrl || '').trim())
+  const hasAnyPresentationData = hasMetaConfigured || hasRdConfigured || hasSheetsConfigured
   const rdPipelineOptions = useMemo(
     () => (rdPipelines.length ? rdPipelines : rdSummary?.availablePipelines || []),
     [rdPipelines, rdSummary]
@@ -1098,6 +1115,10 @@ export default function DashboardPage() {
   )
   const draftRdDashboardMetricLayouts = useMemo(
     () => normalizeDashboardMetricLayouts(activeDraftDashboardTemplate?.rdMetricLayouts),
+    [activeDraftDashboardTemplate]
+  )
+  const draftSheetsDashboardMetricLayouts = useMemo(
+    () => normalizeDashboardMetricLayouts(activeDraftDashboardTemplate?.sheetsMetricLayouts),
     [activeDraftDashboardTemplate]
   )
   const activeFunnelSteps = useMemo(
@@ -1528,6 +1549,7 @@ export default function DashboardPage() {
   useEffect(() => {
     setIsMetaMetricLibraryOpen(false)
     setIsRdMetricLibraryOpen(false)
+    setIsSheetsMetricLibraryOpen(false)
   }, [activeClientId, activeDashboardTemplate?.id])
 
   useEffect(() => {
@@ -1769,12 +1791,14 @@ export default function DashboardPage() {
       name: trimmedName,
       metaMetricLayouts: cloneDashboardMetricLayouts(draftMetaDashboardMetricLayouts),
       rdMetricLayouts: cloneDashboardMetricLayouts(draftRdDashboardMetricLayouts),
+      sheetsMetricLayouts: cloneDashboardMetricLayouts(draftSheetsDashboardMetricLayouts),
     })
 
     setDraftDashboardTemplates((currentTemplates) => [...currentTemplates, newTemplate])
     setDraftDashboardTemplateId(newTemplate.id)
     setIsMetaMetricLibraryOpen(false)
     setIsRdMetricLibraryOpen(false)
+    setIsSheetsMetricLibraryOpen(false)
   }
 
   const handleAddMetaDashboardMetric = (metricKey) => {
@@ -1819,8 +1843,34 @@ export default function DashboardPage() {
     }))
   }
 
+  const handleAddSheetsDashboardMetric = (metricKey) => {
+    updateDraftDashboardTemplate((template) => ({
+      ...template,
+      sheetsMetricLayouts: [
+        ...normalizeDashboardMetricLayouts(template.sheetsMetricLayouts),
+        {
+          id: globalThis.crypto?.randomUUID?.() || `dashboard-card-${metricKey}-${Date.now()}`,
+          metricKey,
+          size: 'sm',
+        },
+      ],
+    }))
+  }
+
+  const handleRemoveSheetsDashboardMetric = (layoutId) => {
+    updateDraftDashboardTemplate((template) => ({
+      ...template,
+      sheetsMetricLayouts: normalizeDashboardMetricLayouts(template.sheetsMetricLayouts).filter((item) => item.id !== layoutId),
+    }))
+  }
+
   const handleDashboardMetricSizeToggle = (source, layoutId) => {
-    const fieldName = source === 'meta' ? 'metaMetricLayouts' : 'rdMetricLayouts'
+    const fieldName =
+      source === 'meta'
+        ? 'metaMetricLayouts'
+        : source === 'rd'
+          ? 'rdMetricLayouts'
+          : 'sheetsMetricLayouts'
 
     updateDraftDashboardTemplate((template) => ({
       ...template,
@@ -1843,7 +1893,12 @@ export default function DashboardPage() {
     if (!dashboardMetricDragState || dashboardMetricDragState.source !== source) return
     if (dashboardMetricDragState.layoutId === targetLayoutId) return
 
-    const fieldName = source === 'meta' ? 'metaMetricLayouts' : 'rdMetricLayouts'
+    const fieldName =
+      source === 'meta'
+        ? 'metaMetricLayouts'
+        : source === 'rd'
+          ? 'rdMetricLayouts'
+          : 'sheetsMetricLayouts'
 
     updateDraftDashboardTemplate((template) => {
       const currentLayouts = normalizeDashboardMetricLayouts(template[fieldName])
@@ -2586,19 +2641,23 @@ export default function DashboardPage() {
 
     if (!activeClientId) {
       lastDashboardFetchKeyRef.current = ''
+      lastGoogleSheetsFetchKeyRef.current = ''
       setIsLoading(false)
       setInsights(null)
       setDailyData([])
       setRdSummary(null)
+      setGoogleSheetsSummary(null)
       return
     }
 
-    if (!hasMetaConfigured && !hasRdConfigured) {
+    if (!hasMetaConfigured && !hasRdConfigured && !hasSheetsConfigured) {
       lastDashboardFetchKeyRef.current = ''
+      lastGoogleSheetsFetchKeyRef.current = ''
       setIsLoading(false)
       setInsights(null)
       setDailyData([])
       setRdSummary(null)
+      setGoogleSheetsSummary(null)
       return
     }
 
@@ -2621,6 +2680,7 @@ export default function DashboardPage() {
         customUntil,
         hasMetaConfigured,
         hasRdConfigured,
+        hasSheetsConfigured,
         rdPipelineFilter,
         rdSellerFilter,
         rdLeadSourceFiltersKey,
@@ -2634,6 +2694,8 @@ export default function DashboardPage() {
         isMetaStructureReady,
         metaToken: globalIntegrations.metaAccessToken,
         rdToken: activeIntegrations.rdStationToken,
+        googleSheetsUrl: activeClient?.googleSheetsUrl || '',
+        googleSheetsHeaderRow: Number(activeClient?.googleSheetsHeaderRow || 1),
       })
 
       if (lastDashboardFetchKeyRef.current === fetchKey) {
@@ -2742,6 +2804,39 @@ export default function DashboardPage() {
           setRdSummary(null)
         }
 
+        if (hasSheetsConfigured) {
+          const sheetsFetchKey = JSON.stringify({
+            activeClientId,
+            googleSheetsUrl: activeClient?.googleSheetsUrl || '',
+            googleSheetsHeaderRow: Number(activeClient?.googleSheetsHeaderRow || 1),
+          })
+
+          if (lastGoogleSheetsFetchKeyRef.current !== sheetsFetchKey) {
+            lastGoogleSheetsFetchKeyRef.current = sheetsFetchKey
+
+            const sheetsParams = new URLSearchParams({
+              url: activeClient?.googleSheetsUrl || '',
+              header_row: String(Number(activeClient?.googleSheetsHeaderRow || 1)),
+            })
+
+            const sheetsResponse = await fetch(`/api/google-sheets/summary?${sheetsParams.toString()}`, {
+              cache: 'no-store',
+            })
+            const sheetsData = await sheetsResponse.json()
+
+            if (!sheetsResponse.ok) {
+              throw new Error(sheetsData.error || 'Não foi possível carregar os dados do Google Sheets.')
+            }
+
+            if (!cancelled) {
+              setGoogleSheetsSummary(sheetsData || null)
+            }
+          }
+        } else if (!cancelled) {
+          lastGoogleSheetsFetchKeyRef.current = ''
+          setGoogleSheetsSummary(null)
+        }
+
         if (!cancelled) {
           setErrorMessage(metaError || rdError)
         }
@@ -2751,6 +2846,7 @@ export default function DashboardPage() {
           setDailyData([])
           setBreakdowns(EMPTY_META_BREAKDOWNS)
           setRdSummary(null)
+          setGoogleSheetsSummary(null)
           setErrorMessage(error.message || 'Falha ao puxar os dados da integração.')
         }
       } finally {
@@ -2774,6 +2870,7 @@ export default function DashboardPage() {
     customUntil,
     hasMetaConfigured,
     hasRdConfigured,
+    hasSheetsConfigured,
     rdPipelineFilter,
     rdSellerFilter,
     rdLeadSourceFiltersKey,
@@ -2788,6 +2885,8 @@ export default function DashboardPage() {
     isMetaStructureReady,
     globalIntegrations.metaAccessToken,
     activeIntegrations.rdStationToken,
+    activeClient?.googleSheetsUrl,
+    activeClient?.googleSheetsHeaderRow,
   ])
 
   useEffect(() => {
@@ -3425,6 +3524,67 @@ export default function DashboardPage() {
       ),
     [draftRdDashboardMetricLayouts]
   )
+  const googleSheetsMetricOptions = useMemo(
+    () =>
+      (googleSheetsSummary?.numericColumns || []).reduce((accumulator, column) => {
+        accumulator[column.id] = {
+          label: column.header,
+          type: column.type || 'number',
+          icon: 'bx-spreadsheet',
+          tone: 'emerald',
+          description: `Soma consolidada da coluna ${column.header} na planilha vinculada.`,
+        }
+        return accumulator
+      }, {}),
+    [googleSheetsSummary]
+  )
+  const googleSheetsMetricValues = useMemo(
+    () =>
+      (googleSheetsSummary?.numericColumns || []).reduce((accumulator, column) => {
+        accumulator[column.id] = column.sum || 0
+        return accumulator
+      }, {}),
+    [googleSheetsSummary]
+  )
+  const googleSheetsDashboardMetricCards = useMemo(
+    () =>
+      draftSheetsDashboardMetricLayouts
+        .map((layoutItem) => {
+          const metric = googleSheetsMetricOptions[layoutItem.metricKey]
+          if (!metric) return null
+
+          return {
+            id: layoutItem.id,
+            key: layoutItem.metricKey,
+            size: layoutItem.size,
+            title: metric.label,
+            description: metric.description,
+            icon: metric.icon,
+            tone: metric.tone,
+            value: formatDashboardMetricValue(googleSheetsMetricValues[layoutItem.metricKey], metric.type),
+          }
+        })
+        .filter(Boolean),
+    [draftSheetsDashboardMetricLayouts, googleSheetsMetricOptions, googleSheetsMetricValues]
+  )
+  const availableGoogleSheetsMetricOptions = useMemo(
+    () =>
+      Object.entries(googleSheetsMetricOptions).filter(
+        ([metricKey]) => !draftSheetsDashboardMetricLayouts.some((item) => item.metricKey === metricKey)
+      ),
+    [googleSheetsMetricOptions, draftSheetsDashboardMetricLayouts]
+  )
+  const defaultGoogleSheetsKpis = useMemo(
+    () =>
+      (googleSheetsSummary?.numericColumns || []).slice(0, 4).map((column) => ({
+        key: column.id,
+        title: column.header,
+        value: formatDashboardMetricValue(column.sum || 0, column.type || 'number'),
+        icon: 'bx-spreadsheet',
+        tone: 'emerald',
+      })),
+    [googleSheetsSummary]
+  )
   const metaMediaKpis = [
     { key: 'spend', title: 'Investimento', value: formatCurrency(spend), icon: 'bx-wallet-alt', tone: 'blue' },
     { key: 'impressions', title: 'Impressões', value: formatNumber(impressions), icon: 'bx-show', tone: 'purple' },
@@ -3537,7 +3697,13 @@ export default function DashboardPage() {
                 <button
                   type="button"
                   className="template-metric-remove"
-                  onClick={() => (source === 'meta' ? handleRemoveMetaDashboardMetric(metric.id) : handleRemoveRdDashboardMetric(metric.id))}
+                  onClick={() =>
+                    source === 'meta'
+                      ? handleRemoveMetaDashboardMetric(metric.id)
+                      : source === 'rd'
+                        ? handleRemoveRdDashboardMetric(metric.id)
+                        : handleRemoveSheetsDashboardMetric(metric.id)
+                  }
                   aria-label={`Remover ${metric.title}`}
                 >
                   <i className="bx bx-x"></i>
@@ -4103,6 +4269,12 @@ export default function DashboardPage() {
                         )
                       })}
 
+                      {group.title === 'Google Sheets' && (
+                        <div className="field-helper">
+                          Use uma planilha pública ou publicada em CSV. O app lê a aba indicada na URL e transforma as colunas numéricas em cards personalizáveis no dashboard.
+                        </div>
+                      )}
+
                       {group.title === 'RD Station' && (
                         <>
                           <div className="input-group">
@@ -4558,6 +4730,12 @@ export default function DashboardPage() {
                           activeClient?.tiktokAdsAccountId,
                           activeClient?.linkedInAdsAccountId,
                         ].filter(Boolean).length} conta(s) vinculada(s)</strong>
+                      </div>
+                    )}
+                    {hasSheetsConfigured && (
+                      <div className="hero-stat">
+                        <span>Google Sheets</span>
+                        <strong>{googleSheetsSummary?.totalRows ? `${googleSheetsSummary.totalRows} linha(s) lida(s)` : 'Planilha conectada'}</strong>
                       </div>
                     )}
                     {hasRdConfigured && (
@@ -5153,6 +5331,115 @@ export default function DashboardPage() {
                     </table>
                   </div>
                 </section>
+                  </section>
+                )}
+
+                {hasSheetsConfigured && (
+                  <section className="source-section">
+                    <div className="source-section-header">
+                      <div className="source-section-badge" style={{ color: '#22c55e', borderColor: '#22c55e' }}>
+                        <i className="bx bx-spreadsheet"></i>
+                        <span>Google Sheets</span>
+                      </div>
+                      <p className="source-section-copy">Leitura personalizada da planilha vinculada a este cliente, transformando colunas em cards do dashboard.</p>
+                    </div>
+
+                    <section className="glass-panel grouped-results">
+                      <div className="section-header section-header-stack section-header-with-action">
+                        <div>
+                          <h2>Resumo da planilha</h2>
+                          <p className="chart-subtitle">
+                            As colunas numéricas da planilha viram métricas adicionáveis e a tabela abaixo traz um preview das linhas importadas.
+                          </p>
+                        </div>
+                        {activeDraftDashboardTemplate && (
+                          <button
+                            type="button"
+                            className="btn btn-secondary"
+                            onClick={() => setIsSheetsMetricLibraryOpen((current) => !current)}
+                            disabled={!availableGoogleSheetsMetricOptions.length}
+                          >
+                            <i className="bx bx-plus"></i>
+                            Adicionar métrica
+                          </button>
+                        )}
+                      </div>
+
+                      {googleSheetsDashboardMetricCards.length > 0
+                        ? renderDashboardMetricGrid(googleSheetsDashboardMetricCards, 'sheets')
+                        : defaultGoogleSheetsKpis.length > 0
+                          ? renderFixedKpiGrid(defaultGoogleSheetsKpis)
+                          : (
+                            <div className="ranking-empty">
+                              A planilha foi lida, mas ainda não encontramos colunas numéricas para transformar em cards.
+                            </div>
+                          )}
+
+                      {isSheetsMetricLibraryOpen && (
+                        <div className="metric-library-panel glass-item">
+                          <div>
+                            <strong>Métricas do Google Sheets</strong>
+                            <p>Adicione qualquer coluna numérica da planilha como card no modelo atual.</p>
+                          </div>
+                          <div className="metric-library-list">
+                            {availableGoogleSheetsMetricOptions.length > 0 ? (
+                              availableGoogleSheetsMetricOptions.map(([metricKey, metric]) => (
+                                <button
+                                  key={metricKey}
+                                  type="button"
+                                  className="metric-library-chip"
+                                  onClick={() => handleAddSheetsDashboardMetric(metricKey)}
+                                >
+                                  <span>{metric.label}</span>
+                                  <small>{metric.description}</small>
+                                </button>
+                              ))
+                            ) : (
+                              <div className="metric-library-empty">Todas as colunas numéricas da planilha já estão visíveis neste modelo.</div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="glass-panel sheets-preview-card">
+                        <div className="section-header section-header-stack">
+                          <div>
+                            <h2>Preview da planilha</h2>
+                            <p className="chart-subtitle">
+                              {googleSheetsSummary?.totalRows
+                                ? `${formatNumber(googleSheetsSummary.totalRows)} linha(s) lida(s) da planilha configurada para ${activeClient.name}.`
+                                : 'Assim que a planilha responder, o preview aparece aqui.'}
+                            </p>
+                          </div>
+                        </div>
+                        {googleSheetsSummary?.previewRows?.length ? (
+                          <div className="table-container">
+                            <table className="data-table">
+                              <thead>
+                                <tr>
+                                  {(googleSheetsSummary.headers || []).map((header) => (
+                                    <th key={header}>{header}</th>
+                                  ))}
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {googleSheetsSummary.previewRows.map((row) => (
+                                  <tr key={row.id}>
+                                    {row.cells.map((cell) => (
+                                      <td key={cell.key}>{cell.value || '-'}</td>
+                                    ))}
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        ) : (
+                          <div className="ranking-empty">
+                            Nenhuma linha de preview disponível. Verifique se a planilha tem cabeçalho e dados abaixo da linha informada.
+                          </div>
+                        )}
+                      </div>
+                    </section>
                   </section>
                 )}
 
@@ -6979,6 +7266,10 @@ export default function DashboardPage() {
           grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
           gap: 16px;
           margin-top: 16px;
+        }
+
+        .sheets-preview-card {
+          margin-top: 20px;
         }
 
         .pipeline-column-card {

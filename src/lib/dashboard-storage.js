@@ -32,6 +32,8 @@ const DEFAULT_META_DASHBOARD_METRIC_KEYS = []
 const DEFAULT_META_DASHBOARD_METRIC_LAYOUTS = []
 const DEFAULT_RD_DASHBOARD_METRIC_KEYS = []
 const DEFAULT_RD_DASHBOARD_METRIC_LAYOUTS = []
+const DEFAULT_SHEETS_DASHBOARD_METRIC_KEYS = []
+const DEFAULT_SHEETS_DASHBOARD_METRIC_LAYOUTS = []
 
 function createRecordId(prefix) {
   return globalThis.crypto?.randomUUID?.() || `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2, 10)}`
@@ -83,19 +85,27 @@ export function createDashboardTemplate(overrides = {}) {
     overrides.rdMetricLayouts,
     overrides.rdMetricKeys || DEFAULT_RD_DASHBOARD_METRIC_KEYS
   )
+  const sheetsMetricLayouts = normalizeDashboardMetricLayouts(
+    overrides.sheetsMetricLayouts,
+    overrides.sheetsMetricKeys || DEFAULT_SHEETS_DASHBOARD_METRIC_KEYS
+  )
 
   return {
     id: createRecordId('dashboard-template'),
     name: DEFAULT_DASHBOARD_TEMPLATE_NAME,
     metaMetricKeys: metaMetricLayouts.map((item) => item.metricKey),
     rdMetricKeys: rdMetricLayouts.map((item) => item.metricKey),
+    sheetsMetricKeys: sheetsMetricLayouts.map((item) => item.metricKey),
     metaMetricLayouts,
     rdMetricLayouts,
+    sheetsMetricLayouts,
     ...overrides,
     metaMetricKeys: metaMetricLayouts.map((item) => item.metricKey),
     rdMetricKeys: rdMetricLayouts.map((item) => item.metricKey),
+    sheetsMetricKeys: sheetsMetricLayouts.map((item) => item.metricKey),
     metaMetricLayouts,
     rdMetricLayouts,
+    sheetsMetricLayouts,
   }
 }
 
@@ -129,14 +139,20 @@ export function normalizeDashboardTemplate(template, fallbackName = DEFAULT_DASH
     template?.rdMetricLayouts,
     template?.rdMetricKeys || DEFAULT_RD_DASHBOARD_METRIC_KEYS
   )
+  const sheetsMetricLayouts = normalizeDashboardMetricLayouts(
+    template?.sheetsMetricLayouts,
+    template?.sheetsMetricKeys || DEFAULT_SHEETS_DASHBOARD_METRIC_KEYS
+  )
 
   return {
     id: template?.id || createRecordId('dashboard-template'),
     name: String(template?.name || fallbackName).trim() || fallbackName,
     metaMetricKeys: metaMetricLayouts.map((item) => item.metricKey),
     rdMetricKeys: rdMetricLayouts.map((item) => item.metricKey),
+    sheetsMetricKeys: sheetsMetricLayouts.map((item) => item.metricKey),
     metaMetricLayouts,
     rdMetricLayouts,
+    sheetsMetricLayouts,
   }
 }
 
@@ -170,6 +186,8 @@ export function createClientRecord(overrides = {}) {
     googleAdsAccountId: '',
     tiktokAdsAccountId: '',
     linkedInAdsAccountId: '',
+    googleSheetsUrl: '',
+    googleSheetsHeaderRow: 1,
     rdStationAccountId: '',
     rdPipelineId: '',
     salesforceAccountId: '',
@@ -180,6 +198,9 @@ export function createClientRecord(overrides = {}) {
     dashboardTemplates,
     activeDashboardTemplateId,
     ...overrides,
+    googleSheetsHeaderRow: Number.isFinite(Number(overrides.googleSheetsHeaderRow)) && Number(overrides.googleSheetsHeaderRow) > 0
+      ? Number(overrides.googleSheetsHeaderRow)
+      : 1,
     integrations: {
       ...DEFAULT_INTEGRATIONS,
       ...overrides.integrations,

@@ -6,6 +6,8 @@ const DEFAULT_META_DASHBOARD_METRIC_KEYS = []
 const DEFAULT_META_DASHBOARD_METRIC_LAYOUTS = []
 const DEFAULT_RD_DASHBOARD_METRIC_KEYS = []
 const DEFAULT_RD_DASHBOARD_METRIC_LAYOUTS = []
+const DEFAULT_SHEETS_DASHBOARD_METRIC_KEYS = []
+const DEFAULT_SHEETS_DASHBOARD_METRIC_LAYOUTS = []
 const DEFAULT_GLOBAL_INTEGRATIONS = {
   metaAccessToken: '',
   googleAdsToken: '',
@@ -72,14 +74,20 @@ function normalizeDashboardTemplate(template, fallbackName = DEFAULT_DASHBOARD_T
     template?.rdMetricLayouts,
     template?.rdMetricKeys || DEFAULT_RD_DASHBOARD_METRIC_KEYS
   )
+  const sheetsMetricLayouts = normalizeDashboardMetricLayouts(
+    template?.sheetsMetricLayouts,
+    template?.sheetsMetricKeys || DEFAULT_SHEETS_DASHBOARD_METRIC_KEYS
+  )
 
   return {
     id: template?.id || createRecordId('dashboard-template'),
     name: String(template?.name || fallbackName).trim() || fallbackName,
     metaMetricKeys: metaMetricLayouts.map((item) => item.metricKey),
     rdMetricKeys: rdMetricLayouts.map((item) => item.metricKey),
+    sheetsMetricKeys: sheetsMetricLayouts.map((item) => item.metricKey),
     metaMetricLayouts,
     rdMetricLayouts,
+    sheetsMetricLayouts,
   }
 }
 
@@ -114,6 +122,10 @@ function normalizeClientRecord(client) {
     googleAdsAccountId: payload.googleAdsAccountId || '',
     tiktokAdsAccountId: payload.tiktokAdsAccountId || '',
     linkedInAdsAccountId: payload.linkedInAdsAccountId || '',
+    googleSheetsUrl: payload.googleSheetsUrl || '',
+    googleSheetsHeaderRow: Number.isFinite(Number(payload.googleSheetsHeaderRow)) && Number(payload.googleSheetsHeaderRow) > 0
+      ? Number(payload.googleSheetsHeaderRow)
+      : 1,
     rdStationAccountId: payload.rdStationAccountId || '',
     rdPipelineId: payload.rdPipelineId || '',
     salesforceAccountId: payload.salesforceAccountId || '',
