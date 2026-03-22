@@ -89,6 +89,7 @@ export default function CalendarPage() {
   const canEditCalendar = Boolean(access?.canEditIntegrations)
 
   const [connection, setConnection] = useState(null)
+  const [setupRequired, setSetupRequired] = useState(false)
   const [calendars, setCalendars] = useState([])
   const [selectedCalendarId, setSelectedCalendarId] = useState('primary')
   const [range, setRange] = useState(buildInitialRange)
@@ -119,7 +120,11 @@ export default function CalendarPage() {
       }
 
       setConnection(data.connection || null)
+      setSetupRequired(Boolean(data.setupRequired))
       setSelectedCalendarId(data.connection?.selectedCalendarId || 'primary')
+      if (data.setupRequired && data.error) {
+        setErrorMessage(data.error)
+      }
     } catch (error) {
       setErrorMessage(error.message || 'Não foi possível carregar a conexão do Google Calendar.')
     } finally {
@@ -395,10 +400,14 @@ export default function CalendarPage() {
             <div className="glass-item calendar-connect-card">
               <div>
                 <h2>Nenhuma conta conectada</h2>
-                <p>Conecte uma conta do Google para listar calendários, criar eventos, editar compromissos e gerar reuniões do Google Meet.</p>
+                <p>
+                  {setupRequired
+                    ? 'A integração do Google Calendar ainda precisa da migration no Supabase antes da conexão da conta.'
+                    : 'Conecte uma conta do Google para listar calendários, criar eventos, editar compromissos e gerar reuniões do Google Meet.'}
+                </p>
               </div>
               {canEditCalendar ? (
-                <button type="button" className="btn btn-primary" onClick={handleConnectGoogle}>
+                <button type="button" className="btn btn-primary" onClick={handleConnectGoogle} disabled={setupRequired}>
                   Conectar Google Calendar
                 </button>
               ) : (

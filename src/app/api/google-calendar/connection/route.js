@@ -3,6 +3,7 @@ import {
   deleteWorkspaceGoogleCalendarConnection,
   getAuthorizedGoogleCalendarContext,
   getWorkspaceGoogleCalendarConnection,
+  isMissingRelationError,
   mapGoogleCalendarConnection,
   updateWorkspaceGoogleCalendarSelection,
 } from '@/lib/server/google-calendar'
@@ -16,6 +17,13 @@ export async function GET() {
       connection: mapGoogleCalendarConnection(connection),
     })
   } catch (error) {
+    if (isMissingRelationError(error)) {
+      return NextResponse.json({
+        connection: mapGoogleCalendarConnection(null),
+        setupRequired: true,
+        error: 'A tabela do Google Calendar ainda não foi criada no Supabase. Aplique a migration para liberar essa integração.',
+      })
+    }
     return NextResponse.json({ error: error.message || 'Não foi possível carregar a conexão do Google Calendar.' }, { status: 500 })
   }
 }

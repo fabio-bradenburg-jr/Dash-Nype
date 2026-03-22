@@ -8,6 +8,11 @@ const GOOGLE_PROFILE_SCOPE = 'openid email profile'
 const GOOGLE_CALENDAR_SCOPES = `${GOOGLE_CALENDAR_SCOPE} ${GOOGLE_PROFILE_SCOPE}`
 const GOOGLE_OAUTH_COOKIE = 'google_calendar_oauth'
 
+export function isMissingRelationError(error) {
+  const message = String(error?.message || '').toLowerCase()
+  return error?.code === 'PGRST205' || message.includes('schema cache') || message.includes('could not find the table')
+}
+
 function sanitizeReturnTo(value) {
   if (!value || typeof value !== 'string') return '/calendar'
   return value.startsWith('/') ? value : '/calendar'
@@ -144,6 +149,7 @@ export async function getWorkspaceGoogleCalendarConnection(adminSupabase, worksp
     .eq('workspace_id', workspaceId)
     .maybeSingle()
 
+  if (error && isMissingRelationError(error)) return null
   if (error) throw error
   return data || null
 }
@@ -167,6 +173,9 @@ async function upsertGoogleCalendarConnection(adminSupabase, workspaceId, connec
     .select('*')
     .single()
 
+  if (error && isMissingRelationError(error)) {
+    throw new Error('A tabela do Google Calendar ainda não foi criada no Supabase. Aplique a migration antes de conectar a agenda.')
+  }
   if (error) throw error
   return data
 }
@@ -379,6 +388,7 @@ export async function deleteWorkspaceGoogleCalendarConnection(adminSupabase, wor
     .delete()
     .eq('workspace_id', workspaceId)
 
+  if (error && isMissingRelationError(error)) return null
   if (error) throw error
   return connection
 }
