@@ -27,10 +27,12 @@ export async function GET(request) {
     const { searchParams } = new URL(request.url)
     const sourceUrl = searchParams.get('url') || ''
     const headerRow = Number(searchParams.get('header_row') || '1')
+    const statusColumn = searchParams.get('status_column') || ''
 
     const summary = await readGoogleSheetSummary({
       sourceUrl,
       headerRow,
+      statusColumn,
     })
 
     return NextResponse.json(summary)

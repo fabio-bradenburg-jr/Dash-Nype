@@ -126,6 +126,7 @@ function normalizeClientRecord(client) {
     googleSheetsHeaderRow: Number.isFinite(Number(payload.googleSheetsHeaderRow)) && Number(payload.googleSheetsHeaderRow) > 0
       ? Number(payload.googleSheetsHeaderRow)
       : 1,
+    googleSheetsStatusColumn: String(payload.googleSheetsStatusColumn || '').trim(),
     rdStationAccountId: payload.rdStationAccountId || '',
     rdPipelineId: payload.rdPipelineId || '',
     salesforceAccountId: payload.salesforceAccountId || '',

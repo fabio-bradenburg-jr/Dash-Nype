@@ -14,6 +14,15 @@ function toMetricKey(label, index) {
   return `sheet-col-${normalized || 'coluna'}-${index + 1}`
 }
 
+function slugifyLabel(value) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+}
+
 function parseCsv(text) {
   const rows = []
   let currentCell = ''
@@ -118,6 +127,20 @@ function inferMetricType(label, sampleValues) {
   return hasDecimal ? 'decimal' : 'number'
 }
 
+function findStatusColumnIndex(headers, requestedStatusColumn) {
+  const normalizedRequested = String(requestedStatusColumn || '').trim().toLowerCase()
+
+  if (normalizedRequested) {
+    const exactIndex = headers.findIndex((header) => header.toLowerCase() === normalizedRequested)
+    if (exactIndex >= 0) return exactIndex
+
+    const includesIndex = headers.findIndex((header) => header.toLowerCase().includes(normalizedRequested))
+    if (includesIndex >= 0) return includesIndex
+  }
+
+  return headers.findIndex((header) => /(status|etapa|pipeline|fase|coluna)/i.test(header))
+}
+
 function extractGoogleSheetId(input) {
   const trimmed = String(input || '').trim()
   const directMatch = trimmed.match(/^[a-zA-Z0-9-_]{20,}$/)
@@ -152,7 +175,7 @@ function buildGoogleSheetsCsvUrl(input) {
   return `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=${gid}`
 }
 
-export async function readGoogleSheetSummary({ sourceUrl, headerRow = 1 }) {
+export async function readGoogleSheetSummary({ sourceUrl, headerRow = 1, statusColumn = '' }) {
   const csvUrl = buildGoogleSheetsCsvUrl(sourceUrl)
 
   const response = await fetch(csvUrl, {
@@ -223,12 +246,45 @@ export async function readGoogleSheetSummary({ sourceUrl, headerRow = 1 }) {
     })
     .filter(Boolean)
 
+  const statusColumnIndex = findStatusColumnIndex(headers, statusColumn)
+  const statusSummary = statusColumnIndex >= 0
+    ? (() => {
+        const countsMap = new Map()
+
+        dataRows.forEach((row) => {
+          const rawValue = String(row[statusColumnIndex] || '').trim()
+          const label = rawValue || 'Sem status'
+          countsMap.set(label, (countsMap.get(label) || 0) + 1)
+        })
+
+        const counts = Array.from(countsMap.entries())
+          .map(([label, count], index) => ({
+            id: `sheet-status-${slugifyLabel(label) || 'sem-status'}-${index + 1}`,
+            label,
+            count,
+          }))
+          .sort((left, right) => right.count - left.count || left.label.localeCompare(right.label, 'pt-BR'))
+
+        return {
+          header: headers[statusColumnIndex],
+          counts,
+        }
+      })()
+    : null
+
   return {
     sourceUrl,
     csvUrl,
     headers,
     totalRows: dataRows.length,
+    rowMetric: {
+      id: 'sheet-total-rows',
+      label: 'Registros totais',
+      type: 'number',
+      value: dataRows.length,
+    },
     previewRows,
     numericColumns,
+    statusSummary,
   }
 }

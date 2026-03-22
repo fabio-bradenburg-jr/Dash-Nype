@@ -206,6 +206,7 @@ const CLIENT_INTEGRATION_GROUPS = [
     fields: [
       { name: 'googleSheetsUrl', label: 'URL da planilha ou CSV publicado', placeholder: 'https://docs.google.com/spreadsheets/d/...', storage: 'client', type: 'text' },
       { name: 'googleSheetsHeaderRow', label: 'Linha do cabeçalho', placeholder: '1', storage: 'client', type: 'number' },
+      { name: 'googleSheetsStatusColumn', label: 'Coluna de status / pipeline', placeholder: 'Status', storage: 'client', type: 'text' },
     ],
   },
   {
@@ -2696,6 +2697,7 @@ export default function DashboardPage() {
         rdToken: activeIntegrations.rdStationToken,
         googleSheetsUrl: activeClient?.googleSheetsUrl || '',
         googleSheetsHeaderRow: Number(activeClient?.googleSheetsHeaderRow || 1),
+        googleSheetsStatusColumn: activeClient?.googleSheetsStatusColumn || '',
       })
 
       if (lastDashboardFetchKeyRef.current === fetchKey) {
@@ -2818,6 +2820,9 @@ export default function DashboardPage() {
               url: activeClient?.googleSheetsUrl || '',
               header_row: String(Number(activeClient?.googleSheetsHeaderRow || 1)),
             })
+            if (String(activeClient?.googleSheetsStatusColumn || '').trim()) {
+              sheetsParams.set('status_column', activeClient.googleSheetsStatusColumn)
+            }
 
             const sheetsResponse = await fetch(`/api/google-sheets/summary?${sheetsParams.toString()}`, {
               cache: 'no-store',
@@ -2887,6 +2892,7 @@ export default function DashboardPage() {
     activeIntegrations.rdStationToken,
     activeClient?.googleSheetsUrl,
     activeClient?.googleSheetsHeaderRow,
+    activeClient?.googleSheetsStatusColumn,
   ])
 
   useEffect(() => {
@@ -3525,8 +3531,30 @@ export default function DashboardPage() {
     [draftRdDashboardMetricLayouts]
   )
   const googleSheetsMetricOptions = useMemo(
-    () =>
-      (googleSheetsSummary?.numericColumns || []).reduce((accumulator, column) => {
+    () => {
+      const baseOptions = {}
+
+      if (googleSheetsSummary?.rowMetric) {
+        baseOptions[googleSheetsSummary.rowMetric.id] = {
+          label: googleSheetsSummary.rowMetric.label,
+          type: googleSheetsSummary.rowMetric.type || 'number',
+          icon: 'bx-table',
+          tone: 'blue',
+          description: 'Quantidade total de linhas válidas importadas da planilha.',
+        }
+      }
+
+      ;(googleSheetsSummary?.statusSummary?.counts || []).forEach((status) => {
+        baseOptions[status.id] = {
+          label: status.label,
+          type: 'number',
+          icon: 'bx-git-branch',
+          tone: 'emerald',
+          description: `Quantidade de registros atualmente em ${status.label}.`,
+        }
+      })
+
+      return (googleSheetsSummary?.numericColumns || []).reduce((accumulator, column) => {
         accumulator[column.id] = {
           label: column.header,
           type: column.type || 'number',
@@ -3535,15 +3563,27 @@ export default function DashboardPage() {
           description: `Soma consolidada da coluna ${column.header} na planilha vinculada.`,
         }
         return accumulator
-      }, {}),
+      }, baseOptions)
+    },
     [googleSheetsSummary]
   )
   const googleSheetsMetricValues = useMemo(
-    () =>
-      (googleSheetsSummary?.numericColumns || []).reduce((accumulator, column) => {
+    () => {
+      const baseValues = {}
+
+      if (googleSheetsSummary?.rowMetric) {
+        baseValues[googleSheetsSummary.rowMetric.id] = googleSheetsSummary.rowMetric.value || 0
+      }
+
+      ;(googleSheetsSummary?.statusSummary?.counts || []).forEach((status) => {
+        baseValues[status.id] = status.count || 0
+      })
+
+      return (googleSheetsSummary?.numericColumns || []).reduce((accumulator, column) => {
         accumulator[column.id] = column.sum || 0
         return accumulator
-      }, {}),
+      }, baseValues)
+    },
     [googleSheetsSummary]
   )
   const googleSheetsDashboardMetricCards = useMemo(
@@ -3575,14 +3615,39 @@ export default function DashboardPage() {
     [googleSheetsMetricOptions, draftSheetsDashboardMetricLayouts]
   )
   const defaultGoogleSheetsKpis = useMemo(
-    () =>
-      (googleSheetsSummary?.numericColumns || []).slice(0, 4).map((column) => ({
+    () => {
+      const defaultItems = []
+
+      if (googleSheetsSummary?.rowMetric) {
+        defaultItems.push({
+          key: googleSheetsSummary.rowMetric.id,
+          title: googleSheetsSummary.rowMetric.label,
+          value: formatDashboardMetricValue(googleSheetsSummary.rowMetric.value || 0, googleSheetsSummary.rowMetric.type || 'number'),
+          icon: 'bx-table',
+          tone: 'blue',
+        })
+      }
+
+      ;(googleSheetsSummary?.statusSummary?.counts || []).slice(0, 5).forEach((status) => {
+        defaultItems.push({
+          key: status.id,
+          title: status.label,
+          value: formatNumber(status.count || 0),
+          icon: 'bx-git-branch',
+          tone: 'emerald',
+        })
+      })
+
+      if (defaultItems.length > 0) return defaultItems
+
+      return (googleSheetsSummary?.numericColumns || []).slice(0, 4).map((column) => ({
         key: column.id,
         title: column.header,
         value: formatDashboardMetricValue(column.sum || 0, column.type || 'number'),
         icon: 'bx-spreadsheet',
         tone: 'emerald',
-      })),
+      }))
+    },
     [googleSheetsSummary]
   )
   const metaMediaKpis = [
@@ -4271,7 +4336,7 @@ export default function DashboardPage() {
 
                       {group.title === 'Google Sheets' && (
                         <div className="field-helper">
-                          Use uma planilha pública ou publicada em CSV. O app lê a aba indicada na URL e transforma as colunas numéricas em cards personalizáveis no dashboard.
+                          Use uma planilha pública ou publicada em CSV. Cada linha será tratada como um lead ou registro, e a coluna de status será lida como pipeline para contar quantos estão em cada etapa.
                         </div>
                       )}
 
@@ -5349,7 +5414,7 @@ export default function DashboardPage() {
                         <div>
                           <h2>Resumo da planilha</h2>
                           <p className="chart-subtitle">
-                            As colunas numéricas da planilha viram métricas adicionáveis e a tabela abaixo traz um preview das linhas importadas.
+                            Cada linha da planilha é tratada como um registro. A coluna de status funciona como pipeline e as colunas numéricas podem virar cards extras.
                           </p>
                         </div>
                         {activeDraftDashboardTemplate && (
@@ -5379,7 +5444,7 @@ export default function DashboardPage() {
                         <div className="metric-library-panel glass-item">
                           <div>
                             <strong>Métricas do Google Sheets</strong>
-                            <p>Adicione qualquer coluna numérica da planilha como card no modelo atual.</p>
+                            <p>Adicione contagem total de registros, etapas do status e colunas numéricas da planilha como cards do modelo atual.</p>
                           </div>
                           <div className="metric-library-list">
                             {availableGoogleSheetsMetricOptions.length > 0 ? (
@@ -5412,6 +5477,23 @@ export default function DashboardPage() {
                             </p>
                           </div>
                         </div>
+                        {googleSheetsSummary?.statusSummary?.counts?.length > 0 && (
+                          <div className="glass-item rd-diagnostic-panel">
+                            <p className="meta-campaign-filter-note">
+                              Pipeline da planilha pela coluna <b>{googleSheetsSummary.statusSummary.header}</b>.
+                            </p>
+                            <div className="pipeline-columns-grid">
+                              {googleSheetsSummary.statusSummary.counts.map((status) => (
+                                <div key={status.id} className="pipeline-column-card glass-item">
+                                  <div>
+                                    <strong>{status.label}</strong>
+                                    <span>{formatNumber(status.count)} registro(s)</span>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                         {googleSheetsSummary?.previewRows?.length ? (
                           <div className="table-container">
                             <table className="data-table">

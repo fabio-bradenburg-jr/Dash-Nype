@@ -188,6 +188,7 @@ export function createClientRecord(overrides = {}) {
     linkedInAdsAccountId: '',
     googleSheetsUrl: '',
     googleSheetsHeaderRow: 1,
+    googleSheetsStatusColumn: '',
     rdStationAccountId: '',
     rdPipelineId: '',
     salesforceAccountId: '',
@@ -201,6 +202,7 @@ export function createClientRecord(overrides = {}) {
     googleSheetsHeaderRow: Number.isFinite(Number(overrides.googleSheetsHeaderRow)) && Number(overrides.googleSheetsHeaderRow) > 0
       ? Number(overrides.googleSheetsHeaderRow)
       : 1,
+    googleSheetsStatusColumn: String(overrides.googleSheetsStatusColumn || '').trim(),
     integrations: {
       ...DEFAULT_INTEGRATIONS,
       ...overrides.integrations,
