@@ -2,6 +2,7 @@ export const DASHBOARD_STORAGE_KEY = 'nype-dashboard-preferences'
 
 export const DEFAULT_INTEGRATIONS = {
   metaAccessToken: '',
+  metaConnectionMode: 'manual',
   metaAdAccountId: '',
   googleAdsToken: '',
   tiktokAdsToken: '',
@@ -19,6 +20,7 @@ export const DEFAULT_PREFERENCES = {
   activeClientId: '',
   globalIntegrations: {
     metaAccessToken: '',
+    metaConnectionMode: 'manual',
     googleAdsToken: '',
     tiktokAdsToken: '',
     linkedinAdsToken: '',

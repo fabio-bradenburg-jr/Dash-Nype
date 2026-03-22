@@ -1,17 +1,10 @@
 import { NextResponse } from 'next/server'
 import { fetchMetaJson, normalizeMetaError } from '@/lib/server/meta-fetch'
-
-function getMetaToken(request) {
-  const headerToken = request.headers.get('x-meta-access-token')
-  const authHeader = request.headers.get('authorization')
-  const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : ''
-
-  return headerToken || bearerToken || process.env.META_ACCESS_TOKEN
-}
+import { resolveWorkspaceMetaAccessToken } from '@/lib/server/meta-connection'
 
 export async function GET(request) {
   try {
-    const token = getMetaToken(request)
+    const token = await resolveWorkspaceMetaAccessToken(request)
     
     if (!token) {
       return NextResponse.json({ error: 'Informe uma chave da API da Meta para listar as contas de anúncio.' }, { status: 400 })

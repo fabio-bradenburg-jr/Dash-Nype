@@ -1179,9 +1179,17 @@ export default function DashboardPage() {
   const [savingUser, setSavingUser] = useState(false)
   const [globalIntegrations, setGlobalIntegrations] = useState({
     metaAccessToken: '',
+    metaConnectionMode: 'manual',
     googleAdsToken: '',
     tiktokAdsToken: '',
     linkedinAdsToken: '',
+  })
+  const [metaConnection, setMetaConnection] = useState({
+    connected: false,
+    userId: '',
+    userName: '',
+    scopes: '',
+    expiresAt: '',
   })
 
   const currentTheme = useMemo(() => resolveDashboardTheme(themeColor), [themeColor])
@@ -1252,7 +1260,34 @@ export default function DashboardPage() {
     () => JSON.stringify([...selectedQualifiedStages].sort()),
     [selectedQualifiedStages]
   )
-  const hasMetaConfigured = Boolean(selectedAdAccount && globalIntegrations.metaAccessToken)
+  const hasMetaManualToken = Boolean(String(globalIntegrations.metaAccessToken || '').trim())
+  const hasMetaOauthConnection = Boolean(metaConnection.connected)
+  const shouldUseMetaOauth =
+    hasMetaOauthConnection && (globalIntegrations.metaConnectionMode === 'oauth' || !hasMetaManualToken)
+  const metaRequestHeaders = useMemo(() => {
+    if (shouldUseMetaOauth || !hasMetaManualToken) return {}
+
+    return {
+      'x-meta-access-token': globalIntegrations.metaAccessToken,
+    }
+  }, [shouldUseMetaOauth, hasMetaManualToken, globalIntegrations.metaAccessToken])
+  const metaCredentialSignature = useMemo(
+    () =>
+      JSON.stringify({
+        mode: shouldUseMetaOauth ? 'oauth' : 'manual',
+        manualToken: hasMetaManualToken ? globalIntegrations.metaAccessToken : '',
+        connectionUserId: metaConnection.userId || '',
+        connectionExpiresAt: metaConnection.expiresAt || '',
+      }),
+    [
+      shouldUseMetaOauth,
+      hasMetaManualToken,
+      globalIntegrations.metaAccessToken,
+      metaConnection.userId,
+      metaConnection.expiresAt,
+    ]
+  )
+  const hasMetaConfigured = Boolean(selectedAdAccount && (hasMetaManualToken || hasMetaOauthConnection))
   const hasRdConfigured = Boolean(activeIntegrations.rdStationToken)
   const hasSheetsConfigured = Boolean(String(activeClient?.googleSheetsUrl || '').trim())
   const hasAnyPresentationData = hasMetaConfigured || hasRdConfigured || hasSheetsConfigured
@@ -1645,6 +1680,7 @@ export default function DashboardPage() {
     setGlobalIntegrations(
       preferences.globalIntegrations || {
         metaAccessToken: '',
+        metaConnectionMode: 'manual',
         googleAdsToken: '',
         tiktokAdsToken: '',
         linkedinAdsToken: '',
@@ -1655,6 +1691,51 @@ export default function DashboardPage() {
     setActiveClientId(initialActiveClientId)
     setHasLoadedPreferences(true)
   }, [])
+
+  useEffect(() => {
+    if (!hasLoadedPreferences || userLoading || !user) return
+
+    let cancelled = false
+
+    const loadMetaConnection = async () => {
+      try {
+        const response = await fetch('/api/meta/connection', { cache: 'no-store' })
+        const data = await response.json().catch(() => null)
+
+        if (cancelled) return
+
+        if (!response.ok) {
+          throw new Error(data?.error || 'Não foi possível carregar a conexão da Meta.')
+        }
+
+        setMetaConnection(
+          data?.connection || {
+            connected: false,
+            userId: '',
+            userName: '',
+            scopes: '',
+            expiresAt: '',
+          }
+        )
+      } catch (error) {
+        if (cancelled) return
+        console.error('Erro ao carregar conexão da Meta:', error)
+        setMetaConnection({
+          connected: false,
+          userId: '',
+          userName: '',
+          scopes: '',
+          expiresAt: '',
+        })
+      }
+    }
+
+    loadMetaConnection()
+
+    return () => {
+      cancelled = true
+    }
+  }, [hasLoadedPreferences, userLoading, user])
 
   useEffect(() => {
     if (!activeClient?.dashboardColor) return
@@ -2650,7 +2731,7 @@ export default function DashboardPage() {
       return
     }
 
-    if (!globalIntegrations.metaAccessToken) {
+    if (!hasMetaManualToken && !hasMetaOauthConnection) {
       setAdAccounts([])
       return
     }
@@ -2660,9 +2741,7 @@ export default function DashboardPage() {
 
       try {
         const response = await fetch('/api/meta/adaccounts', {
-          headers: {
-            'x-meta-access-token': globalIntegrations.metaAccessToken,
-          },
+          headers: metaRequestHeaders,
         })
         const data = await response.json()
 
@@ -2688,7 +2767,15 @@ export default function DashboardPage() {
     }
 
     fetchAdAccounts()
-  }, [hasLoadedPreferences, activeClient, activeClientId, globalIntegrations.metaAccessToken, activeTab])
+  }, [
+    hasLoadedPreferences,
+    activeClient,
+    activeClientId,
+    hasMetaManualToken,
+    hasMetaOauthConnection,
+    metaRequestHeaders,
+    activeTab,
+  ])
 
   useEffect(() => {
     if (activeTab !== 'apresentacao') return
@@ -2729,7 +2816,7 @@ export default function DashboardPage() {
           dateRange,
           customSince,
           customUntil,
-          metaToken: globalIntegrations.metaAccessToken,
+          metaCredentialSignature,
         })
 
         if (lastMetaStructureFetchKeyRef.current === fetchKey) {
@@ -2749,13 +2836,9 @@ export default function DashboardPage() {
           params.set('until', customUntil)
         }
 
-        const headers = {
-          'x-meta-access-token': globalIntegrations.metaAccessToken,
-        }
-
         const [campaignsResponse, structureResponse] = await Promise.all([
-          fetch(`/api/meta/campaigns?${params.toString()}`, { headers }),
-          fetch(`/api/meta/structure?${params.toString()}`, { headers }),
+          fetch(`/api/meta/campaigns?${params.toString()}`, { headers: metaRequestHeaders }),
+          fetch(`/api/meta/structure?${params.toString()}`, { headers: metaRequestHeaders }),
         ])
         const [campaignsData, structureData] = await Promise.all([
           campaignsResponse.json().catch(() => ({ error: 'Não foi possível interpretar a resposta das campanhas da Meta.' })),
@@ -2798,7 +2881,8 @@ export default function DashboardPage() {
     customSince,
     customUntil,
     hasMetaConfigured,
-    globalIntegrations.metaAccessToken,
+    metaCredentialSignature,
+    metaRequestHeaders,
   ])
 
   useEffect(() => {
@@ -2857,7 +2941,7 @@ export default function DashboardPage() {
         hasActiveMetaAdsetNarrowing,
         hasActiveMetaAdNarrowing,
         isMetaStructureReady,
-        metaToken: globalIntegrations.metaAccessToken,
+        metaCredentialSignature,
         rdToken: activeIntegrations.rdStationToken,
         googleSheetsUrl: activeClient?.googleSheetsUrl || '',
         googleSheetsHeaderRow: Number(activeClient?.googleSheetsHeaderRow || 1),
@@ -2907,10 +2991,6 @@ export default function DashboardPage() {
             insightsParams.set('ad_ids', currentMetaFilteredAdIds.join(','))
           }
 
-          const headers = {
-            'x-meta-access-token': globalIntegrations.metaAccessToken,
-          }
-
           const currentMetaWindow = resolveDateWindow(dateRange, customSince, customUntil, {
             excludeTodayForLast30d: dateRange === 'last_30d',
           })
@@ -2937,8 +3017,10 @@ export default function DashboardPage() {
           }
 
           const [insightsResponse, previousInsightsResponse] = await Promise.all([
-            fetch(`/api/meta/insights?${insightsParams.toString()}`, { headers }),
-            previousMetaWindow ? fetch(`/api/meta/insights?${previousInsightsParams.toString()}`, { headers }) : Promise.resolve(null),
+            fetch(`/api/meta/insights?${insightsParams.toString()}`, { headers: metaRequestHeaders }),
+            previousMetaWindow
+              ? fetch(`/api/meta/insights?${previousInsightsParams.toString()}`, { headers: metaRequestHeaders })
+              : Promise.resolve(null),
           ])
 
           const insightsData = await insightsResponse.json()
@@ -3135,7 +3217,8 @@ export default function DashboardPage() {
     hasActiveMetaAdsetNarrowing,
     hasActiveMetaAdNarrowing,
     isMetaStructureReady,
-    globalIntegrations.metaAccessToken,
+    metaCredentialSignature,
+    metaRequestHeaders,
     activeIntegrations.rdStationToken,
     activeClient?.googleSheetsUrl,
     activeClient?.googleSheetsHeaderRow,
@@ -3179,7 +3262,7 @@ export default function DashboardPage() {
         hasActiveMetaAdsetNarrowing,
         hasActiveMetaAdNarrowing,
         isMetaStructureReady,
-        metaToken: globalIntegrations.metaAccessToken,
+        metaCredentialSignature,
       })
 
       if (lastBreakdownsFetchKeyRef.current === fetchKey) {
@@ -3218,9 +3301,7 @@ export default function DashboardPage() {
         }
 
         const response = await fetch(`/api/meta/breakdowns?${params.toString()}`, {
-          headers: {
-            'x-meta-access-token': globalIntegrations.metaAccessToken,
-          },
+          headers: metaRequestHeaders,
         })
         const data = await response.json()
 
@@ -3252,7 +3333,8 @@ export default function DashboardPage() {
     hasActiveMetaAdsetNarrowing,
     hasActiveMetaAdNarrowing,
     isMetaStructureReady,
-    globalIntegrations.metaAccessToken,
+    metaCredentialSignature,
+    metaRequestHeaders,
     activeTab,
   ])
 
@@ -4638,7 +4720,9 @@ export default function DashboardPage() {
                         onChange={(event) => handleClientFieldChange('metaAdAccountId', event.target.value)}
                       >
                         <option value="">
-                          {globalIntegrations.metaAccessToken ? 'Selecione uma conta' : 'Cadastre a chave da Meta em Configurações'}
+                          {hasMetaManualToken || hasMetaOauthConnection
+                            ? 'Selecione uma conta'
+                            : 'Cadastre um token manual ou conecte a Meta em Configurações'}
                         </option>
                         {adAccounts.map((account) => (
                           <option key={account.id} value={account.id}>

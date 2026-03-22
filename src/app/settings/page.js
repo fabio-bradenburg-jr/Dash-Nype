@@ -1,23 +1,12 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useUser } from '@/lib/contexts/UserContext'
 import { USER_APPEARANCE_PRESETS } from '@/lib/user-appearance-storage'
 import { DEFAULT_PREFERENCES, loadDashboardPreferences, saveDashboardPreferences } from '@/lib/dashboard-storage'
 
 const GLOBAL_INTEGRATION_GROUPS = [
-  {
-    title: 'Meta Ads',
-    description: 'Token principal da Meta para listar contas, campanhas, breakdowns e métricas dos clientes.',
-    icon: 'bxl-meta',
-    accent: '#3b82f6',
-    field: {
-      name: 'metaAccessToken',
-      label: 'Token da Meta',
-      placeholder: 'Cole aqui o token de acesso da Meta',
-    },
-  },
   {
     title: 'Google Ads',
     description: 'Espaço reservado para a credencial central do Google Ads da operação.',
@@ -108,6 +97,51 @@ export default function SettingsPage() {
       ...(preferences.globalIntegrations || {}),
     }
   })
+  const [metaConnection, setMetaConnection] = useState({
+    connected: false,
+    userId: '',
+    userName: '',
+    scopes: '',
+    expiresAt: '',
+  })
+  const [isMetaConnectionLoading, setIsMetaConnectionLoading] = useState(false)
+  const [metaConnectionError, setMetaConnectionError] = useState('')
+  const [metaConnectionNotice, setMetaConnectionNotice] = useState('')
+  const [metaConnectionSetupRequired, setMetaConnectionSetupRequired] = useState(false)
+  const metaConnectionMode = globalIntegrations.metaConnectionMode === 'oauth' ? 'oauth' : 'manual'
+  const hasMetaManualToken = Boolean(String(globalIntegrations.metaAccessToken || '').trim())
+  const hasMetaOauthConnection = Boolean(metaConnection.connected)
+
+  const persistGlobalIntegrations = useCallback(
+    async (nextIntegrations) => {
+      const preferences = loadDashboardPreferences()
+      saveDashboardPreferences({
+        ...preferences,
+        globalIntegrations: nextIntegrations,
+      })
+
+      if (canManageClients && serverState) {
+        const response = await fetch('/api/dashboard/state', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            ...serverState,
+            globalIntegrations: nextIntegrations,
+          }),
+        })
+
+        const data = await response.json().catch(() => null)
+        if (!response.ok) {
+          throw new Error(data?.error || 'Não foi possível salvar as integrações globais.')
+        }
+
+        setServerState(data)
+      }
+    },
+    [canManageClients, serverState]
+  )
 
   useEffect(() => {
     if (!canManageClients) return
@@ -140,6 +174,87 @@ export default function SettingsPage() {
     }
   }, [canManageClients])
 
+  useEffect(() => {
+    if (!canManageClients) return
+
+    let cancelled = false
+
+    const loadMetaConnection = async () => {
+      setIsMetaConnectionLoading(true)
+
+      try {
+        const response = await fetch('/api/meta/connection', { cache: 'no-store' })
+        const data = await response.json().catch(() => null)
+
+        if (cancelled) return
+
+        if (!response.ok) {
+          throw new Error(data?.error || 'Não foi possível carregar a conexão da Meta.')
+        }
+
+        setMetaConnection(
+          data?.connection || {
+            connected: false,
+            userId: '',
+            userName: '',
+            scopes: '',
+            expiresAt: '',
+          }
+        )
+        setMetaConnectionSetupRequired(Boolean(data?.setupRequired))
+        if (data?.error) {
+          setMetaConnectionError(data.error)
+        }
+      } catch (error) {
+        if (cancelled) return
+        setMetaConnection({
+          connected: false,
+          userId: '',
+          userName: '',
+          scopes: '',
+          expiresAt: '',
+        })
+        setMetaConnectionError(error.message || 'Não foi possível carregar a conexão da Meta.')
+      } finally {
+        if (!cancelled) {
+          setIsMetaConnectionLoading(false)
+        }
+      }
+    }
+
+    loadMetaConnection()
+
+    return () => {
+      cancelled = true
+    }
+  }, [canManageClients])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    const params = new URLSearchParams(window.location.search)
+    const connected = params.get('meta_connected')
+    const error = params.get('meta_error')
+
+    if (connected === '1') {
+      setMetaConnectionNotice('Conta da Meta conectada com sucesso.')
+      setMetaConnectionError('')
+      if (globalIntegrations.metaConnectionMode !== 'oauth') {
+        const nextIntegrations = {
+          ...globalIntegrations,
+          metaConnectionMode: 'oauth',
+        }
+        setGlobalIntegrations(nextIntegrations)
+        persistGlobalIntegrations(nextIntegrations).catch((persistError) => {
+          console.error('Erro ao ativar o modo de conexão da Meta:', persistError)
+        })
+      }
+    } else if (error) {
+      setMetaConnectionError(error)
+      setMetaConnectionNotice('')
+    }
+  }, [globalIntegrations, globalIntegrations.metaConnectionMode, persistGlobalIntegrations])
+
   const handleGlobalIntegrationChange = (fieldName, value) => {
     setGlobalIntegrations((current) => {
       const nextIntegrations = {
@@ -147,37 +262,47 @@ export default function SettingsPage() {
         [fieldName]: value,
       }
 
-      const preferences = loadDashboardPreferences()
-      saveDashboardPreferences({
-        ...preferences,
-        globalIntegrations: nextIntegrations,
+      persistGlobalIntegrations(nextIntegrations).catch((error) => {
+        console.error('Erro ao salvar integrações globais no servidor:', error)
       })
-
-      if (canManageClients && serverState) {
-        fetch('/api/dashboard/state', {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            ...serverState,
-            globalIntegrations: nextIntegrations,
-          }),
-        })
-          .then(async (response) => {
-            const data = await response.json().catch(() => null)
-            if (!response.ok) {
-              throw new Error(data?.error || 'Não foi possível salvar as integrações globais.')
-            }
-            setServerState(data)
-          })
-          .catch((error) => {
-            console.error('Erro ao salvar integrações globais no servidor:', error)
-          })
-      }
 
       return nextIntegrations
     })
+  }
+
+  const handleMetaDisconnect = async () => {
+    setMetaConnectionError('')
+    setMetaConnectionNotice('')
+
+    try {
+      const response = await fetch('/api/meta/connection', { method: 'DELETE' })
+      const data = await response.json().catch(() => null)
+
+      if (!response.ok) {
+        throw new Error(data?.error || 'Não foi possível desconectar a conta da Meta.')
+      }
+
+      setMetaConnection({
+        connected: false,
+        userId: '',
+        userName: '',
+        scopes: '',
+        expiresAt: '',
+      })
+      setMetaConnectionNotice('Conta da Meta desconectada.')
+
+      if (metaConnectionMode === 'oauth') {
+        const nextIntegrations = {
+          ...globalIntegrations,
+          metaConnectionMode: 'manual',
+        }
+
+        setGlobalIntegrations(nextIntegrations)
+        await persistGlobalIntegrations(nextIntegrations)
+      }
+    } catch (error) {
+      setMetaConnectionError(error.message || 'Não foi possível desconectar a conta da Meta.')
+    }
   }
 
   return (
@@ -281,6 +406,82 @@ export default function SettingsPage() {
               </div>
 
               <div className="settings-integrations-grid">
+                <div className="integration-block integration-block-meta">
+                  <div className="integration-heading">
+                    <div className="integration-icon" style={{ color: '#3b82f6', borderColor: '#3b82f633' }}>
+                      <i className="bx bxl-meta"></i>
+                    </div>
+                    <div>
+                      <h3>Meta Ads</h3>
+                      <p>Escolha entre token manual ou conta conectada via Meta Login, e use a forma que fizer mais sentido para cada operação.</p>
+                    </div>
+                  </div>
+
+                  <div className="settings-choice-row settings-choice-row-compact">
+                    <button
+                      type="button"
+                      className={`settings-choice ${metaConnectionMode === 'manual' ? 'active' : ''}`}
+                      onClick={() => handleGlobalIntegrationChange('metaConnectionMode', 'manual')}
+                    >
+                      <i className="bx bx-key"></i>
+                      Token manual
+                    </button>
+                    <button
+                      type="button"
+                      className={`settings-choice ${metaConnectionMode === 'oauth' ? 'active' : ''}`}
+                      onClick={() => handleGlobalIntegrationChange('metaConnectionMode', 'oauth')}
+                    >
+                      <i className="bx bx-link-alt"></i>
+                      Conta conectada
+                    </button>
+                  </div>
+
+                  <div className="input-group">
+                    <label>Token manual da Meta</label>
+                    <input
+                      type="password"
+                      value={globalIntegrations.metaAccessToken || ''}
+                      onChange={(event) => handleGlobalIntegrationChange('metaAccessToken', event.target.value)}
+                      placeholder="Cole aqui o token de acesso da Meta"
+                    />
+                    <small className="settings-help-text">
+                      {hasMetaManualToken
+                        ? 'Token manual salvo. Você pode seguir usando esse modo normalmente.'
+                        : 'Se preferir, deixe em branco e use a opção de conta conectada.'}
+                    </small>
+                  </div>
+
+                  <div className="meta-connection-card">
+                    <div className="meta-connection-copy">
+                      <strong>{hasMetaOauthConnection ? 'Conta conectada' : 'Conta ainda não conectada'}</strong>
+                      <span>
+                        {hasMetaOauthConnection
+                          ? `${metaConnection.userName || 'Usuário Meta'} conectado${metaConnection.expiresAt ? ` até ${new Date(metaConnection.expiresAt).toLocaleDateString('pt-BR')}` : ''}.`
+                          : 'Conecte sua conta da Meta para listar contas de anúncio sem depender apenas do token manual.'}
+                      </span>
+                    </div>
+                    <div className="meta-connection-actions">
+                      <a href="/api/meta/auth/start?return_to=/settings" className="btn btn-primary">
+                        {hasMetaOauthConnection ? 'Reconectar Meta' : 'Conectar Meta'}
+                      </a>
+                      {hasMetaOauthConnection && (
+                        <button type="button" className="btn btn-secondary" onClick={handleMetaDisconnect}>
+                          Desconectar
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {metaConnectionNotice ? <div className="settings-callout success">{metaConnectionNotice}</div> : null}
+                  {metaConnectionError ? <div className="settings-callout error">{metaConnectionError}</div> : null}
+                  {metaConnectionSetupRequired ? (
+                    <div className="settings-callout warning">
+                      Falta aplicar a migration da tabela <code>workspace_meta_connections</code> no Supabase para liberar a conexão da Meta.
+                    </div>
+                  ) : null}
+                  {isMetaConnectionLoading ? <div className="settings-callout info">Carregando status da conexão da Meta...</div> : null}
+                </div>
+
                 {GLOBAL_INTEGRATION_GROUPS.map((group) => (
                   <div key={group.title} className="integration-block">
                     <div className="integration-heading">
@@ -385,6 +586,11 @@ export default function SettingsPage() {
           gap: 10px;
         }
 
+        .settings-choice-row-compact .settings-choice {
+          min-width: 0;
+          flex: 1 1 220px;
+        }
+
         .settings-choice.active,
         .settings-preset.active {
           border-color: var(--accent-blue);
@@ -443,6 +649,12 @@ export default function SettingsPage() {
           gap: 18px;
         }
 
+        .integration-block-meta {
+          grid-column: 1 / -1;
+          display: grid;
+          gap: 16px;
+        }
+
         .integration-block {
           padding: 22px;
           border-radius: 18px;
@@ -490,6 +702,13 @@ export default function SettingsPage() {
           font-size: 13px;
         }
 
+        .input-group small,
+        .settings-help-text {
+          color: var(--text-secondary);
+          font-size: 12px;
+          line-height: 1.5;
+        }
+
         .input-group input {
           width: 100%;
           min-height: 48px;
@@ -516,6 +735,70 @@ export default function SettingsPage() {
           flex-shrink: 0;
         }
 
+        .meta-connection-card {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 16px;
+          padding: 18px;
+          border-radius: 18px;
+          background: rgba(255, 255, 255, 0.03);
+          border: 1px solid var(--border-color);
+        }
+
+        .meta-connection-copy {
+          display: grid;
+          gap: 6px;
+        }
+
+        .meta-connection-copy strong {
+          font-size: 15px;
+        }
+
+        .meta-connection-copy span {
+          color: var(--text-secondary);
+          font-size: 13px;
+          line-height: 1.5;
+        }
+
+        .meta-connection-actions {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          flex-wrap: wrap;
+        }
+
+        .settings-callout {
+          border-radius: 14px;
+          padding: 14px 16px;
+          font-size: 13px;
+          line-height: 1.5;
+        }
+
+        .settings-callout.success {
+          background: rgba(34, 197, 94, 0.12);
+          border: 1px solid rgba(34, 197, 94, 0.2);
+          color: #bbf7d0;
+        }
+
+        .settings-callout.error {
+          background: rgba(239, 68, 68, 0.12);
+          border: 1px solid rgba(239, 68, 68, 0.2);
+          color: #fecaca;
+        }
+
+        .settings-callout.warning {
+          background: rgba(245, 158, 11, 0.12);
+          border: 1px solid rgba(245, 158, 11, 0.2);
+          color: #fde68a;
+        }
+
+        .settings-callout.info {
+          background: rgba(59, 130, 246, 0.12);
+          border: 1px solid rgba(59, 130, 246, 0.2);
+          color: #bfdbfe;
+        }
+
         @media (max-width: 980px) {
           .settings-grid {
             grid-template-columns: 1fr;
@@ -523,6 +806,11 @@ export default function SettingsPage() {
 
           .settings-integrations-grid {
             grid-template-columns: 1fr;
+          }
+
+          .meta-connection-card {
+            flex-direction: column;
+            align-items: stretch;
           }
         }
 

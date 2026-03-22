@@ -10,6 +10,7 @@ const DEFAULT_SHEETS_DASHBOARD_METRIC_KEYS = []
 const DEFAULT_SHEETS_DASHBOARD_METRIC_LAYOUTS = []
 const DEFAULT_GLOBAL_INTEGRATIONS = {
   metaAccessToken: '',
+  metaConnectionMode: 'manual',
   googleAdsToken: '',
   tiktokAdsToken: '',
   linkedinAdsToken: '',
@@ -137,6 +138,7 @@ function normalizeClientRecord(client) {
     activeDashboardTemplateId,
     integrations: {
       metaAccessToken: payload.integrations?.metaAccessToken || '',
+      metaConnectionMode: payload.integrations?.metaConnectionMode === 'oauth' ? 'oauth' : 'manual',
       metaAdAccountId: payload.integrations?.metaAdAccountId || '',
       googleAdsToken: payload.integrations?.googleAdsToken || '',
       tiktokAdsToken: payload.integrations?.tiktokAdsToken || '',

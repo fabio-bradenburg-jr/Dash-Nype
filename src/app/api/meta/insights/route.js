@@ -2,14 +2,7 @@ import { NextResponse } from 'next/server'
 import { formatInsightsWithConversions } from '@/lib/meta-metrics'
 import { fetchMetaJson, normalizeMetaError } from '@/lib/server/meta-fetch'
 import { resolveMetaDateSelection } from '@/lib/server/meta-date-range'
-
-function getMetaToken(request) {
-  const headerToken = request.headers.get('x-meta-access-token')
-  const authHeader = request.headers.get('authorization')
-  const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : ''
-
-  return headerToken || bearerToken || process.env.META_ACCESS_TOKEN
-}
+import { resolveWorkspaceMetaAccessToken } from '@/lib/server/meta-connection'
 
 export async function GET(request) {
   try {
@@ -22,10 +15,10 @@ export async function GET(request) {
     const adsetIds = searchParams.getAll('adset_ids').flatMap((value) => value.split(',')).filter(Boolean)
     const adIds = searchParams.getAll('ad_ids').flatMap((value) => value.split(',')).filter(Boolean)
     
-    const token = getMetaToken(request)
+    const token = await resolveWorkspaceMetaAccessToken(request)
 
     if (!token || !adAccountId) {
-      return NextResponse.json({ error: 'Informe a chave da Meta e a conta de anúncio para carregar os dados.' }, { status: 400 })
+      return NextResponse.json({ error: 'Conecte uma conta da Meta ou informe um token manual para carregar os dados.' }, { status: 400 })
     }
 
     // Ensure the act_ prefix

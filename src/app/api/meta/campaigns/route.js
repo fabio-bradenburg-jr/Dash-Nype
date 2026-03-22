@@ -1,14 +1,7 @@
 import { NextResponse } from 'next/server'
 import { fetchMetaJson, normalizeMetaError } from '@/lib/server/meta-fetch'
 import { buildMetaInsightsFilterExpression } from '@/lib/server/meta-date-range'
-
-function getMetaToken(request) {
-  const headerToken = request.headers.get('x-meta-access-token')
-  const authHeader = request.headers.get('authorization')
-  const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : ''
-
-  return headerToken || bearerToken || process.env.META_ACCESS_TOKEN
-}
+import { resolveWorkspaceMetaAccessToken } from '@/lib/server/meta-connection'
 
 function normalizeCampaign(campaign) {
   const insight = campaign?.insights?.data?.[0] || {}
@@ -42,10 +35,10 @@ export async function GET(request) {
     const since = searchParams.get('since')
     const until = searchParams.get('until')
     
-    const token = getMetaToken(request)
+    const token = await resolveWorkspaceMetaAccessToken(request)
 
     if (!token || !adAccountId) {
-      return NextResponse.json({ error: 'Informe a chave da Meta e a conta de anúncio para carregar as campanhas.' }, { status: 400 })
+      return NextResponse.json({ error: 'Conecte uma conta da Meta ou informe um token manual para carregar as campanhas.' }, { status: 400 })
     }
 
     const id = adAccountId.startsWith('act_') ? adAccountId : `act_${adAccountId}`
