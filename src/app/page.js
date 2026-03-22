@@ -5425,7 +5425,7 @@ export default function DashboardPage() {
           display: flex;
           align-items: center;
           justify-content: flex-start;
-          margin-bottom: 26px;
+          margin-bottom: 18px;
         }
 
         .nav-button {
@@ -5439,40 +5439,41 @@ export default function DashboardPage() {
 
         .sidebar-toggle {
           position: absolute;
-          top: 26px;
-          right: -18px;
-          width: 38px;
-          height: 38px;
+          top: 20px;
+          right: -17px;
+          width: 34px;
+          height: 34px;
           border-radius: 999px;
-          border: 1px solid rgba(255, 255, 255, 0.12);
-          background: rgba(17, 24, 39, 0.96);
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          background: rgba(21, 23, 30, 0.98);
           color: var(--text-primary);
           display: grid;
           place-items: center;
           cursor: pointer;
           flex-shrink: 0;
-          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+          box-shadow: 0 10px 26px rgba(0, 0, 0, 0.28);
           z-index: 3;
         }
 
         .sidebar-toggle i {
-          font-size: 18px;
+          font-size: 16px;
         }
 
         .sidebar-collapsed {
-          width: 92px;
+          width: 98px;
           padding-left: 14px;
           padding-right: 14px;
         }
 
         .sidebar-collapsed :global(.nav-item) {
           justify-content: center;
-          width: 56px;
-          height: 56px;
+          width: 54px;
+          min-height: 54px;
+          height: 54px;
           margin: 0 auto;
           padding: 0;
           font-size: 0;
-          border-radius: 18px;
+          border-radius: 16px;
           position: relative;
         }
 
@@ -5504,7 +5505,7 @@ export default function DashboardPage() {
           left: calc(100% + 12px);
           top: 50%;
           transform: translateY(-50%);
-          background: rgba(17, 24, 39, 0.96);
+          background: rgba(21, 23, 30, 0.98);
           color: var(--text-primary);
           border: 1px solid rgba(255, 255, 255, 0.08);
           border-radius: 10px;
@@ -5524,7 +5525,7 @@ export default function DashboardPage() {
         }
 
         .main-content-expanded {
-          margin-left: 92px;
+          margin-left: 98px;
         }
 
         .sidebar-client {
@@ -6107,12 +6108,13 @@ export default function DashboardPage() {
         }
 
         .hero-panel {
-          padding: 28px;
+          padding: 24px;
           margin-bottom: 24px;
           display: grid;
           gap: 20px;
           grid-template-columns: 1.8fr 1fr;
-          background-image: linear-gradient(135deg, rgba(255, 255, 255, 0.03), transparent), radial-gradient(circle at top right, var(--theme-surface), transparent 42%);
+          background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent), radial-gradient(circle at top right, rgba(124, 77, 255, 0.14), transparent 34%);
+          border-radius: 24px;
         }
 
         .hero-copy {
@@ -6122,21 +6124,22 @@ export default function DashboardPage() {
         }
 
         .hero-panel h2 {
-          font-size: 36px;
-          margin: 18px 0 12px;
+          font-size: 34px;
+          margin: 14px 0 10px;
+          letter-spacing: -0.03em;
         }
 
         .hero-logo-wrap {
-          width: 132px;
-          height: 132px;
-          margin-bottom: 20px;
-          border-radius: 28px;
-          background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03));
-          border: 1px solid rgba(255, 255, 255, 0.12);
+          width: 112px;
+          height: 112px;
+          margin-bottom: 18px;
+          border-radius: 24px;
+          background: rgba(255, 255, 255, 0.04);
+          border: 1px solid rgba(255, 255, 255, 0.08);
           display: grid;
           place-items: center;
           overflow: hidden;
-          box-shadow: 0 18px 48px rgba(0, 0, 0, 0.24);
+          box-shadow: 0 18px 34px rgba(0, 0, 0, 0.22);
         }
 
         .hero-logo {
@@ -6149,19 +6152,19 @@ export default function DashboardPage() {
         .hero-panel p {
           color: var(--text-secondary);
           max-width: 720px;
-          line-height: 1.6;
+          line-height: 1.55;
         }
 
         .hero-badge {
           display: inline-flex;
           align-items: center;
           gap: 8px;
-          padding: 8px 14px;
+          padding: 7px 14px;
           border: 1px solid;
           border-radius: 999px;
-          font-size: 12px;
+          font-size: 11px;
           font-weight: 700;
-          letter-spacing: 0.04em;
+          letter-spacing: 0.08em;
           text-transform: uppercase;
         }
 
@@ -6187,11 +6190,11 @@ export default function DashboardPage() {
           display: inline-flex;
           align-items: center;
           gap: 10px;
-          min-height: 48px;
-          padding: 0 16px;
+          min-height: 44px;
+          padding: 0 15px;
           border-radius: 999px;
           border: 1px solid currentColor;
-          background: rgba(255, 255, 255, 0.03);
+          background: rgba(255, 255, 255, 0.025);
           font-weight: 700;
         }
 
@@ -6209,9 +6212,9 @@ export default function DashboardPage() {
 
         .hero-stat {
           padding: 18px;
-          border-radius: 18px;
-          background: rgba(0, 0, 0, 0.18);
-          border: 1px solid rgba(255, 255, 255, 0.06);
+          border-radius: 16px;
+          background: rgba(11, 13, 19, 0.5);
+          border: 1px solid rgba(255, 255, 255, 0.05);
         }
 
         .hero-stat-empty {
