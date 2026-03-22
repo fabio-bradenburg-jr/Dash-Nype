@@ -4277,7 +4277,7 @@ export default function DashboardPage() {
           </Link>
         </nav>
 
-        {!isSidebarCollapsed && (
+        {!isSidebarCollapsed && activeTab === 'apresentacao' && (
           <div className="sidebar-client glass-item">
             <span className="sidebar-client-label">Cliente ativo</span>
             <strong>{activeClient?.name || 'Nenhum cliente selecionado'}</strong>

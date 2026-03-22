@@ -436,50 +436,54 @@ export default function SettingsPage() {
                     </button>
                   </div>
 
-                  <div className="input-group">
-                    <label>Token manual da Meta</label>
-                    <input
-                      type="password"
-                      value={globalIntegrations.metaAccessToken || ''}
-                      onChange={(event) => handleGlobalIntegrationChange('metaAccessToken', event.target.value)}
-                      placeholder="Cole aqui o token de acesso da Meta"
-                    />
-                    <small className="settings-help-text">
-                      {hasMetaManualToken
-                        ? 'Token manual salvo. Você pode seguir usando esse modo normalmente.'
-                        : 'Se preferir, deixe em branco e use a opção de conta conectada.'}
-                    </small>
-                  </div>
+                  {metaConnectionMode === 'manual' ? (
+                    <div className="input-group">
+                      <label>Token manual da Meta</label>
+                      <input
+                        type="password"
+                        value={globalIntegrations.metaAccessToken || ''}
+                        onChange={(event) => handleGlobalIntegrationChange('metaAccessToken', event.target.value)}
+                        placeholder="Cole aqui o token de acesso da Meta"
+                      />
+                      <small className="settings-help-text">
+                        {hasMetaManualToken
+                          ? 'Token manual salvo. Você pode seguir usando esse modo normalmente.'
+                          : 'Cole o token da Meta para vincular a conta manualmente.'}
+                      </small>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="meta-connection-card">
+                        <div className="meta-connection-copy">
+                          <strong>{hasMetaOauthConnection ? 'Conta conectada' : 'Conta ainda não conectada'}</strong>
+                          <span>
+                            {hasMetaOauthConnection
+                              ? `${metaConnection.userName || 'Usuário Meta'} conectado${metaConnection.expiresAt ? ` até ${new Date(metaConnection.expiresAt).toLocaleDateString('pt-BR')}` : ''}.`
+                              : 'Conecte sua conta da Meta para vincular a operação por login.'}
+                          </span>
+                        </div>
+                        <div className="meta-connection-actions">
+                          <a href="/api/meta/auth/start?return_to=/settings" className="btn btn-primary">
+                            {hasMetaOauthConnection ? 'Reconectar Meta' : 'Conectar Meta'}
+                          </a>
+                          {hasMetaOauthConnection && (
+                            <button type="button" className="btn btn-secondary" onClick={handleMetaDisconnect}>
+                              Desconectar
+                            </button>
+                          )}
+                        </div>
+                      </div>
 
-                  <div className="meta-connection-card">
-                    <div className="meta-connection-copy">
-                      <strong>{hasMetaOauthConnection ? 'Conta conectada' : 'Conta ainda não conectada'}</strong>
-                      <span>
-                        {hasMetaOauthConnection
-                          ? `${metaConnection.userName || 'Usuário Meta'} conectado${metaConnection.expiresAt ? ` até ${new Date(metaConnection.expiresAt).toLocaleDateString('pt-BR')}` : ''}.`
-                          : 'Conecte sua conta da Meta para listar contas de anúncio sem depender apenas do token manual.'}
-                      </span>
-                    </div>
-                    <div className="meta-connection-actions">
-                      <a href="/api/meta/auth/start?return_to=/settings" className="btn btn-primary">
-                        {hasMetaOauthConnection ? 'Reconectar Meta' : 'Conectar Meta'}
-                      </a>
-                      {hasMetaOauthConnection && (
-                        <button type="button" className="btn btn-secondary" onClick={handleMetaDisconnect}>
-                          Desconectar
-                        </button>
-                      )}
-                    </div>
-                  </div>
-
-                  {metaConnectionNotice ? <div className="settings-callout success">{metaConnectionNotice}</div> : null}
-                  {metaConnectionError ? <div className="settings-callout error">{metaConnectionError}</div> : null}
-                  {metaConnectionSetupRequired ? (
-                    <div className="settings-callout warning">
-                      Falta aplicar a migration da tabela <code>workspace_meta_connections</code> no Supabase para liberar a conexão da Meta.
-                    </div>
-                  ) : null}
-                  {isMetaConnectionLoading ? <div className="settings-callout info">Carregando status da conexão da Meta...</div> : null}
+                      {metaConnectionNotice ? <div className="settings-callout success">{metaConnectionNotice}</div> : null}
+                      {metaConnectionError ? <div className="settings-callout error">{metaConnectionError}</div> : null}
+                      {metaConnectionSetupRequired ? (
+                        <div className="settings-callout warning">
+                          Falta aplicar a migration da tabela <code>workspace_meta_connections</code> no Supabase para liberar a conexão da Meta.
+                        </div>
+                      ) : null}
+                      {isMetaConnectionLoading ? <div className="settings-callout info">Carregando status da conexão da Meta...</div> : null}
+                    </>
+                  )}
                 </div>
 
                 {GLOBAL_INTEGRATION_GROUPS.map((group) => (
