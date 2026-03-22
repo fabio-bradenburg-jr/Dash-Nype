@@ -5425,7 +5425,7 @@ export default function DashboardPage() {
           display: flex;
           align-items: center;
           justify-content: flex-start;
-          margin-bottom: 18px;
+          margin-bottom: 26px;
         }
 
         .nav-button {
@@ -5439,41 +5439,40 @@ export default function DashboardPage() {
 
         .sidebar-toggle {
           position: absolute;
-          top: 20px;
-          right: -17px;
-          width: 34px;
-          height: 34px;
+          top: 26px;
+          right: -18px;
+          width: 38px;
+          height: 38px;
           border-radius: 999px;
-          border: 1px solid rgba(255, 255, 255, 0.08);
-          background: rgba(21, 23, 30, 0.98);
+          border: 1px solid rgba(255, 255, 255, 0.12);
+          background: rgba(17, 24, 39, 0.96);
           color: var(--text-primary);
           display: grid;
           place-items: center;
           cursor: pointer;
           flex-shrink: 0;
-          box-shadow: 0 10px 26px rgba(0, 0, 0, 0.28);
+          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
           z-index: 3;
         }
 
         .sidebar-toggle i {
-          font-size: 16px;
+          font-size: 18px;
         }
 
         .sidebar-collapsed {
-          width: 98px;
+          width: 92px;
           padding-left: 14px;
           padding-right: 14px;
         }
 
         .sidebar-collapsed :global(.nav-item) {
           justify-content: center;
-          width: 54px;
-          min-height: 54px;
-          height: 54px;
+          width: 56px;
+          height: 56px;
           margin: 0 auto;
           padding: 0;
           font-size: 0;
-          border-radius: 16px;
+          border-radius: 18px;
           position: relative;
         }
 
@@ -5505,7 +5504,7 @@ export default function DashboardPage() {
           left: calc(100% + 12px);
           top: 50%;
           transform: translateY(-50%);
-          background: rgba(21, 23, 30, 0.98);
+          background: rgba(17, 24, 39, 0.96);
           color: var(--text-primary);
           border: 1px solid rgba(255, 255, 255, 0.08);
           border-radius: 10px;
@@ -5525,7 +5524,7 @@ export default function DashboardPage() {
         }
 
         .main-content-expanded {
-          margin-left: 98px;
+          margin-left: 92px;
         }
 
         .sidebar-client {
