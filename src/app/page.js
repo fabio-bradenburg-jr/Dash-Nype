@@ -2811,11 +2811,10 @@ export default function DashboardPage() {
             activeClientId,
             googleSheetsUrl: activeClient?.googleSheetsUrl || '',
             googleSheetsHeaderRow: Number(activeClient?.googleSheetsHeaderRow || 1),
+            googleSheetsStatusColumn: String(activeClient?.googleSheetsStatusColumn || '').trim(),
           })
 
           if (lastGoogleSheetsFetchKeyRef.current !== sheetsFetchKey) {
-            lastGoogleSheetsFetchKeyRef.current = sheetsFetchKey
-
             const sheetsParams = new URLSearchParams({
               url: activeClient?.googleSheetsUrl || '',
               header_row: String(Number(activeClient?.googleSheetsHeaderRow || 1)),
@@ -2834,6 +2833,7 @@ export default function DashboardPage() {
             }
 
             if (!cancelled) {
+              lastGoogleSheetsFetchKeyRef.current = sheetsFetchKey
               setGoogleSheetsSummary(sheetsData || null)
             }
           }
@@ -2847,6 +2847,7 @@ export default function DashboardPage() {
         }
       } catch (error) {
         if (!cancelled) {
+          lastGoogleSheetsFetchKeyRef.current = ''
           setInsights(null)
           setDailyData([])
           setBreakdowns(EMPTY_META_BREAKDOWNS)

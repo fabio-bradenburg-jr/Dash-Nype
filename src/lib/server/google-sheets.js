@@ -23,7 +23,61 @@ function slugifyLabel(value) {
     .replace(/^-+|-+$/g, '')
 }
 
-function parseCsv(text) {
+function detectDelimiter(text) {
+  const candidates = [',', ';', '\t']
+  const lines = String(text || '')
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .slice(0, 12)
+
+  if (!lines.length) return ','
+
+  const scores = candidates.map((delimiter) => {
+    const counts = lines.map((line) => {
+      let insideQuotes = false
+      let count = 0
+
+      for (let index = 0; index < line.length; index += 1) {
+        const char = line[index]
+        const nextChar = line[index + 1]
+
+        if (char === '"') {
+          if (insideQuotes && nextChar === '"') {
+            index += 1
+          } else {
+            insideQuotes = !insideQuotes
+          }
+          continue
+        }
+
+        if (char === delimiter && !insideQuotes) {
+          count += 1
+        }
+      }
+
+      return count
+    })
+
+    const linesWithDelimiter = counts.filter((count) => count > 0).length
+    const totalCount = counts.reduce((sum, count) => sum + count, 0)
+
+    return {
+      delimiter,
+      linesWithDelimiter,
+      totalCount,
+    }
+  })
+
+  scores.sort((left, right) => (
+    right.linesWithDelimiter - left.linesWithDelimiter
+    || right.totalCount - left.totalCount
+  ))
+
+  return scores[0]?.linesWithDelimiter > 0 ? scores[0].delimiter : ','
+}
+
+function parseDelimitedText(text, delimiter = ',') {
   const rows = []
   let currentCell = ''
   let currentRow = []
@@ -43,7 +97,7 @@ function parseCsv(text) {
       continue
     }
 
-    if (char === ',' && !insideQuotes) {
+    if (char === delimiter && !insideQuotes) {
       currentRow.push(currentCell)
       currentCell = ''
       continue
@@ -141,6 +195,49 @@ function findStatusColumnIndex(headers, requestedStatusColumn) {
   return headers.findIndex((header) => /(status|etapa|pipeline|fase|coluna)/i.test(header))
 }
 
+function countFilledCells(row = []) {
+  return row.filter((cell) => String(cell || '').trim() !== '').length
+}
+
+function resolveHeaderIndex(rows, requestedHeaderIndex) {
+  const safeRequestedIndex = Math.max(0, requestedHeaderIndex)
+
+  if (rows.length <= safeRequestedIndex + 1) {
+    const detectedIndex = rows
+      .slice(0, Math.max(0, rows.length - 1))
+      .reduce((bestIndex, row, index, allRows) => {
+        const currentScore = countFilledCells(row)
+        const bestScore = countFilledCells(allRows[bestIndex] || [])
+        return currentScore > bestScore ? index : bestIndex
+      }, 0)
+
+    return detectedIndex
+  }
+
+  const requestedRowScore = countFilledCells(rows[safeRequestedIndex] || [])
+  const nextRowScore = countFilledCells(rows[safeRequestedIndex + 1] || [])
+
+  if (requestedRowScore > 1 && nextRowScore > 0) {
+    return safeRequestedIndex
+  }
+
+  const detectedIndex = rows
+    .slice(0, Math.max(0, rows.length - 1))
+    .reduce((bestIndex, row, index, allRows) => {
+      const currentScore = countFilledCells(row)
+      const currentNextScore = countFilledCells(allRows[index + 1] || [])
+      const bestScore = countFilledCells(allRows[bestIndex] || [])
+      const bestNextScore = countFilledCells(allRows[bestIndex + 1] || [])
+
+      const currentComposite = currentScore + Math.min(currentNextScore, currentScore)
+      const bestComposite = bestScore + Math.min(bestNextScore, bestScore)
+
+      return currentComposite > bestComposite ? index : bestIndex
+    }, safeRequestedIndex)
+
+  return detectedIndex
+}
+
 function extractGoogleSheetId(input) {
   const trimmed = String(input || '').trim()
   const directMatch = trimmed.match(/^[a-zA-Z0-9-_]{20,}$/)
@@ -196,8 +293,10 @@ export async function readGoogleSheetSummary({ sourceUrl, headerRow = 1, statusC
     throw new Error('A planilha não está pública para leitura. Publique ou compartilhe o Google Sheets para que o app consiga importar os dados.')
   }
 
-  const rows = parseCsv(text)
-  const headerIndex = Math.max(0, Number(headerRow || 1) - 1)
+  const detectedDelimiter = detectDelimiter(text)
+  const rows = parseDelimitedText(text, detectedDelimiter)
+  const requestedHeaderIndex = Math.max(0, Number(headerRow || 1) - 1)
+  const headerIndex = resolveHeaderIndex(rows, requestedHeaderIndex)
 
   if (rows.length <= headerIndex) {
     throw new Error('A linha de cabeçalho informada não existe na planilha.')
@@ -275,8 +374,10 @@ export async function readGoogleSheetSummary({ sourceUrl, headerRow = 1, statusC
   return {
     sourceUrl,
     csvUrl,
+    detectedDelimiter,
     headers,
     totalRows: dataRows.length,
+    resolvedHeaderRow: headerIndex + 1,
     rowMetric: {
       id: 'sheet-total-rows',
       label: 'Registros totais',
