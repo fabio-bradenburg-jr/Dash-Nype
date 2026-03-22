@@ -247,6 +247,26 @@ export async function saveDashboardState(adminSupabase, accessContext, state) {
     : []
 
   if (accessContext.role === USER_ROLES.MASTER) {
+    const [
+      { data: existingClientRows, error: existingClientsError },
+      { data: existingGroupRows, error: existingGroupsError },
+    ] = await Promise.all([
+      adminSupabase
+        .from('workspace_clients')
+        .select('id')
+        .eq('workspace_id', accessContext.workspaceId),
+      adminSupabase
+        .from('workspace_client_groups')
+        .select('id')
+        .eq('workspace_id', accessContext.workspaceId),
+    ])
+
+    if (existingClientsError) throw existingClientsError
+    if (existingGroupsError && !isMissingRelationError(existingGroupsError)) throw existingGroupsError
+    if (existingGroupsError && isMissingRelationError(existingGroupsError) && submittedClientGroups.length > 0) {
+      throw new Error('As tabelas de grupos de clientes ainda nao foram criadas no Supabase. Rode a migration antes de salvar grupos.')
+    }
+
     const { error: preferenceError } = await adminSupabase
       .from('workspace_preferences')
       .upsert(
@@ -261,22 +281,8 @@ export async function saveDashboardState(adminSupabase, accessContext, state) {
 
     if (preferenceError) throw preferenceError
 
-    const { error: deleteError } = await adminSupabase
-      .from('workspace_clients')
-      .delete()
-      .eq('workspace_id', accessContext.workspaceId)
-
-    if (deleteError) throw deleteError
-
-    const { error: deleteGroupError } = await adminSupabase
-      .from('workspace_client_groups')
-      .delete()
-      .eq('workspace_id', accessContext.workspaceId)
-
-    if (deleteGroupError && !isMissingRelationError(deleteGroupError)) throw deleteGroupError
-    if (deleteGroupError && isMissingRelationError(deleteGroupError) && submittedClientGroups.length > 0) {
-      throw new Error('As tabelas de grupos de clientes ainda nao foram criadas no Supabase. Rode a migration antes de salvar grupos.')
-    }
+    const submittedClientIds = new Set(submittedClients.map((client) => client.id))
+    const existingClientIds = (existingClientRows || []).map((row) => row.id)
 
     if (submittedClients.length > 0) {
       const { error: upsertError } = await adminSupabase
@@ -293,6 +299,21 @@ export async function saveDashboardState(adminSupabase, accessContext, state) {
 
       if (upsertError) throw upsertError
     }
+
+    const removedClientIds = existingClientIds.filter((clientId) => !submittedClientIds.has(clientId))
+
+    if (removedClientIds.length > 0) {
+      const { error: deleteRemovedClientsError } = await adminSupabase
+        .from('workspace_clients')
+        .delete()
+        .eq('workspace_id', accessContext.workspaceId)
+        .in('id', removedClientIds)
+
+      if (deleteRemovedClientsError) throw deleteRemovedClientsError
+    }
+
+    const submittedGroupIds = new Set(submittedClientGroups.map((group) => group.id))
+    const existingGroupIds = (isMissingRelationError(existingGroupsError) ? [] : existingGroupRows || []).map((row) => row.id)
 
     if (submittedClientGroups.length > 0) {
       const { error: upsertGroupError } = await adminSupabase
@@ -311,6 +332,19 @@ export async function saveDashboardState(adminSupabase, accessContext, state) {
           throw new Error('As tabelas de grupos de clientes ainda nao foram criadas no Supabase. Rode a migration antes de salvar grupos.')
         }
         throw upsertGroupError
+      }
+
+      const { error: deleteExistingGroupMembersError } = await adminSupabase
+        .from('workspace_client_group_members')
+        .delete()
+        .eq('workspace_id', accessContext.workspaceId)
+        .in('group_id', Array.from(submittedGroupIds))
+
+      if (deleteExistingGroupMembersError) {
+        if (isMissingRelationError(deleteExistingGroupMembersError)) {
+          throw new Error('As tabelas de grupos de clientes ainda nao foram criadas no Supabase. Rode a migration antes de salvar grupos.')
+        }
+        throw deleteExistingGroupMembersError
       }
 
       const groupMembershipRows = submittedClientGroups.flatMap((group) =>
@@ -332,6 +366,23 @@ export async function saveDashboardState(adminSupabase, accessContext, state) {
           }
           throw upsertGroupMemberError
         }
+      }
+    }
+
+    const removedGroupIds = existingGroupIds.filter((groupId) => !submittedGroupIds.has(groupId))
+
+    if (removedGroupIds.length > 0) {
+      const { error: deleteRemovedGroupsError } = await adminSupabase
+        .from('workspace_client_groups')
+        .delete()
+        .eq('workspace_id', accessContext.workspaceId)
+        .in('id', removedGroupIds)
+
+      if (deleteRemovedGroupsError) {
+        if (isMissingRelationError(deleteRemovedGroupsError)) {
+          throw new Error('As tabelas de grupos de clientes ainda nao foram criadas no Supabase. Rode a migration antes de salvar grupos.')
+        }
+        throw deleteRemovedGroupsError
       }
     }
 

@@ -169,7 +169,7 @@ export async function getAccessContext(adminSupabase, user) {
     canManageUsers: role === USER_ROLES.MASTER,
     canManageClients: role === USER_ROLES.MASTER || role === USER_ROLES.OPERATOR,
     canEditIntegrations: role === USER_ROLES.MASTER || role === USER_ROLES.OPERATOR,
-    canViewDashboard: Boolean(workspaceId),
+    canViewDashboard: role === USER_ROLES.MASTER || viewableClientIds.size > 0,
     isClientRole: role === USER_ROLES.CLIENT,
     viewableClientIds: Array.from(viewableClientIds),
     editableClientIds: Array.from(editableClientIds),
