@@ -969,6 +969,7 @@ export default function DashboardPage() {
   const [rankingsError, setRankingsError] = useState('')
   const [rdSummary, setRdSummary] = useState(null)
   const [googleSheetsSummary, setGoogleSheetsSummary] = useState(null)
+  const [googleSheetsError, setGoogleSheetsError] = useState('')
   const [rdPipelines, setRdPipelines] = useState([])
   const [rdPipelineStages, setRdPipelineStages] = useState([])
   const [isLoading, setIsLoading] = useState(true)
@@ -2711,6 +2712,7 @@ export default function DashboardPage() {
       try {
         let metaError = ''
         let rdError = ''
+        let sheetsError = ''
         const currentMetaFilteredCampaignIds = metaFilteredCampaignIdsRef.current
         const currentMetaFilteredAdsetIds = metaFilteredAdsetIdsRef.current
         const currentMetaFilteredAdIds = metaFilteredAdIdsRef.current
@@ -2815,31 +2817,42 @@ export default function DashboardPage() {
           })
 
           if (lastGoogleSheetsFetchKeyRef.current !== sheetsFetchKey) {
-            const sheetsParams = new URLSearchParams({
-              url: activeClient?.googleSheetsUrl || '',
-              header_row: String(Number(activeClient?.googleSheetsHeaderRow || 1)),
-            })
-            if (String(activeClient?.googleSheetsStatusColumn || '').trim()) {
-              sheetsParams.set('status_column', activeClient.googleSheetsStatusColumn)
-            }
+            try {
+              const sheetsParams = new URLSearchParams({
+                url: activeClient?.googleSheetsUrl || '',
+                header_row: String(Number(activeClient?.googleSheetsHeaderRow || 1)),
+              })
+              if (String(activeClient?.googleSheetsStatusColumn || '').trim()) {
+                sheetsParams.set('status_column', activeClient.googleSheetsStatusColumn)
+              }
 
-            const sheetsResponse = await fetch(`/api/google-sheets/summary?${sheetsParams.toString()}`, {
-              cache: 'no-store',
-            })
-            const sheetsData = await sheetsResponse.json()
+              const sheetsResponse = await fetch(`/api/google-sheets/summary?${sheetsParams.toString()}`, {
+                cache: 'no-store',
+              })
+              const sheetsData = await sheetsResponse.json()
 
-            if (!sheetsResponse.ok) {
-              throw new Error(sheetsData.error || 'Não foi possível carregar os dados do Google Sheets.')
-            }
+              if (!sheetsResponse.ok) {
+                throw new Error(sheetsData.error || 'Não foi possível carregar os dados do Google Sheets.')
+              }
 
-            if (!cancelled) {
-              lastGoogleSheetsFetchKeyRef.current = sheetsFetchKey
-              setGoogleSheetsSummary(sheetsData || null)
+              if (!cancelled) {
+                lastGoogleSheetsFetchKeyRef.current = sheetsFetchKey
+                setGoogleSheetsSummary(sheetsData || null)
+                setGoogleSheetsError('')
+              }
+            } catch (error) {
+              sheetsError = error.message || 'Não foi possível carregar os dados do Google Sheets.'
+              if (!cancelled) {
+                lastGoogleSheetsFetchKeyRef.current = ''
+                setGoogleSheetsSummary(null)
+                setGoogleSheetsError(sheetsError)
+              }
             }
           }
         } else if (!cancelled) {
           lastGoogleSheetsFetchKeyRef.current = ''
           setGoogleSheetsSummary(null)
+          setGoogleSheetsError('')
         }
 
         if (!cancelled) {
@@ -2853,6 +2866,7 @@ export default function DashboardPage() {
           setBreakdowns(EMPTY_META_BREAKDOWNS)
           setRdSummary(null)
           setGoogleSheetsSummary(null)
+          setGoogleSheetsError('')
           setErrorMessage(error.message || 'Falha ao puxar os dados da integração.')
         }
       } finally {
@@ -5478,6 +5492,11 @@ export default function DashboardPage() {
                             </p>
                           </div>
                         </div>
+                        {googleSheetsError ? (
+                          <div className="settings-alert error">
+                            {googleSheetsError}
+                          </div>
+                        ) : null}
                         {googleSheetsSummary?.statusSummary?.counts?.length > 0 && (
                           <div className="glass-item rd-diagnostic-panel">
                             <p className="meta-campaign-filter-note">

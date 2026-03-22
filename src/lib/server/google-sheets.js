@@ -253,14 +253,14 @@ function extractGoogleSheetGid(input) {
   return gidMatch?.[1] || '0'
 }
 
-function buildGoogleSheetsCsvUrl(input) {
+function buildGoogleSheetsCsvUrls(input) {
   const trimmed = String(input || '').trim()
   if (!trimmed) {
     throw new Error('Informe a URL da planilha do Google Sheets.')
   }
 
   if (/^https?:\/\/docs\.google\.com\/spreadsheets\/d\/[^/]+\/export/i.test(trimmed)) {
-    return trimmed
+    return [trimmed]
   }
 
   const sheetId = extractGoogleSheetId(trimmed)
@@ -269,29 +269,73 @@ function buildGoogleSheetsCsvUrl(input) {
   }
 
   const gid = extractGoogleSheetGid(trimmed)
-  return `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=${gid}`
+  return [
+    `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=${gid}`,
+    `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&gid=${gid}`,
+  ]
+}
+
+function isLikelyGoogleErrorPayload(text) {
+  const normalized = String(text || '').trim().toLowerCase()
+  if (!normalized) return true
+
+  if (/<html|<!doctype html/i.test(normalized)) return true
+
+  return [
+    'sign in',
+    'login',
+    'access denied',
+    'unauthorized',
+    'permission',
+    'you need access',
+    'request access',
+    'requested entity was not found',
+    'document does not exist',
+    'google docs',
+    'solicite acesso',
+    'permiss',
+    'nao autorizado',
+    'não autorizado',
+  ].some((snippet) => normalized.includes(snippet))
+}
+
+async function fetchGoogleSheetText(sourceUrl) {
+  const candidateUrls = buildGoogleSheetsCsvUrls(sourceUrl)
+  let lastFailureMessage = ''
+
+  for (const candidateUrl of candidateUrls) {
+    const response = await fetch(candidateUrl, {
+      cache: 'no-store',
+    })
+
+    const text = await response.text()
+
+    if (!response.ok) {
+      lastFailureMessage = 'Não foi possível ler a planilha. Verifique se ela está publicada ou compartilhada para leitura.'
+      continue
+    }
+
+    if (!text.trim()) {
+      lastFailureMessage = 'A planilha retornou vazia.'
+      continue
+    }
+
+    if (isLikelyGoogleErrorPayload(text)) {
+      lastFailureMessage = 'A planilha não está pública para leitura. Publique ou compartilhe o Google Sheets para que o app consiga importar os dados.'
+      continue
+    }
+
+    return {
+      csvUrl: candidateUrl,
+      text,
+    }
+  }
+
+  throw new Error(lastFailureMessage || 'Não foi possível ler a planilha do Google Sheets.')
 }
 
 export async function readGoogleSheetSummary({ sourceUrl, headerRow = 1, statusColumn = '' }) {
-  const csvUrl = buildGoogleSheetsCsvUrl(sourceUrl)
-
-  const response = await fetch(csvUrl, {
-    cache: 'no-store',
-  })
-
-  const text = await response.text()
-
-  if (!response.ok) {
-    throw new Error('Não foi possível ler a planilha. Verifique se ela está publicada ou compartilhada para leitura.')
-  }
-
-  if (!text.trim()) {
-    throw new Error('A planilha retornou vazia.')
-  }
-
-  if (/<!doctype html/i.test(text) || /<html/i.test(text)) {
-    throw new Error('A planilha não está pública para leitura. Publique ou compartilhe o Google Sheets para que o app consiga importar os dados.')
-  }
+  const { csvUrl, text } = await fetchGoogleSheetText(sourceUrl)
 
   const detectedDelimiter = detectDelimiter(text)
   const rows = parseDelimitedText(text, detectedDelimiter)
@@ -307,6 +351,14 @@ export async function readGoogleSheetSummary({ sourceUrl, headerRow = 1, statusC
   const dataRows = rows
     .slice(headerIndex + 1)
     .filter((row) => row.some((cell) => String(cell || '').trim() !== ''))
+
+  if (!headers.length || headers.every((header) => !String(header || '').trim())) {
+    throw new Error('Não encontramos um cabeçalho válido na planilha. Revise a linha do cabeçalho informada.')
+  }
+
+  if (!dataRows.length && rows.length <= 2) {
+    throw new Error('A planilha foi encontrada, mas não retornou linhas de dados. Verifique se a aba correta está no link e se há registros abaixo do cabeçalho.')
+  }
 
   const previewRows = dataRows.slice(0, 12).map((row, rowIndex) => ({
     id: `row-${rowIndex + 1}`,
