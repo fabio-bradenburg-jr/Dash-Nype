@@ -4643,8 +4643,8 @@ export default function DashboardPage() {
                 <div className="operations-meta-grid">
                   {mondayOperationalHighlights.map((item) => (
                     <div key={item.key} className="operations-meta-card">
-                      <span>{item.label}</span>
-                      <strong>{item.value}</strong>
+                      <p className="operations-meta-label">{item.label}</p>
+                      <p className="operations-meta-value">{item.value}</p>
                     </div>
                   ))}
                 </div>
@@ -4652,13 +4652,18 @@ export default function DashboardPage() {
 
               <div className="operations-filter-grid">
                 <div className="glass-item operations-filter-card">
-                  <span>Período do painel</span>
-                  <strong>{mondayPeriodLabel}</strong>
-                  <small>Use o seletor de datas do topo para mudar o recorte operacional.</small>
+                  <p className="operations-filter-label">Período do painel</p>
+                  <p className="operations-filter-value">{mondayPeriodLabel}</p>
+                  <p className="operations-filter-help">Use o seletor de datas do topo para mudar o recorte operacional.</p>
                 </div>
-                <label className="glass-item operations-filter-card">
-                  <span>Filtrar responsável</span>
-                  <select className="hero-select" value={mondayOwnerFilter} onChange={(event) => setMondayOwnerFilter(event.target.value)}>
+                <div className="glass-item operations-filter-card">
+                  <label className="operations-filter-label" htmlFor="monday-owner-filter">Filtrar responsável</label>
+                  <select
+                    id="monday-owner-filter"
+                    className="hero-select"
+                    value={mondayOwnerFilter}
+                    onChange={(event) => setMondayOwnerFilter(event.target.value)}
+                  >
                     <option value="all">Todos os usuários</option>
                     {mondayOwnerOptions.map((owner) => (
                       <option key={owner.id} value={owner.id}>
@@ -4666,16 +4671,16 @@ export default function DashboardPage() {
                       </option>
                     ))}
                   </select>
-                  <small>{selectedMondayOwnerLabel === 'Todos os usuários' ? 'Leitura consolidada de toda a operação.' : `Agora lendo apenas ${selectedMondayOwnerLabel}.`}</small>
-                </label>
+                  <p className="operations-filter-help">{selectedMondayOwnerLabel === 'Todos os usuários' ? 'Leitura consolidada de toda a operação.' : `Agora lendo apenas ${selectedMondayOwnerLabel}.`}</p>
+                </div>
                 <div className="glass-item operations-filter-card">
-                  <span>Responsável com mais atraso</span>
-                  <strong>{mondaySummary?.topOverdueOwner ? mondaySummary.topOverdueOwner.name : 'Sem atraso no recorte'}</strong>
-                  <small>
+                  <p className="operations-filter-label">Responsável com mais atraso</p>
+                  <p className="operations-filter-value">{mondaySummary?.topOverdueOwner ? mondaySummary.topOverdueOwner.name : 'Sem atraso no recorte'}</p>
+                  <p className="operations-filter-help">
                     {mondaySummary?.topOverdueOwner
                       ? `${formatNumber(mondaySummary.topOverdueOwner.overdueItems)} item(ns) atrasado(s) dentro do período.`
                       : 'Nenhum responsável com atraso no recorte atual.'}
-                  </small>
+                  </p>
                 </div>
               </div>
             </>
@@ -4738,19 +4743,19 @@ export default function DashboardPage() {
 
               <div className="operations-spotlight-grid">
                 <article className="glass-item operations-spotlight-card">
-                  <span className="operations-spotlight-label">Tarefa mais longa</span>
-                  <strong>{mondaySummary?.topLongestTask?.name || 'Sem tempo lançado no período'}</strong>
-                  <small>{mondaySummary?.topLongestTask ? formatDurationHours(mondaySummary.topLongestTask.trackedSeconds) : 'Assim que houver time tracking, ela aparece aqui.'}</small>
+                  <p className="operations-spotlight-label">Tarefa mais longa</p>
+                  <h3 className="operations-spotlight-value">{mondaySummary?.topLongestTask?.name || 'Sem tempo lançado no período'}</h3>
+                  <p className="operations-spotlight-help">{mondaySummary?.topLongestTask ? formatDurationHours(mondaySummary.topLongestTask.trackedSeconds) : 'Assim que houver time tracking, ela aparece aqui.'}</p>
                 </article>
                 <article className="glass-item operations-spotlight-card">
-                  <span className="operations-spotlight-label">Sem responsável</span>
-                  <strong>{formatNumber(mondaySummary?.unassignedItems || 0)} item(ns)</strong>
-                  <small>Itens sem dono definido costumam travar handoff e dificultar SLA.</small>
+                  <p className="operations-spotlight-label">Sem responsável</p>
+                  <h3 className="operations-spotlight-value">{formatNumber(mondaySummary?.unassignedItems || 0)} item(ns)</h3>
+                  <p className="operations-spotlight-help">Itens sem dono definido costumam travar handoff e dificultar SLA.</p>
                 </article>
                 <article className="glass-item operations-spotlight-card">
-                  <span className="operations-spotlight-label">Status com maior fila</span>
-                  <strong>{mondaySummary?.topStatus?.label || 'Sem status no recorte'}</strong>
-                  <small>{mondaySummary?.topStatus ? `${formatNumber(mondaySummary.topStatus.count)} item(ns) concentrado(s) nessa etapa.` : 'Sem dados suficientes para leitura.'}</small>
+                  <p className="operations-spotlight-label">Status com maior fila</p>
+                  <h3 className="operations-spotlight-value">{mondaySummary?.topStatus?.label || 'Sem status no recorte'}</h3>
+                  <p className="operations-spotlight-help">{mondaySummary?.topStatus ? `${formatNumber(mondaySummary.topStatus.count)} item(ns) concentrado(s) nessa etapa.` : 'Sem dados suficientes para leitura.'}</p>
                 </article>
               </div>
 
@@ -8251,17 +8256,32 @@ export default function DashboardPage() {
           background: rgba(255, 255, 255, 0.03);
           display: grid;
           gap: 6px;
+          align-content: start;
+          min-width: 0;
         }
 
-        .operations-meta-card span {
+        .operations-meta-label,
+        .operations-meta-value,
+        .operations-filter-label,
+        .operations-filter-value,
+        .operations-filter-help,
+        .operations-spotlight-label,
+        .operations-spotlight-value,
+        .operations-spotlight-help {
+          margin: 0;
+        }
+
+        .operations-meta-label {
           color: var(--text-muted);
           font-size: 12px;
           line-height: 1.4;
         }
 
-        .operations-meta-card strong {
+        .operations-meta-value {
           font-size: 22px;
           line-height: 1.1;
+          font-weight: 700;
+          word-break: break-word;
         }
 
         .operations-kpi-shell {
@@ -8286,9 +8306,11 @@ export default function DashboardPage() {
           border-radius: 18px;
           border: 1px solid rgba(255, 255, 255, 0.05);
           background: rgba(255, 255, 255, 0.03);
+          align-content: start;
+          min-width: 0;
         }
 
-        .operations-filter-card span,
+        .operations-filter-label,
         .operations-spotlight-label {
           color: var(--text-muted);
           font-size: 12px;
@@ -8296,12 +8318,18 @@ export default function DashboardPage() {
           text-transform: uppercase;
         }
 
-        .operations-filter-card strong {
-          font-size: 18px;
-          line-height: 1.2;
+        .operations-filter-label {
+          display: block;
         }
 
-        .operations-filter-card small {
+        .operations-filter-value {
+          font-size: 18px;
+          line-height: 1.2;
+          font-weight: 700;
+          word-break: break-word;
+        }
+
+        .operations-filter-help {
           color: var(--text-muted);
           line-height: 1.5;
         }
@@ -8320,14 +8348,18 @@ export default function DashboardPage() {
           border-radius: 18px;
           border: 1px solid rgba(255, 255, 255, 0.05);
           background: rgba(255, 255, 255, 0.03);
+          align-content: start;
+          min-width: 0;
         }
 
-        .operations-spotlight-card strong {
+        .operations-spotlight-value {
           font-size: 22px;
           line-height: 1.18;
+          font-weight: 700;
+          word-break: break-word;
         }
 
-        .operations-spotlight-card small {
+        .operations-spotlight-help {
           color: var(--text-muted);
           line-height: 1.5;
         }
