@@ -63,6 +63,17 @@ const GLOBAL_INTEGRATION_GROUPS = [
     },
   },
   {
+    title: 'Monday',
+    description: 'Espaço reservado para integrações operacionais com boards, status e responsáveis.',
+    icon: 'bx-columns',
+    accent: '#f59e0b',
+    field: {
+      name: 'mondayToken',
+      label: 'Token do Monday',
+      placeholder: 'Cole aqui o token do Monday',
+    },
+  },
+  {
     title: 'Salesforce',
     description: 'Espaço reservado para a credencial central do Salesforce.',
     icon: 'bxl-salesforce',

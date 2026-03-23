@@ -9,6 +9,7 @@ import {
   createClientGroupRecord,
   createDashboardTemplate,
   DEFAULT_INTEGRATIONS,
+  DEFAULT_PREFERENCES,
   loadDashboardPreferences,
   saveDashboardPreferences,
 } from '@/lib/dashboard-storage'
@@ -199,6 +200,24 @@ const CLIENT_INTEGRATION_GROUPS = [
     ],
   },
   {
+    title: 'ClickUp',
+    icon: 'bx-task',
+    accent: '#8b5cf6',
+    description: 'Informe as listas do ClickUp que representam a operação deste cliente. O token fica na aba principal do ClickUp.',
+    fields: [
+      { name: 'clickUpListIds', label: 'IDs das listas do ClickUp', placeholder: '123456, 789012', storage: 'client', type: 'text' },
+    ],
+  },
+  {
+    title: 'Monday',
+    icon: 'bx-columns',
+    accent: '#f59e0b',
+    description: 'Informe os boards do Monday que representam a operação deste cliente. O token fica na aba principal do Monday.',
+    fields: [
+      { name: 'mondayBoardIds', label: 'IDs dos boards do Monday', placeholder: '987654321, 123456789', storage: 'client', type: 'text' },
+    ],
+  },
+  {
     title: 'Google Sheets',
     icon: 'bx-spreadsheet',
     accent: '#22c55e',
@@ -269,6 +288,20 @@ const GLOBAL_INTEGRATION_GROUPS = [
     accent: '#0a66c2',
     description: 'Credencial global da operação para trabalhar com contas do LinkedIn Ads.',
     field: { name: 'linkedinAdsToken', label: 'Token OAuth 2.0 do LinkedIn Ads', placeholder: 'AQV...' },
+  },
+  {
+    title: 'ClickUp',
+    icon: 'bx-task',
+    accent: '#8b5cf6',
+    description: 'Token global para consultar listas, tarefas, responsáveis e status operacionais.',
+    field: { name: 'clickUpToken', label: 'Token de API do ClickUp', placeholder: 'pk_...' },
+  },
+  {
+    title: 'Monday',
+    icon: 'bx-columns',
+    accent: '#f59e0b',
+    description: 'Token global para consultar boards, itens, status e responsáveis no Monday.',
+    field: { name: 'mondayToken', label: 'Token de API do Monday', placeholder: 'Cole aqui o token do Monday' },
   },
 ]
 
@@ -1178,11 +1211,7 @@ export default function DashboardPage() {
   })
   const [savingUser, setSavingUser] = useState(false)
   const [globalIntegrations, setGlobalIntegrations] = useState({
-    metaAccessToken: '',
-    metaConnectionMode: 'manual',
-    googleAdsToken: '',
-    tiktokAdsToken: '',
-    linkedinAdsToken: '',
+    ...DEFAULT_PREFERENCES.globalIntegrations,
   })
   const [metaConnection, setMetaConnection] = useState({
     connected: false,
@@ -1196,6 +1225,7 @@ export default function DashboardPage() {
   const role = access?.role || profile?.role || 'visualizador'
   const canManageUsers = Boolean(access?.canManageUsers)
   const canManageClients = Boolean(access?.canManageClients)
+  const canEditIntegrations = Boolean(access?.canEditIntegrations)
   const canViewDashboard = access?.canViewDashboard !== false
   const isMaster = role === 'master'
   const activeClient = useMemo(
@@ -1290,7 +1320,22 @@ export default function DashboardPage() {
   const hasMetaConfigured = Boolean(selectedAdAccount && (hasMetaManualToken || hasMetaOauthConnection))
   const hasRdConfigured = Boolean(activeIntegrations.rdStationToken)
   const hasSheetsConfigured = Boolean(String(activeClient?.googleSheetsUrl || '').trim())
-  const hasAnyPresentationData = hasMetaConfigured || hasRdConfigured || hasSheetsConfigured
+  const hasClickUpConfigured = Boolean(
+    String(globalIntegrations.clickUpToken || '').trim() && String(activeClient?.clickUpListIds || '').trim()
+  )
+  const hasMondayConfigured = Boolean(
+    String(globalIntegrations.mondayToken || '').trim() && String(activeClient?.mondayBoardIds || '').trim()
+  )
+  const hasAnyPresentationData =
+    hasMetaConfigured || hasRdConfigured || hasSheetsConfigured || hasClickUpConfigured || hasMondayConfigured
+  const clickUpMappedClients = useMemo(
+    () => clients.filter((client) => String(client?.clickUpListIds || '').trim()),
+    [clients]
+  )
+  const mondayMappedClients = useMemo(
+    () => clients.filter((client) => String(client?.mondayBoardIds || '').trim()),
+    [clients]
+  )
   const rdPipelineOptions = useMemo(
     () => (rdPipelines.length ? rdPipelines : rdSummary?.availablePipelines || []),
     [rdPipelines, rdSummary]
@@ -1678,12 +1723,9 @@ export default function DashboardPage() {
     setMetric1(preferences.metric1)
     setMetric2(preferences.metric2)
     setGlobalIntegrations(
-      preferences.globalIntegrations || {
-        metaAccessToken: '',
-        metaConnectionMode: 'manual',
-        googleAdsToken: '',
-        tiktokAdsToken: '',
-        linkedinAdsToken: '',
+      {
+        ...DEFAULT_PREFERENCES.globalIntegrations,
+        ...(preferences.globalIntegrations || {}),
       }
     )
     setClients(initialClients)
@@ -1691,6 +1733,12 @@ export default function DashboardPage() {
     setActiveClientId(initialActiveClientId)
     setHasLoadedPreferences(true)
   }, [])
+
+  useEffect(() => {
+    if ((activeTab === 'clickup' || activeTab === 'monday') && !canEditIntegrations) {
+      setActiveTab('apresentacao')
+    }
+  }, [activeTab, canEditIntegrations])
 
   useEffect(() => {
     if (!hasLoadedPreferences || userLoading || !user) return
@@ -4267,6 +4315,16 @@ export default function DashboardPage() {
           <Link href="/calendar" data-tooltip="Agenda" className="nav-item">
             <i className="bx bx-calendar-event"></i> Agenda
           </Link>
+          {canEditIntegrations && (
+            <button type="button" data-tooltip="ClickUp" className={`nav-item nav-button ${activeTab === 'clickup' ? 'active' : ''}`} onClick={() => setActiveTab('clickup')}>
+              <i className="bx bx-task"></i> ClickUp
+            </button>
+          )}
+          {canEditIntegrations && (
+            <button type="button" data-tooltip="Monday" className={`nav-item nav-button ${activeTab === 'monday' ? 'active' : ''}`} onClick={() => setActiveTab('monday')}>
+              <i className="bx bx-columns"></i> Monday
+            </button>
+          )}
           {canManageUsers && (
             <button type="button" data-tooltip="Usuários" className={`nav-item nav-button ${activeTab === 'usuarios' ? 'active' : ''}`} onClick={() => setActiveTab('usuarios')}>
               <i className="bx bxs-user-detail"></i> Usuários
@@ -4311,11 +4369,15 @@ export default function DashboardPage() {
             <h1>
               {activeTab === 'clientes' && 'Base de clientes'}
               {activeTab === 'apresentacao' && `Dashboard ${activeClient?.name || 'do cliente'}`}
+              {activeTab === 'clickup' && 'Integração ClickUp'}
+              {activeTab === 'monday' && 'Integração Monday'}
               {activeTab === 'usuarios' && 'Gestão de usuários'}
             </h1>
             <p>
               {activeTab === 'clientes' && 'Cadastre seus clientes e mantenha cada operação separada dentro do dashboard.'}
               {activeTab === 'apresentacao' && 'Uma visão executiva consolidada dos principais resultados do cliente, organizada por fonte de dados.'}
+              {activeTab === 'clickup' && 'Cadastre o token global do ClickUp e escolha quais listas representam a operação de cada cliente.'}
+              {activeTab === 'monday' && 'Cadastre o token global do Monday e escolha quais boards representam a operação de cada cliente.'}
               {activeTab === 'usuarios' && 'Defina quem pode visualizar dashboards, editar integrações e acessar clientes específicos.'}
             </p>
           </div>
@@ -4838,6 +4900,194 @@ export default function DashboardPage() {
               </form>
             </div>
           </div>
+        )}
+
+        {activeTab === 'clickup' && canEditIntegrations && (
+          <section className="clients-layout">
+            <div className="glass-panel clients-intro">
+              <h2>ClickUp no painel principal</h2>
+              <p>
+                O token fica centralizado aqui na operação. Dentro de cada cliente você informa apenas os IDs das listas que quer ler no dashboard.
+              </p>
+            </div>
+
+            <div className="glass-panel users-toolbar-card integration-management-card">
+              <div className="integration-block integration-block-meta">
+                <div className="integration-heading">
+                  <div className="integration-icon" style={{ color: '#8b5cf6', borderColor: '#8b5cf633' }}>
+                    <i className="bx bx-task"></i>
+                  </div>
+                  <div>
+                    <h3>Token global do ClickUp</h3>
+                    <p>Use o token principal da operação para consultar listas, tarefas, responsáveis, status e prazos no dashboard.</p>
+                  </div>
+                </div>
+
+                <div className="input-group">
+                  <label>Token de API do ClickUp</label>
+                  <input
+                    type="password"
+                    value={globalIntegrations.clickUpToken || ''}
+                    onChange={(event) => handleGlobalIntegrationChange('clickUpToken', event.target.value)}
+                    placeholder="pk_..."
+                  />
+                  <span className="field-helper">
+                    {globalIntegrations.clickUpToken
+                      ? 'Token salvo. Os clientes vinculados abaixo já podem usar a leitura operacional do ClickUp.'
+                      : 'Cole aqui o token global. Depois, em cada cliente, informe os IDs das listas.'}
+                  </span>
+                </div>
+              </div>
+
+              <div className="integration-management-grid">
+                <div className="glass-item integration-summary-card">
+                  <h3>Clientes vinculados</h3>
+                  <p>Esses clientes já têm listas do ClickUp preenchidas na configuração individual.</p>
+                  <strong>{clickUpMappedClients.length}</strong>
+                </div>
+
+                <div className="glass-item integration-summary-card">
+                  <h3>Leitura do dashboard</h3>
+                  <p>O app considera tarefas abertas, concluídas, bloqueadas, atrasadas e responsáveis por lista.</p>
+                  <strong>{globalIntegrations.clickUpToken ? 'Ativa' : 'Pendente'}</strong>
+                </div>
+              </div>
+
+              <div className="glass-item integration-mapped-list">
+                <div className="section-header section-header-stack">
+                  <div>
+                    <h3>Clientes com listas configuradas</h3>
+                    <p>Se precisar alterar os IDs das listas, abra o cliente e edite o campo de ClickUp dentro das integrações específicas.</p>
+                  </div>
+                </div>
+
+                {clickUpMappedClients.length ? (
+                  <div className="user-directory-grid client-directory-grid">
+                    {clickUpMappedClients.map((client) => (
+                      <div key={`clickup-${client.id}`} className="user-directory-card glass-item">
+                        <div className="user-directory-main">
+                          <strong>{client.name}</strong>
+                          <span>{client.clickUpListIds}</span>
+                        </div>
+                        <div className="user-directory-actions client-directory-actions">
+                          <button
+                            type="button"
+                            className="btn btn-secondary"
+                            onClick={() => {
+                              setActiveClientId(client.id)
+                              setActiveTab('clientes')
+                              setIsEditClientModalOpen(true)
+                            }}
+                          >
+                            Editar cliente
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="empty-panel glass-item users-empty-state compact-empty-state">
+                    <h3>Nenhum cliente vinculado ainda</h3>
+                    <p>Abra um cliente e preencha o campo de IDs das listas do ClickUp para começar a leitura operacional.</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </section>
+        )}
+
+        {activeTab === 'monday' && canEditIntegrations && (
+          <section className="clients-layout">
+            <div className="glass-panel clients-intro">
+              <h2>Monday no painel principal</h2>
+              <p>
+                O token também fica centralizado aqui. Em cada cliente você escolhe apenas os boards que representam a operação no dashboard.
+              </p>
+            </div>
+
+            <div className="glass-panel users-toolbar-card integration-management-card">
+              <div className="integration-block integration-block-meta">
+                <div className="integration-heading">
+                  <div className="integration-icon" style={{ color: '#f59e0b', borderColor: '#f59e0b33' }}>
+                    <i className="bx bx-columns"></i>
+                  </div>
+                  <div>
+                    <h3>Token global do Monday</h3>
+                    <p>Use o token principal da operação para ler boards, itens, status, responsáveis, datas e grupos do Monday.</p>
+                  </div>
+                </div>
+
+                <div className="input-group">
+                  <label>Token de API do Monday</label>
+                  <input
+                    type="password"
+                    value={globalIntegrations.mondayToken || ''}
+                    onChange={(event) => handleGlobalIntegrationChange('mondayToken', event.target.value)}
+                    placeholder="Cole aqui o token do Monday"
+                  />
+                  <span className="field-helper">
+                    {globalIntegrations.mondayToken
+                      ? 'Token salvo. Os boards mapeados nos clientes já podem compor a leitura operacional do Monday.'
+                      : 'Cole aqui o token global. Depois, em cada cliente, informe os IDs dos boards.'}
+                  </span>
+                </div>
+              </div>
+
+              <div className="integration-management-grid">
+                <div className="glass-item integration-summary-card">
+                  <h3>Clientes vinculados</h3>
+                  <p>Esses clientes já têm boards do Monday preenchidos na configuração individual.</p>
+                  <strong>{mondayMappedClients.length}</strong>
+                </div>
+
+                <div className="glass-item integration-summary-card">
+                  <h3>Leitura do dashboard</h3>
+                  <p>O app considera itens ativos, concluídos, bloqueados, atrasados, grupos e responsáveis por board.</p>
+                  <strong>{globalIntegrations.mondayToken ? 'Ativa' : 'Pendente'}</strong>
+                </div>
+              </div>
+
+              <div className="glass-item integration-mapped-list">
+                <div className="section-header section-header-stack">
+                  <div>
+                    <h3>Clientes com boards configurados</h3>
+                    <p>Se precisar alterar os IDs dos boards, abra o cliente e edite o campo de Monday dentro das integrações específicas.</p>
+                  </div>
+                </div>
+
+                {mondayMappedClients.length ? (
+                  <div className="user-directory-grid client-directory-grid">
+                    {mondayMappedClients.map((client) => (
+                      <div key={`monday-${client.id}`} className="user-directory-card glass-item">
+                        <div className="user-directory-main">
+                          <strong>{client.name}</strong>
+                          <span>{client.mondayBoardIds}</span>
+                        </div>
+                        <div className="user-directory-actions client-directory-actions">
+                          <button
+                            type="button"
+                            className="btn btn-secondary"
+                            onClick={() => {
+                              setActiveClientId(client.id)
+                              setActiveTab('clientes')
+                              setIsEditClientModalOpen(true)
+                            }}
+                          >
+                            Editar cliente
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="empty-panel glass-item users-empty-state compact-empty-state">
+                    <h3>Nenhum cliente vinculado ainda</h3>
+                    <p>Abra um cliente e preencha o campo de IDs dos boards do Monday para começar a leitura operacional.</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </section>
         )}
 
         {activeTab === 'usuarios' && canManageUsers && (
@@ -6482,6 +6732,44 @@ export default function DashboardPage() {
           display: grid;
           gap: 20px;
           padding: 24px;
+        }
+
+        .integration-management-card {
+          gap: 22px;
+        }
+
+        .integration-management-grid {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 18px;
+        }
+
+        .integration-summary-card {
+          padding: 22px;
+          border-radius: 20px;
+          display: grid;
+          gap: 10px;
+        }
+
+        .integration-summary-card h3 {
+          font-size: 18px;
+        }
+
+        .integration-summary-card p {
+          color: var(--text-secondary);
+          line-height: 1.5;
+        }
+
+        .integration-summary-card strong {
+          font-size: 32px;
+          line-height: 1;
+        }
+
+        .integration-mapped-list {
+          padding: 22px;
+          border-radius: 20px;
+          display: grid;
+          gap: 18px;
         }
 
         .users-toolbar-actions {
@@ -8335,7 +8623,8 @@ export default function DashboardPage() {
 
           .dashboard-rgb-grid,
           .dashboard-theme-presets,
-          .dashboard-metrics-grid {
+          .dashboard-metrics-grid,
+          .integration-management-grid {
             grid-template-columns: 1fr;
           }
 

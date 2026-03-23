@@ -15,6 +15,7 @@ const DEFAULT_GLOBAL_INTEGRATIONS = {
   tiktokAdsToken: '',
   linkedinAdsToken: '',
   clickUpToken: '',
+  mondayToken: '',
   rdStationToken: '',
   salesforceToken: '',
   agendorToken: '',
@@ -123,6 +124,8 @@ function normalizeClientRecord(client) {
     googleAdsAccountId: payload.googleAdsAccountId || '',
     tiktokAdsAccountId: payload.tiktokAdsAccountId || '',
     linkedInAdsAccountId: payload.linkedInAdsAccountId || '',
+    clickUpListIds: String(payload.clickUpListIds || '').trim(),
+    mondayBoardIds: String(payload.mondayBoardIds || '').trim(),
     googleSheetsUrl: payload.googleSheetsUrl || '',
     googleSheetsHeaderRow: Number.isFinite(Number(payload.googleSheetsHeaderRow)) && Number(payload.googleSheetsHeaderRow) > 0
       ? Number(payload.googleSheetsHeaderRow)
@@ -144,6 +147,7 @@ function normalizeClientRecord(client) {
       tiktokAdsToken: payload.integrations?.tiktokAdsToken || '',
       linkedinAdsToken: payload.integrations?.linkedinAdsToken || '',
       clickUpToken: payload.integrations?.clickUpToken || '',
+      mondayToken: payload.integrations?.mondayToken || '',
       rdStationToken: payload.integrations?.rdStationToken || '',
       salesforceToken: payload.integrations?.salesforceToken || '',
       agendorToken: payload.integrations?.agendorToken || '',

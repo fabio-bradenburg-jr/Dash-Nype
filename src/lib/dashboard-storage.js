@@ -8,6 +8,7 @@ export const DEFAULT_INTEGRATIONS = {
   tiktokAdsToken: '',
   linkedinAdsToken: '',
   clickUpToken: '',
+  mondayToken: '',
   rdStationToken: '',
   salesforceToken: '',
   agendorToken: '',
@@ -24,6 +25,11 @@ export const DEFAULT_PREFERENCES = {
     googleAdsToken: '',
     tiktokAdsToken: '',
     linkedinAdsToken: '',
+    clickUpToken: '',
+    mondayToken: '',
+    rdStationToken: '',
+    salesforceToken: '',
+    agendorToken: '',
   },
   clients: [],
   clientGroups: [],
@@ -188,6 +194,8 @@ export function createClientRecord(overrides = {}) {
     googleAdsAccountId: '',
     tiktokAdsAccountId: '',
     linkedInAdsAccountId: '',
+    clickUpListIds: '',
+    mondayBoardIds: '',
     googleSheetsUrl: '',
     googleSheetsHeaderRow: 1,
     googleSheetsStatusColumn: '',
@@ -204,6 +212,8 @@ export function createClientRecord(overrides = {}) {
     googleSheetsHeaderRow: Number.isFinite(Number(overrides.googleSheetsHeaderRow)) && Number(overrides.googleSheetsHeaderRow) > 0
       ? Number(overrides.googleSheetsHeaderRow)
       : 1,
+    clickUpListIds: String(overrides.clickUpListIds || '').trim(),
+    mondayBoardIds: String(overrides.mondayBoardIds || '').trim(),
     googleSheetsStatusColumn: String(overrides.googleSheetsStatusColumn || '').trim(),
     integrations: {
       ...DEFAULT_INTEGRATIONS,
