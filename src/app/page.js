@@ -5254,6 +5254,39 @@ export default function DashboardPage() {
                 </button>
               </>
             )}
+
+            {activeTab === 'monday' && (
+              <>
+                {draftDateRange === 'custom' && (
+                  <div className="date-picker glass-item custom-range">
+                    <input type="date" value={draftCustomSince} onChange={(event) => setDraftCustomSince(event.target.value)} />
+                    <span>até</span>
+                    <input type="date" value={draftCustomUntil} onChange={(event) => setDraftCustomUntil(event.target.value)} />
+                  </div>
+                )}
+
+                <div className="date-picker glass-item">
+                  <i className="bx bx-calendar"></i>
+                  <select value={draftDateRange} onChange={(event) => setDraftDateRange(event.target.value)}>
+                    {DATE_PRESETS.map((preset) => (
+                      <option key={preset.value} value={preset.value}>
+                        {preset.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleApplyDashboardFilters}
+                  disabled={isApplyDashboardFiltersDisabled}
+                  className="btn btn-secondary"
+                >
+                  <i className="bx bx-filter-alt"></i>
+                  Aplicar período
+                </button>
+              </>
+            )}
           </div>
         </header>
 
