@@ -12,44 +12,52 @@ const GLOBAL_INTEGRATION_GROUPS = [
     description: 'Espaço reservado para a credencial central do Google Ads da operação.',
     icon: 'bxl-google',
     accent: '#f59e0b',
-    field: {
-      name: 'googleAdsToken',
-      label: 'Token do Google Ads',
-      placeholder: 'Cole aqui o token do Google Ads',
-    },
+    fields: [
+      {
+        name: 'googleAdsToken',
+        label: 'Token do Google Ads',
+        placeholder: 'Cole aqui o token do Google Ads',
+      },
+    ],
   },
   {
     title: 'TikTok Ads',
     description: 'Espaço reservado para a credencial central do TikTok Ads da operação.',
     icon: 'bxl-tiktok',
     accent: '#ec4899',
-    field: {
-      name: 'tiktokAdsToken',
-      label: 'Token do TikTok Ads',
-      placeholder: 'Cole aqui o token do TikTok Ads',
-    },
+    fields: [
+      {
+        name: 'tiktokAdsToken',
+        label: 'Token do TikTok Ads',
+        placeholder: 'Cole aqui o token do TikTok Ads',
+      },
+    ],
   },
   {
     title: 'LinkedIn Ads',
     description: 'Espaço reservado para a credencial central do LinkedIn Ads da operação.',
     icon: 'bxl-linkedin-square',
     accent: '#22c55e',
-    field: {
-      name: 'linkedinAdsToken',
-      label: 'Token do LinkedIn Ads',
-      placeholder: 'Cole aqui o token do LinkedIn Ads',
-    },
+    fields: [
+      {
+        name: 'linkedinAdsToken',
+        label: 'Token do LinkedIn Ads',
+        placeholder: 'Cole aqui o token do LinkedIn Ads',
+      },
+    ],
   },
   {
     title: 'RD Station CRM',
     description: 'Token central usado para leitura dos funis, negociações e métricas comerciais.',
     icon: 'bx-signal-5',
     accent: '#14b8a6',
-    field: {
-      name: 'rdStationToken',
-      label: 'Token do RD Station',
-      placeholder: 'Cole aqui o token do RD Station',
-    },
+    fields: [
+      {
+        name: 'rdStationToken',
+        label: 'Token do RD Station',
+        placeholder: 'Cole aqui o token do RD Station',
+      },
+    ],
   },
   {
     title: 'ClickUp',
@@ -527,7 +535,7 @@ export default function SettingsPage() {
                       </div>
                     </div>
 
-                    {group.fields.map((field) => (
+                    {(group.fields || (group.field ? [group.field] : [])).map((field) => (
                       <div key={field.name} className="input-group">
                         <label>{field.label}</label>
                         <input
