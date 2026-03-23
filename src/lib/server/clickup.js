@@ -150,16 +150,28 @@ export async function readClickUpSummary({ token, listIds }) {
     const listLabel = String(task?.__listName || '').trim() || `Lista ${task?.__listId || ''}`
 
     statusCounts.set(statusLabel, (statusCounts.get(statusLabel) || 0) + 1)
-    listCounts.set(listLabel, (listCounts.get(listLabel) || 0) + 1)
+    const currentListSummary = listCounts.get(listLabel) || {
+      label: listLabel,
+      totalTasks: 0,
+      completedCount: 0,
+      blockedCount: 0,
+      overdueCount: 0,
+    }
+    currentListSummary.totalTasks += 1
 
     if (closed) completedTasks += 1
     if (blocked) blockedTasks += 1
     if (inProgress) inProgressTasks += 1
+    if (closed) currentListSummary.completedCount += 1
+    if (blocked) currentListSummary.blockedCount += 1
 
     if (!dueDate) {
       tasksWithoutDueDate += 1
     } else if (!closed) {
-      if (dueDate < now) overdueTasks += 1
+      if (dueDate < now) {
+        overdueTasks += 1
+        currentListSummary.overdueCount += 1
+      }
       if (dueDate >= now && dueDate <= nextWeek) dueSoonTasks += 1
     }
 
@@ -176,6 +188,8 @@ export async function readClickUpSummary({ token, listIds }) {
         assigneeCounts.set(label, current)
       })
     }
+
+    listCounts.set(listLabel, currentListSummary)
   })
 
   return {
@@ -201,11 +215,10 @@ export async function readClickUpSummary({ token, listIds }) {
     assigneeRanking: Array.from(assigneeCounts.values())
       .sort((left, right) => right.totalTasks - left.totalTasks || left.name.localeCompare(right.name, 'pt-BR'))
       .slice(0, 8),
-    listSummary: Array.from(listCounts.entries())
-      .map(([label, totalTasks], index) => ({
+    listSummary: Array.from(listCounts.values())
+      .map((item, index) => ({
         id: `clickup-list-${index + 1}`,
-        label,
-        totalTasks,
+        ...item,
       }))
       .sort((left, right) => right.totalTasks - left.totalTasks || left.label.localeCompare(right.label, 'pt-BR'))
       .slice(0, 8),

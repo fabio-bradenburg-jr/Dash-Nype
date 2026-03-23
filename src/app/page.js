@@ -4687,6 +4687,30 @@ export default function DashboardPage() {
                   )}
                 </div>
               </div>
+
+              <div className="glass-panel ranking-card">
+                <div className="section-header section-header-stack">
+                  <div>
+                    <h2>Grupos dos boards</h2>
+                    <p className="chart-subtitle">Distribuição dos itens por grupo interno dentro dos boards monitorados.</p>
+                  </div>
+                </div>
+                <div className="ranking-list">
+                  {mondaySummary?.groupSummary?.length ? (
+                    mondaySummary.groupSummary.map((item) => (
+                      <div key={item.id} className="ranking-row">
+                        <div>
+                          <strong>{item.label}</strong>
+                          <span>{formatNumber(item.totalItems || 0)} item(ns)</span>
+                        </div>
+                        <b>{formatNumber(item.doneCount || 0)} concluído(s)</b>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="ranking-empty">Sem grupos suficientes para montar o ranking.</div>
+                  )}
+                </div>
+              </div>
             </section>
           </>
         ) : (
@@ -6645,6 +6669,30 @@ export default function DashboardPage() {
                                   ))
                                 ) : (
                                   <div className="ranking-empty">Sem boards suficientes para montar o ranking.</div>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="glass-panel ranking-card">
+                              <div className="section-header section-header-stack">
+                                <div>
+                                  <h2>Grupos dos boards</h2>
+                                  <p className="chart-subtitle">Distribuição dos itens por grupo interno dentro dos boards monitorados.</p>
+                                </div>
+                              </div>
+                              <div className="ranking-list">
+                                {mondaySummary?.groupSummary?.length ? (
+                                  mondaySummary.groupSummary.map((item) => (
+                                    <div key={item.id} className="ranking-row">
+                                      <div>
+                                        <strong>{item.label}</strong>
+                                        <span>{formatNumber(item.totalItems || 0)} item(ns)</span>
+                                      </div>
+                                      <b>{formatNumber(item.doneCount || 0)} concluído(s)</b>
+                                    </div>
+                                  ))
+                                ) : (
+                                  <div className="ranking-empty">Sem grupos suficientes para montar o ranking.</div>
                                 )}
                               </div>
                             </div>

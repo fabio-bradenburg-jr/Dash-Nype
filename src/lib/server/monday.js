@@ -210,11 +210,36 @@ export async function readMondaySummary({ token, boardIds }) {
     const blocked = isBlockedStatus(statusLabel)
 
     statusCounts.set(statusLabel, (statusCounts.get(statusLabel) || 0) + 1)
-    boardCounts.set(item.__boardName, (boardCounts.get(item.__boardName) || 0) + 1)
-    groupCounts.set(String(item?.group?.title || 'Sem grupo'), (groupCounts.get(String(item?.group?.title || 'Sem grupo')) || 0) + 1)
+
+    const currentBoardSummary = boardCounts.get(item.__boardName) || {
+      label: item.__boardName,
+      totalItems: 0,
+      doneCount: 0,
+      blockedCount: 0,
+      overdueCount: 0,
+    }
+    currentBoardSummary.totalItems += 1
+
+    const groupLabel = String(item?.group?.title || 'Sem grupo')
+    const currentGroupSummary = groupCounts.get(groupLabel) || {
+      label: groupLabel,
+      totalItems: 0,
+      doneCount: 0,
+      blockedCount: 0,
+      overdueCount: 0,
+    }
+    currentGroupSummary.totalItems += 1
 
     if (done) doneItems += 1
     if (blocked) blockedItems += 1
+    if (done) {
+      currentBoardSummary.doneCount += 1
+      currentGroupSummary.doneCount += 1
+    }
+    if (blocked) {
+      currentBoardSummary.blockedCount += 1
+      currentGroupSummary.blockedCount += 1
+    }
 
     if (!ownerNames.length) {
       unassignedItems += 1
@@ -238,9 +263,16 @@ export async function readMondaySummary({ token, boardIds }) {
     }
 
     if (!done && dueDate) {
-      if (dueDate < now) overdueItems += 1
+      if (dueDate < now) {
+        overdueItems += 1
+        currentBoardSummary.overdueCount += 1
+        currentGroupSummary.overdueCount += 1
+      }
       if (dueDate >= now && dueDate <= nextWeek) dueSoonItems += 1
     }
+
+    boardCounts.set(item.__boardName, currentBoardSummary)
+    groupCounts.set(groupLabel, currentGroupSummary)
   })
 
   return {
@@ -264,19 +296,17 @@ export async function readMondaySummary({ token, boardIds }) {
     ownerRanking: Array.from(ownerCounts.values())
       .sort((left, right) => right.totalItems - left.totalItems || left.name.localeCompare(right.name, 'pt-BR'))
       .slice(0, 8),
-    boardSummary: Array.from(boardCounts.entries())
-      .map(([label, totalItems], index) => ({
+    boardSummary: Array.from(boardCounts.values())
+      .map((item, index) => ({
         id: `monday-board-${index + 1}`,
-        label,
-        totalItems,
+        ...item,
       }))
       .sort((left, right) => right.totalItems - left.totalItems || left.label.localeCompare(right.label, 'pt-BR'))
       .slice(0, 8),
-    groupSummary: Array.from(groupCounts.entries())
-      .map(([label, totalItems], index) => ({
+    groupSummary: Array.from(groupCounts.values())
+      .map((item, index) => ({
         id: `monday-group-${index + 1}`,
-        label,
-        totalItems,
+        ...item,
       }))
       .sort((left, right) => right.totalItems - left.totalItems || left.label.localeCompare(right.label, 'pt-BR'))
       .slice(0, 8),
