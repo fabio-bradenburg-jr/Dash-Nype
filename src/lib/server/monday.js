@@ -290,6 +290,7 @@ export async function readMondaySummary({ token, boardIds }) {
           id: `monday-status-${index + 1}`,
           label,
           count,
+          share: dedupedItems.length > 0 ? count / dedupedItems.length : 0,
         }))
         .sort((left, right) => right.count - left.count || left.label.localeCompare(right.label, 'pt-BR')),
     },

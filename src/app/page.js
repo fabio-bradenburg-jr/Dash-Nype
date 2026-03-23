@@ -4200,6 +4200,11 @@ export default function DashboardPage() {
     { key: 'overdueItems', title: 'Atrasados', value: formatNumber(mondaySummary?.overdueItems || 0), icon: 'bx-time-five', tone: 'orange' },
     { key: 'dueSoonItems', title: 'Vencendo em breve', value: formatNumber(mondaySummary?.dueSoonItems || 0), icon: 'bx-alarm', tone: 'purple' },
   ]
+  const mondayOperationalHighlights = [
+    { key: 'boards', label: 'Boards monitorados', value: formatNumber(mondaySummary?.boardsConfigured || 0) },
+    { key: 'groups', label: 'Grupos identificados', value: formatNumber(mondaySummary?.groupSummary?.length || 0) },
+    { key: 'unassigned', label: 'Sem responsável', value: formatNumber(mondaySummary?.unassignedItems || 0) },
+  ]
   const metaMediaKpis = [
     { key: 'spend', title: 'Investimento', value: formatCurrency(spend), rawValue: spend, type: 'currency', icon: 'bx-wallet-alt', tone: 'blue' },
     { key: 'impressions', title: 'Impressões', value: formatNumber(impressions), rawValue: impressions, type: 'number', icon: 'bx-show', tone: 'purple' },
@@ -4490,7 +4495,7 @@ export default function DashboardPage() {
                       <div key={item.id} className="ranking-row">
                         <div>
                           <strong>{item.label}</strong>
-                          <span>{formatNumber(item.count || 0)} tarefa(s)</span>
+                          <span>{formatNumber(item.totalTasks || 0)} tarefa(s)</span>
                         </div>
                         <b>{formatNumber(item.overdueCount || 0)} atrasada(s)</b>
                       </div>
@@ -4514,7 +4519,7 @@ export default function DashboardPage() {
                       <div key={item.id} className="ranking-row">
                         <div>
                           <strong>{item.label}</strong>
-                          <span>{formatNumber(item.count || 0)} tarefa(s)</span>
+                          <span>{formatNumber(item.totalTasks || 0)} tarefa(s)</span>
                         </div>
                         <b>{formatNumber(item.completedCount || 0)} concluída(s)</b>
                       </div>
@@ -4562,6 +4567,24 @@ export default function DashboardPage() {
             </button>
           )}
         </div>
+
+        {hasMondayConfigured && !mondayError && (
+          <div className="operations-hero-card glass-item">
+            <div className="operations-hero-copy">
+              <span className="operations-hero-kicker">Visão operacional</span>
+              <h3>Monitoramento interno do Monday</h3>
+              <p>Os indicadores abaixo resumem carga, andamento, bloqueios e concentração de trabalho nos boards da empresa.</p>
+            </div>
+            <div className="operations-meta-grid">
+              {mondayOperationalHighlights.map((item) => (
+                <div key={item.key} className="operations-meta-card">
+                  <span>{item.label}</span>
+                  <strong>{item.value}</strong>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {!hasMondayConfigured && (
           <div className="settings-alert error">
@@ -4614,8 +4637,10 @@ export default function DashboardPage() {
           <div className="settings-alert error">{mondayError}</div>
         ) : hasMondayConfigured ? (
           <>
-            {renderFixedKpiGrid(mondayKpis)}
-            <section className="rankings-grid">
+            <div className="operations-kpi-shell">
+              {renderFixedKpiGrid(mondayKpis)}
+            </div>
+            <section className="rankings-grid operations-rankings-grid">
               <div className="glass-panel ranking-card">
                 <div className="section-header section-header-stack">
                   <div>
@@ -4653,7 +4678,7 @@ export default function DashboardPage() {
                       <div key={item.id} className="ranking-row">
                         <div>
                           <strong>{item.label}</strong>
-                          <span>{formatNumber(item.count || 0)} item(ns)</span>
+                          <span>{formatNumber(item.totalItems || 0)} item(ns)</span>
                         </div>
                         <b>{formatNumber(item.overdueCount || 0)} atrasado(s)</b>
                       </div>
@@ -4677,7 +4702,7 @@ export default function DashboardPage() {
                       <div key={item.id} className="ranking-row">
                         <div>
                           <strong>{item.label}</strong>
-                          <span>{formatNumber(item.count || 0)} item(ns)</span>
+                          <span>{formatNumber(item.totalItems || 0)} item(ns)</span>
                         </div>
                         <b>{formatNumber(item.doneCount || 0)} concluído(s)</b>
                       </div>
@@ -6536,7 +6561,7 @@ export default function DashboardPage() {
                                     <div key={item.id} className="ranking-row">
                                       <div>
                                         <strong>{item.label}</strong>
-                                        <span>{formatNumber(item.count || 0)} tarefa(s)</span>
+                                        <span>{formatNumber(item.totalTasks || 0)} tarefa(s)</span>
                                       </div>
                                       <b>{formatNumber(item.overdueCount || 0)} atrasada(s)</b>
                                     </div>
@@ -6560,7 +6585,7 @@ export default function DashboardPage() {
                                     <div key={item.id} className="ranking-row">
                                       <div>
                                         <strong>{item.label}</strong>
-                                        <span>{formatNumber(item.count || 0)} tarefa(s)</span>
+                                        <span>{formatNumber(item.totalTasks || 0)} tarefa(s)</span>
                                       </div>
                                       <b>{formatNumber(item.completedCount || 0)} concluída(s)</b>
                                     </div>
@@ -6638,7 +6663,7 @@ export default function DashboardPage() {
                                     <div key={item.id} className="ranking-row">
                                       <div>
                                         <strong>{item.label}</strong>
-                                        <span>{formatNumber(item.count || 0)} item(ns)</span>
+                                        <span>{formatNumber(item.totalItems || 0)} item(ns)</span>
                                       </div>
                                       <b>{formatNumber(item.overdueCount || 0)} atrasado(s)</b>
                                     </div>
@@ -6662,7 +6687,7 @@ export default function DashboardPage() {
                                     <div key={item.id} className="ranking-row">
                                       <div>
                                         <strong>{item.label}</strong>
-                                        <span>{formatNumber(item.count || 0)} item(ns)</span>
+                                        <span>{formatNumber(item.totalItems || 0)} item(ns)</span>
                                       </div>
                                       <b>{formatNumber(item.doneCount || 0)} concluído(s)</b>
                                     </div>
@@ -7919,6 +7944,78 @@ export default function DashboardPage() {
           margin-bottom: 24px;
         }
 
+        .operations-hero-card {
+          display: grid;
+          grid-template-columns: minmax(0, 1.2fr) minmax(340px, 0.8fr);
+          gap: 18px;
+          padding: 20px;
+          margin-bottom: 20px;
+          border-radius: 24px;
+          border: 1px solid rgba(255, 255, 255, 0.05);
+          background:
+            linear-gradient(135deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.015)),
+            rgba(8, 12, 22, 0.66);
+        }
+
+        .operations-hero-copy {
+          display: grid;
+          gap: 8px;
+          align-content: start;
+        }
+
+        .operations-hero-kicker {
+          color: var(--text-muted);
+          font-size: 11px;
+          font-weight: 700;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+        }
+
+        .operations-hero-copy h3 {
+          font-size: 24px;
+          line-height: 1.15;
+        }
+
+        .operations-hero-copy p {
+          color: var(--text-secondary);
+          line-height: 1.6;
+          max-width: 720px;
+        }
+
+        .operations-meta-grid {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 12px;
+        }
+
+        .operations-meta-card {
+          padding: 16px;
+          border-radius: 18px;
+          border: 1px solid rgba(255, 255, 255, 0.05);
+          background: rgba(255, 255, 255, 0.03);
+          display: grid;
+          gap: 6px;
+        }
+
+        .operations-meta-card span {
+          color: var(--text-muted);
+          font-size: 12px;
+          line-height: 1.4;
+        }
+
+        .operations-meta-card strong {
+          font-size: 22px;
+          line-height: 1.1;
+        }
+
+        .operations-kpi-shell {
+          margin-bottom: 24px;
+        }
+
+        .operations-rankings-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
         .template-metrics-shell {
           display: grid;
           gap: 16px;
@@ -9002,7 +9099,10 @@ export default function DashboardPage() {
           .funnel-builder,
           .rd-mini-funnel,
           .rankings-grid,
-          .conversion-groups-grid {
+          .conversion-groups-grid,
+          .operations-hero-card,
+          .operations-meta-grid,
+          .operations-rankings-grid {
             grid-template-columns: 1fr;
           }
 
