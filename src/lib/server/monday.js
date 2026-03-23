@@ -38,6 +38,215 @@ function parseMondayDate(value) {
   }
 }
 
+function parseDateInput(value) {
+  const [year, month, day] = String(value || '').split('-').map(Number)
+  if (!year || !month || !day) return null
+  return new Date(year, month - 1, day)
+}
+
+function startOfDay(date) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate())
+}
+
+function endOfDay(date) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59, 999)
+}
+
+function normalizeLabel(value) {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+}
+
+function isDateWithinRange(date, start, end) {
+  if (!date) return false
+  if (start && date < start) return false
+  if (end && date > end) return false
+  return true
+}
+
+function parseJson(value) {
+  try {
+    return JSON.parse(value)
+  } catch {
+    return null
+  }
+}
+
+function parseDurationText(value) {
+  const normalized = String(value || '').trim().toLowerCase()
+  if (!normalized) return 0
+
+  const matches = normalized.matchAll(/(\d+(?:[\.,]\d+)?)\s*(d|dia|dias|h|hr|hrs|hora|horas|m|min|mins|minuto|minutos|s|seg|segs|segundo|segundos)/g)
+
+  let totalSeconds = 0
+
+  for (const match of matches) {
+    const amount = Number(String(match[1] || '0').replace(',', '.'))
+    const unit = String(match[2] || '')
+    if (!Number.isFinite(amount) || amount <= 0) continue
+
+    if (/^d|dia/.test(unit)) totalSeconds += amount * 86400
+    else if (/^h|hr|hora/.test(unit)) totalSeconds += amount * 3600
+    else if (/^m|min/.test(unit)) totalSeconds += amount * 60
+    else totalSeconds += amount
+  }
+
+  return Math.round(totalSeconds)
+}
+
+function parseTimeTrackingSession(entry) {
+  if (!entry || typeof entry !== 'object') return null
+
+  const start = parseMondayDate(
+    entry.started_at
+    || entry.startedAt
+    || entry.start_date
+    || entry.startDate
+    || entry.from
+    || entry.created_at
+  )
+  const end = parseMondayDate(
+    entry.ended_at
+    || entry.endedAt
+    || entry.end_date
+    || entry.endDate
+    || entry.to
+    || entry.updated_at
+  )
+
+  let durationSeconds = Number(
+    entry.duration_seconds
+    || entry.durationSeconds
+    || entry.duration
+    || entry.time_spent
+    || entry.timeSpent
+    || 0
+  )
+
+  if ((!Number.isFinite(durationSeconds) || durationSeconds <= 0) && start && end) {
+    durationSeconds = Math.round((end.getTime() - start.getTime()) / 1000)
+  }
+
+  if (!Number.isFinite(durationSeconds) || durationSeconds <= 0) return null
+
+  const anchor = end || start
+
+  return {
+    start,
+    end,
+    anchor,
+    durationSeconds,
+  }
+}
+
+function extractTimeTrackingSummary(columnValuesById, timeTrackingColumns) {
+  const summaries = timeTrackingColumns.map((column) => {
+    const columnValue = columnValuesById.get(column.id)
+    const raw = parseJson(columnValue?.value)
+    const sessions = Array.isArray(raw?.history)
+      ? raw.history.map(parseTimeTrackingSession).filter(Boolean)
+      : Array.isArray(raw?.sessions)
+        ? raw.sessions.map(parseTimeTrackingSession).filter(Boolean)
+        : Array.isArray(raw?.activities)
+          ? raw.activities.map(parseTimeTrackingSession).filter(Boolean)
+          : []
+
+    const totalFromSessions = sessions.reduce((sum, session) => sum + session.durationSeconds, 0)
+    const totalFromRaw = Number(
+      raw?.duration
+      || raw?.duration_seconds
+      || raw?.time_spent
+      || raw?.timeSpent
+      || 0
+    )
+    const totalFromText = parseDurationText(columnValue?.text)
+
+    return {
+      totalSeconds: Math.max(totalFromSessions, Number.isFinite(totalFromRaw) ? totalFromRaw : 0, totalFromText),
+      sessions,
+    }
+  })
+
+  return {
+    totalSeconds: summaries.reduce((sum, summary) => sum + summary.totalSeconds, 0),
+    sessions: summaries.flatMap((summary) => summary.sessions),
+  }
+}
+
+function getSessionDurationInRange(session, start, end) {
+  if (!session?.durationSeconds) return 0
+  if (!start && !end) return session.durationSeconds
+
+  const anchor = session.anchor || session.end || session.start
+  if (!anchor) return 0
+
+  if (!session.start || !session.end || session.end <= session.start) {
+    return isDateWithinRange(anchor, start, end) ? session.durationSeconds : 0
+  }
+
+  const sessionStart = session.start.getTime()
+  const sessionEnd = session.end.getTime()
+  const rangeStart = start ? start.getTime() : Number.NEGATIVE_INFINITY
+  const rangeEnd = end ? end.getTime() : Number.POSITIVE_INFINITY
+
+  const overlapStart = Math.max(sessionStart, rangeStart)
+  const overlapEnd = Math.min(sessionEnd, rangeEnd)
+
+  if (overlapEnd <= overlapStart) return 0
+
+  const totalSpan = sessionEnd - sessionStart
+  if (totalSpan <= 0) return 0
+
+  const overlapRatio = (overlapEnd - overlapStart) / totalSpan
+  return Math.round(session.durationSeconds * overlapRatio)
+}
+
+function getWeekStart(date) {
+  const day = date.getDay()
+  const diff = day === 0 ? -6 : 1 - day
+  return startOfDay(new Date(date.getFullYear(), date.getMonth(), date.getDate() + diff))
+}
+
+function getWeekEnd(date) {
+  const weekStart = getWeekStart(date)
+  const weekEnd = new Date(weekStart)
+  weekEnd.setDate(weekEnd.getDate() + 6)
+  return endOfDay(weekEnd)
+}
+
+function formatWeekLabel(start, end) {
+  const startLabel = start.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })
+  const endLabel = end.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })
+  return `${startLabel} - ${endLabel}`
+}
+
+function buildWeeklyBuckets(start, end) {
+  if (!start || !end) return []
+
+  const buckets = []
+  let cursor = getWeekStart(start)
+
+  while (cursor <= end) {
+    const bucketStart = new Date(cursor)
+    const bucketEnd = getWeekEnd(cursor)
+    buckets.push({
+      id: bucketStart.toISOString(),
+      start: bucketStart,
+      end: bucketEnd,
+      label: formatWeekLabel(bucketStart, bucketEnd),
+      seconds: 0,
+      tasksWithTime: 0,
+      taskIds: new Set(),
+    })
+
+    cursor = new Date(bucketStart)
+    cursor.setDate(cursor.getDate() + 7)
+  }
+
+  return buckets
+}
+
 function extractPeopleNames(columnValue) {
   const text = String(columnValue?.text || '').trim()
   if (!text) return []
@@ -155,7 +364,7 @@ async function fetchBoardItems(token, boardId) {
   }
 }
 
-export async function readMondaySummary({ token, boardIds }) {
+export async function readMondaySummary({ token, boardIds, since, until, owner }) {
   const trimmedToken = String(token || '').trim()
   if (!trimmedToken) {
     throw new Error('Informe o token do Monday para ler os dados da operação.')
@@ -165,6 +374,12 @@ export async function readMondaySummary({ token, boardIds }) {
   if (!normalizedBoardIds.length) {
     throw new Error('Informe ao menos um ID de board do Monday na configuração global da operação.')
   }
+
+  const parsedSince = parseDateInput(since) || parseMondayDate(since)
+  const parsedUntil = parseDateInput(until) || parseMondayDate(until)
+  const windowStart = parsedSince ? startOfDay(parsedSince) : null
+  const windowEnd = parsedUntil ? endOfDay(parsedUntil) : null
+  const ownerFilter = normalizeLabel(owner)
 
   const boards = await Promise.all(normalizedBoardIds.map((boardId) => fetchBoardItems(trimmedToken, boardId)))
   const allItems = boards.flatMap((board) =>
@@ -177,8 +392,8 @@ export async function readMondaySummary({ token, boardIds }) {
   )
 
   const dedupedItems = Array.from(new Map(allItems.map((item) => [item.id, item])).values())
-  const now = new Date()
-  const nextWeek = new Date(now)
+  const overdueReferenceDate = windowEnd || new Date()
+  const nextWeek = new Date(overdueReferenceDate)
   nextWeek.setDate(nextWeek.getDate() + 7)
 
   let doneItems = 0
@@ -186,11 +401,17 @@ export async function readMondaySummary({ token, boardIds }) {
   let overdueItems = 0
   let dueSoonItems = 0
   let unassignedItems = 0
+  let trackedSecondsTotal = 0
 
   const statusCounts = new Map()
   const ownerCounts = new Map()
   const boardCounts = new Map()
   const groupCounts = new Map()
+  const ownerOptions = new Map()
+  const overdueTasks = []
+  const longestTasks = []
+  const weeklyBuckets = buildWeeklyBuckets(windowStart, windowEnd)
+  const weeksWithTimeIds = new Set()
 
   dedupedItems.forEach((item) => {
     const boardColumns = Array.isArray(item.__columns) ? item.__columns : []
@@ -198,6 +419,7 @@ export async function readMondaySummary({ token, boardIds }) {
       || boardColumns.find((column) => /status|etapa|pipeline|fase/i.test(column.title || ''))
     const dateColumn = boardColumns.find((column) => column.type === 'date')
     const peopleColumns = boardColumns.filter((column) => /person|people/i.test(column.type || ''))
+    const timeTrackingColumns = boardColumns.filter((column) => /time_tracking|timer/i.test(column.type || ''))
 
     const columnValuesById = new Map(
       (Array.isArray(item.column_values) ? item.column_values : []).map((columnValue) => [columnValue.id, columnValue])
@@ -206,8 +428,34 @@ export async function readMondaySummary({ token, boardIds }) {
     const statusLabel = String(columnValuesById.get(statusColumn?.id)?.text || '').trim() || 'Sem status'
     const dueDate = parseMondayDate(columnValuesById.get(dateColumn?.id)?.value || columnValuesById.get(dateColumn?.id)?.text || '')
     const ownerNames = peopleColumns.flatMap((column) => extractPeopleNames(columnValuesById.get(column.id)))
+    const normalizedOwners = ownerNames.map((name) => normalizeLabel(name)).filter(Boolean)
     const done = isDoneStatus(statusLabel)
     const blocked = isBlockedStatus(statusLabel)
+    const updatedAt = parseMondayDate(item.updated_at)
+    const timeTracking = extractTimeTrackingSummary(columnValuesById, timeTrackingColumns)
+    const trackedSecondsInRange = timeTracking.sessions.length
+      ? timeTracking.sessions.reduce((sum, session) => sum + getSessionDurationInRange(session, windowStart, windowEnd), 0)
+      : ((!windowStart && !windowEnd) || isDateWithinRange(updatedAt, windowStart, windowEnd) ? timeTracking.totalSeconds : 0)
+    const matchesDateWindow = !windowStart && !windowEnd
+      ? true
+      : (
+          isDateWithinRange(updatedAt, windowStart, windowEnd)
+          || isDateWithinRange(dueDate, windowStart, windowEnd)
+          || trackedSecondsInRange > 0
+        )
+    const matchesOwnerFilter = !ownerFilter || normalizedOwners.includes(ownerFilter)
+
+    ownerNames.forEach((name) => {
+      const normalized = normalizeLabel(name)
+      if (!normalized) return
+      if (!ownerOptions.has(normalized)) {
+        ownerOptions.set(normalized, name)
+      }
+    })
+
+    if (!matchesDateWindow || !matchesOwnerFilter) {
+      return
+    }
 
     statusCounts.set(statusLabel, (statusCounts.get(statusLabel) || 0) + 1)
 
@@ -230,6 +478,8 @@ export async function readMondaySummary({ token, boardIds }) {
     }
     currentGroupSummary.totalItems += 1
 
+    trackedSecondsTotal += trackedSecondsInRange
+
     if (done) doneItems += 1
     if (blocked) blockedItems += 1
     if (done) {
@@ -251,39 +501,130 @@ export async function readMondaySummary({ token, boardIds }) {
           openItems: 0,
           doneItems: 0,
           overdueItems: 0,
+          trackedSeconds: 0,
+          overdueTasks: [],
         }
 
         current.totalItems += 1
         if (done) current.doneItems += 1
         else current.openItems += 1
-        if (!done && dueDate && dueDate < now) current.overdueItems += 1
+        if (!done && dueDate && dueDate < overdueReferenceDate) {
+          current.overdueItems += 1
+          current.overdueTasks.push({
+            id: item.id,
+            name: item.name,
+            dueDate: dueDate?.toISOString() || '',
+            statusLabel,
+          })
+        }
+        current.trackedSeconds += trackedSecondsInRange
 
         ownerCounts.set(name, current)
       })
     }
 
     if (!done && dueDate) {
-      if (dueDate < now) {
+      if (dueDate < overdueReferenceDate) {
         overdueItems += 1
         currentBoardSummary.overdueCount += 1
         currentGroupSummary.overdueCount += 1
+        overdueTasks.push({
+          id: item.id,
+          name: item.name,
+          boardName: item.__boardName,
+          groupLabel,
+          statusLabel,
+          owners: ownerNames,
+          dueDate: dueDate.toISOString(),
+          trackedSeconds: trackedSecondsInRange,
+          daysOverdue: Math.max(1, Math.round((overdueReferenceDate.getTime() - dueDate.getTime()) / 86400000)),
+        })
       }
-      if (dueDate >= now && dueDate <= nextWeek) dueSoonItems += 1
+      if (dueDate >= overdueReferenceDate && dueDate <= nextWeek) dueSoonItems += 1
     }
+
+    if (trackedSecondsInRange > 0) {
+      longestTasks.push({
+        id: item.id,
+        name: item.name,
+        boardName: item.__boardName,
+        groupLabel,
+        statusLabel,
+        owners: ownerNames,
+        trackedSeconds: trackedSecondsInRange,
+        dueDate: dueDate?.toISOString() || '',
+        updatedAt: updatedAt?.toISOString() || '',
+      })
+    }
+
+    timeTracking.sessions.forEach((session) => {
+      const anchor = session.anchor || session.end || session.start
+      if (!anchor || !isDateWithinRange(anchor, windowStart, windowEnd)) return
+      const bucket = weeklyBuckets.find((itemBucket) => anchor >= itemBucket.start && anchor <= itemBucket.end)
+      if (!bucket) return
+      const seconds = getSessionDurationInRange(session, windowStart, windowEnd)
+      if (seconds <= 0) return
+      bucket.seconds += seconds
+      bucket.taskIds.add(item.id)
+      weeksWithTimeIds.add(bucket.id)
+    })
 
     boardCounts.set(item.__boardName, currentBoardSummary)
     groupCounts.set(groupLabel, currentGroupSummary)
   })
 
+  weeklyBuckets.forEach((bucket) => {
+    bucket.tasksWithTime = bucket.taskIds.size
+    delete bucket.taskIds
+  })
+
+  const averageWeeklySeconds = weeklyBuckets.length
+    ? weeklyBuckets.reduce((sum, bucket) => sum + bucket.seconds, 0) / weeklyBuckets.length
+    : 0
+
+  const topStatus = Array.from(statusCounts.entries())
+    .map(([label, count]) => ({ label, count }))
+    .sort((left, right) => right.count - left.count || left.label.localeCompare(right.label, 'pt-BR'))[0] || null
+
+  const topOverdueOwner = Array.from(ownerCounts.values())
+    .sort((left, right) => right.overdueItems - left.overdueItems || right.totalItems - left.totalItems || left.name.localeCompare(right.name, 'pt-BR'))[0] || null
+
+  const topLongestTask = [...longestTasks]
+    .sort((left, right) => right.trackedSeconds - left.trackedSeconds || left.name.localeCompare(right.name, 'pt-BR'))[0] || null
+
   return {
     boardsConfigured: normalizedBoardIds.length,
-    totalItems: dedupedItems.length,
-    activeItems: Math.max(dedupedItems.length - doneItems, 0),
+    totalItems: Array.from(statusCounts.values()).reduce((sum, count) => sum + count, 0),
+    activeItems: Math.max(Array.from(statusCounts.values()).reduce((sum, count) => sum + count, 0) - doneItems, 0),
     doneItems,
     blockedItems,
     overdueItems,
     dueSoonItems,
     unassignedItems,
+    trackedSecondsTotal,
+    averageWeeklySeconds,
+    activeOwnersCount: ownerCounts.size,
+    selectedWindow: {
+      since: windowStart ? windowStart.toISOString() : '',
+      until: windowEnd ? windowEnd.toISOString() : '',
+    },
+    availableOwners: Array.from(ownerOptions.entries())
+      .map(([id, label]) => ({ id, label }))
+      .sort((left, right) => left.label.localeCompare(right.label, 'pt-BR')),
+    topStatus,
+    topOverdueOwner: topOverdueOwner && topOverdueOwner.overdueItems > 0
+      ? {
+          name: topOverdueOwner.name,
+          overdueItems: topOverdueOwner.overdueItems,
+          totalItems: topOverdueOwner.totalItems,
+        }
+      : null,
+    topLongestTask: topLongestTask
+      ? {
+          name: topLongestTask.name,
+          trackedSeconds: topLongestTask.trackedSeconds,
+        }
+      : null,
     statusSummary: {
       counts: Array.from(statusCounts.entries())
         .map(([label, count], index) => ({
@@ -295,8 +636,19 @@ export async function readMondaySummary({ token, boardIds }) {
         .sort((left, right) => right.count - left.count || left.label.localeCompare(right.label, 'pt-BR')),
     },
     ownerRanking: Array.from(ownerCounts.values())
-      .sort((left, right) => right.totalItems - left.totalItems || left.name.localeCompare(right.name, 'pt-BR'))
-      .slice(0, 8),
+      .map((item, index) => ({
+        id: `monday-owner-${index + 1}`,
+        label: item.name,
+        totalItems: item.totalItems,
+        openItems: item.openItems,
+        doneItems: item.doneItems,
+        overdueCount: item.overdueItems,
+        trackedSeconds: item.trackedSeconds,
+        overdueTasks: item.overdueTasks
+          .sort((left, right) => left.name.localeCompare(right.name, 'pt-BR'))
+          .slice(0, 5),
+      }))
+      .sort((left, right) => right.overdueCount - left.overdueCount || right.totalItems - left.totalItems || left.label.localeCompare(right.label, 'pt-BR')),
     boardSummary: Array.from(boardCounts.values())
       .map((item, index) => ({
         id: `monday-board-${index + 1}`,
@@ -311,5 +663,15 @@ export async function readMondaySummary({ token, boardIds }) {
       }))
       .sort((left, right) => right.totalItems - left.totalItems || left.label.localeCompare(right.label, 'pt-BR'))
       .slice(0, 8),
+    overdueTasks: overdueTasks
+      .sort((left, right) => right.daysOverdue - left.daysOverdue || right.trackedSeconds - left.trackedSeconds || left.name.localeCompare(right.name, 'pt-BR')),
+    longestTasks: longestTasks
+      .sort((left, right) => right.trackedSeconds - left.trackedSeconds || left.name.localeCompare(right.name, 'pt-BR')),
+    weeklyTrackedTime: weeklyBuckets.map((bucket, index) => ({
+      id: `monday-week-${index + 1}`,
+      label: bucket.label,
+      seconds: bucket.seconds,
+      tasksWithTime: bucket.tasksWithTime,
+    })),
   }
 }

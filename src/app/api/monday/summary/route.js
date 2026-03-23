@@ -26,11 +26,17 @@ export async function GET(request) {
 
     const { searchParams } = new URL(request.url)
     const boardIds = searchParams.get('board_ids') || ''
+    const since = searchParams.get('since') || ''
+    const until = searchParams.get('until') || ''
+    const owner = searchParams.get('owner') || ''
     const token = request.headers.get('x-monday-token') || ''
 
     const summary = await readMondaySummary({
       token,
       boardIds,
+      since,
+      until,
+      owner,
     })
 
     return NextResponse.json(summary)

@@ -763,6 +763,34 @@ function formatDurationDays(value) {
   return `${days.toFixed(1).replace('.', ',')} dias`
 }
 
+function formatDurationHours(value) {
+  const totalSeconds = Math.max(0, Math.round(Number(value || 0)))
+  if (!totalSeconds) return '0h'
+
+  const totalMinutes = Math.round(totalSeconds / 60)
+  const hours = Math.floor(totalMinutes / 60)
+  const minutes = totalMinutes % 60
+
+  if (hours === 0) return `${minutes}min`
+  if (minutes === 0) return `${hours}h`
+  return `${hours}h ${String(minutes).padStart(2, '0')}min`
+}
+
+function formatShortDate(value) {
+  const date = parseLocalDateInput(value) || (value ? new Date(value) : null)
+  if (!date || Number.isNaN(date.getTime())) return '-'
+  return date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })
+}
+
+function getDatePresetLabel(datePreset, since, until) {
+  if (datePreset === 'custom' && since && until) {
+    return `${formatShortDate(since)} - ${formatShortDate(until)}`
+  }
+
+  const preset = DATE_PRESETS.find((item) => item.value === datePreset)
+  return preset?.label || 'Período selecionado'
+}
+
 function parseLocalDateInput(value) {
   const [year, month, day] = String(value || '').split('-').map(Number)
   if (!year || !month || !day) return null
@@ -1152,6 +1180,7 @@ export default function DashboardPage() {
   const [clickUpError, setClickUpError] = useState('')
   const [mondaySummary, setMondaySummary] = useState(null)
   const [mondayError, setMondayError] = useState('')
+  const [mondayOwnerFilter, setMondayOwnerFilter] = useState('all')
   const [rdPipelines, setRdPipelines] = useState([])
   const [rdPipelineStages, setRdPipelineStages] = useState([])
   const [isLoading, setIsLoading] = useState(true)
@@ -2993,6 +3022,7 @@ export default function DashboardPage() {
         clickUpListIds: globalIntegrations.clickUpListIds || '',
         mondayToken: globalIntegrations.mondayToken || '',
         mondayBoardIds: globalIntegrations.mondayBoardIds || '',
+        mondayOwnerFilter,
       })
 
       if (lastDashboardFetchKeyRef.current === fetchKey) {
@@ -3254,6 +3284,14 @@ export default function DashboardPage() {
             const mondayParams = new URLSearchParams({
               board_ids: String(globalIntegrations.mondayBoardIds || '').trim(),
             })
+            const mondayWindow = resolveDateWindow(dateRange, customSince, customUntil)
+            if (mondayWindow?.start && mondayWindow?.end) {
+              mondayParams.set('since', formatLocalDateInput(mondayWindow.start))
+              mondayParams.set('until', formatLocalDateInput(mondayWindow.end))
+            }
+            if (shouldFetchMondayData && mondayOwnerFilter !== 'all') {
+              mondayParams.set('owner', mondayOwnerFilter)
+            }
             const mondayResponse = await fetch(`/api/monday/summary?${mondayParams.toString()}`, {
               headers: {
                 'x-monday-token': globalIntegrations.mondayToken,
@@ -3333,6 +3371,7 @@ export default function DashboardPage() {
     metaResultFilters,
     metaFilteredCampaignIdsKey,
     metaFilteredAdIdsKey,
+    mondayOwnerFilter,
     metaFilteredAdsetIdsKey,
     hasActiveMetaCampaignNarrowing,
     hasActiveMetaAdsetNarrowing,
@@ -4192,18 +4231,28 @@ export default function DashboardPage() {
     { key: 'blockedTasks', title: 'Bloqueadas', value: formatNumber(clickUpSummary?.blockedTasks || 0), icon: 'bx-block', tone: 'pink' },
     { key: 'overdueTasks', title: 'Atrasadas', value: formatNumber(clickUpSummary?.overdueTasks || 0), icon: 'bx-time-five', tone: 'orange' },
   ]
+  const mondayPeriodLabel = getDatePresetLabel(dateRange, customSince, customUntil)
   const mondayKpis = [
-    { key: 'totalItems', title: 'Itens totais', value: formatNumber(mondaySummary?.totalItems || 0), icon: 'bx-columns', tone: 'gold' },
-    { key: 'activeItems', title: 'Ativos', value: formatNumber(mondaySummary?.activeItems || 0), icon: 'bx-loader-circle', tone: 'blue' },
-    { key: 'doneItems', title: 'Concluídos', value: formatNumber(mondaySummary?.doneItems || 0), icon: 'bx-check-circle', tone: 'emerald' },
-    { key: 'blockedItems', title: 'Bloqueados', value: formatNumber(mondaySummary?.blockedItems || 0), icon: 'bx-block', tone: 'pink' },
+    { key: 'totalItems', title: 'Itens no recorte', value: formatNumber(mondaySummary?.totalItems || 0), icon: 'bx-columns', tone: 'gold' },
+    { key: 'activeItems', title: 'Em andamento', value: formatNumber(mondaySummary?.activeItems || 0), icon: 'bx-loader-circle', tone: 'blue' },
     { key: 'overdueItems', title: 'Atrasados', value: formatNumber(mondaySummary?.overdueItems || 0), icon: 'bx-time-five', tone: 'orange' },
-    { key: 'dueSoonItems', title: 'Vencendo em breve', value: formatNumber(mondaySummary?.dueSoonItems || 0), icon: 'bx-alarm', tone: 'purple' },
+    { key: 'trackedSecondsTotal', title: 'Tempo lançado', value: formatDurationHours(mondaySummary?.trackedSecondsTotal || 0), icon: 'bx-timer', tone: 'purple' },
+    { key: 'averageWeeklySeconds', title: 'Média semanal', value: formatDurationHours(mondaySummary?.averageWeeklySeconds || 0), icon: 'bx-line-chart', tone: 'emerald' },
+    { key: 'activeOwnersCount', title: 'Responsáveis ativos', value: formatNumber(mondaySummary?.activeOwnersCount || 0), icon: 'bx-user', tone: 'cyan' },
   ]
   const mondayOperationalHighlights = [
     { key: 'boards', label: 'Boards monitorados', value: formatNumber(mondaySummary?.boardsConfigured || 0) },
     { key: 'groups', label: 'Grupos identificados', value: formatNumber(mondaySummary?.groupSummary?.length || 0) },
     { key: 'unassigned', label: 'Sem responsável', value: formatNumber(mondaySummary?.unassignedItems || 0) },
+    { key: 'window', label: 'Período em análise', value: mondayPeriodLabel },
+    {
+      key: 'owner',
+      label: 'Usuário filtrado',
+      value: mondayOwnerFilter === 'all'
+        ? 'Todos os usuários'
+        : (mondaySummary?.availableOwners?.find((item) => item.id === mondayOwnerFilter)?.label || mondayOwnerFilter),
+    },
+    { key: 'topStatus', label: 'Maior fila atual', value: mondaySummary?.topStatus ? `${mondaySummary.topStatus.label} (${formatNumber(mondaySummary.topStatus.count)})` : 'Sem base' },
   ]
   const metaMediaKpis = [
     { key: 'spend', title: 'Investimento', value: formatCurrency(spend), rawValue: spend, type: 'currency', icon: 'bx-wallet-alt', tone: 'blue' },
@@ -4540,212 +4589,419 @@ export default function DashboardPage() {
     </section>
   )
 
-  const renderMondayOperationalPanel = () => (
-    <section className="source-section">
-      <div className="source-section-header">
-        <div className="source-section-badge" style={{ color: '#f59e0b', borderColor: '#f59e0b' }}>
-          <i className="bx bx-columns"></i>
-          <span>Monday</span>
-        </div>
-        <p className="source-section-copy">Leitura operacional interna dos boards configurados globalmente para acompanhar a execução da empresa.</p>
-      </div>
+  const renderMondayOperationalPanel = () => {
+    const mondayOwnerOptions = mondaySummary?.availableOwners || []
+    const selectedMondayOwnerLabel = mondayOwnerFilter === 'all'
+      ? 'Todos os usuários'
+      : (mondayOwnerOptions.find((item) => item.id === mondayOwnerFilter)?.label || mondayOwnerFilter)
+    const weeklyTrackedTime = mondaySummary?.weeklyTrackedTime || []
+    const maxWeeklySeconds = weeklyTrackedTime.reduce((max, item) => Math.max(max, item.seconds || 0), 0)
+    const overdueOwnerRanking = (mondaySummary?.ownerRanking || []).filter((item) => (item.overdueCount || 0) > 0)
+    const mondayPractices = [
+      'Ataque bloqueios com SLA curto: item parado ou bloqueado por mais de 24h precisa de dono e próximo passo explícito.',
+      'Olhe atraso por responsável, não só total do board: isso evita esconder sobrecarga individual atrás de um volume geral bonito.',
+      'Monitore as tarefas com maior duração para revisar briefing, handoff e retrabalho. Tempo muito alto quase sempre aponta gargalo de processo.',
+      'Use média semanal para equalizar carga do time: crescimento constante sem ganho de entrega costuma sinalizar excesso de contexto ou fila desalinhada.',
+    ]
 
-      <section className="glass-panel grouped-results">
-        <div className="section-header section-header-stack section-header-with-action">
-          <div>
-            <h2>Operação em boards</h2>
-            <p className="chart-subtitle">Resumo global de itens, andamento, bloqueios e prazo das operações internas.</p>
+    return (
+      <section className="source-section">
+        <div className="source-section-header">
+          <div className="source-section-badge" style={{ color: '#f59e0b', borderColor: '#f59e0b' }}>
+            <i className="bx bx-columns"></i>
+            <span>Monday</span>
           </div>
-          {canEditIntegrations && (
-            <button
-              type="button"
-              className="btn btn-secondary"
-              onClick={() => setIsMondaySetupOpen((current) => !current)}
-            >
-              <i className={`bx ${isMondaySetupOpen ? 'bx-chevron-up' : 'bx-cog'}`}></i>
-              {isMondaySetupOpen ? 'Fechar configuração' : hasMondayConfigured ? 'Editar token e IDs' : 'Configurar agora'}
-            </button>
-          )}
+          <p className="source-section-copy">Leitura operacional interna dos boards configurados globalmente para acompanhar a execução da empresa.</p>
         </div>
 
-        {hasMondayConfigured && !mondayError && (
-          <div className="operations-hero-card glass-item">
-            <div className="operations-hero-copy">
-              <span className="operations-hero-kicker">Visão operacional</span>
-              <h3>Monitoramento interno do Monday</h3>
-              <p>Os indicadores abaixo resumem carga, andamento, bloqueios e concentração de trabalho nos boards da empresa.</p>
+        <section className="glass-panel grouped-results">
+          <div className="section-header section-header-stack section-header-with-action">
+            <div>
+              <h2>Operação em boards</h2>
+              <p className="chart-subtitle">Entenda carga, atraso, tempo investido e gargalos do time em um painel que faça sentido para gestão de operação.</p>
             </div>
-            <div className="operations-meta-grid">
-              {mondayOperationalHighlights.map((item) => (
-                <div key={item.key} className="operations-meta-card">
-                  <span>{item.label}</span>
-                  <strong>{item.value}</strong>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {!hasMondayConfigured && (
-          <div className="settings-alert error">
-            {canEditIntegrations
-              ? 'O Monday ainda não foi configurado na operação. Informe o token e os IDs dos boards para liberar essa leitura.'
-              : 'O Monday ainda não foi configurado nesta operação. Peça ao master para informar o token e os IDs dos boards.'}
-          </div>
-        )}
-
-        {(isMondaySetupOpen || !hasMondayConfigured) && (
-          <div className="glass-item" style={{ padding: '1.2rem', marginBottom: '1.2rem' }}>
-            <div className="form-grid">
-              <div className="input-group">
-                <label>Token do Monday</label>
-                <input
-                  type="password"
-                  value={globalIntegrations.mondayToken || ''}
-                  onChange={(event) => handleGlobalIntegrationChange('mondayToken', event.target.value)}
-                  placeholder="Cole aqui o token do Monday"
-                  disabled={!canEditIntegrations}
-                />
-              </div>
-              <div className="input-group">
-                <label>IDs dos boards da operação</label>
-                <input
-                  type="text"
-                  value={globalIntegrations.mondayBoardIds || ''}
-                  onChange={(event) => handleGlobalIntegrationChange('mondayBoardIds', event.target.value)}
-                  placeholder="987654321, 123456789"
-                  disabled={!canEditIntegrations}
-                />
-                <span className="field-helper">Separe múltiplos IDs por vírgula. Esses IDs ficam globais na operação, não dentro de clientes.</span>
-              </div>
-            </div>
-
             {canEditIntegrations && (
-              <div className="modal-actions" style={{ marginTop: '1rem' }}>
-                <button type="button" className="btn btn-secondary" onClick={() => setIsMondaySetupOpen(false)}>
-                  Fechar
-                </button>
-                <button type="button" className="btn btn-primary" onClick={() => setIsMondaySetupOpen(false)}>
-                  Salvar configuração
-                </button>
-              </div>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => setIsMondaySetupOpen((current) => !current)}
+              >
+                <i className={`bx ${isMondaySetupOpen ? 'bx-chevron-up' : 'bx-cog'}`}></i>
+                {isMondaySetupOpen ? 'Fechar configuração' : hasMondayConfigured ? 'Editar token e IDs' : 'Configurar agora'}
+              </button>
             )}
           </div>
-        )}
 
-        {mondayError ? (
-          <div className="settings-alert error">{mondayError}</div>
-        ) : hasMondayConfigured ? (
-          <>
-            <div className="operations-kpi-shell">
-              {renderFixedKpiGrid(mondayKpis)}
+          {hasMondayConfigured && !mondayError && (
+            <>
+              <div className="operations-hero-card glass-item">
+                <div className="operations-hero-copy">
+                  <span className="operations-hero-kicker">Visão operacional</span>
+                  <h3>Monday com foco em atraso, tempo e capacidade</h3>
+                  <p>O recorte usa o período ativo do dashboard e mostra quem está com mais atraso, quais tarefas estão consumindo mais tempo e como a carga está distribuída por semana.</p>
+                </div>
+                <div className="operations-meta-grid">
+                  {mondayOperationalHighlights.map((item) => (
+                    <div key={item.key} className="operations-meta-card">
+                      <span>{item.label}</span>
+                      <strong>{item.value}</strong>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="operations-filter-grid">
+                <div className="glass-item operations-filter-card">
+                  <span>Período do painel</span>
+                  <strong>{mondayPeriodLabel}</strong>
+                  <small>Use o seletor de datas do topo para mudar o recorte operacional.</small>
+                </div>
+                <label className="glass-item operations-filter-card">
+                  <span>Filtrar responsável</span>
+                  <select className="hero-select" value={mondayOwnerFilter} onChange={(event) => setMondayOwnerFilter(event.target.value)}>
+                    <option value="all">Todos os usuários</option>
+                    {mondayOwnerOptions.map((owner) => (
+                      <option key={owner.id} value={owner.id}>
+                        {owner.label}
+                      </option>
+                    ))}
+                  </select>
+                  <small>{selectedMondayOwnerLabel === 'Todos os usuários' ? 'Leitura consolidada de toda a operação.' : `Agora lendo apenas ${selectedMondayOwnerLabel}.`}</small>
+                </label>
+                <div className="glass-item operations-filter-card">
+                  <span>Responsável com mais atraso</span>
+                  <strong>{mondaySummary?.topOverdueOwner ? mondaySummary.topOverdueOwner.name : 'Sem atraso no recorte'}</strong>
+                  <small>
+                    {mondaySummary?.topOverdueOwner
+                      ? `${formatNumber(mondaySummary.topOverdueOwner.overdueItems)} item(ns) atrasado(s) dentro do período.`
+                      : 'Nenhum responsável com atraso no recorte atual.'}
+                  </small>
+                </div>
+              </div>
+            </>
+          )}
+
+          {!hasMondayConfigured && (
+            <div className="settings-alert error">
+              {canEditIntegrations
+                ? 'O Monday ainda não foi configurado na operação. Informe o token e os IDs dos boards para liberar essa leitura.'
+                : 'O Monday ainda não foi configurado nesta operação. Peça ao master para informar o token e os IDs dos boards.'}
             </div>
-            <section className="rankings-grid operations-rankings-grid">
+          )}
+
+          {(isMondaySetupOpen || !hasMondayConfigured) && (
+            <div className="glass-item" style={{ padding: '1.2rem', marginBottom: '1.2rem' }}>
+              <div className="form-grid">
+                <div className="input-group">
+                  <label>Token do Monday</label>
+                  <input
+                    type="password"
+                    value={globalIntegrations.mondayToken || ''}
+                    onChange={(event) => handleGlobalIntegrationChange('mondayToken', event.target.value)}
+                    placeholder="Cole aqui o token do Monday"
+                    disabled={!canEditIntegrations}
+                  />
+                </div>
+                <div className="input-group">
+                  <label>IDs dos boards da operação</label>
+                  <input
+                    type="text"
+                    value={globalIntegrations.mondayBoardIds || ''}
+                    onChange={(event) => handleGlobalIntegrationChange('mondayBoardIds', event.target.value)}
+                    placeholder="987654321, 123456789"
+                    disabled={!canEditIntegrations}
+                  />
+                  <span className="field-helper">Separe múltiplos IDs por vírgula. Esses IDs ficam globais na operação, não dentro de clientes.</span>
+                </div>
+              </div>
+
+              {canEditIntegrations && (
+                <div className="modal-actions" style={{ marginTop: '1rem' }}>
+                  <button type="button" className="btn btn-secondary" onClick={() => setIsMondaySetupOpen(false)}>
+                    Fechar
+                  </button>
+                  <button type="button" className="btn btn-primary" onClick={() => setIsMondaySetupOpen(false)}>
+                    Salvar configuração
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {mondayError ? (
+            <div className="settings-alert error">{mondayError}</div>
+          ) : hasMondayConfigured ? (
+            <>
+              <div className="operations-kpi-shell">
+                {renderFixedKpiGrid(mondayKpis)}
+              </div>
+
+              <div className="operations-spotlight-grid">
+                <article className="glass-item operations-spotlight-card">
+                  <span className="operations-spotlight-label">Tarefa mais longa</span>
+                  <strong>{mondaySummary?.topLongestTask?.name || 'Sem tempo lançado no período'}</strong>
+                  <small>{mondaySummary?.topLongestTask ? formatDurationHours(mondaySummary.topLongestTask.trackedSeconds) : 'Assim que houver time tracking, ela aparece aqui.'}</small>
+                </article>
+                <article className="glass-item operations-spotlight-card">
+                  <span className="operations-spotlight-label">Sem responsável</span>
+                  <strong>{formatNumber(mondaySummary?.unassignedItems || 0)} item(ns)</strong>
+                  <small>Itens sem dono definido costumam travar handoff e dificultar SLA.</small>
+                </article>
+                <article className="glass-item operations-spotlight-card">
+                  <span className="operations-spotlight-label">Status com maior fila</span>
+                  <strong>{mondaySummary?.topStatus?.label || 'Sem status no recorte'}</strong>
+                  <small>{mondaySummary?.topStatus ? `${formatNumber(mondaySummary.topStatus.count)} item(ns) concentrado(s) nessa etapa.` : 'Sem dados suficientes para leitura.'}</small>
+                </article>
+              </div>
+
+              <section className="rankings-grid operations-rankings-grid">
+                <div className="glass-panel ranking-card">
+                  <div className="section-header section-header-stack">
+                    <div>
+                      <h2>Usuários com mais tarefas atrasadas</h2>
+                      <p className="chart-subtitle">Quem está mais pressionado no recorte e quais tarefas precisam de atenção imediata.</p>
+                    </div>
+                  </div>
+                  <div className="ranking-list">
+                    {overdueOwnerRanking.length ? (
+                      overdueOwnerRanking.map((item) => (
+                        <div key={item.id} className="ranking-row ranking-row-rich monday-owner-row">
+                          <div className="ranking-main-column">
+                            <strong>{item.label}</strong>
+                            <span>{formatNumber(item.totalItems || 0)} item(ns) no recorte · {formatDurationHours(item.trackedSeconds || 0)} lançadas</span>
+                            {item.overdueTasks?.length ? (
+                              <div className="ranking-task-tags">
+                                {item.overdueTasks.map((task) => (
+                                  <span key={task.id} className="ranking-task-chip">{task.name}</span>
+                                ))}
+                              </div>
+                            ) : (
+                              <div className="ranking-inline-note">Sem tarefas atrasadas para detalhar.</div>
+                            )}
+                          </div>
+                          <div className="ranking-metrics">
+                            <strong>{formatNumber(item.overdueCount || 0)} atrasada(s)</strong>
+                            <span>{formatNumber(item.openItems || 0)} aberta(s)</span>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="ranking-empty">Nenhum responsável com tarefas atrasadas dentro do período filtrado.</div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="glass-panel ranking-card">
+                  <div className="section-header section-header-stack">
+                    <div>
+                      <h2>Status da operação</h2>
+                      <p className="chart-subtitle">Onde a fila está se concentrando para entender gargalo, retrabalho ou etapa final.</p>
+                    </div>
+                  </div>
+                  <div className="ranking-list">
+                    {mondaySummary?.statusSummary?.counts?.length ? (
+                      mondaySummary.statusSummary.counts.map((item) => (
+                        <div key={item.id} className="ranking-row">
+                          <div>
+                            <strong>{item.label}</strong>
+                            <span>{formatNumber(item.count || 0)} item(ns)</span>
+                          </div>
+                          <b>{formatPercent((item.share || 0) * 100)}</b>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="ranking-empty">Sem status suficientes para montar o ranking.</div>
+                    )}
+                  </div>
+                </div>
+              </section>
+
+              <section className="rankings-grid operations-rankings-grid">
+                <div className="glass-panel ranking-card">
+                  <div className="section-header section-header-stack">
+                    <div>
+                      <h2>Tempo por semana</h2>
+                      <p className="chart-subtitle">Carga trabalhada separada por semana, usando o período que você escolheu no topo.</p>
+                    </div>
+                  </div>
+                  {weeklyTrackedTime.length ? (
+                    <div className="weekly-time-list">
+                      {weeklyTrackedTime.map((week) => (
+                        <div key={week.id} className="weekly-time-row">
+                          <div className="weekly-time-copy">
+                            <strong>{week.label}</strong>
+                            <span>{formatNumber(week.tasksWithTime || 0)} tarefa(s) com tempo lançado</span>
+                          </div>
+                          <div className="weekly-time-bar-track">
+                            <span
+                              className="weekly-time-bar-fill"
+                              style={{ width: `${maxWeeklySeconds > 0 ? (week.seconds / maxWeeklySeconds) * 100 : 0}%` }}
+                            ></span>
+                          </div>
+                          <b>{formatDurationHours(week.seconds || 0)}</b>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="ranking-empty">Não encontramos lançamentos de tempo suficientes para dividir em semanas nesse recorte.</div>
+                  )}
+                </div>
+
+                <div className="glass-panel ranking-card">
+                  <div className="section-header section-header-stack">
+                    <div>
+                      <h2>Boas práticas de acompanhamento</h2>
+                      <p className="chart-subtitle">Leituras que fazem diferença de verdade no acompanhamento de uma operação de agência.</p>
+                    </div>
+                  </div>
+                  <div className="practice-list">
+                    {mondayPractices.map((practice, index) => (
+                      <div key={index} className="practice-card">
+                        <strong>{index + 1}.</strong>
+                        <span>{practice}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </section>
+
               <div className="glass-panel ranking-card">
                 <div className="section-header section-header-stack">
                   <div>
-                    <h2>Status dos itens</h2>
-                    <p className="chart-subtitle">Distribuição dos itens por status nos boards configurados.</p>
+                    <h2>Quais tarefas estão atrasadas</h2>
+                    <p className="chart-subtitle">Lista objetiva do que está vencido no recorte atual, para facilitar cobrança e priorização do time.</p>
                   </div>
                 </div>
-                <div className="ranking-list">
-                  {mondaySummary?.statusSummary?.counts?.length ? (
-                    mondaySummary.statusSummary.counts.map((item) => (
-                      <div key={item.id} className="ranking-row">
-                        <div>
-                          <strong>{item.label}</strong>
-                          <span>{formatNumber(item.count || 0)} item(ns)</span>
-                        </div>
-                        <b>{formatPercent((item.share || 0) * 100)}</b>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="ranking-empty">Sem status suficientes para montar o ranking.</div>
-                  )}
-                </div>
+                {mondaySummary?.overdueTasks?.length ? (
+                  <div className="table-container">
+                    <table className="data-table">
+                      <thead>
+                        <tr>
+                          <th>Tarefa</th>
+                          <th>Responsável</th>
+                          <th>Board</th>
+                          <th>Status</th>
+                          <th>Atraso</th>
+                          <th>Tempo</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {mondaySummary.overdueTasks.map((task) => (
+                          <tr key={task.id}>
+                            <td className="campaign-name">{task.name}</td>
+                            <td>{task.owners?.length ? task.owners.join(', ') : 'Sem responsável'}</td>
+                            <td>{task.boardName || '-'}</td>
+                            <td>{task.statusLabel || 'Sem status'}</td>
+                            <td>{formatNumber(task.daysOverdue || 0)} dia(s)</td>
+                            <td>{formatDurationHours(task.trackedSeconds || 0)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="ranking-empty">Nenhuma tarefa atrasada encontrada dentro do período e do responsável filtrados.</div>
+                )}
               </div>
 
               <div className="glass-panel ranking-card">
                 <div className="section-header section-header-stack">
                   <div>
-                    <h2>Responsáveis</h2>
-                    <p className="chart-subtitle">Quem concentra mais itens dentro dos boards monitorados.</p>
+                    <h2>Quais tarefas estão há mais tempo abertas</h2>
+                    <p className="chart-subtitle">Todas as tarefas com tempo lançado, ordenadas da maior duração para a menor dentro do recorte atual.</p>
                   </div>
                 </div>
-                <div className="ranking-list">
-                  {mondaySummary?.ownerRanking?.length ? (
-                    mondaySummary.ownerRanking.map((item) => (
-                      <div key={item.id} className="ranking-row">
-                        <div>
-                          <strong>{item.label}</strong>
-                          <span>{formatNumber(item.totalItems || 0)} item(ns)</span>
-                        </div>
-                        <b>{formatNumber(item.overdueCount || 0)} atrasado(s)</b>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="ranking-empty">Sem responsáveis suficientes para montar o ranking.</div>
-                  )}
-                </div>
+                {mondaySummary?.longestTasks?.length ? (
+                  <div className="table-container">
+                    <table className="data-table">
+                      <thead>
+                        <tr>
+                          <th>Tarefa</th>
+                          <th>Responsável</th>
+                          <th>Status</th>
+                          <th>Board</th>
+                          <th>Tempo</th>
+                          <th>Atualização</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {mondaySummary.longestTasks.map((task) => (
+                          <tr key={task.id}>
+                            <td className="campaign-name">{task.name}</td>
+                            <td>{task.owners?.length ? task.owners.join(', ') : 'Sem responsável'}</td>
+                            <td>{task.statusLabel || 'Sem status'}</td>
+                            <td>{task.boardName || '-'}</td>
+                            <td>{formatDurationHours(task.trackedSeconds || 0)}</td>
+                            <td>{formatShortDate(task.updatedAt)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="ranking-empty">Nenhuma tarefa com time tracking apareceu dentro do período filtrado.</div>
+                )}
               </div>
 
-              <div className="glass-panel ranking-card">
-                <div className="section-header section-header-stack">
-                  <div>
-                    <h2>Boards monitorados</h2>
-                    <p className="chart-subtitle">Volume operacional consolidado por board.</p>
+              <section className="rankings-grid operations-rankings-grid">
+                <div className="glass-panel ranking-card">
+                  <div className="section-header section-header-stack">
+                    <div>
+                      <h2>Boards monitorados</h2>
+                      <p className="chart-subtitle">Volume operacional consolidado por board no recorte atual.</p>
+                    </div>
+                  </div>
+                  <div className="ranking-list">
+                    {mondaySummary?.boardSummary?.length ? (
+                      mondaySummary.boardSummary.map((item) => (
+                        <div key={item.id} className="ranking-row">
+                          <div>
+                            <strong>{item.label}</strong>
+                            <span>{formatNumber(item.totalItems || 0)} item(ns)</span>
+                          </div>
+                          <b>{formatNumber(item.doneCount || 0)} concluído(s)</b>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="ranking-empty">Sem boards suficientes para montar o ranking.</div>
+                    )}
                   </div>
                 </div>
-                <div className="ranking-list">
-                  {mondaySummary?.boardSummary?.length ? (
-                    mondaySummary.boardSummary.map((item) => (
-                      <div key={item.id} className="ranking-row">
-                        <div>
-                          <strong>{item.label}</strong>
-                          <span>{formatNumber(item.totalItems || 0)} item(ns)</span>
-                        </div>
-                        <b>{formatNumber(item.doneCount || 0)} concluído(s)</b>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="ranking-empty">Sem boards suficientes para montar o ranking.</div>
-                  )}
-                </div>
-              </div>
 
-              <div className="glass-panel ranking-card">
-                <div className="section-header section-header-stack">
-                  <div>
-                    <h2>Grupos dos boards</h2>
-                    <p className="chart-subtitle">Distribuição dos itens por grupo interno dentro dos boards monitorados.</p>
+                <div className="glass-panel ranking-card">
+                  <div className="section-header section-header-stack">
+                    <div>
+                      <h2>Grupos dos boards</h2>
+                      <p className="chart-subtitle">Em qual grupo do Monday o trabalho está mais concentrado hoje.</p>
+                    </div>
+                  </div>
+                  <div className="ranking-list">
+                    {mondaySummary?.groupSummary?.length ? (
+                      mondaySummary.groupSummary.map((item) => (
+                        <div key={item.id} className="ranking-row">
+                          <div>
+                            <strong>{item.label}</strong>
+                            <span>{formatNumber(item.totalItems || 0)} item(ns)</span>
+                          </div>
+                          <b>{formatNumber(item.overdueCount || 0)} atrasado(s)</b>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="ranking-empty">Sem grupos suficientes para montar o ranking.</div>
+                    )}
                   </div>
                 </div>
-                <div className="ranking-list">
-                  {mondaySummary?.groupSummary?.length ? (
-                    mondaySummary.groupSummary.map((item) => (
-                      <div key={item.id} className="ranking-row">
-                        <div>
-                          <strong>{item.label}</strong>
-                          <span>{formatNumber(item.totalItems || 0)} item(ns)</span>
-                        </div>
-                        <b>{formatNumber(item.doneCount || 0)} concluído(s)</b>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="ranking-empty">Sem grupos suficientes para montar o ranking.</div>
-                  )}
-                </div>
-              </div>
-            </section>
-          </>
-        ) : (
-          <div className="ranking-empty">
-            Configure o token e os IDs dos boards do Monday para liberar os indicadores operacionais aqui.
-          </div>
-        )}
+              </section>
+            </>
+          ) : (
+            <div className="ranking-empty">
+              Configure o token e os IDs dos boards do Monday para liberar os indicadores operacionais aqui.
+            </div>
+          )}
+        </section>
       </section>
-    </section>
-  )
+    )
+  }
 
   if (userLoading || !hasLoadedPreferences) {
     return <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', color: 'white' }}>Carregando painel...</div>
@@ -8016,6 +8272,66 @@ export default function DashboardPage() {
           grid-template-columns: repeat(2, minmax(0, 1fr));
         }
 
+        .operations-filter-grid {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 16px;
+          margin-bottom: 20px;
+        }
+
+        .operations-filter-card {
+          display: grid;
+          gap: 8px;
+          padding: 18px;
+          border-radius: 18px;
+          border: 1px solid rgba(255, 255, 255, 0.05);
+          background: rgba(255, 255, 255, 0.03);
+        }
+
+        .operations-filter-card span,
+        .operations-spotlight-label {
+          color: var(--text-muted);
+          font-size: 12px;
+          letter-spacing: 0.04em;
+          text-transform: uppercase;
+        }
+
+        .operations-filter-card strong {
+          font-size: 18px;
+          line-height: 1.2;
+        }
+
+        .operations-filter-card small {
+          color: var(--text-muted);
+          line-height: 1.5;
+        }
+
+        .operations-spotlight-grid {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 16px;
+          margin-bottom: 24px;
+        }
+
+        .operations-spotlight-card {
+          display: grid;
+          gap: 8px;
+          padding: 18px;
+          border-radius: 18px;
+          border: 1px solid rgba(255, 255, 255, 0.05);
+          background: rgba(255, 255, 255, 0.03);
+        }
+
+        .operations-spotlight-card strong {
+          font-size: 22px;
+          line-height: 1.18;
+        }
+
+        .operations-spotlight-card small {
+          color: var(--text-muted);
+          line-height: 1.5;
+        }
+
         .template-metrics-shell {
           display: grid;
           gap: 16px;
@@ -8642,6 +8958,12 @@ export default function DashboardPage() {
           align-items: center;
         }
 
+        .ranking-main-column {
+          min-width: 0;
+          display: grid;
+          gap: 8px;
+        }
+
         .ranking-metrics {
           display: grid;
           gap: 4px;
@@ -8660,6 +8982,110 @@ export default function DashboardPage() {
           border: 1px dashed rgba(255, 255, 255, 0.12);
           border-radius: 16px;
           text-align: center;
+        }
+
+        .ranking-task-tags {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px;
+        }
+
+        .ranking-task-chip {
+          display: inline-flex;
+          align-items: center;
+          min-height: 30px;
+          padding: 0 10px;
+          border-radius: 999px;
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          background: rgba(255, 255, 255, 0.04);
+          color: var(--text-secondary);
+          font-size: 12px;
+          max-width: 100%;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        .ranking-inline-note {
+          color: var(--text-muted);
+          font-size: 12px;
+          line-height: 1.5;
+        }
+
+        .weekly-time-list {
+          display: grid;
+          gap: 12px;
+          margin-top: 12px;
+        }
+
+        .weekly-time-row {
+          display: grid;
+          grid-template-columns: minmax(180px, 0.9fr) minmax(180px, 1.4fr) auto;
+          gap: 14px;
+          align-items: center;
+          padding: 14px 16px;
+          border-radius: 16px;
+          background: rgba(255, 255, 255, 0.03);
+          border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .weekly-time-copy {
+          display: grid;
+          gap: 4px;
+        }
+
+        .weekly-time-copy strong {
+          line-height: 1.2;
+        }
+
+        .weekly-time-copy span {
+          color: var(--text-muted);
+          font-size: 12px;
+        }
+
+        .weekly-time-bar-track {
+          width: 100%;
+          height: 10px;
+          border-radius: 999px;
+          background: rgba(255, 255, 255, 0.06);
+          overflow: hidden;
+        }
+
+        .weekly-time-bar-fill {
+          display: block;
+          height: 100%;
+          min-width: 10px;
+          border-radius: inherit;
+          background: linear-gradient(90deg, rgba(59, 130, 246, 0.9), rgba(139, 92, 246, 0.9));
+        }
+
+        .weekly-time-row b {
+          white-space: nowrap;
+        }
+
+        .practice-list {
+          display: grid;
+          gap: 12px;
+          margin-top: 12px;
+        }
+
+        .practice-card {
+          display: grid;
+          grid-template-columns: auto 1fr;
+          gap: 12px;
+          padding: 14px 16px;
+          border-radius: 16px;
+          border: 1px solid rgba(255, 255, 255, 0.05);
+          background: rgba(255, 255, 255, 0.03);
+        }
+
+        .practice-card strong {
+          color: var(--accent-blue);
+        }
+
+        .practice-card span {
+          color: var(--text-secondary);
+          line-height: 1.6;
         }
 
         .pipeline-columns-grid {
@@ -9101,8 +9527,14 @@ export default function DashboardPage() {
           .rankings-grid,
           .conversion-groups-grid,
           .operations-hero-card,
+          .operations-filter-grid,
+          .operations-spotlight-grid,
           .operations-meta-grid,
           .operations-rankings-grid {
+            grid-template-columns: 1fr;
+          }
+
+          .weekly-time-row {
             grid-template-columns: 1fr;
           }
 
