@@ -56,44 +56,62 @@ const GLOBAL_INTEGRATION_GROUPS = [
     description: 'Espaço reservado para integrações operacionais com gestão de tarefas.',
     icon: 'bx-task',
     accent: '#8b5cf6',
-    field: {
-      name: 'clickUpToken',
-      label: 'Token do ClickUp',
-      placeholder: 'Cole aqui o token do ClickUp',
-    },
+    fields: [
+      {
+        name: 'clickUpToken',
+        label: 'Token do ClickUp',
+        placeholder: 'Cole aqui o token do ClickUp',
+      },
+      {
+        name: 'clickUpListIds',
+        label: 'IDs das listas da operação',
+        placeholder: '123456, 789012',
+      },
+    ],
   },
   {
     title: 'Monday',
     description: 'Espaço reservado para integrações operacionais com boards, status e responsáveis.',
     icon: 'bx-columns',
     accent: '#f59e0b',
-    field: {
-      name: 'mondayToken',
-      label: 'Token do Monday',
-      placeholder: 'Cole aqui o token do Monday',
-    },
+    fields: [
+      {
+        name: 'mondayToken',
+        label: 'Token do Monday',
+        placeholder: 'Cole aqui o token do Monday',
+      },
+      {
+        name: 'mondayBoardIds',
+        label: 'IDs dos boards da operação',
+        placeholder: '987654321, 123456789',
+      },
+    ],
   },
   {
     title: 'Salesforce',
     description: 'Espaço reservado para a credencial central do Salesforce.',
     icon: 'bxl-salesforce',
     accent: '#38bdf8',
-    field: {
-      name: 'salesforceToken',
-      label: 'Token do Salesforce',
-      placeholder: 'Cole aqui o token do Salesforce',
-    },
+    fields: [
+      {
+        name: 'salesforceToken',
+        label: 'Token do Salesforce',
+        placeholder: 'Cole aqui o token do Salesforce',
+      },
+    ],
   },
   {
     title: 'Agendor',
     description: 'Espaço reservado para a credencial central do Agendor.',
     icon: 'bx-briefcase-alt-2',
     accent: '#f97316',
-    field: {
-      name: 'agendorToken',
-      label: 'Token do Agendor',
-      placeholder: 'Cole aqui o token do Agendor',
-    },
+    fields: [
+      {
+        name: 'agendorToken',
+        label: 'Token do Agendor',
+        placeholder: 'Cole aqui o token do Agendor',
+      },
+    ],
   },
 ]
 
@@ -509,15 +527,17 @@ export default function SettingsPage() {
                       </div>
                     </div>
 
-                    <div className="input-group">
-                      <label>{group.field.label}</label>
-                      <input
-                        type="password"
-                        value={globalIntegrations[group.field.name] || ''}
-                        onChange={(event) => handleGlobalIntegrationChange(group.field.name, event.target.value)}
-                        placeholder={group.field.placeholder}
-                      />
-                    </div>
+                    {group.fields.map((field) => (
+                      <div key={field.name} className="input-group">
+                        <label>{field.label}</label>
+                        <input
+                          type={field.name.toLowerCase().includes('token') ? 'password' : 'text'}
+                          value={globalIntegrations[field.name] || ''}
+                          onChange={(event) => handleGlobalIntegrationChange(field.name, event.target.value)}
+                          placeholder={field.placeholder}
+                        />
+                      </div>
+                    ))}
                   </div>
                 ))}
               </div>

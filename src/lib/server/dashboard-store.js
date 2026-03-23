@@ -15,7 +15,9 @@ const DEFAULT_GLOBAL_INTEGRATIONS = {
   tiktokAdsToken: '',
   linkedinAdsToken: '',
   clickUpToken: '',
+  clickUpListIds: '',
   mondayToken: '',
+  mondayBoardIds: '',
   rdStationToken: '',
   salesforceToken: '',
   agendorToken: '',
@@ -124,8 +126,6 @@ function normalizeClientRecord(client) {
     googleAdsAccountId: payload.googleAdsAccountId || '',
     tiktokAdsAccountId: payload.tiktokAdsAccountId || '',
     linkedInAdsAccountId: payload.linkedInAdsAccountId || '',
-    clickUpListIds: String(payload.clickUpListIds || '').trim(),
-    mondayBoardIds: String(payload.mondayBoardIds || '').trim(),
     googleSheetsUrl: payload.googleSheetsUrl || '',
     googleSheetsHeaderRow: Number.isFinite(Number(payload.googleSheetsHeaderRow)) && Number(payload.googleSheetsHeaderRow) > 0
       ? Number(payload.googleSheetsHeaderRow)

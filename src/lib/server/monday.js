@@ -163,7 +163,7 @@ export async function readMondaySummary({ token, boardIds }) {
 
   const normalizedBoardIds = parseCommaSeparatedIds(boardIds)
   if (!normalizedBoardIds.length) {
-    throw new Error('Informe ao menos um ID de board do Monday neste cliente.')
+    throw new Error('Informe ao menos um ID de board do Monday na configuração global da operação.')
   }
 
   const boards = await Promise.all(normalizedBoardIds.map((boardId) => fetchBoardItems(trimmedToken, boardId)))

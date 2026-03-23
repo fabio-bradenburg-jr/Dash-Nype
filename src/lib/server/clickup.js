@@ -113,7 +113,7 @@ export async function readClickUpSummary({ token, listIds }) {
 
   const normalizedListIds = parseCommaSeparatedIds(listIds)
   if (!normalizedListIds.length) {
-    throw new Error('Informe ao menos um ID de lista do ClickUp neste cliente.')
+    throw new Error('Informe ao menos um ID de lista do ClickUp na configuração global da operação.')
   }
 
   const allTasks = (
