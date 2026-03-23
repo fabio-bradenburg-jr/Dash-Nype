@@ -1175,6 +1175,8 @@ export default function DashboardPage() {
   const [isMetaMetricLibraryOpen, setIsMetaMetricLibraryOpen] = useState(false)
   const [isRdMetricLibraryOpen, setIsRdMetricLibraryOpen] = useState(false)
   const [isSheetsMetricLibraryOpen, setIsSheetsMetricLibraryOpen] = useState(false)
+  const [isClickUpSetupOpen, setIsClickUpSetupOpen] = useState(false)
+  const [isMondaySetupOpen, setIsMondaySetupOpen] = useState(false)
   const [isQualifiedStagesVisible, setIsQualifiedStagesVisible] = useState(false)
   const [usersList, setUsersList] = useState([])
   const [usersLoading, setUsersLoading] = useState(false)
@@ -2906,9 +2908,13 @@ export default function DashboardPage() {
   ])
 
   useEffect(() => {
-    if (activeTab !== 'apresentacao') return
+    const shouldFetchPresentationData = activeTab === 'apresentacao'
+    const shouldFetchClickUpData = activeTab === 'clickup'
+    const shouldFetchMondayData = activeTab === 'monday'
 
-    if (!activeClientId) {
+    if (!shouldFetchPresentationData && !shouldFetchClickUpData && !shouldFetchMondayData) return
+
+    if (shouldFetchPresentationData && !activeClientId) {
       lastDashboardFetchKeyRef.current = ''
       lastGoogleSheetsFetchKeyRef.current = ''
       setIsLoading(false)
@@ -2923,7 +2929,14 @@ export default function DashboardPage() {
       return
     }
 
-    if (!hasMetaConfigured && !hasRdConfigured && !hasSheetsConfigured && !hasClickUpConfigured && !hasMondayConfigured) {
+    if (
+      shouldFetchPresentationData
+      && !hasMetaConfigured
+      && !hasRdConfigured
+      && !hasSheetsConfigured
+      && !hasClickUpConfigured
+      && !hasMondayConfigured
+    ) {
       lastDashboardFetchKeyRef.current = ''
       lastGoogleSheetsFetchKeyRef.current = ''
       setIsLoading(false)
@@ -2938,11 +2951,11 @@ export default function DashboardPage() {
       return
     }
 
-    if (dateRange === 'custom' && (!customSince || !customUntil)) {
+    if (shouldFetchPresentationData && dateRange === 'custom' && (!customSince || !customUntil)) {
       return
     }
 
-    if (hasMetaConfigured && !isMetaStructureReady) {
+    if (shouldFetchPresentationData && hasMetaConfigured && !isMetaStructureReady) {
       return
     }
 
@@ -3002,7 +3015,7 @@ export default function DashboardPage() {
         const currentRdLeadSourceFilters = rdLeadSourceFiltersRef.current
         const currentSelectedQualifiedStages = selectedQualifiedStagesRef.current
 
-        if (hasMetaConfigured) {
+        if (shouldFetchPresentationData && hasMetaConfigured) {
           const params = new URLSearchParams({
             ad_account_id: selectedAdAccount,
             date_preset: dateRange,
@@ -3086,7 +3099,7 @@ export default function DashboardPage() {
           setDailyData([])
         }
 
-        if (hasRdConfigured) {
+        if (shouldFetchPresentationData && hasRdConfigured) {
           const rdParams = new URLSearchParams()
           if (rdPipelineFilter) {
             rdParams.set('pipeline_id', rdPipelineFilter)
@@ -3156,7 +3169,7 @@ export default function DashboardPage() {
           setPreviousRdSummary(null)
         }
 
-        if (hasSheetsConfigured) {
+        if (shouldFetchPresentationData && hasSheetsConfigured) {
           const sheetsFetchKey = JSON.stringify({
             activeClientId,
             googleSheetsUrl: activeClient?.googleSheetsUrl || '',
@@ -3203,7 +3216,7 @@ export default function DashboardPage() {
           setGoogleSheetsError('')
         }
 
-        if (hasClickUpConfigured) {
+        if ((shouldFetchPresentationData || shouldFetchClickUpData) && hasClickUpConfigured) {
           try {
             const clickUpParams = new URLSearchParams({
               list_ids: String(globalIntegrations.clickUpListIds || '').trim(),
@@ -3236,7 +3249,7 @@ export default function DashboardPage() {
           setClickUpError('')
         }
 
-        if (hasMondayConfigured) {
+        if ((shouldFetchPresentationData || shouldFetchMondayData) && hasMondayConfigured) {
           try {
             const mondayParams = new URLSearchParams({
               board_ids: String(globalIntegrations.mondayBoardIds || '').trim(),
@@ -4359,6 +4372,332 @@ export default function DashboardPage() {
     </div>
   )
 
+  const renderClickUpOperationalPanel = () => (
+    <section className="source-section">
+      <div className="source-section-header">
+        <div className="source-section-badge" style={{ color: '#8b5cf6', borderColor: '#8b5cf6' }}>
+          <i className="bx bx-task"></i>
+          <span>ClickUp</span>
+        </div>
+        <p className="source-section-copy">Leitura operacional interna das listas configuradas globalmente para acompanhar a execução do time.</p>
+      </div>
+
+      <section className="glass-panel grouped-results">
+        <div className="section-header section-header-stack section-header-with-action">
+          <div>
+            <h2>Operação em tarefas</h2>
+            <p className="chart-subtitle">Resumo global de tarefas, andamento, atrasos e gargalos do time sem depender de vínculo com clientes.</p>
+          </div>
+          {canEditIntegrations && (
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => setIsClickUpSetupOpen((current) => !current)}
+            >
+              <i className={`bx ${isClickUpSetupOpen ? 'bx-chevron-up' : 'bx-cog'}`}></i>
+              {isClickUpSetupOpen ? 'Fechar configuração' : hasClickUpConfigured ? 'Editar token e IDs' : 'Configurar agora'}
+            </button>
+          )}
+        </div>
+
+        {!hasClickUpConfigured && (
+          <div className="settings-alert error">
+            {canEditIntegrations
+              ? 'O ClickUp ainda não foi configurado na operação. Informe o token e os IDs das listas para liberar essa leitura.'
+              : 'O ClickUp ainda não foi configurado nesta operação. Peça ao master para informar o token e os IDs das listas.'}
+          </div>
+        )}
+
+        {(isClickUpSetupOpen || !hasClickUpConfigured) && (
+          <div className="glass-item" style={{ padding: '1.2rem', marginBottom: '1.2rem' }}>
+            <div className="form-grid">
+              <div className="input-group">
+                <label>Token do ClickUp</label>
+                <input
+                  type="password"
+                  value={globalIntegrations.clickUpToken || ''}
+                  onChange={(event) => handleGlobalIntegrationChange('clickUpToken', event.target.value)}
+                  placeholder="pk_..."
+                  disabled={!canEditIntegrations}
+                />
+              </div>
+              <div className="input-group">
+                <label>IDs das listas da operação</label>
+                <input
+                  type="text"
+                  value={globalIntegrations.clickUpListIds || ''}
+                  onChange={(event) => handleGlobalIntegrationChange('clickUpListIds', event.target.value)}
+                  placeholder="123456, 789012"
+                  disabled={!canEditIntegrations}
+                />
+                <span className="field-helper">Separe múltiplos IDs por vírgula. Esses IDs ficam globais na operação, não dentro de clientes.</span>
+              </div>
+            </div>
+
+            {canEditIntegrations && (
+              <div className="modal-actions" style={{ marginTop: '1rem' }}>
+                <button type="button" className="btn btn-secondary" onClick={() => setIsClickUpSetupOpen(false)}>
+                  Fechar
+                </button>
+                <button type="button" className="btn btn-primary" onClick={() => setIsClickUpSetupOpen(false)}>
+                  Salvar configuração
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {clickUpError ? (
+          <div className="settings-alert error">{clickUpError}</div>
+        ) : hasClickUpConfigured ? (
+          <>
+            {renderFixedKpiGrid(clickUpKpis)}
+            <section className="rankings-grid">
+              <div className="glass-panel ranking-card">
+                <div className="section-header section-header-stack">
+                  <div>
+                    <h2>Status das tarefas</h2>
+                    <p className="chart-subtitle">Distribuição atual das tarefas por status nas listas configuradas.</p>
+                  </div>
+                </div>
+                <div className="ranking-list">
+                  {clickUpSummary?.statusSummary?.counts?.length ? (
+                    clickUpSummary.statusSummary.counts.map((item) => (
+                      <div key={item.id} className="ranking-row">
+                        <div>
+                          <strong>{item.label}</strong>
+                          <span>{formatNumber(item.count || 0)} tarefa(s)</span>
+                        </div>
+                        <b>{formatPercent((item.share || 0) * 100)}</b>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="ranking-empty">Sem status suficientes para montar o ranking.</div>
+                  )}
+                </div>
+              </div>
+
+              <div className="glass-panel ranking-card">
+                <div className="section-header section-header-stack">
+                  <div>
+                    <h2>Responsáveis</h2>
+                    <p className="chart-subtitle">Quem concentra mais tarefas nas listas monitoradas.</p>
+                  </div>
+                </div>
+                <div className="ranking-list">
+                  {clickUpSummary?.assigneeRanking?.length ? (
+                    clickUpSummary.assigneeRanking.map((item) => (
+                      <div key={item.id} className="ranking-row">
+                        <div>
+                          <strong>{item.label}</strong>
+                          <span>{formatNumber(item.count || 0)} tarefa(s)</span>
+                        </div>
+                        <b>{formatNumber(item.overdueCount || 0)} atrasada(s)</b>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="ranking-empty">Sem responsáveis suficientes para montar o ranking.</div>
+                  )}
+                </div>
+              </div>
+
+              <div className="glass-panel ranking-card">
+                <div className="section-header section-header-stack">
+                  <div>
+                    <h2>Listas monitoradas</h2>
+                    <p className="chart-subtitle">Volume operacional por lista configurada globalmente.</p>
+                  </div>
+                </div>
+                <div className="ranking-list">
+                  {clickUpSummary?.listSummary?.length ? (
+                    clickUpSummary.listSummary.map((item) => (
+                      <div key={item.id} className="ranking-row">
+                        <div>
+                          <strong>{item.label}</strong>
+                          <span>{formatNumber(item.count || 0)} tarefa(s)</span>
+                        </div>
+                        <b>{formatNumber(item.completedCount || 0)} concluída(s)</b>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="ranking-empty">Sem listas suficientes para montar o ranking.</div>
+                  )}
+                </div>
+              </div>
+            </section>
+          </>
+        ) : (
+          <div className="ranking-empty">
+            Configure o token e os IDs das listas do ClickUp para liberar os indicadores operacionais aqui.
+          </div>
+        )}
+      </section>
+    </section>
+  )
+
+  const renderMondayOperationalPanel = () => (
+    <section className="source-section">
+      <div className="source-section-header">
+        <div className="source-section-badge" style={{ color: '#f59e0b', borderColor: '#f59e0b' }}>
+          <i className="bx bx-columns"></i>
+          <span>Monday</span>
+        </div>
+        <p className="source-section-copy">Leitura operacional interna dos boards configurados globalmente para acompanhar a execução da empresa.</p>
+      </div>
+
+      <section className="glass-panel grouped-results">
+        <div className="section-header section-header-stack section-header-with-action">
+          <div>
+            <h2>Operação em boards</h2>
+            <p className="chart-subtitle">Resumo global de itens, andamento, bloqueios e prazo das operações internas.</p>
+          </div>
+          {canEditIntegrations && (
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => setIsMondaySetupOpen((current) => !current)}
+            >
+              <i className={`bx ${isMondaySetupOpen ? 'bx-chevron-up' : 'bx-cog'}`}></i>
+              {isMondaySetupOpen ? 'Fechar configuração' : hasMondayConfigured ? 'Editar token e IDs' : 'Configurar agora'}
+            </button>
+          )}
+        </div>
+
+        {!hasMondayConfigured && (
+          <div className="settings-alert error">
+            {canEditIntegrations
+              ? 'O Monday ainda não foi configurado na operação. Informe o token e os IDs dos boards para liberar essa leitura.'
+              : 'O Monday ainda não foi configurado nesta operação. Peça ao master para informar o token e os IDs dos boards.'}
+          </div>
+        )}
+
+        {(isMondaySetupOpen || !hasMondayConfigured) && (
+          <div className="glass-item" style={{ padding: '1.2rem', marginBottom: '1.2rem' }}>
+            <div className="form-grid">
+              <div className="input-group">
+                <label>Token do Monday</label>
+                <input
+                  type="password"
+                  value={globalIntegrations.mondayToken || ''}
+                  onChange={(event) => handleGlobalIntegrationChange('mondayToken', event.target.value)}
+                  placeholder="Cole aqui o token do Monday"
+                  disabled={!canEditIntegrations}
+                />
+              </div>
+              <div className="input-group">
+                <label>IDs dos boards da operação</label>
+                <input
+                  type="text"
+                  value={globalIntegrations.mondayBoardIds || ''}
+                  onChange={(event) => handleGlobalIntegrationChange('mondayBoardIds', event.target.value)}
+                  placeholder="987654321, 123456789"
+                  disabled={!canEditIntegrations}
+                />
+                <span className="field-helper">Separe múltiplos IDs por vírgula. Esses IDs ficam globais na operação, não dentro de clientes.</span>
+              </div>
+            </div>
+
+            {canEditIntegrations && (
+              <div className="modal-actions" style={{ marginTop: '1rem' }}>
+                <button type="button" className="btn btn-secondary" onClick={() => setIsMondaySetupOpen(false)}>
+                  Fechar
+                </button>
+                <button type="button" className="btn btn-primary" onClick={() => setIsMondaySetupOpen(false)}>
+                  Salvar configuração
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {mondayError ? (
+          <div className="settings-alert error">{mondayError}</div>
+        ) : hasMondayConfigured ? (
+          <>
+            {renderFixedKpiGrid(mondayKpis)}
+            <section className="rankings-grid">
+              <div className="glass-panel ranking-card">
+                <div className="section-header section-header-stack">
+                  <div>
+                    <h2>Status dos itens</h2>
+                    <p className="chart-subtitle">Distribuição dos itens por status nos boards configurados.</p>
+                  </div>
+                </div>
+                <div className="ranking-list">
+                  {mondaySummary?.statusSummary?.counts?.length ? (
+                    mondaySummary.statusSummary.counts.map((item) => (
+                      <div key={item.id} className="ranking-row">
+                        <div>
+                          <strong>{item.label}</strong>
+                          <span>{formatNumber(item.count || 0)} item(ns)</span>
+                        </div>
+                        <b>{formatPercent((item.share || 0) * 100)}</b>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="ranking-empty">Sem status suficientes para montar o ranking.</div>
+                  )}
+                </div>
+              </div>
+
+              <div className="glass-panel ranking-card">
+                <div className="section-header section-header-stack">
+                  <div>
+                    <h2>Responsáveis</h2>
+                    <p className="chart-subtitle">Quem concentra mais itens dentro dos boards monitorados.</p>
+                  </div>
+                </div>
+                <div className="ranking-list">
+                  {mondaySummary?.ownerRanking?.length ? (
+                    mondaySummary.ownerRanking.map((item) => (
+                      <div key={item.id} className="ranking-row">
+                        <div>
+                          <strong>{item.label}</strong>
+                          <span>{formatNumber(item.count || 0)} item(ns)</span>
+                        </div>
+                        <b>{formatNumber(item.overdueCount || 0)} atrasado(s)</b>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="ranking-empty">Sem responsáveis suficientes para montar o ranking.</div>
+                  )}
+                </div>
+              </div>
+
+              <div className="glass-panel ranking-card">
+                <div className="section-header section-header-stack">
+                  <div>
+                    <h2>Boards monitorados</h2>
+                    <p className="chart-subtitle">Volume operacional consolidado por board.</p>
+                  </div>
+                </div>
+                <div className="ranking-list">
+                  {mondaySummary?.boardSummary?.length ? (
+                    mondaySummary.boardSummary.map((item) => (
+                      <div key={item.id} className="ranking-row">
+                        <div>
+                          <strong>{item.label}</strong>
+                          <span>{formatNumber(item.count || 0)} item(ns)</span>
+                        </div>
+                        <b>{formatNumber(item.doneCount || 0)} concluído(s)</b>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="ranking-empty">Sem boards suficientes para montar o ranking.</div>
+                  )}
+                </div>
+              </div>
+            </section>
+          </>
+        ) : (
+          <div className="ranking-empty">
+            Configure o token e os IDs dos boards do Monday para liberar os indicadores operacionais aqui.
+          </div>
+        )}
+      </section>
+    </section>
+  )
+
   if (userLoading || !hasLoadedPreferences) {
     return <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', color: 'white' }}>Carregando painel...</div>
   }
@@ -4391,6 +4730,12 @@ export default function DashboardPage() {
           )}
           <button type="button" data-tooltip="Apresentação" className={`nav-item nav-button ${activeTab === 'apresentacao' ? 'active' : ''}`} onClick={() => setActiveTab('apresentacao')}>
             <i className="bx bxs-dashboard"></i> Apresentação
+          </button>
+          <button type="button" data-tooltip="ClickUp" className={`nav-item nav-button ${activeTab === 'clickup' ? 'active' : ''}`} onClick={() => setActiveTab('clickup')}>
+            <i className="bx bx-task"></i> ClickUp
+          </button>
+          <button type="button" data-tooltip="Monday" className={`nav-item nav-button ${activeTab === 'monday' ? 'active' : ''}`} onClick={() => setActiveTab('monday')}>
+            <i className="bx bx-columns"></i> Monday
           </button>
           <Link href="/calendar" data-tooltip="Agenda" className="nav-item">
             <i className="bx bx-calendar-event"></i> Agenda
@@ -4439,11 +4784,15 @@ export default function DashboardPage() {
             <h1>
               {activeTab === 'clientes' && 'Base de clientes'}
               {activeTab === 'apresentacao' && `Dashboard ${activeClient?.name || 'do cliente'}`}
+              {activeTab === 'clickup' && 'Operação ClickUp'}
+              {activeTab === 'monday' && 'Operação Monday'}
               {activeTab === 'usuarios' && 'Gestão de usuários'}
             </h1>
             <p>
               {activeTab === 'clientes' && 'Cadastre seus clientes e mantenha cada operação separada dentro do dashboard.'}
               {activeTab === 'apresentacao' && 'Uma visão executiva consolidada dos principais resultados do cliente, organizada por fonte de dados.'}
+              {activeTab === 'clickup' && 'Acompanhe tarefas, responsáveis e status operacionais do ClickUp a partir da configuração global da operação.'}
+              {activeTab === 'monday' && 'Acompanhe boards, itens, status e responsáveis do Monday a partir da configuração global da operação.'}
               {activeTab === 'usuarios' && 'Defina quem pode visualizar dashboards, editar integrações e acessar clientes específicos.'}
             </p>
           </div>
@@ -4547,6 +4896,10 @@ export default function DashboardPage() {
             </div>
           </div>
         )}
+
+        {activeTab === 'clickup' && renderClickUpOperationalPanel()}
+
+        {activeTab === 'monday' && renderMondayOperationalPanel()}
 
         {activeTab === 'clientes' && (
           <section className="clients-layout">
