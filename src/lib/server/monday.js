@@ -21,6 +21,12 @@ function isBlockedStatus(label) {
   return /(blocked|bloque|travado|stuck|imped|hold)/i.test(normalizedLabel)
 }
 
+function isOperationalDateColumn(column) {
+  const normalizedTitle = String(column?.title || '').trim().toLowerCase()
+  if (!normalizedTitle) return false
+  return /(prazo|venc|due|deadline|entrega|delivery|final|fim|end date|data final)/i.test(normalizedTitle)
+}
+
 function parseMondayDate(value) {
   if (!value) return null
 
@@ -417,7 +423,8 @@ export async function readMondaySummary({ token, boardIds, since, until, owner }
     const boardColumns = Array.isArray(item.__columns) ? item.__columns : []
     const statusColumn = boardColumns.find((column) => column.type === 'color')
       || boardColumns.find((column) => /status|etapa|pipeline|fase/i.test(column.title || ''))
-    const dateColumn = boardColumns.find((column) => column.type === 'date')
+    const dateColumn = boardColumns.find((column) => column.type === 'date' && isOperationalDateColumn(column))
+      || boardColumns.find((column) => column.type === 'date')
     const peopleColumns = boardColumns.filter((column) => /person|people/i.test(column.type || ''))
     const timeTrackingColumns = boardColumns.filter((column) => /time_tracking|timer/i.test(column.type || ''))
 
@@ -436,10 +443,12 @@ export async function readMondaySummary({ token, boardIds, since, until, owner }
     const trackedSecondsInRange = timeTracking.sessions.length
       ? timeTracking.sessions.reduce((sum, session) => sum + getSessionDurationInRange(session, windowStart, windowEnd), 0)
       : ((!windowStart && !windowEnd) || isDateWithinRange(updatedAt, windowStart, windowEnd) ? timeTracking.totalSeconds : 0)
+    const shouldKeepInOperationalSnapshot = !done
     const matchesDateWindow = !windowStart && !windowEnd
       ? true
       : (
-          isDateWithinRange(updatedAt, windowStart, windowEnd)
+          shouldKeepInOperationalSnapshot
+          || isDateWithinRange(updatedAt, windowStart, windowEnd)
           || isDateWithinRange(dueDate, windowStart, windowEnd)
           || trackedSecondsInRange > 0
         )
@@ -581,6 +590,7 @@ export async function readMondaySummary({ token, boardIds, since, until, owner }
   const averageWeeklySeconds = weeklyBuckets.length
     ? weeklyBuckets.reduce((sum, bucket) => sum + bucket.seconds, 0) / weeklyBuckets.length
     : 0
+  const filteredTotalItems = Array.from(statusCounts.values()).reduce((sum, count) => sum + count, 0)
 
   const topStatus = Array.from(statusCounts.entries())
     .map(([label, count]) => ({ label, count }))
@@ -594,8 +604,8 @@ export async function readMondaySummary({ token, boardIds, since, until, owner }
 
   return {
     boardsConfigured: normalizedBoardIds.length,
-    totalItems: Array.from(statusCounts.values()).reduce((sum, count) => sum + count, 0),
-    activeItems: Math.max(Array.from(statusCounts.values()).reduce((sum, count) => sum + count, 0) - doneItems, 0),
+    totalItems: filteredTotalItems,
+    activeItems: Math.max(filteredTotalItems - doneItems, 0),
     doneItems,
     blockedItems,
     overdueItems,
@@ -631,7 +641,7 @@ export async function readMondaySummary({ token, boardIds, since, until, owner }
           id: `monday-status-${index + 1}`,
           label,
           count,
-          share: dedupedItems.length > 0 ? count / dedupedItems.length : 0,
+          share: filteredTotalItems > 0 ? count / filteredTotalItems : 0,
         }))
         .sort((left, right) => right.count - left.count || left.label.localeCompare(right.label, 'pt-BR')),
     },
