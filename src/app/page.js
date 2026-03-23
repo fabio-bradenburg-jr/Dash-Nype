@@ -752,6 +752,10 @@ function formatPercent(value) {
   return `${Number(value || 0).toFixed(2).replace('.', ',')}%`
 }
 
+function formatDecimal(value, decimals = 1) {
+  return Number(value || 0).toFixed(decimals).replace('.', ',')
+}
+
 function formatMultiplier(value) {
   return `${Number(value || 0).toFixed(2).replace('.', ',')}x`
 }
@@ -4240,20 +4244,6 @@ export default function DashboardPage() {
     { key: 'averageWeeklySeconds', title: 'Média semanal', value: formatDurationHours(mondaySummary?.averageWeeklySeconds || 0), icon: 'bx-line-chart', tone: 'emerald' },
     { key: 'activeOwnersCount', title: 'Responsáveis ativos', value: formatNumber(mondaySummary?.activeOwnersCount || 0), icon: 'bx-user', tone: 'cyan' },
   ]
-  const mondayOperationalHighlights = [
-    { key: 'boards', label: 'Boards monitorados', value: formatNumber(mondaySummary?.boardsConfigured || 0) },
-    { key: 'groups', label: 'Grupos identificados', value: formatNumber(mondaySummary?.groupSummary?.length || 0) },
-    { key: 'unassigned', label: 'Sem responsável', value: formatNumber(mondaySummary?.unassignedItems || 0) },
-    { key: 'window', label: 'Período em análise', value: mondayPeriodLabel },
-    {
-      key: 'owner',
-      label: 'Usuário filtrado',
-      value: mondayOwnerFilter === 'all'
-        ? 'Todos os usuários'
-        : (mondaySummary?.availableOwners?.find((item) => item.id === mondayOwnerFilter)?.label || mondayOwnerFilter),
-    },
-    { key: 'topStatus', label: 'Maior fila atual', value: mondaySummary?.topStatus ? `${mondaySummary.topStatus.label} (${formatNumber(mondaySummary.topStatus.count)})` : 'Sem base' },
-  ]
   const metaMediaKpis = [
     { key: 'spend', title: 'Investimento', value: formatCurrency(spend), rawValue: spend, type: 'currency', icon: 'bx-wallet-alt', tone: 'blue' },
     { key: 'impressions', title: 'Impressões', value: formatNumber(impressions), rawValue: impressions, type: 'number', icon: 'bx-show', tone: 'purple' },
@@ -4597,6 +4587,107 @@ export default function DashboardPage() {
     const weeklyTrackedTime = mondaySummary?.weeklyTrackedTime || []
     const maxWeeklySeconds = weeklyTrackedTime.reduce((max, item) => Math.max(max, item.seconds || 0), 0)
     const overdueOwnerRanking = (mondaySummary?.ownerRanking || []).filter((item) => (item.overdueCount || 0) > 0)
+    const topBoard = mondaySummary?.boardSummary?.[0] || null
+    const topGroup = mondaySummary?.groupSummary?.[0] || null
+    const topWorkloadOwner = [...(mondaySummary?.ownerRanking || [])]
+      .sort((left, right) => right.openItems - left.openItems || right.totalItems - left.totalItems || left.label.localeCompare(right.label, 'pt-BR'))[0] || null
+    const peakWeek = [...weeklyTrackedTime]
+      .sort((left, right) => right.seconds - left.seconds || left.label.localeCompare(right.label, 'pt-BR'))[0] || null
+    const totalItems = mondaySummary?.totalItems || 0
+    const activeItems = mondaySummary?.activeItems || 0
+    const doneItems = mondaySummary?.doneItems || 0
+    const overdueItems = mondaySummary?.overdueItems || 0
+    const blockedItems = mondaySummary?.blockedItems || 0
+    const dueSoonItems = mondaySummary?.dueSoonItems || 0
+    const unassignedItems = mondaySummary?.unassignedItems || 0
+    const activeOwnersCount = mondaySummary?.activeOwnersCount || 0
+    const completionRate = totalItems ? (doneItems / totalItems) * 100 : 0
+    const overdueRate = activeItems ? (overdueItems / activeItems) * 100 : 0
+    const blockedRate = activeItems ? (blockedItems / activeItems) * 100 : 0
+    const assignmentRate = totalItems ? ((totalItems - unassignedItems) / totalItems) * 100 : 0
+    const averageLoadPerOwner = activeOwnersCount ? activeItems / activeOwnersCount : 0
+    const topStatusShare = mondaySummary?.topStatus && totalItems ? (mondaySummary.topStatus.count / totalItems) * 100 : 0
+    const topBoardShare = topBoard && totalItems ? (topBoard.totalItems / totalItems) * 100 : 0
+    const mondayDecisionCards = [
+      {
+        key: 'delivery',
+        eyebrow: 'Saúde da entrega',
+        value: formatPercent(completionRate),
+        title: 'concluído no recorte',
+        tone: 'emerald',
+        details: [
+          `${formatNumber(activeItems)} item(ns) ainda em aberto`,
+          `${formatNumber(doneItems)} já concluído(s)`,
+        ],
+      },
+      {
+        key: 'risk',
+        eyebrow: 'Risco imediato',
+        value: formatNumber(overdueItems),
+        title: 'itens atrasados',
+        tone: overdueItems > 0 ? 'orange' : 'blue',
+        details: [
+          `${formatPercent(overdueRate)} da fila aberta está vencida`,
+          dueSoonItems > 0 ? `${formatNumber(dueSoonItems)} vencem nos próximos 7 dias` : 'Nada vencendo nos próximos 7 dias',
+        ],
+      },
+      {
+        key: 'capacity',
+        eyebrow: 'Capacidade',
+        value: activeOwnersCount ? `${formatDecimal(averageLoadPerOwner)} item/resp.` : 'Sem base',
+        title: activeOwnersCount ? 'carga média por responsável' : 'sem responsáveis ativos',
+        tone: 'cyan',
+        details: [
+          topWorkloadOwner ? `Maior fila com ${topWorkloadOwner.label}` : 'Sem dono com carga destacada',
+          peakWeek?.seconds ? `Pico recente em ${peakWeek.label}: ${formatDurationHours(peakWeek.seconds)}` : 'Sem pico de tempo identificado',
+        ],
+      },
+      {
+        key: 'bottleneck',
+        eyebrow: 'Gargalo atual',
+        value: mondaySummary?.topStatus?.label || 'Sem base',
+        title: mondaySummary?.topStatus ? `${formatPercent(topStatusShare)} da fila concentrada aqui` : 'sem concentração relevante',
+        tone: 'gold',
+        details: [
+          topBoard ? `${topBoard.label} concentra ${formatPercent(topBoardShare)}` : 'Sem board dominante',
+          topGroup ? `Grupo mais carregado: ${topGroup.label}` : 'Sem grupo dominante',
+        ],
+      },
+    ]
+    const mondayFocusCards = [
+      {
+        key: 'owner',
+        title: 'Quem pede ação agora',
+        value: mondaySummary?.topOverdueOwner ? mondaySummary.topOverdueOwner.name : 'Sem atraso crítico',
+        helper: mondaySummary?.topOverdueOwner
+          ? `${formatNumber(mondaySummary.topOverdueOwner.overdueItems)} item(ns) atrasado(s) com esse responsável.`
+          : 'Nenhum responsável com atraso no recorte atual.',
+      },
+      {
+        key: 'coverage',
+        title: 'Cobertura operacional',
+        value: formatPercent(assignmentRate),
+        helper: unassignedItems > 0
+          ? `${formatNumber(unassignedItems)} item(ns) ainda sem dono definido.`
+          : 'Toda a fila do recorte está atribuída.',
+      },
+      {
+        key: 'blocked',
+        title: 'Bloqueio e atenção',
+        value: blockedItems > 0 ? `${formatNumber(blockedItems)} bloqueado(s)` : 'Sem bloqueios',
+        helper: blockedItems > 0
+          ? `${formatPercent(blockedRate)} dos itens abertos dependem de destravamento.`
+          : 'A fila aberta não mostra bloqueios claros neste recorte.',
+      },
+      {
+        key: 'time',
+        title: 'Maior consumo de tempo',
+        value: mondaySummary?.topLongestTask?.name || 'Sem time tracking',
+        helper: mondaySummary?.topLongestTask
+          ? `${formatDurationHours(mondaySummary.topLongestTask.trackedSeconds)} lançadas no item mais pesado.`
+          : 'Assim que houver tempo lançado, o principal consumidor aparece aqui.',
+      },
+    ]
     const mondayPractices = [
       'Ataque bloqueios com SLA curto: item parado ou bloqueado por mais de 24h precisa de dono e próximo passo explícito.',
       'Olhe atraso por responsável, não só total do board: isso evita esconder sobrecarga individual atrás de um volume geral bonito.',
@@ -4634,54 +4725,59 @@ export default function DashboardPage() {
 
           {hasMondayConfigured && !mondayError && (
             <>
-              <div className="operations-hero-card glass-item">
-                <div className="operations-hero-copy">
-                  <span className="operations-hero-kicker">Visão operacional</span>
-                  <h3>Monday com foco em atraso, tempo e capacidade</h3>
-                  <p>O recorte usa o período ativo do dashboard e mostra quem está com mais atraso, quais tarefas estão consumindo mais tempo e como a carga está distribuída por semana.</p>
+              <div className="monday-command-panel glass-item">
+                <div className="monday-command-copy">
+                  <span className="monday-command-kicker">Painel operacional</span>
+                  <h3>Fila, risco e capacidade em uma leitura de gestão</h3>
+                  <p>Modelamos esse topo como dashboards operacionais de referência: primeiro saúde da entrega, depois risco imediato, capacidade do time e onde a fila está se acumulando.</p>
                 </div>
-                <div className="operations-meta-grid">
-                  {mondayOperationalHighlights.map((item) => (
-                    <div key={item.key} className="operations-meta-card">
-                      <p className="operations-meta-label">{item.label}</p>
-                      <p className="operations-meta-value">{item.value}</p>
-                    </div>
-                  ))}
+                <div className="monday-command-grid">
+                  <div className="monday-command-stat">
+                    <span>Período</span>
+                    <strong>{mondayPeriodLabel}</strong>
+                  </div>
+                  <div className="monday-command-stat">
+                    <span>Boards</span>
+                    <strong>{formatNumber(mondaySummary?.boardsConfigured || 0)}</strong>
+                  </div>
+                  <div className="monday-command-stat">
+                    <span>Maior fila</span>
+                    <strong>{mondaySummary?.topStatus ? `${mondaySummary.topStatus.label} (${formatNumber(mondaySummary.topStatus.count)})` : 'Sem base'}</strong>
+                  </div>
+                  <div className="monday-command-filter">
+                    <label htmlFor="monday-owner-filter">Filtrar responsável</label>
+                    <select
+                      id="monday-owner-filter"
+                      className="hero-select"
+                      value={mondayOwnerFilter}
+                      onChange={(event) => setMondayOwnerFilter(event.target.value)}
+                    >
+                      <option value="all">Todos os usuários</option>
+                      {mondayOwnerOptions.map((owner) => (
+                        <option key={owner.id} value={owner.id}>
+                          {owner.label}
+                        </option>
+                      ))}
+                    </select>
+                    <small>{selectedMondayOwnerLabel === 'Todos os usuários' ? 'Visão consolidada da operação inteira.' : `Lendo apenas ${selectedMondayOwnerLabel}.`}</small>
+                  </div>
                 </div>
               </div>
 
-              <div className="operations-filter-grid">
-                <div className="glass-item operations-filter-card">
-                  <p className="operations-filter-label">Período do painel</p>
-                  <p className="operations-filter-value">{mondayPeriodLabel}</p>
-                  <p className="operations-filter-help">Use o seletor de datas do topo para mudar o recorte operacional.</p>
-                </div>
-                <div className="glass-item operations-filter-card">
-                  <label className="operations-filter-label" htmlFor="monday-owner-filter">Filtrar responsável</label>
-                  <select
-                    id="monday-owner-filter"
-                    className="hero-select"
-                    value={mondayOwnerFilter}
-                    onChange={(event) => setMondayOwnerFilter(event.target.value)}
-                  >
-                    <option value="all">Todos os usuários</option>
-                    {mondayOwnerOptions.map((owner) => (
-                      <option key={owner.id} value={owner.id}>
-                        {owner.label}
-                      </option>
-                    ))}
-                  </select>
-                  <p className="operations-filter-help">{selectedMondayOwnerLabel === 'Todos os usuários' ? 'Leitura consolidada de toda a operação.' : `Agora lendo apenas ${selectedMondayOwnerLabel}.`}</p>
-                </div>
-                <div className="glass-item operations-filter-card">
-                  <p className="operations-filter-label">Responsável com mais atraso</p>
-                  <p className="operations-filter-value">{mondaySummary?.topOverdueOwner ? mondaySummary.topOverdueOwner.name : 'Sem atraso no recorte'}</p>
-                  <p className="operations-filter-help">
-                    {mondaySummary?.topOverdueOwner
-                      ? `${formatNumber(mondaySummary.topOverdueOwner.overdueItems)} item(ns) atrasado(s) dentro do período.`
-                      : 'Nenhum responsável com atraso no recorte atual.'}
-                  </p>
-                </div>
+              <div className="monday-decision-grid">
+                {mondayDecisionCards.map((card) => (
+                  <article key={card.key} className="monday-decision-card glass-item">
+                    <div className={`monday-decision-accent ${card.tone}`}></div>
+                    <p className="monday-decision-eyebrow">{card.eyebrow}</p>
+                    <strong className="monday-decision-value">{card.value}</strong>
+                    <p className="monday-decision-title">{card.title}</p>
+                    <div className="monday-decision-details">
+                      {card.details.map((detail) => (
+                        <span key={detail}>{detail}</span>
+                      ))}
+                    </div>
+                  </article>
+                ))}
               </div>
             </>
           )}
@@ -4741,22 +4837,14 @@ export default function DashboardPage() {
                 {renderFixedKpiGrid(mondayKpis)}
               </div>
 
-              <div className="operations-spotlight-grid">
-                <article className="glass-item operations-spotlight-card">
-                  <p className="operations-spotlight-label">Tarefa mais longa</p>
-                  <h3 className="operations-spotlight-value">{mondaySummary?.topLongestTask?.name || 'Sem tempo lançado no período'}</h3>
-                  <p className="operations-spotlight-help">{mondaySummary?.topLongestTask ? formatDurationHours(mondaySummary.topLongestTask.trackedSeconds) : 'Assim que houver time tracking, ela aparece aqui.'}</p>
-                </article>
-                <article className="glass-item operations-spotlight-card">
-                  <p className="operations-spotlight-label">Sem responsável</p>
-                  <h3 className="operations-spotlight-value">{formatNumber(mondaySummary?.unassignedItems || 0)} item(ns)</h3>
-                  <p className="operations-spotlight-help">Itens sem dono definido costumam travar handoff e dificultar SLA.</p>
-                </article>
-                <article className="glass-item operations-spotlight-card">
-                  <p className="operations-spotlight-label">Status com maior fila</p>
-                  <h3 className="operations-spotlight-value">{mondaySummary?.topStatus?.label || 'Sem status no recorte'}</h3>
-                  <p className="operations-spotlight-help">{mondaySummary?.topStatus ? `${formatNumber(mondaySummary.topStatus.count)} item(ns) concentrado(s) nessa etapa.` : 'Sem dados suficientes para leitura.'}</p>
-                </article>
+              <div className="monday-focus-grid">
+                {mondayFocusCards.map((card) => (
+                  <article key={card.key} className="monday-focus-card glass-item">
+                    <p className="monday-focus-title">{card.title}</p>
+                    <strong className="monday-focus-value">{card.value}</strong>
+                    <p className="monday-focus-helper">{card.helper}</p>
+                  </article>
+                ))}
               </div>
 
               <section className="rankings-grid operations-rankings-grid">

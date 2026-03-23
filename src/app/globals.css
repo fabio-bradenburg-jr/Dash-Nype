@@ -743,6 +743,173 @@ body {
     margin-top: 2px !important;
 }
 
+.monday-command-panel {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1.2fr) minmax(340px, 0.8fr) !important;
+    gap: 20px !important;
+    padding: 24px !important;
+    margin-bottom: 18px !important;
+    border-radius: 24px !important;
+    background:
+        linear-gradient(145deg, rgba(59, 130, 246, 0.08), rgba(15, 23, 42, 0.2)),
+        rgba(8, 12, 22, 0.72) !important;
+}
+
+.monday-command-copy {
+    display: grid !important;
+    gap: 10px !important;
+    align-content: start !important;
+}
+
+.monday-command-kicker {
+    color: #93c5fd !important;
+    font-size: 11px !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.08em !important;
+    text-transform: uppercase !important;
+}
+
+.monday-command-copy h3,
+.monday-focus-value {
+    margin: 0 !important;
+}
+
+.monday-command-copy h3 {
+    font-size: 28px !important;
+    line-height: 1.12 !important;
+}
+
+.monday-command-copy p {
+    margin: 0 !important;
+    color: var(--text-secondary) !important;
+    line-height: 1.6 !important;
+    max-width: 760px !important;
+}
+
+.monday-command-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 14px !important;
+}
+
+.monday-command-stat,
+.monday-command-filter,
+.monday-decision-card,
+.monday-focus-card {
+    border: 1px solid rgba(255, 255, 255, 0.06) !important;
+    border-radius: 18px !important;
+    background: rgba(255, 255, 255, 0.035) !important;
+}
+
+.monday-command-stat,
+.monday-command-filter {
+    display: grid !important;
+    gap: 6px !important;
+    padding: 16px !important;
+    align-content: start !important;
+}
+
+.monday-command-stat span,
+.monday-command-filter label {
+    color: var(--text-muted) !important;
+    font-size: 12px !important;
+    letter-spacing: 0.04em !important;
+    text-transform: uppercase !important;
+}
+
+.monday-command-stat strong {
+    font-size: 18px !important;
+    line-height: 1.2 !important;
+}
+
+.monday-command-filter small {
+    color: var(--text-muted) !important;
+    line-height: 1.45 !important;
+}
+
+.monday-decision-grid,
+.monday-focus-grid {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)) !important;
+    gap: 16px !important;
+}
+
+.monday-decision-grid {
+    margin-bottom: 24px !important;
+}
+
+.monday-focus-grid {
+    margin-bottom: 24px !important;
+}
+
+.monday-decision-card,
+.monday-focus-card {
+    position: relative !important;
+    display: grid !important;
+    gap: 8px !important;
+    padding: 18px !important;
+    min-width: 0 !important;
+}
+
+.monday-decision-accent {
+    width: 42px !important;
+    height: 4px !important;
+    border-radius: 999px !important;
+    margin-bottom: 4px !important;
+}
+
+.monday-decision-accent.emerald {
+    background: linear-gradient(90deg, #10b981, #34d399) !important;
+}
+
+.monday-decision-accent.orange {
+    background: linear-gradient(90deg, #f59e0b, #fb923c) !important;
+}
+
+.monday-decision-accent.cyan {
+    background: linear-gradient(90deg, #06b6d4, #38bdf8) !important;
+}
+
+.monday-decision-accent.gold {
+    background: linear-gradient(90deg, #fbbf24, #f59e0b) !important;
+}
+
+.monday-decision-eyebrow,
+.monday-focus-title {
+    margin: 0 !important;
+    color: var(--text-muted) !important;
+    font-size: 12px !important;
+    letter-spacing: 0.04em !important;
+    text-transform: uppercase !important;
+}
+
+.monday-decision-value,
+.monday-focus-value {
+    font-size: 26px !important;
+    line-height: 1.08 !important;
+    overflow-wrap: anywhere !important;
+}
+
+.monday-decision-title,
+.monday-focus-helper {
+    margin: 0 !important;
+    color: var(--text-secondary) !important;
+    line-height: 1.5 !important;
+}
+
+.monday-decision-details {
+    display: grid !important;
+    gap: 6px !important;
+    margin-top: 4px !important;
+}
+
+.monday-decision-details span {
+    display: block !important;
+    color: var(--text-muted) !important;
+    font-size: 12px !important;
+    line-height: 1.45 !important;
+}
+
 .rankings-grid {
     display: grid !important;
     grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
@@ -938,6 +1105,10 @@ body {
         grid-template-columns: 1fr !important;
     }
 
+    .monday-command-panel {
+        grid-template-columns: 1fr !important;
+    }
+
     .source-section-copy {
         max-width: none !important;
         text-align: left !important;
@@ -969,7 +1140,10 @@ body {
 
     .operations-meta-grid,
     .operations-filter-grid,
-    .operations-spotlight-grid {
+    .operations-spotlight-grid,
+    .monday-command-grid,
+    .monday-decision-grid,
+    .monday-focus-grid {
         grid-template-columns: 1fr !important;
     }
 
