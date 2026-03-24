@@ -416,6 +416,7 @@ export async function readMondaySummary({ token, boardIds, since, until, owner }
   const ownerOptions = new Map()
   const overdueTasks = []
   const longestTasks = []
+  const taskCatalog = []
   const weeklyBuckets = buildWeeklyBuckets(windowStart, windowEnd)
   const weeksWithTimeIds = new Set()
 
@@ -466,6 +467,29 @@ export async function readMondaySummary({ token, boardIds, since, until, owner }
       return
     }
 
+    const isOverdue = !done && Boolean(dueDate && dueDate < overdueReferenceDate)
+    const isDueSoon = !done && Boolean(dueDate && dueDate >= overdueReferenceDate && dueDate <= nextWeek)
+    const isUnassigned = ownerNames.length === 0
+    const groupLabel = String(item?.group?.title || 'Sem grupo')
+
+    taskCatalog.push({
+      id: item.id,
+      name: item.name,
+      boardName: item.__boardName,
+      groupLabel,
+      statusLabel,
+      owners: ownerNames,
+      dueDate: dueDate?.toISOString() || '',
+      updatedAt: updatedAt?.toISOString() || '',
+      trackedSeconds: trackedSecondsInRange,
+      daysOverdue: isOverdue ? Math.max(1, Math.round((overdueReferenceDate.getTime() - dueDate.getTime()) / 86400000)) : 0,
+      isDone: done,
+      isBlocked: blocked,
+      isOverdue,
+      isDueSoon,
+      isUnassigned,
+    })
+
     statusCounts.set(statusLabel, (statusCounts.get(statusLabel) || 0) + 1)
 
     const currentBoardSummary = boardCounts.get(item.__boardName) || {
@@ -477,7 +501,6 @@ export async function readMondaySummary({ token, boardIds, since, until, owner }
     }
     currentBoardSummary.totalItems += 1
 
-    const groupLabel = String(item?.group?.title || 'Sem grupo')
     const currentGroupSummary = groupCounts.get(groupLabel) || {
       label: groupLabel,
       totalItems: 0,
@@ -500,7 +523,7 @@ export async function readMondaySummary({ token, boardIds, since, until, owner }
       currentGroupSummary.blockedCount += 1
     }
 
-    if (!ownerNames.length) {
+    if (isUnassigned) {
       unassignedItems += 1
     } else {
       ownerNames.forEach((name) => {
@@ -517,7 +540,7 @@ export async function readMondaySummary({ token, boardIds, since, until, owner }
         current.totalItems += 1
         if (done) current.doneItems += 1
         else current.openItems += 1
-        if (!done && dueDate && dueDate < overdueReferenceDate) {
+        if (isOverdue) {
           current.overdueItems += 1
           current.overdueTasks.push({
             id: item.id,
@@ -533,7 +556,7 @@ export async function readMondaySummary({ token, boardIds, since, until, owner }
     }
 
     if (!done && dueDate) {
-      if (dueDate < overdueReferenceDate) {
+      if (isOverdue) {
         overdueItems += 1
         currentBoardSummary.overdueCount += 1
         currentGroupSummary.overdueCount += 1
@@ -549,7 +572,7 @@ export async function readMondaySummary({ token, boardIds, since, until, owner }
           daysOverdue: Math.max(1, Math.round((overdueReferenceDate.getTime() - dueDate.getTime()) / 86400000)),
         })
       }
-      if (dueDate >= overdueReferenceDate && dueDate <= nextWeek) dueSoonItems += 1
+      if (isDueSoon) dueSoonItems += 1
     }
 
     if (trackedSecondsInRange > 0) {
@@ -683,5 +706,12 @@ export async function readMondaySummary({ token, boardIds, since, until, owner }
       seconds: bucket.seconds,
       tasksWithTime: bucket.tasksWithTime,
     })),
+    taskCatalog: taskCatalog
+      .sort((left, right) => {
+        if (left.isOverdue !== right.isOverdue) return Number(right.isOverdue) - Number(left.isOverdue)
+        if (left.isBlocked !== right.isBlocked) return Number(right.isBlocked) - Number(left.isBlocked)
+        if ((right.trackedSeconds || 0) !== (left.trackedSeconds || 0)) return (right.trackedSeconds || 0) - (left.trackedSeconds || 0)
+        return left.name.localeCompare(right.name, 'pt-BR')
+      }),
   }
 }

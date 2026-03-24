@@ -15,6 +15,7 @@ import {
 } from '@/lib/dashboard-storage'
 import {
   ArcElement,
+  BarElement,
   CategoryScale,
   Chart as ChartJS,
   Filler,
@@ -25,7 +26,7 @@ import {
   Title,
   Tooltip,
 } from 'chart.js'
-import { Doughnut, Line } from 'react-chartjs-2'
+import { Bar, Doughnut, Line } from 'react-chartjs-2'
 import html2canvas from 'html2canvas'
 import { jsPDF } from 'jspdf'
 import {
@@ -41,6 +42,7 @@ ChartJS.register(
   LinearScale,
   PointElement,
   LineElement,
+  BarElement,
   Title,
   Tooltip,
   Legend,
@@ -786,6 +788,16 @@ function formatShortDate(value) {
   return date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })
 }
 
+function sortMondayTasksForDrilldown(items) {
+  return [...(items || [])].sort((left, right) => {
+    if (left.isOverdue !== right.isOverdue) return Number(right.isOverdue) - Number(left.isOverdue)
+    if (left.isBlocked !== right.isBlocked) return Number(right.isBlocked) - Number(left.isBlocked)
+    if ((right.trackedSeconds || 0) !== (left.trackedSeconds || 0)) return (right.trackedSeconds || 0) - (left.trackedSeconds || 0)
+    if ((left.daysOverdue || 0) !== (right.daysOverdue || 0)) return (right.daysOverdue || 0) - (left.daysOverdue || 0)
+    return String(left.name || '').localeCompare(String(right.name || ''), 'pt-BR')
+  })
+}
+
 function getDatePresetLabel(datePreset, since, until) {
   if (datePreset === 'custom' && since && until) {
     return `${formatShortDate(since)} - ${formatShortDate(until)}`
@@ -1185,6 +1197,7 @@ export default function DashboardPage() {
   const [mondaySummary, setMondaySummary] = useState(null)
   const [mondayError, setMondayError] = useState('')
   const [mondayOwnerFilter, setMondayOwnerFilter] = useState('all')
+  const [mondayMetricDrilldown, setMondayMetricDrilldown] = useState(null)
   const [rdPipelines, setRdPipelines] = useState([])
   const [rdPipelineStages, setRdPipelineStages] = useState([])
   const [isLoading, setIsLoading] = useState(true)
@@ -1249,6 +1262,11 @@ export default function DashboardPage() {
   const canEditIntegrations = Boolean(access?.canEditIntegrations)
   const canViewDashboard = access?.canViewDashboard !== false
   const isMaster = role === 'master'
+
+  useEffect(() => {
+    setMondayMetricDrilldown(null)
+  }, [mondaySummary, mondayOwnerFilter, dateRange, customSince, customUntil])
+
   const activeClient = useMemo(
     () => clients.find((client) => client.id === activeClientId) || null,
     [clients, activeClientId]
@@ -4240,9 +4258,9 @@ export default function DashboardPage() {
     { key: 'totalItems', title: 'Itens no recorte', value: formatNumber(mondaySummary?.totalItems || 0), icon: 'bx-columns', tone: 'gold' },
     { key: 'activeItems', title: 'Em andamento', value: formatNumber(mondaySummary?.activeItems || 0), icon: 'bx-loader-circle', tone: 'blue' },
     { key: 'overdueItems', title: 'Atrasados', value: formatNumber(mondaySummary?.overdueItems || 0), icon: 'bx-time-five', tone: 'orange' },
-    { key: 'trackedSecondsTotal', title: 'Tempo lançado', value: formatDurationHours(mondaySummary?.trackedSecondsTotal || 0), icon: 'bx-timer', tone: 'purple' },
-    { key: 'averageWeeklySeconds', title: 'Média semanal', value: formatDurationHours(mondaySummary?.averageWeeklySeconds || 0), icon: 'bx-line-chart', tone: 'emerald' },
-    { key: 'activeOwnersCount', title: 'Responsáveis ativos', value: formatNumber(mondaySummary?.activeOwnersCount || 0), icon: 'bx-user', tone: 'cyan' },
+    { key: 'blockedItems', title: 'Bloqueados', value: formatNumber(mondaySummary?.blockedItems || 0), icon: 'bx-block', tone: 'pink' },
+    { key: 'dueSoonItems', title: 'Vencem em 7 dias', value: formatNumber(mondaySummary?.dueSoonItems || 0), icon: 'bx-alarm-exclamation', tone: 'purple' },
+    { key: 'unassignedItems', title: 'Sem responsável', value: formatNumber(mondaySummary?.unassignedItems || 0), icon: 'bx-user-x', tone: 'cyan' },
   ]
   const metaMediaKpis = [
     { key: 'spend', title: 'Investimento', value: formatCurrency(spend), rawValue: spend, type: 'currency', icon: 'bx-wallet-alt', tone: 'blue' },
@@ -4413,6 +4431,43 @@ export default function DashboardPage() {
           </div>
         </article>
       ))}
+    </div>
+  )
+
+  const renderMondayInteractiveKpiGrid = (items) => (
+    <div className="kpi-grid compact-kpi-grid">
+      {items.map((metric) => {
+        const hasTasks = (metric.tasks?.length || 0) > 0
+
+        return (
+          <button
+            key={metric.key}
+            type="button"
+            className={`kpi-card glass-panel interactive-kpi-card ${hasTasks ? 'interactive-kpi-card-active' : 'interactive-kpi-card-disabled'}`}
+            onClick={() => {
+              if (!hasTasks) return
+              setMondayMetricDrilldown({
+                title: metric.drilldownTitle,
+                description: metric.drilldownDescription,
+                items: sortMondayTasksForDrilldown(metric.tasks),
+              })
+            }}
+            disabled={!hasTasks}
+          >
+            <div className="kpi-header">
+              <span className="kpi-title">{metric.title}</span>
+              <div className={`icon-box ${metric.tone}`}>
+                <i className={`bx ${metric.icon}`}></i>
+              </div>
+            </div>
+            <div className="kpi-value">{metric.value}</div>
+            <div className={`kpi-trend ${hasTasks ? 'info' : 'neutral'}`}>
+              <i className={`bx ${hasTasks ? 'bx-search-alt-2' : 'bx-minus-circle'}`}></i>
+              <span>{hasTasks ? `Clique para ver ${formatNumber(metric.tasks.length)} demanda(s)` : 'Sem demandas nesse recorte'}</span>
+            </div>
+          </button>
+        )
+      })}
     </div>
   )
 
@@ -4608,6 +4663,188 @@ export default function DashboardPage() {
     const averageLoadPerOwner = activeOwnersCount ? activeItems / activeOwnersCount : 0
     const topStatusShare = mondaySummary?.topStatus && totalItems ? (mondaySummary.topStatus.count / totalItems) * 100 : 0
     const topBoardShare = topBoard && totalItems ? (topBoard.totalItems / totalItems) * 100 : 0
+    const mondayTaskCatalog = mondaySummary?.taskCatalog || []
+    const mondayStatusChartItems = (mondaySummary?.statusSummary?.counts || []).slice(0, 7)
+    const mondayWeeklyChartItems = weeklyTrackedTime
+    const mondayInteractiveKpis = [
+      {
+        ...mondayKpis[0],
+        tasks: mondayTaskCatalog,
+        drilldownTitle: 'Itens do recorte',
+        drilldownDescription: 'Todas as demandas que entraram na leitura operacional atual.',
+      },
+      {
+        ...mondayKpis[1],
+        tasks: mondayTaskCatalog.filter((task) => !task.isDone),
+        drilldownTitle: 'Demandas em andamento',
+        drilldownDescription: 'Itens ainda abertos dentro do snapshot operacional.',
+      },
+      {
+        ...mondayKpis[2],
+        tasks: mondayTaskCatalog.filter((task) => task.isOverdue),
+        drilldownTitle: 'Demandas atrasadas',
+        drilldownDescription: 'Itens vencidos que pedem cobrança e priorização.',
+      },
+      {
+        ...mondayKpis[3],
+        tasks: mondayTaskCatalog.filter((task) => task.isBlocked && !task.isDone),
+        drilldownTitle: 'Demandas bloqueadas',
+        drilldownDescription: 'Itens travados que estão impedindo avanço da operação.',
+      },
+      {
+        ...mondayKpis[4],
+        tasks: mondayTaskCatalog.filter((task) => task.isDueSoon),
+        drilldownTitle: 'Demandas que vencem em 7 dias',
+        drilldownDescription: 'Itens prestes a vencer e que merecem prevenção antes de virar atraso.',
+      },
+      {
+        ...mondayKpis[5],
+        tasks: mondayTaskCatalog.filter((task) => task.isUnassigned),
+        drilldownTitle: 'Demandas sem responsável',
+        drilldownDescription: 'Itens sem dono definido, com risco de handoff travado e perda de SLA.',
+      },
+    ]
+    const mondayStatusBarData = {
+      labels: mondayStatusChartItems.length ? mondayStatusChartItems.map((item) => item.label) : ['Sem dados'],
+      datasets: [
+        {
+          label: 'Demandas por status',
+          data: mondayStatusChartItems.length ? mondayStatusChartItems.map((item) => item.count || 0) : [0],
+          backgroundColor: 'rgba(245, 158, 11, 0.72)',
+          borderColor: '#f59e0b',
+          borderWidth: 1,
+          borderRadius: 10,
+          maxBarThickness: 44,
+        },
+      ],
+    }
+    const mondayStatusBarOptions = {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: 'rgba(17, 24, 39, 0.94)',
+          titleColor: '#f8fafc',
+          bodyColor: '#cbd5e1',
+          borderColor: 'rgba(255,255,255,0.08)',
+          borderWidth: 1,
+          padding: 12,
+          callbacks: {
+            label(context) {
+              return `${formatNumber(context.parsed.y || 0)} demanda(s)`
+            },
+          },
+        },
+      },
+      scales: {
+        x: {
+          grid: { display: false },
+          ticks: { color: '#94a3b8' },
+        },
+        y: {
+          beginAtZero: true,
+          grid: { color: 'rgba(255,255,255,0.05)' },
+          ticks: {
+            color: '#94a3b8',
+            precision: 0,
+            callback(value) {
+              return formatNumber(value)
+            },
+          },
+        },
+      },
+    }
+    const mondayWeeklyLineData = {
+      labels: mondayWeeklyChartItems.length ? mondayWeeklyChartItems.map((item) => item.label) : ['Sem dados'],
+      datasets: [
+        {
+          label: 'Tempo lançado',
+          data: mondayWeeklyChartItems.length ? mondayWeeklyChartItems.map((item) => item.seconds || 0) : [0],
+          borderColor: currentTheme.main,
+          backgroundColor: currentTheme.glow,
+          borderWidth: 3,
+          pointBackgroundColor: '#0b0f19',
+          pointBorderColor: currentTheme.main,
+          pointBorderWidth: 2,
+          pointRadius: 4,
+          pointHoverRadius: 6,
+          fill: true,
+          tension: 0.35,
+          yAxisID: 'y',
+        },
+        {
+          label: 'Demandas com tempo',
+          data: mondayWeeklyChartItems.length ? mondayWeeklyChartItems.map((item) => item.tasksWithTime || 0) : [0],
+          borderColor: '#10b981',
+          backgroundColor: 'transparent',
+          borderWidth: 3,
+          borderDash: [7, 5],
+          pointBackgroundColor: '#0b0f19',
+          pointBorderColor: '#10b981',
+          pointBorderWidth: 2,
+          pointRadius: 4,
+          pointHoverRadius: 6,
+          tension: 0.35,
+          yAxisID: 'y1',
+        },
+      ],
+    }
+    const mondayWeeklyLineOptions = {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: 'rgba(17, 24, 39, 0.94)',
+          titleColor: '#f8fafc',
+          bodyColor: '#cbd5e1',
+          borderColor: 'rgba(255,255,255,0.08)',
+          borderWidth: 1,
+          padding: 12,
+          callbacks: {
+            label(context) {
+              if (context.dataset.yAxisID === 'y1') {
+                return `${context.dataset.label}: ${formatNumber(context.parsed.y || 0)}`
+              }
+              return `${context.dataset.label}: ${formatDurationHours(context.parsed.y || 0)}`
+            },
+          },
+        },
+      },
+      scales: {
+        x: {
+          grid: { display: false },
+          ticks: { color: '#94a3b8' },
+        },
+        y: {
+          type: 'linear',
+          display: true,
+          position: 'left',
+          grid: { color: 'rgba(255,255,255,0.05)' },
+          ticks: {
+            color: '#94a3b8',
+            callback(value) {
+              return formatDurationHours(value)
+            },
+          },
+        },
+        y1: {
+          type: 'linear',
+          display: true,
+          position: 'right',
+          grid: { display: false },
+          ticks: {
+            color: '#94a3b8',
+            precision: 0,
+            callback(value) {
+              return formatNumber(value)
+            },
+          },
+        },
+      },
+    }
     const mondayDecisionCards = [
       {
         key: 'delivery',
@@ -4834,7 +5071,7 @@ export default function DashboardPage() {
           ) : hasMondayConfigured ? (
             <>
               <div className="operations-kpi-shell">
-                {renderFixedKpiGrid(mondayKpis)}
+                {renderMondayInteractiveKpiGrid(mondayInteractiveKpis)}
               </div>
 
               <div className="monday-focus-grid">
@@ -4846,6 +5083,55 @@ export default function DashboardPage() {
                   </article>
                 ))}
               </div>
+
+              <section className="charts-section monday-charts-section">
+                <div className="chart-container glass-panel main-chart">
+                  <div className="chart-header chart-header-stack">
+                    <div>
+                      <h2>Comparativo por status</h2>
+                      <p className="chart-subtitle">Clique em uma barra para abrir as demandas daquele status e entender o gargalo real.</p>
+                    </div>
+                  </div>
+                  {mondayStatusChartItems.length ? (
+                    <div className="canvas-wrapper">
+                      <Bar
+                        data={mondayStatusBarData}
+                        options={mondayStatusBarOptions}
+                        onClick={(_, elements) => {
+                          if (!elements.length) return
+                          const clickedStatus = mondayStatusChartItems[elements[0].index]
+                          if (!clickedStatus) return
+
+                          const filteredTasks = mondayTaskCatalog.filter((task) => task.statusLabel === clickedStatus.label)
+                          setMondayMetricDrilldown({
+                            title: `Demandas em ${clickedStatus.label}`,
+                            description: `${formatNumber(clickedStatus.count || 0)} demanda(s) concentradas nesse status.`,
+                            items: sortMondayTasksForDrilldown(filteredTasks),
+                          })
+                        }}
+                      />
+                    </div>
+                  ) : (
+                    <div className="ranking-empty">Sem status suficientes para montar o gráfico comparativo.</div>
+                  )}
+                </div>
+
+                <div className="chart-container glass-panel secondary-chart">
+                  <div className="chart-header chart-header-stack">
+                    <div>
+                      <h2>Comparativo semanal</h2>
+                      <p className="chart-subtitle">Linha de tempo para comparar horas lançadas e volume de demandas com apontamento.</p>
+                    </div>
+                  </div>
+                  {mondayWeeklyChartItems.length ? (
+                    <div className="canvas-wrapper">
+                      <Line data={mondayWeeklyLineData} options={mondayWeeklyLineOptions} />
+                    </div>
+                  ) : (
+                    <div className="ranking-empty">Sem histórico suficiente para montar a linha comparativa.</div>
+                  )}
+                </div>
+              </section>
 
               <section className="rankings-grid operations-rankings-grid">
                 <div className="glass-panel ranking-card">
@@ -5092,6 +5378,53 @@ export default function DashboardPage() {
             </div>
           )}
         </section>
+
+        {mondayMetricDrilldown && (
+          <div className="modal-overlay" onClick={() => setMondayMetricDrilldown(null)}>
+            <div className="modal-card modal-card-wide glass-panel monday-drilldown-modal" onClick={(event) => event.stopPropagation()}>
+              <div className="modal-header">
+                <div>
+                  <h3>{mondayMetricDrilldown.title}</h3>
+                  <p>{mondayMetricDrilldown.description}</p>
+                </div>
+                <button type="button" className="modal-close" onClick={() => setMondayMetricDrilldown(null)} aria-label="Fechar detalhamento do Monday">
+                  <i className="bx bx-x"></i>
+                </button>
+              </div>
+
+              {mondayMetricDrilldown.items?.length ? (
+                <div className="table-container">
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        <th>Demanda</th>
+                        <th>Responsável</th>
+                        <th>Status</th>
+                        <th>Board</th>
+                        <th>Prazo</th>
+                        <th>Tempo</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {mondayMetricDrilldown.items.map((task) => (
+                        <tr key={task.id}>
+                          <td className="campaign-name">{task.name}</td>
+                          <td>{task.owners?.length ? task.owners.join(', ') : 'Sem responsável'}</td>
+                          <td>{task.statusLabel || 'Sem status'}</td>
+                          <td>{task.boardName || '-'}</td>
+                          <td>{task.dueDate ? formatShortDate(task.dueDate) : '-'}</td>
+                          <td>{formatDurationHours(task.trackedSeconds || 0)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="ranking-empty">Nenhuma demanda encontrada para esse recorte.</div>
+              )}
+            </div>
+          </div>
+        )}
       </section>
     )
   }
