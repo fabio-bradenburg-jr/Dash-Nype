@@ -2595,12 +2595,42 @@ export default function DashboardPage() {
   const isMetaRateLimitMessage = (message = '') =>
     /rate limit|request limit|too many calls|too many requests/i.test(message)
 
+  const persistWorkspaceState = async () => {
+    const state = {
+      themeColor,
+      metric1,
+      metric2,
+      activeClientId,
+      globalIntegrations,
+      clients,
+      clientGroups,
+    }
+
+    const response = await fetch('/api/dashboard/state', {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(state),
+    })
+    const data = await response.json().catch(() => null)
+
+    if (!response.ok) {
+      throw new Error(data?.error || 'Não foi possível salvar os grupos e dashboards no Supabase antes de liberar o usuário.')
+    }
+
+    return data
+  }
+
   const handleCreateUser = async (event) => {
     event.preventDefault()
 
     try {
       setCreateUserError('')
       setSavingUser(true)
+      if ((userForm.clientGroupIds || []).length > 0) {
+        await persistWorkspaceState()
+      }
       const response = await fetch('/api/users', {
         method: 'POST',
         headers: {
@@ -2634,6 +2664,9 @@ export default function DashboardPage() {
   const handleUpdateUser = async (managedUser) => {
     try {
       setEditUserError('')
+      if ((managedUser.clientGroupAccess || []).length > 0) {
+        await persistWorkspaceState()
+      }
       const response = await fetch(`/api/users/${managedUser.id}`, {
         method: 'PATCH',
         headers: {
