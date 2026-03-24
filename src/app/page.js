@@ -5381,7 +5381,7 @@ export default function DashboardPage() {
 
         {mondayMetricDrilldown && (
           <div className="modal-overlay" onClick={() => setMondayMetricDrilldown(null)}>
-            <div className="modal-card modal-card-wide glass-panel monday-drilldown-modal" onClick={(event) => event.stopPropagation()}>
+            <div className="modal-card modal-card-wide glass-panel monday-drilldown-screen" onClick={(event) => event.stopPropagation()}>
               <div className="modal-header">
                 <div>
                   <h3>{mondayMetricDrilldown.title}</h3>
@@ -5393,31 +5393,68 @@ export default function DashboardPage() {
               </div>
 
               {mondayMetricDrilldown.items?.length ? (
-                <div className="table-container">
-                  <table className="data-table">
-                    <thead>
-                      <tr>
-                        <th>Demanda</th>
-                        <th>Responsável</th>
-                        <th>Status</th>
-                        <th>Board</th>
-                        <th>Prazo</th>
-                        <th>Tempo</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {mondayMetricDrilldown.items.map((task) => (
-                        <tr key={task.id}>
-                          <td className="campaign-name">{task.name}</td>
-                          <td>{task.owners?.length ? task.owners.join(', ') : 'Sem responsável'}</td>
-                          <td>{task.statusLabel || 'Sem status'}</td>
-                          <td>{task.boardName || '-'}</td>
-                          <td>{task.dueDate ? formatShortDate(task.dueDate) : '-'}</td>
-                          <td>{formatDurationHours(task.trackedSeconds || 0)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                <div className="monday-drilldown-body">
+                  <div className="monday-drilldown-summary">
+                    <div className="monday-drilldown-stat glass-item">
+                      <span>Demandas</span>
+                      <strong>{formatNumber(mondayMetricDrilldown.items.length)}</strong>
+                    </div>
+                    <div className="monday-drilldown-stat glass-item">
+                      <span>Atrasadas</span>
+                      <strong>{formatNumber(mondayMetricDrilldown.items.filter((task) => task.isOverdue).length)}</strong>
+                    </div>
+                    <div className="monday-drilldown-stat glass-item">
+                      <span>Bloqueadas</span>
+                      <strong>{formatNumber(mondayMetricDrilldown.items.filter((task) => task.isBlocked).length)}</strong>
+                    </div>
+                    <div className="monday-drilldown-stat glass-item">
+                      <span>Sem responsável</span>
+                      <strong>{formatNumber(mondayMetricDrilldown.items.filter((task) => task.isUnassigned).length)}</strong>
+                    </div>
+                  </div>
+
+                  <div className="monday-task-grid">
+                    {mondayMetricDrilldown.items.map((task) => (
+                      <article key={task.id} className="monday-task-card glass-item">
+                        <div className="monday-task-head">
+                          <div>
+                            <h4>{task.name}</h4>
+                            <p>{task.boardName || '-'}{task.groupLabel ? ` · ${task.groupLabel}` : ''}</p>
+                          </div>
+                          <div className="monday-task-flags">
+                            {task.isOverdue && <span className="monday-task-chip danger">Atrasada</span>}
+                            {task.isBlocked && <span className="monday-task-chip warning">Bloqueada</span>}
+                            {task.isDueSoon && <span className="monday-task-chip info">Vence logo</span>}
+                            {task.isUnassigned && <span className="monday-task-chip neutral">Sem dono</span>}
+                          </div>
+                        </div>
+
+                        <div className="monday-task-meta">
+                          <div className="monday-task-meta-item">
+                            <span>Status</span>
+                            <strong>{task.statusLabel || 'Sem status'}</strong>
+                          </div>
+                          <div className="monday-task-meta-item">
+                            <span>Responsável</span>
+                            <strong>{task.owners?.length ? task.owners.join(', ') : 'Sem responsável'}</strong>
+                          </div>
+                          <div className="monday-task-meta-item">
+                            <span>Prazo</span>
+                            <strong>{task.dueDate ? formatShortDate(task.dueDate) : '-'}</strong>
+                          </div>
+                          <div className="monday-task-meta-item">
+                            <span>Tempo</span>
+                            <strong>{formatDurationHours(task.trackedSeconds || 0)}</strong>
+                          </div>
+                        </div>
+
+                        <div className="monday-task-footer">
+                          <span>{task.updatedAt ? `Atualizada em ${formatShortDate(task.updatedAt)}` : 'Sem atualização recente'}</span>
+                          {task.daysOverdue ? <strong>{formatNumber(task.daysOverdue)} dia(s) de atraso</strong> : <strong>Dentro do prazo</strong>}
+                        </div>
+                      </article>
+                    ))}
+                  </div>
                 </div>
               ) : (
                 <div className="ranking-empty">Nenhuma demanda encontrada para esse recorte.</div>

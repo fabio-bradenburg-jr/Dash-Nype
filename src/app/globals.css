@@ -440,6 +440,159 @@ body {
     grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.monday-drilldown-screen {
+    width: min(1400px, calc(100vw - 48px)) !important;
+    max-width: none !important;
+    max-height: calc(100vh - 48px) !important;
+    display: flex !important;
+    flex-direction: column !important;
+}
+
+.monday-drilldown-body {
+    display: grid !important;
+    gap: 18px !important;
+    overflow: auto !important;
+    padding-right: 4px !important;
+}
+
+.monday-drilldown-summary {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)) !important;
+    gap: 14px !important;
+}
+
+.monday-drilldown-stat {
+    display: grid !important;
+    gap: 6px !important;
+    padding: 16px !important;
+}
+
+.monday-drilldown-stat span {
+    color: var(--text-muted) !important;
+    font-size: 12px !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.04em !important;
+}
+
+.monday-drilldown-stat strong {
+    font-size: 24px !important;
+    line-height: 1.1 !important;
+}
+
+.monday-task-grid {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)) !important;
+    gap: 16px !important;
+}
+
+.monday-task-card {
+    display: grid !important;
+    gap: 16px !important;
+    padding: 18px !important;
+    border-radius: 18px !important;
+}
+
+.monday-task-head {
+    display: flex !important;
+    justify-content: space-between !important;
+    gap: 12px !important;
+    align-items: flex-start !important;
+    flex-wrap: wrap !important;
+}
+
+.monday-task-head h4,
+.monday-task-head p,
+.monday-task-footer span,
+.monday-task-footer strong {
+    margin: 0 !important;
+}
+
+.monday-task-head h4 {
+    font-size: 18px !important;
+    line-height: 1.25 !important;
+}
+
+.monday-task-head p {
+    color: var(--text-muted) !important;
+    line-height: 1.5 !important;
+    margin-top: 4px !important;
+}
+
+.monday-task-flags {
+    display: flex !important;
+    gap: 8px !important;
+    flex-wrap: wrap !important;
+    justify-content: flex-end !important;
+}
+
+.monday-task-chip {
+    display: inline-flex !important;
+    align-items: center !important;
+    min-height: 28px !important;
+    padding: 0 10px !important;
+    border-radius: 999px !important;
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+.monday-task-chip.danger {
+    background: rgba(239, 68, 68, 0.12) !important;
+    color: #fca5a5 !important;
+}
+
+.monday-task-chip.warning {
+    background: rgba(245, 158, 11, 0.12) !important;
+    color: #fcd34d !important;
+}
+
+.monday-task-chip.info {
+    background: rgba(59, 130, 246, 0.12) !important;
+    color: #93c5fd !important;
+}
+
+.monday-task-chip.neutral {
+    background: rgba(148, 163, 184, 0.12) !important;
+    color: #cbd5e1 !important;
+}
+
+.monday-task-meta {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 12px !important;
+}
+
+.monday-task-meta-item {
+    display: grid !important;
+    gap: 4px !important;
+    padding: 12px 14px !important;
+    border-radius: 14px !important;
+    background: rgba(255, 255, 255, 0.03) !important;
+    border: 1px solid rgba(255, 255, 255, 0.05) !important;
+}
+
+.monday-task-meta-item span {
+    color: var(--text-muted) !important;
+    font-size: 11px !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.04em !important;
+}
+
+.monday-task-meta-item strong {
+    line-height: 1.35 !important;
+    overflow-wrap: anywhere !important;
+}
+
+.monday-task-footer {
+    display: flex !important;
+    justify-content: space-between !important;
+    gap: 12px !important;
+    align-items: center !important;
+    flex-wrap: wrap !important;
+    color: var(--text-muted) !important;
+    font-size: 13px !important;
+}
+
 .chart-header {
     display: flex;
     justify-content: space-between;
@@ -1166,7 +1319,10 @@ body {
     .operations-spotlight-grid,
     .monday-command-grid,
     .monday-decision-grid,
-    .monday-focus-grid {
+    .monday-focus-grid,
+    .monday-drilldown-summary,
+    .monday-task-grid,
+    .monday-task-meta {
         grid-template-columns: 1fr !important;
     }
 
