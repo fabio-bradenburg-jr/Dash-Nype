@@ -1366,7 +1366,7 @@ export default function DashboardPage() {
     String(globalIntegrations.mondayToken || '').trim() && String(globalIntegrations.mondayBoardIds || '').trim()
   )
   const hasAnyPresentationData =
-    hasMetaConfigured || hasRdConfigured || hasSheetsConfigured || hasClickUpConfigured || hasMondayConfigured
+    hasMetaConfigured || hasRdConfigured || hasSheetsConfigured
   const rdPipelineOptions = useMemo(
     () => (rdPipelines.length ? rdPipelines : rdSummary?.availablePipelines || []),
     [rdPipelines, rdSummary]
@@ -3018,8 +3018,6 @@ export default function DashboardPage() {
       && !hasMetaConfigured
       && !hasRdConfigured
       && !hasSheetsConfigured
-      && !hasClickUpConfigured
-      && !hasMondayConfigured
     ) {
       lastDashboardFetchKeyRef.current = ''
       lastGoogleSheetsFetchKeyRef.current = ''
@@ -3055,8 +3053,6 @@ export default function DashboardPage() {
         hasMetaConfigured,
         hasRdConfigured,
         hasSheetsConfigured,
-        hasClickUpConfigured,
-        hasMondayConfigured,
         rdPipelineFilter,
         rdSellerFilter,
         rdLeadSourceFiltersKey,
@@ -3073,10 +3069,6 @@ export default function DashboardPage() {
         googleSheetsUrl: activeClient?.googleSheetsUrl || '',
         googleSheetsHeaderRow: Number(activeClient?.googleSheetsHeaderRow || 1),
         googleSheetsStatusColumn: activeClient?.googleSheetsStatusColumn || '',
-        clickUpToken: globalIntegrations.clickUpToken || '',
-        clickUpListIds: globalIntegrations.clickUpListIds || '',
-        mondayToken: globalIntegrations.mondayToken || '',
-        mondayBoardIds: globalIntegrations.mondayBoardIds || '',
         mondayOwnerFilter,
       })
 
@@ -3301,7 +3293,7 @@ export default function DashboardPage() {
           setGoogleSheetsError('')
         }
 
-        if ((shouldFetchPresentationData || shouldFetchClickUpData) && hasClickUpConfigured) {
+        if (shouldFetchClickUpData && hasClickUpConfigured) {
           try {
             const clickUpParams = new URLSearchParams({
               list_ids: String(globalIntegrations.clickUpListIds || '').trim(),
@@ -3334,7 +3326,7 @@ export default function DashboardPage() {
           setClickUpError('')
         }
 
-        if ((shouldFetchPresentationData || shouldFetchMondayData) && hasMondayConfigured) {
+        if (shouldFetchMondayData && hasMondayConfigured) {
           try {
             const mondayParams = new URLSearchParams({
               board_ids: String(globalIntegrations.mondayBoardIds || '').trim(),
@@ -6546,18 +6538,6 @@ export default function DashboardPage() {
                         <strong>{googleSheetsSummary?.totalRows ? `${googleSheetsSummary.totalRows} linha(s) lida(s)` : 'Planilha conectada'}</strong>
                       </div>
                     )}
-                    {hasClickUpConfigured && (
-                      <div className="hero-stat">
-                        <span>ClickUp</span>
-                        <strong>{clickUpSummary?.totalTasks ? `${formatNumber(clickUpSummary.totalTasks)} tarefa(s) lida(s)` : 'Listas operacionais conectadas'}</strong>
-                      </div>
-                    )}
-                    {hasMondayConfigured && (
-                      <div className="hero-stat">
-                        <span>Monday</span>
-                        <strong>{mondaySummary?.totalItems ? `${formatNumber(mondaySummary.totalItems)} item(ns) lido(s)` : 'Boards operacionais conectados'}</strong>
-                      </div>
-                    )}
                     {hasRdConfigured && (
                       <>
                         <div className="hero-stat">
@@ -7285,233 +7265,6 @@ export default function DashboardPage() {
                   </section>
                 )}
 
-                {hasClickUpConfigured && (
-                  <section className="source-section">
-                    <div className="source-section-header">
-                      <div className="source-section-badge" style={{ color: '#8b5cf6', borderColor: '#8b5cf6' }}>
-                        <i className="bx bx-task"></i>
-                        <span>ClickUp</span>
-                      </div>
-                      <p className="source-section-copy">Leitura operacional interna das listas configuradas globalmente para acompanhar a execução do time.</p>
-                    </div>
-
-                    <section className="glass-panel grouped-results">
-                      <div className="section-header section-header-stack">
-                        <div>
-                          <h2>Operação em tarefas</h2>
-                          <p className="chart-subtitle">Resumo global de tarefas, andamento, atrasos e gargalos do time sem depender de vínculo com clientes.</p>
-                        </div>
-                      </div>
-
-                      {clickUpError ? (
-                        <div className="settings-alert error">{clickUpError}</div>
-                      ) : (
-                        <>
-                          {renderFixedKpiGrid(clickUpKpis)}
-                          <section className="rankings-grid">
-                            <div className="glass-panel ranking-card">
-                              <div className="section-header section-header-stack">
-                                <div>
-                                  <h2>Status das tarefas</h2>
-                                  <p className="chart-subtitle">Distribuição atual das tarefas por status nas listas configuradas.</p>
-                                </div>
-                              </div>
-                              <div className="ranking-list">
-                                {clickUpSummary?.statusSummary?.counts?.length ? (
-                                  clickUpSummary.statusSummary.counts.map((item) => (
-                                    <div key={item.id} className="ranking-row">
-                                      <div>
-                                        <strong>{item.label}</strong>
-                                        <span>{formatNumber(item.count || 0)} tarefa(s)</span>
-                                      </div>
-                                      <b>{formatPercent((item.share || 0) * 100)}</b>
-                                    </div>
-                                  ))
-                                ) : (
-                                  <div className="ranking-empty">Sem status suficientes para montar o ranking.</div>
-                                )}
-                              </div>
-                            </div>
-
-                            <div className="glass-panel ranking-card">
-                              <div className="section-header section-header-stack">
-                                <div>
-                                  <h2>Responsáveis</h2>
-                                  <p className="chart-subtitle">Quem concentra mais tarefas nas listas monitoradas.</p>
-                                </div>
-                              </div>
-                              <div className="ranking-list">
-                                {clickUpSummary?.assigneeRanking?.length ? (
-                                  clickUpSummary.assigneeRanking.map((item) => (
-                                    <div key={item.id} className="ranking-row">
-                                      <div>
-                                        <strong>{item.label}</strong>
-                                        <span>{formatNumber(item.totalTasks || 0)} tarefa(s)</span>
-                                      </div>
-                                      <b>{formatNumber(item.overdueCount || 0)} atrasada(s)</b>
-                                    </div>
-                                  ))
-                                ) : (
-                                  <div className="ranking-empty">Sem responsáveis suficientes para montar o ranking.</div>
-                                )}
-                              </div>
-                            </div>
-
-                            <div className="glass-panel ranking-card">
-                              <div className="section-header section-header-stack">
-                                <div>
-                                  <h2>Listas monitoradas</h2>
-                                  <p className="chart-subtitle">Volume operacional por lista configurada globalmente.</p>
-                                </div>
-                              </div>
-                              <div className="ranking-list">
-                                {clickUpSummary?.listSummary?.length ? (
-                                  clickUpSummary.listSummary.map((item) => (
-                                    <div key={item.id} className="ranking-row">
-                                      <div>
-                                        <strong>{item.label}</strong>
-                                        <span>{formatNumber(item.totalTasks || 0)} tarefa(s)</span>
-                                      </div>
-                                      <b>{formatNumber(item.completedCount || 0)} concluída(s)</b>
-                                    </div>
-                                  ))
-                                ) : (
-                                  <div className="ranking-empty">Sem listas suficientes para montar o ranking.</div>
-                                )}
-                              </div>
-                            </div>
-                          </section>
-                        </>
-                      )}
-                    </section>
-                  </section>
-                )}
-
-                {hasMondayConfigured && (
-                  <section className="source-section">
-                    <div className="source-section-header">
-                      <div className="source-section-badge" style={{ color: '#f59e0b', borderColor: '#f59e0b' }}>
-                        <i className="bx bx-columns"></i>
-                        <span>Monday</span>
-                      </div>
-                      <p className="source-section-copy">Leitura operacional interna dos boards configurados globalmente para acompanhar a execução da empresa.</p>
-                    </div>
-
-                    <section className="glass-panel grouped-results">
-                      <div className="section-header section-header-stack">
-                        <div>
-                          <h2>Operação em boards</h2>
-                          <p className="chart-subtitle">Resumo global de itens, andamento, bloqueios e prazo das operações internas.</p>
-                        </div>
-                      </div>
-
-                      {mondayError ? (
-                        <div className="settings-alert error">{mondayError}</div>
-                      ) : (
-                        <>
-                          {renderFixedKpiGrid(mondayKpis)}
-                          <section className="rankings-grid">
-                            <div className="glass-panel ranking-card">
-                              <div className="section-header section-header-stack">
-                                <div>
-                                  <h2>Status dos itens</h2>
-                                  <p className="chart-subtitle">Distribuição dos itens por status nos boards configurados.</p>
-                                </div>
-                              </div>
-                              <div className="ranking-list">
-                                {mondaySummary?.statusSummary?.counts?.length ? (
-                                  mondaySummary.statusSummary.counts.map((item) => (
-                                    <div key={item.id} className="ranking-row">
-                                      <div>
-                                        <strong>{item.label}</strong>
-                                        <span>{formatNumber(item.count || 0)} item(ns)</span>
-                                      </div>
-                                      <b>{formatPercent((item.share || 0) * 100)}</b>
-                                    </div>
-                                  ))
-                                ) : (
-                                  <div className="ranking-empty">Sem status suficientes para montar o ranking.</div>
-                                )}
-                              </div>
-                            </div>
-
-                            <div className="glass-panel ranking-card">
-                              <div className="section-header section-header-stack">
-                                <div>
-                                  <h2>Responsáveis</h2>
-                                  <p className="chart-subtitle">Quem concentra mais itens dentro dos boards monitorados.</p>
-                                </div>
-                              </div>
-                              <div className="ranking-list">
-                                {mondaySummary?.ownerRanking?.length ? (
-                                  mondaySummary.ownerRanking.map((item) => (
-                                    <div key={item.id} className="ranking-row">
-                                      <div>
-                                        <strong>{item.label}</strong>
-                                        <span>{formatNumber(item.totalItems || 0)} item(ns)</span>
-                                      </div>
-                                      <b>{formatNumber(item.overdueCount || 0)} atrasado(s)</b>
-                                    </div>
-                                  ))
-                                ) : (
-                                  <div className="ranking-empty">Sem responsáveis suficientes para montar o ranking.</div>
-                                )}
-                              </div>
-                            </div>
-
-                            <div className="glass-panel ranking-card">
-                              <div className="section-header section-header-stack">
-                                <div>
-                                  <h2>Boards monitorados</h2>
-                                  <p className="chart-subtitle">Volume operacional consolidado por board.</p>
-                                </div>
-                              </div>
-                              <div className="ranking-list">
-                                {mondaySummary?.boardSummary?.length ? (
-                                  mondaySummary.boardSummary.map((item) => (
-                                    <div key={item.id} className="ranking-row">
-                                      <div>
-                                        <strong>{item.label}</strong>
-                                        <span>{formatNumber(item.totalItems || 0)} item(ns)</span>
-                                      </div>
-                                      <b>{formatNumber(item.doneCount || 0)} concluído(s)</b>
-                                    </div>
-                                  ))
-                                ) : (
-                                  <div className="ranking-empty">Sem boards suficientes para montar o ranking.</div>
-                                )}
-                              </div>
-                            </div>
-
-                            <div className="glass-panel ranking-card">
-                              <div className="section-header section-header-stack">
-                                <div>
-                                  <h2>Grupos dos boards</h2>
-                                  <p className="chart-subtitle">Distribuição dos itens por grupo interno dentro dos boards monitorados.</p>
-                                </div>
-                              </div>
-                              <div className="ranking-list">
-                                {mondaySummary?.groupSummary?.length ? (
-                                  mondaySummary.groupSummary.map((item) => (
-                                    <div key={item.id} className="ranking-row">
-                                      <div>
-                                        <strong>{item.label}</strong>
-                                        <span>{formatNumber(item.totalItems || 0)} item(ns)</span>
-                                      </div>
-                                      <b>{formatNumber(item.doneCount || 0)} concluído(s)</b>
-                                    </div>
-                                  ))
-                                ) : (
-                                  <div className="ranking-empty">Sem grupos suficientes para montar o ranking.</div>
-                                )}
-                              </div>
-                            </div>
-                          </section>
-                        </>
-                      )}
-                    </section>
-                  </section>
-                )}
 
                 {hasRdConfigured && (
                   <section className="source-section">
