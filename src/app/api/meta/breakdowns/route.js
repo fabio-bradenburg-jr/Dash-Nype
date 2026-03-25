@@ -85,6 +85,31 @@ function normalizeBreakdownRows(rows = [], labelKey, { limit = 5 } = {}) {
     .slice(0, limit)
 }
 
+function normalizeStringValue(value) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toLowerCase()
+}
+
+function normalizeDetailDailyRows(rows = [], labelKey) {
+  return rows
+    .map((row) => {
+      const formatted = formatInsightsWithConversions(row)
+      return {
+        date_start: row.date_start || '',
+        date_stop: row.date_stop || '',
+        label: row[labelKey] || row.region || row.age || row.city || row.name || 'Não informado',
+        spend: parseFloat(row.spend || 0),
+        impressions: parseInt(row.impressions || 0, 10),
+        clicks: parseInt(row.clicks || 0, 10),
+        custom_metrics: formatted.custom_metrics,
+      }
+    })
+    .sort((left, right) => String(left.date_start).localeCompare(String(right.date_start)))
+}
+
 function normalizeCreativeLabel(ad) {
   const rawLabel = ad.name || ad.creative?.name || 'Criativo sem nome'
 
@@ -130,6 +155,8 @@ export async function GET(request) {
     const datePreset = searchParams.get('date_preset') || 'last_7d'
     const since = searchParams.get('since')
     const until = searchParams.get('until')
+    const detailType = searchParams.get('detail_type') || ''
+    const detailValue = searchParams.get('detail_value') || ''
     const campaignIds = searchParams.getAll('campaign_ids').flatMap((value) => value.split(',')).filter(Boolean)
     const adsetIds = searchParams.getAll('adset_ids').flatMap((value) => value.split(',')).filter(Boolean)
     const adIds = searchParams.getAll('ad_ids').flatMap((value) => value.split(',')).filter(Boolean)
@@ -222,6 +249,35 @@ export async function GET(request) {
       }
     }
 
+    let detailDaily = []
+    if (detailType && detailValue) {
+      const breakdownKey = detailType === 'states'
+        ? 'region'
+        : detailType === 'ages'
+          ? 'age'
+          : detailType === 'cities'
+            ? 'city'
+            : ''
+
+      if (breakdownKey) {
+        const detailParams = buildBaseParams({ token, datePreset, since, until, fields: geographicInsightFields })
+        detailParams.set('breakdowns', breakdownKey)
+        detailParams.set('time_increment', '1')
+        appendMetaEntityFiltering(detailParams, campaignIds, adsetIds, adIds)
+
+        const detailResult = await fetchMetaBreakdownSafely(
+          `https://graph.facebook.com/v19.0/${id}/insights?${detailParams.toString()}`,
+          'A Meta demorou para responder ao carregar a evolução detalhada desse item.'
+        )
+
+        const normalizedDetailValue = normalizeStringValue(detailValue)
+        detailDaily = normalizeDetailDailyRows(
+          (detailResult.data?.data || []).filter((row) => normalizeStringValue(row[breakdownKey]) === normalizedDetailValue),
+          breakdownKey
+        )
+      }
+    }
+
     const creatives = (creativeResult.data?.data || [])
       .filter((ad) => {
         if (adIds.length > 0) return adIds.includes(ad.id)
@@ -232,6 +288,9 @@ export async function GET(request) {
       .map((ad) => {
         const insight = formatInsightsWithConversions(ad.insights?.data?.[0] || {})
         return {
+          adId: ad.id || '',
+          campaignId: ad.campaign_id || '',
+          adsetId: ad.adset_id || '',
           label: normalizeCreativeLabel(ad),
           imageUrl: resolveCreativeImageUrl(ad),
           spend: parseFloat(insight.spend || 0),
@@ -248,6 +307,7 @@ export async function GET(request) {
       states: normalizeBreakdownRows(stateResult.data?.data || [], 'region', { limit: Number.MAX_SAFE_INTEGER }),
       cities: normalizeBreakdownRows(cityRows, cityLabelKey),
       creatives,
+      detail_daily: detailDaily,
       geoScope,
       errors: {
         ages: ageResult.error || '',

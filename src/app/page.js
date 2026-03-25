@@ -1609,6 +1609,29 @@ function buildMetaResultComparisonSeries(dailyItems = [], resultMetricKey, group
     }))
 }
 
+function buildMetaDetailDailySeries(dailyItems = []) {
+  return dailyItems
+    .map((item) => {
+      const parsedDate = parseMetaSeriesDate(item.date_start)
+      if (!parsedDate) return null
+
+      const metrics = item.custom_metrics || extractMetaCampaignMetrics(item)
+      const results = Number(metrics.totalConversions || 0)
+      const spendValue = parseFloat(item.spend || 0)
+
+      return {
+        key: item.date_start,
+        date: parsedDate,
+        label: parsedDate.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }),
+        results,
+        spend: spendValue,
+        cost: results > 0 ? spendValue / results : 0,
+      }
+    })
+    .filter(Boolean)
+    .sort((left, right) => left.date.getTime() - right.date.getTime())
+}
+
 function getSummaryMetricValue(metricKey, summary, customMetrics) {
   switch (metricKey) {
     case 'spend':
@@ -1723,6 +1746,9 @@ export default function DashboardPage() {
   const [metaResultDrilldown, setMetaResultDrilldown] = useState(null)
   const [metaRankingDrilldown, setMetaRankingDrilldown] = useState(null)
   const [metaSecondaryResultDrilldown, setMetaSecondaryResultDrilldown] = useState(null)
+  const [metaRankingDetailDailyData, setMetaRankingDetailDailyData] = useState([])
+  const [metaRankingDetailDailyLoading, setMetaRankingDetailDailyLoading] = useState(false)
+  const [metaRankingDetailDailyError, setMetaRankingDetailDailyError] = useState('')
   const [metaResultPreviewKey, setMetaResultPreviewKey] = useState('purchases')
   const [metaResultGrouping, setMetaResultGrouping] = useState('week')
   const [isRankingsLoading, setIsRankingsLoading] = useState(false)
@@ -4663,30 +4689,6 @@ export default function DashboardPage() {
       .sort((left, right) => right.conversions - left.conversions)[0] || null,
     [brazilStateMapItems]
   )
-  const brazilStateMapCoverageItems = useMemo(() => {
-    const mappedStates = new Map(brazilStateMapItems.map((item) => [item.uf, item]))
-
-    return Object.entries(BRAZIL_STATE_MAP_POINTS).map(([uf, stateMeta]) => {
-      const mappedItem = mappedStates.get(uf)
-
-      if (mappedItem) {
-        return {
-          ...mappedItem,
-          hasResults: (mappedItem.conversions || 0) > 0,
-          isTopPerformer: brazilTopStateItem?.uf === uf,
-        }
-      }
-
-      return {
-        uf,
-        ...stateMeta,
-        conversions: 0,
-        averageCost: 0,
-        hasResults: false,
-        isTopPerformer: false,
-      }
-    })
-  }, [brazilStateMapItems, brazilTopStateItem])
   const brazilTopStateItems = useMemo(
     () => brazilStateMapItems
       .slice()
@@ -4745,8 +4747,144 @@ export default function DashboardPage() {
     if (!metaRankingDrilldown || !activeMetaRankingDrilldownConfig) return null
     return activeMetaRankingDrilldownConfig.items[metaRankingDrilldown.index] || metaRankingDrilldown.item || null
   }, [activeMetaRankingDrilldownConfig, metaRankingDrilldown])
+  useEffect(() => {
+    if (!metaRankingDrilldown?.type || !activeMetaRankingDrilldownItem || !selectedAdAccount || !hasMetaConfigured) {
+      setMetaRankingDetailDailyData([])
+      setMetaRankingDetailDailyError('')
+      setMetaRankingDetailDailyLoading(false)
+      return
+    }
+
+    let cancelled = false
+
+    const fetchDetailDailySeries = async () => {
+      try {
+        setMetaRankingDetailDailyLoading(true)
+        setMetaRankingDetailDailyError('')
+
+        let response
+
+        if (metaRankingDrilldown.type === 'creatives' && activeMetaRankingDrilldownItem.adId) {
+          const params = new URLSearchParams({
+            ad_account_id: selectedAdAccount,
+            date_preset: dateRange,
+            ad_ids: activeMetaRankingDrilldownItem.adId,
+          })
+
+          if (dateRange === 'custom') {
+            params.set('since', customSince)
+            params.set('until', customUntil)
+          }
+
+          response = await fetch(`/api/meta/insights?${params.toString()}`, { headers: metaRequestHeaders })
+        } else {
+          const params = new URLSearchParams({
+            ad_account_id: selectedAdAccount,
+            date_preset: dateRange,
+            detail_type: metaRankingDrilldown.type,
+            detail_value: activeMetaRankingDrilldownItem.label,
+          })
+
+          if (dateRange === 'custom') {
+            params.set('since', customSince)
+            params.set('until', customUntil)
+          }
+
+          if (hasActiveMetaCampaignNarrowing && metaFilteredCampaignIds.length > 0) {
+            params.set('campaign_ids', metaFilteredCampaignIds.join(','))
+          }
+          if (hasActiveMetaAdsetNarrowing && activeMetaAdsetIds.length > 0) {
+            params.set('adset_ids', activeMetaAdsetIds.join(','))
+          }
+          if (hasActiveMetaAdNarrowing && activeMetaAdIds.length > 0) {
+            params.set('ad_ids', activeMetaAdIds.join(','))
+          }
+
+          response = await fetch(`/api/meta/breakdowns?${params.toString()}`, { headers: metaRequestHeaders })
+        }
+
+        const data = await response.json().catch(() => null)
+
+        if (!response.ok) {
+          throw new Error(data?.error || 'Não foi possível carregar a evolução detalhada desse item.')
+        }
+
+        if (cancelled) return
+        setMetaRankingDetailDailyData(metaRankingDrilldown.type === 'creatives' ? (data?.daily || []) : (data?.detail_daily || []))
+      } catch (error) {
+        if (cancelled) return
+        setMetaRankingDetailDailyData([])
+        setMetaRankingDetailDailyError(error.message || 'Não foi possível carregar a evolução detalhada desse item.')
+      } finally {
+        if (!cancelled) {
+          setMetaRankingDetailDailyLoading(false)
+        }
+      }
+    }
+
+    fetchDetailDailySeries()
+
+    return () => {
+      cancelled = true
+    }
+  }, [
+    metaRankingDrilldown,
+    activeMetaRankingDrilldownItem,
+    selectedAdAccount,
+    hasMetaConfigured,
+    dateRange,
+    customSince,
+    customUntil,
+    hasActiveMetaCampaignNarrowing,
+    hasActiveMetaAdsetNarrowing,
+    hasActiveMetaAdNarrowing,
+    metaFilteredCampaignIds,
+    activeMetaAdsetIds,
+    activeMetaAdIds,
+    metaRequestHeaders,
+  ])
+  const metaRankingDetailDailySeries = useMemo(
+    () => buildMetaDetailDailySeries(metaRankingDetailDailyData),
+    [metaRankingDetailDailyData]
+  )
   const metaRankingComparisonChartData = useMemo(() => {
     if (!activeMetaRankingDrilldownConfig?.items?.length || !activeMetaRankingDrilldownItem) return null
+
+    if (metaRankingDetailDailySeries.length) {
+
+      return {
+        labels: metaRankingDetailDailySeries.map((item) => item.label),
+        datasets: [
+          {
+            type: 'bar',
+            label: activeMetaRankingDrilldownConfig.resultLabel,
+            data: metaRankingDetailDailySeries.map((item) => item.results),
+            backgroundColor: `${activeMetaRankingDrilldownConfig.resultTone}66`,
+            borderColor: activeMetaRankingDrilldownConfig.resultTone,
+            borderWidth: 1,
+            borderRadius: 10,
+            maxBarThickness: 36,
+            yAxisID: 'y',
+          },
+          {
+            type: 'line',
+            label: isCreativeRankingDrilldown ? 'Custo por conversão' : activeMetaRankingDrilldownConfig.costLabel,
+            data: metaRankingDetailDailySeries.map((item) => item.cost),
+            borderColor: activeMetaRankingDrilldownConfig.costTone,
+            backgroundColor: `${activeMetaRankingDrilldownConfig.costTone}22`,
+            borderWidth: 3,
+            borderDash: [7, 5],
+            pointRadius: 4,
+            pointHoverRadius: 6,
+            pointBackgroundColor: '#0b0f19',
+            pointBorderColor: activeMetaRankingDrilldownConfig.costTone,
+            pointBorderWidth: 2,
+            tension: 0.34,
+            yAxisID: 'y1',
+          },
+        ],
+      }
+    }
 
     return {
       labels: activeMetaRankingDrilldownConfig.items.map((item) => buildMetaRankingChartLabel(item.label)),
@@ -4788,7 +4926,7 @@ export default function DashboardPage() {
         },
       ],
     }
-  }, [activeMetaRankingDrilldownConfig, activeMetaRankingDrilldownItem, metaRankingDrilldown])
+  }, [activeMetaRankingDrilldownConfig, activeMetaRankingDrilldownItem, isCreativeRankingDrilldown, metaRankingDetailDailySeries, metaRankingDrilldown])
   const metaRankingComparisonChartOptions = useMemo(() => {
     if (!activeMetaRankingDrilldownConfig) return null
 
@@ -4859,9 +4997,6 @@ export default function DashboardPage() {
     const clicksValue = Number(activeMetaRankingDrilldownItem.clicks || 0)
     const impressionsValue = Number(activeMetaRankingDrilldownItem.impressions || 0)
     const conversionRateValue = getMetaBreakdownConversionRate(activeMetaRankingDrilldownItem)
-    const selectedRank = activeMetaRankingDrilldownConfig.items.findIndex((item, index) => (
-      index === metaRankingDrilldown.index || item.label === activeMetaRankingDrilldownItem.label
-    ))
 
     return {
       conversions,
@@ -4870,9 +5005,8 @@ export default function DashboardPage() {
       clicksValue,
       impressionsValue,
       conversionRateValue,
-      selectedRank: selectedRank >= 0 ? selectedRank + 1 : null,
     }
-  }, [activeMetaRankingDrilldownConfig, activeMetaRankingDrilldownItem, metaRankingDrilldown])
+  }, [activeMetaRankingDrilldownConfig, activeMetaRankingDrilldownItem])
   const metaDashboardMetricValues = useMemo(
     () => ({
       spend,
@@ -5711,6 +5845,42 @@ export default function DashboardPage() {
       ))}
     </div>
   )
+
+  const renderMetricLibraryGrid = (options, values, onSelectMetric) => {
+    if (!options.length) {
+      return <div className="metric-library-empty">Todas as métricas já estão visíveis neste modelo.</div>
+    }
+
+    return (
+      <div className="metric-library-grid">
+        {options.map(([metricKey, metric]) => (
+          <button
+            key={metricKey}
+            type="button"
+            className="kpi-card glass-panel metric-library-card"
+            onClick={() => onSelectMetric(metricKey)}
+          >
+            <div className="kpi-header">
+              <span className="kpi-title">{metric.label}</span>
+              <div className="template-metric-actions">
+                <div className={`icon-box ${metric.tone}`}>
+                  <i className={`bx ${metric.icon}`}></i>
+                </div>
+                <span className="metric-library-add-icon" aria-hidden="true">
+                  <i className="bx bx-plus"></i>
+                </span>
+              </div>
+            </div>
+            <div className="kpi-value">{formatDashboardMetricValue(values[metricKey] || 0, metric.type)}</div>
+            <div className="kpi-trend neutral">
+              <i className="bx bx-info-circle"></i>
+              <span>{metric.description}</span>
+            </div>
+          </button>
+        ))}
+      </div>
+    )
+  }
 
   const renderHomeHub = () => {
     const mondayBoardsConfigured = Array.from(new Set(
@@ -8026,15 +8196,30 @@ export default function DashboardPage() {
                       <p className="chart-subtitle">Os indicadores abaixo consideram somente as campanhas enquadradas no filtro de resultado ativo.</p>
                     </div>
                     {activeDraftDashboardTemplate && (
-                      <button
-                        type="button"
-                        className="btn btn-secondary"
-                        onClick={() => setIsMetaMetricLibraryOpen((current) => !current)}
-                        disabled={!availableMetaDashboardMetricOptions.length}
-                      >
-                        <i className="bx bx-plus"></i>
-                        Adicionar métrica
-                      </button>
+                      <div className="metric-library-anchor">
+                        <button
+                          type="button"
+                          className="btn btn-secondary"
+                          onClick={() => setIsMetaMetricLibraryOpen((current) => !current)}
+                          disabled={!availableMetaDashboardMetricOptions.length}
+                        >
+                          <i className="bx bx-plus"></i>
+                          Adicionar métrica
+                        </button>
+                        {isMetaMetricLibraryOpen && (
+                          <div className="metric-library-panel metric-library-dropdown glass-item">
+                            <div>
+                              <strong>Métricas Meta disponíveis</strong>
+                              <p>Adicione novos cards usando o mesmo layout visual das métricas já existentes no dashboard.</p>
+                            </div>
+                            {renderMetricLibraryGrid(
+                              availableMetaDashboardMetricOptions,
+                              metaDashboardMetricValues,
+                              handleAddMetaDashboardMetric
+                            )}
+                          </div>
+                        )}
+                      </div>
                     )}
                   </div>
 
@@ -8160,32 +8345,6 @@ export default function DashboardPage() {
                     </div>
 
                     {metaExtraDashboardMetricCards.length > 0 && renderDashboardMetricGrid(metaExtraDashboardMetricCards, 'meta')}
-
-                    {isMetaMetricLibraryOpen && (
-                      <div className="metric-library-panel glass-item">
-                        <div>
-                          <strong>Métricas Meta disponíveis</strong>
-                          <p>Arraste para reposicionar, altere o tamanho de cada card e monte o layout do jeito que quiser.</p>
-                        </div>
-                        <div className="metric-library-list">
-                          {availableMetaDashboardMetricOptions.length > 0 ? (
-                            availableMetaDashboardMetricOptions.map(([metricKey, metric]) => (
-                              <button
-                                key={metricKey}
-                                type="button"
-                                className="metric-library-chip"
-                                onClick={() => handleAddMetaDashboardMetric(metricKey)}
-                              >
-                                <span>{metric.label}</span>
-                                <small>{metric.description}</small>
-                              </button>
-                            ))
-                          ) : (
-                            <div className="metric-library-empty">Todas as métricas da Meta já estão visíveis neste modelo.</div>
-                          )}
-                        </div>
-                      </div>
-                    )}
                   </div>
 
                 </section>
@@ -8309,7 +8468,7 @@ export default function DashboardPage() {
                     <div className="section-header section-header-stack">
                       <div>
                         <h2>Mapa de estados e cidades</h2>
-                        <p className="chart-subtitle">Estados com calor por resultado e pins das principais cidades no período selecionado.</p>
+                        <p className="chart-subtitle">Mapa do Brasil com marcação apenas nos estados e cidades que realmente geraram conversões no período selecionado.</p>
                       </div>
                     </div>
                     <div className="geo-map-panel">
@@ -8336,23 +8495,19 @@ export default function DashboardPage() {
                                 <path d={BRAZIL_MAP_SILHOUETTE_PATH}></path>
                               </svg>
 
-                              {brazilStateMapCoverageItems.map((item) => {
-                                const intensity = item.hasResults
-                                  ? Math.max(0.22, (item.conversions || 0) / brazilMapMaxConversions)
-                                  : 0
+                              {brazilStateMapItems.map((item) => {
+                                const intensity = Math.max(0.22, (item.conversions || 0) / brazilMapMaxConversions)
                                 return (
                                   <button
                                     key={`state-map-${item.uf}`}
                                     type="button"
-                                    className={`brazil-state-node ${item.hasResults ? 'has-results' : 'is-muted'} ${item.isTopPerformer ? 'is-top-performer' : ''}`}
+                                    className={`brazil-state-node ${brazilTopStateItem?.uf === item.uf ? 'is-top-performer' : ''}`}
                                     style={{
                                       left: `${item.x}%`,
                                       top: `${item.y}%`,
                                       '--state-intensity': intensity,
                                     }}
-                                    title={item.hasResults
-                                      ? `${item.name}: ${formatNumber(item.conversions)} resultados · ${formatCurrency(item.averageCost)} por resultado`
-                                      : `${item.name}: sem resultados no período`}
+                                    title={`${item.name}: ${formatNumber(item.conversions)} resultados · ${formatCurrency(item.averageCost)} por resultado`}
                                   >
                                     <span>{item.uf}</span>
                                   </button>
@@ -9158,11 +9313,8 @@ export default function DashboardPage() {
                     <strong>{formatCurrency(metaRankingDrilldownSummary.spendValue)}</strong>
                   </div>
                   <div className="monday-drilldown-stat glass-item">
-                    <span>{isCreativeRankingDrilldown ? 'Impressões' : 'Posição no top 5'}</span>
-                    <strong>{isCreativeRankingDrilldown
-                      ? formatNumber(metaRankingDrilldownSummary.impressionsValue)
-                      : metaRankingDrilldownSummary.selectedRank ? `#${metaRankingDrilldownSummary.selectedRank}` : 'Sem base'}
-                    </strong>
+                    <span>Impressões</span>
+                    <strong>{formatNumber(metaRankingDrilldownSummary.impressionsValue)}</strong>
                   </div>
                 </div>
               ) : null}
@@ -9219,26 +9371,30 @@ export default function DashboardPage() {
                     <div className="glass-item meta-ranking-chart-shell">
                       <div className="meta-result-chart-head">
                         <div>
-                          <strong>Resultado gerado pelo criativo</strong>
-                          <p className="chart-subtitle">Volume de resultados e custo por resultado do criativo selecionado em relacao aos demais criativos do recorte.</p>
+                          <strong>Resultado diario do criativo</strong>
+                          <p className="chart-subtitle">Eixo X por dia, com conversoes e custo por conversao do proprio criativo dentro do periodo filtrado.</p>
                         </div>
                         <div className="meta-result-legend">
                           <span className="legend-item">
                             <span className="dot" style={{ background: activeMetaRankingDrilldownConfig.resultTone, boxShadow: `0 0 8px ${activeMetaRankingDrilldownConfig.resultTone}` }}></span>
-                            {activeMetaRankingDrilldownConfig.resultLabel}
+                            Conversões
                           </span>
                           <span className="legend-item">
                             <span className="dot" style={{ background: activeMetaRankingDrilldownConfig.costTone, boxShadow: `0 0 8px ${activeMetaRankingDrilldownConfig.costTone}` }}></span>
-                            {activeMetaRankingDrilldownConfig.costLabel}
+                            Custo por conversão
                           </span>
                         </div>
                       </div>
-                      {metaRankingComparisonChartData ? (
+                      {metaRankingDetailDailyLoading ? (
+                        <div className="ranking-empty">Carregando evolução diária do criativo...</div>
+                      ) : metaRankingDetailDailyError ? (
+                        <div className="ranking-empty">{metaRankingDetailDailyError}</div>
+                      ) : metaRankingComparisonChartData ? (
                         <div className="canvas-wrapper meta-ranking-chart-wrapper">
                           <Bar data={metaRankingComparisonChartData} options={metaRankingComparisonChartOptions} />
                         </div>
                       ) : (
-                        <div className="ranking-empty">Sem base suficiente para montar o comparativo desse ranking.</div>
+                        <div className="ranking-empty">Sem histórico diário suficiente para montar a evolução desse criativo.</div>
                       )}
                     </div>
                   </div>
@@ -9246,8 +9402,8 @@ export default function DashboardPage() {
                   <div className="glass-item meta-ranking-chart-shell">
                     <div className="meta-result-chart-head">
                       <div>
-                        <strong>Comparativo do top 5</strong>
-                        <p className="chart-subtitle">Resultado e custo por resultado do item selecionado contra os demais itens desse ranking.</p>
+                        <strong>Evolução diária do item selecionado</strong>
+                        <p className="chart-subtitle">Eixo X por dia, com volume de resultados e custo por resultado do item escolhido dentro do período filtrado.</p>
                       </div>
                       <div className="meta-result-legend">
                         <span className="legend-item">
@@ -9260,12 +9416,16 @@ export default function DashboardPage() {
                         </span>
                       </div>
                     </div>
-                    {metaRankingComparisonChartData ? (
+                    {metaRankingDetailDailyLoading ? (
+                      <div className="ranking-empty">Carregando evolução diária do item selecionado...</div>
+                    ) : metaRankingDetailDailyError ? (
+                      <div className="ranking-empty">{metaRankingDetailDailyError}</div>
+                    ) : metaRankingComparisonChartData ? (
                       <div className="canvas-wrapper meta-ranking-chart-wrapper">
                         <Bar data={metaRankingComparisonChartData} options={metaRankingComparisonChartOptions} />
                       </div>
                     ) : (
-                      <div className="ranking-empty">Sem base suficiente para montar o comparativo desse ranking.</div>
+                      <div className="ranking-empty">Sem histórico diário suficiente para montar a evolução desse item.</div>
                     )}
                   </div>
                 )}
@@ -10879,6 +11039,23 @@ export default function DashboardPage() {
           gap: 14px;
         }
 
+        .metric-library-anchor {
+          position: relative;
+          display: flex;
+          flex-direction: column;
+          align-items: flex-end;
+          gap: 10px;
+        }
+
+        .metric-library-dropdown {
+          position: absolute;
+          top: calc(100% + 12px);
+          right: 0;
+          width: min(860px, calc(100vw - 72px));
+          z-index: 40;
+          box-shadow: 0 24px 48px rgba(2, 8, 23, 0.38);
+        }
+
         .metric-library-panel strong {
           display: block;
           margin-bottom: 4px;
@@ -10922,6 +11099,38 @@ export default function DashboardPage() {
 
         .metric-library-empty {
           font-size: 13px;
+        }
+
+        .metric-library-grid {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 14px;
+        }
+
+        .metric-library-card {
+          width: 100%;
+          text-align: left;
+          color: inherit;
+          cursor: pointer;
+          transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+        }
+
+        .metric-library-card:hover {
+          transform: translateY(-1px);
+          border-color: rgba(96, 165, 250, 0.28);
+          background: rgba(59, 130, 246, 0.06);
+        }
+
+        .metric-library-add-icon {
+          width: 34px;
+          height: 34px;
+          border-radius: 999px;
+          border: 1px solid rgba(59, 130, 246, 0.24);
+          background: rgba(59, 130, 246, 0.08);
+          color: #bfdbfe;
+          display: grid;
+          place-items: center;
+          flex: 0 0 auto;
         }
 
         .meta-filter-panel {
@@ -11650,15 +11859,6 @@ export default function DashboardPage() {
             0 18px 28px rgba(2, 8, 23, 0.34);
         }
 
-        .brazil-state-node.is-muted {
-          background: rgba(15, 23, 42, 0.28);
-          border-color: rgba(148, 163, 184, 0.18);
-          box-shadow:
-            0 0 0 4px rgba(148, 163, 184, 0.08),
-            0 10px 20px rgba(2, 8, 23, 0.18);
-          opacity: 0.52;
-        }
-
         .brazil-state-node.is-top-performer {
           background: rgba(var(--client-accent-rgb), 0.18);
           border-color: rgba(var(--client-accent-rgb), calc(0.58 + (var(--state-intensity, 0.3) * 0.22)));
@@ -11673,10 +11873,6 @@ export default function DashboardPage() {
           font-weight: 800;
           letter-spacing: 0.06em;
           color: rgba(239, 246, 255, calc(0.72 + (var(--state-intensity, 0.3) * 0.28)));
-        }
-
-        .brazil-state-node.is-muted span {
-          color: rgba(226, 232, 240, 0.54);
         }
 
         .brazil-state-node.is-top-performer span {
@@ -12729,6 +12925,20 @@ export default function DashboardPage() {
           }
 
           .brazil-map-shell {
+            grid-template-columns: 1fr;
+          }
+
+          .metric-library-anchor {
+            width: 100%;
+            align-items: stretch;
+          }
+
+          .metric-library-dropdown {
+            position: static;
+            width: 100%;
+          }
+
+          .metric-library-grid {
             grid-template-columns: 1fr;
           }
         }
