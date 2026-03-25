@@ -789,14 +789,100 @@ function formatShortDate(value) {
   return date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })
 }
 
+function normalizeMondayGroupKey(value) {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+}
+
+function getMondayTaskUrgency(task) {
+  const explicitLabel = String(task?.priorityLabel || '').trim()
+  const explicitRank = Number(task?.priorityRank || 0)
+
+  if (explicitLabel || explicitRank > 0) {
+    const safeRank = explicitRank > 0 ? explicitRank : 1
+    return {
+      label: explicitLabel || 'Prioridade definida',
+      rank: safeRank,
+      tone: safeRank >= 4 ? 'danger' : safeRank === 3 ? 'warning' : safeRank === 2 ? 'info' : 'neutral',
+    }
+  }
+
+  const daysOverdue = Number(task?.daysOverdue || 0)
+  if (task?.isOverdue && daysOverdue >= 30) return { label: 'Crítica', rank: 5, tone: 'danger' }
+  if (task?.isBlocked && task?.isOverdue) return { label: 'Muito alta', rank: 4, tone: 'danger' }
+  if (task?.isOverdue) return { label: 'Alta', rank: 4, tone: 'danger' }
+  if (task?.isBlocked || task?.isDueSoon) return { label: 'Média', rank: 3, tone: 'warning' }
+  return { label: 'Baixa', rank: 1, tone: 'neutral' }
+}
+
 function sortMondayTasksForDrilldown(items) {
   return [...(items || [])].sort((left, right) => {
-    if (left.isOverdue !== right.isOverdue) return Number(right.isOverdue) - Number(left.isOverdue)
+    const leftUrgency = getMondayTaskUrgency(left)
+    const rightUrgency = getMondayTaskUrgency(right)
+
+    if (leftUrgency.rank !== rightUrgency.rank) return rightUrgency.rank - leftUrgency.rank
     if (left.isBlocked !== right.isBlocked) return Number(right.isBlocked) - Number(left.isBlocked)
-    if ((right.trackedSeconds || 0) !== (left.trackedSeconds || 0)) return (right.trackedSeconds || 0) - (left.trackedSeconds || 0)
     if ((left.daysOverdue || 0) !== (right.daysOverdue || 0)) return (right.daysOverdue || 0) - (left.daysOverdue || 0)
+    if (left.isOverdue !== right.isOverdue) return Number(right.isOverdue) - Number(left.isOverdue)
+    if (left.isDueSoon !== right.isDueSoon) return Number(right.isDueSoon) - Number(left.isDueSoon)
+    if ((right.trackedSeconds || 0) !== (left.trackedSeconds || 0)) return (right.trackedSeconds || 0) - (left.trackedSeconds || 0)
     return String(left.name || '').localeCompare(String(right.name || ''), 'pt-BR')
   })
+}
+
+function buildMondayDrilldownOwnerGroups(items, ownerFilter, ownerLabel) {
+  const sortedItems = sortMondayTasksForDrilldown(items)
+  if (!sortedItems.length) return []
+
+  const enrichGroup = (group) => {
+    const rankedItems = sortMondayTasksForDrilldown(group.items)
+    const topTask = rankedItems[0] || null
+
+    return {
+      ...group,
+      items: rankedItems,
+      overdueCount: rankedItems.filter((task) => task.isOverdue).length,
+      blockedCount: rankedItems.filter((task) => task.isBlocked).length,
+      dueSoonCount: rankedItems.filter((task) => task.isDueSoon).length,
+      topUrgencyRank: topTask ? getMondayTaskUrgency(topTask).rank : 0,
+      topDaysOverdue: topTask?.daysOverdue || 0,
+    }
+  }
+
+  if (ownerFilter && ownerFilter !== 'all') {
+    return [enrichGroup({
+      key: normalizeMondayGroupKey(ownerFilter) || 'selected-owner',
+      owner: ownerLabel || 'Responsável selecionado',
+      items: sortedItems,
+    })]
+  }
+
+  const groups = new Map()
+
+  sortedItems.forEach((task) => {
+    const owners = Array.isArray(task.owners) && task.owners.length ? task.owners : ['Sem responsável']
+    owners.forEach((owner) => {
+      const key = normalizeMondayGroupKey(owner) || 'sem-responsavel'
+      const currentGroup = groups.get(key) || {
+        key,
+        owner: owner || 'Sem responsável',
+        items: [],
+      }
+      currentGroup.items.push(task)
+      groups.set(key, currentGroup)
+    })
+  })
+
+  return Array.from(groups.values())
+    .map(enrichGroup)
+    .sort((left, right) => {
+      if (left.topUrgencyRank !== right.topUrgencyRank) return right.topUrgencyRank - left.topUrgencyRank
+      if (left.topDaysOverdue !== right.topDaysOverdue) return right.topDaysOverdue - left.topDaysOverdue
+      if (left.overdueCount !== right.overdueCount) return right.overdueCount - left.overdueCount
+      if (left.items.length !== right.items.length) return right.items.length - left.items.length
+      return String(left.owner || '').localeCompare(String(right.owner || ''), 'pt-BR')
+    })
 }
 
 function getDatePresetLabel(datePreset, since, until) {
@@ -4280,6 +4366,14 @@ export default function DashboardPage() {
     { key: 'overdueTasks', title: 'Atrasadas', value: formatNumber(clickUpSummary?.overdueTasks || 0), icon: 'bx-time-five', tone: 'orange' },
   ]
   const mondayPeriodLabel = getDatePresetLabel(dateRange, customSince, customUntil)
+  const mondayOwnerOptions = mondaySummary?.availableOwners || []
+  const selectedMondayOwnerLabel = mondayOwnerFilter === 'all'
+    ? 'Todos os usuários'
+    : (mondayOwnerOptions.find((item) => item.id === mondayOwnerFilter)?.label || mondayOwnerFilter)
+  const mondayDrilldownOwnerGroups = useMemo(
+    () => buildMondayDrilldownOwnerGroups(mondayMetricDrilldown?.items || [], mondayOwnerFilter, selectedMondayOwnerLabel),
+    [mondayMetricDrilldown, mondayOwnerFilter, selectedMondayOwnerLabel]
+  )
   const mondayKpis = [
     { key: 'totalItems', title: 'Itens no recorte', value: formatNumber(mondaySummary?.totalItems || 0), icon: 'bx-columns', tone: 'gold' },
     { key: 'activeItems', title: 'Em andamento', value: formatNumber(mondaySummary?.activeItems || 0), icon: 'bx-loader-circle', tone: 'blue' },
@@ -4675,10 +4769,6 @@ export default function DashboardPage() {
   )
 
   const renderMondayOperationalPanel = () => {
-    const mondayOwnerOptions = mondaySummary?.availableOwners || []
-    const selectedMondayOwnerLabel = mondayOwnerFilter === 'all'
-      ? 'Todos os usuários'
-      : (mondayOwnerOptions.find((item) => item.id === mondayOwnerFilter)?.label || mondayOwnerFilter)
     const weeklyTrackedTime = mondaySummary?.weeklyTrackedTime || []
     const maxWeeklySeconds = weeklyTrackedTime.reduce((max, item) => Math.max(max, item.seconds || 0), 0)
     const overdueOwnerRanking = (mondaySummary?.ownerRanking || []).filter((item) => (item.overdueCount || 0) > 0)
@@ -7516,46 +7606,82 @@ export default function DashboardPage() {
                     </div>
                   </div>
 
-                  <div className="monday-task-grid">
-                    {mondayMetricDrilldown.items.map((task) => (
-                      <article key={task.id} className="monday-task-card glass-item">
-                        <div className="monday-task-head">
+                  <div className="monday-drilldown-mode glass-item">
+                    {mondayOwnerFilter === 'all'
+                      ? 'Agrupado por responsável para facilitar cobrança, priorização e tomada de decisão por pessoa.'
+                      : `Lista priorizada para ${selectedMondayOwnerLabel}, ordenada por urgência e tempo de atraso.`}
+                  </div>
+
+                  <div className="monday-user-groups">
+                    {mondayDrilldownOwnerGroups.map((group) => (
+                      <section key={group.key} className="monday-user-group glass-item">
+                        <div className="monday-user-group-head">
                           <div>
-                            <h4>{task.name}</h4>
-                            <p>{task.boardName || '-'}{task.groupLabel ? ` · ${task.groupLabel}` : ''}</p>
+                            <h4>{group.owner}</h4>
+                            <p>{formatNumber(group.items.length)} demanda(s) dessa métrica em ordem da mais urgente/atrasada para a menos crítica.</p>
                           </div>
-                          <div className="monday-task-flags">
-                            {task.isOverdue && <span className="monday-task-chip danger">Atrasada</span>}
-                            {task.isBlocked && <span className="monday-task-chip warning">Bloqueada</span>}
-                            {task.isDueSoon && <span className="monday-task-chip info">Vence logo</span>}
-                            {task.isUnassigned && <span className="monday-task-chip neutral">Sem dono</span>}
-                          </div>
-                        </div>
-
-                        <div className="monday-task-meta">
-                          <div className="monday-task-meta-item">
-                            <span>Status</span>
-                            <strong>{task.statusLabel || 'Sem status'}</strong>
-                          </div>
-                          <div className="monday-task-meta-item">
-                            <span>Responsável</span>
-                            <strong>{task.owners?.length ? task.owners.join(', ') : 'Sem responsável'}</strong>
-                          </div>
-                          <div className="monday-task-meta-item">
-                            <span>Prazo</span>
-                            <strong>{task.dueDate ? formatShortDate(task.dueDate) : '-'}</strong>
-                          </div>
-                          <div className="monday-task-meta-item">
-                            <span>Tempo</span>
-                            <strong>{formatDurationHours(task.trackedSeconds || 0)}</strong>
+                          <div className="monday-user-group-metrics">
+                            <div className="monday-user-group-metric">
+                              <span>Atrasadas</span>
+                              <strong>{formatNumber(group.overdueCount)}</strong>
+                            </div>
+                            <div className="monday-user-group-metric">
+                              <span>Bloqueadas</span>
+                              <strong>{formatNumber(group.blockedCount)}</strong>
+                            </div>
+                            <div className="monday-user-group-metric">
+                              <span>Vencem logo</span>
+                              <strong>{formatNumber(group.dueSoonCount)}</strong>
+                            </div>
                           </div>
                         </div>
 
-                        <div className="monday-task-footer">
-                          <span>{task.updatedAt ? `Atualizada em ${formatShortDate(task.updatedAt)}` : 'Sem atualização recente'}</span>
-                          {task.daysOverdue ? <strong>{formatNumber(task.daysOverdue)} dia(s) de atraso</strong> : <strong>Dentro do prazo</strong>}
+                        <div className="monday-user-table-wrap">
+                          <table className="monday-user-task-table">
+                            <thead>
+                              <tr>
+                                <th>Demanda</th>
+                                <th>Urgência</th>
+                                <th>Status</th>
+                                <th>Prazo</th>
+                                <th>Atraso</th>
+                                <th>Tempo</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {group.items.map((task) => {
+                                const urgency = getMondayTaskUrgency(task)
+
+                                return (
+                                  <tr key={`${group.key}-${task.id}`}>
+                                    <td className="monday-user-task-main">
+                                      <strong>{task.name}</strong>
+                                      <span>{task.boardName || '-'}{task.groupLabel ? ` · ${task.groupLabel}` : ''}</span>
+                                      <div className="monday-task-flags monday-task-flags-inline">
+                                        {task.isOverdue && <span className="monday-task-chip danger">Atrasada</span>}
+                                        {task.isBlocked && <span className="monday-task-chip warning">Bloqueada</span>}
+                                        {task.isDueSoon && <span className="monday-task-chip info">Vence logo</span>}
+                                        {task.isUnassigned && <span className="monday-task-chip neutral">Sem dono</span>}
+                                      </div>
+                                    </td>
+                                    <td>{urgency.label}</td>
+                                    <td>{task.statusLabel || 'Sem status'}</td>
+                                    <td>{task.dueDate ? formatShortDate(task.dueDate) : '-'}</td>
+                                    <td>
+                                      {task.daysOverdue
+                                        ? `${formatNumber(task.daysOverdue)} dia(s)`
+                                        : task.isDueSoon
+                                          ? 'Vence logo'
+                                          : 'No prazo'}
+                                    </td>
+                                    <td>{formatDurationHours(task.trackedSeconds || 0)}</td>
+                                  </tr>
+                                )
+                              })}
+                            </tbody>
+                          </table>
                         </div>
-                      </article>
+                      </section>
                     ))}
                   </div>
                 </div>
