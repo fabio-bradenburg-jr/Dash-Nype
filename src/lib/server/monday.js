@@ -436,6 +436,10 @@ export async function readMondaySummary({ token, boardIds, since, until, owner }
   const weeklyBuckets = buildWeeklyBuckets(windowStart, windowEnd)
   const weeksWithTimeIds = new Set()
 
+  weeklyBuckets.forEach((bucket) => {
+    bucket.ownerSeconds = new Map()
+  })
+
   dedupedItems.forEach((item) => {
     const boardColumns = Array.isArray(item.__columns) ? item.__columns : []
     const statusColumn = boardColumns.find((column) => column.type === 'color')
@@ -619,6 +623,17 @@ export async function readMondaySummary({ token, boardIds, since, until, owner }
       bucket.seconds += seconds
       bucket.taskIds.add(item.id)
       weeksWithTimeIds.add(bucket.id)
+
+      const sessionOwners = ownerNames.length ? ownerNames : ['Sem responsável']
+      const splitSeconds = Math.round(seconds / sessionOwners.length)
+
+      sessionOwners.forEach((name, index) => {
+        const currentSeconds = bucket.ownerSeconds.get(name) || 0
+        const allocatedSeconds = index === sessionOwners.length - 1
+          ? Math.max(seconds - splitSeconds * (sessionOwners.length - 1), 0)
+          : splitSeconds
+        bucket.ownerSeconds.set(name, currentSeconds + allocatedSeconds)
+      })
     })
 
     boardCounts.set(item.__boardName, currentBoardSummary)
@@ -725,6 +740,12 @@ export async function readMondaySummary({ token, boardIds, since, until, owner }
       label: bucket.label,
       seconds: bucket.seconds,
       tasksWithTime: bucket.tasksWithTime,
+      ownerBreakdown: Array.from(bucket.ownerSeconds.entries())
+        .map(([owner, seconds]) => ({
+          owner,
+          seconds,
+        }))
+        .sort((left, right) => right.seconds - left.seconds || left.owner.localeCompare(right.owner, 'pt-BR')),
     })),
     taskCatalog: taskCatalog
       .sort((left, right) => {

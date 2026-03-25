@@ -1361,7 +1361,7 @@ body {
 
 .monday-command-panel {
     display: grid !important;
-    grid-template-columns: minmax(0, 1.2fr) minmax(340px, 0.8fr) !important;
+    grid-template-columns: minmax(0, 1fr) minmax(280px, 360px) !important;
     gap: 20px !important;
     padding: 24px !important;
     margin-bottom: 18px !important;
@@ -1408,6 +1408,11 @@ body {
     gap: 14px !important;
 }
 
+.monday-command-side {
+    display: grid !important;
+    align-content: start !important;
+}
+
 .monday-command-stat,
 .monday-command-filter,
 .monday-decision-card,
@@ -1441,6 +1446,10 @@ body {
 .monday-command-filter small {
     color: var(--text-muted) !important;
     line-height: 1.45 !important;
+}
+
+.monday-command-filter {
+    min-height: 100% !important;
 }
 
 .monday-decision-grid,
@@ -1688,6 +1697,39 @@ body {
 .weekly-time-row b {
     display: block !important;
     white-space: nowrap !important;
+}
+
+.weekly-time-row-detailed {
+    grid-template-columns: minmax(180px, 0.9fr) minmax(180px, 1.4fr) auto !important;
+    align-items: start !important;
+}
+
+.weekly-time-owner-list {
+    grid-column: 1 / -1 !important;
+    display: grid !important;
+    gap: 8px !important;
+    padding-top: 2px !important;
+}
+
+.weekly-time-owner-row {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 12px !important;
+    padding: 10px 12px !important;
+    border-radius: 12px !important;
+    background: rgba(255, 255, 255, 0.02) !important;
+    border: 1px solid rgba(255, 255, 255, 0.04) !important;
+}
+
+.weekly-time-owner-row span {
+    color: var(--text-secondary) !important;
+    line-height: 1.4 !important;
+}
+
+.weekly-time-owner-row strong {
+    white-space: nowrap !important;
+    font-size: 13px !important;
 }
 
 .practice-card {

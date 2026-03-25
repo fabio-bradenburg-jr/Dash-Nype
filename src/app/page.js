@@ -5301,23 +5301,8 @@ export default function DashboardPage() {
           : 'Assim que houver tempo lançado, o principal consumidor aparece aqui.',
       },
     ]
-    const mondayPractices = [
-      'Ataque bloqueios com SLA curto: item parado ou bloqueado por mais de 24h precisa de dono e próximo passo explícito.',
-      'Olhe atraso por responsável, não só total do board: isso evita esconder sobrecarga individual atrás de um volume geral bonito.',
-      'Monitore as tarefas com maior duração para revisar briefing, handoff e retrabalho. Tempo muito alto quase sempre aponta gargalo de processo.',
-      'Use média semanal para equalizar carga do time: crescimento constante sem ganho de entrega costuma sinalizar excesso de contexto ou fila desalinhada.',
-    ]
-
     return (
       <section className="source-section">
-        <div className="source-section-header">
-          <div className="source-section-badge" style={{ color: '#f59e0b', borderColor: '#f59e0b' }}>
-            <i className="bx bx-columns"></i>
-            <span>Monday</span>
-          </div>
-          <p className="source-section-copy">Leitura operacional interna dos boards configurados globalmente para acompanhar a execução da empresa.</p>
-        </div>
-
         <section className="glass-panel grouped-results">
           <div className="section-header section-header-stack section-header-with-action">
             <div>
@@ -5344,19 +5329,7 @@ export default function DashboardPage() {
                   <h3>Fila, risco e capacidade em uma leitura de gestão</h3>
                   <p>Modelamos esse topo como dashboards operacionais de referência: primeiro saúde da entrega, depois risco imediato, capacidade do time e onde a fila está se acumulando.</p>
                 </div>
-                <div className="monday-command-grid">
-                  <div className="monday-command-stat">
-                    <span>Período</span>
-                    <strong>{mondayPeriodLabel}</strong>
-                  </div>
-                  <div className="monday-command-stat">
-                    <span>Boards</span>
-                    <strong>{formatNumber(mondaySummary?.boardsConfigured || 0)}</strong>
-                  </div>
-                  <div className="monday-command-stat">
-                    <span>Maior fila</span>
-                    <strong>{mondaySummary?.topStatus ? `${mondaySummary.topStatus.label} (${formatNumber(mondaySummary.topStatus.count)})` : 'Sem base'}</strong>
-                  </div>
+                <div className="monday-command-side">
                   <div className="monday-command-filter">
                     <label htmlFor="monday-owner-filter">Filtrar responsável</label>
                     <select
@@ -5571,51 +5544,94 @@ export default function DashboardPage() {
                 </div>
               </section>
 
+              <section className="glass-panel ranking-card">
+                <div className="section-header section-header-stack">
+                  <div>
+                    <h2>Tempo por semana</h2>
+                    <p className="chart-subtitle">Carga trabalhada separada por semana e quebrada por responsável dentro do período selecionado.</p>
+                  </div>
+                </div>
+                {weeklyTrackedTime.length ? (
+                  <div className="weekly-time-list">
+                    {weeklyTrackedTime.map((week) => (
+                      <div key={week.id} className="weekly-time-row weekly-time-row-detailed">
+                        <div className="weekly-time-copy">
+                          <strong>{week.label}</strong>
+                          <span>{formatNumber(week.tasksWithTime || 0)} tarefa(s) com tempo lançado</span>
+                        </div>
+                        <div className="weekly-time-bar-track">
+                          <span
+                            className="weekly-time-bar-fill"
+                            style={{ width: `${maxWeeklySeconds > 0 ? (week.seconds / maxWeeklySeconds) * 100 : 0}%` }}
+                          ></span>
+                        </div>
+                        <b>{formatDurationHours(week.seconds || 0)}</b>
+                        <div className="weekly-time-owner-list">
+                          {week.ownerBreakdown?.length ? (
+                            week.ownerBreakdown.map((item) => (
+                              <div key={`${week.id}-${item.owner}`} className="weekly-time-owner-row">
+                                <span>{item.owner}</span>
+                                <strong>{formatDurationHours(item.seconds || 0)}</strong>
+                              </div>
+                            ))
+                          ) : (
+                            <div className="ranking-inline-note">Sem responsáveis com tempo lançado nessa semana.</div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="ranking-empty">Não encontramos lançamentos de tempo suficientes para dividir em semanas nesse recorte.</div>
+                )}
+              </section>
+
               <section className="rankings-grid operations-rankings-grid">
                 <div className="glass-panel ranking-card">
                   <div className="section-header section-header-stack">
                     <div>
-                      <h2>Tempo por semana</h2>
-                      <p className="chart-subtitle">Carga trabalhada separada por semana, usando o período que você escolheu no topo.</p>
+                      <h2>Boards monitorados</h2>
+                      <p className="chart-subtitle">Volume operacional consolidado por board no recorte atual.</p>
                     </div>
                   </div>
-                  {weeklyTrackedTime.length ? (
-                    <div className="weekly-time-list">
-                      {weeklyTrackedTime.map((week) => (
-                        <div key={week.id} className="weekly-time-row">
-                          <div className="weekly-time-copy">
-                            <strong>{week.label}</strong>
-                            <span>{formatNumber(week.tasksWithTime || 0)} tarefa(s) com tempo lançado</span>
+                  <div className="ranking-list">
+                    {mondaySummary?.boardSummary?.length ? (
+                      mondaySummary.boardSummary.map((item) => (
+                        <div key={item.id} className="ranking-row">
+                          <div>
+                            <strong>{item.label}</strong>
+                            <span>{formatNumber(item.totalItems || 0)} item(ns)</span>
                           </div>
-                          <div className="weekly-time-bar-track">
-                            <span
-                              className="weekly-time-bar-fill"
-                              style={{ width: `${maxWeeklySeconds > 0 ? (week.seconds / maxWeeklySeconds) * 100 : 0}%` }}
-                            ></span>
-                          </div>
-                          <b>{formatDurationHours(week.seconds || 0)}</b>
+                          <b>{formatNumber(item.doneCount || 0)} concluído(s)</b>
                         </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="ranking-empty">Não encontramos lançamentos de tempo suficientes para dividir em semanas nesse recorte.</div>
-                  )}
+                      ))
+                    ) : (
+                      <div className="ranking-empty">Sem boards suficientes para montar o ranking.</div>
+                    )}
+                  </div>
                 </div>
 
                 <div className="glass-panel ranking-card">
                   <div className="section-header section-header-stack">
                     <div>
-                      <h2>Boas práticas de acompanhamento</h2>
-                      <p className="chart-subtitle">Leituras que fazem diferença de verdade no acompanhamento de uma operação de agência.</p>
+                      <h2>Grupos dos boards</h2>
+                      <p className="chart-subtitle">Em qual grupo do Monday o trabalho está mais concentrado hoje.</p>
                     </div>
                   </div>
-                  <div className="practice-list">
-                    {mondayPractices.map((practice, index) => (
-                      <div key={index} className="practice-card">
-                        <strong>{index + 1}.</strong>
-                        <span>{practice}</span>
-                      </div>
-                    ))}
+                  <div className="ranking-list">
+                    {mondaySummary?.groupSummary?.length ? (
+                      mondaySummary.groupSummary.map((item) => (
+                        <div key={item.id} className="ranking-row">
+                          <div>
+                            <strong>{item.label}</strong>
+                            <span>{formatNumber(item.totalItems || 0)} item(ns)</span>
+                          </div>
+                          <b>{formatNumber(item.overdueCount || 0)} atrasado(s)</b>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="ranking-empty">Sem grupos suficientes para montar o ranking.</div>
+                    )}
                   </div>
                 </div>
               </section>
@@ -5697,56 +5713,6 @@ export default function DashboardPage() {
                   <div className="ranking-empty">Nenhum usuário com tarefa e time tracking apareceu dentro do período filtrado.</div>
                 )}
               </div>
-
-              <section className="rankings-grid operations-rankings-grid">
-                <div className="glass-panel ranking-card">
-                  <div className="section-header section-header-stack">
-                    <div>
-                      <h2>Boards monitorados</h2>
-                      <p className="chart-subtitle">Volume operacional consolidado por board no recorte atual.</p>
-                    </div>
-                  </div>
-                  <div className="ranking-list">
-                    {mondaySummary?.boardSummary?.length ? (
-                      mondaySummary.boardSummary.map((item) => (
-                        <div key={item.id} className="ranking-row">
-                          <div>
-                            <strong>{item.label}</strong>
-                            <span>{formatNumber(item.totalItems || 0)} item(ns)</span>
-                          </div>
-                          <b>{formatNumber(item.doneCount || 0)} concluído(s)</b>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="ranking-empty">Sem boards suficientes para montar o ranking.</div>
-                    )}
-                  </div>
-                </div>
-
-                <div className="glass-panel ranking-card">
-                  <div className="section-header section-header-stack">
-                    <div>
-                      <h2>Grupos dos boards</h2>
-                      <p className="chart-subtitle">Em qual grupo do Monday o trabalho está mais concentrado hoje.</p>
-                    </div>
-                  </div>
-                  <div className="ranking-list">
-                    {mondaySummary?.groupSummary?.length ? (
-                      mondaySummary.groupSummary.map((item) => (
-                        <div key={item.id} className="ranking-row">
-                          <div>
-                            <strong>{item.label}</strong>
-                            <span>{formatNumber(item.totalItems || 0)} item(ns)</span>
-                          </div>
-                          <b>{formatNumber(item.overdueCount || 0)} atrasado(s)</b>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="ranking-empty">Sem grupos suficientes para montar o ranking.</div>
-                    )}
-                  </div>
-                </div>
-              </section>
             </>
           ) : (
             <div className="ranking-empty">
@@ -9809,6 +9775,38 @@ export default function DashboardPage() {
 
         .weekly-time-row b {
           white-space: nowrap;
+        }
+
+        .weekly-time-row-detailed {
+          align-items: start;
+        }
+
+        .weekly-time-owner-list {
+          grid-column: 1 / -1;
+          display: grid;
+          gap: 8px;
+          padding-top: 2px;
+        }
+
+        .weekly-time-owner-row {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          padding: 10px 12px;
+          border-radius: 12px;
+          background: rgba(255, 255, 255, 0.02);
+          border: 1px solid rgba(255, 255, 255, 0.04);
+        }
+
+        .weekly-time-owner-row span {
+          color: var(--text-secondary);
+          line-height: 1.4;
+        }
+
+        .weekly-time-owner-row strong {
+          white-space: nowrap;
+          font-size: 13px;
         }
 
         .practice-list {
