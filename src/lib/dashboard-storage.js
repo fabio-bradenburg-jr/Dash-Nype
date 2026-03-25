@@ -40,6 +40,7 @@ export const DEFAULT_PREFERENCES = {
 export const DEFAULT_DASHBOARD_TEMPLATE_NAME = 'Principal'
 const DEFAULT_META_DASHBOARD_METRIC_KEYS = []
 const DEFAULT_META_DASHBOARD_METRIC_LAYOUTS = []
+export const DEFAULT_META_CAMPAIGN_TABLE_COLUMN_KEYS = ['spend', 'totalConversions', 'cpa', 'roas']
 const DEFAULT_RD_DASHBOARD_METRIC_KEYS = []
 const DEFAULT_RD_DASHBOARD_METRIC_LAYOUTS = []
 const DEFAULT_SHEETS_DASHBOARD_METRIC_KEYS = []
@@ -52,6 +53,11 @@ function createRecordId(prefix) {
 function normalizeTemplateMetricKeys(metricKeys) {
   if (!Array.isArray(metricKeys)) return []
   return Array.from(new Set(metricKeys.filter((metricKey) => typeof metricKey === 'string' && metricKey.trim())))
+}
+
+function normalizeMetaCampaignTableColumnKeys(columnKeys) {
+  const normalized = normalizeTemplateMetricKeys(columnKeys)
+  return normalized.length ? normalized : [...DEFAULT_META_CAMPAIGN_TABLE_COLUMN_KEYS]
 }
 
 function createDashboardMetricLayout(metricKey, overrides = {}) {
@@ -104,6 +110,7 @@ export function createDashboardTemplate(overrides = {}) {
     id: createRecordId('dashboard-template'),
     name: DEFAULT_DASHBOARD_TEMPLATE_NAME,
     metaMetricKeys: metaMetricLayouts.map((item) => item.metricKey),
+    metaCampaignTableColumnKeys: normalizeMetaCampaignTableColumnKeys(overrides.metaCampaignTableColumnKeys),
     rdMetricKeys: rdMetricLayouts.map((item) => item.metricKey),
     sheetsMetricKeys: sheetsMetricLayouts.map((item) => item.metricKey),
     metaMetricLayouts,
@@ -111,6 +118,7 @@ export function createDashboardTemplate(overrides = {}) {
     sheetsMetricLayouts,
     ...overrides,
     metaMetricKeys: metaMetricLayouts.map((item) => item.metricKey),
+    metaCampaignTableColumnKeys: normalizeMetaCampaignTableColumnKeys(overrides.metaCampaignTableColumnKeys),
     rdMetricKeys: rdMetricLayouts.map((item) => item.metricKey),
     sheetsMetricKeys: sheetsMetricLayouts.map((item) => item.metricKey),
     metaMetricLayouts,
@@ -158,6 +166,7 @@ export function normalizeDashboardTemplate(template, fallbackName = DEFAULT_DASH
     id: template?.id || createRecordId('dashboard-template'),
     name: String(template?.name || fallbackName).trim() || fallbackName,
     metaMetricKeys: metaMetricLayouts.map((item) => item.metricKey),
+    metaCampaignTableColumnKeys: normalizeMetaCampaignTableColumnKeys(template?.metaCampaignTableColumnKeys),
     rdMetricKeys: rdMetricLayouts.map((item) => item.metricKey),
     sheetsMetricKeys: sheetsMetricLayouts.map((item) => item.metricKey),
     metaMetricLayouts,

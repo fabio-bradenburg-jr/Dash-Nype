@@ -15,6 +15,7 @@ export const META_LEAD_EVENTS = ['lead', 'onsite_conversion.lead_grouped']
 export const META_MESSAGE_EVENTS = ['onsite_conversion.messaging_conversation_started_7d', 'onsite_conversion.messaging_first_reply']
 export const META_LINK_CLICK_EVENTS = ['link_click', 'inline_link_click', 'outbound_click']
 export const META_THRUPLAY_EVENTS = ['thruplay', 'video_thruplay_watched_actions']
+export const META_LANDING_PAGE_VIEW_EVENTS = ['landing_page_view']
 
 function resolveMetaInsightData(input) {
   if (!input) return null
@@ -96,6 +97,7 @@ export function extractMetaCampaignMetrics(insightData) {
       conversionRate: 0,
       averageTicket: 0,
       roas: 0,
+      landingPageViews: 0,
       videoViews: 0,
       videoViewRate: 0,
       thruplay: 0,
@@ -127,6 +129,7 @@ export function extractMetaCampaignMetrics(insightData) {
     const total = sumActionValues(actions, [actionType])
     return total > 0 ? total : bestValue
   }, 0)
+  const landingPageViews = getBestActionValue(actions, META_LANDING_PAGE_VIEW_EVENTS)
   const derivedLinkClicks = getDerivedClicksFromCost(costPerActionType, spend, META_LINK_CLICK_EVENTS)
   const explicitClicks = parseInt(normalizedInsightData.clicks || 0, 10)
   const linkClicks = actionLinkClicks > 0 ? actionLinkClicks : (derivedLinkClicks > 0 ? derivedLinkClicks : explicitClicks)
@@ -177,6 +180,7 @@ export function extractMetaCampaignMetrics(insightData) {
     conversionRate,
     averageTicket,
     roas,
+    landingPageViews,
     videoViews,
     videoViewRate,
     thruplay,
@@ -260,6 +264,7 @@ export function buildMetaSummaryFromCampaigns(campaigns = []) {
       accumulator.reach += metrics.reach
       accumulator.impressions += metrics.impressions
       accumulator.clicks += metrics.clicks
+      accumulator.landingPageViews += metrics.landingPageViews || 0
       accumulator.videoViews += metrics.videoViews
       accumulator.thruplay += metrics.thruplay
       accumulator.quarterViews += metrics.videoViews > 0 ? Math.round((metrics.hookRate / 100) * metrics.videoViews) : 0
@@ -297,6 +302,7 @@ export function buildMetaSummaryFromCampaigns(campaigns = []) {
       reach: 0,
       impressions: 0,
       clicks: 0,
+      landingPageViews: 0,
       purchases: 0,
       leads: 0,
       messages: 0,
@@ -322,6 +328,7 @@ export function buildMetaSummaryFromCampaigns(campaigns = []) {
     reach: aggregated.reach.toString(),
     impressions: aggregated.impressions.toString(),
     clicks: aggregated.clicks.toString(),
+    landingPageViews: aggregated.landingPageViews.toString(),
     cpc: aggregated.clicks > 0 ? (aggregated.spend / aggregated.clicks).toString() : '0',
     ctr: aggregated.impressions > 0 ? ((aggregated.clicks / aggregated.impressions) * 100).toString() : '0',
     custom_metrics: {
@@ -335,6 +342,7 @@ export function buildMetaSummaryFromCampaigns(campaigns = []) {
       cpm: aggregated.impressions > 0 ? (aggregated.spend / aggregated.impressions) * 1000 : 0,
       frequency: aggregated.reach > 0 ? aggregated.impressions / aggregated.reach : 0,
       conversionRate: aggregated.clicks > 0 ? (aggregated.totalConversions / aggregated.clicks) * 100 : 0,
+      landingPageViews: aggregated.landingPageViews,
       averageTicket: aggregated.purchases > 0 ? aggregated.purchaseValue / aggregated.purchases : 0,
       roas: aggregated.spend > 0 ? aggregated.purchaseValue / aggregated.spend : 0,
       videoViews: aggregated.videoViews,

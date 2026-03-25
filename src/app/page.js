@@ -9,6 +9,7 @@ import {
   createClientRecord,
   createClientGroupRecord,
   createDashboardTemplate,
+  DEFAULT_META_CAMPAIGN_TABLE_COLUMN_KEYS,
   DEFAULT_INTEGRATIONS,
   DEFAULT_PREFERENCES,
   loadDashboardPreferences,
@@ -82,7 +83,7 @@ const EMPTY_META_BREAKDOWNS = {
   },
 }
 
-const BRAZIL_MAP_SILHOUETTE_PATH = 'M16 20 L25 12 L38 11 L46 16 L58 14 L70 17 L82 24 L86 34 L92 41 L88 52 L82 58 L78 69 L70 76 L64 88 L55 95 L46 90 L41 80 L34 73 L26 68 L22 58 L16 48 L12 38 L14 28 Z'
+const BRAZIL_MAP_SILHOUETTE_PATH = 'M22 22 L30 15 L42 14 L50 19 L61 17 L72 20 L84 28 L88 39 L95 47 L90 61 L83 68 L79 80 L70 88 L64 97 L54 92 L49 81 L41 73 L31 67 L27 57 L20 46 L16 35 L19 24 Z'
 
 const BRAZIL_STATE_MAP_POINTS = {
   AC: { x: 14, y: 47, name: 'Acre' },
@@ -228,6 +229,7 @@ const METRIC_OPTIONS = {
   reach: { label: 'Alcance', type: 'number' },
   frequency: { label: 'Frequência', type: 'decimal' },
   clicks: { label: 'Cliques no link', type: 'number' },
+  landingPageViews: { label: 'Visualização de página de destino', type: 'number' },
   cpc: { label: 'CPC', type: 'currency' },
   ctr: { label: 'CTR', type: 'percent' },
   totalConversions: { label: 'Conversões totais', type: 'number' },
@@ -242,6 +244,7 @@ const METRIC_OPTIONS = {
   hookRate: { label: 'Hook', type: 'percent' },
   cpa: { label: 'CPA', type: 'currency' },
   roas: { label: 'ROAS', type: 'multiplier' },
+  landingPageViews: { label: 'Visualização de página de destino', type: 'number' },
 }
 
 const DATE_PRESETS = [
@@ -298,6 +301,30 @@ const META_RESULT_COMPARISON_OPTIONS = {
     resultTone: '#3b82f6',
     costTone: '#a855f7',
     icon: 'bx-message-rounded-dots',
+  },
+  reach: {
+    key: 'reach',
+    title: 'Alcance',
+    description: 'Leia o alcance gerado ao longo do tempo junto com o custo por alcance no agrupamento selecionado.',
+    resultMetricKey: 'reachResults',
+    costMetricKey: 'costPerReach',
+    resultLabel: 'Alcance',
+    costLabel: 'Custo por alcance',
+    resultTone: '#38bdf8',
+    costTone: '#22c55e',
+    icon: 'bx-radar',
+  },
+  truplays: {
+    key: 'truplays',
+    title: 'TruPlays',
+    description: 'Acompanhe a evolução dos TruPlays junto com o custo por TruPlay no período filtrado.',
+    resultMetricKey: 'thruplays',
+    costMetricKey: 'costPerTruplay',
+    resultLabel: 'TruPlays',
+    costLabel: 'Custo por TruPlay',
+    resultTone: '#a855f7',
+    costTone: '#f59e0b',
+    icon: 'bx-play-circle',
   },
 }
 
@@ -636,6 +663,25 @@ const FIXED_META_METRIC_KEYS = new Set([
   'messages',
   'costPerMessage',
 ])
+
+const META_CAMPAIGN_TABLE_COLUMN_OPTIONS = {
+  spend: { label: 'Investimento', type: 'currency', description: 'Valor investido no período filtrado.' },
+  totalConversions: { label: 'Conversões', type: 'number', description: 'Total consolidado de compras, leads e mensagens.' },
+  purchases: { label: 'Compras', type: 'number', description: 'Compras atribuídas à campanha.' },
+  leads: { label: 'Leads', type: 'number', description: 'Leads atribuídos à campanha.' },
+  messages: { label: 'Mensagens', type: 'number', description: 'Mensagens iniciadas atribuídas à campanha.' },
+  cpa: { label: 'CPA', type: 'currency', description: 'Custo médio por resultado consolidado.' },
+  roas: { label: 'ROAS', type: 'multiplier', description: 'Retorno sobre investimento da campanha.' },
+  purchaseValue: { label: 'Faturamento', type: 'currency', description: 'Receita atribuída às compras da campanha.' },
+  clicks: { label: 'Cliques', type: 'number', description: 'Cliques registrados no período.' },
+  impressions: { label: 'Impressões', type: 'number', description: 'Volume de impressões da campanha.' },
+  reach: { label: 'Alcance', type: 'number', description: 'Pessoas alcançadas pela campanha.' },
+  ctr: { label: 'CTR', type: 'percent', description: 'Taxa de cliques sobre impressões.' },
+  cpc: { label: 'CPC', type: 'currency', description: 'Custo médio por clique.' },
+  cpm: { label: 'CPM', type: 'currency', description: 'Custo por mil impressões.' },
+  frequency: { label: 'Frequência', type: 'decimal', description: 'Média de exibições por pessoa alcançada.' },
+  conversionRate: { label: 'Taxa de conversão', type: 'percent', description: 'Conversão de cliques em resultados.' },
+}
 
 const RD_TEMPLATE_METRIC_OPTIONS = {
   opportunityCount: {
@@ -1385,10 +1431,19 @@ function haveSameDashboardMetricLayouts(left = [], right = []) {
   })
 }
 
+function normalizeMetaCampaignTableColumnKeys(columnKeys) {
+  const normalized = Array.isArray(columnKeys)
+    ? Array.from(new Set(columnKeys.filter((columnKey) => typeof columnKey === 'string' && META_CAMPAIGN_TABLE_COLUMN_OPTIONS[columnKey])))
+    : []
+
+  return normalized.length ? normalized : [...DEFAULT_META_CAMPAIGN_TABLE_COLUMN_KEYS]
+}
+
 function cloneDashboardTemplates(templates = []) {
   return templates.map((template) => ({
     ...template,
     metaMetricKeys: Array.isArray(template?.metaMetricKeys) ? [...template.metaMetricKeys] : [],
+    metaCampaignTableColumnKeys: normalizeMetaCampaignTableColumnKeys(template?.metaCampaignTableColumnKeys),
     rdMetricKeys: Array.isArray(template?.rdMetricKeys) ? [...template.rdMetricKeys] : [],
     sheetsMetricKeys: Array.isArray(template?.sheetsMetricKeys) ? [...template.sheetsMetricKeys] : [],
     metaMetricLayouts: cloneDashboardMetricLayouts(template?.metaMetricLayouts),
@@ -1407,6 +1462,10 @@ function haveSameDashboardTemplates(left = [], right = []) {
     return (
       leftTemplate.id === rightTemplate.id &&
       leftTemplate.name === rightTemplate.name &&
+      haveSameSelection(
+        normalizeMetaCampaignTableColumnKeys(leftTemplate.metaCampaignTableColumnKeys),
+        normalizeMetaCampaignTableColumnKeys(rightTemplate.metaCampaignTableColumnKeys)
+      ) &&
       haveSameDashboardMetricLayouts(leftTemplate.metaMetricLayouts || [], rightTemplate.metaMetricLayouts || []) &&
       haveSameDashboardMetricLayouts(leftTemplate.rdMetricLayouts || [], rightTemplate.rdMetricLayouts || []) &&
       haveSameDashboardMetricLayouts(leftTemplate.sheetsMetricLayouts || [], rightTemplate.sheetsMetricLayouts || [])
@@ -1451,6 +1510,8 @@ function getMetricData(metricKey, dayData) {
       return parseInt(dayData.reach || 0, 10)
     case 'clicks':
       return parseInt(dayData.clicks || 0, 10)
+    case 'landingPageViews':
+      return parseInt(dayData.landingPageViews || dayData.custom_metrics?.landingPageViews || 0, 10)
     case 'cpc':
       return parseFloat(dayData.cpc || 0)
     case 'cpm':
@@ -1642,6 +1703,8 @@ function getSummaryMetricValue(metricKey, summary, customMetrics) {
       return parseInt(summary?.reach || 0, 10)
     case 'clicks':
       return parseInt(summary?.clicks || 0, 10)
+    case 'landingPageViews':
+      return parseInt(summary?.landingPageViews || customMetrics?.landingPageViews || 0, 10)
     case 'cpc':
       return parseFloat(summary?.cpc || 0)
     case 'cpm':
@@ -1717,6 +1780,7 @@ export default function DashboardPage() {
   const [campaignSearch, setCampaignSearch] = useState('')
   const [campaignStatusFilter, setCampaignStatusFilter] = useState('ACTIVE')
   const [campaignSortBy, setCampaignSortBy] = useState('spend')
+  const [isCampaignColumnLibraryOpen, setIsCampaignColumnLibraryOpen] = useState(false)
   const [metaResultFilters, setMetaResultFilters] = useState([])
   const [draftMetaResultFilters, setDraftMetaResultFilters] = useState([])
   const [metaCampaignFilters, setMetaCampaignFilters] = useState([])
@@ -1969,6 +2033,10 @@ export default function DashboardPage() {
   const activeDraftDashboardTemplateId = activeDraftDashboardTemplate?.id || activeDraftDashboardTemplates[0]?.id || ''
   const draftMetaDashboardMetricLayouts = useMemo(
     () => normalizeDashboardMetricLayouts(activeDraftDashboardTemplate?.metaMetricLayouts),
+    [activeDraftDashboardTemplate]
+  )
+  const draftMetaCampaignTableColumnKeys = useMemo(
+    () => normalizeMetaCampaignTableColumnKeys(activeDraftDashboardTemplate?.metaCampaignTableColumnKeys),
     [activeDraftDashboardTemplate]
   )
   const draftRdDashboardMetricLayouts = useMemo(
@@ -2474,6 +2542,7 @@ export default function DashboardPage() {
     setIsMetaMetricLibraryOpen(false)
     setIsRdMetricLibraryOpen(false)
     setIsSheetsMetricLibraryOpen(false)
+    setIsCampaignColumnLibraryOpen(false)
   }, [activeClientId, activeDashboardTemplate?.id])
 
   useEffect(() => {
@@ -2713,6 +2782,7 @@ export default function DashboardPage() {
 
     const newTemplate = createDashboardTemplate({
       name: trimmedName,
+      metaCampaignTableColumnKeys: [...draftMetaCampaignTableColumnKeys],
       metaMetricLayouts: cloneDashboardMetricLayouts(draftMetaDashboardMetricLayouts),
       rdMetricLayouts: cloneDashboardMetricLayouts(draftRdDashboardMetricLayouts),
       sheetsMetricLayouts: cloneDashboardMetricLayouts(draftSheetsDashboardMetricLayouts),
@@ -2737,6 +2807,22 @@ export default function DashboardPage() {
         },
       ],
     }))
+  }
+
+  const handleToggleMetaCampaignTableColumn = (columnKey) => {
+    if (!META_CAMPAIGN_TABLE_COLUMN_OPTIONS[columnKey]) return
+
+    updateDraftDashboardTemplate((template) => {
+      const currentColumns = normalizeMetaCampaignTableColumnKeys(template.metaCampaignTableColumnKeys)
+      const nextColumns = currentColumns.includes(columnKey)
+        ? currentColumns.filter((item) => item !== columnKey)
+        : [...currentColumns, columnKey]
+
+      return {
+        ...template,
+        metaCampaignTableColumnKeys: normalizeMetaCampaignTableColumnKeys(nextColumns),
+      }
+    })
   }
 
   const handleRemoveMetaDashboardMetric = (layoutId) => {
@@ -4357,6 +4443,83 @@ export default function DashboardPage() {
     },
   }
 
+  const selectedMetaCampaignTableColumns = useMemo(
+    () =>
+      draftMetaCampaignTableColumnKeys
+        .map((columnKey) => ({
+          key: columnKey,
+          ...META_CAMPAIGN_TABLE_COLUMN_OPTIONS[columnKey],
+        }))
+        .filter((column) => column.label),
+    [draftMetaCampaignTableColumnKeys]
+  )
+
+  const campaignSortOptions = useMemo(() => {
+    const baseOptions = [
+      { value: 'spend', label: 'Maior investimento' },
+      { value: 'totalConversions', label: 'Mais conversões' },
+      { value: 'roas', label: 'Maior ROAS' },
+    ]
+
+    const appendedOptions = selectedMetaCampaignTableColumns
+      .filter((column) => !baseOptions.some((option) => option.value === column.key))
+      .map((column) => ({
+        value: column.key,
+        label: column.type === 'currency' || column.type === 'multiplier' || column.type === 'percent' || column.type === 'decimal'
+          ? `Maior ${column.label}`
+          : `Mais ${column.label.toLowerCase()}`,
+      }))
+
+    return [...baseOptions, ...appendedOptions]
+  }, [selectedMetaCampaignTableColumns])
+
+  const getCampaignMetricValue = useCallback((campaign, metricKey) => {
+    const metrics = extractMetaCampaignMetrics(campaign)
+
+    switch (metricKey) {
+      case 'spend':
+        return metrics.spend
+      case 'totalConversions':
+        return metrics.totalConversions
+      case 'purchases':
+        return metrics.purchases
+      case 'leads':
+        return metrics.leads
+      case 'messages':
+        return metrics.messages
+      case 'cpa':
+        return metrics.cpa
+      case 'roas':
+        return metrics.roas
+      case 'purchaseValue':
+        return metrics.purchaseValue
+      case 'clicks':
+        return metrics.clicks
+      case 'impressions':
+        return metrics.impressions
+      case 'reach':
+        return metrics.reach
+      case 'ctr':
+        return metrics.ctr
+      case 'cpc':
+        return metrics.cpc
+      case 'cpm':
+        return metrics.cpm
+      case 'frequency':
+        return metrics.frequency
+      case 'conversionRate':
+        return metrics.conversionRate
+      default:
+        return 0
+    }
+  }, [])
+
+  const formatCampaignMetricValue = useCallback((metricKey, metricValue) => {
+    const metric = META_CAMPAIGN_TABLE_COLUMN_OPTIONS[metricKey]
+    if (!metric) return String(metricValue ?? '-')
+    return formatDashboardMetricValue(metricValue, metric.type)
+  }, [])
+
   const filteredCampaigns = useMemo(() => {
     const term = campaignSearch.trim().toLowerCase()
     const filtered = campaigns.filter((campaign) => {
@@ -4368,25 +4531,12 @@ export default function DashboardPage() {
       return hasSpendInSelectedPeriod && matchesSearch && matchesStatus && matchesResultType && matchesCampaignFilter
     })
 
-    const getCampaignMetrics = (campaign) => {
-      const metrics = extractMetaCampaignMetrics(campaign)
-
-      return {
-        spendValue: metrics.spend,
-        totalConversionsValue: metrics.totalConversions,
-        roasValue: metrics.roas,
-      }
-    }
-
     return filtered.sort((campaignA, campaignB) => {
-      const metricsA = getCampaignMetrics(campaignA)
-      const metricsB = getCampaignMetrics(campaignB)
-
-      if (campaignSortBy === 'roas') return metricsB.roasValue - metricsA.roasValue
-      if (campaignSortBy === 'conversions') return metricsB.totalConversionsValue - metricsA.totalConversionsValue
-      return metricsB.spendValue - metricsA.spendValue
+      const valueA = getCampaignMetricValue(campaignA, campaignSortBy === 'conversions' ? 'totalConversions' : campaignSortBy)
+      const valueB = getCampaignMetricValue(campaignB, campaignSortBy === 'conversions' ? 'totalConversions' : campaignSortBy)
+      return valueB - valueA
     })
-  }, [campaigns, campaignSearch, campaignStatusFilter, campaignSortBy, normalizedMetaResultFilters, availableMetaResultFilters, activeMetaCampaignIds])
+  }, [campaigns, campaignSearch, campaignStatusFilter, campaignSortBy, normalizedMetaResultFilters, availableMetaResultFilters, activeMetaCampaignIds, getCampaignMetricValue])
 
   const campaignSummary = useMemo(() => {
     if (!filteredCampaigns.length) {
@@ -8655,32 +8805,70 @@ export default function DashboardPage() {
                 </section>
 
                 <section className="campaigns-section glass-panel">
-                  <div className="section-header section-header-stack">
+                  <div className="section-header section-header-stack section-header-with-action">
                     <div>
                       <h2>Campanhas do cliente ({filteredCampaigns.length})</h2>
                       <p className="chart-subtitle">Tabela pronta para reunião, com base na conta Meta vinculada a {activeClient.name}.</p>
                     </div>
-                    <div className="campaign-filters">
-                      <div className="search-box">
-                        <i className="bx bx-search"></i>
-                        <input type="text" placeholder="Buscar campanha" value={campaignSearch} onChange={(event) => setCampaignSearch(event.target.value)} />
-                      </div>
-                      <div className="date-picker glass-item compact-filter">
-                        <i className="bx bx-filter-alt"></i>
-                        <select value={campaignStatusFilter} onChange={(event) => setCampaignStatusFilter(event.target.value)}>
-                          <option value="all">Todos os status</option>
-                          <option value="ACTIVE">Ativas</option>
-                          <option value="PAUSED">Pausadas</option>
-                          <option value="ARCHIVED">Arquivadas</option>
-                        </select>
-                      </div>
-                      <div className="date-picker glass-item compact-filter">
-                        <i className="bx bx-sort-down"></i>
-                        <select value={campaignSortBy} onChange={(event) => setCampaignSortBy(event.target.value)}>
-                          <option value="spend">Maior investimento</option>
-                          <option value="conversions">Mais conversões</option>
-                          <option value="roas">Maior ROAS</option>
-                        </select>
+                    <div className="campaigns-section-actions">
+                      {activeDraftDashboardTemplate && (
+                        <div className="metric-library-anchor">
+                          <button
+                            type="button"
+                            className="btn btn-secondary"
+                            onClick={() => setIsCampaignColumnLibraryOpen((current) => !current)}
+                          >
+                            <i className="bx bx-columns"></i>
+                            Editar colunas
+                          </button>
+                          {isCampaignColumnLibraryOpen && (
+                            <div className="metric-library-panel metric-library-dropdown glass-item campaign-column-library">
+                              <div>
+                                <strong>Colunas da tabela</strong>
+                                <p>Escolha as métricas que devem aparecer na tabela de campanhas deste modelo.</p>
+                              </div>
+                              <div className="metric-library-list">
+                                {Object.entries(META_CAMPAIGN_TABLE_COLUMN_OPTIONS).map(([columnKey, column]) => {
+                                  const isSelected = draftMetaCampaignTableColumnKeys.includes(columnKey)
+                                  return (
+                                    <button
+                                      key={columnKey}
+                                      type="button"
+                                      className={`metric-library-chip ${isSelected ? 'active' : ''}`}
+                                      onClick={() => handleToggleMetaCampaignTableColumn(columnKey)}
+                                    >
+                                      <span>{column.label}</span>
+                                      <small>{column.description}</small>
+                                    </button>
+                                  )
+                                })}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      <div className="campaign-filters">
+                        <div className="search-box">
+                          <i className="bx bx-search"></i>
+                          <input type="text" placeholder="Buscar campanha" value={campaignSearch} onChange={(event) => setCampaignSearch(event.target.value)} />
+                        </div>
+                        <div className="date-picker glass-item compact-filter">
+                          <i className="bx bx-filter-alt"></i>
+                          <select value={campaignStatusFilter} onChange={(event) => setCampaignStatusFilter(event.target.value)}>
+                            <option value="all">Todos os status</option>
+                            <option value="ACTIVE">Ativas</option>
+                            <option value="PAUSED">Pausadas</option>
+                            <option value="ARCHIVED">Arquivadas</option>
+                          </select>
+                        </div>
+                        <div className="date-picker glass-item compact-filter">
+                          <i className="bx bx-sort-down"></i>
+                          <select value={campaignSortBy} onChange={(event) => setCampaignSortBy(event.target.value)}>
+                            {campaignSortOptions.map((option) => (
+                              <option key={option.value} value={option.value}>{option.label}</option>
+                            ))}
+                          </select>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -8690,16 +8878,15 @@ export default function DashboardPage() {
                         <tr>
                           <th>Status</th>
                           <th>Campanha</th>
-                          <th>Investimento</th>
-                          <th>Conversões</th>
-                          <th>CPA</th>
-                          <th>ROAS</th>
+                          {selectedMetaCampaignTableColumns.map((column) => (
+                            <th key={`campaign-header-${column.key}`}>{column.label}</th>
+                          ))}
                         </tr>
                       </thead>
                       <tbody>
                         {filteredCampaigns.length === 0 ? (
                           <tr>
-                            <td colSpan="6" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
+                            <td colSpan={2 + selectedMetaCampaignTableColumns.length} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
                               Nenhuma campanha encontrada para esse filtro.
                             </td>
                           </tr>
@@ -8723,18 +8910,29 @@ export default function DashboardPage() {
                                   </span>
                                 </td>
                                 <td className="campaign-name">{campaign.name}</td>
-                                <td>{formatCurrency(campaignSpend)}</td>
-                                <td>
-                                  <strong>{formatNumber(campaignConversions)}</strong>
-                                  <br />
-                                  <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                                    {campaignPurchases} compras, {campaignLeads} leads, {campaignMessages} mensagens
-                                  </span>
-                                </td>
-                                <td>{formatCurrency(campaignCpa)}</td>
-                                <td style={{ color: campaignRoas >= 3 ? 'var(--accent-emerald)' : 'var(--text-primary)' }}>
-                                  {formatMultiplier(campaignRoas)}
-                                </td>
+                                {selectedMetaCampaignTableColumns.map((column) => {
+                                  if (column.key === 'totalConversions') {
+                                    return (
+                                      <td key={`${campaign.id || index}-${column.key}`}>
+                                        <strong>{formatNumber(campaignConversions)}</strong>
+                                        <br />
+                                        <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                                          {campaignPurchases} compras, {campaignLeads} leads, {campaignMessages} mensagens
+                                        </span>
+                                      </td>
+                                    )
+                                  }
+
+                                  const metricValue = getCampaignMetricValue(campaign, column.key)
+                                  return (
+                                    <td
+                                      key={`${campaign.id || index}-${column.key}`}
+                                      style={column.key === 'roas' && metricValue >= 3 ? { color: 'var(--accent-emerald)' } : undefined}
+                                    >
+                                      {formatCampaignMetricValue(column.key, metricValue)}
+                                    </td>
+                                  )
+                                })}
                               </tr>
                             )
                           })
@@ -9270,27 +9468,6 @@ export default function DashboardPage() {
                 </button>
               </div>
 
-              {metaRankingDrilldownSummary ? (
-                <div className="meta-result-summary">
-                  <div className="monday-drilldown-stat glass-item">
-                    <span>{activeMetaRankingDrilldownConfig.resultLabel}</span>
-                    <strong>{formatNumber(metaRankingDrilldownSummary.conversions)}</strong>
-                  </div>
-                  <div className="monday-drilldown-stat glass-item">
-                    <span>{activeMetaRankingDrilldownConfig.costLabel}</span>
-                    <strong>{formatCurrency(metaRankingDrilldownSummary.avgCost)}</strong>
-                  </div>
-                  <div className="monday-drilldown-stat glass-item">
-                    <span>Investimento</span>
-                    <strong>{formatCurrency(metaRankingDrilldownSummary.spendValue)}</strong>
-                  </div>
-                  <div className="monday-drilldown-stat glass-item">
-                    <span>Impressões</span>
-                    <strong>{formatNumber(metaRankingDrilldownSummary.impressionsValue)}</strong>
-                  </div>
-                </div>
-              ) : null}
-
               <div className={`meta-ranking-body ${isCreativeRankingDrilldown ? 'meta-ranking-body-creative' : ''}`}>
                 {isCreativeRankingDrilldown ? (
                   <div className="meta-ranking-creative-main">
@@ -9420,12 +9597,7 @@ export default function DashboardPage() {
                         </div>
                       )}
                     </div>
-                  ) : (
-                    <div className="meta-ranking-preview-fallback meta-ranking-preview-fallback-text">
-                      <strong>{activeMetaRankingDrilldownItem.label}</strong>
-                      <span>{activeMetaRankingDrilldownConfig.previewKicker} selecionado para leitura detalhada.</span>
-                    </div>
-                  )}
+                  ) : null}
 
                   {metaRankingDrilldownSummary && !isCreativeRankingDrilldown ? (
                     <div className="meta-ranking-detail-stats">
@@ -11059,6 +11231,13 @@ export default function DashboardPage() {
           flex: 1 1 220px;
         }
 
+        .metric-library-chip.active {
+          border-style: solid;
+          border-color: rgba(96, 165, 250, 0.52);
+          background: rgba(59, 130, 246, 0.14);
+          box-shadow: inset 0 0 0 1px rgba(96, 165, 250, 0.12);
+        }
+
         .metric-library-chip span {
           font-weight: 700;
         }
@@ -11781,16 +11960,17 @@ export default function DashboardPage() {
 
         .brazil-map-silhouette {
           position: absolute;
-          inset: 0;
-          width: 100%;
-          height: 100%;
+          inset: 4% 8%;
+          width: 84%;
+          height: 92%;
           filter: drop-shadow(0 24px 36px rgba(8, 15, 30, 0.34));
+          opacity: 0.98;
         }
 
         .brazil-map-silhouette path {
-          fill: rgba(148, 163, 184, 0.16);
-          stroke: rgba(148, 163, 184, 0.34);
-          stroke-width: 1.5;
+          fill: rgba(148, 163, 184, 0.2);
+          stroke: rgba(148, 163, 184, 0.42);
+          stroke-width: 1.8;
           stroke-linejoin: round;
         }
 
@@ -12398,6 +12578,18 @@ export default function DashboardPage() {
           gap: 12px;
           align-items: center;
           justify-content: flex-end;
+        }
+
+        .campaigns-section-actions {
+          display: flex;
+          flex-wrap: wrap;
+          justify-content: flex-end;
+          align-items: flex-start;
+          gap: 12px;
+        }
+
+        .campaign-column-library {
+          width: min(760px, calc(100vw - 72px));
         }
 
         .compact-filter {
