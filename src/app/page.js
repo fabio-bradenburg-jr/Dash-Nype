@@ -1291,6 +1291,7 @@ export default function DashboardPage() {
   const [mondayError, setMondayError] = useState('')
   const [mondayOwnerFilter, setMondayOwnerFilter] = useState('all')
   const [mondayMetricDrilldown, setMondayMetricDrilldown] = useState(null)
+  const [expandedMondayGroups, setExpandedMondayGroups] = useState({})
   const [rdPipelines, setRdPipelines] = useState([])
   const [rdPipelineStages, setRdPipelineStages] = useState([])
   const [isLoading, setIsLoading] = useState(true)
@@ -1359,6 +1360,10 @@ export default function DashboardPage() {
   useEffect(() => {
     setMondayMetricDrilldown(null)
   }, [mondaySummary, mondayOwnerFilter, mondayDateRange, mondayCustomSince, mondayCustomUntil])
+
+  useEffect(() => {
+    setExpandedMondayGroups({})
+  }, [mondayMetricDrilldown])
 
   const activeClient = useMemo(
     () => clients.find((client) => client.id === activeClientId) || null,
@@ -7841,74 +7846,117 @@ export default function DashboardPage() {
 
                   <div className="monday-user-groups">
                     {mondayDrilldownOwnerGroups.map((group) => (
-                      <section key={group.key} className="monday-user-group glass-item">
-                        <div className="monday-user-group-head">
-                          <div>
-                            <h4>{group.owner}</h4>
-                            <p>{formatNumber(group.items.length)} demanda(s) dessa métrica em ordem da mais urgente/atrasada para a menos crítica.</p>
-                          </div>
-                          <div className="monday-user-group-metrics">
-                            <div className="monday-user-group-metric">
-                              <span>Atrasadas</span>
-                              <strong>{formatNumber(group.overdueCount)}</strong>
-                            </div>
-                            <div className="monday-user-group-metric">
-                              <span>Bloqueadas</span>
-                              <strong>{formatNumber(group.blockedCount)}</strong>
-                            </div>
-                            <div className="monday-user-group-metric">
-                              <span>Vencem logo</span>
-                              <strong>{formatNumber(group.dueSoonCount)}</strong>
-                            </div>
-                          </div>
-                        </div>
+                      (() => {
+                        const isExpanded = Boolean(expandedMondayGroups[group.key])
+                        const previewTasks = group.items.slice(0, 3)
+                        const topTask = group.items[0] || null
 
-                        <div className="monday-user-table-wrap">
-                          <table className="monday-user-task-table">
-                            <thead>
-                              <tr>
-                                <th>Demanda</th>
-                                <th>Urgência</th>
-                                <th>Status</th>
-                                <th>Prazo</th>
-                                <th>Atraso</th>
-                                <th>Tempo</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {group.items.map((task) => {
-                                const urgency = getMondayTaskUrgency(task)
+                        return (
+                          <section key={group.key} className={`monday-user-group glass-item ${isExpanded ? 'monday-user-group-expanded' : 'monday-user-group-collapsed'}`}>
+                            <button
+                              type="button"
+                              className="monday-user-group-toggle"
+                              onClick={() => setExpandedMondayGroups((current) => ({
+                                ...current,
+                                [group.key]: !current[group.key],
+                              }))}
+                              aria-expanded={isExpanded}
+                            >
+                              <div className="monday-user-group-head">
+                                <div>
+                                  <h4>{group.owner}</h4>
+                                  <p>{formatNumber(group.items.length)} demanda(s) dessa métrica em ordem da mais urgente/atrasada para a menos crítica.</p>
+                                </div>
+                                <div className="monday-user-group-metrics">
+                                  <div className="monday-user-group-metric">
+                                    <span>Atrasadas</span>
+                                    <strong>{formatNumber(group.overdueCount)}</strong>
+                                  </div>
+                                  <div className="monday-user-group-metric">
+                                    <span>Bloqueadas</span>
+                                    <strong>{formatNumber(group.blockedCount)}</strong>
+                                  </div>
+                                  <div className="monday-user-group-metric">
+                                    <span>Vencem logo</span>
+                                    <strong>{formatNumber(group.dueSoonCount)}</strong>
+                                  </div>
+                                </div>
+                              </div>
 
-                                return (
-                                  <tr key={`${group.key}-${task.id}`}>
-                                    <td className="monday-user-task-main">
-                                      <strong>{task.name}</strong>
-                                      <span>{task.boardName || '-'}{task.groupLabel ? ` · ${task.groupLabel}` : ''}</span>
-                                      <div className="monday-task-flags monday-task-flags-inline">
-                                        {task.isOverdue && <span className="monday-task-chip danger">Atrasada</span>}
-                                        {task.isBlocked && <span className="monday-task-chip warning">Bloqueada</span>}
-                                        {task.isDueSoon && <span className="monday-task-chip info">Vence logo</span>}
-                                        {task.isUnassigned && <span className="monday-task-chip neutral">Sem dono</span>}
-                                      </div>
-                                    </td>
-                                    <td>{urgency.label}</td>
-                                    <td>{task.statusLabel || 'Sem status'}</td>
-                                    <td>{task.dueDate ? formatShortDate(task.dueDate) : '-'}</td>
-                                    <td>
-                                      {task.daysOverdue
-                                        ? `${formatNumber(task.daysOverdue)} dia(s)`
-                                        : task.isDueSoon
-                                          ? 'Vence logo'
-                                          : 'No prazo'}
-                                    </td>
-                                    <td>{formatDurationHours(task.trackedSeconds || 0)}</td>
-                                  </tr>
-                                )
-                              })}
-                            </tbody>
-                          </table>
-                        </div>
-                      </section>
+                              <div className="monday-user-group-summary">
+                                <div className="monday-user-group-summary-copy">
+                                  <span>
+                                    {topTask
+                                      ? `Mais crítica agora: ${topTask.name}${topTask.daysOverdue ? ` · ${formatNumber(topTask.daysOverdue)} dia(s) de atraso` : topTask.isDueSoon ? ' · vence logo' : ''}`
+                                      : 'Sem demanda prioritária no recorte.'}
+                                  </span>
+                                  {previewTasks.length ? (
+                                    <div className="monday-user-group-preview">
+                                      {previewTasks.map((task) => (
+                                        <span key={`${group.key}-preview-${task.id}`} className="monday-user-group-preview-item">
+                                          {task.name}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  ) : null}
+                                </div>
+                                <span className="monday-user-group-action">
+                                  {isExpanded ? 'Fechar tarefas' : 'Ver tarefas'}
+                                  <i className={`bx ${isExpanded ? 'bx-chevron-up' : 'bx-chevron-down'}`}></i>
+                                </span>
+                              </div>
+                            </button>
+
+                            {isExpanded ? (
+                              <div className="monday-user-table-wrap">
+                                <table className="monday-user-task-table">
+                                  <thead>
+                                    <tr>
+                                      <th>Demanda</th>
+                                      <th>Urgência</th>
+                                      <th>Status</th>
+                                      <th>Prazo</th>
+                                      <th>Atraso</th>
+                                      <th>Tempo</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {group.items.map((task) => {
+                                      const urgency = getMondayTaskUrgency(task)
+
+                                      return (
+                                        <tr key={`${group.key}-${task.id}`}>
+                                          <td className="monday-user-task-main">
+                                            <strong>{task.name}</strong>
+                                            <span>{task.boardName || '-'}{task.groupLabel ? ` · ${task.groupLabel}` : ''}</span>
+                                            <div className="monday-task-flags monday-task-flags-inline">
+                                              {task.isOverdue && <span className="monday-task-chip danger">Atrasada</span>}
+                                              {task.isBlocked && <span className="monday-task-chip warning">Bloqueada</span>}
+                                              {task.isDueSoon && <span className="monday-task-chip info">Vence logo</span>}
+                                              {task.isUnassigned && <span className="monday-task-chip neutral">Sem dono</span>}
+                                            </div>
+                                          </td>
+                                          <td>{urgency.label}</td>
+                                          <td>{task.statusLabel || 'Sem status'}</td>
+                                          <td>{task.dueDate ? formatShortDate(task.dueDate) : '-'}</td>
+                                          <td>
+                                            {task.daysOverdue
+                                              ? `${formatNumber(task.daysOverdue)} dia(s)`
+                                              : task.isDueSoon
+                                                ? 'Vence logo'
+                                                : 'No prazo'}
+                                          </td>
+                                          <td>{formatDurationHours(task.trackedSeconds || 0)}</td>
+                                        </tr>
+                                      )
+                                    })}
+                                  </tbody>
+                                </table>
+                              </div>
+                            ) : null}
+                          </section>
+                        )
+                      })()
                     ))}
                   </div>
                 </div>
