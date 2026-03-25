@@ -7926,7 +7926,7 @@ export default function DashboardPage() {
 
                                       return (
                                         <tr key={`${group.key}-${task.id}`}>
-                                          <td className="monday-user-task-main">
+                                          <td className="monday-user-task-main monday-user-col-main">
                                             <strong>{task.name}</strong>
                                             <span>{task.boardName || '-'}{task.groupLabel ? ` · ${task.groupLabel}` : ''}</span>
                                             <div className="monday-task-flags monday-task-flags-inline">
@@ -7936,17 +7936,17 @@ export default function DashboardPage() {
                                               {task.isUnassigned && <span className="monday-task-chip neutral">Sem dono</span>}
                                             </div>
                                           </td>
-                                          <td>{urgency.label}</td>
-                                          <td>{task.statusLabel || 'Sem status'}</td>
-                                          <td>{task.dueDate ? formatShortDate(task.dueDate) : '-'}</td>
-                                          <td>
+                                          <td className="monday-user-col-urgency">{urgency.label}</td>
+                                          <td className="monday-user-col-status">{task.statusLabel || 'Sem status'}</td>
+                                          <td className="monday-user-col-date">{task.dueDate ? formatShortDate(task.dueDate) : '-'}</td>
+                                          <td className="monday-user-col-overdue">
                                             {task.daysOverdue
                                               ? `${formatNumber(task.daysOverdue)} dia(s)`
                                               : task.isDueSoon
                                                 ? 'Vence logo'
                                                 : 'No prazo'}
                                           </td>
-                                          <td>{formatDurationHours(task.trackedSeconds || 0)}</td>
+                                          <td className="monday-user-col-time">{formatDurationHours(task.trackedSeconds || 0)}</td>
                                         </tr>
                                       )
                                     })}
