@@ -369,6 +369,41 @@ body {
     opacity: 0.72;
 }
 
+.interactive-kpi-preview {
+    display: grid;
+    gap: 8px;
+}
+
+.interactive-kpi-preview-item {
+    display: block;
+    padding: 10px 12px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    color: var(--text-secondary);
+    font-size: 12px;
+    line-height: 1.45;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.interactive-kpi-action {
+    margin-top: auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    color: var(--text-primary);
+    font-size: 12px;
+    font-weight: 600;
+    padding-top: 6px;
+}
+
+.interactive-kpi-action i {
+    font-size: 18px;
+}
+
 .kpi-header {
     display: flex;
     justify-content: space-between;

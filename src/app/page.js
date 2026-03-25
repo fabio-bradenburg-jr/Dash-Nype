@@ -4463,6 +4463,7 @@ export default function DashboardPage() {
     <div className="kpi-grid compact-kpi-grid">
       {items.map((metric) => {
         const hasTasks = (metric.tasks?.length || 0) > 0
+        const previewTasks = hasTasks ? sortMondayTasksForDrilldown(metric.tasks).slice(0, 3) : []
 
         return (
           <button
@@ -4488,7 +4489,20 @@ export default function DashboardPage() {
             <div className="kpi-value">{metric.value}</div>
             <div className={`kpi-trend ${hasTasks ? 'info' : 'neutral'}`}>
               <i className={`bx ${hasTasks ? 'bx-search-alt-2' : 'bx-minus-circle'}`}></i>
-              <span>{hasTasks ? `Clique para ver ${formatNumber(metric.tasks.length)} demanda(s)` : 'Sem demandas nesse recorte'}</span>
+              <span>{hasTasks ? `${formatNumber(metric.tasks.length)} tarefa(s) compõem essa métrica` : 'Sem demandas nesse recorte'}</span>
+            </div>
+            {hasTasks ? (
+              <div className="interactive-kpi-preview">
+                {previewTasks.map((task) => (
+                  <span key={task.id} className="interactive-kpi-preview-item">
+                    {task.name}
+                  </span>
+                ))}
+              </div>
+            ) : null}
+            <div className="interactive-kpi-action">
+              <span>{hasTasks ? 'Ver tarefas dessa métrica' : 'Sem tarefas para detalhar'}</span>
+              <i className={`bx ${hasTasks ? 'bx-right-arrow-alt' : 'bx-lock-alt'}`}></i>
             </div>
           </button>
         )
@@ -4689,6 +4703,27 @@ export default function DashboardPage() {
     const topStatusShare = mondaySummary?.topStatus && totalItems ? (mondaySummary.topStatus.count / totalItems) * 100 : 0
     const topBoardShare = topBoard && totalItems ? (topBoard.totalItems / totalItems) * 100 : 0
     const mondayTaskCatalog = mondaySummary?.taskCatalog || []
+    const mondayTopTaskByOwner = Array.from(
+      mondayTaskCatalog
+        .filter((task) => (task.trackedSeconds || 0) > 0 && Array.isArray(task.owners) && task.owners.length > 0)
+        .flatMap((task) =>
+          task.owners.map((owner) => ({
+            owner,
+            ...task,
+          }))
+        )
+        .reduce((accumulator, task) => {
+          const current = accumulator.get(task.owner)
+          if (!current || (task.trackedSeconds || 0) > (current.trackedSeconds || 0)) {
+            accumulator.set(task.owner, task)
+          }
+          return accumulator
+        }, new Map())
+        .values()
+    ).sort((left, right) => {
+      if ((right.trackedSeconds || 0) !== (left.trackedSeconds || 0)) return (right.trackedSeconds || 0) - (left.trackedSeconds || 0)
+      return String(left.owner || '').localeCompare(String(right.owner || ''), 'pt-BR')
+    })
     const mondayStatusChartItems = (mondaySummary?.statusSummary?.counts || []).slice(0, 7)
     const mondayWeeklyChartItems = weeklyTrackedTime
     const mondayInteractiveKpis = [
@@ -5272,8 +5307,8 @@ export default function DashboardPage() {
               <div className="glass-panel ranking-card">
                 <div className="section-header section-header-stack">
                   <div>
-                    <h2>Quais tarefas estão atrasadas</h2>
-                    <p className="chart-subtitle">Lista objetiva do que está vencido no recorte atual, para facilitar cobrança e priorização do time.</p>
+                    <h2>Tarefas atrasadas e responsáveis</h2>
+                    <p className="chart-subtitle">Lista do que está vencido no recorte atual, deixando claro com quem cada demanda está travada.</p>
                   </div>
                 </div>
                 {mondaySummary?.overdueTasks?.length ? (
@@ -5311,17 +5346,17 @@ export default function DashboardPage() {
               <div className="glass-panel ranking-card">
                 <div className="section-header section-header-stack">
                   <div>
-                    <h2>Quais tarefas estão há mais tempo abertas</h2>
-                    <p className="chart-subtitle">Todas as tarefas com tempo lançado, ordenadas da maior duração para a menor dentro do recorte atual.</p>
+                    <h2>Tarefa em que cada usuário mais ficou</h2>
+                    <p className="chart-subtitle">Leitura por responsável, em ordem decrescente de tempo, para entender onde cada pessoa mais concentrou esforço.</p>
                   </div>
                 </div>
-                {mondaySummary?.longestTasks?.length ? (
+                {mondayTopTaskByOwner.length ? (
                   <div className="table-container">
                     <table className="data-table">
                       <thead>
                         <tr>
+                          <th>Usuário</th>
                           <th>Tarefa</th>
-                          <th>Responsável</th>
                           <th>Status</th>
                           <th>Board</th>
                           <th>Tempo</th>
@@ -5329,10 +5364,10 @@ export default function DashboardPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {mondaySummary.longestTasks.map((task) => (
-                          <tr key={task.id}>
+                        {mondayTopTaskByOwner.map((task) => (
+                          <tr key={`${task.owner}-${task.id}`}>
+                            <td className="campaign-name">{task.owner}</td>
                             <td className="campaign-name">{task.name}</td>
-                            <td>{task.owners?.length ? task.owners.join(', ') : 'Sem responsável'}</td>
                             <td>{task.statusLabel || 'Sem status'}</td>
                             <td>{task.boardName || '-'}</td>
                             <td>{formatDurationHours(task.trackedSeconds || 0)}</td>
@@ -5343,7 +5378,7 @@ export default function DashboardPage() {
                     </table>
                   </div>
                 ) : (
-                  <div className="ranking-empty">Nenhuma tarefa com time tracking apareceu dentro do período filtrado.</div>
+                  <div className="ranking-empty">Nenhum usuário com tarefa e time tracking apareceu dentro do período filtrado.</div>
                 )}
               </div>
 
