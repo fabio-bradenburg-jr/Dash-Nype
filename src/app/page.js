@@ -11467,9 +11467,14 @@ export default function DashboardPage() {
           margin-bottom: 24px;
         }
 
-        .meta-rankings-stack {
-          grid-template-columns: 1fr;
+        .rankings-grid.meta-rankings-stack {
+          display: flex;
+          flex-direction: column;
           gap: 18px;
+        }
+
+        .rankings-grid.meta-rankings-stack > .meta-ranking-card {
+          width: 100%;
         }
 
         .ranking-card {
