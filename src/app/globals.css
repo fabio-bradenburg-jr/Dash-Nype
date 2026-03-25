@@ -1371,6 +1371,20 @@ body {
         rgba(8, 12, 22, 0.72) !important;
 }
 
+.monday-operations-shell {
+    padding: 30px 32px 34px !important;
+}
+
+.monday-operations-shell > .section-header-with-action {
+    margin-bottom: 8px !important;
+    gap: 20px !important;
+}
+
+.monday-operations-shell > .section-header-with-action h2,
+.monday-operations-shell > .section-header-with-action p {
+    margin-left: 2px !important;
+}
+
 .monday-command-copy {
     display: grid !important;
     gap: 10px !important;
@@ -1771,6 +1785,10 @@ body {
         grid-template-columns: 1fr !important;
     }
 
+    .monday-operations-shell {
+        padding: 26px 24px 28px !important;
+    }
+
     .source-section-copy {
         max-width: none !important;
         text-align: left !important;
@@ -1822,6 +1840,10 @@ body {
     .monday-user-group-summary {
         flex-direction: column !important;
         align-items: flex-start !important;
+    }
+
+    .monday-operations-shell {
+        padding: 22px 18px 24px !important;
     }
 
     .home-hub-card-footer {

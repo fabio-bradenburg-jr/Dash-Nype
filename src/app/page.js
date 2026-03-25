@@ -5303,7 +5303,7 @@ export default function DashboardPage() {
     ]
     return (
       <section className="source-section">
-        <section className="glass-panel grouped-results">
+        <section className="glass-panel grouped-results monday-operations-shell">
           <div className="section-header section-header-stack section-header-with-action">
             <div>
               <h2>Operação em boards</h2>
