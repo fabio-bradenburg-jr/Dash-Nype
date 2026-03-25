@@ -1818,7 +1818,7 @@ export default function DashboardPage() {
   }, [activeClientId, dateRange, customSince, customUntil, dailyData])
 
   useEffect(() => {
-    const availableKeys = ['purchases', 'leads', 'messages']
+    const availableKeys = Object.keys(META_RESULT_COMPARISON_OPTIONS)
     if (availableKeys.includes(metaResultPreviewKey)) return
     setMetaResultPreviewKey('purchases')
   }, [metaResultPreviewKey])
@@ -4499,20 +4499,26 @@ export default function DashboardPage() {
       })
     )
   }, [filteredCampaigns])
+  const activeMetaComparisonGroups = useMemo(
+    () => metaConversionGroups.filter((group) => normalizedMetaResultFilters.includes(group.key)),
+    [metaConversionGroups, normalizedMetaResultFilters]
+  )
 
   useEffect(() => {
-    const rankedOptions = [
-      { key: 'purchases', value: purchases || 0 },
-      { key: 'leads', value: leads || 0 },
-      { key: 'messages', value: messages || 0 },
-    ].sort((left, right) => right.value - left.value)
+    const rankedOptions = activeMetaComparisonGroups
+      .map((group) => ({ key: group.key, value: group.resultValue || 0 }))
+      .sort((left, right) => right.value - left.value)
 
     if (!rankedOptions.length) return
+    if (!rankedOptions.some((item) => item.key === metaResultPreviewKey)) {
+      setMetaResultPreviewKey(rankedOptions[0].key)
+      return
+    }
     if ((rankedOptions[0]?.value || 0) <= 0) return
     if ((rankedOptions.find((item) => item.key === metaResultPreviewKey)?.value || 0) > 0) return
 
     setMetaResultPreviewKey(rankedOptions[0].key)
-  }, [metaResultPreviewKey, purchases, leads, messages])
+  }, [activeMetaComparisonGroups, metaResultPreviewKey])
 
   const doughnutChartData = {
     labels: ['Compras', 'Leads', 'Mensagens', 'Cliques sem conversão'],
@@ -4636,7 +4642,7 @@ export default function DashboardPage() {
         resultTone: '#10b981',
         costTone: '#fbbf24',
         previewKicker: 'Criativo',
-        detailDescription: 'Veja o resultado real do criativo selecionado dentro do período filtrado, com leitura de volume, custo e investimento.',
+        detailDescription: 'Veja o resultado que o criativo selecionado gerou dentro do período filtrado, com leitura de volume, custo e investimento.',
         items: breakdowns.creatives || [],
       },
       ages: {
@@ -8101,7 +8107,7 @@ export default function DashboardPage() {
 
                       <div className="meta-result-preview-toolbar">
                         <div className="meta-result-preview-tabs">
-                          {metaConversionGroups.map((group) => (
+                          {activeMetaComparisonGroups.map((group) => (
                             <button
                               key={`preview-${group.key}`}
                               type="button"
@@ -9215,8 +9221,8 @@ export default function DashboardPage() {
                     <div className="glass-item meta-ranking-chart-shell">
                       <div className="meta-result-chart-head">
                         <div>
-                          <strong>Comparativo do top 5</strong>
-                          <p className="chart-subtitle">Resultado e custo por resultado do criativo selecionado contra os demais itens do ranking.</p>
+                          <strong>Resultado gerado pelo criativo</strong>
+                          <p className="chart-subtitle">Volume de resultados e custo por resultado do criativo selecionado em relacao aos demais criativos do recorte.</p>
                         </div>
                         <div className="meta-result-legend">
                           <span className="legend-item">
@@ -9270,7 +9276,7 @@ export default function DashboardPage() {
                   <div className="meta-ranking-detail-head">
                     <span className="meta-ranking-detail-kicker">{activeMetaRankingDrilldownConfig.previewKicker}</span>
                     <h4>{activeMetaRankingDrilldownItem.label}</h4>
-                    <p>{activeMetaRankingDrilldownConfig.description}</p>
+                    <p>{isCreativeRankingDrilldown ? 'Visual da peca com a melhor imagem disponivel retornada pela Meta para esse criativo.' : activeMetaRankingDrilldownConfig.description}</p>
                   </div>
 
                   {metaRankingDrilldown.type === 'creatives' ? (
@@ -10127,7 +10133,8 @@ export default function DashboardPage() {
         .meta-ranking-preview-frame {
           width: 100%;
           min-height: 280px;
-          max-height: 360px;
+          min-height: 360px;
+          max-height: 460px;
           border-radius: 24px;
           overflow: hidden;
           border: 1px solid rgba(255, 255, 255, 0.06);
@@ -10142,7 +10149,7 @@ export default function DashboardPage() {
           object-fit: contain;
           object-position: center;
           image-rendering: auto;
-          padding: 14px;
+          padding: 20px;
           background:
             radial-gradient(circle at 50% 24%, rgba(255, 255, 255, 0.08), transparent 30%),
             rgba(8, 12, 22, 0.78);
@@ -11590,21 +11597,33 @@ export default function DashboardPage() {
             radial-gradient(circle at 70% 68%, rgba(16, 185, 129, 0.12), transparent 30%),
             rgba(255, 255, 255, 0.025);
           overflow: hidden;
+          isolation: isolate;
         }
 
         .brazil-map-silhouette {
           position: absolute;
-          inset: 6% 8%;
-          width: 84%;
-          height: 88%;
+          inset: 0;
+          width: 100%;
+          height: 100%;
           filter: drop-shadow(0 24px 36px rgba(8, 15, 30, 0.34));
         }
 
         .brazil-map-silhouette path {
-          fill: rgba(148, 163, 184, 0.12);
-          stroke: rgba(148, 163, 184, 0.26);
-          stroke-width: 1.2;
+          fill: rgba(148, 163, 184, 0.16);
+          stroke: rgba(148, 163, 184, 0.34);
+          stroke-width: 1.5;
           stroke-linejoin: round;
+        }
+
+        .brazil-map-stage::after {
+          content: '';
+          position: absolute;
+          inset: 0;
+          background:
+            radial-gradient(circle at 50% 44%, rgba(148, 163, 184, 0.08), transparent 34%),
+            linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent 28%);
+          pointer-events: none;
+          z-index: 0;
         }
 
         .brazil-state-node,
@@ -11616,6 +11635,7 @@ export default function DashboardPage() {
           color: inherit;
           font: inherit;
           cursor: pointer;
+          z-index: 1;
         }
 
         .brazil-state-node {

@@ -94,6 +94,20 @@ function normalizeCreativeLabel(ad) {
     .trim()
 }
 
+function resolveCreativeImageUrl(ad) {
+  const creative = ad?.creative || {}
+  const storySpec = creative.object_story_spec || {}
+
+  return (
+    creative.image_url ||
+    storySpec.video_data?.image_url ||
+    storySpec.photo_data?.image_url ||
+    storySpec.link_data?.picture ||
+    creative.thumbnail_url ||
+    ''
+  )
+}
+
 async function fetchMetaBreakdownSafely(url, fallbackMessage) {
   try {
     const data = await fetchMetaJson(url, fallbackMessage)
@@ -219,7 +233,7 @@ export async function GET(request) {
         const insight = formatInsightsWithConversions(ad.insights?.data?.[0] || {})
         return {
           label: normalizeCreativeLabel(ad),
-          imageUrl: ad.creative?.image_url || ad.creative?.thumbnail_url || '',
+          imageUrl: resolveCreativeImageUrl(ad),
           spend: parseFloat(insight.spend || 0),
           impressions: parseInt(insight.impressions || 0, 10),
           clicks: parseInt(insight.clicks || 0, 10),
