@@ -219,7 +219,7 @@ export async function GET(request) {
         const insight = formatInsightsWithConversions(ad.insights?.data?.[0] || {})
         return {
           label: normalizeCreativeLabel(ad),
-          imageUrl: ad.creative?.thumbnail_url || ad.creative?.image_url || '',
+          imageUrl: ad.creative?.image_url || ad.creative?.thumbnail_url || '',
           spend: parseFloat(insight.spend || 0),
           impressions: parseInt(insight.impressions || 0, 10),
           clicks: parseInt(insight.clicks || 0, 10),

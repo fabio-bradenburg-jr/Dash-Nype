@@ -4672,6 +4672,36 @@ export default function DashboardPage() {
       .filter(Boolean),
     [breakdowns.states]
   )
+  const brazilTopStateItem = useMemo(
+    () => brazilStateMapItems
+      .slice()
+      .sort((left, right) => right.conversions - left.conversions)[0] || null,
+    [brazilStateMapItems]
+  )
+  const brazilStateMapCoverageItems = useMemo(() => {
+    const mappedStates = new Map(brazilStateMapItems.map((item) => [item.uf, item]))
+
+    return Object.entries(BRAZIL_STATE_MAP_POINTS).map(([uf, stateMeta]) => {
+      const mappedItem = mappedStates.get(uf)
+
+      if (mappedItem) {
+        return {
+          ...mappedItem,
+          hasResults: (mappedItem.conversions || 0) > 0,
+          isTopPerformer: brazilTopStateItem?.uf === uf,
+        }
+      }
+
+      return {
+        uf,
+        ...stateMeta,
+        conversions: 0,
+        averageCost: 0,
+        hasResults: false,
+        isTopPerformer: false,
+      }
+    })
+  }, [brazilStateMapItems, brazilTopStateItem])
   const brazilTopStateItems = useMemo(
     () => brazilStateMapItems
       .slice()
@@ -8292,24 +8322,33 @@ export default function DashboardPage() {
                       ) : (
                         <>
                           <div className="brazil-map-shell">
-                            <div className="brazil-map-stage">
+                            <div
+                              className="brazil-map-stage"
+                              style={{
+                                '--client-accent-rgb': `${activeClientDashboardRgb.r}, ${activeClientDashboardRgb.g}, ${activeClientDashboardRgb.b}`,
+                              }}
+                            >
                               <svg viewBox="0 0 100 100" className="brazil-map-silhouette" aria-hidden="true">
                                 <path d={BRAZIL_MAP_SILHOUETTE_PATH}></path>
                               </svg>
 
-                              {brazilStateMapItems.map((item) => {
-                                const intensity = Math.max(0.22, (item.conversions || 0) / brazilMapMaxConversions)
+                              {brazilStateMapCoverageItems.map((item) => {
+                                const intensity = item.hasResults
+                                  ? Math.max(0.22, (item.conversions || 0) / brazilMapMaxConversions)
+                                  : 0
                                 return (
                                   <button
                                     key={`state-map-${item.uf}`}
                                     type="button"
-                                    className="brazil-state-node"
+                                    className={`brazil-state-node ${item.hasResults ? 'has-results' : 'is-muted'} ${item.isTopPerformer ? 'is-top-performer' : ''}`}
                                     style={{
                                       left: `${item.x}%`,
                                       top: `${item.y}%`,
                                       '--state-intensity': intensity,
                                     }}
-                                    title={`${item.name}: ${formatNumber(item.conversions)} resultados · ${formatCurrency(item.averageCost)} por resultado`}
+                                    title={item.hasResults
+                                      ? `${item.name}: ${formatNumber(item.conversions)} resultados · ${formatCurrency(item.averageCost)} por resultado`
+                                      : `${item.name}: sem resultados no período`}
                                   >
                                     <span>{item.uf}</span>
                                   </button>
@@ -8343,7 +8382,13 @@ export default function DashboardPage() {
                                 <div className="brazil-map-legend-list">
                                   {brazilTopStateItems.length ? (
                                     brazilTopStateItems.map((item) => (
-                                      <div key={`state-legend-${item.uf}`} className="brazil-map-legend-row">
+                                      <div
+                                        key={`state-legend-${item.uf}`}
+                                        className={`brazil-map-legend-row ${brazilTopStateItem?.uf === item.uf ? 'is-top-performer' : ''}`}
+                                        style={brazilTopStateItem?.uf === item.uf
+                                          ? { '--client-accent-rgb': `${activeClientDashboardRgb.r}, ${activeClientDashboardRgb.g}, ${activeClientDashboardRgb.b}` }
+                                          : undefined}
+                                      >
                                         <span>{item.name}</span>
                                         <b>{formatNumber(item.conversions)}</b>
                                       </div>
@@ -9120,49 +9165,77 @@ export default function DashboardPage() {
 
               <div className={`meta-ranking-body ${isCreativeRankingDrilldown ? 'meta-ranking-body-creative' : ''}`}>
                 {isCreativeRankingDrilldown ? (
-                  <div className="glass-item meta-ranking-chart-shell meta-ranking-period-shell">
-                    <div className="meta-result-chart-head">
-                      <div>
-                        <strong>Resultado no período selecionado</strong>
-                        <p className="chart-subtitle">Leitura isolada do criativo com base no filtro atual, sem comparar com os demais itens do ranking.</p>
+                  <div className="meta-ranking-creative-main">
+                    <div className="glass-item meta-ranking-chart-shell meta-ranking-period-shell">
+                      <div className="meta-result-chart-head">
+                        <div>
+                          <strong>Resultado no período selecionado</strong>
+                          <p className="chart-subtitle">Leitura isolada do criativo com base no filtro atual, sem comparar com os demais itens do ranking.</p>
+                        </div>
+                      </div>
+                      {metaRankingDrilldownSummary ? (
+                        <div className="meta-ranking-period-grid">
+                          <div className="conversion-stat">
+                            <span>{activeMetaRankingDrilldownConfig.resultLabel}</span>
+                            <strong>{formatNumber(metaRankingDrilldownSummary.conversions)}</strong>
+                          </div>
+                          <div className="conversion-stat">
+                            <span>{activeMetaRankingDrilldownConfig.costLabel}</span>
+                            <strong>{formatCurrency(metaRankingDrilldownSummary.avgCost)}</strong>
+                          </div>
+                          <div className="conversion-stat">
+                            <span>Investimento</span>
+                            <strong>{formatCurrency(metaRankingDrilldownSummary.spendValue)}</strong>
+                          </div>
+                          <div className="conversion-stat">
+                            <span>Cliques</span>
+                            <strong>{formatNumber(metaRankingDrilldownSummary.clicksValue)}</strong>
+                          </div>
+                          <div className="conversion-stat">
+                            <span>Impressões</span>
+                            <strong>{formatNumber(metaRankingDrilldownSummary.impressionsValue)}</strong>
+                          </div>
+                          <div className="conversion-stat">
+                            <span>Taxa de conversão</span>
+                            <strong>{formatPercent(metaRankingDrilldownSummary.conversionRateValue)}</strong>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="ranking-empty">Sem base suficiente para montar a leitura desse criativo no período.</div>
+                      )}
+                      <div className="meta-ranking-inline-note">
+                        <strong>{formatCurrency(activeMetaRankingDrilldownItem.spend || 0)}</strong> investidos para gerar{' '}
+                        <strong>{formatNumber(getMetaBreakdownConversions(activeMetaRankingDrilldownItem))}</strong> resultados nesse criativo
+                        {metaRankingDrilldownSummary?.impressionsValue
+                          ? `, com ${formatNumber(metaRankingDrilldownSummary.impressionsValue)} impressões dentro do recorte selecionado.`
+                          : ' dentro do recorte selecionado.'}
                       </div>
                     </div>
-                    {metaRankingDrilldownSummary ? (
-                      <div className="meta-ranking-period-grid">
-                        <div className="conversion-stat">
-                          <span>{activeMetaRankingDrilldownConfig.resultLabel}</span>
-                          <strong>{formatNumber(metaRankingDrilldownSummary.conversions)}</strong>
+
+                    <div className="glass-item meta-ranking-chart-shell">
+                      <div className="meta-result-chart-head">
+                        <div>
+                          <strong>Comparativo do top 5</strong>
+                          <p className="chart-subtitle">Resultado e custo por resultado do criativo selecionado contra os demais itens do ranking.</p>
                         </div>
-                        <div className="conversion-stat">
-                          <span>{activeMetaRankingDrilldownConfig.costLabel}</span>
-                          <strong>{formatCurrency(metaRankingDrilldownSummary.avgCost)}</strong>
-                        </div>
-                        <div className="conversion-stat">
-                          <span>Investimento</span>
-                          <strong>{formatCurrency(metaRankingDrilldownSummary.spendValue)}</strong>
-                        </div>
-                        <div className="conversion-stat">
-                          <span>Cliques</span>
-                          <strong>{formatNumber(metaRankingDrilldownSummary.clicksValue)}</strong>
-                        </div>
-                        <div className="conversion-stat">
-                          <span>Impressões</span>
-                          <strong>{formatNumber(metaRankingDrilldownSummary.impressionsValue)}</strong>
-                        </div>
-                        <div className="conversion-stat">
-                          <span>Taxa de conversão</span>
-                          <strong>{formatPercent(metaRankingDrilldownSummary.conversionRateValue)}</strong>
+                        <div className="meta-result-legend">
+                          <span className="legend-item">
+                            <span className="dot" style={{ background: activeMetaRankingDrilldownConfig.resultTone, boxShadow: `0 0 8px ${activeMetaRankingDrilldownConfig.resultTone}` }}></span>
+                            {activeMetaRankingDrilldownConfig.resultLabel}
+                          </span>
+                          <span className="legend-item">
+                            <span className="dot" style={{ background: activeMetaRankingDrilldownConfig.costTone, boxShadow: `0 0 8px ${activeMetaRankingDrilldownConfig.costTone}` }}></span>
+                            {activeMetaRankingDrilldownConfig.costLabel}
+                          </span>
                         </div>
                       </div>
-                    ) : (
-                      <div className="ranking-empty">Sem base suficiente para montar a leitura desse criativo no período.</div>
-                    )}
-                    <div className="meta-ranking-inline-note">
-                      <strong>{formatCurrency(activeMetaRankingDrilldownItem.spend || 0)}</strong> investidos para gerar{' '}
-                      <strong>{formatNumber(getMetaBreakdownConversions(activeMetaRankingDrilldownItem))}</strong> resultados nesse criativo
-                      {metaRankingDrilldownSummary?.impressionsValue
-                        ? `, com ${formatNumber(metaRankingDrilldownSummary.impressionsValue)} impressões dentro do recorte selecionado.`
-                        : ' dentro do recorte selecionado.'}
+                      {metaRankingComparisonChartData ? (
+                        <div className="canvas-wrapper meta-ranking-chart-wrapper">
+                          <Bar data={metaRankingComparisonChartData} options={metaRankingComparisonChartOptions} />
+                        </div>
+                      ) : (
+                        <div className="ranking-empty">Sem base suficiente para montar o comparativo desse ranking.</div>
+                      )}
                     </div>
                   </div>
                 ) : (
@@ -10006,6 +10079,11 @@ export default function DashboardPage() {
           gap: 12px;
         }
 
+        .meta-ranking-creative-main {
+          display: grid;
+          gap: 18px;
+        }
+
         .meta-ranking-body-creative {
           grid-template-columns: minmax(0, 1.05fr) minmax(340px, 0.95fr);
         }
@@ -10061,7 +10139,13 @@ export default function DashboardPage() {
         .meta-ranking-preview-frame img {
           width: 100%;
           height: 100%;
-          object-fit: cover;
+          object-fit: contain;
+          object-position: center;
+          image-rendering: auto;
+          padding: 14px;
+          background:
+            radial-gradient(circle at 50% 24%, rgba(255, 255, 255, 0.08), transparent 30%),
+            rgba(8, 12, 22, 0.78);
         }
 
         .meta-ranking-preview-fallback {
@@ -11548,11 +11632,37 @@ export default function DashboardPage() {
             0 18px 28px rgba(2, 8, 23, 0.34);
         }
 
+        .brazil-state-node.is-muted {
+          background: rgba(15, 23, 42, 0.28);
+          border-color: rgba(148, 163, 184, 0.18);
+          box-shadow:
+            0 0 0 4px rgba(148, 163, 184, 0.08),
+            0 10px 20px rgba(2, 8, 23, 0.18);
+          opacity: 0.52;
+        }
+
+        .brazil-state-node.is-top-performer {
+          background: rgba(var(--client-accent-rgb), 0.18);
+          border-color: rgba(var(--client-accent-rgb), calc(0.58 + (var(--state-intensity, 0.3) * 0.22)));
+          box-shadow:
+            0 0 0 7px rgba(var(--client-accent-rgb), 0.18),
+            0 0 26px rgba(var(--client-accent-rgb), 0.26),
+            0 18px 28px rgba(2, 8, 23, 0.34);
+        }
+
         .brazil-state-node span {
           font-size: 11px;
           font-weight: 800;
           letter-spacing: 0.06em;
           color: rgba(239, 246, 255, calc(0.72 + (var(--state-intensity, 0.3) * 0.28)));
+        }
+
+        .brazil-state-node.is-muted span {
+          color: rgba(226, 232, 240, 0.54);
+        }
+
+        .brazil-state-node.is-top-performer span {
+          color: rgba(255, 255, 255, 0.96);
         }
 
         .brazil-city-node {
@@ -11623,6 +11733,12 @@ export default function DashboardPage() {
           border-radius: 14px;
           background: rgba(255, 255, 255, 0.03);
           border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .brazil-map-legend-row.is-top-performer {
+          background: rgba(var(--client-accent-rgb), 0.14);
+          border-color: rgba(var(--client-accent-rgb), 0.36);
+          box-shadow: 0 0 0 1px rgba(var(--client-accent-rgb), 0.12) inset;
         }
 
         .brazil-map-legend-row span {
