@@ -123,6 +123,8 @@ const GLOBAL_INTEGRATION_GROUPS = [
   },
 ]
 
+const OPERATION_INTEGRATION_TITLES = new Set(['ClickUp', 'Monday'])
+
 export default function SettingsPage() {
   const { appearance, updateAppearance, access } = useUser()
   const canManageClients = Boolean(access?.canManageClients)
@@ -145,9 +147,12 @@ export default function SettingsPage() {
   const [metaConnectionError, setMetaConnectionError] = useState('')
   const [metaConnectionNotice, setMetaConnectionNotice] = useState('')
   const [metaConnectionSetupRequired, setMetaConnectionSetupRequired] = useState(false)
+  const [activeSettingsTab, setActiveSettingsTab] = useState('general')
   const metaConnectionMode = globalIntegrations.metaConnectionMode === 'oauth' ? 'oauth' : 'manual'
   const hasMetaManualToken = Boolean(String(globalIntegrations.metaAccessToken || '').trim())
   const hasMetaOauthConnection = Boolean(metaConnection.connected)
+  const generalIntegrationGroups = GLOBAL_INTEGRATION_GROUPS.filter((group) => !OPERATION_INTEGRATION_TITLES.has(group.title))
+  const operationIntegrationGroups = GLOBAL_INTEGRATION_GROUPS.filter((group) => OPERATION_INTEGRATION_TITLES.has(group.title))
 
   const persistGlobalIntegrations = useCallback(
     async (nextIntegrations) => {
@@ -270,8 +275,13 @@ export default function SettingsPage() {
     if (typeof window === 'undefined') return
 
     const params = new URLSearchParams(window.location.search)
+    const tab = params.get('tab')
     const connected = params.get('meta_connected')
     const error = params.get('meta_error')
+
+    if (tab === 'operation') {
+      setActiveSettingsTab('operation')
+    }
 
     if (connected === '1') {
       setMetaConnectionNotice('Conta da Meta conectada com sucesso.')
@@ -442,113 +452,167 @@ export default function SettingsPage() {
                 </div>
               </div>
 
-              <div className="settings-integrations-grid">
-                <div className="integration-block integration-block-meta">
-                  <div className="integration-heading">
-                    <div className="integration-icon" style={{ color: '#3b82f6', borderColor: '#3b82f633' }}>
-                      <i className="bx bxl-meta"></i>
-                    </div>
-                    <div>
-                      <h3>Meta Ads</h3>
-                      <p>Escolha entre token manual ou conta conectada via Meta Login, e use a forma que fizer mais sentido para cada operação.</p>
-                    </div>
-                  </div>
+              <div className="settings-tab-row">
+                <button
+                  type="button"
+                  className={`settings-tab ${activeSettingsTab === 'general' ? 'active' : ''}`}
+                  onClick={() => setActiveSettingsTab('general')}
+                >
+                  Integrações gerais
+                </button>
+                <button
+                  type="button"
+                  className={`settings-tab ${activeSettingsTab === 'operation' ? 'active' : ''}`}
+                  onClick={() => setActiveSettingsTab('operation')}
+                >
+                  Operação
+                </button>
+              </div>
 
-                  <div className="settings-choice-row settings-choice-row-compact">
-                    <button
-                      type="button"
-                      className={`settings-choice ${metaConnectionMode === 'manual' ? 'active' : ''}`}
-                      onClick={() => handleGlobalIntegrationChange('metaConnectionMode', 'manual')}
-                    >
-                      <i className="bx bx-key"></i>
-                      Token manual
-                    </button>
-                    <button
-                      type="button"
-                      className={`settings-choice ${metaConnectionMode === 'oauth' ? 'active' : ''}`}
-                      onClick={() => handleGlobalIntegrationChange('metaConnectionMode', 'oauth')}
-                    >
-                      <i className="bx bx-link-alt"></i>
-                      Conta conectada
-                    </button>
-                  </div>
-
-                  {metaConnectionMode === 'manual' ? (
-                    <div className="input-group">
-                      <label>Token manual da Meta</label>
-                      <input
-                        type="password"
-                        value={globalIntegrations.metaAccessToken || ''}
-                        onChange={(event) => handleGlobalIntegrationChange('metaAccessToken', event.target.value)}
-                        placeholder="Cole aqui o token de acesso da Meta"
-                      />
-                      <small className="settings-help-text">
-                        {hasMetaManualToken
-                          ? 'Token manual salvo. Você pode seguir usando esse modo normalmente.'
-                          : 'Cole o token da Meta para vincular a conta manualmente.'}
-                      </small>
-                    </div>
-                  ) : (
-                    <>
-                      <div className="meta-connection-card">
-                        <div className="meta-connection-copy">
-                          <strong>{hasMetaOauthConnection ? 'Conta conectada' : 'Conta ainda não conectada'}</strong>
-                          <span>
-                            {hasMetaOauthConnection
-                              ? `${metaConnection.userName || 'Usuário Meta'} conectado${metaConnection.expiresAt ? ` até ${new Date(metaConnection.expiresAt).toLocaleDateString('pt-BR')}` : ''}.`
-                              : 'Conecte sua conta da Meta para vincular a operação por login.'}
-                          </span>
-                        </div>
-                        <div className="meta-connection-actions">
-                          <a href="/api/meta/auth/start?return_to=/settings" className="btn btn-primary">
-                            {hasMetaOauthConnection ? 'Reconectar Meta' : 'Conectar Meta'}
-                          </a>
-                          {hasMetaOauthConnection && (
-                            <button type="button" className="btn btn-secondary" onClick={handleMetaDisconnect}>
-                              Desconectar
-                            </button>
-                          )}
-                        </div>
-                      </div>
-
-                      {metaConnectionNotice ? <div className="settings-callout success">{metaConnectionNotice}</div> : null}
-                      {metaConnectionError ? <div className="settings-callout error">{metaConnectionError}</div> : null}
-                      {metaConnectionSetupRequired ? (
-                        <div className="settings-callout warning">
-                          Falta aplicar a migration da tabela <code>workspace_meta_connections</code> no Supabase para liberar a conexão da Meta.
-                        </div>
-                      ) : null}
-                      {isMetaConnectionLoading ? <div className="settings-callout info">Carregando status da conexão da Meta...</div> : null}
-                    </>
-                  )}
-                </div>
-
-                {GLOBAL_INTEGRATION_GROUPS.map((group) => (
-                  <div key={group.title} className="integration-block">
+              {activeSettingsTab === 'general' ? (
+                <div className="settings-integrations-grid">
+                  <div className="integration-block integration-block-meta">
                     <div className="integration-heading">
-                      <div className="integration-icon" style={{ color: group.accent, borderColor: `${group.accent}33` }}>
-                        <i className={`bx ${group.icon}`}></i>
+                      <div className="integration-icon" style={{ color: '#3b82f6', borderColor: '#3b82f633' }}>
+                        <i className="bx bxl-meta"></i>
                       </div>
                       <div>
-                        <h3>{group.title}</h3>
-                        <p>{group.description}</p>
+                        <h3>Meta Ads</h3>
+                        <p>Escolha entre token manual ou conta conectada via Meta Login, e use a forma que fizer mais sentido para cada operação.</p>
                       </div>
                     </div>
 
-                    {(group.fields || (group.field ? [group.field] : [])).map((field) => (
-                      <div key={field.name} className="input-group">
-                        <label>{field.label}</label>
+                    <div className="settings-choice-row settings-choice-row-compact">
+                      <button
+                        type="button"
+                        className={`settings-choice ${metaConnectionMode === 'manual' ? 'active' : ''}`}
+                        onClick={() => handleGlobalIntegrationChange('metaConnectionMode', 'manual')}
+                      >
+                        <i className="bx bx-key"></i>
+                        Token manual
+                      </button>
+                      <button
+                        type="button"
+                        className={`settings-choice ${metaConnectionMode === 'oauth' ? 'active' : ''}`}
+                        onClick={() => handleGlobalIntegrationChange('metaConnectionMode', 'oauth')}
+                      >
+                        <i className="bx bx-link-alt"></i>
+                        Conta conectada
+                      </button>
+                    </div>
+
+                    {metaConnectionMode === 'manual' ? (
+                      <div className="input-group">
+                        <label>Token manual da Meta</label>
                         <input
-                          type={field.name.toLowerCase().includes('token') ? 'password' : 'text'}
-                          value={globalIntegrations[field.name] || ''}
-                          onChange={(event) => handleGlobalIntegrationChange(field.name, event.target.value)}
-                          placeholder={field.placeholder}
+                          type="password"
+                          value={globalIntegrations.metaAccessToken || ''}
+                          onChange={(event) => handleGlobalIntegrationChange('metaAccessToken', event.target.value)}
+                          placeholder="Cole aqui o token de acesso da Meta"
                         />
+                        <small className="settings-help-text">
+                          {hasMetaManualToken
+                            ? 'Token manual salvo. Você pode seguir usando esse modo normalmente.'
+                            : 'Cole o token da Meta para vincular a conta manualmente.'}
+                        </small>
                       </div>
-                    ))}
+                    ) : (
+                      <>
+                        <div className="meta-connection-card">
+                          <div className="meta-connection-copy">
+                            <strong>{hasMetaOauthConnection ? 'Conta conectada' : 'Conta ainda não conectada'}</strong>
+                            <span>
+                              {hasMetaOauthConnection
+                                ? `${metaConnection.userName || 'Usuário Meta'} conectado${metaConnection.expiresAt ? ` até ${new Date(metaConnection.expiresAt).toLocaleDateString('pt-BR')}` : ''}.`
+                                : 'Conecte sua conta da Meta para vincular a operação por login.'}
+                            </span>
+                          </div>
+                          <div className="meta-connection-actions">
+                            <a href="/api/meta/auth/start?return_to=/settings" className="btn btn-primary">
+                              {hasMetaOauthConnection ? 'Reconectar Meta' : 'Conectar Meta'}
+                            </a>
+                            {hasMetaOauthConnection && (
+                              <button type="button" className="btn btn-secondary" onClick={handleMetaDisconnect}>
+                                Desconectar
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
+                        {metaConnectionNotice ? <div className="settings-callout success">{metaConnectionNotice}</div> : null}
+                        {metaConnectionError ? <div className="settings-callout error">{metaConnectionError}</div> : null}
+                        {metaConnectionSetupRequired ? (
+                          <div className="settings-callout warning">
+                            Falta aplicar a migration da tabela <code>workspace_meta_connections</code> no Supabase para liberar a conexão da Meta.
+                          </div>
+                        ) : null}
+                        {isMetaConnectionLoading ? <div className="settings-callout info">Carregando status da conexão da Meta...</div> : null}
+                      </>
+                    )}
                   </div>
-                ))}
-              </div>
+
+                  {generalIntegrationGroups.map((group) => (
+                    <div key={group.title} className="integration-block">
+                      <div className="integration-heading">
+                        <div className="integration-icon" style={{ color: group.accent, borderColor: `${group.accent}33` }}>
+                          <i className={`bx ${group.icon}`}></i>
+                        </div>
+                        <div>
+                          <h3>{group.title}</h3>
+                          <p>{group.description}</p>
+                        </div>
+                      </div>
+
+                      {(group.fields || (group.field ? [group.field] : [])).map((field) => (
+                        <div key={field.name} className="input-group">
+                          <label>{field.label}</label>
+                          <input
+                            type={field.name.toLowerCase().includes('token') ? 'password' : 'text'}
+                            value={globalIntegrations[field.name] || ''}
+                            onChange={(event) => handleGlobalIntegrationChange(field.name, event.target.value)}
+                            placeholder={field.placeholder}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="settings-integrations-grid settings-integrations-grid-operation">
+                  <div className="settings-callout info settings-operation-callout">
+                    Essa aba centraliza as credenciais globais do ClickUp e Monday usadas nas dashboards operacionais. Os IDs ficam aqui no nível da operação, não dentro dos clientes.
+                  </div>
+
+                  {operationIntegrationGroups.map((group) => (
+                    <div key={group.title} className="integration-block">
+                      <div className="integration-heading">
+                        <div className="integration-icon" style={{ color: group.accent, borderColor: `${group.accent}33` }}>
+                          <i className={`bx ${group.icon}`}></i>
+                        </div>
+                        <div>
+                          <h3>{group.title}</h3>
+                          <p>{group.description}</p>
+                        </div>
+                      </div>
+
+                      {(group.fields || (group.field ? [group.field] : [])).map((field) => (
+                        <div key={field.name} className="input-group">
+                          <label>{field.label}</label>
+                          <input
+                            type={field.name.toLowerCase().includes('token') ? 'password' : 'text'}
+                            value={globalIntegrations[field.name] || ''}
+                            onChange={(event) => handleGlobalIntegrationChange(field.name, event.target.value)}
+                            placeholder={field.placeholder}
+                          />
+                          {field.name === 'clickUpListIds' || field.name === 'mondayBoardIds' ? (
+                            <small className="settings-help-text">Separe múltiplos IDs por vírgula. Esses IDs ficam globais na operação.</small>
+                          ) : null}
+                        </div>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </section>
@@ -686,10 +750,39 @@ export default function SettingsPage() {
           gap: 16px;
         }
 
+        .settings-tab-row {
+          display: flex;
+          gap: 12px;
+          flex-wrap: wrap;
+        }
+
+        .settings-tab {
+          min-height: 42px;
+          padding: 0 16px;
+          border-radius: 999px;
+          border: 1px solid var(--border-color);
+          background: rgba(255, 255, 255, 0.03);
+          color: var(--text-secondary);
+          font: inherit;
+          font-weight: 600;
+          cursor: pointer;
+          transition: border-color 0.2s ease, background 0.2s ease, color 0.2s ease;
+        }
+
+        .settings-tab.active {
+          border-color: var(--accent-blue);
+          background: rgba(59, 130, 246, 0.12);
+          color: var(--text-primary);
+        }
+
         .settings-integrations-grid {
           display: grid;
           grid-template-columns: repeat(2, minmax(0, 1fr));
           gap: 18px;
+        }
+
+        .settings-integrations-grid-operation {
+          align-items: start;
         }
 
         .integration-block-meta {
@@ -840,6 +933,10 @@ export default function SettingsPage() {
           background: rgba(59, 130, 246, 0.12);
           border: 1px solid rgba(59, 130, 246, 0.2);
           color: #bfdbfe;
+        }
+
+        .settings-operation-callout {
+          grid-column: 1 / -1;
         }
 
         @media (max-width: 980px) {

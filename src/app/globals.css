@@ -681,7 +681,7 @@ body {
 }
 
 .monday-user-task-table tbody tr {
-    height: 62px !important;
+    height: 54px !important;
 }
 
 .monday-user-task-table th {
@@ -696,8 +696,8 @@ body {
 }
 
 .monday-user-task-table td {
-    padding: 8px 10px !important;
-    vertical-align: top !important;
+    padding: 7px 10px !important;
+    vertical-align: middle !important;
     border-top: 1px solid rgba(255, 255, 255, 0.05) !important;
     font-size: 12px !important;
     line-height: 1.25 !important;
@@ -724,31 +724,25 @@ body {
 }
 
 .monday-user-task-main span {
-    margin-top: 1px !important;
+    margin-top: 2px !important;
     color: var(--text-muted) !important;
     font-size: 11px !important;
     line-height: 1.2 !important;
 }
 
-.monday-task-flags-inline {
-    justify-content: flex-start !important;
-    margin-top: 4px !important;
-    gap: 4px !important;
-}
-
-.monday-user-col-main { width: 35% !important; }
+.monday-user-col-main { width: 36% !important; }
 .monday-user-col-urgency { width: 12% !important; }
-.monday-user-col-status { width: 18% !important; }
-.monday-user-col-date { width: 12% !important; }
-.monday-user-col-overdue { width: 12% !important; }
-.monday-user-col-time { width: 11% !important; }
+.monday-user-col-status { width: 17% !important; }
+.monday-user-col-date { width: 11% !important; }
+.monday-user-col-overdue { width: 16% !important; }
+.monday-user-col-time { width: 8% !important; }
 
 .monday-user-col-urgency,
 .monday-user-col-status,
 .monday-user-col-date,
 .monday-user-col-overdue,
 .monday-user-col-time {
-    padding-top: 12px !important;
+    padding-top: 7px !important;
 }
 
 .monday-user-col-time,
@@ -757,10 +751,22 @@ body {
     text-align: left !important;
 }
 
+.monday-overdue-stack {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 4px !important;
+}
+
+.monday-overdue-value {
+    display: block !important;
+    line-height: 1.1 !important;
+}
+
 .monday-task-chip {
     min-height: 22px !important;
     padding: 0 8px !important;
-    font-size: 11px !important;
+    font-size: 10px !important;
     line-height: 1 !important;
 }
 

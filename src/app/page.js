@@ -1315,8 +1315,6 @@ export default function DashboardPage() {
   const [isMetaMetricLibraryOpen, setIsMetaMetricLibraryOpen] = useState(false)
   const [isRdMetricLibraryOpen, setIsRdMetricLibraryOpen] = useState(false)
   const [isSheetsMetricLibraryOpen, setIsSheetsMetricLibraryOpen] = useState(false)
-  const [isClickUpSetupOpen, setIsClickUpSetupOpen] = useState(false)
-  const [isMondaySetupOpen, setIsMondaySetupOpen] = useState(false)
   const [isQualifiedStagesVisible, setIsQualifiedStagesVisible] = useState(false)
   const [usersList, setUsersList] = useState([])
   const [usersLoading, setUsersLoading] = useState(false)
@@ -4846,62 +4844,25 @@ export default function DashboardPage() {
             <h2>Operação em tarefas</h2>
             <p className="chart-subtitle">Resumo global de tarefas, andamento, atrasos e gargalos do time sem depender de vínculo com clientes.</p>
           </div>
-          {canEditIntegrations && (
-            <button
-              type="button"
-              className="btn btn-secondary"
-              onClick={() => setIsClickUpSetupOpen((current) => !current)}
-            >
-              <i className={`bx ${isClickUpSetupOpen ? 'bx-chevron-up' : 'bx-cog'}`}></i>
-              {isClickUpSetupOpen ? 'Fechar configuração' : hasClickUpConfigured ? 'Editar token e IDs' : 'Configurar agora'}
-            </button>
-          )}
         </div>
 
         {!hasClickUpConfigured && (
           <div className="settings-alert error">
-            {canEditIntegrations
-              ? 'O ClickUp ainda não foi configurado na operação. Informe o token e os IDs das listas para liberar essa leitura.'
-              : 'O ClickUp ainda não foi configurado nesta operação. Peça ao master para informar o token e os IDs das listas.'}
-          </div>
-        )}
-
-        {(isClickUpSetupOpen || !hasClickUpConfigured) && (
-          <div className="glass-item" style={{ padding: '1.2rem', marginBottom: '1.2rem' }}>
-            <div className="form-grid">
-              <div className="input-group">
-                <label>Token do ClickUp</label>
-                <input
-                  type="password"
-                  value={globalIntegrations.clickUpToken || ''}
-                  onChange={(event) => handleGlobalIntegrationChange('clickUpToken', event.target.value)}
-                  placeholder="pk_..."
-                  disabled={!canEditIntegrations}
-                />
-              </div>
-              <div className="input-group">
-                <label>IDs das listas da operação</label>
-                <input
-                  type="text"
-                  value={globalIntegrations.clickUpListIds || ''}
-                  onChange={(event) => handleGlobalIntegrationChange('clickUpListIds', event.target.value)}
-                  placeholder="123456, 789012"
-                  disabled={!canEditIntegrations}
-                />
-                <span className="field-helper">Separe múltiplos IDs por vírgula. Esses IDs ficam globais na operação, não dentro de clientes.</span>
-              </div>
+            <div style={{ display: 'grid', gap: '0.9rem' }}>
+              <span>
+                {canEditIntegrations
+                  ? 'O ClickUp ainda não foi configurado na operação. Faça isso em Configurações > Operação para liberar essa leitura.'
+                  : 'O ClickUp ainda não foi configurado nesta operação. Peça ao master para ajustar em Configurações > Operação.'}
+              </span>
+              {canEditIntegrations && (
+                <div>
+                  <Link href="/settings?tab=operation" className="btn btn-secondary">
+                    <i className="bx bx-cog"></i>
+                    Abrir Configurações
+                  </Link>
+                </div>
+              )}
             </div>
-
-            {canEditIntegrations && (
-              <div className="modal-actions" style={{ marginTop: '1rem' }}>
-                <button type="button" className="btn btn-secondary" onClick={() => setIsClickUpSetupOpen(false)}>
-                  Fechar
-                </button>
-                <button type="button" className="btn btn-primary" onClick={() => setIsClickUpSetupOpen(false)}>
-                  Salvar configuração
-                </button>
-              </div>
-            )}
           </div>
         )}
 
@@ -5309,16 +5270,6 @@ export default function DashboardPage() {
               <h2>Operação em boards</h2>
               <p className="chart-subtitle">Entenda carga, atraso, tempo investido e gargalos do time em um painel que faça sentido para gestão de operação.</p>
             </div>
-            {canEditIntegrations && (
-              <button
-                type="button"
-                className="btn btn-secondary"
-                onClick={() => setIsMondaySetupOpen((current) => !current)}
-              >
-                <i className={`bx ${isMondaySetupOpen ? 'bx-chevron-up' : 'bx-cog'}`}></i>
-                {isMondaySetupOpen ? 'Fechar configuração' : hasMondayConfigured ? 'Editar token e IDs' : 'Configurar agora'}
-              </button>
-            )}
           </div>
 
           {hasMondayConfigured && !mondayError && (
@@ -5370,48 +5321,21 @@ export default function DashboardPage() {
 
           {!hasMondayConfigured && (
             <div className="settings-alert error">
-              {canEditIntegrations
-                ? 'O Monday ainda não foi configurado na operação. Informe o token e os IDs dos boards para liberar essa leitura.'
-                : 'O Monday ainda não foi configurado nesta operação. Peça ao master para informar o token e os IDs dos boards.'}
-            </div>
-          )}
-
-          {(isMondaySetupOpen || !hasMondayConfigured) && (
-            <div className="glass-item" style={{ padding: '1.2rem', marginBottom: '1.2rem' }}>
-              <div className="form-grid">
-                <div className="input-group">
-                  <label>Token do Monday</label>
-                  <input
-                    type="password"
-                    value={globalIntegrations.mondayToken || ''}
-                    onChange={(event) => handleGlobalIntegrationChange('mondayToken', event.target.value)}
-                    placeholder="Cole aqui o token do Monday"
-                    disabled={!canEditIntegrations}
-                  />
-                </div>
-                <div className="input-group">
-                  <label>IDs dos boards da operação</label>
-                  <input
-                    type="text"
-                    value={globalIntegrations.mondayBoardIds || ''}
-                    onChange={(event) => handleGlobalIntegrationChange('mondayBoardIds', event.target.value)}
-                    placeholder="987654321, 123456789"
-                    disabled={!canEditIntegrations}
-                  />
-                  <span className="field-helper">Separe múltiplos IDs por vírgula. Esses IDs ficam globais na operação, não dentro de clientes.</span>
-                </div>
+              <div style={{ display: 'grid', gap: '0.9rem' }}>
+                <span>
+                  {canEditIntegrations
+                    ? 'O Monday ainda não foi configurado na operação. Faça isso em Configurações > Operação para liberar essa leitura.'
+                    : 'O Monday ainda não foi configurado nesta operação. Peça ao master para ajustar em Configurações > Operação.'}
+                </span>
+                {canEditIntegrations && (
+                  <div>
+                    <Link href="/settings?tab=operation" className="btn btn-secondary">
+                      <i className="bx bx-cog"></i>
+                      Abrir Configurações
+                    </Link>
+                  </div>
+                )}
               </div>
-
-              {canEditIntegrations && (
-                <div className="modal-actions" style={{ marginTop: '1rem' }}>
-                  <button type="button" className="btn btn-secondary" onClick={() => setIsMondaySetupOpen(false)}>
-                    Fechar
-                  </button>
-                  <button type="button" className="btn btn-primary" onClick={() => setIsMondaySetupOpen(false)}>
-                    Salvar configuração
-                  </button>
-                </div>
-              )}
             </div>
           )}
 
@@ -7895,22 +7819,22 @@ export default function DashboardPage() {
                                           <td className="monday-user-task-main monday-user-col-main">
                                             <strong>{task.name}</strong>
                                             <span>{task.boardName || '-'}{task.groupLabel ? ` · ${task.groupLabel}` : ''}</span>
-                                            <div className="monday-task-flags monday-task-flags-inline">
-                                              {task.isOverdue && <span className="monday-task-chip danger">Atrasada</span>}
-                                              {task.isBlocked && <span className="monday-task-chip warning">Bloqueada</span>}
-                                              {task.isDueSoon && <span className="monday-task-chip info">Vence logo</span>}
-                                              {task.isUnassigned && <span className="monday-task-chip neutral">Sem dono</span>}
-                                            </div>
                                           </td>
                                           <td className="monday-user-col-urgency">{urgency.label}</td>
                                           <td className="monday-user-col-status">{task.statusLabel || 'Sem status'}</td>
                                           <td className="monday-user-col-date">{task.dueDate ? formatShortDate(task.dueDate) : '-'}</td>
                                           <td className="monday-user-col-overdue">
-                                            {task.daysOverdue
-                                              ? `${formatNumber(task.daysOverdue)} dia(s)`
-                                              : task.isDueSoon
-                                                ? 'Vence logo'
-                                                : 'No prazo'}
+                                            <div className="monday-overdue-stack">
+                                              <span className="monday-overdue-value">
+                                                {task.daysOverdue
+                                                  ? `${formatNumber(task.daysOverdue)} dia(s)`
+                                                  : task.isDueSoon
+                                                    ? 'Vence logo'
+                                                    : 'No prazo'}
+                                              </span>
+                                              {task.isOverdue && <span className="monday-task-chip danger">Atrasada</span>}
+                                              {!task.isOverdue && task.isDueSoon && <span className="monday-task-chip info">Vence logo</span>}
+                                            </div>
                                           </td>
                                           <td className="monday-user-col-time">{formatDurationHours(task.trackedSeconds || 0)}</td>
                                         </tr>
