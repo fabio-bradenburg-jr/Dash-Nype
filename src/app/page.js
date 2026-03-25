@@ -5441,7 +5441,7 @@ export default function DashboardPage() {
 
         {mondayMetricDrilldown && (
           <div className="modal-overlay" onClick={() => setMondayMetricDrilldown(null)}>
-            <div className="modal-card modal-card-wide glass-panel monday-drilldown-screen" onClick={(event) => event.stopPropagation()}>
+            <div className="modal-card glass-panel monday-drilldown-popup" onClick={(event) => event.stopPropagation()}>
               <div className="modal-header">
                 <div>
                   <h3>{mondayMetricDrilldown.title}</h3>
