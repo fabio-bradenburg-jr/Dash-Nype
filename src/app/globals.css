@@ -28,6 +28,10 @@
     /* Glows */
     --glow-blue: rgba(59, 130, 246, 0.2);
     --glow-emerald: rgba(16, 185, 129, 0.15);
+    --app-bg-primary: rgba(59, 130, 246, 0.18);
+    --app-bg-secondary: rgba(59, 130, 246, 0.10);
+    --app-bg-tertiary: rgba(59, 130, 246, 0.06);
+    --app-bg-rgb: 59, 130, 246;
 
     /* Typography */
     --font-family: 'Inter', sans-serif;
@@ -62,16 +66,18 @@ body {
     color: var(--text-primary);
     overflow-x: hidden;
     background-image: 
-        radial-gradient(circle at 0% 0%, rgba(120, 82, 255, 0.1) 0%, transparent 24%),
-        radial-gradient(circle at 100% 0%, rgba(59, 130, 246, 0.08) 0%, transparent 22%),
+        radial-gradient(circle at 0% 0%, var(--app-bg-primary) 0%, transparent 24%),
+        radial-gradient(circle at 100% 0%, var(--app-bg-secondary) 0%, transparent 22%),
+        radial-gradient(circle at 50% 100%, var(--app-bg-tertiary) 0%, transparent 26%),
         linear-gradient(180deg, rgba(255, 255, 255, 0.015), rgba(255, 255, 255, 0));
     background-attachment: fixed;
 }
 
 :root[data-ui-mode='light'] body {
     background-image:
-        radial-gradient(circle at 0% 0%, rgba(120, 82, 255, 0.08) 0%, transparent 20%),
-        radial-gradient(circle at 100% 0%, rgba(14, 165, 233, 0.08) 0%, transparent 22%);
+        radial-gradient(circle at 0% 0%, var(--app-bg-primary) 0%, transparent 20%),
+        radial-gradient(circle at 100% 0%, var(--app-bg-secondary) 0%, transparent 22%),
+        radial-gradient(circle at 50% 100%, var(--app-bg-tertiary) 0%, transparent 22%);
 }
 
 /* Scrollbar */

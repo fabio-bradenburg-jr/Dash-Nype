@@ -20,6 +20,15 @@ function normalizeCampaign(campaign) {
     cost_per_action_type: Array.isArray(insight?.cost_per_action_type)
       ? insight.cost_per_action_type
       : [],
+    video_play_actions: Array.isArray(insight?.video_play_actions)
+      ? insight.video_play_actions
+      : [],
+    video_p25_watched_actions: Array.isArray(insight?.video_p25_watched_actions)
+      ? insight.video_p25_watched_actions
+      : [],
+    video_thruplay_watched_actions: Array.isArray(insight?.video_thruplay_watched_actions)
+      ? insight.video_thruplay_watched_actions
+      : [],
   }
 }
 
@@ -46,7 +55,7 @@ export async function GET(request) {
     const timeFilter = buildMetaInsightsFilterExpression(datePreset, since, until)
     
     // We use the time filter syntax to fetch campaign details along with their metrics in one call
-    const campaignsUrl = `https://graph.facebook.com/v19.0/${id}/campaigns?fields=id,name,status,objective,${timeFilter}{spend,reach,impressions,cpc,actions,action_values,cost_per_action_type}&limit=50&access_token=${token}`
+    const campaignsUrl = `https://graph.facebook.com/v19.0/${id}/campaigns?fields=id,name,status,objective,${timeFilter}{spend,reach,impressions,cpc,actions,action_values,cost_per_action_type,video_play_actions,video_p25_watched_actions,video_thruplay_watched_actions}&limit=50&access_token=${token}`
     
     const data = await fetchMetaJson(
       campaignsUrl,

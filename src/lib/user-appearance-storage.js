@@ -3,6 +3,7 @@ export const USER_APPEARANCE_KEY_PREFIX = 'nype-user-appearance'
 export const DEFAULT_USER_APPEARANCE = {
   mode: 'dark',
   accent: '#3b82f6',
+  backgroundTint: '#3b82f6',
 }
 
 export const USER_APPEARANCE_PRESETS = [
@@ -25,6 +26,7 @@ export function normalizeUserAppearance(appearance) {
   return {
     mode: appearance?.mode === 'light' ? 'light' : 'dark',
     accent: normalizeHexColor(appearance?.accent),
+    backgroundTint: normalizeHexColor(appearance?.backgroundTint),
   }
 }
 
@@ -71,10 +73,15 @@ export function applyUserAppearance(appearance) {
 
   const normalized = normalizeUserAppearance(appearance)
   const { r, g, b } = hexToRgb(normalized.accent)
+  const backgroundRgb = hexToRgb(normalized.backgroundTint)
   const root = document.documentElement
 
   root.dataset.uiMode = normalized.mode
   root.style.setProperty('--accent-blue', normalized.accent)
   root.style.setProperty('--glow-blue', `rgba(${r}, ${g}, ${b}, 0.18)`)
   root.style.setProperty('--theme-surface', `rgba(${r}, ${g}, ${b}, 0.10)`)
+  root.style.setProperty('--app-bg-primary', `rgba(${backgroundRgb.r}, ${backgroundRgb.g}, ${backgroundRgb.b}, ${normalized.mode === 'light' ? '0.10' : '0.18'})`)
+  root.style.setProperty('--app-bg-secondary', `rgba(${backgroundRgb.r}, ${backgroundRgb.g}, ${backgroundRgb.b}, ${normalized.mode === 'light' ? '0.06' : '0.10'})`)
+  root.style.setProperty('--app-bg-tertiary', `rgba(${backgroundRgb.r}, ${backgroundRgb.g}, ${backgroundRgb.b}, ${normalized.mode === 'light' ? '0.04' : '0.06'})`)
+  root.style.setProperty('--app-bg-rgb', `${backgroundRgb.r}, ${backgroundRgb.g}, ${backgroundRgb.b}`)
 }

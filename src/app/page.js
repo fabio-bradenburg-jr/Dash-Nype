@@ -154,12 +154,22 @@ function getDashboardColorLabel(colorValue) {
 const METRIC_OPTIONS = {
   spend: { label: 'Investimento', type: 'currency' },
   impressions: { label: 'Impressões', type: 'number' },
-  clicks: { label: 'Cliques', type: 'number' },
+  cpm: { label: 'CPM', type: 'currency' },
+  reach: { label: 'Alcance', type: 'number' },
+  frequency: { label: 'Frequência', type: 'decimal' },
+  clicks: { label: 'Cliques no link', type: 'number' },
   cpc: { label: 'CPC', type: 'currency' },
   ctr: { label: 'CTR', type: 'percent' },
+  totalConversions: { label: 'Conversões totais', type: 'number' },
+  conversionRate: { label: 'Taxa de conversão', type: 'percent' },
+  purchaseValue: { label: 'Faturamento', type: 'currency' },
   purchases: { label: 'Compras', type: 'number' },
   leads: { label: 'Leads', type: 'number' },
   messages: { label: 'Mensagens', type: 'number' },
+  videoViews: { label: 'Video views', type: 'number' },
+  videoViewRate: { label: '% de visualizações', type: 'percent' },
+  thruplay: { label: 'Thruplay', type: 'number' },
+  hookRate: { label: 'Hook', type: 'percent' },
   cpa: { label: 'CPA', type: 'currency' },
   roas: { label: 'ROAS', type: 'multiplier' },
 }
@@ -353,11 +363,11 @@ const META_TEMPLATE_METRIC_OPTIONS = {
     description: 'Total de impressões entregues no período.',
   },
   clicks: {
-    label: 'Cliques',
+    label: 'Cliques no link',
     type: 'number',
     icon: 'bx-pointer',
     tone: 'cyan',
-    description: 'Cliques totais nas campanhas filtradas.',
+    description: 'Cliques no link dentro das campanhas filtradas.',
   },
   cpc: {
     label: 'CPC',
@@ -402,11 +412,11 @@ const META_TEMPLATE_METRIC_OPTIONS = {
     description: 'Média de exibições por pessoa alcançada.',
   },
   conversionRate: {
-    label: 'Taxa de conversão',
+    label: 'Taxa de conversão clique -> conversão',
     type: 'percent',
     icon: 'bx-git-compare',
     tone: 'emerald',
-    description: 'Conversões totais divididas pelos cliques.',
+    description: 'Conversões totais divididas pelos cliques no link.',
   },
   averageTicket: {
     label: 'Ticket médio',
@@ -416,11 +426,39 @@ const META_TEMPLATE_METRIC_OPTIONS = {
     description: 'Faturamento atribuído dividido pelas compras.',
   },
   purchaseValue: {
-    label: 'Faturamento atribuído',
+    label: 'Faturamento',
     type: 'currency',
     icon: 'bx-money',
     tone: 'emerald',
     description: 'Valor total das compras atribuídas no período.',
+  },
+  videoViews: {
+    label: 'Video views',
+    type: 'number',
+    icon: 'bx-play-circle',
+    tone: 'pink',
+    description: 'Total de visualizações de vídeo reconhecidas pela Meta no período.',
+  },
+  videoViewRate: {
+    label: '% de visualizações',
+    type: 'percent',
+    icon: 'bx-slideshow',
+    tone: 'purple',
+    description: 'Percentual de impressões que viraram visualização de vídeo.',
+  },
+  thruplay: {
+    label: 'Thruplay',
+    type: 'number',
+    icon: 'bx-movie-play',
+    tone: 'blue',
+    description: 'Quantidade de visualizações qualificadas como Thruplay.',
+  },
+  hookRate: {
+    label: 'Hook',
+    type: 'percent',
+    icon: 'bx-magnet',
+    tone: 'gold',
+    description: 'Percentual das visualizações que avançaram pelo menos 25% do vídeo.',
   },
   purchases: {
     label: 'Compras',
@@ -483,10 +521,15 @@ const META_TEMPLATE_METRIC_OPTIONS = {
 const FIXED_META_METRIC_KEYS = new Set([
   'spend',
   'impressions',
+  'cpm',
+  'reach',
+  'frequency',
   'clicks',
   'cpc',
   'ctr',
   'totalConversions',
+  'conversionRate',
+  'purchaseValue',
   'purchases',
   'costPerPurchase',
   'roas',
@@ -804,6 +847,46 @@ function formatPercent(value) {
 
 function formatDecimal(value, decimals = 1) {
   return Number(value || 0).toFixed(decimals).replace('.', ',')
+}
+
+function getMetaBreakdownConversions(item) {
+  return Number(item?.custom_metrics?.totalConversions || 0)
+}
+
+function getMetaBreakdownAverageCost(item) {
+  const explicitCost = Number(item?.custom_metrics?.cpa || 0)
+  if (explicitCost > 0) return explicitCost
+
+  const conversions = getMetaBreakdownConversions(item)
+  return conversions > 0 ? Number(item?.spend || 0) / conversions : 0
+}
+
+function getMetaBreakdownConversionRate(item) {
+  const clicks = Number(item?.clicks || 0)
+  return clicks > 0 ? (getMetaBreakdownConversions(item) / clicks) * 100 : 0
+}
+
+function buildMetaRankingChartLabel(label) {
+  const normalizedLabel = String(label || 'Sem nome').trim()
+  if (normalizedLabel.length <= 20) return normalizedLabel
+
+  const words = normalizedLabel.split(/\s+/)
+  const lines = []
+  let currentLine = ''
+
+  words.forEach((word) => {
+    const nextLine = currentLine ? `${currentLine} ${word}` : word
+    if (nextLine.length <= 20) {
+      currentLine = nextLine
+      return
+    }
+
+    if (currentLine) lines.push(currentLine)
+    currentLine = word
+  })
+
+  if (currentLine) lines.push(currentLine)
+  return lines.slice(0, 2)
 }
 
 function formatMultiplier(value) {
@@ -1215,18 +1298,38 @@ function getMetricData(metricKey, dayData) {
       return parseFloat(dayData.spend || 0)
     case 'impressions':
       return parseInt(dayData.impressions || 0, 10)
+    case 'reach':
+      return parseInt(dayData.reach || 0, 10)
     case 'clicks':
       return parseInt(dayData.clicks || 0, 10)
     case 'cpc':
       return parseFloat(dayData.cpc || 0)
+    case 'cpm':
+      return parseFloat(dayData.custom_metrics?.cpm || 0)
+    case 'frequency':
+      return parseFloat(dayData.custom_metrics?.frequency || 0)
     case 'ctr':
       return parseFloat(dayData.ctr || 0)
+    case 'totalConversions':
+      return parseInt(dayData.custom_metrics?.totalConversions || 0, 10)
+    case 'conversionRate':
+      return parseFloat(dayData.custom_metrics?.conversionRate || 0)
+    case 'purchaseValue':
+      return parseFloat(dayData.custom_metrics?.purchaseValue || 0)
     case 'purchases':
       return parseInt(dayData.custom_metrics?.purchases || 0, 10)
     case 'leads':
       return parseInt(dayData.custom_metrics?.leads || 0, 10)
     case 'messages':
       return parseInt(dayData.custom_metrics?.messages || 0, 10)
+    case 'videoViews':
+      return parseInt(dayData.custom_metrics?.videoViews || 0, 10)
+    case 'videoViewRate':
+      return parseFloat(dayData.custom_metrics?.videoViewRate || 0)
+    case 'thruplay':
+      return parseInt(dayData.custom_metrics?.thruplay || 0, 10)
+    case 'hookRate':
+      return parseFloat(dayData.custom_metrics?.hookRate || 0)
     case 'cpa':
       return parseFloat(dayData.custom_metrics?.cpa || 0)
     case 'roas':
@@ -1353,18 +1456,38 @@ function getSummaryMetricValue(metricKey, summary, customMetrics) {
       return parseFloat(summary?.spend || 0)
     case 'impressions':
       return parseInt(summary?.impressions || 0, 10)
+    case 'reach':
+      return parseInt(summary?.reach || 0, 10)
     case 'clicks':
       return parseInt(summary?.clicks || 0, 10)
     case 'cpc':
       return parseFloat(summary?.cpc || 0)
+    case 'cpm':
+      return parseFloat(customMetrics?.cpm || 0)
+    case 'frequency':
+      return parseFloat(customMetrics?.frequency || 0)
     case 'ctr':
       return parseFloat(summary?.ctr || 0)
+    case 'totalConversions':
+      return parseInt(customMetrics?.totalConversions || 0, 10)
+    case 'conversionRate':
+      return parseFloat(customMetrics?.conversionRate || 0)
+    case 'purchaseValue':
+      return parseFloat(customMetrics?.purchaseValue || 0)
     case 'purchases':
       return parseInt(customMetrics?.purchases || 0, 10)
     case 'leads':
       return parseInt(customMetrics?.leads || 0, 10)
     case 'messages':
       return parseInt(customMetrics?.messages || 0, 10)
+    case 'videoViews':
+      return parseInt(customMetrics?.videoViews || 0, 10)
+    case 'videoViewRate':
+      return parseFloat(customMetrics?.videoViewRate || 0)
+    case 'thruplay':
+      return parseInt(customMetrics?.thruplay || 0, 10)
+    case 'hookRate':
+      return parseFloat(customMetrics?.hookRate || 0)
     case 'cpa':
       return parseFloat(customMetrics?.cpa || 0)
     case 'roas':
@@ -1438,6 +1561,7 @@ export default function DashboardPage() {
   const [metaHierarchy, setMetaHierarchy] = useState([])
   const [breakdowns, setBreakdowns] = useState(EMPTY_META_BREAKDOWNS)
   const [metaResultDrilldown, setMetaResultDrilldown] = useState(null)
+  const [metaRankingDrilldown, setMetaRankingDrilldown] = useState(null)
   const [metaResultPreviewKey, setMetaResultPreviewKey] = useState('purchases')
   const [metaResultGrouping, setMetaResultGrouping] = useState('week')
   const [isRankingsLoading, setIsRankingsLoading] = useState(false)
@@ -1523,6 +1647,10 @@ export default function DashboardPage() {
   useEffect(() => {
     setExpandedMondayGroups({})
   }, [mondayMetricDrilldown])
+
+  useEffect(() => {
+    setMetaRankingDrilldown(null)
+  }, [breakdowns, activeClientId])
 
   useEffect(() => {
     setMetaResultDrilldown(null)
@@ -4260,6 +4388,192 @@ export default function DashboardPage() {
     : breakdowns.geoScope === 'region'
       ? 'Ranking territorial com base nas conversões por região da conta Meta.'
       : 'Ranking com base nas conversões da conta Meta do cliente.'
+  const metaRankingConfigs = useMemo(
+    () => ({
+      cities: {
+        key: 'cities',
+        title: metaGeoRankingTitle,
+        description: metaGeoRankingDescription,
+        emptyMessage: 'Sem dados geográficos para o período.',
+        resultLabel: 'Conversões',
+        costLabel: 'Custo por resultado',
+        accent: '#38bdf8',
+        resultTone: '#22c55e',
+        costTone: '#f59e0b',
+        previewKicker: breakdowns.geoScope === 'country'
+          ? 'País'
+          : breakdowns.geoScope === 'region'
+            ? 'Região'
+            : 'Cidade',
+        detailDescription: 'Compare o território selecionado contra os demais itens do top 5 para entender onde o resultado está mais eficiente.',
+        items: breakdowns.cities || [],
+      },
+      creatives: {
+        key: 'creatives',
+        title: 'Top 5 por criativos',
+        description: 'Os criativos com melhor resultado dentro do período selecionado.',
+        emptyMessage: 'Sem dados por criativo para o período.',
+        resultLabel: 'Conversões',
+        costLabel: 'Custo por resultado',
+        accent: '#3b82f6',
+        resultTone: '#10b981',
+        costTone: '#fbbf24',
+        previewKicker: 'Criativo',
+        detailDescription: 'Veja o criativo selecionado comparado ao restante do top 5 e leia o custo médio por resultado com o preview ao lado.',
+        items: breakdowns.creatives || [],
+      },
+      ages: {
+        key: 'ages',
+        title: 'Resultado por idade',
+        description: 'Faixas etárias com melhor performance no período.',
+        emptyMessage: 'Sem dados por idade para o período.',
+        resultLabel: 'Conversões',
+        costLabel: 'Custo por resultado',
+        accent: '#a855f7',
+        resultTone: '#38bdf8',
+        costTone: '#f59e0b',
+        previewKicker: 'Faixa etária',
+        detailDescription: 'Compare a faixa etária selecionada com o restante do top 5 para identificar volume, eficiência e investimento.',
+        items: breakdowns.ages || [],
+      },
+    }),
+    [breakdowns.ages, breakdowns.cities, breakdowns.creatives, breakdowns.geoScope, metaGeoRankingDescription, metaGeoRankingTitle]
+  )
+  const activeMetaRankingDrilldownConfig = metaRankingDrilldown
+    ? metaRankingConfigs[metaRankingDrilldown.type] || null
+    : null
+  const activeMetaRankingDrilldownItem = useMemo(() => {
+    if (!metaRankingDrilldown || !activeMetaRankingDrilldownConfig) return null
+    return activeMetaRankingDrilldownConfig.items[metaRankingDrilldown.index] || metaRankingDrilldown.item || null
+  }, [activeMetaRankingDrilldownConfig, metaRankingDrilldown])
+  const metaRankingComparisonChartData = useMemo(() => {
+    if (!activeMetaRankingDrilldownConfig?.items?.length || !activeMetaRankingDrilldownItem) return null
+
+    return {
+      labels: activeMetaRankingDrilldownConfig.items.map((item) => buildMetaRankingChartLabel(item.label)),
+      datasets: [
+        {
+          type: 'bar',
+          label: activeMetaRankingDrilldownConfig.resultLabel,
+          data: activeMetaRankingDrilldownConfig.items.map((item) => getMetaBreakdownConversions(item)),
+          backgroundColor: activeMetaRankingDrilldownConfig.items.map((_, index) => (
+            index === metaRankingDrilldown.index ? activeMetaRankingDrilldownConfig.resultTone : `${activeMetaRankingDrilldownConfig.resultTone}33`
+          )),
+          borderColor: activeMetaRankingDrilldownConfig.items.map((_, index) => (
+            index === metaRankingDrilldown.index ? activeMetaRankingDrilldownConfig.resultTone : `${activeMetaRankingDrilldownConfig.resultTone}66`
+          )),
+          borderWidth: 1,
+          borderRadius: 12,
+          maxBarThickness: 42,
+          yAxisID: 'y',
+        },
+        {
+          type: 'line',
+          label: activeMetaRankingDrilldownConfig.costLabel,
+          data: activeMetaRankingDrilldownConfig.items.map((item) => getMetaBreakdownAverageCost(item)),
+          borderColor: activeMetaRankingDrilldownConfig.costTone,
+          backgroundColor: `${activeMetaRankingDrilldownConfig.costTone}22`,
+          borderWidth: 3,
+          borderDash: [7, 5],
+          pointRadius: activeMetaRankingDrilldownConfig.items.map((_, index) => (index === metaRankingDrilldown.index ? 6 : 4)),
+          pointHoverRadius: activeMetaRankingDrilldownConfig.items.map((_, index) => (index === metaRankingDrilldown.index ? 7 : 5)),
+          pointBackgroundColor: activeMetaRankingDrilldownConfig.items.map((_, index) => (
+            index === metaRankingDrilldown.index ? activeMetaRankingDrilldownConfig.costTone : '#0b0f19'
+          )),
+          pointBorderColor: activeMetaRankingDrilldownConfig.items.map((_, index) => (
+            index === metaRankingDrilldown.index ? '#f8fafc' : activeMetaRankingDrilldownConfig.costTone
+          )),
+          pointBorderWidth: 2,
+          tension: 0.34,
+          yAxisID: 'y1',
+        },
+      ],
+    }
+  }, [activeMetaRankingDrilldownConfig, activeMetaRankingDrilldownItem, metaRankingDrilldown])
+  const metaRankingComparisonChartOptions = useMemo(() => {
+    if (!activeMetaRankingDrilldownConfig) return null
+
+    return {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: 'rgba(17, 24, 39, 0.94)',
+          titleColor: '#f8fafc',
+          bodyColor: '#cbd5e1',
+          borderColor: 'rgba(255,255,255,0.08)',
+          borderWidth: 1,
+          padding: 12,
+          callbacks: {
+            label(context) {
+              return `${context.dataset.label}: ${context.dataset.yAxisID === 'y'
+                ? formatNumber(context.parsed.y)
+                : formatCurrency(context.parsed.y)}`
+            },
+          },
+        },
+      },
+      scales: {
+        x: {
+          ticks: {
+            color: '#94a3b8',
+            font: {
+              size: 11,
+              weight: 600,
+            },
+          },
+          grid: { display: false },
+        },
+        y: {
+          beginAtZero: true,
+          grid: { color: 'rgba(148, 163, 184, 0.12)' },
+          ticks: {
+            color: '#94a3b8',
+            precision: 0,
+            callback(value) {
+              return formatNumber(value)
+            },
+          },
+        },
+        y1: {
+          beginAtZero: true,
+          position: 'right',
+          grid: { display: false },
+          ticks: {
+            color: '#94a3b8',
+            callback(value) {
+              return formatCurrency(value)
+            },
+          },
+        },
+      },
+    }
+  }, [activeMetaRankingDrilldownConfig])
+  const metaRankingDrilldownSummary = useMemo(() => {
+    if (!activeMetaRankingDrilldownItem || !activeMetaRankingDrilldownConfig) return null
+
+    const conversions = getMetaBreakdownConversions(activeMetaRankingDrilldownItem)
+    const spendValue = Number(activeMetaRankingDrilldownItem.spend || 0)
+    const avgCost = getMetaBreakdownAverageCost(activeMetaRankingDrilldownItem)
+    const clicksValue = Number(activeMetaRankingDrilldownItem.clicks || 0)
+    const impressionsValue = Number(activeMetaRankingDrilldownItem.impressions || 0)
+    const conversionRateValue = getMetaBreakdownConversionRate(activeMetaRankingDrilldownItem)
+    const selectedRank = activeMetaRankingDrilldownConfig.items.findIndex((item, index) => (
+      index === metaRankingDrilldown.index || item.label === activeMetaRankingDrilldownItem.label
+    ))
+
+    return {
+      conversions,
+      spendValue,
+      avgCost,
+      clicksValue,
+      impressionsValue,
+      conversionRateValue,
+      selectedRank: selectedRank >= 0 ? selectedRank + 1 : null,
+    }
+  }, [activeMetaRankingDrilldownConfig, activeMetaRankingDrilldownItem, metaRankingDrilldown])
   const metaDashboardMetricValues = useMemo(
     () => ({
       spend,
@@ -4272,6 +4586,10 @@ export default function DashboardPage() {
       cpm,
       frequency,
       conversionRate,
+      videoViews: customMetrics.videoViews || 0,
+      videoViewRate: customMetrics.videoViewRate || 0,
+      thruplay: customMetrics.thruplay || 0,
+      hookRate: customMetrics.hookRate || 0,
       averageTicket,
       purchaseValue,
       purchases,
@@ -4283,7 +4601,7 @@ export default function DashboardPage() {
       clicksWithoutConversion: Math.max(clicks - totalConversions, 0),
       roas,
     }),
-    [spend, impressions, clicks, cpc, ctr, totalConversions, reach, cpm, frequency, conversionRate, averageTicket, purchaseValue, purchases, costPerPurchase, leads, costPerLead, messages, costPerMessage, roas]
+    [spend, impressions, clicks, cpc, ctr, totalConversions, reach, cpm, frequency, conversionRate, customMetrics.videoViews, customMetrics.videoViewRate, customMetrics.thruplay, customMetrics.hookRate, averageTicket, purchaseValue, purchases, costPerPurchase, leads, costPerLead, messages, costPerMessage, roas]
   )
   const previousMetaDashboardMetricValues = useMemo(
     () => ({
@@ -4297,6 +4615,10 @@ export default function DashboardPage() {
       cpm: previousCustomMetrics.cpm || 0,
       frequency: previousCustomMetrics.frequency || 0,
       conversionRate: previousCustomMetrics.conversionRate || 0,
+      videoViews: previousCustomMetrics.videoViews || 0,
+      videoViewRate: previousCustomMetrics.videoViewRate || 0,
+      thruplay: previousCustomMetrics.thruplay || 0,
+      hookRate: previousCustomMetrics.hookRate || 0,
       averageTicket: previousCustomMetrics.averageTicket || 0,
       purchaseValue: previousCustomMetrics.purchaseValue || 0,
       purchases: previousCustomMetrics.purchases || 0,
@@ -4619,10 +4941,15 @@ export default function DashboardPage() {
   const metaMediaKpis = [
     { key: 'spend', title: 'Investimento', value: formatCurrency(spend), rawValue: spend, type: 'currency', icon: 'bx-wallet-alt', tone: 'blue' },
     { key: 'impressions', title: 'Impressões', value: formatNumber(impressions), rawValue: impressions, type: 'number', icon: 'bx-show', tone: 'purple' },
-    { key: 'clicks', title: 'Cliques', value: formatNumber(clicks), rawValue: clicks, type: 'number', icon: 'bx-pointer', tone: 'cyan' },
+    { key: 'cpm', title: 'CPM', value: formatCurrency(cpm), rawValue: cpm, type: 'currency', icon: 'bx-bar-chart-alt-2', tone: 'purple' },
+    { key: 'reach', title: 'Alcance', value: formatNumber(reach), rawValue: reach, type: 'number', icon: 'bx-radar', tone: 'blue' },
+    { key: 'frequency', title: 'Frequência', value: formatDashboardMetricValue(frequency, 'decimal'), rawValue: frequency, type: 'decimal', icon: 'bx-repeat', tone: 'gold' },
+    { key: 'clicks', title: 'Cliques no link', value: formatNumber(clicks), rawValue: clicks, type: 'number', icon: 'bx-pointer', tone: 'cyan' },
     { key: 'cpc', title: 'CPC', value: formatCurrency(cpc), rawValue: cpc, type: 'currency', icon: 'bx-purchase-tag', tone: 'orange' },
     { key: 'ctr', title: 'CTR', value: formatPercent(ctr), rawValue: ctr, type: 'percent', icon: 'bx-mouse', tone: 'pink' },
     { key: 'totalConversions', title: 'Conversões totais', value: formatNumber(totalConversions), rawValue: totalConversions, type: 'number', icon: 'bx-line-chart', tone: 'gold' },
+    { key: 'conversionRate', title: 'Taxa de conversão clique -> conversão', value: formatPercent(conversionRate), rawValue: conversionRate, type: 'percent', icon: 'bx-git-compare', tone: 'emerald' },
+    { key: 'purchaseValue', title: 'Faturamento', value: formatCurrency(purchaseValue), rawValue: purchaseValue, type: 'currency', icon: 'bx-money', tone: 'emerald' },
   ]
   const metaConversionGroups = [
     {
@@ -7630,13 +7957,22 @@ export default function DashboardPage() {
                         <div className="ranking-empty">Sem dados por cidade para o período.</div>
                       ) : (
                         breakdowns.cities.map((item, index) => (
-                          <div key={`${item.label}-${index}`} className="ranking-row">
-                            <div>
+                          <button
+                            key={`${item.label}-${index}`}
+                            type="button"
+                            className="ranking-row ranking-row-action"
+                            onClick={() => setMetaRankingDrilldown({ type: 'cities', index, item })}
+                          >
+                            <div className="ranking-main-column">
                               <strong>{item.label}</strong>
-                              <span>{formatNumber(item.custom_metrics?.totalConversions || 0)} conversões</span>
+                              <span>{formatNumber(getMetaBreakdownConversions(item))} conversões</span>
                             </div>
-                            <b>{formatCurrency(item.spend)}</b>
-                          </div>
+                            <div className="ranking-metrics">
+                              <b>{formatCurrency(getMetaBreakdownAverageCost(item))} / resultado</b>
+                              <span>{formatCurrency(item.spend)} investidos</span>
+                              <small>Toque para comparar</small>
+                            </div>
+                          </button>
                         ))
                       )}
                     </div>
@@ -7660,7 +7996,12 @@ export default function DashboardPage() {
                         <div className="ranking-empty">Sem dados por criativo para o período.</div>
                       ) : (
                         breakdowns.creatives.map((item, index) => (
-                          <div key={`${item.label}-${index}`} className="ranking-row">
+                          <button
+                            key={`${item.label}-${index}`}
+                            type="button"
+                            className="ranking-row ranking-row-action ranking-row-rich"
+                            onClick={() => setMetaRankingDrilldown({ type: 'creatives', index, item })}
+                          >
                             <div className="creative-ranking-main">
                               <div className="creative-thumb">
                                 {item.imageUrl ? (
@@ -7669,12 +8010,17 @@ export default function DashboardPage() {
                                   <span>Sem imagem</span>
                                 )}
                               </div>
-                              <div>
+                              <div className="ranking-main-column">
                                 <strong>{item.label}</strong>
-                                <span>{formatNumber(item.custom_metrics?.totalConversions || 0)} conversões</span>
+                                <span>{formatNumber(getMetaBreakdownConversions(item))} conversões</span>
                               </div>
                             </div>
-                          </div>
+                            <div className="ranking-metrics">
+                              <b>{formatCurrency(getMetaBreakdownAverageCost(item))} / resultado</b>
+                              <span>{formatCurrency(item.spend)} investidos</span>
+                              <small>Preview e comparativo</small>
+                            </div>
+                          </button>
                         ))
                       )}
                     </div>
@@ -7698,13 +8044,22 @@ export default function DashboardPage() {
                         <div className="ranking-empty">Sem dados por idade para o período.</div>
                       ) : (
                         breakdowns.ages.map((item, index) => (
-                          <div key={`${item.label}-${index}`} className="ranking-row">
-                            <div>
+                          <button
+                            key={`${item.label}-${index}`}
+                            type="button"
+                            className="ranking-row ranking-row-action"
+                            onClick={() => setMetaRankingDrilldown({ type: 'ages', index, item })}
+                          >
+                            <div className="ranking-main-column">
                               <strong>{item.label}</strong>
-                              <span>{formatNumber(item.custom_metrics?.totalConversions || 0)} conversões</span>
+                              <span>{formatNumber(getMetaBreakdownConversions(item))} conversões</span>
                             </div>
-                            <b>{formatPercent(item.clicks > 0 ? (item.custom_metrics?.totalConversions || 0) / item.clicks * 100 : 0)}</b>
-                          </div>
+                            <div className="ranking-metrics">
+                              <b>{formatCurrency(getMetaBreakdownAverageCost(item))} / resultado</b>
+                              <span>{formatPercent(getMetaBreakdownConversionRate(item))} de conversão</span>
+                              <small>Toque para comparar</small>
+                            </div>
+                          </button>
                         ))
                       )}
                     </div>
@@ -8271,6 +8626,127 @@ export default function DashboardPage() {
               ) : (
                 <div className="ranking-empty">Sem histórico suficiente para montar esse comparativo no período atual.</div>
               )}
+            </div>
+          </div>,
+          document.body
+        )}
+
+        {metaRankingDrilldown && activeMetaRankingDrilldownConfig && activeMetaRankingDrilldownItem && typeof document !== 'undefined' && createPortal(
+          <div className="modal-overlay meta-ranking-overlay" onClick={() => setMetaRankingDrilldown(null)}>
+            <div className="modal-card modal-card-wide glass-panel meta-ranking-modal" onClick={(event) => event.stopPropagation()}>
+              <div className="modal-header">
+                <div>
+                  <h3>{activeMetaRankingDrilldownConfig.title}</h3>
+                  <p>{activeMetaRankingDrilldownConfig.detailDescription}</p>
+                </div>
+                <button type="button" className="modal-close" onClick={() => setMetaRankingDrilldown(null)} aria-label="Fechar detalhamento do ranking">
+                  <i className="bx bx-x"></i>
+                </button>
+              </div>
+
+              {metaRankingDrilldownSummary ? (
+                <div className="meta-result-summary">
+                  <div className="monday-drilldown-stat glass-item">
+                    <span>{activeMetaRankingDrilldownConfig.resultLabel}</span>
+                    <strong>{formatNumber(metaRankingDrilldownSummary.conversions)}</strong>
+                  </div>
+                  <div className="monday-drilldown-stat glass-item">
+                    <span>{activeMetaRankingDrilldownConfig.costLabel}</span>
+                    <strong>{formatCurrency(metaRankingDrilldownSummary.avgCost)}</strong>
+                  </div>
+                  <div className="monday-drilldown-stat glass-item">
+                    <span>Investimento</span>
+                    <strong>{formatCurrency(metaRankingDrilldownSummary.spendValue)}</strong>
+                  </div>
+                  <div className="monday-drilldown-stat glass-item">
+                    <span>Posição no top 5</span>
+                    <strong>{metaRankingDrilldownSummary.selectedRank ? `#${metaRankingDrilldownSummary.selectedRank}` : 'Sem base'}</strong>
+                  </div>
+                </div>
+              ) : null}
+
+              <div className="meta-ranking-body">
+                <div className="glass-item meta-ranking-chart-shell">
+                  <div className="meta-result-chart-head">
+                    <div>
+                      <strong>Comparativo do top 5</strong>
+                      <p className="chart-subtitle">Resultado e custo por resultado do item selecionado contra os demais itens desse ranking.</p>
+                    </div>
+                    <div className="meta-result-legend">
+                      <span className="legend-item">
+                        <span className="dot" style={{ background: activeMetaRankingDrilldownConfig.resultTone, boxShadow: `0 0 8px ${activeMetaRankingDrilldownConfig.resultTone}` }}></span>
+                        {activeMetaRankingDrilldownConfig.resultLabel}
+                      </span>
+                      <span className="legend-item">
+                        <span className="dot" style={{ background: activeMetaRankingDrilldownConfig.costTone, boxShadow: `0 0 8px ${activeMetaRankingDrilldownConfig.costTone}` }}></span>
+                        {activeMetaRankingDrilldownConfig.costLabel}
+                      </span>
+                    </div>
+                  </div>
+                  {metaRankingComparisonChartData ? (
+                    <div className="canvas-wrapper meta-ranking-chart-wrapper">
+                      <Bar data={metaRankingComparisonChartData} options={metaRankingComparisonChartOptions} />
+                    </div>
+                  ) : (
+                    <div className="ranking-empty">Sem base suficiente para montar o comparativo desse ranking.</div>
+                  )}
+                </div>
+
+                <div className="glass-item meta-ranking-detail-panel">
+                  <div className="meta-ranking-detail-head">
+                    <span className="meta-ranking-detail-kicker">{activeMetaRankingDrilldownConfig.previewKicker}</span>
+                    <h4>{activeMetaRankingDrilldownItem.label}</h4>
+                    <p>{activeMetaRankingDrilldownConfig.description}</p>
+                  </div>
+
+                  {metaRankingDrilldown.type === 'creatives' ? (
+                    <div className="meta-ranking-preview-frame">
+                      {activeMetaRankingDrilldownItem.imageUrl ? (
+                        <img src={activeMetaRankingDrilldownItem.imageUrl} alt={activeMetaRankingDrilldownItem.label} />
+                      ) : (
+                        <div className="meta-ranking-preview-fallback">
+                          <i className="bx bx-image-alt"></i>
+                          <span>Preview indisponível</span>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="meta-ranking-preview-fallback meta-ranking-preview-fallback-text">
+                      <strong>{activeMetaRankingDrilldownItem.label}</strong>
+                      <span>{activeMetaRankingDrilldownConfig.previewKicker} selecionado para leitura detalhada.</span>
+                    </div>
+                  )}
+
+                  {metaRankingDrilldownSummary ? (
+                    <div className="meta-ranking-detail-stats">
+                      <div className="conversion-stat">
+                        <span>{activeMetaRankingDrilldownConfig.resultLabel}</span>
+                        <strong>{formatNumber(metaRankingDrilldownSummary.conversions)}</strong>
+                      </div>
+                      <div className="conversion-stat">
+                        <span>{activeMetaRankingDrilldownConfig.costLabel}</span>
+                        <strong>{formatCurrency(metaRankingDrilldownSummary.avgCost)}</strong>
+                      </div>
+                      <div className="conversion-stat">
+                        <span>Cliques</span>
+                        <strong>{formatNumber(metaRankingDrilldownSummary.clicksValue)}</strong>
+                      </div>
+                      <div className="conversion-stat">
+                        <span>Taxa de conversão</span>
+                        <strong>{formatPercent(metaRankingDrilldownSummary.conversionRateValue)}</strong>
+                      </div>
+                    </div>
+                  ) : null}
+
+                  <div className="meta-ranking-inline-note">
+                    <strong>{formatCurrency(activeMetaRankingDrilldownItem.spend || 0)}</strong> investidos para gerar{' '}
+                    <strong>{formatNumber(getMetaBreakdownConversions(activeMetaRankingDrilldownItem))}</strong> resultados nesse item.
+                    {metaRankingDrilldownSummary?.impressionsValue
+                      ? ` Foram ${formatNumber(metaRankingDrilldownSummary.impressionsValue)} impressões no período analisado.`
+                      : ''}
+                  </div>
+                </div>
+              </div>
             </div>
           </div>,
           document.body
@@ -8948,6 +9424,11 @@ export default function DashboardPage() {
           gap: 18px;
         }
 
+        .meta-ranking-modal {
+          width: min(100%, 1180px);
+          gap: 18px;
+        }
+
         .meta-result-toolbar {
           display: flex;
           align-items: center;
@@ -8997,6 +9478,103 @@ export default function DashboardPage() {
           padding: 20px;
           display: grid;
           gap: 16px;
+        }
+
+        .meta-ranking-body {
+          display: grid;
+          grid-template-columns: minmax(0, 1.3fr) minmax(320px, 0.9fr);
+          gap: 18px;
+          align-items: start;
+        }
+
+        .meta-ranking-chart-shell {
+          padding: 20px;
+          display: grid;
+          gap: 16px;
+        }
+
+        .meta-ranking-chart-wrapper {
+          min-height: 360px;
+        }
+
+        .meta-ranking-detail-panel {
+          padding: 22px;
+          display: grid;
+          gap: 18px;
+          align-content: start;
+        }
+
+        .meta-ranking-detail-head {
+          display: grid;
+          gap: 8px;
+        }
+
+        .meta-ranking-detail-kicker {
+          color: #93c5fd;
+          font-size: 11px;
+          font-weight: 700;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+        }
+
+        .meta-ranking-detail-head h4 {
+          font-size: 28px;
+          line-height: 1.1;
+          margin: 0;
+        }
+
+        .meta-ranking-detail-head p {
+          color: var(--text-muted);
+          line-height: 1.55;
+          margin: 0;
+        }
+
+        .meta-ranking-preview-frame {
+          width: 100%;
+          min-height: 280px;
+          max-height: 360px;
+          border-radius: 24px;
+          overflow: hidden;
+          border: 1px solid rgba(255, 255, 255, 0.06);
+          background: rgba(255, 255, 255, 0.03);
+          display: grid;
+          place-items: center;
+        }
+
+        .meta-ranking-preview-frame img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+        }
+
+        .meta-ranking-preview-fallback {
+          min-height: 220px;
+          border-radius: 24px;
+          border: 1px dashed rgba(255, 255, 255, 0.14);
+          background: rgba(255, 255, 255, 0.02);
+          display: grid;
+          place-items: center;
+          gap: 8px;
+          text-align: center;
+          padding: 24px;
+          color: var(--text-muted);
+        }
+
+        .meta-ranking-preview-fallback i {
+          font-size: 28px;
+          color: var(--text-secondary);
+        }
+
+        .meta-ranking-preview-fallback-text strong {
+          font-size: 30px;
+          color: var(--text-primary);
+          line-height: 1.1;
+        }
+
+        .meta-ranking-detail-stats {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 12px;
         }
 
         .meta-result-chart-head {
@@ -10287,6 +10865,26 @@ export default function DashboardPage() {
           border: 1px solid rgba(255, 255, 255, 0.05);
         }
 
+        .ranking-row-action {
+          width: 100%;
+          text-align: left;
+          color: inherit;
+          font: inherit;
+          cursor: pointer;
+          transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+        }
+
+        .ranking-row-action:hover {
+          transform: translateY(-1px);
+          border-color: rgba(96, 165, 250, 0.28);
+          background: rgba(59, 130, 246, 0.06);
+        }
+
+        .ranking-row-action:focus-visible {
+          outline: 2px solid rgba(96, 165, 250, 0.9);
+          outline-offset: 2px;
+        }
+
         .ranking-row strong {
           display: block;
           margin-bottom: 4px;
@@ -10362,6 +10960,12 @@ export default function DashboardPage() {
           font-size: 12px;
         }
 
+        .ranking-metrics small {
+          color: #93c5fd;
+          font-size: 11px;
+          font-weight: 600;
+        }
+
         .ranking-empty {
           color: var(--text-muted);
           padding: 18px;
@@ -10396,6 +11000,16 @@ export default function DashboardPage() {
           color: var(--text-muted);
           font-size: 12px;
           line-height: 1.5;
+        }
+
+        .meta-ranking-inline-note {
+          color: var(--text-muted);
+          font-size: 13px;
+          line-height: 1.6;
+        }
+
+        .meta-ranking-inline-note strong {
+          color: var(--text-primary);
         }
 
         .weekly-time-list {
@@ -11061,6 +11675,10 @@ export default function DashboardPage() {
           .meta-result-summary {
             grid-template-columns: repeat(2, minmax(0, 1fr));
           }
+
+          .meta-ranking-body {
+            grid-template-columns: 1fr;
+          }
         }
 
         @media (max-width: 768px) {
@@ -11129,6 +11747,25 @@ export default function DashboardPage() {
 
           .meta-result-chart-wrapper {
             min-height: 300px;
+          }
+
+          .meta-ranking-chart-wrapper {
+            min-height: 280px;
+          }
+
+          .meta-ranking-detail-stats {
+            grid-template-columns: 1fr;
+          }
+
+          .ranking-row-action,
+          .ranking-row {
+            align-items: flex-start;
+            flex-direction: column;
+          }
+
+          .ranking-metrics {
+            min-width: 0;
+            text-align: left;
           }
         }
       `}</style>

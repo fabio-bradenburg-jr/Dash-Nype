@@ -57,6 +57,10 @@ function getDerivedClicksFromCost(costItems = [], spend = 0, actionTypes = []) {
   return 0
 }
 
+function sumValueItems(items = []) {
+  return items.reduce((sum, item) => sum + parseFloat(item?.value || 0), 0)
+}
+
 export function normalizeMetaResultFilters(filters = [], availableFilters = Object.keys(META_RESULT_FILTER_LABELS)) {
   const validKeys = availableFilters.length > 0 ? availableFilters : Object.keys(META_RESULT_FILTER_LABELS)
   const normalized = filters.filter((item) => validKeys.includes(item))
@@ -88,6 +92,10 @@ export function extractMetaCampaignMetrics(insightData) {
       conversionRate: 0,
       averageTicket: 0,
       roas: 0,
+      videoViews: 0,
+      videoViewRate: 0,
+      thruplay: 0,
+      hookRate: 0,
       primaryConversionType: 'Nenhuma',
     }
   }
@@ -132,6 +140,11 @@ export function extractMetaCampaignMetrics(insightData) {
   const conversionRate = linkClicks > 0 ? (totalConversions / linkClicks) * 100 : 0
   const averageTicket = purchases > 0 ? purchaseValue / purchases : 0
   const roas = spend > 0 ? purchaseValue / spend : 0
+  const videoViews = Math.round(sumValueItems(normalizedInsightData.video_play_actions || []))
+  const quarterViews = Math.round(sumValueItems(normalizedInsightData.video_p25_watched_actions || []))
+  const thruplay = Math.round(sumValueItems(normalizedInsightData.video_thruplay_watched_actions || []))
+  const videoViewRate = impressions > 0 ? (videoViews / impressions) * 100 : 0
+  const hookRate = videoViews > 0 ? (quarterViews / videoViews) * 100 : 0
 
   return {
     spend,
@@ -154,6 +167,10 @@ export function extractMetaCampaignMetrics(insightData) {
     conversionRate,
     averageTicket,
     roas,
+    videoViews,
+    videoViewRate,
+    thruplay,
+    hookRate,
     primaryConversionType,
   }
 }
@@ -172,6 +189,9 @@ export function buildMetaSummaryFromCampaigns(campaigns = []) {
       accumulator.messages += metrics.messages
       accumulator.totalConversions += metrics.totalConversions
       accumulator.purchaseValue += metrics.purchaseValue
+      accumulator.videoViews += metrics.videoViews
+      accumulator.thruplay += metrics.thruplay
+      accumulator.quarterViews += metrics.videoViews > 0 ? Math.round((metrics.hookRate / 100) * metrics.videoViews) : 0
 
       return accumulator
     },
@@ -185,6 +205,9 @@ export function buildMetaSummaryFromCampaigns(campaigns = []) {
       messages: 0,
       totalConversions: 0,
       purchaseValue: 0,
+      videoViews: 0,
+      thruplay: 0,
+      quarterViews: 0,
     }
   )
 
@@ -206,6 +229,10 @@ export function buildMetaSummaryFromCampaigns(campaigns = []) {
       conversionRate: aggregated.clicks > 0 ? (aggregated.totalConversions / aggregated.clicks) * 100 : 0,
       averageTicket: aggregated.purchases > 0 ? aggregated.purchaseValue / aggregated.purchases : 0,
       roas: aggregated.spend > 0 ? aggregated.purchaseValue / aggregated.spend : 0,
+      videoViews: aggregated.videoViews,
+      videoViewRate: aggregated.impressions > 0 ? (aggregated.videoViews / aggregated.impressions) * 100 : 0,
+      thruplay: aggregated.thruplay,
+      hookRate: aggregated.videoViews > 0 ? (aggregated.quarterViews / aggregated.videoViews) * 100 : 0,
       primaryConversionType: aggregated.totalConversions > 0 ? 'Mistas' : 'Nenhuma',
     },
   }

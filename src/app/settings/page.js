@@ -6,6 +6,15 @@ import { useUser } from '@/lib/contexts/UserContext'
 import { USER_APPEARANCE_PRESETS } from '@/lib/user-appearance-storage'
 import { DEFAULT_PREFERENCES, loadDashboardPreferences, saveDashboardPreferences } from '@/lib/dashboard-storage'
 
+const PANEL_BACKGROUND_PRESETS = [
+  { label: 'Azulado', value: '#3b82f6' },
+  { label: 'Esmeralda', value: '#10b981' },
+  { label: 'Laranja', value: '#f59e0b' },
+  { label: 'Rosa', value: '#f43f5e' },
+  { label: 'Violeta', value: '#8b5cf6' },
+  { label: 'Turquesa', value: '#14b8a6' },
+]
+
 const GLOBAL_INTEGRATION_GROUPS = [
   {
     title: 'Google Ads',
@@ -127,6 +136,29 @@ const OPERATION_INTEGRATION_TITLES = new Set(['ClickUp', 'Monday'])
 const AD_ACCOUNT_INTEGRATION_TITLES = new Set(['Google Ads', 'TikTok Ads', 'LinkedIn Ads'])
 const CRM_INTEGRATION_TITLES = new Set(['RD Station CRM', 'Salesforce', 'Agendor'])
 
+function clampRgbChannel(value) {
+  const parsed = Number.parseInt(value, 10)
+  if (!Number.isFinite(parsed)) return 0
+  return Math.max(0, Math.min(255, parsed))
+}
+
+function hexToRgb(hexValue) {
+  const normalized = String(hexValue || '').trim().replace('#', '')
+  if (!/^[0-9a-fA-F]{6}$/.test(normalized)) {
+    return { r: 59, g: 130, b: 246 }
+  }
+
+  return {
+    r: Number.parseInt(normalized.slice(0, 2), 16),
+    g: Number.parseInt(normalized.slice(2, 4), 16),
+    b: Number.parseInt(normalized.slice(4, 6), 16),
+  }
+}
+
+function rgbToHex({ r, g, b }) {
+  return `#${[r, g, b].map((channel) => clampRgbChannel(channel).toString(16).padStart(2, '0')).join('')}`
+}
+
 export default function SettingsPage() {
   const { appearance, updateAppearance, access } = useUser()
   const canManageClients = Boolean(access?.canManageClients)
@@ -149,7 +181,7 @@ export default function SettingsPage() {
   const [metaConnectionError, setMetaConnectionError] = useState('')
   const [metaConnectionNotice, setMetaConnectionNotice] = useState('')
   const [metaConnectionSetupRequired, setMetaConnectionSetupRequired] = useState(false)
-  const [activeSettingsTab, setActiveSettingsTab] = useState('general')
+  const [activeSettingsTab, setActiveSettingsTab] = useState('panel')
   const metaConnectionMode = globalIntegrations.metaConnectionMode === 'oauth' ? 'oauth' : 'manual'
   const hasMetaManualToken = Boolean(String(globalIntegrations.metaAccessToken || '').trim())
   const hasMetaOauthConnection = Boolean(metaConnection.connected)
@@ -157,6 +189,7 @@ export default function SettingsPage() {
   const operationIntegrationGroups = GLOBAL_INTEGRATION_GROUPS.filter((group) => OPERATION_INTEGRATION_TITLES.has(group.title))
   const advertisingIntegrationGroups = generalIntegrationGroups.filter((group) => AD_ACCOUNT_INTEGRATION_TITLES.has(group.title))
   const crmIntegrationGroups = generalIntegrationGroups.filter((group) => CRM_INTEGRATION_TITLES.has(group.title))
+  const backgroundTintRgb = hexToRgb(appearance.backgroundTint)
 
   const persistGlobalIntegrations = useCallback(
     async (nextIntegrations) => {
@@ -285,6 +318,10 @@ export default function SettingsPage() {
 
     if (tab === 'operation') {
       setActiveSettingsTab('operation')
+    } else if (tab === 'general') {
+      setActiveSettingsTab('general')
+    } else if (tab === 'panel') {
+      setActiveSettingsTab('panel')
     }
 
     if (connected === '1') {
@@ -305,6 +342,12 @@ export default function SettingsPage() {
       setMetaConnectionNotice('')
     }
   }, [globalIntegrations, globalIntegrations.metaConnectionMode, persistGlobalIntegrations])
+
+  useEffect(() => {
+    if (!canManageClients && activeSettingsTab !== 'panel') {
+      setActiveSettingsTab('panel')
+    }
+  }, [activeSettingsTab, canManageClients])
 
   const handleGlobalIntegrationChange = (fieldName, value) => {
     setGlobalIntegrations((current) => {
@@ -356,6 +399,31 @@ export default function SettingsPage() {
     }
   }
 
+  const handleBackgroundRgbChannelChange = (channel, value) => {
+    updateAppearance((current) => {
+      const currentRgb = hexToRgb(current.backgroundTint)
+      const nextRgb = {
+        ...currentRgb,
+        [channel]: clampRgbChannel(value),
+      }
+
+      return {
+        ...current,
+        backgroundTint: rgbToHex(nextRgb),
+      }
+    })
+  }
+
+  const handleSettingsTabChange = (nextTab) => {
+    setActiveSettingsTab(nextTab)
+
+    if (typeof window === 'undefined') return
+    const params = new URLSearchParams(window.location.search)
+    params.set('tab', nextTab)
+    const nextQuery = params.toString()
+    window.history.replaceState({}, '', `${window.location.pathname}${nextQuery ? `?${nextQuery}` : ''}`)
+  }
+
   return (
     <div className="dashboard-container">
       <aside className="sidebar glass-panel">
@@ -392,279 +460,414 @@ export default function SettingsPage() {
             </Link>
           </div>
 
-          <div className="settings-grid">
-            <div className="glass-item settings-block">
-              <h2>Modo de visualização</h2>
-              <p>Escolha se quer trabalhar com a interface clara ou escura.</p>
-              <div className="settings-choice-row">
-                <button
-                  type="button"
-                  className={`settings-choice ${appearance.mode === 'dark' ? 'active' : ''}`}
-                  onClick={() => updateAppearance((current) => ({ ...current, mode: 'dark' }))}
-                >
-                  <i className="bx bx-moon"></i>
-                  Escuro
-                </button>
-                <button
-                  type="button"
-                  className={`settings-choice ${appearance.mode === 'light' ? 'active' : ''}`}
-                  onClick={() => updateAppearance((current) => ({ ...current, mode: 'light' }))}
-                >
-                  <i className="bx bx-sun"></i>
-                  Claro
-                </button>
-              </div>
-            </div>
-
-            <div className="glass-item settings-block">
-              <h2>Cor de destaque</h2>
-              <p>Essa cor aparece nos botões, links ativos e detalhes principais da sua interface.</p>
-              <div className="settings-color-picker">
-                <input
-                  type="color"
-                  value={appearance.accent}
-                  onChange={(event) => updateAppearance((current) => ({ ...current, accent: event.target.value }))}
-                  aria-label="Selecionar cor de destaque"
-                />
-                <div className="settings-color-code">
-                  <strong>{appearance.accent.toUpperCase()}</strong>
-                  <span>Aplicado imediatamente na sua conta neste navegador.</span>
-                </div>
-              </div>
-              <div className="settings-preset-grid">
-                {USER_APPEARANCE_PRESETS.map((preset) => (
-                  <button
-                    key={preset.value}
-                    type="button"
-                    className={`settings-preset ${appearance.accent === preset.value ? 'active' : ''}`}
-                    onClick={() => updateAppearance((current) => ({ ...current, accent: preset.value }))}
-                  >
-                    <span className="settings-preset-swatch" style={{ background: preset.value }}></span>
-                    {preset.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {canManageClients && (
-            <div className="glass-item settings-block settings-block-full">
-              <div className="settings-section-head">
-                <div>
-                  <h2>Integrações globais</h2>
-                  <p>Essas credenciais abastecem a operação inteira. Depois, em cada cliente, você escolhe apenas as contas e funis vinculados.</p>
-                </div>
+          <div className="settings-shell">
+            <aside className="glass-item settings-section-sidebar">
+              <div className="settings-sidebar-title">
+                <span>Painel de configuração</span>
+                <strong>Escolha a área que quer ajustar</strong>
               </div>
 
-              <div className="settings-tab-row">
+              <div className="settings-sidebar-nav">
                 <button
                   type="button"
-                  className={`settings-tab ${activeSettingsTab === 'general' ? 'active' : ''}`}
-                  onClick={() => setActiveSettingsTab('general')}
+                  className={`settings-sidebar-link ${activeSettingsTab === 'panel' ? 'active' : ''}`}
+                  onClick={() => handleSettingsTabChange('panel')}
                 >
-                  Integrações gerais
+                  <i className="bx bx-layout"></i>
+                  <div>
+                    <strong>Meu painel</strong>
+                    <span>Cores, fundo e aparência do app.</span>
+                  </div>
                 </button>
-                <button
-                  type="button"
-                  className={`settings-tab ${activeSettingsTab === 'operation' ? 'active' : ''}`}
-                  onClick={() => setActiveSettingsTab('operation')}
-                >
-                  Operação
-                </button>
-              </div>
 
-              {activeSettingsTab === 'general' ? (
-                <div className="settings-general-layout">
-                  <section className="settings-category-shell">
-                    <div className="settings-category-head">
-                      <span className="settings-category-kicker">Contas de anúncio</span>
-                      <h3>Mídia e plataformas de aquisição</h3>
-                      <p>Concentre aqui as credenciais que alimentam leitura de mídia, campanhas e resultado por conta.</p>
+                {canManageClients && (
+                  <>
+                    <button
+                      type="button"
+                      className={`settings-sidebar-link ${activeSettingsTab === 'general' ? 'active' : ''}`}
+                      onClick={() => handleSettingsTabChange('general')}
+                    >
+                      <i className="bx bx-link-alt"></i>
+                      <div>
+                        <strong>Integrações gerais</strong>
+                        <span>Contas de anúncio e CRMs.</span>
+                      </div>
+                    </button>
+
+                    <button
+                      type="button"
+                      className={`settings-sidebar-link ${activeSettingsTab === 'operation' ? 'active' : ''}`}
+                      onClick={() => handleSettingsTabChange('operation')}
+                    >
+                      <i className="bx bx-cog"></i>
+                      <div>
+                        <strong>Operação</strong>
+                        <span>ClickUp, Monday e IDs globais.</span>
+                      </div>
+                    </button>
+                  </>
+                )}
+              </div>
+            </aside>
+
+            <div className="settings-section-content">
+              {activeSettingsTab === 'panel' && (
+                <div className="settings-panel-layout">
+                  <div className="glass-item settings-block settings-block-full">
+                    <div className="settings-section-head">
+                      <div>
+                        <h2>Meu painel</h2>
+                        <p>Defina aqui a atmosfera visual do app: modo, cor de destaque e a cor RGB do fundo mesclado no gradiente.</p>
+                      </div>
                     </div>
 
-                    <div className="settings-integrations-grid settings-category-grid">
-                      <div className="integration-block integration-block-meta">
-                        <div className="integration-heading">
-                          <div className="integration-icon" style={{ color: '#3b82f6', borderColor: '#3b82f633' }}>
-                            <i className="bx bxl-meta"></i>
-                          </div>
-                          <div>
-                            <h3>Meta Ads</h3>
-                            <p>Escolha entre token manual ou conta conectada via Meta Login, e use a forma que fizer mais sentido para cada operação.</p>
-                          </div>
-                        </div>
-
-                        <div className="settings-choice-row settings-choice-row-compact">
+                    <div className="settings-grid">
+                      <div className="glass-item settings-block">
+                        <h2>Modo de visualização</h2>
+                        <p>Escolha se quer trabalhar com a interface clara ou escura.</p>
+                        <div className="settings-choice-row">
                           <button
                             type="button"
-                            className={`settings-choice ${metaConnectionMode === 'manual' ? 'active' : ''}`}
-                            onClick={() => handleGlobalIntegrationChange('metaConnectionMode', 'manual')}
+                            className={`settings-choice ${appearance.mode === 'dark' ? 'active' : ''}`}
+                            onClick={() => updateAppearance((current) => ({ ...current, mode: 'dark' }))}
                           >
-                            <i className="bx bx-key"></i>
-                            Token manual
+                            <i className="bx bx-moon"></i>
+                            Escuro
                           </button>
                           <button
                             type="button"
-                            className={`settings-choice ${metaConnectionMode === 'oauth' ? 'active' : ''}`}
-                            onClick={() => handleGlobalIntegrationChange('metaConnectionMode', 'oauth')}
+                            className={`settings-choice ${appearance.mode === 'light' ? 'active' : ''}`}
+                            onClick={() => updateAppearance((current) => ({ ...current, mode: 'light' }))}
                           >
-                            <i className="bx bx-link-alt"></i>
-                            Conta conectada
+                            <i className="bx bx-sun"></i>
+                            Claro
                           </button>
                         </div>
-
-                        {metaConnectionMode === 'manual' ? (
-                          <div className="input-group">
-                            <label>Token manual da Meta</label>
-                            <input
-                              type="password"
-                              value={globalIntegrations.metaAccessToken || ''}
-                              onChange={(event) => handleGlobalIntegrationChange('metaAccessToken', event.target.value)}
-                              placeholder="Cole aqui o token de acesso da Meta"
-                            />
-                            <small className="settings-help-text">
-                              {hasMetaManualToken
-                                ? 'Token manual salvo. Você pode seguir usando esse modo normalmente.'
-                                : 'Cole o token da Meta para vincular a conta manualmente.'}
-                            </small>
-                          </div>
-                        ) : (
-                          <>
-                            <div className="meta-connection-card">
-                              <div className="meta-connection-copy">
-                                <strong>{hasMetaOauthConnection ? 'Conta conectada' : 'Conta ainda não conectada'}</strong>
-                                <span>
-                                  {hasMetaOauthConnection
-                                    ? `${metaConnection.userName || 'Usuário Meta'} conectado${metaConnection.expiresAt ? ` até ${new Date(metaConnection.expiresAt).toLocaleDateString('pt-BR')}` : ''}.`
-                                    : 'Conecte sua conta da Meta para vincular a operação por login.'}
-                                </span>
-                              </div>
-                              <div className="meta-connection-actions">
-                                <a href="/api/meta/auth/start?return_to=/settings" className="btn btn-primary">
-                                  {hasMetaOauthConnection ? 'Reconectar Meta' : 'Conectar Meta'}
-                                </a>
-                                {hasMetaOauthConnection && (
-                                  <button type="button" className="btn btn-secondary" onClick={handleMetaDisconnect}>
-                                    Desconectar
-                                  </button>
-                                )}
-                              </div>
-                            </div>
-
-                            {metaConnectionNotice ? <div className="settings-callout success">{metaConnectionNotice}</div> : null}
-                            {metaConnectionError ? <div className="settings-callout error">{metaConnectionError}</div> : null}
-                            {metaConnectionSetupRequired ? (
-                              <div className="settings-callout warning">
-                                Falta aplicar a migration da tabela <code>workspace_meta_connections</code> no Supabase para liberar a conexão da Meta.
-                              </div>
-                            ) : null}
-                            {isMetaConnectionLoading ? <div className="settings-callout info">Carregando status da conexão da Meta...</div> : null}
-                          </>
-                        )}
                       </div>
 
-                      {advertisingIntegrationGroups.map((group) => (
-                        <div key={group.title} className="integration-block">
-                          <div className="integration-heading">
-                            <div className="integration-icon" style={{ color: group.accent, borderColor: `${group.accent}33` }}>
-                              <i className={`bx ${group.icon}`}></i>
-                            </div>
-                            <div>
-                              <h3>{group.title}</h3>
-                              <p>{group.description}</p>
+                      <div className="glass-item settings-block">
+                        <h2>Cor de destaque</h2>
+                        <p>Essa cor aparece nos botões, links ativos e detalhes principais da sua interface.</p>
+                        <div className="settings-color-picker">
+                          <input
+                            type="color"
+                            value={appearance.accent}
+                            onChange={(event) => updateAppearance((current) => ({ ...current, accent: event.target.value }))}
+                            aria-label="Selecionar cor de destaque"
+                          />
+                          <div className="settings-color-code">
+                            <strong>{appearance.accent.toUpperCase()}</strong>
+                            <span>Aplicado imediatamente na sua conta neste navegador.</span>
+                          </div>
+                        </div>
+                        <div className="settings-preset-grid">
+                          {USER_APPEARANCE_PRESETS.map((preset) => (
+                            <button
+                              key={preset.value}
+                              type="button"
+                              className={`settings-preset ${appearance.accent === preset.value ? 'active' : ''}`}
+                              onClick={() => updateAppearance((current) => ({ ...current, accent: preset.value }))}
+                            >
+                              <span className="settings-preset-swatch" style={{ background: preset.value }}></span>
+                              {preset.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="glass-item settings-block settings-block-full">
+                      <h2>Cor do fundo do app</h2>
+                      <p>Esse RGB controla a névoa/gradiente do fundo do painel. Se quiser, deixe mais azulado, esverdeado, laranja ou qualquer outro clima.</p>
+
+                      <div className="settings-background-shell">
+                        <div className="settings-background-preview" style={{ '--panel-bg-tint': appearance.backgroundTint }}>
+                          <div className="settings-background-preview-card">
+                            <span>Prévia do fundo</span>
+                            <strong>{appearance.backgroundTint.toUpperCase()}</strong>
+                            <small>{`rgb(${backgroundTintRgb.r}, ${backgroundTintRgb.g}, ${backgroundTintRgb.b})`}</small>
+                          </div>
+                        </div>
+
+                        <div className="settings-background-controls">
+                          <div className="settings-color-picker">
+                            <input
+                              type="color"
+                              value={appearance.backgroundTint}
+                              onChange={(event) => updateAppearance((current) => ({ ...current, backgroundTint: event.target.value }))}
+                              aria-label="Selecionar cor do fundo do app"
+                            />
+                            <div className="settings-color-code">
+                              <strong>{appearance.backgroundTint.toUpperCase()}</strong>
+                              <span>Essa cor é aplicada no fundo atmosférico do app inteiro.</span>
                             </div>
                           </div>
 
-                          {(group.fields || (group.field ? [group.field] : [])).map((field) => (
-                            <div key={field.name} className="input-group">
-                              <label>{field.label}</label>
+                          <div className="settings-rgb-grid">
+                            <label className="settings-rgb-field">
+                              <span>R</span>
                               <input
-                                type={field.name.toLowerCase().includes('token') ? 'password' : 'text'}
-                                value={globalIntegrations[field.name] || ''}
-                                onChange={(event) => handleGlobalIntegrationChange(field.name, event.target.value)}
-                                placeholder={field.placeholder}
+                                type="number"
+                                min="0"
+                                max="255"
+                                value={backgroundTintRgb.r}
+                                onChange={(event) => handleBackgroundRgbChannelChange('r', event.target.value)}
                               />
-                            </div>
-                          ))}
-                        </div>
-                      ))}
-                    </div>
-                  </section>
-
-                  <section className="settings-category-shell">
-                    <div className="settings-category-head">
-                      <span className="settings-category-kicker">CRMs</span>
-                      <h3>Comercial, funis e relacionamento</h3>
-                      <p>Separe aqui as credenciais usadas para pipelines, oportunidades, vendas e acompanhamento comercial.</p>
-                    </div>
-
-                    <div className="settings-integrations-grid settings-category-grid">
-                      {crmIntegrationGroups.map((group) => (
-                        <div key={group.title} className="integration-block">
-                          <div className="integration-heading">
-                            <div className="integration-icon" style={{ color: group.accent, borderColor: `${group.accent}33` }}>
-                              <i className={`bx ${group.icon}`}></i>
-                            </div>
-                            <div>
-                              <h3>{group.title}</h3>
-                              <p>{group.description}</p>
-                            </div>
+                            </label>
+                            <label className="settings-rgb-field">
+                              <span>G</span>
+                              <input
+                                type="number"
+                                min="0"
+                                max="255"
+                                value={backgroundTintRgb.g}
+                                onChange={(event) => handleBackgroundRgbChannelChange('g', event.target.value)}
+                              />
+                            </label>
+                            <label className="settings-rgb-field">
+                              <span>B</span>
+                              <input
+                                type="number"
+                                min="0"
+                                max="255"
+                                value={backgroundTintRgb.b}
+                                onChange={(event) => handleBackgroundRgbChannelChange('b', event.target.value)}
+                              />
+                            </label>
                           </div>
 
-                          {(group.fields || (group.field ? [group.field] : [])).map((field) => (
-                            <div key={field.name} className="input-group">
-                              <label>{field.label}</label>
-                              <input
-                                type={field.name.toLowerCase().includes('token') ? 'password' : 'text'}
-                                value={globalIntegrations[field.name] || ''}
-                                onChange={(event) => handleGlobalIntegrationChange(field.name, event.target.value)}
-                                placeholder={field.placeholder}
-                              />
-                            </div>
-                          ))}
+                          <div className="settings-preset-grid">
+                            {PANEL_BACKGROUND_PRESETS.map((preset) => (
+                              <button
+                                key={preset.value}
+                                type="button"
+                                className={`settings-preset ${appearance.backgroundTint === preset.value ? 'active' : ''}`}
+                                onClick={() => updateAppearance((current) => ({ ...current, backgroundTint: preset.value }))}
+                              >
+                                <span className="settings-preset-swatch" style={{ background: preset.value }}></span>
+                                {preset.label}
+                              </button>
+                            ))}
+                          </div>
                         </div>
-                      ))}
+                      </div>
                     </div>
-                  </section>
+                  </div>
                 </div>
-              ) : (
-                <div className="settings-integrations-grid settings-integrations-grid-operation">
-                  <div className="settings-callout info settings-operation-callout">
-                    Essa aba centraliza as credenciais globais do ClickUp e Monday usadas nas dashboards operacionais. Os IDs ficam aqui no nível da operação, não dentro dos clientes.
+              )}
+
+              {canManageClients && activeSettingsTab === 'general' && (
+                <div className="glass-item settings-block settings-block-full">
+                  <div className="settings-section-head">
+                    <div>
+                      <h2>Integrações globais</h2>
+                      <p>Essas credenciais abastecem a operação inteira. Depois, em cada cliente, você escolhe apenas as contas e funis vinculados.</p>
+                    </div>
                   </div>
 
-                  {operationIntegrationGroups.map((group) => (
-                    <div key={group.title} className="integration-block">
-                      <div className="integration-heading">
-                        <div className="integration-icon" style={{ color: group.accent, borderColor: `${group.accent}33` }}>
-                          <i className={`bx ${group.icon}`}></i>
-                        </div>
-                        <div>
-                          <h3>{group.title}</h3>
-                          <p>{group.description}</p>
-                        </div>
+                  <div className="settings-general-layout">
+                    <section className="settings-category-shell">
+                      <div className="settings-category-head">
+                        <span className="settings-category-kicker">Contas de anúncio</span>
+                        <h3>Mídia e plataformas de aquisição</h3>
+                        <p>Concentre aqui as credenciais que alimentam leitura de mídia, campanhas e resultado por conta.</p>
                       </div>
 
-                      {(group.fields || (group.field ? [group.field] : [])).map((field) => (
-                        <div key={field.name} className="input-group">
-                          <label>{field.label}</label>
-                          <input
-                            type={field.name.toLowerCase().includes('token') ? 'password' : 'text'}
-                            value={globalIntegrations[field.name] || ''}
-                            onChange={(event) => handleGlobalIntegrationChange(field.name, event.target.value)}
-                            placeholder={field.placeholder}
-                          />
-                          {field.name === 'clickUpListIds' || field.name === 'mondayBoardIds' ? (
-                            <small className="settings-help-text">Separe múltiplos IDs por vírgula. Esses IDs ficam globais na operação.</small>
-                          ) : null}
+                      <div className="settings-integrations-grid settings-category-grid">
+                        <div className="integration-block integration-block-meta">
+                          <div className="integration-heading">
+                            <div className="integration-icon" style={{ color: '#3b82f6', borderColor: '#3b82f633' }}>
+                              <i className="bx bxl-meta"></i>
+                            </div>
+                            <div>
+                              <h3>Meta Ads</h3>
+                              <p>Escolha entre token manual ou conta conectada via Meta Login, e use a forma que fizer mais sentido para cada operação.</p>
+                            </div>
+                          </div>
+
+                          <div className="settings-choice-row settings-choice-row-compact">
+                            <button
+                              type="button"
+                              className={`settings-choice ${metaConnectionMode === 'manual' ? 'active' : ''}`}
+                              onClick={() => handleGlobalIntegrationChange('metaConnectionMode', 'manual')}
+                            >
+                              <i className="bx bx-key"></i>
+                              Token manual
+                            </button>
+                            <button
+                              type="button"
+                              className={`settings-choice ${metaConnectionMode === 'oauth' ? 'active' : ''}`}
+                              onClick={() => handleGlobalIntegrationChange('metaConnectionMode', 'oauth')}
+                            >
+                              <i className="bx bx-link-alt"></i>
+                              Conta conectada
+                            </button>
+                          </div>
+
+                          {metaConnectionMode === 'manual' ? (
+                            <div className="input-group">
+                              <label>Token manual da Meta</label>
+                              <input
+                                type="password"
+                                value={globalIntegrations.metaAccessToken || ''}
+                                onChange={(event) => handleGlobalIntegrationChange('metaAccessToken', event.target.value)}
+                                placeholder="Cole aqui o token de acesso da Meta"
+                              />
+                              <small className="settings-help-text">
+                                {hasMetaManualToken
+                                  ? 'Token manual salvo. Você pode seguir usando esse modo normalmente.'
+                                  : 'Cole o token da Meta para vincular a conta manualmente.'}
+                              </small>
+                            </div>
+                          ) : (
+                            <>
+                              <div className="meta-connection-card">
+                                <div className="meta-connection-copy">
+                                  <strong>{hasMetaOauthConnection ? 'Conta conectada' : 'Conta ainda não conectada'}</strong>
+                                  <span>
+                                    {hasMetaOauthConnection
+                                      ? `${metaConnection.userName || 'Usuário Meta'} conectado${metaConnection.expiresAt ? ` até ${new Date(metaConnection.expiresAt).toLocaleDateString('pt-BR')}` : ''}.`
+                                      : 'Conecte sua conta da Meta para vincular a operação por login.'}
+                                  </span>
+                                </div>
+                                <div className="meta-connection-actions">
+                                  <a href="/api/meta/auth/start?return_to=/settings?tab=general" className="btn btn-primary">
+                                    {hasMetaOauthConnection ? 'Reconectar Meta' : 'Conectar Meta'}
+                                  </a>
+                                  {hasMetaOauthConnection && (
+                                    <button type="button" className="btn btn-secondary" onClick={handleMetaDisconnect}>
+                                      Desconectar
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+
+                              {metaConnectionNotice ? <div className="settings-callout success">{metaConnectionNotice}</div> : null}
+                              {metaConnectionError ? <div className="settings-callout error">{metaConnectionError}</div> : null}
+                              {metaConnectionSetupRequired ? (
+                                <div className="settings-callout warning">
+                                  Falta aplicar a migration da tabela <code>workspace_meta_connections</code> no Supabase para liberar a conexão da Meta.
+                                </div>
+                              ) : null}
+                              {isMetaConnectionLoading ? <div className="settings-callout info">Carregando status da conexão da Meta...</div> : null}
+                            </>
+                          )}
                         </div>
-                      ))}
+
+                        {advertisingIntegrationGroups.map((group) => (
+                          <div key={group.title} className="integration-block">
+                            <div className="integration-heading">
+                              <div className="integration-icon" style={{ color: group.accent, borderColor: `${group.accent}33` }}>
+                                <i className={`bx ${group.icon}`}></i>
+                              </div>
+                              <div>
+                                <h3>{group.title}</h3>
+                                <p>{group.description}</p>
+                              </div>
+                            </div>
+
+                            {(group.fields || (group.field ? [group.field] : [])).map((field) => (
+                              <div key={field.name} className="input-group">
+                                <label>{field.label}</label>
+                                <input
+                                  type={field.name.toLowerCase().includes('token') ? 'password' : 'text'}
+                                  value={globalIntegrations[field.name] || ''}
+                                  onChange={(event) => handleGlobalIntegrationChange(field.name, event.target.value)}
+                                  placeholder={field.placeholder}
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        ))}
+                      </div>
+                    </section>
+
+                    <section className="settings-category-shell">
+                      <div className="settings-category-head">
+                        <span className="settings-category-kicker">CRMs</span>
+                        <h3>Comercial, funis e relacionamento</h3>
+                        <p>Separe aqui as credenciais usadas para pipelines, oportunidades, vendas e acompanhamento comercial.</p>
+                      </div>
+
+                      <div className="settings-integrations-grid settings-category-grid">
+                        {crmIntegrationGroups.map((group) => (
+                          <div key={group.title} className="integration-block">
+                            <div className="integration-heading">
+                              <div className="integration-icon" style={{ color: group.accent, borderColor: `${group.accent}33` }}>
+                                <i className={`bx ${group.icon}`}></i>
+                              </div>
+                              <div>
+                                <h3>{group.title}</h3>
+                                <p>{group.description}</p>
+                              </div>
+                            </div>
+
+                            {(group.fields || (group.field ? [group.field] : [])).map((field) => (
+                              <div key={field.name} className="input-group">
+                                <label>{field.label}</label>
+                                <input
+                                  type={field.name.toLowerCase().includes('token') ? 'password' : 'text'}
+                                  value={globalIntegrations[field.name] || ''}
+                                  onChange={(event) => handleGlobalIntegrationChange(field.name, event.target.value)}
+                                  placeholder={field.placeholder}
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        ))}
+                      </div>
+                    </section>
+                  </div>
+                </div>
+              )}
+
+              {canManageClients && activeSettingsTab === 'operation' && (
+                <div className="glass-item settings-block settings-block-full">
+                  <div className="settings-section-head">
+                    <div>
+                      <h2>Operação</h2>
+                      <p>Essas credenciais ficam no nível da operação para abastecer as dashboards internas do time.</p>
                     </div>
-                  ))}
+                  </div>
+
+                  <div className="settings-integrations-grid settings-integrations-grid-operation">
+                    <div className="settings-callout info settings-operation-callout">
+                      Essa aba centraliza as credenciais globais do ClickUp e Monday usadas nas dashboards operacionais. Os IDs ficam aqui no nível da operação, não dentro dos clientes.
+                    </div>
+
+                    {operationIntegrationGroups.map((group) => (
+                      <div key={group.title} className="integration-block">
+                        <div className="integration-heading">
+                          <div className="integration-icon" style={{ color: group.accent, borderColor: `${group.accent}33` }}>
+                            <i className={`bx ${group.icon}`}></i>
+                          </div>
+                          <div>
+                            <h3>{group.title}</h3>
+                            <p>{group.description}</p>
+                          </div>
+                        </div>
+
+                        {(group.fields || (group.field ? [group.field] : [])).map((field) => (
+                          <div key={field.name} className="input-group">
+                            <label>{field.label}</label>
+                            <input
+                              type={field.name.toLowerCase().includes('token') ? 'password' : 'text'}
+                              value={globalIntegrations[field.name] || ''}
+                              onChange={(event) => handleGlobalIntegrationChange(field.name, event.target.value)}
+                              placeholder={field.placeholder}
+                            />
+                            {field.name === 'clickUpListIds' || field.name === 'mondayBoardIds' ? (
+                              <small className="settings-help-text">Separe múltiplos IDs por vírgula. Esses IDs ficam globais na operação.</small>
+                            ) : null}
+                          </div>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
-          )}
+          </div>
         </section>
       </main>
 
@@ -695,6 +898,93 @@ export default function SettingsPage() {
         .settings-block p {
           color: var(--text-secondary);
           line-height: 1.6;
+        }
+
+        .settings-shell {
+          display: grid;
+          grid-template-columns: 280px minmax(0, 1fr);
+          gap: 20px;
+          align-items: start;
+        }
+
+        .settings-section-sidebar {
+          padding: 18px;
+          display: grid;
+          gap: 18px;
+          position: sticky;
+          top: 24px;
+        }
+
+        .settings-sidebar-title {
+          display: grid;
+          gap: 6px;
+        }
+
+        .settings-sidebar-title span {
+          color: #93c5fd;
+          font-size: 11px;
+          font-weight: 700;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+        }
+
+        .settings-sidebar-title strong {
+          font-size: 18px;
+          line-height: 1.35;
+        }
+
+        .settings-sidebar-nav {
+          display: grid;
+          gap: 10px;
+        }
+
+        .settings-sidebar-link {
+          width: 100%;
+          padding: 16px;
+          border-radius: 18px;
+          border: 1px solid var(--border-color);
+          background: rgba(255, 255, 255, 0.03);
+          color: var(--text-primary);
+          font: inherit;
+          text-align: left;
+          cursor: pointer;
+          display: flex;
+          gap: 12px;
+          align-items: flex-start;
+          transition: border-color 0.2s ease, background 0.2s ease, transform 0.2s ease;
+        }
+
+        .settings-sidebar-link i {
+          font-size: 20px;
+          color: #93c5fd;
+          margin-top: 1px;
+        }
+
+        .settings-sidebar-link div {
+          display: grid;
+          gap: 4px;
+        }
+
+        .settings-sidebar-link strong {
+          font-size: 15px;
+        }
+
+        .settings-sidebar-link span {
+          color: var(--text-secondary);
+          font-size: 12px;
+          line-height: 1.5;
+        }
+
+        .settings-sidebar-link.active {
+          border-color: var(--accent-blue);
+          background: color-mix(in srgb, var(--accent-blue) 16%, transparent);
+          transform: translateY(-1px);
+        }
+
+        .settings-section-content,
+        .settings-panel-layout {
+          display: grid;
+          gap: 20px;
         }
 
         .settings-grid {
@@ -777,6 +1067,101 @@ export default function SettingsPage() {
         .settings-color-code {
           display: grid;
           gap: 4px;
+        }
+
+        .settings-background-shell {
+          display: grid;
+          grid-template-columns: minmax(280px, 0.85fr) minmax(0, 1.15fr);
+          gap: 18px;
+          align-items: stretch;
+        }
+
+        .settings-background-preview {
+          min-height: 320px;
+          border-radius: 24px;
+          border: 1px solid rgba(255, 255, 255, 0.06);
+          overflow: hidden;
+          position: relative;
+          background:
+            radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--panel-bg-tint) 28%, transparent) 0%, transparent 26%),
+            radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--panel-bg-tint) 18%, transparent) 0%, transparent 22%),
+            radial-gradient(circle at 50% 100%, color-mix(in srgb, var(--panel-bg-tint) 14%, transparent) 0%, transparent 24%),
+            linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0)),
+            rgba(9, 13, 22, 0.96);
+          display: grid;
+          place-items: end start;
+          padding: 20px;
+        }
+
+        .settings-background-preview-card {
+          width: min(100%, 260px);
+          padding: 18px;
+          border-radius: 18px;
+          background: rgba(15, 23, 42, 0.68);
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          backdrop-filter: blur(10px);
+          display: grid;
+          gap: 6px;
+        }
+
+        .settings-background-preview-card span {
+          color: #cbd5e1;
+          font-size: 11px;
+          font-weight: 700;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+        }
+
+        .settings-background-preview-card strong {
+          font-size: 24px;
+          line-height: 1.05;
+        }
+
+        .settings-background-preview-card small {
+          color: var(--text-muted);
+          font-size: 12px;
+        }
+
+        .settings-background-controls {
+          display: grid;
+          gap: 16px;
+          align-content: start;
+        }
+
+        .settings-rgb-grid {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 12px;
+        }
+
+        .settings-rgb-field {
+          display: grid;
+          gap: 8px;
+        }
+
+        .settings-rgb-field span {
+          color: var(--text-secondary);
+          font-size: 12px;
+          font-weight: 700;
+          letter-spacing: 0.06em;
+          text-transform: uppercase;
+        }
+
+        .settings-rgb-field input {
+          width: 100%;
+          min-height: 48px;
+          padding: 0 14px;
+          border-radius: 12px;
+          background: rgba(0, 0, 0, 0.2);
+          border: 1px solid var(--border-color);
+          color: var(--text-primary);
+          font-family: inherit;
+          font-size: 14px;
+        }
+
+        .settings-rgb-field input:focus {
+          outline: none;
+          border-color: var(--accent-blue);
         }
 
         .settings-preset-grid {
@@ -1031,11 +1416,23 @@ export default function SettingsPage() {
         }
 
         @media (max-width: 980px) {
+          .settings-shell {
+            grid-template-columns: 1fr;
+          }
+
+          .settings-section-sidebar {
+            position: static;
+          }
+
           .settings-grid {
             grid-template-columns: 1fr;
           }
 
           .settings-integrations-grid {
+            grid-template-columns: 1fr;
+          }
+
+          .settings-background-shell {
             grid-template-columns: 1fr;
           }
 
@@ -1057,6 +1454,10 @@ export default function SettingsPage() {
 
           .settings-preset-grid {
             grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
+
+          .settings-rgb-grid {
+            grid-template-columns: 1fr;
           }
         }
       `}</style>

@@ -25,7 +25,7 @@ export async function GET(request) {
     const id = adAccountId.startsWith('act_') ? adAccountId : `act_${adAccountId}`
     
     // Facebook API Fields for KPIs
-    const fields = 'spend,reach,impressions,clicks,cpc,ctr,actions,action_values,cost_per_action_type'
+    const fields = 'spend,reach,impressions,clicks,cpc,ctr,actions,action_values,cost_per_action_type,video_play_actions,video_p25_watched_actions,video_thruplay_watched_actions'
     const baseParams = new URLSearchParams({ fields, access_token: token })
     const resolvedDateSelection = resolveMetaDateSelection(datePreset, since, until)
 
@@ -114,6 +114,9 @@ export async function GET(request) {
       accumulator.actions.push(row.actions || [])
       accumulator.action_values.push(row.action_values || [])
       accumulator.cost_per_action_type.push(row.cost_per_action_type || [])
+      accumulator.video_play_actions.push(row.video_play_actions || [])
+      accumulator.video_p25_watched_actions.push(row.video_p25_watched_actions || [])
+      accumulator.video_thruplay_watched_actions.push(row.video_thruplay_watched_actions || [])
       return accumulator
     }, {
       spend: 0,
@@ -123,6 +126,9 @@ export async function GET(request) {
       actions: [],
       action_values: [],
       cost_per_action_type: [],
+      video_play_actions: [],
+      video_p25_watched_actions: [],
+      video_thruplay_watched_actions: [],
     })
 
     const summaryRaw = rawDailyRows.length > 0 ? {
@@ -135,6 +141,9 @@ export async function GET(request) {
       actions: mergeMetricArrays(summaryBase.actions),
       action_values: mergeMetricArrays(summaryBase.action_values),
       cost_per_action_type: mergeMetricArrays(summaryBase.cost_per_action_type),
+      video_play_actions: mergeMetricArrays(summaryBase.video_play_actions),
+      video_p25_watched_actions: mergeMetricArrays(summaryBase.video_p25_watched_actions),
+      video_thruplay_watched_actions: mergeMetricArrays(summaryBase.video_thruplay_watched_actions),
     } : null
       
     return NextResponse.json({
