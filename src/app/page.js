@@ -70,14 +70,83 @@ const THEME_LABELS = {
 
 const EMPTY_META_BREAKDOWNS = {
   ages: [],
+  states: [],
   cities: [],
   creatives: [],
   geoScope: 'city',
   errors: {
     ages: '',
+    states: '',
     cities: '',
     creatives: '',
   },
+}
+
+const BRAZIL_MAP_SILHOUETTE_PATH = 'M16 20 L25 12 L38 11 L46 16 L58 14 L70 17 L82 24 L86 34 L92 41 L88 52 L82 58 L78 69 L70 76 L64 88 L55 95 L46 90 L41 80 L34 73 L26 68 L22 58 L16 48 L12 38 L14 28 Z'
+
+const BRAZIL_STATE_MAP_POINTS = {
+  AC: { x: 14, y: 47, name: 'Acre' },
+  AL: { x: 83, y: 55, name: 'Alagoas' },
+  AP: { x: 75, y: 13, name: 'Amapá' },
+  AM: { x: 34, y: 24, name: 'Amazonas' },
+  BA: { x: 73, y: 60, name: 'Bahia' },
+  CE: { x: 80, y: 42, name: 'Ceará' },
+  DF: { x: 54, y: 57, name: 'Distrito Federal' },
+  ES: { x: 72, y: 69, name: 'Espírito Santo' },
+  GO: { x: 50, y: 55, name: 'Goiás' },
+  MA: { x: 68, y: 38, name: 'Maranhão' },
+  MT: { x: 40, y: 47, name: 'Mato Grosso' },
+  MS: { x: 38, y: 63, name: 'Mato Grosso do Sul' },
+  MG: { x: 64, y: 65, name: 'Minas Gerais' },
+  PA: { x: 60, y: 26, name: 'Pará' },
+  PB: { x: 87, y: 46, name: 'Paraíba' },
+  PR: { x: 56, y: 83, name: 'Paraná' },
+  PE: { x: 84, y: 50, name: 'Pernambuco' },
+  PI: { x: 73, y: 42, name: 'Piauí' },
+  RJ: { x: 69, y: 73, name: 'Rio de Janeiro' },
+  RN: { x: 88, y: 42, name: 'Rio Grande do Norte' },
+  RS: { x: 54, y: 96, name: 'Rio Grande do Sul' },
+  RO: { x: 23, y: 40, name: 'Rondônia' },
+  RR: { x: 57, y: 7, name: 'Roraima' },
+  SC: { x: 58, y: 89, name: 'Santa Catarina' },
+  SP: { x: 60, y: 76, name: 'São Paulo' },
+  SE: { x: 81, y: 58, name: 'Sergipe' },
+  TO: { x: 53, y: 44, name: 'Tocantins' },
+}
+
+const BRAZIL_STATE_NAME_TO_UF = Object.fromEntries(
+  Object.entries(BRAZIL_STATE_MAP_POINTS).map(([uf, item]) => [item.name, uf])
+)
+
+const BRAZIL_CITY_MAP_POINTS = {
+  'aracaju': { x: 81, y: 58, state: 'SE' },
+  'belem': { x: 60, y: 26, state: 'PA' },
+  'belo horizonte': { x: 64, y: 65, state: 'MG' },
+  'boa vista': { x: 57, y: 7, state: 'RR' },
+  'brasilia': { x: 54, y: 57, state: 'DF' },
+  'campinas': { x: 59, y: 74, state: 'SP' },
+  'campo grande': { x: 38, y: 63, state: 'MS' },
+  'cuiaba': { x: 40, y: 47, state: 'MT' },
+  'curitiba': { x: 56, y: 83, state: 'PR' },
+  'florianopolis': { x: 58, y: 89, state: 'SC' },
+  'fortaleza': { x: 80, y: 42, state: 'CE' },
+  'goiania': { x: 50, y: 56, state: 'GO' },
+  'joao pessoa': { x: 87, y: 46, state: 'PB' },
+  'maceio': { x: 83, y: 55, state: 'AL' },
+  'manaus': { x: 34, y: 24, state: 'AM' },
+  'natal': { x: 88, y: 42, state: 'RN' },
+  'palmas': { x: 53, y: 44, state: 'TO' },
+  'porto alegre': { x: 54, y: 96, state: 'RS' },
+  'porto velho': { x: 23, y: 40, state: 'RO' },
+  'recife': { x: 84, y: 50, state: 'PE' },
+  'rio branco': { x: 14, y: 47, state: 'AC' },
+  'rio de janeiro': { x: 69, y: 73, state: 'RJ' },
+  'salvador': { x: 73, y: 60, state: 'BA' },
+  'santos': { x: 61, y: 78, state: 'SP' },
+  'sao luis': { x: 68, y: 38, state: 'MA' },
+  'sao paulo': { x: 60, y: 76, state: 'SP' },
+  'teresina': { x: 73, y: 42, state: 'PI' },
+  'vitoria': { x: 72, y: 69, state: 'ES' },
 }
 
 function clampColorChannel(value) {
@@ -876,6 +945,57 @@ function formatPercent(value) {
 
 function formatDecimal(value, decimals = 1) {
   return Number(value || 0).toFixed(decimals).replace('.', ',')
+}
+
+function normalizeGeoLabel(value) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function resolveBrazilStateMeta(label) {
+  const normalized = normalizeGeoLabel(label)
+  if (!normalized) return null
+
+  const byUf = Object.entries(BRAZIL_STATE_MAP_POINTS).find(([uf]) => uf.toLowerCase() === normalized)
+  if (byUf) {
+    return {
+      uf: byUf[0],
+      ...byUf[1],
+    }
+  }
+
+  const stateEntry = Object.entries(BRAZIL_STATE_NAME_TO_UF).find(([name]) => normalizeGeoLabel(name) === normalized)
+  if (!stateEntry) return null
+
+  const uf = stateEntry[1]
+  return {
+    uf,
+    ...BRAZIL_STATE_MAP_POINTS[uf],
+  }
+}
+
+function resolveBrazilCityMeta(item) {
+  const cityKey = normalizeGeoLabel(item?.city || item?.label)
+  const regionMeta = resolveBrazilStateMeta(item?.region)
+
+  if (BRAZIL_CITY_MAP_POINTS[cityKey]) {
+    return BRAZIL_CITY_MAP_POINTS[cityKey]
+  }
+
+  if (regionMeta) {
+    return {
+      x: regionMeta.x,
+      y: regionMeta.y,
+      state: regionMeta.uf,
+    }
+  }
+
+  return null
 }
 
 function getMetaBreakdownConversions(item) {
@@ -4536,6 +4656,72 @@ export default function DashboardPage() {
     }),
     [breakdowns.ages, breakdowns.cities, breakdowns.creatives, breakdowns.geoScope, metaGeoRankingDescription, metaGeoRankingTitle]
   )
+  const brazilStateMapItems = useMemo(
+    () => (breakdowns.states || [])
+      .map((item) => {
+        const stateMeta = resolveBrazilStateMeta(item.label)
+        if (!stateMeta) return null
+
+        return {
+          ...item,
+          ...stateMeta,
+          conversions: getMetaBreakdownConversions(item),
+          averageCost: getMetaBreakdownAverageCost(item),
+        }
+      })
+      .filter(Boolean),
+    [breakdowns.states]
+  )
+  const brazilTopStateItems = useMemo(
+    () => brazilStateMapItems
+      .slice()
+      .sort((left, right) => right.conversions - left.conversions)
+      .slice(0, 5),
+    [brazilStateMapItems]
+  )
+  const brazilCityMapItems = useMemo(
+    () => (breakdowns.cities || [])
+      .map((item) => {
+        const cityMeta = resolveBrazilCityMeta(item)
+        if (!cityMeta) return null
+
+        return {
+          ...item,
+          ...cityMeta,
+          conversions: getMetaBreakdownConversions(item),
+          averageCost: getMetaBreakdownAverageCost(item),
+        }
+      })
+      .filter(Boolean)
+      .slice(0, 5),
+    [breakdowns.cities]
+  )
+  const brazilMapMaxConversions = useMemo(
+    () => Math.max(...brazilStateMapItems.map((item) => item.conversions || 0), ...brazilCityMapItems.map((item) => item.conversions || 0), 1),
+    [brazilCityMapItems, brazilStateMapItems]
+  )
+  const ageRankingItems = useMemo(() => {
+    const maxConversions = Math.max(...(breakdowns.ages || []).map((item) => getMetaBreakdownConversions(item)), 1)
+
+    return (breakdowns.ages || []).map((item, index) => {
+      const conversions = getMetaBreakdownConversions(item)
+      const averageCost = getMetaBreakdownAverageCost(item)
+      const conversionRateValue = getMetaBreakdownConversionRate(item)
+
+      let performanceLabel = 'Em observação'
+      if (index === 0) performanceLabel = 'Melhor faixa'
+      else if (conversionRateValue >= 10 || conversions >= maxConversions * 0.7) performanceLabel = 'Boa resposta'
+
+      return {
+        ...item,
+        conversions,
+        averageCost,
+        conversionRateValue,
+        intensity: Math.max(0.12, conversions / maxConversions),
+        performanceLabel,
+      }
+    })
+  }, [breakdowns.ages])
   const activeMetaRankingDrilldownConfig = metaRankingDrilldown
     ? metaRankingConfigs[metaRankingDrilldown.type] || null
     : null
@@ -8088,38 +8274,109 @@ export default function DashboardPage() {
                   <div className="glass-panel ranking-card meta-ranking-card">
                     <div className="section-header section-header-stack">
                       <div>
-                        <h2>{metaGeoRankingTitle}</h2>
-                        <p className="chart-subtitle">{metaGeoRankingDescription}</p>
+                        <h2>Mapa de estados e cidades</h2>
+                        <p className="chart-subtitle">Estados com calor por resultado e pins das principais cidades no período selecionado.</p>
                       </div>
                     </div>
-                    <div className="ranking-list">
+                    <div className="geo-map-panel">
                       {isRankingsLoading ? (
                         <div className="ranking-empty">Carregando ranking de cidades...</div>
                       ) : rankingsError ? (
                         <div className="ranking-empty">{rankingsError}</div>
-                      ) : breakdowns.errors?.cities ? (
+                      ) : (breakdowns.errors?.states && !brazilStateMapItems.length && !brazilCityMapItems.length) ? (
+                        <div className="ranking-empty">{breakdowns.errors.states}</div>
+                      ) : breakdowns.errors?.cities && !brazilStateMapItems.length && !brazilCityMapItems.length ? (
                         <div className="ranking-empty">{breakdowns.errors.cities}</div>
-                      ) : breakdowns.cities.length === 0 ? (
-                        <div className="ranking-empty">Sem dados por cidade para o período.</div>
+                      ) : (!brazilStateMapItems.length && !brazilCityMapItems.length) ? (
+                        <div className="ranking-empty">Sem dados geográficos suficientes para montar o mapa no período.</div>
                       ) : (
-                        breakdowns.cities.map((item, index) => (
-                          <button
-                            key={`${item.label}-${index}`}
-                            type="button"
-                            className="ranking-row ranking-row-action meta-ranking-row"
-                            onClick={() => setMetaRankingDrilldown({ type: 'cities', index, item })}
-                          >
-                            <div className="ranking-main-column meta-ranking-main-column">
-                              <strong>{item.label}</strong>
-                              <span>{formatNumber(getMetaBreakdownConversions(item))} conversões</span>
+                        <>
+                          <div className="brazil-map-shell">
+                            <div className="brazil-map-stage">
+                              <svg viewBox="0 0 100 100" className="brazil-map-silhouette" aria-hidden="true">
+                                <path d={BRAZIL_MAP_SILHOUETTE_PATH}></path>
+                              </svg>
+
+                              {brazilStateMapItems.map((item) => {
+                                const intensity = Math.max(0.22, (item.conversions || 0) / brazilMapMaxConversions)
+                                return (
+                                  <button
+                                    key={`state-map-${item.uf}`}
+                                    type="button"
+                                    className="brazil-state-node"
+                                    style={{
+                                      left: `${item.x}%`,
+                                      top: `${item.y}%`,
+                                      '--state-intensity': intensity,
+                                    }}
+                                    title={`${item.name}: ${formatNumber(item.conversions)} resultados · ${formatCurrency(item.averageCost)} por resultado`}
+                                  >
+                                    <span>{item.uf}</span>
+                                  </button>
+                                )
+                              })}
+
+                              {brazilCityMapItems.map((item, index) => {
+                                const cityIntensity = Math.max(0.28, (item.conversions || 0) / brazilMapMaxConversions)
+                                return (
+                                  <button
+                                    key={`city-map-${item.label}-${index}`}
+                                    type="button"
+                                    className="brazil-city-node"
+                                    style={{
+                                      left: `${item.x}%`,
+                                      top: `${item.y}%`,
+                                      '--city-intensity': cityIntensity,
+                                    }}
+                                    title={`${item.label}: ${formatNumber(item.conversions)} resultados · ${formatCurrency(item.averageCost)} por resultado`}
+                                    onClick={() => setMetaRankingDrilldown({ type: 'cities', index, item })}
+                                  >
+                                    <span>{item.label}</span>
+                                  </button>
+                                )
+                              })}
                             </div>
-                            <div className="ranking-metrics meta-ranking-metrics">
-                              <b>{formatCurrency(getMetaBreakdownAverageCost(item))} / resultado</b>
-                              <span>{formatCurrency(item.spend)} investidos</span>
-                              <small>Toque para comparar</small>
+
+                            <div className="brazil-map-legend">
+                              <div className="brazil-map-legend-card glass-item">
+                                <strong>Top estados</strong>
+                                <div className="brazil-map-legend-list">
+                                  {brazilTopStateItems.length ? (
+                                    brazilTopStateItems.map((item) => (
+                                      <div key={`state-legend-${item.uf}`} className="brazil-map-legend-row">
+                                        <span>{item.name}</span>
+                                        <b>{formatNumber(item.conversions)}</b>
+                                      </div>
+                                    ))
+                                  ) : (
+                                    <div className="ranking-inline-note">Sem leitura estadual disponível.</div>
+                                  )}
+                                </div>
+                              </div>
+
+                              <div className="brazil-map-legend-card glass-item">
+                                <strong>{metaGeoRankingTitle}</strong>
+                                <div className="brazil-map-legend-list">
+                                  {breakdowns.cities.length ? (
+                                    breakdowns.cities.map((item, index) => (
+                                      <button
+                                        key={`${item.label}-${index}`}
+                                        type="button"
+                                        className="brazil-map-legend-row brazil-map-legend-row-action"
+                                        onClick={() => setMetaRankingDrilldown({ type: 'cities', index, item })}
+                                      >
+                                        <span>{item.label}</span>
+                                        <b>{formatNumber(getMetaBreakdownConversions(item))}</b>
+                                      </button>
+                                    ))
+                                  ) : (
+                                    <div className="ranking-inline-note">Sem leitura por cidade neste recorte.</div>
+                                  )}
+                                </div>
+                              </div>
                             </div>
-                          </button>
-                        ))
+                          </div>
+                        </>
                       )}
                     </div>
                   </div>
@@ -8186,23 +8443,32 @@ export default function DashboardPage() {
                         <div className="ranking-empty">{rankingsError}</div>
                       ) : breakdowns.errors?.ages ? (
                         <div className="ranking-empty">{breakdowns.errors.ages}</div>
-                      ) : breakdowns.ages.length === 0 ? (
+                      ) : ageRankingItems.length === 0 ? (
                         <div className="ranking-empty">Sem dados por idade para o período.</div>
                       ) : (
-                        breakdowns.ages.map((item, index) => (
+                        ageRankingItems.map((item, index) => (
                           <button
                             key={`${item.label}-${index}`}
                             type="button"
-                            className="ranking-row ranking-row-action meta-ranking-row"
+                            className="ranking-row ranking-row-action meta-ranking-row age-ranking-row"
                             onClick={() => setMetaRankingDrilldown({ type: 'ages', index, item })}
                           >
-                            <div className="ranking-main-column meta-ranking-main-column">
-                              <strong>{item.label}</strong>
-                              <span>{formatNumber(getMetaBreakdownConversions(item))} conversões</span>
+                            <div className="age-ranking-main">
+                              <div className="age-ranking-position">#{index + 1}</div>
+                              <div className="ranking-main-column age-ranking-copy">
+                                <div className="meta-ranking-main-column age-ranking-title-row">
+                                  <strong>{item.label}</strong>
+                                  <span>{formatNumber(item.conversions)} conversões</span>
+                                </div>
+                                <div className="age-ranking-bar-track" aria-hidden="true">
+                                  <span className="age-ranking-bar-fill" style={{ width: `${item.intensity * 100}%` }}></span>
+                                </div>
+                                <small className="age-ranking-tag">{item.performanceLabel}</small>
+                              </div>
                             </div>
-                            <div className="ranking-metrics meta-ranking-metrics">
-                              <b>{formatCurrency(getMetaBreakdownAverageCost(item))} / resultado</b>
-                              <span>{formatPercent(getMetaBreakdownConversionRate(item))} de conversão</span>
+                            <div className="ranking-metrics meta-ranking-metrics age-ranking-metrics">
+                              <b>{formatCurrency(item.averageCost)} / resultado</b>
+                              <span>{formatPercent(item.conversionRateValue)} de conversão</span>
                               <small>Toque para comparar</small>
                             </div>
                           </button>
@@ -11214,6 +11480,169 @@ export default function DashboardPage() {
           padding: 22px;
         }
 
+        .geo-map-panel {
+          margin-top: 14px;
+        }
+
+        .brazil-map-shell {
+          display: grid;
+          grid-template-columns: minmax(0, 1.2fr) minmax(260px, 0.7fr);
+          gap: 18px;
+          align-items: start;
+        }
+
+        .brazil-map-stage {
+          position: relative;
+          min-height: 460px;
+          border-radius: 26px;
+          border: 1px solid rgba(255, 255, 255, 0.06);
+          background:
+            radial-gradient(circle at 35% 28%, rgba(59, 130, 246, 0.16), transparent 28%),
+            radial-gradient(circle at 70% 68%, rgba(16, 185, 129, 0.12), transparent 30%),
+            rgba(255, 255, 255, 0.025);
+          overflow: hidden;
+        }
+
+        .brazil-map-silhouette {
+          position: absolute;
+          inset: 6% 8%;
+          width: 84%;
+          height: 88%;
+          filter: drop-shadow(0 24px 36px rgba(8, 15, 30, 0.34));
+        }
+
+        .brazil-map-silhouette path {
+          fill: rgba(148, 163, 184, 0.12);
+          stroke: rgba(148, 163, 184, 0.26);
+          stroke-width: 1.2;
+          stroke-linejoin: round;
+        }
+
+        .brazil-state-node,
+        .brazil-city-node {
+          position: absolute;
+          transform: translate(-50%, -50%);
+          border: none;
+          background: transparent;
+          color: inherit;
+          font: inherit;
+          cursor: pointer;
+        }
+
+        .brazil-state-node {
+          width: 42px;
+          height: 42px;
+          border-radius: 999px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          background: rgba(15, 23, 42, 0.86);
+          border: 1px solid rgba(96, 165, 250, calc(0.3 + (var(--state-intensity, 0.3) * 0.45)));
+          box-shadow:
+            0 0 0 6px rgba(59, 130, 246, calc(var(--state-intensity, 0.3) * 0.16)),
+            0 18px 28px rgba(2, 8, 23, 0.34);
+        }
+
+        .brazil-state-node span {
+          font-size: 11px;
+          font-weight: 800;
+          letter-spacing: 0.06em;
+          color: rgba(239, 246, 255, calc(0.72 + (var(--state-intensity, 0.3) * 0.28)));
+        }
+
+        .brazil-city-node {
+          min-width: 10px;
+          min-height: 10px;
+        }
+
+        .brazil-city-node::before {
+          content: '';
+          display: block;
+          width: 12px;
+          height: 12px;
+          border-radius: 999px;
+          background: rgba(250, 204, 21, 0.94);
+          box-shadow:
+            0 0 0 7px rgba(250, 204, 21, calc(var(--city-intensity, 0.3) * 0.16)),
+            0 0 18px rgba(250, 204, 21, calc(var(--city-intensity, 0.3) * 0.42));
+        }
+
+        .brazil-city-node span {
+          position: absolute;
+          left: 14px;
+          top: -4px;
+          white-space: nowrap;
+          padding: 4px 8px;
+          border-radius: 999px;
+          background: rgba(15, 23, 42, 0.9);
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          color: #f8fafc;
+          font-size: 11px;
+          font-weight: 600;
+          opacity: 0;
+          pointer-events: none;
+          transition: opacity 0.18s ease;
+        }
+
+        .brazil-city-node:hover span,
+        .brazil-city-node:focus-visible span {
+          opacity: 1;
+        }
+
+        .brazil-map-legend {
+          display: grid;
+          gap: 14px;
+        }
+
+        .brazil-map-legend-card {
+          padding: 18px;
+          display: grid;
+          gap: 12px;
+        }
+
+        .brazil-map-legend-card strong {
+          font-size: 16px;
+        }
+
+        .brazil-map-legend-list {
+          display: grid;
+          gap: 10px;
+        }
+
+        .brazil-map-legend-row {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          padding: 12px 14px;
+          border-radius: 14px;
+          background: rgba(255, 255, 255, 0.03);
+          border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .brazil-map-legend-row span {
+          color: var(--text-secondary);
+          line-height: 1.35;
+        }
+
+        .brazil-map-legend-row b {
+          white-space: nowrap;
+        }
+
+        .brazil-map-legend-row-action {
+          width: 100%;
+          color: inherit;
+          font: inherit;
+          text-align: left;
+          cursor: pointer;
+          transition: border-color 0.18s ease, background 0.18s ease;
+        }
+
+        .brazil-map-legend-row-action:hover {
+          border-color: rgba(96, 165, 250, 0.26);
+          background: rgba(59, 130, 246, 0.06);
+        }
+
         .ranking-list {
           display: grid;
           gap: 12px;
@@ -11370,6 +11799,80 @@ export default function DashboardPage() {
 
         .meta-ranking-row-rich .creative-ranking-main {
           flex: 1;
+        }
+
+        .age-ranking-row {
+          align-items: center;
+          gap: 20px;
+        }
+
+        .age-ranking-main {
+          display: flex;
+          align-items: center;
+          gap: 14px;
+          min-width: 0;
+          flex: 1;
+        }
+
+        .age-ranking-position {
+          width: 44px;
+          height: 44px;
+          border-radius: 14px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          background: rgba(59, 130, 246, 0.1);
+          border: 1px solid rgba(96, 165, 250, 0.2);
+          color: #dbeafe;
+          font-size: 14px;
+          font-weight: 800;
+          flex-shrink: 0;
+        }
+
+        .age-ranking-copy {
+          min-width: 0;
+          flex: 1;
+        }
+
+        .age-ranking-title-row {
+          justify-content: space-between;
+        }
+
+        .age-ranking-bar-track {
+          width: 100%;
+          height: 8px;
+          border-radius: 999px;
+          background: rgba(255, 255, 255, 0.06);
+          overflow: hidden;
+        }
+
+        .age-ranking-bar-fill {
+          display: block;
+          height: 100%;
+          min-width: 14px;
+          border-radius: inherit;
+          background: linear-gradient(90deg, rgba(56, 189, 248, 0.95), rgba(59, 130, 246, 0.95));
+          box-shadow: 0 0 16px rgba(59, 130, 246, 0.26);
+        }
+
+        .age-ranking-tag {
+          display: inline-flex;
+          align-items: center;
+          width: fit-content;
+          min-height: 24px;
+          padding: 0 10px;
+          border-radius: 999px;
+          background: rgba(59, 130, 246, 0.08);
+          border: 1px solid rgba(96, 165, 250, 0.14);
+          color: #bfdbfe;
+          font-size: 11px;
+          font-weight: 700;
+          letter-spacing: 0.04em;
+          text-transform: uppercase;
+        }
+
+        .age-ranking-metrics {
+          min-width: 220px;
         }
 
         .ranking-empty {
@@ -12085,6 +12588,10 @@ export default function DashboardPage() {
           .meta-ranking-body {
             grid-template-columns: 1fr;
           }
+
+          .brazil-map-shell {
+            grid-template-columns: 1fr;
+          }
         }
 
         @media (max-width: 768px) {
@@ -12177,6 +12684,27 @@ export default function DashboardPage() {
           .meta-secondary-result-item {
             align-items: flex-start;
             flex-direction: column;
+          }
+
+          .age-ranking-main {
+            width: 100%;
+          }
+
+          .age-ranking-metrics {
+            min-width: 0;
+            width: 100%;
+          }
+
+          .brazil-map-stage {
+            min-height: 340px;
+          }
+
+          .brazil-city-node span {
+            opacity: 1;
+            position: static;
+            display: inline-flex;
+            margin-top: 6px;
+            margin-left: 10px;
           }
         }
       `}</style>

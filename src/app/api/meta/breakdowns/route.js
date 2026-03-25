@@ -65,12 +65,16 @@ function appendMetaEntityFiltering(params, campaignIds = [], adsetIds = [], adId
   }
 }
 
-function normalizeBreakdownRows(rows = [], labelKey) {
+function normalizeBreakdownRows(rows = [], labelKey, { limit = 5 } = {}) {
   return rows
     .map((row) => {
       const formatted = formatInsightsWithConversions(row)
       return {
         label: row[labelKey] || row.region || row.age || row.name || 'Não informado',
+        city: row.city || '',
+        region: row.region || '',
+        country: row.country || '',
+        age: row.age || '',
         spend: parseFloat(row.spend || 0),
         impressions: parseInt(row.impressions || 0, 10),
         clicks: parseInt(row.clicks || 0, 10),
@@ -78,7 +82,7 @@ function normalizeBreakdownRows(rows = [], labelKey) {
       }
     })
     .sort((a, b) => (b.custom_metrics?.totalConversions || 0) - (a.custom_metrics?.totalConversions || 0))
-    .slice(0, 5)
+    .slice(0, limit)
 }
 
 function normalizeCreativeLabel(ad) {
@@ -128,6 +132,7 @@ export async function GET(request) {
     if (campaignIds.includes('__none__') || adsetIds.includes('__none__') || adIds.includes('__none__')) {
       return NextResponse.json({
         ages: [],
+        states: [],
         cities: [],
         creatives: [],
       })
@@ -141,17 +146,25 @@ export async function GET(request) {
     cityParams.set('breakdowns', 'city')
     appendMetaEntityFiltering(cityParams, campaignIds, adsetIds, adIds)
 
+    const stateParams = buildBaseParams({ token, datePreset, since, until, fields: geographicInsightFields })
+    stateParams.set('breakdowns', 'region')
+    appendMetaEntityFiltering(stateParams, campaignIds, adsetIds, adIds)
+
     const creativeTimeFilter = buildMetaInsightsFilterExpression(datePreset, since, until)
 
     const creativeUrl = `https://graph.facebook.com/v19.0/${id}/ads?fields=id,name,campaign_id,adset_id,creative{name,thumbnail_url,image_url,effective_object_story_id,object_story_spec},${creativeTimeFilter}{${creativeInsightFields}}&limit=100&access_token=${token}`
 
-    const [ageResult, cityResult, creativeResult] = await Promise.all([
+    const [ageResult, cityResult, stateResult, creativeResult] = await Promise.all([
       fetchMetaBreakdownSafely(
         `https://graph.facebook.com/v19.0/${id}/insights?${ageParams.toString()}`,
         'A Meta demorou para responder ao carregar os rankings detalhados. Tente novamente em alguns instantes.'
       ),
       fetchMetaBreakdownSafely(
         `https://graph.facebook.com/v19.0/${id}/insights?${cityParams.toString()}`,
+        'A Meta demorou para responder ao carregar os rankings detalhados. Tente novamente em alguns instantes.'
+      ),
+      fetchMetaBreakdownSafely(
+        `https://graph.facebook.com/v19.0/${id}/insights?${stateParams.toString()}`,
         'A Meta demorou para responder ao carregar os rankings detalhados. Tente novamente em alguns instantes.'
       ),
       fetchMetaBreakdownSafely(
@@ -218,11 +231,13 @@ export async function GET(request) {
 
     return NextResponse.json({
       ages: normalizeBreakdownRows(ageResult.data?.data || [], 'age'),
+      states: normalizeBreakdownRows(stateResult.data?.data || [], 'region', { limit: Number.MAX_SAFE_INTEGER }),
       cities: normalizeBreakdownRows(cityRows, cityLabelKey),
       creatives,
       geoScope,
       errors: {
         ages: ageResult.error || '',
+        states: stateResult.error || '',
         cities: cityError,
         creatives: creativeResult.error || '',
       },
