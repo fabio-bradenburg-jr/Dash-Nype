@@ -502,6 +502,34 @@ const META_TEMPLATE_METRIC_OPTIONS = {
     tone: 'pink',
     description: 'Investimento dividido pelas mensagens iniciadas.',
   },
+  reachResults: {
+    label: 'Alcance qualificado',
+    type: 'number',
+    icon: 'bx-radar',
+    tone: 'blue',
+    description: 'Pessoas alcançadas nas campanhas classificadas como alcance.',
+  },
+  costPerReach: {
+    label: 'Custo por alcance',
+    type: 'currency',
+    icon: 'bx-target-lock',
+    tone: 'cyan',
+    description: 'Investimento das campanhas de alcance dividido pelas pessoas alcançadas.',
+  },
+  thruplays: {
+    label: 'TruPlays',
+    type: 'number',
+    icon: 'bx-play-circle',
+    tone: 'purple',
+    description: 'Resultados de truplay nas campanhas de vídeo.',
+  },
+  costPerTruplay: {
+    label: 'Custo por TruPlay',
+    type: 'currency',
+    icon: 'bx-movie-play',
+    tone: 'gold',
+    description: 'Investimento das campanhas de vídeo dividido pelos truplays.',
+  },
   clicksWithoutConversion: {
     label: 'Cliques sem conversão',
     type: 'number',
@@ -4213,53 +4241,45 @@ export default function DashboardPage() {
         cost_per_lead: customMetrics.cost_per_lead || 0,
         messages: customMetrics.messages || 0,
         cost_per_message: customMetrics.cost_per_message || 0,
+        reach_results: customMetrics.reach_results || 0,
+        cost_per_reach: customMetrics.cost_per_reach || 0,
+        thruplays: customMetrics.thruplays || 0,
+        cost_per_thruplay: customMetrics.cost_per_thruplay || 0,
         totalConversions: customMetrics.totalConversions || 0,
         roas: customMetrics.roas || 0,
+        purchase_roas: customMetrics.purchase_roas || 0,
         purchaseValue: customMetrics.purchaseValue || 0,
       }
     }
 
-    const aggregated = filteredCampaigns.reduce(
-      (accumulator, campaign) => {
-        const metrics = extractMetaCampaignMetrics(campaign)
-
-        accumulator.spend += metrics.spend
-        accumulator.reach += metrics.reach
-        accumulator.impressions += metrics.impressions
-        accumulator.clicks += metrics.clicks
-        accumulator.purchases += metrics.purchases
-        accumulator.leads += metrics.leads
-        accumulator.messages += metrics.messages
-        accumulator.totalConversions += metrics.totalConversions
-        accumulator.purchaseValue += metrics.purchaseValue
-
-        return accumulator
-      },
-      {
-        spend: 0,
-        reach: 0,
-        impressions: 0,
-        clicks: 0,
-        purchases: 0,
-        leads: 0,
-        messages: 0,
-        totalConversions: 0,
-        purchaseValue: 0,
-      }
-    )
+    const aggregated = buildMetaSummaryFromCampaigns(filteredCampaigns)
+    const aggregatedCustomMetrics = aggregated.custom_metrics || {}
 
     return {
-      ...aggregated,
-      cpc: aggregated.clicks > 0 ? aggregated.spend / aggregated.clicks : 0,
-      cpm: aggregated.impressions > 0 ? (aggregated.spend / aggregated.impressions) * 1000 : 0,
-      frequency: aggregated.reach > 0 ? aggregated.impressions / aggregated.reach : 0,
-      ctr: aggregated.impressions > 0 ? (aggregated.clicks / aggregated.impressions) * 100 : 0,
-      conversionRate: aggregated.clicks > 0 ? (aggregated.totalConversions / aggregated.clicks) * 100 : 0,
-      averageTicket: aggregated.purchases > 0 ? aggregated.purchaseValue / aggregated.purchases : 0,
-      cost_per_purchase: aggregated.purchases > 0 ? aggregated.spend / aggregated.purchases : 0,
-      cost_per_lead: aggregated.leads > 0 ? aggregated.spend / aggregated.leads : 0,
-      cost_per_message: aggregated.messages > 0 ? aggregated.spend / aggregated.messages : 0,
-      roas: aggregated.spend > 0 ? aggregated.purchaseValue / aggregated.spend : 0,
+      spend: parseFloat(aggregated.spend || 0),
+      reach: parseInt(aggregated.reach || 0, 10),
+      impressions: parseInt(aggregated.impressions || 0, 10),
+      clicks: aggregatedCustomMetrics.clicks || parseInt(aggregated.clicks || 0, 10),
+      cpc: aggregatedCustomMetrics.cpc || parseFloat(aggregated.cpc || 0),
+      ctr: aggregatedCustomMetrics.ctr || parseFloat(aggregated.ctr || 0),
+      cpm: aggregatedCustomMetrics.cpm || 0,
+      frequency: aggregatedCustomMetrics.frequency || 0,
+      conversionRate: aggregatedCustomMetrics.conversionRate || 0,
+      averageTicket: aggregatedCustomMetrics.averageTicket || 0,
+      purchases: aggregatedCustomMetrics.purchases || 0,
+      cost_per_purchase: aggregatedCustomMetrics.cost_per_purchase || 0,
+      leads: aggregatedCustomMetrics.leads || 0,
+      cost_per_lead: aggregatedCustomMetrics.cost_per_lead || 0,
+      messages: aggregatedCustomMetrics.messages || 0,
+      cost_per_message: aggregatedCustomMetrics.cost_per_message || 0,
+      reach_results: aggregatedCustomMetrics.reach_results || 0,
+      cost_per_reach: aggregatedCustomMetrics.cost_per_reach || 0,
+      thruplays: aggregatedCustomMetrics.thruplays || 0,
+      cost_per_thruplay: aggregatedCustomMetrics.cost_per_thruplay || 0,
+      totalConversions: aggregatedCustomMetrics.totalConversions || 0,
+      roas: aggregatedCustomMetrics.roas || 0,
+      purchase_roas: aggregatedCustomMetrics.purchase_roas || 0,
+      purchaseValue: aggregatedCustomMetrics.purchaseValue || 0,
     }
   }, [filteredCampaigns, insights, customMetrics])
 
@@ -4279,8 +4299,13 @@ export default function DashboardPage() {
   const costPerLead = campaignSummary.cost_per_lead || 0
   const messages = campaignSummary.messages || 0
   const costPerMessage = campaignSummary.cost_per_message || 0
+  const reachResults = campaignSummary.reach_results || 0
+  const costPerReach = campaignSummary.cost_per_reach || 0
+  const thruplays = campaignSummary.thruplays || 0
+  const costPerTruplay = campaignSummary.cost_per_thruplay || 0
   const totalConversions = campaignSummary.totalConversions || 0
   const roas = campaignSummary.roas || 0
+  const purchaseRoas = campaignSummary.purchase_roas || 0
   const purchaseValue = campaignSummary.purchaseValue || 0
 
   useEffect(() => {
@@ -4598,10 +4623,18 @@ export default function DashboardPage() {
       costPerLead,
       messages,
       costPerMessage,
+      reachResults,
+      costPerReach,
+      thruplays,
+      costPerTruplay,
       clicksWithoutConversion: Math.max(clicks - totalConversions, 0),
       roas,
     }),
+<<<<<<< HEAD
     [spend, impressions, clicks, cpc, ctr, totalConversions, reach, cpm, frequency, conversionRate, customMetrics.videoViews, customMetrics.videoViewRate, customMetrics.thruplay, customMetrics.hookRate, averageTicket, purchaseValue, purchases, costPerPurchase, leads, costPerLead, messages, costPerMessage, roas]
+=======
+    [spend, impressions, clicks, cpc, ctr, totalConversions, reach, cpm, frequency, conversionRate, averageTicket, purchaseValue, purchases, costPerPurchase, leads, costPerLead, messages, costPerMessage, reachResults, costPerReach, thruplays, costPerTruplay, roas]
+>>>>>>> df05abf (Separa custos da Meta por tipo de resultado)
   )
   const previousMetaDashboardMetricValues = useMemo(
     () => ({
@@ -4627,6 +4660,10 @@ export default function DashboardPage() {
       costPerLead: previousCustomMetrics.cost_per_lead || 0,
       messages: previousCustomMetrics.messages || 0,
       costPerMessage: previousCustomMetrics.cost_per_message || 0,
+      reachResults: previousCustomMetrics.reach_results || 0,
+      costPerReach: previousCustomMetrics.cost_per_reach || 0,
+      thruplays: previousCustomMetrics.thruplays || 0,
+      costPerTruplay: previousCustomMetrics.cost_per_thruplay || 0,
       clicksWithoutConversion: Math.max((previousCustomMetrics.clicks || parseInt(previousInsights?.clicks || 0, 10)) - (previousCustomMetrics.totalConversions || 0), 0),
       roas: previousCustomMetrics.roas || 0,
     }),
@@ -4961,7 +4998,7 @@ export default function DashboardPage() {
       stats: [
         { label: 'Compras', value: formatNumber(purchases) },
         { label: 'Custo por compra', value: formatCurrency(costPerPurchase) },
-        { label: 'ROAS', value: formatMultiplier(roas) },
+        { label: 'ROAS da compra', value: formatMultiplier(purchaseRoas) },
       ],
     },
     {
@@ -4984,6 +5021,28 @@ export default function DashboardPage() {
       stats: [
         { label: 'Mensagens iniciadas', value: formatNumber(messages) },
         { label: 'Custo por mensagem iniciada', value: formatCurrency(costPerMessage) },
+      ],
+    },
+    {
+      key: 'reach',
+      title: 'Alcance',
+      description: 'Entrega das campanhas classificadas como alcance',
+      icon: 'bx-radar',
+      tone: 'cyan',
+      stats: [
+        { label: 'Pessoas alcançadas', value: formatNumber(reachResults) },
+        { label: 'Custo por alcance', value: formatCurrency(costPerReach) },
+      ],
+    },
+    {
+      key: 'truplays',
+      title: 'TruPlays',
+      description: 'Resultados das campanhas de vídeo no período',
+      icon: 'bx-play-circle',
+      tone: 'purple',
+      stats: [
+        { label: 'TruPlays', value: formatNumber(thruplays) },
+        { label: 'Custo por TruPlay', value: formatCurrency(costPerTruplay) },
       ],
     },
   ]
