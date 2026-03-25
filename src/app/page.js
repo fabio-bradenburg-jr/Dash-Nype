@@ -36,6 +36,7 @@ import {
   extractMetaCampaignMetrics,
   getAvailableMetaResultFilters,
   normalizeMetaResultFilters,
+  resolveMetaPrimaryResultKey,
 } from '@/lib/meta-metrics'
 
 ChartJS.register(
@@ -1446,7 +1447,7 @@ function getMetaResultBucketMeta(date, grouping) {
   }
 }
 
-function buildMetaResultComparisonSeries(dailyItems = [], resultMetricKey, grouping = 'week') {
+function buildMetaResultComparisonSeries(dailyItems = [], resultMetricKey, grouping = 'week', campaignObjectiveMap = {}) {
   const buckets = new Map()
 
   dailyItems.forEach((dayItem) => {
@@ -1454,8 +1455,18 @@ function buildMetaResultComparisonSeries(dailyItems = [], resultMetricKey, group
     const bucketMeta = getMetaResultBucketMeta(parsedDate, grouping)
     if (!bucketMeta) return
 
+    const campaignId = String(dayItem.campaign_id || '').trim()
+    const campaignObjective = campaignId ? campaignObjectiveMap[campaignId] : ''
+    const metrics = dayItem.custom_metrics || extractMetaCampaignMetrics(dayItem)
+    const primaryResultKey = resolveMetaPrimaryResultKey(
+      campaignObjective ? { ...dayItem, objective: campaignObjective } : dayItem,
+      metrics
+    )
+
+    if (primaryResultKey !== resultMetricKey) return
+
     const spendValue = parseFloat(dayItem.spend || 0)
-    const resultValue = getMetricData(resultMetricKey, dayItem)
+    const resultValue = Number(metrics[resultMetricKey] || 0)
 
     if (!buckets.has(bucketMeta.key)) {
       buckets.set(bucketMeta.key, {
@@ -1585,11 +1596,13 @@ export default function DashboardPage() {
   const [insights, setInsights] = useState(null)
   const [previousInsights, setPreviousInsights] = useState(null)
   const [dailyData, setDailyData] = useState([])
+  const [dailyCampaignData, setDailyCampaignData] = useState([])
   const [campaigns, setCampaigns] = useState([])
   const [metaHierarchy, setMetaHierarchy] = useState([])
   const [breakdowns, setBreakdowns] = useState(EMPTY_META_BREAKDOWNS)
   const [metaResultDrilldown, setMetaResultDrilldown] = useState(null)
   const [metaRankingDrilldown, setMetaRankingDrilldown] = useState(null)
+  const [metaSecondaryResultDrilldown, setMetaSecondaryResultDrilldown] = useState(null)
   const [metaResultPreviewKey, setMetaResultPreviewKey] = useState('purchases')
   const [metaResultGrouping, setMetaResultGrouping] = useState('week')
   const [isRankingsLoading, setIsRankingsLoading] = useState(false)
@@ -3344,6 +3357,7 @@ export default function DashboardPage() {
       setIsLoading(false)
       setInsights(null)
       setDailyData([])
+      setDailyCampaignData([])
       setCampaigns([])
       setMetaHierarchy([])
       setBreakdowns(EMPTY_META_BREAKDOWNS)
@@ -3457,6 +3471,7 @@ export default function DashboardPage() {
       setIsLoading(false)
       setInsights(null)
       setDailyData([])
+      setDailyCampaignData([])
       setRdSummary(null)
       setGoogleSheetsSummary(null)
       setClickUpSummary(null)
@@ -3477,6 +3492,7 @@ export default function DashboardPage() {
       setIsLoading(false)
       setInsights(null)
       setDailyData([])
+      setDailyCampaignData([])
       setRdSummary(null)
       setGoogleSheetsSummary(null)
       setClickUpSummary(null)
@@ -3616,12 +3632,14 @@ export default function DashboardPage() {
             if (!cancelled) {
               setInsights(buildMetaSummaryFromCampaigns(campaignsRef.current))
               setDailyData([])
+              setDailyCampaignData([])
               setPreviousInsights(null)
             }
             metaError = isMetaRateLimitMessage(nextMetaError) ? '' : nextMetaError
           } else if (!cancelled) {
             setInsights(insightsData.summary || {})
             setDailyData(insightsData.daily || [])
+            setDailyCampaignData(insightsData.daily_by_campaign || [])
 
             if (previousInsightsResponse) {
               const previousInsightsData = await previousInsightsResponse.json()
@@ -3634,6 +3652,7 @@ export default function DashboardPage() {
           setInsights(null)
           setPreviousInsights(null)
           setDailyData([])
+          setDailyCampaignData([])
         }
 
         if (shouldFetchPresentationData && hasRdConfigured) {
@@ -3836,6 +3855,7 @@ export default function DashboardPage() {
           setInsights(null)
           setPreviousInsights(null)
           setDailyData([])
+          setDailyCampaignData([])
           setBreakdowns(EMPTY_META_BREAKDOWNS)
           setRdSummary(null)
           setPreviousRdSummary(null)
@@ -4307,6 +4327,58 @@ export default function DashboardPage() {
   const roas = campaignSummary.roas || 0
   const purchaseRoas = campaignSummary.purchase_roas || 0
   const purchaseValue = campaignSummary.purchaseValue || 0
+  const metaSecondaryResultInsights = useMemo(() => {
+    const buckets = {
+      purchases: {
+        campaignCount: 0,
+        extras: { leads: 0, messages: 0 },
+      },
+      leads: {
+        campaignCount: 0,
+        extras: { purchases: 0, messages: 0 },
+      },
+      messages: {
+        campaignCount: 0,
+        extras: { purchases: 0, leads: 0 },
+      },
+    }
+
+    filteredCampaigns.forEach((campaign) => {
+      const metrics = extractMetaCampaignMetrics(campaign)
+      const primaryResultKey = resolveMetaPrimaryResultKey(campaign, metrics)
+
+      if (!buckets[primaryResultKey]) return
+
+      buckets[primaryResultKey].campaignCount += 1
+
+      Object.keys(buckets[primaryResultKey].extras).forEach((extraKey) => {
+        buckets[primaryResultKey].extras[extraKey] += Number(metrics[extraKey] || 0)
+      })
+    })
+
+    return Object.fromEntries(
+      Object.entries(buckets).map(([key, value]) => {
+        const items = Object.entries(value.extras)
+          .filter(([, amount]) => amount > 0)
+          .map(([extraKey, amount]) => ({
+            key: extraKey,
+            label:
+              extraKey === 'purchases'
+                ? 'Compras'
+                : extraKey === 'leads'
+                  ? 'Cadastros'
+                  : 'Mensagens iniciadas',
+            value: amount,
+          }))
+
+        return [key, {
+          campaignCount: value.campaignCount,
+          items,
+          totalExtraResults: items.reduce((sum, item) => sum + item.value, 0),
+        }]
+      })
+    )
+  }, [filteredCampaigns])
 
   useEffect(() => {
     const rankedOptions = [
@@ -4992,6 +5064,8 @@ export default function DashboardPage() {
       description: 'Resultado de vendas atribuídas no período',
       icon: 'bx-cart',
       tone: 'emerald',
+      resultValue: purchases,
+      secondaryInsights: metaSecondaryResultInsights.purchases,
       stats: [
         { label: 'Compras', value: formatNumber(purchases) },
         { label: 'Custo por compra', value: formatCurrency(costPerPurchase) },
@@ -5004,6 +5078,8 @@ export default function DashboardPage() {
       description: 'Conversões em leads atribuídas no período',
       icon: 'bx-user-plus',
       tone: 'gold',
+      resultValue: leads,
+      secondaryInsights: metaSecondaryResultInsights.leads,
       stats: [
         { label: 'Cadastros', value: formatNumber(leads) },
         { label: 'Custo por cadastro', value: formatCurrency(costPerLead) },
@@ -5015,6 +5091,8 @@ export default function DashboardPage() {
       description: 'Conversas iniciadas em canais de mensagem',
       icon: 'bx-message-rounded-dots',
       tone: 'blue',
+      resultValue: messages,
+      secondaryInsights: metaSecondaryResultInsights.messages,
       stats: [
         { label: 'Mensagens iniciadas', value: formatNumber(messages) },
         { label: 'Custo por mensagem iniciada', value: formatCurrency(costPerMessage) },
@@ -5026,6 +5104,7 @@ export default function DashboardPage() {
       description: 'Entrega das campanhas classificadas como alcance',
       icon: 'bx-radar',
       tone: 'cyan',
+      resultValue: reachResults,
       stats: [
         { label: 'Pessoas alcançadas', value: formatNumber(reachResults) },
         { label: 'Custo por alcance', value: formatCurrency(costPerReach) },
@@ -5037,16 +5116,25 @@ export default function DashboardPage() {
       description: 'Resultados das campanhas de vídeo no período',
       icon: 'bx-play-circle',
       tone: 'purple',
+      resultValue: thruplays,
       stats: [
         { label: 'TruPlays', value: formatNumber(thruplays) },
         { label: 'Custo por TruPlay', value: formatCurrency(costPerTruplay) },
       ],
     },
   ]
+  const activeMetaSecondaryResultGroup = metaConversionGroups.find((group) => group.key === metaSecondaryResultDrilldown) || null
+  const activeMetaSecondaryResultInsights = activeMetaSecondaryResultGroup?.secondaryInsights || null
   const activeMetaResultPreviewConfig = META_RESULT_COMPARISON_OPTIONS[metaResultPreviewKey] || META_RESULT_COMPARISON_OPTIONS.purchases
+  const metaCampaignObjectiveMap = useMemo(
+    () => Object.fromEntries(
+      campaigns.map((campaign) => [String(campaign.id || '').trim(), campaign.objective || ''])
+    ),
+    [campaigns]
+  )
   const metaResultPreviewSeries = useMemo(
-    () => buildMetaResultComparisonSeries(dailyData, activeMetaResultPreviewConfig.resultMetricKey, metaResultGrouping),
-    [activeMetaResultPreviewConfig, dailyData, metaResultGrouping]
+    () => buildMetaResultComparisonSeries(dailyCampaignData, activeMetaResultPreviewConfig.resultMetricKey, metaResultGrouping, metaCampaignObjectiveMap),
+    [activeMetaResultPreviewConfig, dailyCampaignData, metaCampaignObjectiveMap, metaResultGrouping]
   )
   const metaResultPreviewChartData = useMemo(
     () => ({
@@ -5160,10 +5248,10 @@ export default function DashboardPage() {
   const metaResultComparisonSeries = useMemo(
     () => (
       activeMetaResultDrilldownConfig
-        ? buildMetaResultComparisonSeries(dailyData, activeMetaResultDrilldownConfig.resultMetricKey, metaResultGrouping)
+        ? buildMetaResultComparisonSeries(dailyCampaignData, activeMetaResultDrilldownConfig.resultMetricKey, metaResultGrouping, metaCampaignObjectiveMap)
         : []
     ),
-    [activeMetaResultDrilldownConfig, dailyData, metaResultGrouping]
+    [activeMetaResultDrilldownConfig, dailyCampaignData, metaCampaignObjectiveMap, metaResultGrouping]
   )
   const metaResultComparisonChartData = useMemo(() => {
     if (!activeMetaResultDrilldownConfig) return null
@@ -7741,7 +7829,10 @@ export default function DashboardPage() {
 
                     <div className="conversion-groups-grid">
                       {metaConversionGroups.map((group) => (
-                        <article key={group.key} className="conversion-group-card glass-panel">
+                        <article
+                          key={group.key}
+                          className={`conversion-group-card glass-panel ${group.resultValue > 0 ? 'conversion-group-card-active' : 'conversion-group-card-muted'}`}
+                        >
                           <div className="conversion-group-head">
                             <div className={`icon-box ${group.tone}`}>
                               <i className={`bx ${group.icon}`}></i>
@@ -7759,6 +7850,18 @@ export default function DashboardPage() {
                               </div>
                             ))}
                           </div>
+                          {group.secondaryInsights ? (
+                            <div className="conversion-group-footer">
+                              <button
+                                type="button"
+                                className="conversion-group-secondary-trigger"
+                                onClick={() => setMetaSecondaryResultDrilldown(group.key)}
+                              >
+                                <i className="bx bx-info-circle"></i>
+                                Conversões extras
+                              </button>
+                            </div>
+                          ) : null}
                         </article>
                       ))}
                     </div>
@@ -7786,7 +7889,7 @@ export default function DashboardPage() {
                             <button
                               key={`preview-${group.key}`}
                               type="button"
-                              className={`meta-result-preview-tab ${metaResultPreviewKey === group.key ? 'active' : ''}`}
+                              className={`meta-result-preview-tab ${metaResultPreviewKey === group.key ? 'active' : ''} ${group.resultValue > 0 ? 'meta-result-preview-tab-active-model' : 'meta-result-preview-tab-muted'}`}
                               onClick={() => setMetaResultPreviewKey(group.key)}
                             >
                               {group.title}
@@ -8594,6 +8697,44 @@ export default function DashboardPage() {
           >
             Aplicar filtro
           </button>
+        )}
+
+        {metaSecondaryResultDrilldown && activeMetaSecondaryResultGroup && activeMetaSecondaryResultInsights && typeof document !== 'undefined' && createPortal(
+          <div className="modal-overlay" onClick={() => setMetaSecondaryResultDrilldown(null)}>
+            <div className="modal-card glass-panel meta-secondary-result-modal" onClick={(event) => event.stopPropagation()}>
+              <div className="modal-header">
+                <div>
+                  <h3>Conversões extras de {activeMetaSecondaryResultGroup.title.toLowerCase()}</h3>
+                  <p>Leitura informativa das campanhas desse objetivo no período atual. Esses números não entram no card principal e não puxam gasto adicional.</p>
+                </div>
+                <button type="button" className="modal-close" onClick={() => setMetaSecondaryResultDrilldown(null)} aria-label="Fechar conversões extras">
+                  <i className="bx bx-x"></i>
+                </button>
+              </div>
+
+              <div className="meta-secondary-result-summary glass-item">
+                <strong>{formatNumber(activeMetaSecondaryResultInsights.campaignCount)}</strong>
+                <span>campanha(s) desse objetivo no recorte selecionado</span>
+              </div>
+
+              {activeMetaSecondaryResultInsights.items.length ? (
+                <div className="meta-secondary-result-list">
+                  {activeMetaSecondaryResultInsights.items.map((item) => (
+                    <div key={`${activeMetaSecondaryResultGroup.key}-${item.key}`} className="meta-secondary-result-item glass-item">
+                      <div>
+                        <strong>{item.label}</strong>
+                        <span>Resultado paralelo gerado por campanhas de {activeMetaSecondaryResultGroup.title.toLowerCase()}</span>
+                      </div>
+                      <b>{formatNumber(item.value)}</b>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="ranking-empty">Nenhum resultado extra apareceu nesse grupo no período selecionado.</div>
+              )}
+            </div>
+          </div>,
+          document.body
         )}
 
         {metaResultDrilldown && activeMetaResultDrilldownConfig && typeof document !== 'undefined' && createPortal(
@@ -10711,6 +10852,16 @@ export default function DashboardPage() {
           display: grid;
           gap: 16px;
           align-content: start;
+          transition: opacity 0.2s ease, filter 0.2s ease, border-color 0.2s ease;
+        }
+
+        .conversion-group-card-active {
+          opacity: 1;
+        }
+
+        .conversion-group-card-muted {
+          opacity: 0.58;
+          filter: saturate(0.82);
         }
 
         .conversion-group-head {
@@ -10736,6 +10887,36 @@ export default function DashboardPage() {
           gap: 12px;
         }
 
+        .conversion-group-footer {
+          margin-top: auto;
+          display: flex;
+          justify-content: flex-end;
+        }
+
+        .conversion-group-secondary-trigger {
+          min-height: 40px;
+          padding: 0 14px;
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          border-radius: 12px;
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          background: rgba(255, 255, 255, 0.03);
+          color: var(--text-secondary);
+          font: inherit;
+          font-size: 13px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: border-color 0.18s ease, background 0.18s ease, color 0.18s ease, transform 0.18s ease;
+        }
+
+        .conversion-group-secondary-trigger:hover {
+          transform: translateY(-1px);
+          border-color: rgba(96, 165, 250, 0.28);
+          background: rgba(59, 130, 246, 0.06);
+          color: var(--text-primary);
+        }
+
         .conversion-group-actions {
           margin-top: auto;
           display: flex;
@@ -10755,6 +10936,65 @@ export default function DashboardPage() {
           padding: 24px;
           display: grid;
           gap: 18px;
+        }
+
+        .meta-secondary-result-modal {
+          width: min(640px, calc(100vw - 32px));
+          display: grid;
+          gap: 18px;
+        }
+
+        .meta-secondary-result-summary,
+        .meta-secondary-result-item {
+          padding: 18px 20px;
+        }
+
+        .meta-secondary-result-summary {
+          display: grid;
+          gap: 6px;
+        }
+
+        .meta-secondary-result-summary strong {
+          font-size: 28px;
+          line-height: 1;
+        }
+
+        .meta-secondary-result-summary span {
+          color: var(--text-muted);
+          font-size: 13px;
+        }
+
+        .meta-secondary-result-list {
+          display: grid;
+          gap: 12px;
+        }
+
+        .meta-secondary-result-item {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 16px;
+        }
+
+        .meta-secondary-result-item div {
+          display: grid;
+          gap: 4px;
+        }
+
+        .meta-secondary-result-item strong {
+          line-height: 1.2;
+        }
+
+        .meta-secondary-result-item span {
+          color: var(--text-muted);
+          font-size: 13px;
+          line-height: 1.45;
+        }
+
+        .meta-secondary-result-item b {
+          font-size: 26px;
+          line-height: 1;
+          white-space: nowrap;
         }
 
         .meta-result-preview-head {
@@ -10809,12 +11049,18 @@ export default function DashboardPage() {
           font-size: 13px;
           font-weight: 600;
           cursor: pointer;
+          transition: opacity 0.18s ease, border-color 0.18s ease, background 0.18s ease, color 0.18s ease;
+        }
+
+        .meta-result-preview-tab-muted {
+          opacity: 0.46;
         }
 
         .meta-result-preview-tab.active {
           border-color: var(--accent-blue);
           background: rgba(59, 130, 246, 0.12);
           color: var(--text-primary);
+          opacity: 1;
         }
 
         .meta-result-summary-inline {
@@ -11926,6 +12172,11 @@ export default function DashboardPage() {
           .ranking-metrics {
             min-width: 0;
             text-align: left;
+          }
+
+          .meta-secondary-result-item {
+            align-items: flex-start;
+            flex-direction: column;
           }
         }
       `}</style>

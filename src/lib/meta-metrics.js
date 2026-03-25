@@ -8,7 +8,6 @@ export const META_RESULT_FILTER_LABELS = {
   engagement: 'Engajamento',
   awareness: 'Reconhecimento',
   app: 'App',
-  sales: 'Vendas',
 }
 
 export const META_PURCHASE_EVENTS = ['purchase', 'offsite_conversion.fb_pixel_purchase']
@@ -224,16 +223,16 @@ function resolveMetaConversionResultKey(metrics) {
   return candidates[0][0]
 }
 
-function resolveMetaPrimaryResultKey(campaign, metrics) {
+export function resolveMetaPrimaryResultKey(campaign, metrics) {
   const objective = normalizeMetaObjective(campaign?.objective)
   const conversionResultKey = resolveMetaConversionResultKey(metrics)
 
   if (isMetaReachObjective(objective)) return 'reach'
   if (isMetaThruplayObjective(objective)) return 'truplays'
-  if (conversionResultKey) return conversionResultKey
   if (isMetaMessageObjective(objective)) return 'messages'
   if (isMetaLeadObjective(objective)) return 'leads'
   if (isMetaPurchaseObjective(objective)) return 'purchases'
+  if (conversionResultKey) return conversionResultKey
 
   const rankedResults = [
     ['purchases', metrics.purchases || 0],
@@ -358,13 +357,14 @@ export function getMetaCampaignFilterKeys(campaign) {
   const metrics = extractMetaCampaignMetrics(campaign)
   const keys = []
   const objective = normalizeMetaObjective(campaign?.objective)
+  const primaryResultKey = resolveMetaPrimaryResultKey(campaign, metrics)
 
-  if (metrics.messages > 0 || isMetaMessageObjective(objective)) keys.push('messages')
-  if (metrics.leads > 0 || isMetaLeadObjective(objective)) keys.push('leads')
-  if (metrics.purchases > 0 || isMetaPurchaseObjective(objective)) keys.push('purchases')
-  if (metrics.thruplays > 0 || isMetaThruplayObjective(objective)) keys.push('truplays')
+  if (primaryResultKey === 'messages') keys.push('messages')
+  if (primaryResultKey === 'leads') keys.push('leads')
+  if (primaryResultKey === 'purchases') keys.push('purchases')
+  if (primaryResultKey === 'truplays') keys.push('truplays')
 
-  if (isMetaReachObjective(objective)) {
+  if (primaryResultKey === 'reach' || isMetaReachObjective(objective)) {
     keys.push('awareness')
     keys.push('reach')
   }
@@ -385,10 +385,6 @@ export function getMetaCampaignFilterKeys(campaign) {
 
   if (objective.includes('APP')) {
     keys.push('app')
-  }
-
-  if (objective.includes('SALES')) {
-    keys.push('sales')
   }
 
   if (keys.length === 0) {

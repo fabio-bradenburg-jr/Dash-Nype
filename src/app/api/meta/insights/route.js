@@ -84,10 +84,25 @@ export async function GET(request) {
     dailyParams.set('time_increment', '1')
     const dailyUrl = `https://graph.facebook.com/v19.0/${id}/insights?${dailyParams.toString()}`
 
-    const dailyData = await fetchMetaJson(
-      dailyUrl,
-      'A Meta demorou para responder ao carregar os indicadores principais. Tente novamente em alguns instantes.'
+    const dailyCampaignParams = new URLSearchParams(baseParams)
+    dailyCampaignParams.set('time_increment', '1')
+    dailyCampaignParams.set('level', 'campaign')
+    dailyCampaignParams.set(
+      'fields',
+      `campaign_id,campaign_name,${fields}`
     )
+    const dailyCampaignUrl = `https://graph.facebook.com/v19.0/${id}/insights?${dailyCampaignParams.toString()}`
+
+    const [dailyData, dailyCampaignData] = await Promise.all([
+      fetchMetaJson(
+        dailyUrl,
+        'A Meta demorou para responder ao carregar os indicadores principais. Tente novamente em alguns instantes.'
+      ),
+      fetchMetaJson(
+        dailyCampaignUrl,
+        'A Meta demorou para responder ao carregar a evolução por campanha. Tente novamente em alguns instantes.'
+      ),
+    ])
 
     const mergeMetricArrays = (items = []) => {
       const totals = new Map()
@@ -148,7 +163,8 @@ export async function GET(request) {
       
     return NextResponse.json({
       summary: formatInsightsWithConversions(summaryRaw),
-      daily: rawDailyRows.map(formatInsightsWithConversions)
+      daily: rawDailyRows.map(formatInsightsWithConversions),
+      daily_by_campaign: (dailyCampaignData.data || []).map(formatInsightsWithConversions),
     })
   } catch (error) {
     console.error('Meta API Error:', error)
