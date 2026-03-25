@@ -4630,11 +4630,7 @@ export default function DashboardPage() {
       clicksWithoutConversion: Math.max(clicks - totalConversions, 0),
       roas,
     }),
-<<<<<<< HEAD
-    [spend, impressions, clicks, cpc, ctr, totalConversions, reach, cpm, frequency, conversionRate, customMetrics.videoViews, customMetrics.videoViewRate, customMetrics.thruplay, customMetrics.hookRate, averageTicket, purchaseValue, purchases, costPerPurchase, leads, costPerLead, messages, costPerMessage, roas]
-=======
-    [spend, impressions, clicks, cpc, ctr, totalConversions, reach, cpm, frequency, conversionRate, averageTicket, purchaseValue, purchases, costPerPurchase, leads, costPerLead, messages, costPerMessage, reachResults, costPerReach, thruplays, costPerTruplay, roas]
->>>>>>> df05abf (Separa custos da Meta por tipo de resultado)
+    [spend, impressions, clicks, cpc, ctr, totalConversions, reach, cpm, frequency, conversionRate, customMetrics.videoViews, customMetrics.videoViewRate, customMetrics.thruplay, customMetrics.hookRate, averageTicket, purchaseValue, purchases, costPerPurchase, leads, costPerLead, messages, costPerMessage, reachResults, costPerReach, thruplays, costPerTruplay, roas]
   )
   const previousMetaDashboardMetricValues = useMemo(
     () => ({

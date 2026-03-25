@@ -147,15 +147,12 @@ export function extractMetaCampaignMetrics(insightData) {
   const conversionRate = linkClicks > 0 ? (totalConversions / linkClicks) * 100 : 0
   const averageTicket = purchases > 0 ? purchaseValue / purchases : 0
   const roas = spend > 0 ? purchaseValue / spend : 0
-<<<<<<< HEAD
   const videoViews = Math.round(sumValueItems(normalizedInsightData.video_play_actions || []))
   const quarterViews = Math.round(sumValueItems(normalizedInsightData.video_p25_watched_actions || []))
   const thruplay = Math.round(sumValueItems(normalizedInsightData.video_thruplay_watched_actions || []))
   const videoViewRate = impressions > 0 ? (videoViews / impressions) * 100 : 0
   const hookRate = videoViews > 0 ? (quarterViews / videoViews) * 100 : 0
-=======
   const costPerReach = reach > 0 ? spend / reach : 0
->>>>>>> df05abf (Separa custos da Meta por tipo de resultado)
 
   return {
     spend,
@@ -248,7 +245,6 @@ export function buildMetaSummaryFromCampaigns(campaigns = []) {
       accumulator.reach += metrics.reach
       accumulator.impressions += metrics.impressions
       accumulator.clicks += metrics.clicks
-<<<<<<< HEAD
       accumulator.purchases += metrics.purchases
       accumulator.leads += metrics.leads
       accumulator.messages += metrics.messages
@@ -257,7 +253,6 @@ export function buildMetaSummaryFromCampaigns(campaigns = []) {
       accumulator.videoViews += metrics.videoViews
       accumulator.thruplay += metrics.thruplay
       accumulator.quarterViews += metrics.videoViews > 0 ? Math.round((metrics.hookRate / 100) * metrics.videoViews) : 0
-=======
 
       if (primaryResultKey === 'purchases') {
         accumulator.purchase_spend += metrics.spend
@@ -284,7 +279,6 @@ export function buildMetaSummaryFromCampaigns(campaigns = []) {
         accumulator.thruplay_spend += metrics.spend
         accumulator.thruplays += metrics.thruplays
       }
->>>>>>> df05abf (Separa custos da Meta por tipo de resultado)
 
       return accumulator
     },
@@ -298,18 +292,15 @@ export function buildMetaSummaryFromCampaigns(campaigns = []) {
       messages: 0,
       thruplays: 0,
       purchaseValue: 0,
-<<<<<<< HEAD
       videoViews: 0,
       thruplay: 0,
       quarterViews: 0,
-=======
       purchase_spend: 0,
       lead_spend: 0,
       message_spend: 0,
       reach_spend: 0,
       thruplay_spend: 0,
       reach_results: 0,
->>>>>>> df05abf (Separa custos da Meta por tipo de resultado)
     }
   )
 
@@ -336,14 +327,11 @@ export function buildMetaSummaryFromCampaigns(campaigns = []) {
       conversionRate: aggregated.clicks > 0 ? (aggregated.totalConversions / aggregated.clicks) * 100 : 0,
       averageTicket: aggregated.purchases > 0 ? aggregated.purchaseValue / aggregated.purchases : 0,
       roas: aggregated.spend > 0 ? aggregated.purchaseValue / aggregated.spend : 0,
-<<<<<<< HEAD
       videoViews: aggregated.videoViews,
       videoViewRate: aggregated.impressions > 0 ? (aggregated.videoViews / aggregated.impressions) * 100 : 0,
       thruplay: aggregated.thruplay,
       hookRate: aggregated.videoViews > 0 ? (aggregated.quarterViews / aggregated.videoViews) * 100 : 0,
-=======
       purchase_roas: aggregated.purchase_spend > 0 ? aggregated.purchaseValue / aggregated.purchase_spend : 0,
->>>>>>> df05abf (Separa custos da Meta por tipo de resultado)
       primaryConversionType: aggregated.totalConversions > 0 ? 'Mistas' : 'Nenhuma',
     },
   }
