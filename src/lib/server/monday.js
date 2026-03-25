@@ -27,6 +27,22 @@ function isOperationalDateColumn(column) {
   return /(prazo|venc|due|deadline|entrega|delivery|final|fim|end date|data final)/i.test(normalizedTitle)
 }
 
+function isPriorityColumn(column) {
+  const normalizedTitle = String(column?.title || '').trim().toLowerCase()
+  if (!normalizedTitle) return false
+  return /(priority|prioridade|urg[eê]ncia|criticidade|severity)/i.test(normalizedTitle)
+}
+
+function getPriorityRank(label) {
+  const normalizedLabel = normalizeLabel(label)
+  if (!normalizedLabel) return 0
+  if (/(urgent|urgente|critical|critica|crítica|highest|p0|p1|alt[ií]ssima)/i.test(normalizedLabel)) return 5
+  if (/(high|alta|alto|importante)/i.test(normalizedLabel)) return 4
+  if (/(medium|media|m[eé]dia|medio|m[eé]dio|normal|moderad)/i.test(normalizedLabel)) return 3
+  if (/(low|baixa|baixo|minor|menor)/i.test(normalizedLabel)) return 2
+  return 1
+}
+
 function parseMondayDate(value) {
   if (!value) return null
 
@@ -426,6 +442,7 @@ export async function readMondaySummary({ token, boardIds, since, until, owner }
       || boardColumns.find((column) => /status|etapa|pipeline|fase/i.test(column.title || ''))
     const dateColumn = boardColumns.find((column) => column.type === 'date' && isOperationalDateColumn(column))
       || boardColumns.find((column) => column.type === 'date')
+    const priorityColumn = boardColumns.find((column) => isPriorityColumn(column))
     const peopleColumns = boardColumns.filter((column) => /person|people/i.test(column.type || ''))
     const timeTrackingColumns = boardColumns.filter((column) => /time_tracking|timer/i.test(column.type || ''))
 
@@ -434,6 +451,7 @@ export async function readMondaySummary({ token, boardIds, since, until, owner }
     )
 
     const statusLabel = String(columnValuesById.get(statusColumn?.id)?.text || '').trim() || 'Sem status'
+    const priorityLabel = String(columnValuesById.get(priorityColumn?.id)?.text || '').trim()
     const dueDate = parseMondayDate(columnValuesById.get(dateColumn?.id)?.value || columnValuesById.get(dateColumn?.id)?.text || '')
     const ownerNames = peopleColumns.flatMap((column) => extractPeopleNames(columnValuesById.get(column.id)))
     const normalizedOwners = ownerNames.map((name) => normalizeLabel(name)).filter(Boolean)
@@ -478,6 +496,8 @@ export async function readMondaySummary({ token, boardIds, since, until, owner }
       boardName: item.__boardName,
       groupLabel,
       statusLabel,
+      priorityLabel,
+      priorityRank: getPriorityRank(priorityLabel),
       owners: ownerNames,
       dueDate: dueDate?.toISOString() || '',
       updatedAt: updatedAt?.toISOString() || '',
