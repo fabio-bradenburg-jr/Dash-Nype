@@ -1234,13 +1234,19 @@ export default function DashboardPage() {
   const metaFilteredAdIdsRef = useRef([])
 
   const [hasLoadedPreferences, setHasLoadedPreferences] = useState(false)
-  const [activeTab, setActiveTab] = useState('apresentacao')
+  const [activeTab, setActiveTab] = useState('home')
   const [dateRange, setDateRange] = useState('last_7d')
   const [draftDateRange, setDraftDateRange] = useState('last_7d')
   const [customSince, setCustomSince] = useState('')
   const [draftCustomSince, setDraftCustomSince] = useState('')
   const [customUntil, setCustomUntil] = useState('')
   const [draftCustomUntil, setDraftCustomUntil] = useState('')
+  const [mondayDateRange, setMondayDateRange] = useState('last_7d')
+  const [draftMondayDateRange, setDraftMondayDateRange] = useState('last_7d')
+  const [mondayCustomSince, setMondayCustomSince] = useState('')
+  const [draftMondayCustomSince, setDraftMondayCustomSince] = useState('')
+  const [mondayCustomUntil, setMondayCustomUntil] = useState('')
+  const [draftMondayCustomUntil, setDraftMondayCustomUntil] = useState('')
   const [themeColor, setThemeColor] = useState('blue')
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
   const [metric1, setMetric1] = useState('spend')
@@ -1352,7 +1358,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     setMondayMetricDrilldown(null)
-  }, [mondaySummary, mondayOwnerFilter, dateRange, customSince, customUntil])
+  }, [mondaySummary, mondayOwnerFilter, mondayDateRange, mondayCustomSince, mondayCustomUntil])
 
   const activeClient = useMemo(
     () => clients.find((client) => client.id === activeClientId) || null,
@@ -1821,8 +1827,25 @@ export default function DashboardPage() {
     activeDraftDashboardTemplates,
     activeDashboardTemplates,
   ])
+  const hasPendingMondayFilters = useMemo(() => {
+    const hasDateRangeChanges = draftMondayDateRange !== mondayDateRange
+    const hasCustomDateChanges =
+      (draftMondayDateRange === 'custom' || mondayDateRange === 'custom') &&
+      (draftMondayCustomSince !== mondayCustomSince || draftMondayCustomUntil !== mondayCustomUntil)
+
+    return hasDateRangeChanges || hasCustomDateChanges
+  }, [
+    draftMondayDateRange,
+    mondayDateRange,
+    draftMondayCustomSince,
+    mondayCustomSince,
+    draftMondayCustomUntil,
+    mondayCustomUntil,
+  ])
   const isApplyDashboardFiltersDisabled =
     !hasPendingDashboardFilters || (draftDateRange === 'custom' && (!draftCustomSince || !draftCustomUntil))
+  const isApplyMondayFiltersDisabled =
+    !hasPendingMondayFilters || (draftMondayDateRange === 'custom' && (!draftMondayCustomSince || !draftMondayCustomUntil))
   const roleLabels = {
     master: 'Master',
     operador: 'Operador',
@@ -1953,6 +1976,12 @@ export default function DashboardPage() {
   ])
 
   useEffect(() => {
+    setDraftMondayDateRange(mondayDateRange)
+    setDraftMondayCustomSince(mondayCustomSince)
+    setDraftMondayCustomUntil(mondayCustomUntil)
+  }, [mondayDateRange, mondayCustomSince, mondayCustomUntil])
+
+  useEffect(() => {
     setIsMetaMetricLibraryOpen(false)
     setIsRdMetricLibraryOpen(false)
     setIsSheetsMetricLibraryOpen(false)
@@ -1981,15 +2010,15 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (activeTab === 'clientes' && !canManageClients) {
-      setActiveTab('apresentacao')
+      setActiveTab('home')
     }
 
     if (activeTab === 'usuarios' && !canManageUsers) {
-      setActiveTab('apresentacao')
+      setActiveTab('home')
     }
 
     if (activeTab === 'integracoes') {
-      setActiveTab(canManageClients ? 'clientes' : 'apresentacao')
+      setActiveTab('home')
     }
   }, [activeTab, canManageClients, canManageUsers])
 
@@ -2571,6 +2600,13 @@ export default function DashboardPage() {
   }
 
   const handleApplyDashboardFilters = () => {
+    if (activeTab === 'monday') {
+      setMondayDateRange(draftMondayDateRange)
+      setMondayCustomSince(draftMondayCustomSince)
+      setMondayCustomUntil(draftMondayCustomUntil)
+      return
+    }
+
     const availableResultKeys = availableMetaResultFilters.map((item) => item.key)
     const availableCampaignIds = availableMetaCampaignOptions.map((campaign) => campaign.id)
     const availableAdsetIds = draftAvailableMetaAdsetOptions.map((adset) => adset.id)
@@ -3124,6 +3160,10 @@ export default function DashboardPage() {
       return
     }
 
+    if (shouldFetchMondayData && mondayDateRange === 'custom' && (!mondayCustomSince || !mondayCustomUntil)) {
+      return
+    }
+
     if (shouldFetchPresentationData && hasMetaConfigured && !isMetaStructureReady) {
       return
     }
@@ -3137,6 +3177,9 @@ export default function DashboardPage() {
         dateRange,
         customSince,
         customUntil,
+        mondayDateRange,
+        mondayCustomSince,
+        mondayCustomUntil,
         hasMetaConfigured,
         hasRdConfigured,
         hasSheetsConfigured,
@@ -3418,7 +3461,7 @@ export default function DashboardPage() {
             const mondayParams = new URLSearchParams({
               board_ids: String(globalIntegrations.mondayBoardIds || '').trim(),
             })
-            const mondayWindow = resolveDateWindow(dateRange, customSince, customUntil)
+            const mondayWindow = resolveDateWindow(mondayDateRange, mondayCustomSince, mondayCustomUntil)
             if (mondayWindow?.start && mondayWindow?.end) {
               mondayParams.set('since', formatLocalDateInput(mondayWindow.start))
               mondayParams.set('until', formatLocalDateInput(mondayWindow.end))
@@ -3493,6 +3536,9 @@ export default function DashboardPage() {
     dateRange,
     customSince,
     customUntil,
+    mondayDateRange,
+    mondayCustomSince,
+    mondayCustomUntil,
     hasMetaConfigured,
     hasRdConfigured,
     hasSheetsConfigured,
@@ -4365,7 +4411,7 @@ export default function DashboardPage() {
     { key: 'blockedTasks', title: 'Bloqueadas', value: formatNumber(clickUpSummary?.blockedTasks || 0), icon: 'bx-block', tone: 'pink' },
     { key: 'overdueTasks', title: 'Atrasadas', value: formatNumber(clickUpSummary?.overdueTasks || 0), icon: 'bx-time-five', tone: 'orange' },
   ]
-  const mondayPeriodLabel = getDatePresetLabel(dateRange, customSince, customUntil)
+  const mondayPeriodLabel = getDatePresetLabel(mondayDateRange, mondayCustomSince, mondayCustomUntil)
   const mondayOwnerOptions = mondaySummary?.availableOwners || []
   const selectedMondayOwnerLabel = mondayOwnerFilter === 'all'
     ? 'Todos os usuários'
@@ -4553,6 +4599,180 @@ export default function DashboardPage() {
       ))}
     </div>
   )
+
+  const renderHomeHub = () => {
+    const mondayBoardsConfigured = Array.from(new Set(
+      String(globalIntegrations.mondayBoardIds || '')
+        .split(',')
+        .map((item) => item.trim())
+        .filter(Boolean)
+    )).length
+    const clickUpListsConfigured = Array.from(new Set(
+      String(globalIntegrations.clickUpListIds || '')
+        .split(',')
+        .map((item) => item.trim())
+        .filter(Boolean)
+    )).length
+    const homeCards = [
+      {
+        key: 'apresentacao',
+        title: 'Apresentação',
+        description: 'Abra a leitura executiva dos clientes com filtros, métricas e visual de resultado.',
+        icon: 'bx bxs-dashboard',
+        tone: 'blue',
+        accent: 'blue',
+        helper: activeClient ? `Cliente ativo: ${activeClient.name}` : 'Escolha um cliente para abrir a visão executiva.',
+        actionLabel: 'Abrir dashboard',
+        onClick: () => setActiveTab('apresentacao'),
+      },
+      {
+        key: 'clickup',
+        title: 'ClickUp',
+        description: 'Entre na operação do ClickUp para entender fila, responsáveis e gargalos do time.',
+        icon: 'bx bx-task',
+        tone: 'purple',
+        accent: 'purple',
+        helper: clickUpListsConfigured ? `${formatNumber(clickUpListsConfigured)} lista(s) operacional(is) configurada(s).` : 'Configuração global pendente.',
+        actionLabel: 'Abrir ClickUp',
+        onClick: () => setActiveTab('clickup'),
+      },
+      {
+        key: 'monday',
+        title: 'Monday',
+        description: 'Acompanhe boards, prioridades, atrasos e capacidade em uma leitura operacional.',
+        icon: 'bx bx-columns',
+        tone: 'gold',
+        accent: 'gold',
+        helper: mondayBoardsConfigured ? `${formatNumber(mondayBoardsConfigured)} board(s) monitorado(s) na operação.` : 'Configuração global pendente.',
+        actionLabel: 'Abrir Monday',
+        onClick: () => setActiveTab('monday'),
+      },
+      {
+        key: 'agenda',
+        title: 'Agenda',
+        description: 'Veja compromissos e a rotina operacional fora da leitura analítica.',
+        icon: 'bx bx-calendar-event',
+        tone: 'emerald',
+        accent: 'emerald',
+        helper: 'Acesso rápido ao calendário da operação.',
+        actionLabel: 'Abrir agenda',
+        href: '/calendar',
+      },
+      {
+        key: 'configuracoes',
+        title: 'Configurações',
+        description: 'Ajuste integrações, credenciais globais e preferências da plataforma.',
+        icon: 'bx bx-cog',
+        tone: 'cyan',
+        accent: 'cyan',
+        helper: 'Central de configuração e conexões.',
+        actionLabel: 'Abrir configurações',
+        href: '/settings',
+      },
+    ]
+
+    if (canManageClients) {
+      homeCards.splice(3, 0, {
+        key: 'clientes',
+        title: 'Clientes',
+        description: 'Cadastre clientes, grupos e organize quem enxerga cada dashboard.',
+        icon: 'bx bxs-buildings',
+        tone: 'orange',
+        accent: 'orange',
+        helper: `${formatNumber(clients.length)} cliente(s) cadastrado(s) na base.`,
+        actionLabel: 'Abrir clientes',
+        onClick: () => setActiveTab('clientes'),
+      })
+    }
+
+    if (canManageUsers) {
+      homeCards.splice(canManageClients ? 4 : 3, 0, {
+        key: 'usuarios',
+        title: 'Usuários',
+        description: 'Gerencie acessos, permissões e quais dashboards cada pessoa pode abrir.',
+        icon: 'bx bxs-user-detail',
+        tone: 'pink',
+        accent: 'pink',
+        helper: `${formatNumber(usersList.length || 0)} usuário(s) carregado(s) nesta operação.`,
+        actionLabel: 'Abrir usuários',
+        onClick: () => setActiveTab('usuarios'),
+      })
+    }
+
+    return (
+      <section className="source-section">
+        <section className="glass-panel home-hub-hero">
+          <div className="home-hub-copy">
+            <span className="home-hub-kicker">Central de navegação</span>
+            <h2>Escolha por onde você quer tocar a operação agora</h2>
+            <p>
+              Essa Home vira a porta de entrada do app. Daqui você escolhe rapidamente se vai acompanhar resultado,
+              entrar na operação do time, organizar clientes ou ajustar estrutura.
+            </p>
+          </div>
+
+          <div className="home-hub-metrics">
+            <div className="home-hub-metric glass-item">
+              <span>Clientes</span>
+              <strong>{formatNumber(clients.length || 0)}</strong>
+            </div>
+            <div className="home-hub-metric glass-item">
+              <span>Grupos</span>
+              <strong>{formatNumber(clientGroups.length || 0)}</strong>
+            </div>
+            <div className="home-hub-metric glass-item">
+              <span>ClickUp</span>
+              <strong>{clickUpListsConfigured ? `${formatNumber(clickUpListsConfigured)} listas` : 'Pendente'}</strong>
+            </div>
+            <div className="home-hub-metric glass-item">
+              <span>Monday</span>
+              <strong>{mondayBoardsConfigured ? `${formatNumber(mondayBoardsConfigured)} boards` : 'Pendente'}</strong>
+            </div>
+          </div>
+        </section>
+
+        <section className="home-hub-grid">
+          {homeCards.map((card) => {
+            const cardContent = (
+              <>
+                <div className="home-hub-card-top">
+                  <div className={`icon-box ${card.tone}`}>
+                    <i className={card.icon}></i>
+                  </div>
+                  <span className={`home-hub-card-pill ${card.accent}`}>{card.actionLabel}</span>
+                </div>
+                <div className="home-hub-card-copy">
+                  <h3>{card.title}</h3>
+                  <p>{card.description}</p>
+                </div>
+                <div className="home-hub-card-footer">
+                  <span>{card.helper}</span>
+                  <strong>
+                    Entrar
+                    <i className="bx bx-right-arrow-alt"></i>
+                  </strong>
+                </div>
+              </>
+            )
+
+            if (card.href) {
+              return (
+                <Link key={card.key} href={card.href} className="glass-panel home-hub-card">
+                  {cardContent}
+                </Link>
+              )
+            }
+
+            return (
+              <button key={card.key} type="button" className="glass-panel home-hub-card" onClick={card.onClick}>
+                {cardContent}
+              </button>
+            )
+          })}
+        </section>
+      </section>
+    )
+  }
 
   const renderMondayInteractiveKpiGrid = (items) => (
     <div className="kpi-grid compact-kpi-grid">
@@ -5559,6 +5779,9 @@ export default function DashboardPage() {
         </div>
 
         <nav className="nav-menu">
+          <button type="button" data-tooltip="Home" className={`nav-item nav-button ${activeTab === 'home' ? 'active' : ''}`} onClick={() => setActiveTab('home')}>
+            <i className="bx bxs-home-heart"></i> Home
+          </button>
           {canManageClients && (
             <button type="button" data-tooltip="Clientes" className={`nav-item nav-button ${activeTab === 'clientes' ? 'active' : ''}`} onClick={() => setActiveTab('clientes')}>
               <i className="bx bxs-buildings"></i> Clientes
@@ -5618,6 +5841,7 @@ export default function DashboardPage() {
         <header className="header" style={{ alignItems: 'flex-start' }}>
           <div className="page-title">
             <h1>
+              {activeTab === 'home' && 'Home'}
               {activeTab === 'clientes' && 'Base de clientes'}
               {activeTab === 'apresentacao' && `Dashboard ${activeClient?.name || 'do cliente'}`}
               {activeTab === 'clickup' && 'Operação ClickUp'}
@@ -5625,6 +5849,7 @@ export default function DashboardPage() {
               {activeTab === 'usuarios' && 'Gestão de usuários'}
             </h1>
             <p>
+              {activeTab === 'home' && 'Entre por aqui sempre que abrir o app e escolha rapidamente qual área da operação você quer acessar.'}
               {activeTab === 'clientes' && 'Cadastre seus clientes e mantenha cada operação separada dentro do dashboard.'}
               {activeTab === 'apresentacao' && 'Uma visão executiva consolidada dos principais resultados do cliente, organizada por fonte de dados.'}
               {activeTab === 'clickup' && 'Acompanhe tarefas, responsáveis e status operacionais do ClickUp a partir da configuração global da operação.'}
@@ -5695,17 +5920,17 @@ export default function DashboardPage() {
 
             {activeTab === 'monday' && (
               <>
-                {draftDateRange === 'custom' && (
+                {draftMondayDateRange === 'custom' && (
                   <div className="date-picker glass-item custom-range">
-                    <input type="date" value={draftCustomSince} onChange={(event) => setDraftCustomSince(event.target.value)} />
+                    <input type="date" value={draftMondayCustomSince} onChange={(event) => setDraftMondayCustomSince(event.target.value)} />
                     <span>até</span>
-                    <input type="date" value={draftCustomUntil} onChange={(event) => setDraftCustomUntil(event.target.value)} />
+                    <input type="date" value={draftMondayCustomUntil} onChange={(event) => setDraftMondayCustomUntil(event.target.value)} />
                   </div>
                 )}
 
                 <div className="date-picker glass-item">
                   <i className="bx bx-calendar"></i>
-                  <select value={draftDateRange} onChange={(event) => setDraftDateRange(event.target.value)}>
+                  <select value={draftMondayDateRange} onChange={(event) => setDraftMondayDateRange(event.target.value)}>
                     {DATE_PRESETS.map((preset) => (
                       <option key={preset.value} value={preset.value}>
                         {preset.label}
@@ -5717,7 +5942,7 @@ export default function DashboardPage() {
                 <button
                   type="button"
                   onClick={handleApplyDashboardFilters}
-                  disabled={isApplyDashboardFiltersDisabled}
+                  disabled={isApplyMondayFiltersDisabled}
                   className="btn btn-secondary"
                 >
                   <i className="bx bx-filter-alt"></i>
@@ -5765,6 +5990,8 @@ export default function DashboardPage() {
             </div>
           </div>
         )}
+
+        {activeTab === 'home' && renderHomeHub()}
 
         {activeTab === 'clickup' && renderClickUpOperationalPanel()}
 

@@ -478,17 +478,24 @@ body {
 .monday-drilldown-popup {
     width: min(1080px, calc(100vw - 48px)) !important;
     max-height: min(84vh, 900px) !important;
-    overflow: hidden !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
     display: grid !important;
     gap: 18px !important;
+}
+
+.monday-drilldown-overlay {
+    overflow-y: auto !important;
+    align-items: flex-start !important;
+    justify-items: center !important;
+    padding-top: 28px !important;
+    padding-bottom: 28px !important;
 }
 
 .monday-drilldown-body {
     display: grid !important;
     gap: 18px !important;
-    overflow-y: auto !important;
-    overflow-x: hidden !important;
-    padding-right: 6px !important;
+    overflow: visible !important;
 }
 
 .monday-drilldown-summary {
@@ -959,6 +966,161 @@ body {
     text-align: right !important;
     max-width: 560px !important;
     flex: 1 1 320px !important;
+}
+
+.home-hub-hero {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.85fr) !important;
+    gap: 20px !important;
+    padding: 28px !important;
+    border-radius: 26px !important;
+    background:
+        radial-gradient(circle at top left, rgba(59, 130, 246, 0.14), transparent 38%),
+        linear-gradient(145deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.01)),
+        rgba(8, 12, 22, 0.74) !important;
+}
+
+.home-hub-copy {
+    display: grid !important;
+    gap: 10px !important;
+    align-content: start !important;
+}
+
+.home-hub-kicker {
+    color: #93c5fd !important;
+    font-size: 11px !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.08em !important;
+    text-transform: uppercase !important;
+}
+
+.home-hub-copy h2 {
+    margin: 0 !important;
+    font-size: 34px !important;
+    line-height: 1.08 !important;
+}
+
+.home-hub-copy p {
+    margin: 0 !important;
+    color: var(--text-secondary) !important;
+    line-height: 1.65 !important;
+    max-width: 720px !important;
+}
+
+.home-hub-metrics {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 14px !important;
+}
+
+.home-hub-metric {
+    display: grid !important;
+    gap: 6px !important;
+    padding: 16px !important;
+    border-radius: 18px !important;
+}
+
+.home-hub-metric span {
+    color: var(--text-muted) !important;
+    font-size: 12px !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.04em !important;
+}
+
+.home-hub-metric strong {
+    font-size: 22px !important;
+    line-height: 1.1 !important;
+}
+
+.home-hub-grid {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)) !important;
+    gap: 18px !important;
+}
+
+.home-hub-card {
+    display: grid !important;
+    gap: 18px !important;
+    padding: 22px !important;
+    border-radius: 22px !important;
+    text-decoration: none !important;
+    color: inherit !important;
+    text-align: left !important;
+    cursor: pointer !important;
+    transition: transform 0.22s ease, border-color 0.22s ease, box-shadow 0.22s ease !important;
+    min-width: 0 !important;
+}
+
+.home-hub-card:hover {
+    transform: translateY(-4px) !important;
+    border-color: rgba(59, 130, 246, 0.22) !important;
+    box-shadow: 0 24px 48px rgba(2, 6, 23, 0.26) !important;
+}
+
+.home-hub-card-top {
+    display: flex !important;
+    align-items: flex-start !important;
+    justify-content: space-between !important;
+    gap: 12px !important;
+}
+
+.home-hub-card-pill {
+    display: inline-flex !important;
+    align-items: center !important;
+    min-height: 28px !important;
+    padding: 0 10px !important;
+    border-radius: 999px !important;
+    font-size: 11px !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.04em !important;
+    text-transform: uppercase !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+.home-hub-card-pill.blue { color: #93c5fd !important; background: rgba(59, 130, 246, 0.12) !important; }
+.home-hub-card-pill.purple { color: #c4b5fd !important; background: rgba(139, 92, 246, 0.12) !important; }
+.home-hub-card-pill.gold { color: #fcd34d !important; background: rgba(245, 158, 11, 0.12) !important; }
+.home-hub-card-pill.emerald { color: #6ee7b7 !important; background: rgba(16, 185, 129, 0.12) !important; }
+.home-hub-card-pill.cyan { color: #67e8f9 !important; background: rgba(6, 182, 212, 0.12) !important; }
+.home-hub-card-pill.orange { color: #fdba74 !important; background: rgba(249, 115, 22, 0.12) !important; }
+.home-hub-card-pill.pink { color: #f9a8d4 !important; background: rgba(236, 72, 153, 0.12) !important; }
+
+.home-hub-card-copy {
+    display: grid !important;
+    gap: 8px !important;
+}
+
+.home-hub-card-copy h3 {
+    margin: 0 !important;
+    font-size: 22px !important;
+    line-height: 1.15 !important;
+}
+
+.home-hub-card-copy p {
+    margin: 0 !important;
+    color: var(--text-secondary) !important;
+    line-height: 1.6 !important;
+}
+
+.home-hub-card-footer {
+    display: flex !important;
+    align-items: flex-end !important;
+    justify-content: space-between !important;
+    gap: 14px !important;
+    margin-top: auto !important;
+}
+
+.home-hub-card-footer span {
+    color: var(--text-muted) !important;
+    line-height: 1.5 !important;
+}
+
+.home-hub-card-footer strong {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    color: var(--text-primary) !important;
+    white-space: nowrap !important;
 }
 
 .section-header-stack,
@@ -1440,6 +1602,10 @@ body {
         grid-template-columns: 1fr;
     }
 
+    .home-hub-hero {
+        grid-template-columns: 1fr !important;
+    }
+
     .operations-hero-card {
         grid-template-columns: 1fr !important;
     }
@@ -1480,6 +1646,8 @@ body {
     .operations-meta-grid,
     .operations-filter-grid,
     .operations-spotlight-grid,
+    .home-hub-metrics,
+    .home-hub-grid,
     .monday-command-grid,
     .monday-decision-grid,
     .monday-focus-grid,
@@ -1490,6 +1658,11 @@ body {
     }
 
     .monday-user-group-head {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+    }
+
+    .home-hub-card-footer {
         flex-direction: column !important;
         align-items: flex-start !important;
     }
