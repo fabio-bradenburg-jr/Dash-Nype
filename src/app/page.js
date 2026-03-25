@@ -174,6 +174,53 @@ const DATE_PRESETS = [
   { value: 'custom', label: 'Período personalizado' },
 ]
 
+const META_RESULT_PERIOD_OPTIONS = [
+  { value: 'day', label: 'Dia' },
+  { value: 'week', label: 'Semana' },
+  { value: 'month', label: 'Mês' },
+  { value: 'quarter', label: 'Trimestre' },
+  { value: 'year', label: 'Ano' },
+]
+
+const META_RESULT_COMPARISON_OPTIONS = {
+  purchases: {
+    key: 'purchases',
+    title: 'Compras',
+    description: 'Compare a curva de compras com o custo por compra no agrupamento que fizer mais sentido para leitura executiva.',
+    resultMetricKey: 'purchases',
+    costMetricKey: 'cpa',
+    resultLabel: 'Compras',
+    costLabel: 'Custo por compra',
+    resultTone: '#10b981',
+    costTone: '#f59e0b',
+    icon: 'bx-cart',
+  },
+  leads: {
+    key: 'leads',
+    title: 'Cadastros',
+    description: 'Veja como os cadastros evoluem junto com o custo por cadastro ao longo do tempo.',
+    resultMetricKey: 'leads',
+    costMetricKey: 'cpa',
+    resultLabel: 'Cadastros',
+    costLabel: 'Custo por cadastro',
+    resultTone: '#fbbf24',
+    costTone: '#38bdf8',
+    icon: 'bx-user-plus',
+  },
+  messages: {
+    key: 'messages',
+    title: 'Mensagens iniciadas',
+    description: 'Acompanhe o volume de mensagens iniciadas contra o custo por mensagem em cada janela de agrupamento.',
+    resultMetricKey: 'messages',
+    costMetricKey: 'cpa',
+    resultLabel: 'Mensagens iniciadas',
+    costLabel: 'Custo por mensagem iniciada',
+    resultTone: '#3b82f6',
+    costTone: '#a855f7',
+    icon: 'bx-message-rounded-dots',
+  },
+}
+
 const CLIENT_INTEGRATION_GROUPS = [
   {
     title: 'Google Ads',
@@ -1189,6 +1236,117 @@ function getMetricData(metricKey, dayData) {
   }
 }
 
+function parseMetaSeriesDate(dateString) {
+  if (!dateString) return null
+
+  const parsed = new Date(`${dateString}T00:00:00`)
+  return Number.isNaN(parsed.getTime()) ? null : parsed
+}
+
+function getStartOfWeek(date) {
+  const base = new Date(date)
+  const day = base.getDay()
+  const diff = day === 0 ? -6 : 1 - day
+  base.setDate(base.getDate() + diff)
+  base.setHours(0, 0, 0, 0)
+  return base
+}
+
+function getStartOfQuarter(date) {
+  return new Date(date.getFullYear(), Math.floor(date.getMonth() / 3) * 3, 1)
+}
+
+function getMetaResultBucketMeta(date, grouping) {
+  if (!date) return null
+
+  if (grouping === 'day') {
+    const start = new Date(date.getFullYear(), date.getMonth(), date.getDate())
+    return {
+      key: start.toISOString().slice(0, 10),
+      start,
+      end: start,
+      label: start.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }),
+    }
+  }
+
+  if (grouping === 'week') {
+    const start = getStartOfWeek(date)
+    const end = new Date(start)
+    end.setDate(start.getDate() + 6)
+
+    return {
+      key: `week-${start.toISOString().slice(0, 10)}`,
+      start,
+      end,
+      label: `${start.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })} - ${end.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}`,
+    }
+  }
+
+  if (grouping === 'month') {
+    const start = new Date(date.getFullYear(), date.getMonth(), 1)
+    const end = new Date(date.getFullYear(), date.getMonth() + 1, 0)
+    return {
+      key: `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, '0')}`,
+      start,
+      end,
+      label: start.toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' }),
+    }
+  }
+
+  if (grouping === 'quarter') {
+    const start = getStartOfQuarter(date)
+    const end = new Date(start.getFullYear(), start.getMonth() + 3, 0)
+    const quarter = Math.floor(start.getMonth() / 3) + 1
+    return {
+      key: `${start.getFullYear()}-Q${quarter}`,
+      start,
+      end,
+      label: `T${quarter} ${start.getFullYear()}`,
+    }
+  }
+
+  const start = new Date(date.getFullYear(), 0, 1)
+  const end = new Date(date.getFullYear(), 11, 31)
+  return {
+    key: String(start.getFullYear()),
+    start,
+    end,
+    label: String(start.getFullYear()),
+  }
+}
+
+function buildMetaResultComparisonSeries(dailyItems = [], resultMetricKey, grouping = 'week') {
+  const buckets = new Map()
+
+  dailyItems.forEach((dayItem) => {
+    const parsedDate = parseMetaSeriesDate(dayItem.date_start)
+    const bucketMeta = getMetaResultBucketMeta(parsedDate, grouping)
+    if (!bucketMeta) return
+
+    const spendValue = parseFloat(dayItem.spend || 0)
+    const resultValue = getMetricData(resultMetricKey, dayItem)
+
+    if (!buckets.has(bucketMeta.key)) {
+      buckets.set(bucketMeta.key, {
+        ...bucketMeta,
+        spend: 0,
+        results: 0,
+      })
+    }
+
+    const bucket = buckets.get(bucketMeta.key)
+    bucket.spend += spendValue
+    bucket.results += resultValue
+  })
+
+  return Array.from(buckets.values())
+    .sort((left, right) => left.start.getTime() - right.start.getTime())
+    .map((bucket) => ({
+      ...bucket,
+      cost: bucket.results > 0 ? bucket.spend / bucket.results : 0,
+    }))
+}
+
 function getSummaryMetricValue(metricKey, summary, customMetrics) {
   switch (metricKey) {
     case 'spend':
@@ -1248,7 +1406,7 @@ export default function DashboardPage() {
   const [mondayCustomUntil, setMondayCustomUntil] = useState('')
   const [draftMondayCustomUntil, setDraftMondayCustomUntil] = useState('')
   const [themeColor, setThemeColor] = useState('blue')
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(true)
   const [metric1, setMetric1] = useState('spend')
   const [metric2, setMetric2] = useState('roas')
   const [campaignSearch, setCampaignSearch] = useState('')
@@ -1279,6 +1437,9 @@ export default function DashboardPage() {
   const [campaigns, setCampaigns] = useState([])
   const [metaHierarchy, setMetaHierarchy] = useState([])
   const [breakdowns, setBreakdowns] = useState(EMPTY_META_BREAKDOWNS)
+  const [metaResultDrilldown, setMetaResultDrilldown] = useState(null)
+  const [metaResultPreviewKey, setMetaResultPreviewKey] = useState('purchases')
+  const [metaResultGrouping, setMetaResultGrouping] = useState('week')
   const [isRankingsLoading, setIsRankingsLoading] = useState(false)
   const [rankingsError, setRankingsError] = useState('')
   const [rdSummary, setRdSummary] = useState(null)
@@ -1362,6 +1523,30 @@ export default function DashboardPage() {
   useEffect(() => {
     setExpandedMondayGroups({})
   }, [mondayMetricDrilldown])
+
+  useEffect(() => {
+    setMetaResultDrilldown(null)
+  }, [activeClientId, dateRange, customSince, customUntil, dailyData])
+
+  useEffect(() => {
+    const availableKeys = ['purchases', 'leads', 'messages']
+    if (availableKeys.includes(metaResultPreviewKey)) return
+    setMetaResultPreviewKey('purchases')
+  }, [metaResultPreviewKey])
+
+  useEffect(() => {
+    const rankedOptions = [
+      { key: 'purchases', value: purchases || 0 },
+      { key: 'leads', value: leads || 0 },
+      { key: 'messages', value: messages || 0 },
+    ].sort((left, right) => right.value - left.value)
+
+    if (!rankedOptions.length) return
+    if ((rankedOptions[0]?.value || 0) <= 0) return
+    if ((rankedOptions.find((item) => item.key === metaResultPreviewKey)?.value || 0) > 0) return
+
+    setMetaResultPreviewKey(rankedOptions[0].key)
+  }, [metaResultPreviewKey, purchases, leads, messages])
 
   const activeClient = useMemo(
     () => clients.find((client) => client.id === activeClientId) || null,
@@ -4475,6 +4660,239 @@ export default function DashboardPage() {
       ],
     },
   ]
+  const activeMetaResultPreviewConfig = META_RESULT_COMPARISON_OPTIONS[metaResultPreviewKey] || META_RESULT_COMPARISON_OPTIONS.purchases
+  const metaResultPreviewSeries = useMemo(
+    () => buildMetaResultComparisonSeries(dailyData, activeMetaResultPreviewConfig.resultMetricKey, metaResultGrouping),
+    [activeMetaResultPreviewConfig, dailyData, metaResultGrouping]
+  )
+  const metaResultPreviewChartData = useMemo(
+    () => ({
+      labels: metaResultPreviewSeries.length ? metaResultPreviewSeries.map((bucket) => bucket.label) : ['Sem dados'],
+      datasets: [
+        {
+          label: activeMetaResultPreviewConfig.resultLabel,
+          data: metaResultPreviewSeries.length ? metaResultPreviewSeries.map((bucket) => bucket.results) : [0],
+          borderColor: activeMetaResultPreviewConfig.resultTone,
+          backgroundColor: `${activeMetaResultPreviewConfig.resultTone}22`,
+          borderWidth: 3,
+          pointBackgroundColor: '#0b0f19',
+          pointBorderColor: activeMetaResultPreviewConfig.resultTone,
+          pointBorderWidth: 2,
+          pointRadius: 4,
+          pointHoverRadius: 6,
+          tension: 0.34,
+          fill: true,
+          yAxisID: 'y',
+        },
+        {
+          label: activeMetaResultPreviewConfig.costLabel,
+          data: metaResultPreviewSeries.length ? metaResultPreviewSeries.map((bucket) => bucket.cost) : [0],
+          borderColor: activeMetaResultPreviewConfig.costTone,
+          backgroundColor: 'transparent',
+          borderWidth: 3,
+          borderDash: [7, 5],
+          pointBackgroundColor: '#0b0f19',
+          pointBorderColor: activeMetaResultPreviewConfig.costTone,
+          pointBorderWidth: 2,
+          pointRadius: 4,
+          pointHoverRadius: 6,
+          tension: 0.34,
+          yAxisID: 'y1',
+        },
+      ],
+    }),
+    [activeMetaResultPreviewConfig, metaResultPreviewSeries]
+  )
+  const metaResultPreviewChartOptions = useMemo(
+    () => ({
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: 'rgba(17, 24, 39, 0.94)',
+          titleColor: '#f8fafc',
+          bodyColor: '#cbd5e1',
+          borderColor: 'rgba(255,255,255,0.08)',
+          borderWidth: 1,
+          padding: 12,
+          callbacks: {
+            label(context) {
+              return `${context.dataset.label}: ${context.dataset.yAxisID === 'y'
+                ? formatNumber(context.parsed.y)
+                : formatCurrency(context.parsed.y)}`
+            },
+          },
+        },
+      },
+      scales: {
+        x: {
+          grid: { display: false },
+          ticks: { color: '#94a3b8', maxRotation: 0, autoSkipPadding: 16 },
+        },
+        y: {
+          type: 'linear',
+          display: true,
+          position: 'left',
+          grid: { color: 'rgba(255,255,255,0.05)' },
+          ticks: {
+            color: '#94a3b8',
+            precision: 0,
+            callback(value) {
+              return formatChartAxis(value, activeMetaResultPreviewConfig.resultMetricKey)
+            },
+          },
+        },
+        y1: {
+          type: 'linear',
+          display: true,
+          position: 'right',
+          grid: { display: false },
+          ticks: {
+            color: '#94a3b8',
+            callback(value) {
+              return formatCurrency(value)
+            },
+          },
+        },
+      },
+    }),
+    [activeMetaResultPreviewConfig]
+  )
+  const metaResultPreviewSummary = useMemo(() => {
+    const totalResults = metaResultPreviewSeries.reduce((accumulator, bucket) => accumulator + bucket.results, 0)
+    const totalSpend = metaResultPreviewSeries.reduce((accumulator, bucket) => accumulator + bucket.spend, 0)
+
+    return {
+      totalResults,
+      totalSpend,
+      averageCost: totalResults > 0 ? totalSpend / totalResults : 0,
+      points: metaResultPreviewSeries.length,
+    }
+  }, [metaResultPreviewSeries])
+  const activeMetaResultDrilldownConfig = metaResultDrilldown
+    ? META_RESULT_COMPARISON_OPTIONS[metaResultDrilldown.key] || null
+    : null
+  const metaResultComparisonSeries = useMemo(
+    () => (
+      activeMetaResultDrilldownConfig
+        ? buildMetaResultComparisonSeries(dailyData, activeMetaResultDrilldownConfig.resultMetricKey, metaResultGrouping)
+        : []
+    ),
+    [activeMetaResultDrilldownConfig, dailyData, metaResultGrouping]
+  )
+  const metaResultComparisonChartData = useMemo(() => {
+    if (!activeMetaResultDrilldownConfig) return null
+
+    return {
+      labels: metaResultComparisonSeries.length ? metaResultComparisonSeries.map((bucket) => bucket.label) : ['Sem dados'],
+      datasets: [
+        {
+          label: activeMetaResultDrilldownConfig.resultLabel,
+          data: metaResultComparisonSeries.length ? metaResultComparisonSeries.map((bucket) => bucket.results) : [0],
+          borderColor: activeMetaResultDrilldownConfig.resultTone,
+          backgroundColor: `${activeMetaResultDrilldownConfig.resultTone}22`,
+          borderWidth: 3,
+          pointBackgroundColor: '#0b0f19',
+          pointBorderColor: activeMetaResultDrilldownConfig.resultTone,
+          pointBorderWidth: 2,
+          pointRadius: 4,
+          pointHoverRadius: 6,
+          tension: 0.34,
+          fill: true,
+          yAxisID: 'y',
+        },
+        {
+          label: activeMetaResultDrilldownConfig.costLabel,
+          data: metaResultComparisonSeries.length ? metaResultComparisonSeries.map((bucket) => bucket.cost) : [0],
+          borderColor: activeMetaResultDrilldownConfig.costTone,
+          backgroundColor: 'transparent',
+          borderWidth: 3,
+          borderDash: [7, 5],
+          pointBackgroundColor: '#0b0f19',
+          pointBorderColor: activeMetaResultDrilldownConfig.costTone,
+          pointBorderWidth: 2,
+          pointRadius: 4,
+          pointHoverRadius: 6,
+          tension: 0.34,
+          yAxisID: 'y1',
+        },
+      ],
+    }
+  }, [activeMetaResultDrilldownConfig, metaResultComparisonSeries])
+  const metaResultComparisonChartOptions = useMemo(() => {
+    if (!activeMetaResultDrilldownConfig) return null
+
+    return {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: 'rgba(17, 24, 39, 0.94)',
+          titleColor: '#f8fafc',
+          bodyColor: '#cbd5e1',
+          borderColor: 'rgba(255,255,255,0.08)',
+          borderWidth: 1,
+          padding: 12,
+          callbacks: {
+            label(context) {
+              return `${context.dataset.label}: ${context.dataset.yAxisID === 'y'
+                ? formatNumber(context.parsed.y)
+                : formatCurrency(context.parsed.y)}`
+            },
+          },
+        },
+      },
+      scales: {
+        x: {
+          grid: { display: false },
+          ticks: { color: '#94a3b8', maxRotation: 0, autoSkipPadding: 16 },
+        },
+        y: {
+          type: 'linear',
+          display: true,
+          position: 'left',
+          grid: { color: 'rgba(255,255,255,0.05)' },
+          ticks: {
+            color: '#94a3b8',
+            precision: 0,
+            callback(value) {
+              return formatChartAxis(value, activeMetaResultDrilldownConfig.resultMetricKey)
+            },
+          },
+        },
+        y1: {
+          type: 'linear',
+          display: true,
+          position: 'right',
+          grid: { display: false },
+          ticks: {
+            color: '#94a3b8',
+            callback(value) {
+              return formatChartAxis(value, activeMetaResultDrilldownConfig.costMetricKey)
+            },
+          },
+        },
+      },
+    }
+  }, [activeMetaResultDrilldownConfig])
+  const metaResultComparisonSummary = useMemo(() => {
+    if (!activeMetaResultDrilldownConfig) return null
+
+    const totalResults = metaResultComparisonSeries.reduce((accumulator, bucket) => accumulator + bucket.results, 0)
+    const totalSpend = metaResultComparisonSeries.reduce((accumulator, bucket) => accumulator + bucket.spend, 0)
+    const averageCost = totalResults > 0 ? totalSpend / totalResults : 0
+
+    return {
+      totalResults,
+      totalSpend,
+      averageCost,
+      points: metaResultComparisonSeries.length,
+    }
+  }, [activeMetaResultDrilldownConfig, metaResultComparisonSeries])
   const rdQualificationKpis = [
     { key: 'opportunityCount', title: 'Oportunidades', value: formatNumber(rdSummary?.opportunityCount || 0), rawValue: rdSummary?.opportunityCount || 0, type: 'number', icon: 'bx-bulb', tone: 'blue' },
     { key: 'qualifiedOpportunityCount', title: 'Qualificados', value: formatNumber(rdSummary?.qualifiedOpportunityCount || 0), rawValue: rdSummary?.qualifiedOpportunityCount || 0, type: 'number', icon: 'bx-filter-alt', tone: 'emerald' },
@@ -6958,8 +7376,94 @@ export default function DashboardPage() {
                               </div>
                             ))}
                           </div>
+                          <div className="conversion-group-actions">
+                            <button
+                              type="button"
+                              className="btn btn-secondary conversion-group-expand"
+                              onClick={() => {
+                                setMetaResultGrouping('week')
+                                setMetaResultDrilldown({ key: group.key })
+                              }}
+                            >
+                              <i className="bx bx-line-chart"></i>
+                              Ver evolução
+                            </button>
+                          </div>
                         </article>
                       ))}
+                    </div>
+
+                    <div className="glass-panel meta-result-preview-panel">
+                      <div className="meta-result-preview-head">
+                        <div>
+                          <span className="meta-result-preview-kicker">Comparativo de resultado</span>
+                          <h3>{activeMetaResultPreviewConfig.title} x custo</h3>
+                          <p>Leia a evolução do resultado junto com o custo no agrupamento que fizer mais sentido para decisão.</p>
+                        </div>
+                        <button
+                          type="button"
+                          className="btn btn-secondary conversion-group-expand"
+                          onClick={() => setMetaResultDrilldown({ key: activeMetaResultPreviewConfig.key })}
+                        >
+                          <i className="bx bx-expand-alt"></i>
+                          Expandir gráfico
+                        </button>
+                      </div>
+
+                      <div className="meta-result-preview-toolbar">
+                        <div className="meta-result-preview-tabs">
+                          {metaConversionGroups.map((group) => (
+                            <button
+                              key={`preview-${group.key}`}
+                              type="button"
+                              className={`meta-result-preview-tab ${metaResultPreviewKey === group.key ? 'active' : ''}`}
+                              onClick={() => setMetaResultPreviewKey(group.key)}
+                            >
+                              {group.title}
+                            </button>
+                          ))}
+                        </div>
+
+                        <div className="meta-result-periods">
+                          {META_RESULT_PERIOD_OPTIONS.map((option) => (
+                            <button
+                              key={`inline-${option.value}`}
+                              type="button"
+                              className={`meta-result-period-btn ${metaResultGrouping === option.value ? 'active' : ''}`}
+                              onClick={() => setMetaResultGrouping(option.value)}
+                            >
+                              {option.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="meta-result-summary meta-result-summary-inline">
+                        <div className="monday-drilldown-stat glass-item">
+                          <span>{activeMetaResultPreviewConfig.resultLabel}</span>
+                          <strong>{formatNumber(metaResultPreviewSummary.totalResults)}</strong>
+                        </div>
+                        <div className="monday-drilldown-stat glass-item">
+                          <span>{activeMetaResultPreviewConfig.costLabel}</span>
+                          <strong>{formatCurrency(metaResultPreviewSummary.averageCost)}</strong>
+                        </div>
+                        <div className="monday-drilldown-stat glass-item">
+                          <span>Investimento</span>
+                          <strong>{formatCurrency(metaResultPreviewSummary.totalSpend)}</strong>
+                        </div>
+                        <div className="monday-drilldown-stat glass-item">
+                          <span>Pontos</span>
+                          <strong>{formatNumber(metaResultPreviewSummary.points)}</strong>
+                        </div>
+                      </div>
+
+                      {metaResultPreviewSeries.length ? (
+                        <div className="canvas-wrapper meta-result-inline-chart-wrapper">
+                          <Line data={metaResultPreviewChartData} options={metaResultPreviewChartOptions} />
+                        </div>
+                      ) : (
+                        <div className="ranking-empty">Sem histórico suficiente para montar esse comparativo no período atual.</div>
+                      )}
                     </div>
 
                     {metaExtraDashboardMetricCards.length > 0 && renderDashboardMetricGrid(metaExtraDashboardMetricCards, 'meta')}
@@ -7694,6 +8198,84 @@ export default function DashboardPage() {
           </button>
         )}
 
+        {metaResultDrilldown && activeMetaResultDrilldownConfig && typeof document !== 'undefined' && createPortal(
+          <div className="modal-overlay meta-result-overlay" onClick={() => setMetaResultDrilldown(null)}>
+            <div className="modal-card modal-card-wide glass-panel meta-result-modal" onClick={(event) => event.stopPropagation()}>
+              <div className="modal-header">
+                <div>
+                  <h3>{activeMetaResultDrilldownConfig.title}</h3>
+                  <p>{activeMetaResultDrilldownConfig.description}</p>
+                </div>
+                <button type="button" className="modal-close" onClick={() => setMetaResultDrilldown(null)} aria-label="Fechar comparativo de resultado">
+                  <i className="bx bx-x"></i>
+                </button>
+              </div>
+
+              <div className="meta-result-toolbar">
+                <div className="meta-result-periods">
+                  {META_RESULT_PERIOD_OPTIONS.map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      className={`meta-result-period-btn ${metaResultGrouping === option.value ? 'active' : ''}`}
+                      onClick={() => setMetaResultGrouping(option.value)}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+                <span className="meta-result-toolbar-note">
+                  Agrupando por {META_RESULT_PERIOD_OPTIONS.find((option) => option.value === metaResultGrouping)?.label.toLowerCase() || 'semana'}.
+                </span>
+              </div>
+
+              {metaResultComparisonSummary ? (
+                <div className="meta-result-summary">
+                  <div className="monday-drilldown-stat glass-item">
+                    <span>{activeMetaResultDrilldownConfig.resultLabel}</span>
+                    <strong>{formatNumber(metaResultComparisonSummary.totalResults)}</strong>
+                  </div>
+                  <div className="monday-drilldown-stat glass-item">
+                    <span>{activeMetaResultDrilldownConfig.costLabel}</span>
+                    <strong>{formatCurrency(metaResultComparisonSummary.averageCost)}</strong>
+                  </div>
+                  <div className="monday-drilldown-stat glass-item">
+                    <span>Investimento</span>
+                    <strong>{formatCurrency(metaResultComparisonSummary.totalSpend)}</strong>
+                  </div>
+                  <div className="monday-drilldown-stat glass-item">
+                    <span>Pontos</span>
+                    <strong>{formatNumber(metaResultComparisonSummary.points)}</strong>
+                  </div>
+                </div>
+              ) : null}
+
+              {metaResultComparisonSeries.length ? (
+                <div className="glass-item meta-result-chart-shell">
+                  <div className="meta-result-chart-head">
+                    <div className="meta-result-legend">
+                      <span className="legend-item">
+                        <span className="dot" style={{ background: activeMetaResultDrilldownConfig.resultTone, boxShadow: `0 0 8px ${activeMetaResultDrilldownConfig.resultTone}` }}></span>
+                        {activeMetaResultDrilldownConfig.resultLabel}
+                      </span>
+                      <span className="legend-item">
+                        <span className="dot" style={{ background: activeMetaResultDrilldownConfig.costTone, boxShadow: `0 0 8px ${activeMetaResultDrilldownConfig.costTone}` }}></span>
+                        {activeMetaResultDrilldownConfig.costLabel}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="canvas-wrapper meta-result-chart-wrapper">
+                    <Line data={metaResultComparisonChartData} options={metaResultComparisonChartOptions} />
+                  </div>
+                </div>
+              ) : (
+                <div className="ranking-empty">Sem histórico suficiente para montar esse comparativo no período atual.</div>
+              )}
+            </div>
+          </div>,
+          document.body
+        )}
+
         {mondayMetricDrilldown && typeof document !== 'undefined' && createPortal(
           <div className="modal-overlay monday-drilldown-overlay" onClick={() => setMondayMetricDrilldown(null)}>
             <div className="modal-card glass-panel monday-drilldown-popup" onClick={(event) => event.stopPropagation()}>
@@ -8359,6 +8941,80 @@ export default function DashboardPage() {
           justify-content: flex-end;
           gap: 12px;
           flex-wrap: wrap;
+        }
+
+        .meta-result-modal {
+          width: min(100%, 1120px);
+          gap: 18px;
+        }
+
+        .meta-result-toolbar {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 16px;
+          flex-wrap: wrap;
+        }
+
+        .meta-result-periods {
+          display: flex;
+          gap: 10px;
+          flex-wrap: wrap;
+        }
+
+        .meta-result-period-btn {
+          min-height: 38px;
+          padding: 0 14px;
+          border-radius: 999px;
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          background: rgba(255, 255, 255, 0.03);
+          color: var(--text-secondary);
+          font: inherit;
+          font-size: 13px;
+          font-weight: 600;
+          cursor: pointer;
+        }
+
+        .meta-result-period-btn.active {
+          border-color: var(--accent-blue);
+          background: rgba(59, 130, 246, 0.12);
+          color: var(--text-primary);
+        }
+
+        .meta-result-toolbar-note {
+          color: var(--text-muted);
+          font-size: 13px;
+          line-height: 1.5;
+        }
+
+        .meta-result-summary {
+          display: grid;
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+          gap: 12px;
+        }
+
+        .meta-result-chart-shell {
+          padding: 20px;
+          display: grid;
+          gap: 16px;
+        }
+
+        .meta-result-chart-head {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 16px;
+          flex-wrap: wrap;
+        }
+
+        .meta-result-legend {
+          display: flex;
+          gap: 18px;
+          flex-wrap: wrap;
+        }
+
+        .meta-result-chart-wrapper {
+          min-height: 380px;
         }
 
         .modal-foot {
@@ -9364,6 +10020,9 @@ export default function DashboardPage() {
 
         .conversion-group-card {
           padding: 22px;
+          display: grid;
+          gap: 16px;
+          align-content: start;
         }
 
         .conversion-group-head {
@@ -9387,6 +10046,95 @@ export default function DashboardPage() {
         .conversion-stats {
           display: grid;
           gap: 12px;
+        }
+
+        .conversion-group-actions {
+          margin-top: auto;
+          display: flex;
+          justify-content: flex-start;
+        }
+
+        .conversion-group-expand {
+          min-height: 42px;
+          padding: 0 16px;
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .meta-result-preview-panel {
+          margin-top: 22px;
+          padding: 24px;
+          display: grid;
+          gap: 18px;
+        }
+
+        .meta-result-preview-head {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 16px;
+          flex-wrap: wrap;
+        }
+
+        .meta-result-preview-kicker {
+          color: #93c5fd;
+          font-size: 11px;
+          font-weight: 700;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+        }
+
+        .meta-result-preview-head h3 {
+          font-size: 24px;
+          margin: 6px 0;
+        }
+
+        .meta-result-preview-head p {
+          color: var(--text-muted);
+          line-height: 1.55;
+          max-width: 760px;
+        }
+
+        .meta-result-preview-toolbar {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 14px;
+          flex-wrap: wrap;
+        }
+
+        .meta-result-preview-tabs {
+          display: flex;
+          gap: 10px;
+          flex-wrap: wrap;
+        }
+
+        .meta-result-preview-tab {
+          min-height: 38px;
+          padding: 0 14px;
+          border-radius: 999px;
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          background: rgba(255, 255, 255, 0.03);
+          color: var(--text-secondary);
+          font: inherit;
+          font-size: 13px;
+          font-weight: 600;
+          cursor: pointer;
+        }
+
+        .meta-result-preview-tab.active {
+          border-color: var(--accent-blue);
+          background: rgba(59, 130, 246, 0.12);
+          color: var(--text-primary);
+        }
+
+        .meta-result-summary-inline {
+          margin-top: 2px;
+        }
+
+        .meta-result-inline-chart-wrapper {
+          min-height: 340px;
         }
 
         .conversion-stat {
@@ -10303,6 +11051,16 @@ export default function DashboardPage() {
           .dashboard-metric-card-lg {
             grid-column: span 3;
           }
+
+          .meta-result-preview-toolbar,
+          .meta-result-preview-head {
+            flex-direction: column;
+            align-items: flex-start;
+          }
+
+          .meta-result-summary {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
         }
 
         @media (max-width: 768px) {
@@ -10353,6 +11111,24 @@ export default function DashboardPage() {
 
           .modal-actions .btn {
             width: 100%;
+          }
+
+          .meta-result-toolbar,
+          .meta-result-chart-head {
+            flex-direction: column;
+            align-items: flex-start;
+          }
+
+          .meta-result-summary {
+            grid-template-columns: 1fr;
+          }
+
+          .meta-result-inline-chart-wrapper {
+            min-height: 280px;
+          }
+
+          .meta-result-chart-wrapper {
+            min-height: 300px;
           }
         }
       `}</style>
