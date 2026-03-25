@@ -156,6 +156,7 @@ export async function GET(request) {
     const since = searchParams.get('since')
     const until = searchParams.get('until')
     const detailType = searchParams.get('detail_type') || ''
+    const detailScope = searchParams.get('detail_scope') || ''
     const detailValue = searchParams.get('detail_value') || ''
     const campaignIds = searchParams.getAll('campaign_ids').flatMap((value) => value.split(',')).filter(Boolean)
     const adsetIds = searchParams.getAll('adset_ids').flatMap((value) => value.split(',')).filter(Boolean)
@@ -251,13 +252,14 @@ export async function GET(request) {
 
     let detailDaily = []
     if (detailType && detailValue) {
-      const breakdownKey = detailType === 'states'
-        ? 'region'
-        : detailType === 'ages'
-          ? 'age'
-          : detailType === 'cities'
-            ? 'city'
-            : ''
+      const breakdownKey = detailScope
+        || (detailType === 'states'
+          ? 'region'
+          : detailType === 'ages'
+            ? 'age'
+            : detailType === 'cities'
+              ? 'city'
+              : '')
 
       if (breakdownKey) {
         const detailParams = buildBaseParams({ token, datePreset, since, until, fields: geographicInsightFields })

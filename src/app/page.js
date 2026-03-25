@@ -4778,12 +4778,24 @@ export default function DashboardPage() {
 
           response = await fetch(`/api/meta/insights?${params.toString()}`, { headers: metaRequestHeaders })
         } else {
+          const detailScope = metaRankingDrilldown.type === 'cities'
+            ? (breakdowns.geoScope === 'region' ? 'region' : breakdowns.geoScope === 'country' ? 'country' : 'city')
+            : metaRankingDrilldown.type === 'ages'
+              ? 'age'
+              : metaRankingDrilldown.type === 'states'
+                ? 'region'
+                : ''
+
           const params = new URLSearchParams({
             ad_account_id: selectedAdAccount,
             date_preset: dateRange,
             detail_type: metaRankingDrilldown.type,
             detail_value: activeMetaRankingDrilldownItem.label,
           })
+
+          if (detailScope) {
+            params.set('detail_scope', detailScope)
+          }
 
           if (dateRange === 'custom') {
             params.set('since', customSince)
@@ -4850,76 +4862,36 @@ export default function DashboardPage() {
   const metaRankingComparisonChartData = useMemo(() => {
     if (!activeMetaRankingDrilldownConfig?.items?.length || !activeMetaRankingDrilldownItem) return null
 
-    if (metaRankingDetailDailySeries.length) {
-
-      return {
-        labels: metaRankingDetailDailySeries.map((item) => item.label),
-        datasets: [
-          {
-            type: 'bar',
-            label: activeMetaRankingDrilldownConfig.resultLabel,
-            data: metaRankingDetailDailySeries.map((item) => item.results),
-            backgroundColor: `${activeMetaRankingDrilldownConfig.resultTone}66`,
-            borderColor: activeMetaRankingDrilldownConfig.resultTone,
-            borderWidth: 1,
-            borderRadius: 10,
-            maxBarThickness: 36,
-            yAxisID: 'y',
-          },
-          {
-            type: 'line',
-            label: isCreativeRankingDrilldown ? 'Custo por conversão' : activeMetaRankingDrilldownConfig.costLabel,
-            data: metaRankingDetailDailySeries.map((item) => item.cost),
-            borderColor: activeMetaRankingDrilldownConfig.costTone,
-            backgroundColor: `${activeMetaRankingDrilldownConfig.costTone}22`,
-            borderWidth: 3,
-            borderDash: [7, 5],
-            pointRadius: 4,
-            pointHoverRadius: 6,
-            pointBackgroundColor: '#0b0f19',
-            pointBorderColor: activeMetaRankingDrilldownConfig.costTone,
-            pointBorderWidth: 2,
-            tension: 0.34,
-            yAxisID: 'y1',
-          },
-        ],
-      }
+    if (!metaRankingDetailDailySeries.length) {
+      return null
     }
 
     return {
-      labels: activeMetaRankingDrilldownConfig.items.map((item) => buildMetaRankingChartLabel(item.label)),
+      labels: metaRankingDetailDailySeries.map((item) => item.label),
       datasets: [
         {
           type: 'bar',
           label: activeMetaRankingDrilldownConfig.resultLabel,
-          data: activeMetaRankingDrilldownConfig.items.map((item) => getMetaBreakdownConversions(item)),
-          backgroundColor: activeMetaRankingDrilldownConfig.items.map((_, index) => (
-            index === metaRankingDrilldown.index ? activeMetaRankingDrilldownConfig.resultTone : `${activeMetaRankingDrilldownConfig.resultTone}33`
-          )),
-          borderColor: activeMetaRankingDrilldownConfig.items.map((_, index) => (
-            index === metaRankingDrilldown.index ? activeMetaRankingDrilldownConfig.resultTone : `${activeMetaRankingDrilldownConfig.resultTone}66`
-          )),
+          data: metaRankingDetailDailySeries.map((item) => item.results),
+          backgroundColor: `${activeMetaRankingDrilldownConfig.resultTone}66`,
+          borderColor: activeMetaRankingDrilldownConfig.resultTone,
           borderWidth: 1,
-          borderRadius: 12,
-          maxBarThickness: 42,
+          borderRadius: 10,
+          maxBarThickness: 36,
           yAxisID: 'y',
         },
         {
           type: 'line',
-          label: activeMetaRankingDrilldownConfig.costLabel,
-          data: activeMetaRankingDrilldownConfig.items.map((item) => getMetaBreakdownAverageCost(item)),
+          label: isCreativeRankingDrilldown ? 'Custo por conversão' : activeMetaRankingDrilldownConfig.costLabel,
+          data: metaRankingDetailDailySeries.map((item) => item.cost),
           borderColor: activeMetaRankingDrilldownConfig.costTone,
           backgroundColor: `${activeMetaRankingDrilldownConfig.costTone}22`,
           borderWidth: 3,
           borderDash: [7, 5],
-          pointRadius: activeMetaRankingDrilldownConfig.items.map((_, index) => (index === metaRankingDrilldown.index ? 6 : 4)),
-          pointHoverRadius: activeMetaRankingDrilldownConfig.items.map((_, index) => (index === metaRankingDrilldown.index ? 7 : 5)),
-          pointBackgroundColor: activeMetaRankingDrilldownConfig.items.map((_, index) => (
-            index === metaRankingDrilldown.index ? activeMetaRankingDrilldownConfig.costTone : '#0b0f19'
-          )),
-          pointBorderColor: activeMetaRankingDrilldownConfig.items.map((_, index) => (
-            index === metaRankingDrilldown.index ? '#f8fafc' : activeMetaRankingDrilldownConfig.costTone
-          )),
+          pointRadius: 4,
+          pointHoverRadius: 6,
+          pointBackgroundColor: '#0b0f19',
+          pointBorderColor: activeMetaRankingDrilldownConfig.costTone,
           pointBorderWidth: 2,
           tension: 0.34,
           yAxisID: 'y1',
