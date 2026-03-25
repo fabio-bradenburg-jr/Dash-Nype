@@ -210,11 +210,27 @@ function isMetaPurchaseObjective(objective) {
   return objective.includes('SALES') || objective.includes('PURCHASE') || objective.includes('CATALOG')
 }
 
+function resolveMetaConversionResultKey(metrics) {
+  const candidates = [
+    ['purchases', metrics.purchases || 0],
+    ['leads', metrics.leads || 0],
+    ['messages', metrics.messages || 0],
+  ].filter(([, value]) => value > 0)
+
+  if (!candidates.length) return ''
+  if (candidates.length === 1) return candidates[0][0]
+
+  candidates.sort((left, right) => right[1] - left[1])
+  return candidates[0][0]
+}
+
 function resolveMetaPrimaryResultKey(campaign, metrics) {
   const objective = normalizeMetaObjective(campaign?.objective)
+  const conversionResultKey = resolveMetaConversionResultKey(metrics)
 
   if (isMetaReachObjective(objective)) return 'reach'
   if (isMetaThruplayObjective(objective)) return 'truplays'
+  if (conversionResultKey) return conversionResultKey
   if (isMetaMessageObjective(objective)) return 'messages'
   if (isMetaLeadObjective(objective)) return 'leads'
   if (isMetaPurchaseObjective(objective)) return 'purchases'
@@ -245,11 +261,6 @@ export function buildMetaSummaryFromCampaigns(campaigns = []) {
       accumulator.reach += metrics.reach
       accumulator.impressions += metrics.impressions
       accumulator.clicks += metrics.clicks
-      accumulator.purchases += metrics.purchases
-      accumulator.leads += metrics.leads
-      accumulator.messages += metrics.messages
-      accumulator.totalConversions += metrics.totalConversions
-      accumulator.purchaseValue += metrics.purchaseValue
       accumulator.videoViews += metrics.videoViews
       accumulator.thruplay += metrics.thruplay
       accumulator.quarterViews += metrics.videoViews > 0 ? Math.round((metrics.hookRate / 100) * metrics.videoViews) : 0

@@ -4444,7 +4444,7 @@ export default function DashboardPage() {
         resultTone: '#10b981',
         costTone: '#fbbf24',
         previewKicker: 'Criativo',
-        detailDescription: 'Veja o criativo selecionado comparado ao restante do top 5 e leia o custo médio por resultado com o preview ao lado.',
+        detailDescription: 'Veja o resultado real do criativo selecionado dentro do período filtrado, com leitura de volume, custo e investimento.',
         items: breakdowns.creatives || [],
       },
       ages: {
@@ -4467,6 +4467,7 @@ export default function DashboardPage() {
   const activeMetaRankingDrilldownConfig = metaRankingDrilldown
     ? metaRankingConfigs[metaRankingDrilldown.type] || null
     : null
+  const isCreativeRankingDrilldown = metaRankingDrilldown?.type === 'creatives'
   const activeMetaRankingDrilldownItem = useMemo(() => {
     if (!metaRankingDrilldown || !activeMetaRankingDrilldownConfig) return null
     return activeMetaRankingDrilldownConfig.items[metaRankingDrilldown.index] || metaRankingDrilldown.item || null
@@ -7758,19 +7759,6 @@ export default function DashboardPage() {
                               </div>
                             ))}
                           </div>
-                          <div className="conversion-group-actions">
-                            <button
-                              type="button"
-                              className="btn btn-secondary conversion-group-expand"
-                              onClick={() => {
-                                setMetaResultGrouping('week')
-                                setMetaResultDrilldown({ key: group.key })
-                              }}
-                            >
-                              <i className="bx bx-line-chart"></i>
-                              Ver evolução
-                            </button>
-                          </div>
                         </article>
                       ))}
                     </div>
@@ -7993,8 +7981,8 @@ export default function DashboardPage() {
                   </div>
                 </section>
 
-                <section className="rankings-grid">
-                  <div className="glass-panel ranking-card">
+                <section className="rankings-grid meta-rankings-stack">
+                  <div className="glass-panel ranking-card meta-ranking-card">
                     <div className="section-header section-header-stack">
                       <div>
                         <h2>{metaGeoRankingTitle}</h2>
@@ -8015,14 +8003,14 @@ export default function DashboardPage() {
                           <button
                             key={`${item.label}-${index}`}
                             type="button"
-                            className="ranking-row ranking-row-action"
+                            className="ranking-row ranking-row-action meta-ranking-row"
                             onClick={() => setMetaRankingDrilldown({ type: 'cities', index, item })}
                           >
-                            <div className="ranking-main-column">
+                            <div className="ranking-main-column meta-ranking-main-column">
                               <strong>{item.label}</strong>
                               <span>{formatNumber(getMetaBreakdownConversions(item))} conversões</span>
                             </div>
-                            <div className="ranking-metrics">
+                            <div className="ranking-metrics meta-ranking-metrics">
                               <b>{formatCurrency(getMetaBreakdownAverageCost(item))} / resultado</b>
                               <span>{formatCurrency(item.spend)} investidos</span>
                               <small>Toque para comparar</small>
@@ -8033,7 +8021,7 @@ export default function DashboardPage() {
                     </div>
                   </div>
 
-                  <div className="glass-panel ranking-card">
+                  <div className="glass-panel ranking-card meta-ranking-card">
                     <div className="section-header section-header-stack">
                       <div>
                         <h2>Top 5 por criativos</h2>
@@ -8054,7 +8042,7 @@ export default function DashboardPage() {
                           <button
                             key={`${item.label}-${index}`}
                             type="button"
-                            className="ranking-row ranking-row-action ranking-row-rich"
+                            className="ranking-row ranking-row-action ranking-row-rich meta-ranking-row meta-ranking-row-rich"
                             onClick={() => setMetaRankingDrilldown({ type: 'creatives', index, item })}
                           >
                             <div className="creative-ranking-main">
@@ -8065,12 +8053,12 @@ export default function DashboardPage() {
                                   <span>Sem imagem</span>
                                 )}
                               </div>
-                              <div className="ranking-main-column">
+                              <div className="ranking-main-column meta-ranking-main-column">
                                 <strong>{item.label}</strong>
                                 <span>{formatNumber(getMetaBreakdownConversions(item))} conversões</span>
                               </div>
                             </div>
-                            <div className="ranking-metrics">
+                            <div className="ranking-metrics meta-ranking-metrics">
                               <b>{formatCurrency(getMetaBreakdownAverageCost(item))} / resultado</b>
                               <span>{formatCurrency(item.spend)} investidos</span>
                               <small>Preview e comparativo</small>
@@ -8081,7 +8069,7 @@ export default function DashboardPage() {
                     </div>
                   </div>
 
-                  <div className="glass-panel ranking-card">
+                  <div className="glass-panel ranking-card meta-ranking-card">
                     <div className="section-header section-header-stack">
                       <div>
                         <h2>Resultado por idade</h2>
@@ -8102,14 +8090,14 @@ export default function DashboardPage() {
                           <button
                             key={`${item.label}-${index}`}
                             type="button"
-                            className="ranking-row ranking-row-action"
+                            className="ranking-row ranking-row-action meta-ranking-row"
                             onClick={() => setMetaRankingDrilldown({ type: 'ages', index, item })}
                           >
-                            <div className="ranking-main-column">
+                            <div className="ranking-main-column meta-ranking-main-column">
                               <strong>{item.label}</strong>
                               <span>{formatNumber(getMetaBreakdownConversions(item))} conversões</span>
                             </div>
-                            <div className="ranking-metrics">
+                            <div className="ranking-metrics meta-ranking-metrics">
                               <b>{formatCurrency(getMetaBreakdownAverageCost(item))} / resultado</b>
                               <span>{formatPercent(getMetaBreakdownConversionRate(item))} de conversão</span>
                               <small>Toque para comparar</small>
@@ -8714,38 +8702,89 @@ export default function DashboardPage() {
                     <strong>{formatCurrency(metaRankingDrilldownSummary.spendValue)}</strong>
                   </div>
                   <div className="monday-drilldown-stat glass-item">
-                    <span>Posição no top 5</span>
-                    <strong>{metaRankingDrilldownSummary.selectedRank ? `#${metaRankingDrilldownSummary.selectedRank}` : 'Sem base'}</strong>
+                    <span>{isCreativeRankingDrilldown ? 'Impressões' : 'Posição no top 5'}</span>
+                    <strong>{isCreativeRankingDrilldown
+                      ? formatNumber(metaRankingDrilldownSummary.impressionsValue)
+                      : metaRankingDrilldownSummary.selectedRank ? `#${metaRankingDrilldownSummary.selectedRank}` : 'Sem base'}
+                    </strong>
                   </div>
                 </div>
               ) : null}
 
-              <div className="meta-ranking-body">
-                <div className="glass-item meta-ranking-chart-shell">
-                  <div className="meta-result-chart-head">
-                    <div>
-                      <strong>Comparativo do top 5</strong>
-                      <p className="chart-subtitle">Resultado e custo por resultado do item selecionado contra os demais itens desse ranking.</p>
+              <div className={`meta-ranking-body ${isCreativeRankingDrilldown ? 'meta-ranking-body-creative' : ''}`}>
+                {isCreativeRankingDrilldown ? (
+                  <div className="glass-item meta-ranking-chart-shell meta-ranking-period-shell">
+                    <div className="meta-result-chart-head">
+                      <div>
+                        <strong>Resultado no período selecionado</strong>
+                        <p className="chart-subtitle">Leitura isolada do criativo com base no filtro atual, sem comparar com os demais itens do ranking.</p>
+                      </div>
                     </div>
-                    <div className="meta-result-legend">
-                      <span className="legend-item">
-                        <span className="dot" style={{ background: activeMetaRankingDrilldownConfig.resultTone, boxShadow: `0 0 8px ${activeMetaRankingDrilldownConfig.resultTone}` }}></span>
-                        {activeMetaRankingDrilldownConfig.resultLabel}
-                      </span>
-                      <span className="legend-item">
-                        <span className="dot" style={{ background: activeMetaRankingDrilldownConfig.costTone, boxShadow: `0 0 8px ${activeMetaRankingDrilldownConfig.costTone}` }}></span>
-                        {activeMetaRankingDrilldownConfig.costLabel}
-                      </span>
+                    {metaRankingDrilldownSummary ? (
+                      <div className="meta-ranking-period-grid">
+                        <div className="conversion-stat">
+                          <span>{activeMetaRankingDrilldownConfig.resultLabel}</span>
+                          <strong>{formatNumber(metaRankingDrilldownSummary.conversions)}</strong>
+                        </div>
+                        <div className="conversion-stat">
+                          <span>{activeMetaRankingDrilldownConfig.costLabel}</span>
+                          <strong>{formatCurrency(metaRankingDrilldownSummary.avgCost)}</strong>
+                        </div>
+                        <div className="conversion-stat">
+                          <span>Investimento</span>
+                          <strong>{formatCurrency(metaRankingDrilldownSummary.spendValue)}</strong>
+                        </div>
+                        <div className="conversion-stat">
+                          <span>Cliques</span>
+                          <strong>{formatNumber(metaRankingDrilldownSummary.clicksValue)}</strong>
+                        </div>
+                        <div className="conversion-stat">
+                          <span>Impressões</span>
+                          <strong>{formatNumber(metaRankingDrilldownSummary.impressionsValue)}</strong>
+                        </div>
+                        <div className="conversion-stat">
+                          <span>Taxa de conversão</span>
+                          <strong>{formatPercent(metaRankingDrilldownSummary.conversionRateValue)}</strong>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="ranking-empty">Sem base suficiente para montar a leitura desse criativo no período.</div>
+                    )}
+                    <div className="meta-ranking-inline-note">
+                      <strong>{formatCurrency(activeMetaRankingDrilldownItem.spend || 0)}</strong> investidos para gerar{' '}
+                      <strong>{formatNumber(getMetaBreakdownConversions(activeMetaRankingDrilldownItem))}</strong> resultados nesse criativo
+                      {metaRankingDrilldownSummary?.impressionsValue
+                        ? `, com ${formatNumber(metaRankingDrilldownSummary.impressionsValue)} impressões dentro do recorte selecionado.`
+                        : ' dentro do recorte selecionado.'}
                     </div>
                   </div>
-                  {metaRankingComparisonChartData ? (
-                    <div className="canvas-wrapper meta-ranking-chart-wrapper">
-                      <Bar data={metaRankingComparisonChartData} options={metaRankingComparisonChartOptions} />
+                ) : (
+                  <div className="glass-item meta-ranking-chart-shell">
+                    <div className="meta-result-chart-head">
+                      <div>
+                        <strong>Comparativo do top 5</strong>
+                        <p className="chart-subtitle">Resultado e custo por resultado do item selecionado contra os demais itens desse ranking.</p>
+                      </div>
+                      <div className="meta-result-legend">
+                        <span className="legend-item">
+                          <span className="dot" style={{ background: activeMetaRankingDrilldownConfig.resultTone, boxShadow: `0 0 8px ${activeMetaRankingDrilldownConfig.resultTone}` }}></span>
+                          {activeMetaRankingDrilldownConfig.resultLabel}
+                        </span>
+                        <span className="legend-item">
+                          <span className="dot" style={{ background: activeMetaRankingDrilldownConfig.costTone, boxShadow: `0 0 8px ${activeMetaRankingDrilldownConfig.costTone}` }}></span>
+                          {activeMetaRankingDrilldownConfig.costLabel}
+                        </span>
+                      </div>
                     </div>
-                  ) : (
-                    <div className="ranking-empty">Sem base suficiente para montar o comparativo desse ranking.</div>
-                  )}
-                </div>
+                    {metaRankingComparisonChartData ? (
+                      <div className="canvas-wrapper meta-ranking-chart-wrapper">
+                        <Bar data={metaRankingComparisonChartData} options={metaRankingComparisonChartOptions} />
+                      </div>
+                    ) : (
+                      <div className="ranking-empty">Sem base suficiente para montar o comparativo desse ranking.</div>
+                    )}
+                  </div>
+                )}
 
                 <div className="glass-item meta-ranking-detail-panel">
                   <div className="meta-ranking-detail-head">
@@ -8772,7 +8811,7 @@ export default function DashboardPage() {
                     </div>
                   )}
 
-                  {metaRankingDrilldownSummary ? (
+                  {metaRankingDrilldownSummary && !isCreativeRankingDrilldown ? (
                     <div className="meta-ranking-detail-stats">
                       <div className="conversion-stat">
                         <span>{activeMetaRankingDrilldownConfig.resultLabel}</span>
@@ -8793,13 +8832,15 @@ export default function DashboardPage() {
                     </div>
                   ) : null}
 
-                  <div className="meta-ranking-inline-note">
-                    <strong>{formatCurrency(activeMetaRankingDrilldownItem.spend || 0)}</strong> investidos para gerar{' '}
-                    <strong>{formatNumber(getMetaBreakdownConversions(activeMetaRankingDrilldownItem))}</strong> resultados nesse item.
-                    {metaRankingDrilldownSummary?.impressionsValue
-                      ? ` Foram ${formatNumber(metaRankingDrilldownSummary.impressionsValue)} impressões no período analisado.`
-                      : ''}
-                  </div>
+                  {!isCreativeRankingDrilldown ? (
+                    <div className="meta-ranking-inline-note">
+                      <strong>{formatCurrency(activeMetaRankingDrilldownItem.spend || 0)}</strong> investidos para gerar{' '}
+                      <strong>{formatNumber(getMetaBreakdownConversions(activeMetaRankingDrilldownItem))}</strong> resultados nesse item.
+                      {metaRankingDrilldownSummary?.impressionsValue
+                        ? ` Foram ${formatNumber(metaRankingDrilldownSummary.impressionsValue)} impressões no período analisado.`
+                        : ''}
+                    </div>
+                  ) : null}
                 </div>
               </div>
             </div>
@@ -9546,6 +9587,20 @@ export default function DashboardPage() {
           padding: 20px;
           display: grid;
           gap: 16px;
+        }
+
+        .meta-ranking-period-shell {
+          align-content: start;
+        }
+
+        .meta-ranking-period-grid {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 12px;
+        }
+
+        .meta-ranking-body-creative {
+          grid-template-columns: minmax(0, 1.05fr) minmax(340px, 0.95fr);
         }
 
         .meta-ranking-chart-wrapper {
@@ -10900,8 +10955,17 @@ export default function DashboardPage() {
           margin-bottom: 24px;
         }
 
+        .meta-rankings-stack {
+          grid-template-columns: 1fr;
+          gap: 18px;
+        }
+
         .ranking-card {
           padding: 24px;
+        }
+
+        .meta-ranking-card {
+          padding: 22px;
         }
 
         .ranking-list {
@@ -10938,6 +11002,12 @@ export default function DashboardPage() {
         .ranking-row-action:focus-visible {
           outline: 2px solid rgba(96, 165, 250, 0.9);
           outline-offset: 2px;
+        }
+
+        .meta-ranking-row {
+          align-items: center;
+          gap: 18px;
+          padding: 16px 18px;
         }
 
         .ranking-row strong {
@@ -11003,11 +11073,36 @@ export default function DashboardPage() {
           gap: 8px;
         }
 
+        .meta-ranking-main-column {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          flex-wrap: wrap;
+        }
+
+        .meta-ranking-main-column strong {
+          margin-bottom: 0;
+        }
+
+        .meta-ranking-main-column span {
+          white-space: nowrap;
+        }
+
         .ranking-metrics {
           display: grid;
           gap: 4px;
           text-align: right;
           min-width: 180px;
+        }
+
+        .meta-ranking-metrics {
+          display: flex;
+          align-items: center;
+          justify-content: flex-end;
+          gap: 16px;
+          min-width: 0;
+          margin-left: auto;
+          text-align: left;
         }
 
         .ranking-metrics span {
@@ -11019,6 +11114,16 @@ export default function DashboardPage() {
           color: #93c5fd;
           font-size: 11px;
           font-weight: 600;
+        }
+
+        .meta-ranking-metrics b,
+        .meta-ranking-metrics span,
+        .meta-ranking-metrics small {
+          white-space: nowrap;
+        }
+
+        .meta-ranking-row-rich .creative-ranking-main {
+          flex: 1;
         }
 
         .ranking-empty {
