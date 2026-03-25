@@ -4499,27 +4499,6 @@ export default function DashboardPage() {
       })
     )
   }, [filteredCampaigns])
-  const activeMetaComparisonGroups = useMemo(
-    () => metaConversionGroups.filter((group) => normalizedMetaResultFilters.includes(group.key)),
-    [metaConversionGroups, normalizedMetaResultFilters]
-  )
-
-  useEffect(() => {
-    const rankedOptions = activeMetaComparisonGroups
-      .map((group) => ({ key: group.key, value: group.resultValue || 0 }))
-      .sort((left, right) => right.value - left.value)
-
-    if (!rankedOptions.length) return
-    if (!rankedOptions.some((item) => item.key === metaResultPreviewKey)) {
-      setMetaResultPreviewKey(rankedOptions[0].key)
-      return
-    }
-    if ((rankedOptions[0]?.value || 0) <= 0) return
-    if ((rankedOptions.find((item) => item.key === metaResultPreviewKey)?.value || 0) > 0) return
-
-    setMetaResultPreviewKey(rankedOptions[0].key)
-  }, [activeMetaComparisonGroups, metaResultPreviewKey])
-
   const doughnutChartData = {
     labels: ['Compras', 'Leads', 'Mensagens', 'Cliques sem conversão'],
     datasets: [
@@ -5345,6 +5324,25 @@ export default function DashboardPage() {
       ],
     },
   ]
+  const activeMetaComparisonGroups = useMemo(
+    () => metaConversionGroups.filter((group) => normalizedMetaResultFilters.includes(group.key)),
+    [metaConversionGroups, normalizedMetaResultFilters]
+  )
+  useEffect(() => {
+    const rankedOptions = activeMetaComparisonGroups
+      .map((group) => ({ key: group.key, value: group.resultValue || 0 }))
+      .sort((left, right) => right.value - left.value)
+
+    if (!rankedOptions.length) return
+    if (!rankedOptions.some((item) => item.key === metaResultPreviewKey)) {
+      setMetaResultPreviewKey(rankedOptions[0].key)
+      return
+    }
+    if ((rankedOptions[0]?.value || 0) <= 0) return
+    if ((rankedOptions.find((item) => item.key === metaResultPreviewKey)?.value || 0) > 0) return
+
+    setMetaResultPreviewKey(rankedOptions[0].key)
+  }, [activeMetaComparisonGroups, metaResultPreviewKey])
   const activeMetaSecondaryResultGroup = metaConversionGroups.find((group) => group.key === metaSecondaryResultDrilldown) || null
   const activeMetaSecondaryResultInsights = activeMetaSecondaryResultGroup?.secondaryInsights || null
   const activeMetaResultPreviewConfig = META_RESULT_COMPARISON_OPTIONS[metaResultPreviewKey] || META_RESULT_COMPARISON_OPTIONS.purchases
