@@ -1568,6 +1568,16 @@ body {
     margin-bottom: 24px !important;
 }
 
+.rankings-grid.meta-rankings-stack {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 18px !important;
+}
+
+.rankings-grid.meta-rankings-stack > .meta-ranking-card {
+    width: 100% !important;
+}
+
 .operations-rankings-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
 }
