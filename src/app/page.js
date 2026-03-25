@@ -1662,20 +1662,6 @@ export default function DashboardPage() {
     setMetaResultPreviewKey('purchases')
   }, [metaResultPreviewKey])
 
-  useEffect(() => {
-    const rankedOptions = [
-      { key: 'purchases', value: purchases || 0 },
-      { key: 'leads', value: leads || 0 },
-      { key: 'messages', value: messages || 0 },
-    ].sort((left, right) => right.value - left.value)
-
-    if (!rankedOptions.length) return
-    if ((rankedOptions[0]?.value || 0) <= 0) return
-    if ((rankedOptions.find((item) => item.key === metaResultPreviewKey)?.value || 0) > 0) return
-
-    setMetaResultPreviewKey(rankedOptions[0].key)
-  }, [metaResultPreviewKey, purchases, leads, messages])
-
   const activeClient = useMemo(
     () => clients.find((client) => client.id === activeClientId) || null,
     [clients, activeClientId]
@@ -4296,6 +4282,20 @@ export default function DashboardPage() {
   const totalConversions = campaignSummary.totalConversions || 0
   const roas = campaignSummary.roas || 0
   const purchaseValue = campaignSummary.purchaseValue || 0
+
+  useEffect(() => {
+    const rankedOptions = [
+      { key: 'purchases', value: purchases || 0 },
+      { key: 'leads', value: leads || 0 },
+      { key: 'messages', value: messages || 0 },
+    ].sort((left, right) => right.value - left.value)
+
+    if (!rankedOptions.length) return
+    if ((rankedOptions[0]?.value || 0) <= 0) return
+    if ((rankedOptions.find((item) => item.key === metaResultPreviewKey)?.value || 0) > 0) return
+
+    setMetaResultPreviewKey(rankedOptions[0].key)
+  }, [metaResultPreviewKey, purchases, leads, messages])
 
   const doughnutChartData = {
     labels: ['Compras', 'Leads', 'Mensagens', 'Cliques sem conversão'],
