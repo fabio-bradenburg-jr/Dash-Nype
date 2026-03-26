@@ -1690,17 +1690,14 @@ function buildMetaResultComparisonSeries(dailyItems = [], resultMetricKey, group
     if (!bucketMeta) return
 
     const campaignId = String(dayItem.campaign_id || '').trim()
-    const campaignObjective = campaignId ? campaignObjectiveMap[campaignId] : ''
     const metrics = dayItem.custom_metrics || extractMetaCampaignMetrics(dayItem)
-    const primaryResultKey = resolveMetaPrimaryResultKey(
-      campaignObjective ? { ...dayItem, objective: campaignObjective } : dayItem,
-      metrics
-    )
-
-    if (primaryResultKey !== resultMetricKey) return
 
     const spendValue = parseFloat(dayItem.spend || 0)
-    const resultValue = Number(metrics[resultMetricKey] || 0)
+    const resultValue = resultMetricKey === 'reachResults'
+      ? Number(metrics.reachResults || metrics.reach || dayItem.reach || 0)
+      : Number(metrics[resultMetricKey] || 0)
+
+    if (!campaignId && resultValue <= 0 && spendValue <= 0) return
 
     if (!buckets.has(bucketMeta.key)) {
       buckets.set(bucketMeta.key, {
