@@ -83,7 +83,7 @@ const EMPTY_META_BREAKDOWNS = {
   },
 }
 
-const BRAZIL_MAP_SILHOUETTE_PATH = 'M22 22 L30 15 L42 14 L50 19 L61 17 L72 20 L84 28 L88 39 L95 47 L90 61 L83 68 L79 80 L70 88 L64 97 L54 92 L49 81 L41 73 L31 67 L27 57 L20 46 L16 35 L19 24 Z'
+const BRAZIL_MAP_SILHOUETTE_PATH = 'M32 18 L42 10 L58 9 L71 17 L86 14 L101 18 L116 28 L120 42 L128 54 L123 70 L112 81 L107 97 L96 108 L89 124 L77 134 L64 127 L58 114 L49 104 L38 98 L33 84 L25 72 L18 57 L14 41 L18 24 L25 18 Z'
 
 const BRAZIL_STATE_MAP_POINTS = {
   AC: { x: 14, y: 47, name: 'Acre' },
@@ -1113,6 +1113,10 @@ function buildMetaRankingChartLabel(label) {
 
   if (currentLine) lines.push(currentLine)
   return lines.slice(0, 2)
+}
+
+function formatMetaRankingResultLabel(resultLabel = '') {
+  return String(resultLabel || 'resultados').trim().toLowerCase()
 }
 
 function formatMultiplier(value) {
@@ -4799,23 +4803,11 @@ export default function DashboardPage() {
   const roas = campaignSummary.roas || 0
   const purchaseRoas = campaignSummary.purchase_roas || 0
   const purchaseValue = campaignSummary.purchaseValue || 0
-  const activeMetaRankingResultKey = useMemo(() => {
-    const rankedResultOptions = normalizedMetaResultFilters
-      .map((filterKey) => ({
-        key: filterKey,
-        value:
-          filterKey === 'purchases' ? purchases
-            : filterKey === 'leads' ? leads
-              : filterKey === 'messages' ? messages
-                : filterKey === 'reach' ? reachResults
-                  : filterKey === 'truplays' ? thruplays
-                    : 0,
-      }))
-      .filter((item) => META_RESULT_COMPARISON_OPTIONS[item.key])
-      .sort((left, right) => right.value - left.value)
-
-    return rankedResultOptions[0]?.key || 'purchases'
-  }, [normalizedMetaResultFilters, purchases, leads, messages, reachResults, thruplays])
+  const activeMetaRankingResultKeys = useMemo(() => {
+    const availableKeys = normalizedMetaResultFilters.filter((filterKey) => META_RESULT_COMPARISON_OPTIONS[filterKey])
+    return availableKeys.length ? availableKeys : ['purchases']
+  }, [normalizedMetaResultFilters])
+  const activeMetaRankingResultKey = activeMetaRankingResultKeys[0] || 'purchases'
   const activeMetaRankingResultConfig = META_RESULT_COMPARISON_OPTIONS[activeMetaRankingResultKey] || META_RESULT_COMPARISON_OPTIONS.purchases
   const metaSecondaryResultInsights = useMemo(() => {
     const buckets = {
@@ -4954,151 +4946,174 @@ export default function DashboardPage() {
   const rdFinalRevenue = (rdSummary?.wonOpportunityRevenue || 0) + (rdSummary?.wonRevenueFromPreviousCohorts || 0)
   const rdFinalAvgTicket = rdFinalSalesCount > 0 ? rdFinalRevenue / rdFinalSalesCount : 0
   const metaGeoRankingTitle = breakdowns.geoScope === 'country'
-    ? 'Top 5 por países'
+    ? 'países'
     : breakdowns.geoScope === 'region'
-      ? 'Top 5 por regiões'
-      : 'Top 5 por cidades'
+      ? 'regiões'
+      : 'cidades'
   const metaGeoRankingDescription = breakdowns.geoScope === 'country'
-    ? 'Ranking territorial com base nas conversões por país da conta Meta.'
+    ? 'Ranking territorial com base no resultado por país da conta Meta.'
     : breakdowns.geoScope === 'region'
-      ? 'Ranking territorial com base nas conversões por região da conta Meta.'
-      : 'Ranking com base nas conversões da conta Meta do cliente.'
-  const metaRankingConfigs = useMemo(
-    () => ({
-      cities: {
-        key: 'cities',
-        title: metaGeoRankingTitle,
-        description: metaGeoRankingDescription,
-        emptyMessage: 'Sem dados geográficos para o período.',
-        resultLabel: activeMetaRankingResultConfig.resultLabel,
-        costLabel: activeMetaRankingResultConfig.costLabel,
-        resultMetricKey: activeMetaRankingResultConfig.resultMetricKey,
-        accent: '#38bdf8',
-        resultTone: '#22c55e',
-        costTone: '#f59e0b',
-        previewKicker: breakdowns.geoScope === 'country'
-          ? 'País'
-          : breakdowns.geoScope === 'region'
-            ? 'Região'
-            : 'Cidade',
-        detailDescription: 'Compare o território selecionado contra os demais itens do top 5 para entender onde o resultado está mais eficiente.',
-        items: breakdowns.cities || [],
-      },
-      creatives: {
-        key: 'creatives',
-        title: 'Top 5 por criativos',
-        description: 'Os criativos com melhor resultado dentro do período selecionado.',
-        emptyMessage: 'Sem dados por criativo para o período.',
-        resultLabel: activeMetaRankingResultConfig.resultLabel,
-        costLabel: activeMetaRankingResultConfig.costLabel,
-        resultMetricKey: activeMetaRankingResultConfig.resultMetricKey,
-        accent: '#3b82f6',
-        resultTone: '#10b981',
-        costTone: '#fbbf24',
-        previewKicker: 'Criativo',
-        detailDescription: 'Veja o resultado que o criativo selecionado gerou dentro do período filtrado, com leitura de volume, custo e investimento.',
-        items: breakdowns.creatives || [],
-      },
-      ages: {
-        key: 'ages',
-        title: 'Resultado por idade',
-        description: 'Faixas etárias com melhor performance no período.',
-        emptyMessage: 'Sem dados por idade para o período.',
-        resultLabel: activeMetaRankingResultConfig.resultLabel,
-        costLabel: activeMetaRankingResultConfig.costLabel,
-        resultMetricKey: activeMetaRankingResultConfig.resultMetricKey,
-        accent: '#a855f7',
-        resultTone: '#38bdf8',
-        costTone: '#f59e0b',
-        previewKicker: 'Faixa etária',
-        detailDescription: 'Compare a faixa etária selecionada com o restante do top 5 para identificar volume, eficiência e investimento.',
-        items: breakdowns.ages || [],
-      },
-    }),
-    [activeMetaRankingResultConfig, breakdowns.ages, breakdowns.cities, breakdowns.creatives, breakdowns.geoScope, metaGeoRankingDescription, metaGeoRankingTitle]
-  )
-  const brazilStateMapItems = useMemo(
-    () => (breakdowns.states || [])
-      .map((item) => {
-        const stateMeta = resolveBrazilStateMeta(item.label)
-        if (!stateMeta) return null
+      ? 'Ranking territorial com base no resultado por região da conta Meta.'
+      : 'Ranking territorial com base no resultado da conta Meta do cliente.'
+  const metaRankingLayers = useMemo(
+    () =>
+      activeMetaRankingResultKeys.map((resultKey) => {
+        const resultConfig = META_RESULT_COMPARISON_OPTIONS[resultKey] || META_RESULT_COMPARISON_OPTIONS.purchases
+        const resultLabel = formatMetaRankingResultLabel(resultConfig.resultLabel)
+
+        const stateItems = (breakdowns.states || [])
+          .map((item) => {
+            const stateMeta = resolveBrazilStateMeta(item.label)
+            if (!stateMeta) return null
+
+            return {
+              ...item,
+              ...stateMeta,
+              conversions: getMetaBreakdownResultValue(item, resultConfig.resultMetricKey),
+              averageCost: getMetaBreakdownAverageCost(item, resultConfig.resultMetricKey),
+            }
+          })
+          .filter(Boolean)
+          .filter((item) => item.conversions > 0)
+          .sort((left, right) => right.conversions - left.conversions)
+
+        const cityItems = (breakdowns.cities || [])
+          .map((item) => {
+            const cityMeta = resolveBrazilCityMeta(item)
+            if (!cityMeta) return null
+
+            return {
+              ...item,
+              ...cityMeta,
+              conversions: getMetaBreakdownResultValue(item, resultConfig.resultMetricKey),
+              averageCost: getMetaBreakdownAverageCost(item, resultConfig.resultMetricKey),
+            }
+          })
+          .filter(Boolean)
+          .filter((item) => item.conversions > 0)
+          .sort((left, right) => right.conversions - left.conversions)
+
+        const creativeItems = (breakdowns.creatives || [])
+          .map((item) => ({
+            ...item,
+            conversions: getMetaBreakdownResultValue(item, resultConfig.resultMetricKey),
+            averageCost: getMetaBreakdownAverageCost(item, resultConfig.resultMetricKey),
+          }))
+          .filter((item) => item.conversions > 0)
+          .sort((left, right) => right.conversions - left.conversions)
+          .slice(0, 5)
+
+        const ageItemsRaw = (breakdowns.ages || [])
+          .map((item) => {
+            const conversions = getMetaBreakdownResultValue(item, resultConfig.resultMetricKey)
+            const averageCost = getMetaBreakdownAverageCost(item, resultConfig.resultMetricKey)
+            const conversionRateValue = getMetaBreakdownConversionRate(item, resultConfig.resultMetricKey)
+
+            return {
+              ...item,
+              conversions,
+              averageCost,
+              conversionRateValue,
+            }
+          })
+          .filter((item) => item.conversions > 0)
+          .sort((left, right) => right.conversions - left.conversions)
+          .slice(0, 5)
+
+        const ageMaxConversions = Math.max(...ageItemsRaw.map((item) => item.conversions || 0), 1)
+        const ageItems = ageItemsRaw.map((item, index) => {
+          let performanceLabel = 'Em observação'
+          if (index === 0) performanceLabel = 'Melhor faixa'
+          else if (item.conversionRateValue >= 10 || item.conversions >= ageMaxConversions * 0.7) performanceLabel = 'Boa resposta'
+
+          return {
+            ...item,
+            intensity: Math.max(0.12, item.conversions / ageMaxConversions),
+            performanceLabel,
+          }
+        })
+
+        const topStateItem = stateItems[0] || null
+        const topStateItems = stateItems.slice(0, 5)
+        const topCityItems = cityItems.slice(0, 5)
+        const maxMapConversions = Math.max(
+          ...stateItems.map((item) => item.conversions || 0),
+          ...topCityItems.map((item) => item.conversions || 0),
+          1
+        )
 
         return {
-          ...item,
-          ...stateMeta,
-          conversions: getMetaBreakdownResultValue(item, activeMetaRankingResultConfig.resultMetricKey),
-          averageCost: getMetaBreakdownAverageCost(item, activeMetaRankingResultConfig.resultMetricKey),
+          resultKey,
+          resultConfig,
+          resultLabel,
+          cities: {
+            key: 'cities',
+            title: `Top 5 por ${metaGeoRankingTitle} de ${resultLabel}`,
+            description: `${metaGeoRankingDescription} na leitura de ${resultLabel}.`,
+            emptyMessage: `Sem dados geográficos de ${resultLabel} para o período.`,
+            resultLabel: resultConfig.resultLabel,
+            costLabel: resultConfig.costLabel,
+            resultMetricKey: resultConfig.resultMetricKey,
+            accent: '#38bdf8',
+            resultTone: '#22c55e',
+            costTone: '#f59e0b',
+            previewKicker: breakdowns.geoScope === 'country'
+              ? 'País'
+              : breakdowns.geoScope === 'region'
+                ? 'Região'
+                : 'Cidade',
+            detailDescription: `Compare o território selecionado com foco em ${resultLabel} para entender volume, eficiência e investimento.`,
+            items: topCityItems,
+          },
+          creatives: {
+            key: 'creatives',
+            title: `Top 5 por criativos de ${resultLabel}`,
+            description: `Os criativos com melhor resultado de ${resultLabel} dentro do período selecionado.`,
+            emptyMessage: `Sem dados por criativo de ${resultLabel} para o período.`,
+            resultLabel: resultConfig.resultLabel,
+            costLabel: resultConfig.costLabel,
+            resultMetricKey: resultConfig.resultMetricKey,
+            accent: '#3b82f6',
+            resultTone: '#10b981',
+            costTone: '#fbbf24',
+            previewKicker: 'Criativo',
+            detailDescription: `Veja o resultado de ${resultLabel} que o criativo selecionado gerou dentro do período filtrado, com leitura de volume, custo e investimento.`,
+            items: creativeItems,
+          },
+          ages: {
+            key: 'ages',
+            title: `Resultado por idade de ${resultLabel}`,
+            description: `Faixas etárias com melhor performance em ${resultLabel} no período.`,
+            emptyMessage: `Sem dados por idade de ${resultLabel} para o período.`,
+            resultLabel: resultConfig.resultLabel,
+            costLabel: resultConfig.costLabel,
+            resultMetricKey: resultConfig.resultMetricKey,
+            accent: '#a855f7',
+            resultTone: '#38bdf8',
+            costTone: '#f59e0b',
+            previewKicker: 'Faixa etária',
+            detailDescription: `Compare a faixa etária selecionada com foco em ${resultLabel} para identificar volume, eficiência e investimento.`,
+            items: ageItems,
+          },
+          map: {
+            stateItems,
+            topStateItem,
+            topStateItems,
+            cityItems: topCityItems,
+            maxConversions: maxMapConversions,
+          },
         }
-      })
-      .filter((item) => item && item.conversions > 0)
-      .filter(Boolean),
-    [activeMetaRankingResultConfig.resultMetricKey, breakdowns.states]
+      }),
+    [activeMetaRankingResultKeys, breakdowns.ages, breakdowns.cities, breakdowns.creatives, breakdowns.geoScope, breakdowns.states, metaGeoRankingDescription, metaGeoRankingTitle]
   )
-  const brazilTopStateItem = useMemo(
-    () => brazilStateMapItems
-      .slice()
-      .sort((left, right) => right.conversions - left.conversions)[0] || null,
-    [brazilStateMapItems]
-  )
-  const brazilTopStateItems = useMemo(
-    () => brazilStateMapItems
-      .slice()
-      .sort((left, right) => right.conversions - left.conversions)
-      .slice(0, 5),
-    [brazilStateMapItems]
-  )
-  const brazilCityMapItems = useMemo(
-    () => (breakdowns.cities || [])
-      .map((item) => {
-        const cityMeta = resolveBrazilCityMeta(item)
-        if (!cityMeta) return null
-
-        return {
-          ...item,
-          ...cityMeta,
-          conversions: getMetaBreakdownResultValue(item, activeMetaRankingResultConfig.resultMetricKey),
-          averageCost: getMetaBreakdownAverageCost(item, activeMetaRankingResultConfig.resultMetricKey),
-        }
-      })
-      .filter(Boolean)
-      .filter((item) => item.conversions > 0)
-      .slice(0, 5),
-    [activeMetaRankingResultConfig.resultMetricKey, breakdowns.cities]
-  )
-  const brazilMapMaxConversions = useMemo(
-    () => Math.max(...brazilStateMapItems.map((item) => item.conversions || 0), ...brazilCityMapItems.map((item) => item.conversions || 0), 1),
-    [brazilCityMapItems, brazilStateMapItems]
-  )
-  const ageRankingItems = useMemo(() => {
-    const maxConversions = Math.max(...(breakdowns.ages || []).map((item) => getMetaBreakdownResultValue(item, activeMetaRankingResultConfig.resultMetricKey)), 1)
-
-    return (breakdowns.ages || []).map((item, index) => {
-      const conversions = getMetaBreakdownResultValue(item, activeMetaRankingResultConfig.resultMetricKey)
-      const averageCost = getMetaBreakdownAverageCost(item, activeMetaRankingResultConfig.resultMetricKey)
-      const conversionRateValue = getMetaBreakdownConversionRate(item, activeMetaRankingResultConfig.resultMetricKey)
-
-      let performanceLabel = 'Em observação'
-      if (index === 0) performanceLabel = 'Melhor faixa'
-      else if (conversionRateValue >= 10 || conversions >= maxConversions * 0.7) performanceLabel = 'Boa resposta'
-
-      return {
-        ...item,
-        conversions,
-        averageCost,
-        conversionRateValue,
-        intensity: Math.max(0.12, conversions / maxConversions),
-        performanceLabel,
-      }
-    }).filter((item) => item.conversions > 0)
-  }, [activeMetaRankingResultConfig.resultMetricKey, breakdowns.ages])
-  const activeMetaRankingDrilldownConfig = metaRankingDrilldown
-    ? metaRankingConfigs[metaRankingDrilldown.type] || null
-    : null
+  const activeMetaRankingDrilldownConfig = useMemo(() => {
+    if (!metaRankingDrilldown) return null
+    const activeLayer = metaRankingLayers.find((layer) => layer.resultKey === metaRankingDrilldown.resultKey) || null
+    if (!activeLayer) return null
+    return activeLayer[metaRankingDrilldown.type] || null
+  }, [metaRankingDrilldown, metaRankingLayers])
   const isCreativeRankingDrilldown = metaRankingDrilldown?.type === 'creatives'
-  const activeMetaRankingDrilldownItem = useMemo(() => {
-    if (!metaRankingDrilldown || !activeMetaRankingDrilldownConfig) return null
-    return activeMetaRankingDrilldownConfig.items[metaRankingDrilldown.index] || metaRankingDrilldown.item || null
-  }, [activeMetaRankingDrilldownConfig, metaRankingDrilldown])
+  const activeMetaRankingDrilldownItem = metaRankingDrilldown?.item || null
   useEffect(() => {
     if (!metaRankingDrilldown?.type || !activeMetaRankingDrilldownItem || !selectedAdAccount || !hasMetaConfigured) {
       setMetaRankingDetailDailyData([])
@@ -8852,7 +8867,7 @@ export default function DashboardPage() {
                     <div className="section-header section-header-stack">
                       <div>
                         <h2>Mapa de estados e cidades</h2>
-                        <p className="chart-subtitle">Mapa do Brasil com marcação apenas nos estados e cidades que realmente geraram conversões no período selecionado.</p>
+                        <p className="chart-subtitle">Camadas territoriais separadas pelo resultado ativo do topo do dashboard.</p>
                       </div>
                     </div>
                     <div className="geo-map-panel">
@@ -8860,111 +8875,121 @@ export default function DashboardPage() {
                         <div className="ranking-empty">Carregando ranking de cidades...</div>
                       ) : rankingsError ? (
                         <div className="ranking-empty">{rankingsError}</div>
-                      ) : (breakdowns.errors?.states && !brazilStateMapItems.length && !brazilCityMapItems.length) ? (
-                        <div className="ranking-empty">{breakdowns.errors.states}</div>
-                      ) : breakdowns.errors?.cities && !brazilStateMapItems.length && !brazilCityMapItems.length ? (
-                        <div className="ranking-empty">{breakdowns.errors.cities}</div>
-                      ) : (!brazilStateMapItems.length && !brazilCityMapItems.length) ? (
-                        <div className="ranking-empty">Sem dados geográficos suficientes para montar o mapa no período.</div>
+                      ) : (breakdowns.errors?.states && breakdowns.errors?.cities && !metaRankingLayers.some((layer) => layer.map.stateItems.length || layer.map.cityItems.length)) ? (
+                        <div className="ranking-empty">{breakdowns.errors.states || breakdowns.errors.cities}</div>
+                      ) : !metaRankingLayers.some((layer) => layer.map.stateItems.length || layer.map.cityItems.length) ? (
+                        <div className="ranking-empty">Sem dados geográficos suficientes para montar o mapa por resultado no período.</div>
                       ) : (
-                        <>
-                          <div className="brazil-map-shell">
-                            <div
-                              className="brazil-map-stage"
-                              style={{
-                                '--client-accent-rgb': `${activeClientDashboardRgb.r}, ${activeClientDashboardRgb.g}, ${activeClientDashboardRgb.b}`,
-                              }}
-                            >
-                              <svg viewBox="0 0 100 100" className="brazil-map-silhouette" aria-hidden="true">
-                                <path d={BRAZIL_MAP_SILHOUETTE_PATH}></path>
-                              </svg>
-
-                              {brazilStateMapItems.map((item) => {
-                                const intensity = Math.max(0.22, (item.conversions || 0) / brazilMapMaxConversions)
-                                return (
-                                  <button
-                                    key={`state-map-${item.uf}`}
-                                    type="button"
-                                    className={`brazil-state-node ${brazilTopStateItem?.uf === item.uf ? 'is-top-performer' : ''}`}
+                        <div className="meta-ranking-layer-stack">
+                          {metaRankingLayers.map((layer) => (
+                            <div key={`geo-layer-${layer.resultKey}`} className="meta-ranking-layer-section">
+                              <div className="meta-ranking-layer-head">
+                                <h3>{layer.cities.title}</h3>
+                                <p>{layer.cities.description}</p>
+                              </div>
+                              {(!layer.map.stateItems.length && !layer.map.cityItems.length) ? (
+                                <div className="ranking-empty">{layer.cities.emptyMessage}</div>
+                              ) : (
+                                <div className="brazil-map-shell">
+                                  <div
+                                    className="brazil-map-stage"
                                     style={{
-                                      left: `${item.x}%`,
-                                      top: `${item.y}%`,
-                                      '--state-intensity': intensity,
+                                      '--client-accent-rgb': `${activeClientDashboardRgb.r}, ${activeClientDashboardRgb.g}, ${activeClientDashboardRgb.b}`,
                                     }}
-                                    title={`${item.name}: ${formatNumber(item.conversions)} resultados · ${formatCurrency(item.averageCost)} por resultado`}
                                   >
-                                    <span>{item.uf}</span>
-                                  </button>
-                                )
-                              })}
+                                    <svg viewBox="0 0 140 145" className="brazil-map-silhouette" aria-hidden="true">
+                                      <path d={BRAZIL_MAP_SILHOUETTE_PATH}></path>
+                                    </svg>
 
-                              {brazilCityMapItems.map((item, index) => {
-                                const cityIntensity = Math.max(0.28, (item.conversions || 0) / brazilMapMaxConversions)
-                                return (
-                                  <button
-                                    key={`city-map-${item.label}-${index}`}
-                                    type="button"
-                                    className="brazil-city-node"
-                                    style={{
-                                      left: `${item.x}%`,
-                                      top: `${item.y}%`,
-                                      '--city-intensity': cityIntensity,
-                                    }}
-                                    title={`${item.label}: ${formatNumber(item.conversions)} resultados · ${formatCurrency(item.averageCost)} por resultado`}
-                                    onClick={() => setMetaRankingDrilldown({ type: 'cities', index, item })}
-                                  >
-                                    <span>{item.label}</span>
-                                  </button>
-                                )
-                              })}
-                            </div>
+                                    {layer.map.stateItems.map((item) => {
+                                      const intensity = Math.max(0.22, (item.conversions || 0) / layer.map.maxConversions)
+                                      return (
+                                        <button
+                                          key={`state-map-${layer.resultKey}-${item.uf}`}
+                                          type="button"
+                                          className={`brazil-state-node ${layer.map.topStateItem?.uf === item.uf ? 'is-top-performer' : ''}`}
+                                          style={{
+                                            left: `${item.x}%`,
+                                            top: `${item.y}%`,
+                                            '--state-intensity': intensity,
+                                          }}
+                                          title={`${item.name}: ${formatNumber(item.conversions)} ${layer.resultLabel} · ${formatCurrency(item.averageCost)} por resultado`}
+                                        >
+                                          <span>{item.uf}</span>
+                                        </button>
+                                      )
+                                    })}
 
-                            <div className="brazil-map-legend">
-                              <div className="brazil-map-legend-card glass-item">
-                                <strong>Top estados</strong>
-                                <div className="brazil-map-legend-list">
-                                  {brazilTopStateItems.length ? (
-                                    brazilTopStateItems.map((item) => (
-                                      <div
-                                        key={`state-legend-${item.uf}`}
-                                        className={`brazil-map-legend-row ${brazilTopStateItem?.uf === item.uf ? 'is-top-performer' : ''}`}
-                                        style={brazilTopStateItem?.uf === item.uf
-                                          ? { '--client-accent-rgb': `${activeClientDashboardRgb.r}, ${activeClientDashboardRgb.g}, ${activeClientDashboardRgb.b}` }
-                                          : undefined}
-                                      >
-                                        <span>{item.name}</span>
-                                        <b>{formatNumber(item.conversions)}</b>
+                                    {layer.map.cityItems.map((item, index) => {
+                                      const cityIntensity = Math.max(0.28, (item.conversions || 0) / layer.map.maxConversions)
+                                      return (
+                                        <button
+                                          key={`city-map-${layer.resultKey}-${item.label}-${index}`}
+                                          type="button"
+                                          className="brazil-city-node"
+                                          style={{
+                                            left: `${item.x}%`,
+                                            top: `${item.y}%`,
+                                            '--city-intensity': cityIntensity,
+                                          }}
+                                          title={`${item.label}: ${formatNumber(item.conversions)} ${layer.resultLabel} · ${formatCurrency(item.averageCost)} por resultado`}
+                                          onClick={() => setMetaRankingDrilldown({ type: 'cities', item, resultKey: layer.resultKey })}
+                                        >
+                                          <span>{item.label}</span>
+                                        </button>
+                                      )
+                                    })}
+                                  </div>
+
+                                  <div className="brazil-map-legend">
+                                    <div className="brazil-map-legend-card glass-item">
+                                      <strong>{`Top estados de ${layer.resultLabel}`}</strong>
+                                      <div className="brazil-map-legend-list">
+                                        {layer.map.topStateItems.length ? (
+                                          layer.map.topStateItems.map((item) => (
+                                            <div
+                                              key={`state-legend-${layer.resultKey}-${item.uf}`}
+                                              className={`brazil-map-legend-row ${layer.map.topStateItem?.uf === item.uf ? 'is-top-performer' : ''}`}
+                                              style={layer.map.topStateItem?.uf === item.uf
+                                                ? { '--client-accent-rgb': `${activeClientDashboardRgb.r}, ${activeClientDashboardRgb.g}, ${activeClientDashboardRgb.b}` }
+                                                : undefined}
+                                            >
+                                              <span>{item.name}</span>
+                                              <b>{formatNumber(item.conversions)}</b>
+                                            </div>
+                                          ))
+                                        ) : (
+                                          <div className="ranking-inline-note">Sem leitura estadual disponível.</div>
+                                        )}
                                       </div>
-                                    ))
-                                  ) : (
-                                    <div className="ranking-inline-note">Sem leitura estadual disponível.</div>
-                                  )}
-                                </div>
-                              </div>
+                                    </div>
 
-                              <div className="brazil-map-legend-card glass-item">
-                                <strong>{metaGeoRankingTitle}</strong>
-                                <div className="brazil-map-legend-list">
-                                  {breakdowns.cities.length ? (
-                                    breakdowns.cities.map((item, index) => (
-                                      <button
-                                        key={`${item.label}-${index}`}
-                                        type="button"
-                                        className="brazil-map-legend-row brazil-map-legend-row-action"
-                                        onClick={() => setMetaRankingDrilldown({ type: 'cities', index, item })}
-                                      >
-                                        <span>{item.label}</span>
-                                        <b>{formatNumber(getMetaBreakdownConversions(item))}</b>
-                                      </button>
-                                    ))
-                                  ) : (
-                                    <div className="ranking-inline-note">Sem leitura por cidade neste recorte.</div>
-                                  )}
+                                    <div className="brazil-map-legend-card glass-item">
+                                      <strong>{layer.cities.title}</strong>
+                                      <div className="brazil-map-legend-list">
+                                        {layer.cities.items.length ? (
+                                          layer.cities.items.map((item, index) => (
+                                            <button
+                                              key={`${layer.resultKey}-${item.label}-${index}`}
+                                              type="button"
+                                              className="brazil-map-legend-row brazil-map-legend-row-action"
+                                              onClick={() => setMetaRankingDrilldown({ type: 'cities', item, resultKey: layer.resultKey })}
+                                            >
+                                              <span>{item.label}</span>
+                                              <b>{formatNumber(item.conversions)}</b>
+                                            </button>
+                                          ))
+                                        ) : (
+                                          <div className="ranking-inline-note">Sem leitura territorial neste recorte.</div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
                                 </div>
-                              </div>
+                              )}
                             </div>
-                          </div>
-                        </>
+                          ))}
+                        </div>
                       )}
                     </div>
                   </div>
@@ -8973,45 +8998,59 @@ export default function DashboardPage() {
                     <div className="section-header section-header-stack">
                       <div>
                         <h2>Top 5 por criativos</h2>
-                        <p className="chart-subtitle">Os criativos com melhor resultado dentro do período selecionado.</p>
+                        <p className="chart-subtitle">Camadas de criativos separadas pelo tipo de resultado ativo no topo do dashboard.</p>
                       </div>
                     </div>
-                    <div className="ranking-list">
+                    <div className="meta-ranking-layer-stack">
                       {isRankingsLoading ? (
                         <div className="ranking-empty">Carregando ranking de criativos...</div>
                       ) : rankingsError ? (
                         <div className="ranking-empty">{rankingsError}</div>
                       ) : breakdowns.errors?.creatives ? (
                         <div className="ranking-empty">{breakdowns.errors.creatives}</div>
-                      ) : breakdowns.creatives.length === 0 ? (
-                        <div className="ranking-empty">Sem dados por criativo para o período.</div>
+                      ) : !metaRankingLayers.some((layer) => layer.creatives.items.length) ? (
+                        <div className="ranking-empty">Sem dados por criativo para os resultados ativos no período.</div>
                       ) : (
-                        breakdowns.creatives.map((item, index) => (
-                          <button
-                            key={`${item.label}-${index}`}
-                            type="button"
-                            className="ranking-row ranking-row-action ranking-row-rich meta-ranking-row meta-ranking-row-rich"
-                            onClick={() => setMetaRankingDrilldown({ type: 'creatives', index, item })}
-                          >
-                            <div className="creative-ranking-main">
-                              <div className="creative-thumb">
-                                {item.imageUrl ? (
-                                  <img src={item.imageUrl} alt={item.label} />
-                                ) : (
-                                  <span>Sem imagem</span>
-                                )}
-                              </div>
-                              <div className="ranking-main-column meta-ranking-main-column">
-                                <strong>{item.label}</strong>
-                                <span>{formatNumber(getMetaBreakdownResultValue(item, activeMetaRankingResultConfig.resultMetricKey))} {activeMetaRankingResultConfig.resultLabel.toLowerCase()}</span>
-                              </div>
+                        metaRankingLayers.map((layer) => (
+                          <div key={`creatives-layer-${layer.resultKey}`} className="meta-ranking-layer-section">
+                            <div className="meta-ranking-layer-head">
+                              <h3>{layer.creatives.title}</h3>
+                              <p>{layer.creatives.description}</p>
                             </div>
-                            <div className="ranking-metrics meta-ranking-metrics">
-                              <b>{formatCurrency(getMetaBreakdownAverageCost(item, activeMetaRankingResultConfig.resultMetricKey))} / resultado</b>
-                              <span>{formatCurrency(item.spend)} investidos</span>
-                              <small>Preview e comparativo</small>
+                            <div className="ranking-list">
+                              {layer.creatives.items.length === 0 ? (
+                                <div className="ranking-empty">{layer.creatives.emptyMessage}</div>
+                              ) : (
+                                layer.creatives.items.map((item, index) => (
+                                  <button
+                                    key={`${layer.resultKey}-${item.label}-${index}`}
+                                    type="button"
+                                    className="ranking-row ranking-row-action ranking-row-rich meta-ranking-row meta-ranking-row-rich"
+                                    onClick={() => setMetaRankingDrilldown({ type: 'creatives', item, resultKey: layer.resultKey })}
+                                  >
+                                    <div className="creative-ranking-main">
+                                      <div className="creative-thumb">
+                                        {item.imageUrl ? (
+                                          <img src={item.imageUrl} alt={item.label} />
+                                        ) : (
+                                          <span>Sem imagem</span>
+                                        )}
+                                      </div>
+                                      <div className="ranking-main-column meta-ranking-main-column">
+                                        <strong>{item.label}</strong>
+                                        <span>{formatNumber(item.conversions)} {layer.resultLabel}</span>
+                                      </div>
+                                    </div>
+                                    <div className="ranking-metrics meta-ranking-metrics">
+                                      <b>{formatCurrency(item.averageCost)} / resultado</b>
+                                      <span>{formatCurrency(item.spend)} investidos</span>
+                                      <small>Preview e comparativo</small>
+                                    </div>
+                                  </button>
+                                ))
+                              )}
                             </div>
-                          </button>
+                          </div>
                         ))
                       )}
                     </div>
@@ -9021,45 +9060,59 @@ export default function DashboardPage() {
                     <div className="section-header section-header-stack">
                       <div>
                         <h2>Resultado por idade</h2>
-                        <p className="chart-subtitle">Faixas etárias com melhor performance no período.</p>
+                        <p className="chart-subtitle">Faixas etárias separadas pelo tipo de resultado ativo no topo do dashboard.</p>
                       </div>
                     </div>
-                    <div className="ranking-list">
+                    <div className="meta-ranking-layer-stack">
                       {isRankingsLoading ? (
                         <div className="ranking-empty">Carregando ranking por idade...</div>
                       ) : rankingsError ? (
                         <div className="ranking-empty">{rankingsError}</div>
                       ) : breakdowns.errors?.ages ? (
                         <div className="ranking-empty">{breakdowns.errors.ages}</div>
-                      ) : ageRankingItems.length === 0 ? (
-                        <div className="ranking-empty">Sem dados por idade para o período.</div>
+                      ) : !metaRankingLayers.some((layer) => layer.ages.items.length) ? (
+                        <div className="ranking-empty">Sem dados por idade para os resultados ativos no período.</div>
                       ) : (
-                        ageRankingItems.map((item, index) => (
-                          <button
-                            key={`${item.label}-${index}`}
-                            type="button"
-                            className="ranking-row ranking-row-action meta-ranking-row age-ranking-row"
-                            onClick={() => setMetaRankingDrilldown({ type: 'ages', index, item })}
-                          >
-                            <div className="age-ranking-main">
-                              <div className="age-ranking-position">#{index + 1}</div>
-                              <div className="ranking-main-column age-ranking-copy">
-                                <div className="meta-ranking-main-column age-ranking-title-row">
-                                  <strong>{item.label}</strong>
-                                  <span>{formatNumber(item.conversions)} {activeMetaRankingResultConfig.resultLabel.toLowerCase()}</span>
-                                </div>
-                                <div className="age-ranking-bar-track" aria-hidden="true">
-                                  <span className="age-ranking-bar-fill" style={{ width: `${item.intensity * 100}%` }}></span>
-                                </div>
-                                <small className="age-ranking-tag">{item.performanceLabel}</small>
-                              </div>
+                        metaRankingLayers.map((layer) => (
+                          <div key={`ages-layer-${layer.resultKey}`} className="meta-ranking-layer-section">
+                            <div className="meta-ranking-layer-head">
+                              <h3>{layer.ages.title}</h3>
+                              <p>{layer.ages.description}</p>
                             </div>
-                            <div className="ranking-metrics meta-ranking-metrics age-ranking-metrics">
-                              <b>{formatCurrency(item.averageCost)} / resultado</b>
-                              <span>{formatPercent(item.conversionRateValue)} de conversão</span>
-                              <small>Toque para comparar</small>
+                            <div className="ranking-list">
+                              {layer.ages.items.length === 0 ? (
+                                <div className="ranking-empty">{layer.ages.emptyMessage}</div>
+                              ) : (
+                                layer.ages.items.map((item, index) => (
+                                  <button
+                                    key={`${layer.resultKey}-${item.label}-${index}`}
+                                    type="button"
+                                    className="ranking-row ranking-row-action meta-ranking-row age-ranking-row"
+                                    onClick={() => setMetaRankingDrilldown({ type: 'ages', item, resultKey: layer.resultKey })}
+                                  >
+                                    <div className="age-ranking-main">
+                                      <div className="age-ranking-position">#{index + 1}</div>
+                                      <div className="ranking-main-column age-ranking-copy">
+                                        <div className="meta-ranking-main-column age-ranking-title-row">
+                                          <strong>{item.label}</strong>
+                                          <span>{formatNumber(item.conversions)} {layer.resultLabel}</span>
+                                        </div>
+                                        <div className="age-ranking-bar-track" aria-hidden="true">
+                                          <span className="age-ranking-bar-fill" style={{ width: `${item.intensity * 100}%` }}></span>
+                                        </div>
+                                        <small className="age-ranking-tag">{item.performanceLabel}</small>
+                                      </div>
+                                    </div>
+                                    <div className="ranking-metrics meta-ranking-metrics age-ranking-metrics">
+                                      <b>{formatCurrency(item.averageCost)} / resultado</b>
+                                      <span>{formatPercent(item.conversionRateValue)} de conversão</span>
+                                      <small>Toque para comparar</small>
+                                    </div>
+                                  </button>
+                                ))
+                              )}
                             </div>
-                          </button>
+                          </div>
                         ))
                       )}
                     </div>
@@ -9777,7 +9830,7 @@ export default function DashboardPage() {
                       )}
                       <div className="meta-ranking-inline-note">
                         <strong>{formatCurrency(activeMetaRankingDrilldownItem.spend || 0)}</strong> investidos para gerar{' '}
-                        <strong>{formatNumber(getMetaBreakdownConversions(activeMetaRankingDrilldownItem))}</strong> resultados nesse criativo
+                        <strong>{formatNumber(getMetaBreakdownResultValue(activeMetaRankingDrilldownItem, activeMetaRankingDrilldownConfig?.resultMetricKey))}</strong> {activeMetaRankingDrilldownConfig?.resultLabel?.toLowerCase() || 'resultados'} nesse criativo
                         {metaRankingDrilldownSummary?.impressionsValue
                           ? `, com ${formatNumber(metaRankingDrilldownSummary.impressionsValue)} impressões dentro do recorte selecionado.`
                           : ' dentro do recorte selecionado.'}
@@ -12314,18 +12367,21 @@ export default function DashboardPage() {
 
         .brazil-map-silhouette {
           position: absolute;
-          inset: 4% 8%;
-          width: 84%;
-          height: 92%;
-          filter: drop-shadow(0 24px 36px rgba(8, 15, 30, 0.34));
+          left: 50%;
+          top: 50%;
+          width: min(72%, 520px);
+          height: auto;
+          transform: translate(-50%, -50%);
+          filter: drop-shadow(0 26px 38px rgba(8, 15, 30, 0.38));
           opacity: 0.98;
         }
 
         .brazil-map-silhouette path {
-          fill: rgba(148, 163, 184, 0.2);
-          stroke: rgba(148, 163, 184, 0.42);
-          stroke-width: 1.8;
+          fill: rgba(148, 163, 184, 0.16);
+          stroke: rgba(148, 163, 184, 0.5);
+          stroke-width: 2.4;
           stroke-linejoin: round;
+          stroke-linecap: round;
         }
 
         .brazil-map-stage::after {
@@ -12333,7 +12389,8 @@ export default function DashboardPage() {
           position: absolute;
           inset: 0;
           background:
-            radial-gradient(circle at 50% 44%, rgba(148, 163, 184, 0.08), transparent 34%),
+            radial-gradient(circle at 46% 40%, rgba(148, 163, 184, 0.08), transparent 28%),
+            radial-gradient(circle at 55% 58%, rgba(var(--client-accent-rgb), 0.08), transparent 34%),
             linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent 28%);
           pointer-events: none;
           z-index: 0;
@@ -12488,6 +12545,37 @@ export default function DashboardPage() {
           display: grid;
           gap: 12px;
           margin-top: 14px;
+        }
+
+        .meta-ranking-layer-stack {
+          display: grid;
+          gap: 22px;
+          margin-top: 14px;
+        }
+
+        .meta-ranking-layer-section {
+          display: grid;
+          gap: 14px;
+        }
+
+        .meta-ranking-layer-section + .meta-ranking-layer-section {
+          padding-top: 20px;
+          border-top: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .meta-ranking-layer-head {
+          display: grid;
+          gap: 4px;
+        }
+
+        .meta-ranking-layer-head h3 {
+          font-size: 18px;
+        }
+
+        .meta-ranking-layer-head p {
+          color: var(--text-muted);
+          line-height: 1.5;
+          font-size: 13px;
         }
 
         .ranking-row {

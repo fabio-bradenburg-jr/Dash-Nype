@@ -381,19 +381,21 @@ export async function GET(request) {
         }
       })
       .sort((a, b) => (b.custom_metrics?.totalConversions || 0) - (a.custom_metrics?.totalConversions || 0))
-      .slice(0, 5)
 
+    const creativePreviewIds = new Set(creatives.slice(0, 30).map((creative) => creative.adId).filter(Boolean))
     const creativesWithPreview = await Promise.all(
       creatives.map(async (creative) => ({
         ...creative,
-        previewHtml: await fetchCreativePreviewHtml(creative.adId, token),
+        previewHtml: creativePreviewIds.has(creative.adId)
+          ? await fetchCreativePreviewHtml(creative.adId, token)
+          : '',
       }))
     )
 
     return NextResponse.json({
-      ages: normalizeBreakdownRows(ageResult.data?.data || [], 'age'),
+      ages: normalizeBreakdownRows(ageResult.data?.data || [], 'age', { limit: Number.MAX_SAFE_INTEGER }),
       states: normalizeBreakdownRows(stateResult.data?.data || [], 'region', { limit: Number.MAX_SAFE_INTEGER }),
-      cities: normalizeBreakdownRows(cityRows, cityLabelKey),
+      cities: normalizeBreakdownRows(cityRows, cityLabelKey, { limit: 100 }),
       creatives: creativesWithPreview,
       detail_daily: detailDaily,
       geoScope,
