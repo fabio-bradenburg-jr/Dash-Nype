@@ -4445,8 +4445,70 @@ export default function DashboardPage() {
 
   const customMetrics = useMemo(() => insights?.custom_metrics || {}, [insights])
   const previousCustomMetrics = useMemo(() => previousInsights?.custom_metrics || {}, [previousInsights])
+  const filledMetaDailyData = useMemo(() => {
+    if (!currentMetaResultWindow?.start || !currentMetaResultWindow?.end) return dailyData
 
-  const labels = dailyData.map((day) => {
+    const points = new Map(
+      (dailyData || [])
+        .map((day) => {
+          const parsedDate = parseMetaSeriesDate(day.date_start)
+          if (!parsedDate) return null
+
+          return [
+            formatLocalDateInput(parsedDate),
+            day,
+          ]
+        })
+        .filter(Boolean)
+    )
+
+    const filledSeries = []
+    const cursor = new Date(currentMetaResultWindow.start.getFullYear(), currentMetaResultWindow.start.getMonth(), currentMetaResultWindow.start.getDate())
+    const end = new Date(currentMetaResultWindow.end.getFullYear(), currentMetaResultWindow.end.getMonth(), currentMetaResultWindow.end.getDate())
+
+    while (cursor <= end) {
+      const key = formatLocalDateInput(cursor)
+      const existingPoint = points.get(key)
+
+      if (existingPoint) {
+        filledSeries.push(existingPoint)
+      } else {
+        filledSeries.push({
+          date_start: key,
+          date_stop: key,
+          spend: '0',
+          reach: '0',
+          impressions: '0',
+          clicks: '0',
+          cpc: '0',
+          ctr: '0',
+          custom_metrics: {
+            landingPageViews: 0,
+            cpm: 0,
+            frequency: 0,
+            totalConversions: 0,
+            conversionRate: 0,
+            purchaseValue: 0,
+            purchases: 0,
+            leads: 0,
+            messages: 0,
+            videoViews: 0,
+            videoViewRate: 0,
+            thruplay: 0,
+            hookRate: 0,
+            cpa: 0,
+            roas: 0,
+          },
+        })
+      }
+
+      cursor.setDate(cursor.getDate() + 1)
+    }
+
+    return filledSeries
+  }, [currentMetaResultWindow, dailyData])
+
+  const labels = filledMetaDailyData.map((day) => {
     const date = new Date(day.date_start)
     return date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })
   })
@@ -4456,7 +4518,7 @@ export default function DashboardPage() {
     datasets: [
       {
         label: METRIC_OPTIONS[metric1].label,
-        data: dailyData.length > 0 ? dailyData.map((day) => getMetricData(metric1, day)) : [0],
+        data: filledMetaDailyData.length > 0 ? filledMetaDailyData.map((day) => getMetricData(metric1, day)) : [0],
         borderColor: currentTheme.main,
         backgroundColor: currentTheme.glow,
         borderWidth: 3,
@@ -4471,7 +4533,7 @@ export default function DashboardPage() {
       },
       {
         label: METRIC_OPTIONS[metric2].label,
-        data: dailyData.length > 0 ? dailyData.map((day) => getMetricData(metric2, day)) : [0],
+        data: filledMetaDailyData.length > 0 ? filledMetaDailyData.map((day) => getMetricData(metric2, day)) : [0],
         borderColor: '#10b981',
         backgroundColor: 'transparent',
         borderWidth: 3,
@@ -5995,6 +6057,25 @@ export default function DashboardPage() {
     ...metric,
     trend: buildMetricTrend(metric.key, metric.rawValue, previousMetaDashboardMetricValues[metric.key], metric.type),
   }))
+  const metaFixedDashboardMetricCards = useMemo(
+    () =>
+      metaMediaKpisWithTrend.map((metric) => ({
+        id: `fixed-${metric.key}`,
+        key: metric.key,
+        title: metric.title,
+        description: '',
+        icon: metric.icon,
+        tone: metric.tone,
+        value: metric.value,
+        trend: metric.trend,
+        fixed: true,
+      })),
+    [metaMediaKpisWithTrend]
+  )
+  const metaSummaryDashboardMetricCards = useMemo(
+    () => [...metaFixedDashboardMetricCards, ...metaExtraDashboardMetricCards],
+    [metaExtraDashboardMetricCards, metaFixedDashboardMetricCards]
+  )
   const rdQualificationKpisWithTrend = rdQualificationKpis.map((metric) => ({
     ...metric,
     trend: buildMetricTrend(metric.key, metric.rawValue, previousRdDashboardMetricValues[metric.key], metric.type),
@@ -6074,18 +6155,18 @@ export default function DashboardPage() {
     </div>
   )
 
-  const renderMetricLibraryGrid = (options, values, onSelectMetric) => {
+  const renderMetricLibraryGrid = (options, values, onSelectMetric, { compact = false } = {}) => {
     if (!options.length) {
       return <div className="metric-library-empty">Todas as métricas já estão visíveis neste modelo.</div>
     }
 
     return (
-      <div className="metric-library-grid">
+      <div className={`metric-library-grid ${compact ? 'metric-library-grid-compact' : ''}`}>
         {options.map(([metricKey, metric]) => (
           <button
             key={metricKey}
             type="button"
-            className="kpi-card glass-panel metric-library-card"
+            className={`kpi-card glass-panel metric-library-card ${compact ? 'metric-library-card-compact' : ''}`}
             onClick={() => onSelectMetric(metricKey)}
           >
             <div className="kpi-header">
@@ -6109,6 +6190,56 @@ export default function DashboardPage() {
       </div>
     )
   }
+
+  const renderMetaSummaryMetricGrid = (cards, canAddMore) => (
+    <div className="kpi-grid compact-kpi-grid meta-summary-grid">
+      {cards.map((metric) => (
+        <article
+          key={metric.id}
+          className={`kpi-card glass-panel meta-summary-card ${metric.fixed ? 'meta-summary-card-fixed' : 'meta-summary-card-extra'}`}
+        >
+          <div className="kpi-header">
+            <span className="kpi-title">{metric.title}</span>
+            <div className="template-metric-actions">
+              <div className={`icon-box ${metric.tone}`}>
+                <i className={`bx ${metric.icon}`}></i>
+              </div>
+              {!metric.fixed ? (
+                <button
+                  type="button"
+                  className="template-metric-remove"
+                  onClick={() => handleRemoveMetaDashboardMetric(metric.id)}
+                  aria-label={`Remover ${metric.title}`}
+                  title={`Remover ${metric.title}`}
+                >
+                  <i className="bx bx-x"></i>
+                </button>
+              ) : null}
+            </div>
+          </div>
+          <div className="kpi-value">{metric.value}</div>
+          <div className={`kpi-trend ${metric.trend?.tone || 'neutral'}`}>
+            <i className={`bx ${metric.trend?.icon || 'bx-check-circle'}`}></i>
+            <span>{metric.trend?.label || 'Atualizado conforme a integração configurada.'}</span>
+          </div>
+        </article>
+      ))}
+
+      {activeDraftDashboardTemplate && canAddMore ? (
+        <button
+          type="button"
+          className="kpi-card glass-panel meta-summary-add-card"
+          onClick={() => setIsMetaMetricLibraryOpen((current) => !current)}
+        >
+          <div className="meta-summary-add-card-icon">
+            <i className={`bx ${isMetaMetricLibraryOpen ? 'bx-x' : 'bx-plus'}`}></i>
+          </div>
+          <strong>{isMetaMetricLibraryOpen ? 'Fechar biblioteca' : 'Adicionar métrica'}</strong>
+          <span>{isMetaMetricLibraryOpen ? 'Ocultar métricas disponíveis.' : 'Criar um novo card nessa sequência.'}</span>
+        </button>
+      ) : null}
+    </div>
+  )
 
   const renderHomeHub = () => {
     const mondayBoardsConfigured = Array.from(new Set(
@@ -8447,7 +8578,8 @@ export default function DashboardPage() {
                       {renderMetricLibraryGrid(
                         availableMetaDashboardMetricOptions,
                         metaDashboardMetricValues,
-                        handleAddMetaDashboardMetric
+                        handleAddMetaDashboardMetric,
+                        { compact: true }
                       )}
                     </div>
                   )}
@@ -8458,7 +8590,10 @@ export default function DashboardPage() {
                         <h3>Mídia e distribuição</h3>
                         <p>Visão geral do investimento e da entrega da campanha.</p>
                       </div>
-                      {renderFixedKpiGrid(metaMediaKpisWithTrend)}
+                      {renderMetaSummaryMetricGrid(
+                        metaSummaryDashboardMetricCards,
+                        availableMetaDashboardMetricOptions.length > 0
+                      )}
                     </div>
 
                     <div className="conversion-groups-grid">
@@ -8558,10 +8693,6 @@ export default function DashboardPage() {
                           <span>Investimento</span>
                           <strong>{formatCurrency(metaResultPreviewSummary.totalSpend)}</strong>
                         </div>
-                        <div className="monday-drilldown-stat glass-item">
-                          <span>Pontos</span>
-                          <strong>{formatNumber(metaResultPreviewSummary.points)}</strong>
-                        </div>
                       </div>
 
                       {metaResultPreviewSeries.length ? (
@@ -8572,8 +8703,6 @@ export default function DashboardPage() {
                         <div className="ranking-empty">Sem histórico suficiente para montar esse comparativo no período atual.</div>
                       )}
                     </div>
-
-                    {metaExtraDashboardMetricCards.length > 0 && renderDashboardMetricGrid(metaExtraDashboardMetricCards, 'meta')}
                   </div>
 
                 </section>
@@ -9530,10 +9659,6 @@ export default function DashboardPage() {
                   <div className="monday-drilldown-stat glass-item">
                     <span>Investimento</span>
                     <strong>{formatCurrency(metaResultComparisonSummary.totalSpend)}</strong>
-                  </div>
-                  <div className="monday-drilldown-stat glass-item">
-                    <span>Pontos</span>
-                    <strong>{formatNumber(metaResultComparisonSummary.points)}</strong>
                   </div>
                 </div>
               ) : null}
@@ -11372,12 +11497,27 @@ export default function DashboardPage() {
           gap: 14px;
         }
 
+        .metric-library-grid-compact {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+
         .metric-library-card {
           width: 100%;
           text-align: left;
           color: inherit;
           cursor: pointer;
           transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+        }
+
+        .metric-library-card-compact {
+          min-height: 0;
+          padding: 18px;
+          gap: 10px;
+        }
+
+        .metric-library-card-compact .kpi-value {
+          font-size: 32px;
+          line-height: 1.05;
         }
 
         .metric-library-card:hover {
@@ -11396,6 +11536,59 @@ export default function DashboardPage() {
           display: grid;
           place-items: center;
           flex: 0 0 auto;
+        }
+
+        .meta-summary-grid {
+          align-items: stretch;
+        }
+
+        .meta-summary-card,
+        .meta-summary-add-card {
+          min-height: 210px;
+        }
+
+        .meta-summary-add-card {
+          border: 1px dashed rgba(96, 165, 250, 0.36);
+          background:
+            linear-gradient(180deg, rgba(59, 130, 246, 0.08), rgba(15, 23, 42, 0.28)),
+            rgba(255, 255, 255, 0.02);
+          align-items: flex-start;
+          justify-content: center;
+          text-align: left;
+          cursor: pointer;
+          transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+        }
+
+        .meta-summary-add-card:hover {
+          transform: translateY(-2px);
+          border-color: rgba(96, 165, 250, 0.5);
+          background:
+            linear-gradient(180deg, rgba(59, 130, 246, 0.14), rgba(15, 23, 42, 0.34)),
+            rgba(255, 255, 255, 0.03);
+        }
+
+        .meta-summary-add-card-icon {
+          width: 44px;
+          height: 44px;
+          border-radius: 16px;
+          display: grid;
+          place-items: center;
+          margin-bottom: 10px;
+          background: rgba(59, 130, 246, 0.12);
+          border: 1px solid rgba(96, 165, 250, 0.24);
+          color: #bfdbfe;
+          font-size: 22px;
+        }
+
+        .meta-summary-add-card strong {
+          font-size: 18px;
+          line-height: 1.2;
+          margin-bottom: 6px;
+        }
+
+        .meta-summary-add-card span {
+          color: var(--text-muted);
+          line-height: 1.5;
         }
 
         .meta-filter-panel {
@@ -13221,6 +13414,10 @@ export default function DashboardPage() {
           .dashboard-metric-card-sm,
           .dashboard-metric-card-lg {
             grid-column: span 3;
+          }
+
+          .metric-library-grid-compact {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
           }
 
           .meta-result-preview-toolbar,
