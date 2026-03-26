@@ -33,11 +33,32 @@ export const AI_PROVIDER_OPTIONS = [
     modelPlaceholder: 'ex.: gpt-5-mini',
   },
   {
+    value: 'anthropic',
+    label: 'Claude (Anthropic)',
+    baseUrl: 'https://api.anthropic.com/v1',
+    description: 'API oficial da Anthropic para modelos Claude.',
+    modelPlaceholder: 'ex.: claude-3-7-sonnet-latest',
+  },
+  {
+    value: 'gemini',
+    label: 'Gemini',
+    baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai',
+    description: 'Endpoint compatível da API Gemini para uso no mesmo fluxo da dashboard.',
+    modelPlaceholder: 'ex.: gemini-2.0-flash',
+  },
+  {
     value: 'openrouter',
     label: 'OpenRouter',
     baseUrl: 'https://openrouter.ai/api/v1',
-    description: 'Roteador de modelos de IA com API compativel.',
-    modelPlaceholder: 'ex.: openai/gpt-4.1-mini',
+    description: 'Roteador de modelos com API compativel e suporte a modelos gratuitos.',
+    modelPlaceholder: 'ex.: meta-llama/llama-3.3-8b-instruct:free',
+  },
+  {
+    value: 'manus',
+    label: 'Manus',
+    baseUrl: '',
+    description: 'Provider configuravel. Informe a Base URL e o modelo/rota disponibilizados pela sua conta Manus.',
+    modelPlaceholder: 'Informe o modelo ou deployment aceito pela sua conta Manus',
   },
   {
     value: 'groq',
@@ -55,9 +76,24 @@ export const AI_PROVIDER_OPTIONS = [
   },
 ]
 
+function buildDefaultProviderConfig(option) {
+  return {
+    baseUrl: option.baseUrl || '',
+    apiKey: '',
+    model: '',
+  }
+}
+
+export function createDefaultAiProviders() {
+  return Object.fromEntries(
+    AI_PROVIDER_OPTIONS.map((option) => [option.value, buildDefaultProviderConfig(option)])
+  )
+}
+
 export const DEFAULT_AI_SETTINGS = {
   aiAnalysisEnabled: false,
   aiProvider: 'openai',
+  aiProviders: createDefaultAiProviders(),
   aiBaseUrl: 'https://api.openai.com/v1',
   aiApiKey: '',
   aiModel: '',
@@ -72,13 +108,43 @@ export function normalizeAiSettings(value) {
   const raw = value && typeof value === 'object' ? value : {}
   const provider = getAiProviderOption(raw.aiProvider).value
   const providerOption = getAiProviderOption(provider)
+  const defaultProviders = createDefaultAiProviders()
+  const rawProviders = raw.aiProviders && typeof raw.aiProviders === 'object' ? raw.aiProviders : {}
+
+  const aiProviders = Object.fromEntries(
+    AI_PROVIDER_OPTIONS.map((option) => {
+      const currentProvider = rawProviders[option.value] && typeof rawProviders[option.value] === 'object'
+        ? rawProviders[option.value]
+        : {}
+
+      const legacyProviderValues = option.value === provider
+        ? {
+            baseUrl: raw.aiBaseUrl,
+            apiKey: raw.aiApiKey,
+            model: raw.aiModel,
+          }
+        : {}
+
+      return [
+        option.value,
+        {
+          baseUrl: String(currentProvider.baseUrl || legacyProviderValues.baseUrl || defaultProviders[option.value].baseUrl || '').trim(),
+          apiKey: String(currentProvider.apiKey || legacyProviderValues.apiKey || '').trim(),
+          model: String(currentProvider.model || legacyProviderValues.model || '').trim(),
+        },
+      ]
+    })
+  )
+
+  const activeProviderConfig = aiProviders[provider] || buildDefaultProviderConfig(providerOption)
 
   return {
     aiAnalysisEnabled: Boolean(raw.aiAnalysisEnabled),
     aiProvider: provider,
-    aiBaseUrl: String(raw.aiBaseUrl || providerOption.baseUrl || '').trim(),
-    aiApiKey: String(raw.aiApiKey || '').trim(),
-    aiModel: String(raw.aiModel || '').trim(),
+    aiProviders,
+    aiBaseUrl: String(activeProviderConfig.baseUrl || providerOption.baseUrl || '').trim(),
+    aiApiKey: String(activeProviderConfig.apiKey || '').trim(),
+    aiModel: String(activeProviderConfig.model || '').trim(),
     aiDashboardPrompt: String(raw.aiDashboardPrompt || DEFAULT_AI_DASHBOARD_PROMPT).trim() || DEFAULT_AI_DASHBOARD_PROMPT,
   }
 }

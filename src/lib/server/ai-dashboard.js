@@ -106,6 +106,193 @@ function formatProviderErrorMessage(errorBody, fallbackMessage) {
   return String(providerMessage || fallbackMessage).trim()
 }
 
+function shouldRetryWithCompatiblePayload(errorBody) {
+  const message = formatProviderErrorMessage(errorBody, '').toLowerCase()
+
+  return (
+    message.includes('unsupported parameter') ||
+    message.includes('not supported with this model') ||
+    message.includes('max_completion_tokens') ||
+    message.includes('max_tokens') ||
+    message.includes('temperature')
+  )
+}
+
+async function postChatCompletion(baseUrl, apiKey, body) {
+  const response = await fetch(`${trimTrailingSlash(baseUrl)}/chat/completions`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
+    cache: 'no-store',
+  })
+
+  const responseBody = await response.json().catch(() => null)
+
+  return { response, responseBody }
+}
+
+async function postAnthropicMessage(baseUrl, apiKey, body) {
+  const response = await fetch(`${trimTrailingSlash(baseUrl)}/messages`, {
+    method: 'POST',
+    headers: {
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
+    cache: 'no-store',
+  })
+
+  const responseBody = await response.json().catch(() => null)
+
+  return { response, responseBody }
+}
+
+function extractAnthropicContent(responseBody) {
+  if (!Array.isArray(responseBody?.content)) return ''
+
+  return responseBody.content
+    .map((item) => {
+      if (item?.type === 'text' && typeof item.text === 'string') return item.text
+      return ''
+    })
+    .join('\n')
+    .trim()
+}
+
+async function requestOpenAiCompatibleInsights(normalizedConfig, payload) {
+  const messages = buildDashboardAnalysisMessages(normalizedConfig.aiDashboardPrompt, payload)
+  const attemptBodies = [
+    {
+      model: normalizedConfig.aiModel,
+      temperature: 0.2,
+      max_tokens: 1400,
+      messages,
+    },
+    {
+      model: normalizedConfig.aiModel,
+      temperature: 0.2,
+      max_completion_tokens: 1400,
+      messages,
+    },
+    {
+      model: normalizedConfig.aiModel,
+      max_completion_tokens: 1400,
+      messages,
+    },
+    {
+      model: normalizedConfig.aiModel,
+      max_tokens: 1400,
+      messages,
+    },
+    {
+      model: normalizedConfig.aiModel,
+      messages,
+    },
+  ]
+
+  let response = null
+  let responseBody = null
+
+  for (let index = 0; index < attemptBodies.length; index += 1) {
+    const attempt = await postChatCompletion(
+      normalizedConfig.aiBaseUrl,
+      normalizedConfig.aiApiKey,
+      attemptBodies[index]
+    )
+
+    response = attempt.response
+    responseBody = attempt.responseBody
+
+    if (response.ok) {
+      break
+    }
+
+    const canRetry =
+      index < attemptBodies.length - 1 &&
+      response.status >= 400 &&
+      response.status < 500 &&
+      shouldRetryWithCompatiblePayload(responseBody)
+
+    if (!canRetry) {
+      break
+    }
+  }
+
+  if (!response?.ok) {
+    throw new Error(
+      formatProviderErrorMessage(
+        responseBody,
+        'Nao foi possivel gerar insights com a IA configurada para o dashboard.'
+      )
+    )
+  }
+
+  return {
+    content: normalizeMessageContent(responseBody?.choices?.[0]?.message?.content),
+    usage: responseBody?.usage || null,
+  }
+}
+
+async function requestAnthropicInsights(normalizedConfig, payload) {
+  const anthropicBody = {
+    model: normalizedConfig.aiModel,
+    max_tokens: 1400,
+    temperature: 0.2,
+    system: normalizedConfig.aiDashboardPrompt,
+    messages: [
+      {
+        role: 'user',
+        content: [
+          'Analise os dados estruturados abaixo do dashboard.',
+          'Use somente os numeros recebidos.',
+          'Retorne somente JSON valido no formato solicitado no prompt de sistema.',
+          '',
+          JSON.stringify(payload, null, 2),
+        ].join('\n'),
+      },
+    ],
+  }
+
+  let { response, responseBody } = await postAnthropicMessage(
+    normalizedConfig.aiBaseUrl,
+    normalizedConfig.aiApiKey,
+    anthropicBody
+  )
+
+  if (!response.ok && shouldRetryWithCompatiblePayload(responseBody)) {
+    const retryAttempt = await postAnthropicMessage(
+      normalizedConfig.aiBaseUrl,
+      normalizedConfig.aiApiKey,
+      {
+        model: normalizedConfig.aiModel,
+        max_tokens: 1400,
+        system: normalizedConfig.aiDashboardPrompt,
+        messages: anthropicBody.messages,
+      }
+    )
+    response = retryAttempt.response
+    responseBody = retryAttempt.responseBody
+  }
+
+  if (!response.ok) {
+    throw new Error(
+      formatProviderErrorMessage(
+        responseBody,
+        'Nao foi possivel gerar insights com a IA configurada para o dashboard.'
+      )
+    )
+  }
+
+  return {
+    content: extractAnthropicContent(responseBody),
+    usage: responseBody?.usage || null,
+  }
+}
+
 export function resolveDashboardAiConfig(globalIntegrations) {
   return normalizeAiSettings(globalIntegrations)
 }
@@ -121,33 +308,12 @@ export async function requestDashboardInsights(config, payload) {
     throw new Error('Preencha provider, endpoint, chave e modelo da IA antes de gerar insights.')
   }
 
-  const response = await fetch(`${trimTrailingSlash(normalizedConfig.aiBaseUrl)}/chat/completions`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${normalizedConfig.aiApiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: normalizedConfig.aiModel,
-      temperature: 0.2,
-      max_tokens: 1400,
-      messages: buildDashboardAnalysisMessages(normalizedConfig.aiDashboardPrompt, payload),
-    }),
-    cache: 'no-store',
-  })
+  const supportsAnthropicMessages = normalizedConfig.aiProvider === 'anthropic'
+  const providerResponse = supportsAnthropicMessages
+    ? await requestAnthropicInsights(normalizedConfig, payload)
+    : await requestOpenAiCompatibleInsights(normalizedConfig, payload)
 
-  const responseBody = await response.json().catch(() => null)
-
-  if (!response.ok) {
-    throw new Error(
-      formatProviderErrorMessage(
-        responseBody,
-        'Nao foi possivel gerar insights com a IA configurada para o dashboard.'
-      )
-    )
-  }
-
-  const content = normalizeMessageContent(responseBody?.choices?.[0]?.message?.content)
+  const content = String(providerResponse.content || '').trim()
 
   if (!content) {
     throw new Error('A IA respondeu sem conteudo para a analise do dashboard.')
@@ -160,6 +326,6 @@ export async function requestDashboardInsights(config, payload) {
     model: normalizedConfig.aiModel,
     structured: normalizeStructuredInsight(parsed, content),
     rawText: content,
-    usage: responseBody?.usage || null,
+    usage: providerResponse.usage || null,
   }
 }

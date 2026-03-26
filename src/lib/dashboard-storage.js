@@ -1,4 +1,4 @@
-import { DEFAULT_AI_SETTINGS } from '@/lib/ai-config'
+import { DEFAULT_AI_SETTINGS, normalizeAiSettings } from '@/lib/ai-config'
 
 export const DASHBOARD_STORAGE_KEY = 'nype-dashboard-preferences'
 
@@ -199,6 +199,7 @@ function normalizeClientDashboardTemplates(client) {
 
 export function createClientRecord(overrides = {}) {
   const { dashboardTemplates, activeDashboardTemplateId } = normalizeClientDashboardTemplates(overrides)
+  const normalizedAiSettings = normalizeAiSettings(overrides.integrations || {})
 
   return {
     id: overrides.id || createRecordId('client'),
@@ -229,6 +230,7 @@ export function createClientRecord(overrides = {}) {
     integrations: {
       ...DEFAULT_INTEGRATIONS,
       ...overrides.integrations,
+      ...normalizedAiSettings,
     },
     dashboardTemplates,
     activeDashboardTemplateId,
@@ -247,6 +249,7 @@ export function loadDashboardPreferences() {
     }
 
     const parsed = JSON.parse(raw)
+    const normalizedAiSettings = normalizeAiSettings(parsed.globalIntegrations || {})
 
     return {
       ...DEFAULT_PREFERENCES,
@@ -254,6 +257,7 @@ export function loadDashboardPreferences() {
       globalIntegrations: {
         ...DEFAULT_PREFERENCES.globalIntegrations,
         ...parsed.globalIntegrations,
+        ...normalizedAiSettings,
       },
       clients: Array.isArray(parsed.clients)
         ? parsed.clients.map((client) => createClientRecord(client))

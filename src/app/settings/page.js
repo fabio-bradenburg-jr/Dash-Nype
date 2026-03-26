@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useUser } from '@/lib/contexts/UserContext'
 import { USER_APPEARANCE_PRESETS } from '@/lib/user-appearance-storage'
 import { DEFAULT_PREFERENCES, loadDashboardPreferences, saveDashboardPreferences } from '@/lib/dashboard-storage'
-import { AI_PROVIDER_OPTIONS, getAiProviderOption } from '@/lib/ai-config'
+import { AI_PROVIDER_OPTIONS, createDefaultAiProviders, getAiProviderOption, normalizeAiSettings } from '@/lib/ai-config'
 
 const PANEL_BACKGROUND_PRESETS = [
   { label: 'Azulado', value: '#3b82f6' },
@@ -192,6 +192,7 @@ export default function SettingsPage() {
   const crmIntegrationGroups = generalIntegrationGroups.filter((group) => CRM_INTEGRATION_TITLES.has(group.title))
   const backgroundTintRgb = hexToRgb(appearance.backgroundTint)
   const selectedAiProvider = getAiProviderOption(globalIntegrations.aiProvider)
+  const activeAiProviderConfig = globalIntegrations.aiProviders?.[selectedAiProvider.value] || createDefaultAiProviders()[selectedAiProvider.value]
 
   const persistGlobalIntegrations = useCallback(
     async (nextIntegrations) => {
@@ -238,11 +239,18 @@ export default function SettingsPage() {
         if (cancelled) return
 
         setServerState(state)
-        setGlobalIntegrations((current) => ({
-          ...DEFAULT_PREFERENCES.globalIntegrations,
-          ...current,
-          ...(state.globalIntegrations || {}),
-        }))
+        setGlobalIntegrations((current) => {
+          const nextIntegrations = {
+            ...DEFAULT_PREFERENCES.globalIntegrations,
+            ...current,
+            ...(state.globalIntegrations || {}),
+          }
+
+          return {
+            ...nextIntegrations,
+            ...normalizeAiSettings(nextIntegrations),
+          }
+        })
       } catch (error) {
         console.error('Erro ao carregar integrações globais do servidor:', error)
       }
@@ -372,20 +380,65 @@ export default function SettingsPage() {
     const providerOption = getAiProviderOption(providerValue)
 
     setGlobalIntegrations((current) => {
-      const currentProvider = getAiProviderOption(current.aiProvider)
-      const currentBaseUrl = String(current.aiBaseUrl || '').trim()
-      const shouldReplaceBaseUrl = !currentBaseUrl || currentBaseUrl === currentProvider.baseUrl
+      const nextProviders = {
+        ...createDefaultAiProviders(),
+        ...(current.aiProviders || {}),
+      }
+      const currentProviderConfig = nextProviders[providerOption.value] || createDefaultAiProviders()[providerOption.value]
       const nextIntegrations = {
         ...current,
         aiProvider: providerOption.value,
-        aiBaseUrl: shouldReplaceBaseUrl ? providerOption.baseUrl : current.aiBaseUrl,
+        aiProviders: {
+          ...nextProviders,
+          [providerOption.value]: {
+            baseUrl: String(currentProviderConfig.baseUrl || providerOption.baseUrl || '').trim(),
+            apiKey: String(currentProviderConfig.apiKey || '').trim(),
+            model: String(currentProviderConfig.model || '').trim(),
+          },
+        },
       }
 
-      persistGlobalIntegrations(nextIntegrations).catch((error) => {
+      const normalizedNextIntegrations = {
+        ...nextIntegrations,
+        ...normalizeAiSettings(nextIntegrations),
+      }
+
+      persistGlobalIntegrations(normalizedNextIntegrations).catch((error) => {
         console.error('Erro ao salvar configurações de IA no servidor:', error)
       })
 
-      return nextIntegrations
+      return normalizedNextIntegrations
+    })
+  }
+
+  const handleAiProviderFieldChange = (fieldName, value) => {
+    setGlobalIntegrations((current) => {
+      const providerKey = getAiProviderOption(current.aiProvider).value
+      const nextProviders = {
+        ...createDefaultAiProviders(),
+        ...(current.aiProviders || {}),
+      }
+      const currentProviderConfig = nextProviders[providerKey] || createDefaultAiProviders()[providerKey]
+      const nextIntegrations = {
+        ...current,
+        aiProviders: {
+          ...nextProviders,
+          [providerKey]: {
+            ...currentProviderConfig,
+            [fieldName]: value,
+          },
+        },
+      }
+      const normalizedNextIntegrations = {
+        ...nextIntegrations,
+        ...normalizeAiSettings(nextIntegrations),
+      }
+
+      persistGlobalIntegrations(normalizedNextIntegrations).catch((error) => {
+        console.error('Erro ao salvar credenciais do provider de IA:', error)
+      })
+
+      return normalizedNextIntegrations
     })
   }
 
@@ -918,7 +971,7 @@ export default function SettingsPage() {
                       <div className="settings-category-head">
                         <span className="settings-category-kicker">Provider</span>
                         <h3>Conexão da IA</h3>
-                        <p>Essa primeira versão trabalha com APIs compatíveis com o formato de chat da OpenAI, o que também cobre OpenRouter, Groq e endpoints próprios.</p>
+                        <p>Cadastre as credenciais por provider e escolha abaixo qual IA fica ativa para a análise da dashboard.</p>
                       </div>
 
                       <div className="settings-integrations-grid settings-category-grid">
@@ -929,7 +982,7 @@ export default function SettingsPage() {
                             </div>
                             <div>
                               <h3>Insights com IA</h3>
-                              <p>Você escolhe o provider, informa a chave e define o modelo que vai analisar os dados do dashboard.</p>
+                              <p>Você pode manter várias chaves salvas. O app usa sempre a IA selecionada como ativa, sem perder as configurações das demais.</p>
                             </div>
                           </div>
 
@@ -954,7 +1007,7 @@ export default function SettingsPage() {
 
                           <div className="settings-ai-grid">
                             <div className="input-group">
-                              <label>Provider</label>
+                              <label>IA ativa</label>
                               <select
                                 value={globalIntegrations.aiProvider || selectedAiProvider.value}
                                 onChange={(event) => handleAiProviderChange(event.target.value)}
@@ -972,18 +1025,19 @@ export default function SettingsPage() {
                               <label>Base URL</label>
                               <input
                                 type="text"
-                                value={globalIntegrations.aiBaseUrl || ''}
-                                onChange={(event) => handleGlobalIntegrationChange('aiBaseUrl', event.target.value)}
+                                value={activeAiProviderConfig?.baseUrl || ''}
+                                onChange={(event) => handleAiProviderFieldChange('baseUrl', event.target.value)}
                                 placeholder="https://api.openai.com/v1"
                               />
+                              <small>Essa Base URL fica salva só para {selectedAiProvider.label}.</small>
                             </div>
 
                             <div className="input-group">
                               <label>Modelo</label>
                               <input
                                 type="text"
-                                value={globalIntegrations.aiModel || ''}
-                                onChange={(event) => handleGlobalIntegrationChange('aiModel', event.target.value)}
+                                value={activeAiProviderConfig?.model || ''}
+                                onChange={(event) => handleAiProviderFieldChange('model', event.target.value)}
                                 placeholder={selectedAiProvider.modelPlaceholder}
                               />
                             </div>
@@ -992,15 +1046,15 @@ export default function SettingsPage() {
                               <label>Chave da API</label>
                               <input
                                 type="password"
-                                value={globalIntegrations.aiApiKey || ''}
-                                onChange={(event) => handleGlobalIntegrationChange('aiApiKey', event.target.value)}
+                                value={activeAiProviderConfig?.apiKey || ''}
+                                onChange={(event) => handleAiProviderFieldChange('apiKey', event.target.value)}
                                 placeholder="Cole aqui a chave da API"
                               />
                             </div>
                           </div>
 
                           <div className="settings-callout info">
-                            A chamada da IA roda somente no servidor. A chave não é exposta no browser quando o botão de insights for usado na dashboard.
+                            A chamada da IA roda somente no servidor. Claude usa a API nativa da Anthropic, Gemini funciona pelo endpoint compatível, e OpenRouter/Groq/Manus podem ser configurados pela Base URL do provider. Trocar a IA ativa não apaga os dados salvos das outras.
                           </div>
                         </div>
                       </div>

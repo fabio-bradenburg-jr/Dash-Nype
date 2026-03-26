@@ -1,5 +1,5 @@
 import { USER_ROLES } from '@/lib/server/access-control'
-import { DEFAULT_AI_SETTINGS } from '@/lib/ai-config'
+import { DEFAULT_AI_SETTINGS, normalizeAiSettings } from '@/lib/ai-config'
 
 const DEFAULT_FUNNEL_STEPS = ['impressions', 'clicks', 'leads', 'purchases']
 const DEFAULT_DASHBOARD_TEMPLATE_NAME = 'Principal'
@@ -118,6 +118,7 @@ function normalizeClientDashboardTemplates(payload) {
 function normalizeClientRecord(client) {
   const payload = client?.payload && typeof client.payload === 'object' ? client.payload : client || {}
   const { dashboardTemplates, activeDashboardTemplateId } = normalizeClientDashboardTemplates(payload)
+  const normalizedAiSettings = normalizeAiSettings(payload.integrations || {})
 
   return {
     id: client?.id || payload.id || '',
@@ -155,20 +156,17 @@ function normalizeClientRecord(client) {
       rdStationToken: payload.integrations?.rdStationToken || '',
       salesforceToken: payload.integrations?.salesforceToken || '',
       agendorToken: payload.integrations?.agendorToken || '',
-      aiAnalysisEnabled: Boolean(payload.integrations?.aiAnalysisEnabled),
-      aiProvider: payload.integrations?.aiProvider || DEFAULT_AI_SETTINGS.aiProvider,
-      aiBaseUrl: payload.integrations?.aiBaseUrl || DEFAULT_AI_SETTINGS.aiBaseUrl,
-      aiApiKey: payload.integrations?.aiApiKey || '',
-      aiModel: payload.integrations?.aiModel || '',
-      aiDashboardPrompt: payload.integrations?.aiDashboardPrompt || DEFAULT_AI_SETTINGS.aiDashboardPrompt,
+      ...normalizedAiSettings,
     },
   }
 }
 
 function normalizeGlobalIntegrations(globalIntegrations) {
+  const normalizedAiSettings = normalizeAiSettings(globalIntegrations)
   return {
     ...DEFAULT_GLOBAL_INTEGRATIONS,
     ...(globalIntegrations && typeof globalIntegrations === 'object' ? globalIntegrations : {}),
+    ...normalizedAiSettings,
   }
 }
 
@@ -178,12 +176,25 @@ function extractGlobalIntegrations(clients) {
     const integrations = client?.integrations || {}
 
     Object.keys(DEFAULT_GLOBAL_INTEGRATIONS).forEach((fieldName) => {
+      if (fieldName === 'aiProviders') {
+        if (integrations.aiProviders && typeof integrations.aiProviders === 'object') {
+          next.aiProviders = {
+            ...(next.aiProviders || {}),
+            ...integrations.aiProviders,
+          }
+        }
+        return
+      }
+
       if (!next[fieldName] && integrations[fieldName]) {
         next[fieldName] = integrations[fieldName]
       }
     })
 
-    return next
+    return {
+      ...next,
+      ...normalizeAiSettings(next),
+    }
   }, { ...DEFAULT_GLOBAL_INTEGRATIONS })
 }
 
