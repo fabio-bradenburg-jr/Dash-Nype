@@ -4,6 +4,7 @@ function isTimeoutError(error) {
 
 const META_RESPONSE_CACHE = new Map()
 const META_CACHE_TTL_MS = 60_000
+const META_MAX_PAGES = 40
 
 export function normalizeMetaError(error, fallbackMessage) {
   const message = error?.message || ''
@@ -34,19 +35,39 @@ export async function fetchMetaJson(url, fallbackMessage, options = {}) {
 
   for (let attempt = 0; attempt < 2; attempt += 1) {
     try {
-      const response = await fetch(url, options)
-      const data = await response.json()
+      let requestUrl = url
+      let pageCount = 0
+      let mergedData = null
 
-      if (data?.error) {
-        throw new Error(data.error.message || fallbackMessage)
+      while (requestUrl && pageCount < META_MAX_PAGES) {
+        const response = await fetch(requestUrl, options)
+        const data = await response.json()
+
+        if (data?.error) {
+          throw new Error(data.error.message || fallbackMessage)
+        }
+
+        if (!mergedData) {
+          mergedData = {
+            ...data,
+            data: Array.isArray(data?.data) ? [...data.data] : data?.data,
+          }
+        } else if (Array.isArray(mergedData.data) && Array.isArray(data?.data)) {
+          mergedData.data.push(...data.data)
+        }
+
+        requestUrl = data?.paging?.next || ''
+        pageCount += 1
       }
 
-       META_RESPONSE_CACHE.set(cacheKey, {
-        data,
+      const finalData = mergedData || {}
+
+      META_RESPONSE_CACHE.set(cacheKey, {
+        data: finalData,
         timestamp: Date.now(),
       })
 
-      return data
+      return finalData
     } catch (error) {
       lastError = error
 
