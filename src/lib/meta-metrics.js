@@ -10,7 +10,15 @@ export const META_RESULT_FILTER_LABELS = {
   app: 'App',
 }
 
-export const META_PURCHASE_EVENTS = ['purchase', 'offsite_conversion.fb_pixel_purchase']
+export const META_PURCHASE_EVENTS = [
+  'purchase',
+  'omni_purchase',
+  'onsite_purchase',
+  'onsite_web_purchase',
+  'onsite_app_purchase',
+  'offsite_conversion.purchase',
+  'offsite_conversion.fb_pixel_purchase',
+]
 export const META_LEAD_EVENTS = ['lead', 'onsite_conversion.lead_grouped']
 export const META_MESSAGE_EVENTS = ['onsite_conversion.messaging_conversation_started_7d', 'onsite_conversion.messaging_first_reply']
 export const META_LINK_CLICK_EVENTS = ['link_click', 'inline_link_click', 'outbound_click']
