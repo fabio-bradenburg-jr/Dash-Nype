@@ -119,14 +119,61 @@ function normalizeCreativeLabel(ad) {
     .trim()
 }
 
-function resolveCreativeImageUrl(ad) {
+function extractCreativeImageHashes(ad) {
   const creative = ad?.creative || {}
   const storySpec = creative.object_story_spec || {}
+  const hashes = [
+    creative.image_hash,
+    storySpec.photo_data?.image_hash,
+    storySpec.video_data?.image_hash,
+    storySpec.link_data?.image_hash,
+    ...(storySpec.link_data?.child_attachments || []).map((attachment) => attachment?.image_hash),
+  ]
+
+  return Array.from(new Set(hashes.filter(Boolean)))
+}
+
+function buildMetaAdImageMap(payload) {
+  const imageMap = new Map()
+  const rows = Array.isArray(payload?.data)
+    ? payload.data
+    : Object.values(payload?.images || {})
+
+  rows.forEach((item) => {
+    const hash = String(item?.hash || '').trim()
+    const url = String(item?.url || item?.permalink_url || '').trim()
+    if (!hash || !url) return
+
+    const currentArea = Number(item?.original_width || item?.width || 0) * Number(item?.original_height || item?.height || 0)
+    const previous = imageMap.get(hash)
+    const previousArea = previous
+      ? Number(previous?.original_width || previous?.width || 0) * Number(previous?.original_height || previous?.height || 0)
+      : 0
+
+    if (!previous || currentArea >= previousArea) {
+      imageMap.set(hash, item)
+    }
+  })
+
+  return imageMap
+}
+
+function resolveCreativeImageUrl(ad, imageMap = new Map()) {
+  const creative = ad?.creative || {}
+  const storySpec = creative.object_story_spec || {}
+  const imageHashes = extractCreativeImageHashes(ad)
+
+  for (const hash of imageHashes) {
+    const matchedImage = imageMap.get(hash)
+    if (matchedImage?.url) return matchedImage.url
+    if (matchedImage?.permalink_url) return matchedImage.permalink_url
+  }
 
   return (
     creative.image_url ||
     storySpec.video_data?.image_url ||
     storySpec.photo_data?.image_url ||
+    storySpec.link_data?.child_attachments?.[0]?.picture ||
     storySpec.link_data?.picture ||
     creative.thumbnail_url ||
     ''
@@ -194,9 +241,10 @@ export async function GET(request) {
 
     const creativeTimeFilter = buildMetaInsightsFilterExpression(datePreset, since, until)
 
-    const creativeUrl = `https://graph.facebook.com/v19.0/${id}/ads?fields=id,name,campaign_id,adset_id,creative{name,thumbnail_url,image_url,effective_object_story_id,object_story_spec},${creativeTimeFilter}{${creativeInsightFields}}&limit=100&access_token=${token}`
+    const creativeUrl = `https://graph.facebook.com/v19.0/${id}/ads?fields=id,name,campaign_id,adset_id,creative{name,thumbnail_url,image_url,image_hash,effective_object_story_id,object_story_spec},${creativeTimeFilter}{${creativeInsightFields}}&limit=100&access_token=${token}`
+    const adImagesUrl = `https://graph.facebook.com/v19.0/${id}/adimages?fields=hash,url,permalink_url,width,height,original_width,original_height&limit=500&access_token=${token}`
 
-    const [ageResult, cityResult, stateResult, creativeResult] = await Promise.all([
+    const [ageResult, cityResult, stateResult, creativeResult, adImagesResult] = await Promise.all([
       fetchMetaBreakdownSafely(
         `https://graph.facebook.com/v19.0/${id}/insights?${ageParams.toString()}`,
         'A Meta demorou para responder ao carregar os rankings detalhados. Tente novamente em alguns instantes.'
@@ -213,7 +261,13 @@ export async function GET(request) {
         creativeUrl,
         'A Meta demorou para responder ao carregar os rankings detalhados. Tente novamente em alguns instantes.'
       ),
+      fetchMetaBreakdownSafely(
+        adImagesUrl,
+        'A Meta demorou para responder ao carregar as imagens dos criativos. Tente novamente em alguns instantes.'
+      ),
     ])
+
+    const adImageMap = buildMetaAdImageMap(adImagesResult.data)
 
     let cityRows = cityResult.data?.data || []
     let cityLabelKey = 'city'
@@ -294,7 +348,7 @@ export async function GET(request) {
           campaignId: ad.campaign_id || '',
           adsetId: ad.adset_id || '',
           label: normalizeCreativeLabel(ad),
-          imageUrl: resolveCreativeImageUrl(ad),
+          imageUrl: resolveCreativeImageUrl(ad, adImageMap),
           spend: parseFloat(insight.spend || 0),
           impressions: parseInt(insight.impressions || 0, 10),
           clicks: parseInt(insight.clicks || 0, 10),
