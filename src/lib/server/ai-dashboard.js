@@ -51,6 +51,20 @@ function normalizeMessageContent(content) {
   return ''
 }
 
+function extractChoiceMessageContent(choice) {
+  if (!choice || typeof choice !== 'object') return ''
+
+  return (
+    normalizeMessageContent(choice?.message?.content) ||
+    normalizeMessageContent(choice?.message) ||
+    normalizeMessageContent(choice?.delta?.content) ||
+    normalizeMessageContent(choice?.delta) ||
+    normalizeMessageContent(choice?.text) ||
+    normalizeMessageContent(choice?.content) ||
+    ''
+  )
+}
+
 function stripMarkdownCodeFence(text) {
   const normalized = String(text || '').trim()
   return normalized.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim()
@@ -194,10 +208,17 @@ function extractAnthropicContent(responseBody) {
 }
 
 function extractOpenAiCompatibleContent(responseBody) {
+  const choicesContent = Array.isArray(responseBody?.choices)
+    ? responseBody.choices.map((choice) => extractChoiceMessageContent(choice)).filter(Boolean).join('\n').trim()
+    : ''
+
   return (
+    choicesContent ||
     normalizeMessageContent(responseBody?.choices?.[0]?.message?.content) ||
     normalizeMessageContent(responseBody?.choices?.[0]?.message) ||
     normalizeMessageContent(responseBody?.choices?.[0]?.text) ||
+    normalizeMessageContent(responseBody?.choices?.[0]?.delta?.content) ||
+    normalizeMessageContent(responseBody?.choices?.[0]?.delta) ||
     normalizeMessageContent(responseBody?.output_text) ||
     normalizeMessageContent(responseBody?.content) ||
     normalizeMessageContent(responseBody?.candidates?.[0]?.content?.parts) ||
