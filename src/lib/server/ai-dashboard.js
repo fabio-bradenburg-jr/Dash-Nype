@@ -233,6 +233,21 @@ async function postOpenAiResponse(baseUrl, apiKey, body) {
   return { response, responseBody }
 }
 
+async function getOpenAiResponse(baseUrl, apiKey, responseId) {
+  const response = await fetch(`${trimTrailingSlash(baseUrl)}/responses/${responseId}`, {
+    method: 'GET',
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    cache: 'no-store',
+  })
+
+  const responseBody = await response.json().catch(() => null)
+
+  return { response, responseBody }
+}
+
 async function postAnthropicMessage(baseUrl, apiKey, body) {
   const response = await fetch(`${trimTrailingSlash(baseUrl)}/messages`, {
     method: 'POST',
@@ -303,6 +318,10 @@ function buildEmptyContentError(provider, responseBody) {
     : 'sem chaves'
 
   return `A IA respondeu sem conteúdo textual para análise. Provider: ${provider || 'desconhecido'}. Campos recebidos: ${topLevelKeys || 'sem dados'}.`
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
 async function requestOpenAiCompatibleInsights(normalizedConfig, payload) {
@@ -442,10 +461,35 @@ async function requestNativeOpenAiInsights(normalizedConfig, payload) {
     )
   }
 
+  let resolvedResponseBody = responseBody
+  let resolvedContent = extractOpenAiResponsesContent(responseBody)
+
+  if (!resolvedContent && responseBody?.id && responseBody?.status && responseBody.status !== 'completed') {
+    for (let attempt = 0; attempt < 6; attempt += 1) {
+      await sleep(800)
+      const followUp = await getOpenAiResponse(
+        normalizedConfig.aiBaseUrl,
+        normalizedConfig.aiApiKey,
+        responseBody.id
+      )
+
+      if (!followUp.response?.ok) {
+        break
+      }
+
+      resolvedResponseBody = followUp.responseBody
+      resolvedContent = extractOpenAiResponsesContent(followUp.responseBody)
+
+      if (resolvedContent || followUp.responseBody?.status === 'completed') {
+        break
+      }
+    }
+  }
+
   return {
-    content: extractOpenAiResponsesContent(responseBody),
-    usage: responseBody?.usage || null,
-    responseBody,
+    content: resolvedContent,
+    usage: resolvedResponseBody?.usage || null,
+    responseBody: resolvedResponseBody,
   }
 }
 
