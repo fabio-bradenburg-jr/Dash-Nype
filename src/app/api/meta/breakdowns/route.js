@@ -195,6 +195,31 @@ async function fetchMetaBreakdownSafely(url, fallbackMessage) {
   }
 }
 
+async function fetchCreativePreviewHtml(adId, token) {
+  const previewFormats = [
+    'DESKTOP_FEED_STANDARD',
+    'MOBILE_FEED_STANDARD',
+    'INSTAGRAM_STANDARD',
+  ]
+
+  for (const previewFormat of previewFormats) {
+    try {
+      const previewUrl = `https://graph.facebook.com/v19.0/${adId}/previews?ad_format=${previewFormat}&access_token=${token}`
+      const previewData = await fetchMetaJson(
+        previewUrl,
+        'A Meta demorou para responder ao carregar o preview desse criativo.'
+      )
+
+      const body = previewData?.data?.[0]?.body || ''
+      if (body) return body
+    } catch (error) {
+      continue
+    }
+  }
+
+  return ''
+}
+
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url)
@@ -358,11 +383,18 @@ export async function GET(request) {
       .sort((a, b) => (b.custom_metrics?.totalConversions || 0) - (a.custom_metrics?.totalConversions || 0))
       .slice(0, 5)
 
+    const creativesWithPreview = await Promise.all(
+      creatives.map(async (creative) => ({
+        ...creative,
+        previewHtml: await fetchCreativePreviewHtml(creative.adId, token),
+      }))
+    )
+
     return NextResponse.json({
       ages: normalizeBreakdownRows(ageResult.data?.data || [], 'age'),
       states: normalizeBreakdownRows(stateResult.data?.data || [], 'region', { limit: Number.MAX_SAFE_INTEGER }),
       cities: normalizeBreakdownRows(cityRows, cityLabelKey),
-      creatives,
+      creatives: creativesWithPreview,
       detail_daily: detailDaily,
       geoScope,
       errors: {

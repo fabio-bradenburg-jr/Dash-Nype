@@ -230,6 +230,8 @@ const METRIC_OPTIONS = {
   frequency: { label: 'Frequência', type: 'decimal' },
   clicks: { label: 'Cliques no link', type: 'number' },
   landingPageViews: { label: 'Visualização de página de destino', type: 'number' },
+  addToCart: { label: 'Adição ao carrinho', type: 'number' },
+  initiateCheckout: { label: 'Finalização de compra', type: 'number' },
   cpc: { label: 'CPC', type: 'currency' },
   ctr: { label: 'CTR', type: 'percent' },
   totalConversions: { label: 'Conversões totais', type: 'number' },
@@ -662,6 +664,19 @@ const FIXED_META_METRIC_KEYS = new Set([
   'costPerLead',
   'messages',
   'costPerMessage',
+])
+
+const FUNNEL_LIBRARY_EXCLUDED_KEYS = new Set([
+  'spend',
+  'cpm',
+  'frequency',
+  'cpc',
+  'ctr',
+  'conversionRate',
+  'purchaseValue',
+  'videoViewRate',
+  'cpa',
+  'roas',
 ])
 
 const META_CAMPAIGN_TABLE_COLUMN_OPTIONS = {
@@ -1528,6 +1543,10 @@ function getMetricData(metricKey, dayData) {
       return parseInt(dayData.clicks || 0, 10)
     case 'landingPageViews':
       return parseInt(dayData.landingPageViews || dayData.custom_metrics?.landingPageViews || 0, 10)
+    case 'addToCart':
+      return parseInt(dayData.custom_metrics?.addToCart || 0, 10)
+    case 'initiateCheckout':
+      return parseInt(dayData.custom_metrics?.initiateCheckout || 0, 10)
     case 'cpc':
       return parseFloat(dayData.cpc || 0)
     case 'cpm':
@@ -1792,6 +1811,10 @@ function getSummaryMetricValue(metricKey, summary, customMetrics) {
       return parseInt(summary?.clicks || 0, 10)
     case 'landingPageViews':
       return parseInt(summary?.landingPageViews || customMetrics?.landingPageViews || 0, 10)
+    case 'addToCart':
+      return parseInt(customMetrics?.addToCart || 0, 10)
+    case 'initiateCheckout':
+      return parseInt(customMetrics?.initiateCheckout || 0, 10)
     case 'cpc':
       return parseFloat(summary?.cpc || 0)
     case 'cpm':
@@ -4882,7 +4905,10 @@ export default function DashboardPage() {
   }
 
   const availableFunnelMetrics = useMemo(
-    () => Object.entries(METRIC_OPTIONS).filter(([key]) => !activeDraftFunnelSteps.includes(key)),
+    () =>
+      Object.entries(METRIC_OPTIONS).filter(
+        ([key]) => !activeDraftFunnelSteps.includes(key) && !FUNNEL_LIBRARY_EXCLUDED_KEYS.has(key)
+      ),
     [activeDraftFunnelSteps]
   )
 
@@ -9135,6 +9161,9 @@ export default function DashboardPage() {
                             const campaignPurchases = campaignMetrics.purchases
                             const campaignLeads = campaignMetrics.leads
                             const campaignMessages = campaignMetrics.messages
+                            const campaignCostPerPurchase = campaignMetrics.cost_per_purchase
+                            const campaignCostPerLead = campaignMetrics.cost_per_lead
+                            const campaignCostPerMessage = campaignMetrics.cost_per_message
                             const campaignConversions = campaignMetrics.totalConversions
                             const campaignCpa = campaignMetrics.cpa
                             const campaignRoas = campaignMetrics.roas
@@ -9156,6 +9185,10 @@ export default function DashboardPage() {
                                         <br />
                                         <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
                                           {campaignPurchases} compras, {campaignLeads} leads, {campaignMessages} mensagens
+                                        </span>
+                                        <br />
+                                        <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                                          CPA {formatCurrency(campaignCostPerPurchase)} · CPL {formatCurrency(campaignCostPerLead)} · CPMsg {formatCurrency(campaignCostPerMessage)}
                                         </span>
                                       </td>
                                     )
@@ -9822,7 +9855,13 @@ export default function DashboardPage() {
 
                   {metaRankingDrilldown.type === 'creatives' ? (
                     <div className="meta-ranking-preview-frame">
-                      {activeMetaRankingDrilldownItem.imageUrl ? (
+                      {activeMetaRankingDrilldownItem.previewHtml ? (
+                        <iframe
+                          title={`Preview de ${activeMetaRankingDrilldownItem.label}`}
+                          srcDoc={activeMetaRankingDrilldownItem.previewHtml}
+                          sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
+                        />
+                      ) : activeMetaRankingDrilldownItem.imageUrl ? (
                         <img src={activeMetaRankingDrilldownItem.imageUrl} alt={activeMetaRankingDrilldownItem.label} />
                       ) : (
                         <div className="meta-ranking-preview-fallback">
@@ -10689,6 +10728,14 @@ export default function DashboardPage() {
           background:
             radial-gradient(circle at 50% 24%, rgba(255, 255, 255, 0.08), transparent 30%),
             rgba(8, 12, 22, 0.78);
+        }
+
+        .meta-ranking-preview-frame iframe {
+          width: 100%;
+          min-height: 620px;
+          height: 100%;
+          border: 0;
+          background: #fff;
         }
 
         .meta-ranking-preview-fallback {

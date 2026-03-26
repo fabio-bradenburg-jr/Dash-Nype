@@ -24,6 +24,25 @@ export const META_MESSAGE_EVENTS = ['onsite_conversion.messaging_conversation_st
 export const META_LINK_CLICK_EVENTS = ['link_click', 'inline_link_click', 'outbound_click']
 export const META_THRUPLAY_EVENTS = ['thruplay', 'video_thruplay_watched_actions']
 export const META_LANDING_PAGE_VIEW_EVENTS = ['landing_page_view']
+export const META_ADD_TO_CART_EVENTS = [
+  'add_to_cart',
+  'omni_add_to_cart',
+  'onsite_add_to_cart',
+  'onsite_web_add_to_cart',
+  'onsite_app_add_to_cart',
+  'offsite_conversion.add_to_cart',
+  'offsite_conversion.fb_pixel_add_to_cart',
+]
+export const META_INITIATE_CHECKOUT_EVENTS = [
+  'initiate_checkout',
+  'omni_initiated_checkout',
+  'omni_initiate_checkout',
+  'onsite_initiate_checkout',
+  'onsite_web_initiate_checkout',
+  'onsite_app_initiate_checkout',
+  'offsite_conversion.initiate_checkout',
+  'offsite_conversion.fb_pixel_initiate_checkout',
+]
 
 function resolveMetaInsightData(input) {
   if (!input) return null
@@ -106,6 +125,8 @@ export function extractMetaCampaignMetrics(insightData) {
       averageTicket: 0,
       roas: 0,
       landingPageViews: 0,
+      addToCart: 0,
+      initiateCheckout: 0,
       videoViews: 0,
       videoViewRate: 0,
       thruplay: 0,
@@ -138,6 +159,8 @@ export function extractMetaCampaignMetrics(insightData) {
     return total > 0 ? total : bestValue
   }, 0)
   const landingPageViews = getBestActionValue(actions, META_LANDING_PAGE_VIEW_EVENTS)
+  const addToCart = getBestActionValue(actions, META_ADD_TO_CART_EVENTS)
+  const initiateCheckout = getBestActionValue(actions, META_INITIATE_CHECKOUT_EVENTS)
   const derivedLinkClicks = getDerivedClicksFromCost(costPerActionType, spend, META_LINK_CLICK_EVENTS)
   const explicitClicks = parseInt(normalizedInsightData.clicks || 0, 10)
   const linkClicks = actionLinkClicks > 0 ? actionLinkClicks : (derivedLinkClicks > 0 ? derivedLinkClicks : explicitClicks)
@@ -189,6 +212,8 @@ export function extractMetaCampaignMetrics(insightData) {
     averageTicket,
     roas,
     landingPageViews,
+    addToCart,
+    initiateCheckout,
     videoViews,
     videoViewRate,
     thruplay,
@@ -273,6 +298,8 @@ export function buildMetaSummaryFromCampaigns(campaigns = []) {
       accumulator.impressions += metrics.impressions
       accumulator.clicks += metrics.clicks
       accumulator.landingPageViews += metrics.landingPageViews || 0
+      accumulator.addToCart += metrics.addToCart || 0
+      accumulator.initiateCheckout += metrics.initiateCheckout || 0
       accumulator.videoViews += metrics.videoViews
       accumulator.thruplay += metrics.thruplay
       accumulator.quarterViews += metrics.videoViews > 0 ? Math.round((metrics.hookRate / 100) * metrics.videoViews) : 0
@@ -311,6 +338,8 @@ export function buildMetaSummaryFromCampaigns(campaigns = []) {
       impressions: 0,
       clicks: 0,
       landingPageViews: 0,
+      addToCart: 0,
+      initiateCheckout: 0,
       purchases: 0,
       leads: 0,
       messages: 0,
@@ -351,6 +380,8 @@ export function buildMetaSummaryFromCampaigns(campaigns = []) {
       frequency: aggregated.reach > 0 ? aggregated.impressions / aggregated.reach : 0,
       conversionRate: aggregated.clicks > 0 ? (aggregated.totalConversions / aggregated.clicks) * 100 : 0,
       landingPageViews: aggregated.landingPageViews,
+      addToCart: aggregated.addToCart,
+      initiateCheckout: aggregated.initiateCheckout,
       averageTicket: aggregated.purchases > 0 ? aggregated.purchaseValue / aggregated.purchases : 0,
       roas: aggregated.spend > 0 ? aggregated.purchaseValue / aggregated.spend : 0,
       videoViews: aggregated.videoViews,
