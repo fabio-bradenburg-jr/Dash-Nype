@@ -34,6 +34,7 @@ function normalizeMessageContent(content) {
   }
 
   if (content && typeof content === 'object') {
+    if (Array.isArray(content.content)) return normalizeMessageContent(content.content)
     if (typeof content.text === 'string') return content.text.trim()
     if (content.text && typeof content.text?.value === 'string') return content.text.value.trim()
     if (typeof content.content === 'string') return content.content.trim()
@@ -81,7 +82,9 @@ function collectTextSnippets(value, depth = 0) {
     const snippets = preferredKeys.flatMap((key) => collectTextSnippets(value[key], depth + 1))
     if (snippets.length > 0) return snippets
 
-    return Object.values(value).flatMap((item) => collectTextSnippets(item, depth + 1))
+    return Object.entries(value)
+      .filter(([key]) => !['role', 'type', 'finish_reason', 'index', 'id', 'object'].includes(key))
+      .flatMap(([, item]) => collectTextSnippets(item, depth + 1))
   }
 
   return []
@@ -281,6 +284,13 @@ async function requestOpenAiCompatibleInsights(normalizedConfig, payload) {
     {
       model: normalizedConfig.aiModel,
       temperature: 0.2,
+      max_completion_tokens: 1400,
+      response_format: { type: 'json_object' },
+      messages,
+    },
+    {
+      model: normalizedConfig.aiModel,
+      temperature: 0.2,
       max_tokens: 1400,
       messages,
     },
@@ -428,18 +438,19 @@ export async function requestDashboardInsights(config, payload) {
     : await requestOpenAiCompatibleInsights(normalizedConfig, payload)
 
   const content = String(providerResponse.content || '').trim()
+  const sanitizedContent = content === 'assistant' ? '' : content
 
-  if (!content) {
+  if (!sanitizedContent) {
     throw new Error(buildEmptyContentError(normalizedConfig.aiProvider, providerResponse.responseBody))
   }
 
-  const parsed = tryParseJson(content)
+  const parsed = tryParseJson(sanitizedContent)
 
   return {
     provider: normalizedConfig.aiProvider,
     model: normalizedConfig.aiModel,
-    structured: normalizeStructuredInsight(parsed, content),
-    rawText: content,
+    structured: normalizeStructuredInsight(parsed, sanitizedContent),
+    rawText: sanitizedContent,
     usage: providerResponse.usage || null,
   }
 }
