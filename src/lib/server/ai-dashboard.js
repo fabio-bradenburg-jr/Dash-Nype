@@ -217,6 +217,22 @@ async function postChatCompletion(baseUrl, apiKey, body) {
   return { response, responseBody }
 }
 
+async function postOpenAiResponse(baseUrl, apiKey, body) {
+  const response = await fetch(`${trimTrailingSlash(baseUrl)}/responses`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
+    cache: 'no-store',
+  })
+
+  const responseBody = await response.json().catch(() => null)
+
+  return { response, responseBody }
+}
+
 async function postAnthropicMessage(baseUrl, apiKey, body) {
   const response = await fetch(`${trimTrailingSlash(baseUrl)}/messages`, {
     method: 'POST',
@@ -266,6 +282,17 @@ function extractOpenAiCompatibleContent(responseBody) {
     normalizeMessageContent(responseBody?.result?.message?.content) ||
     normalizeMessageContent(responseBody?.result?.content) ||
     recursiveContent ||
+    ''
+  )
+}
+
+function extractOpenAiResponsesContent(responseBody) {
+  return (
+    normalizeMessageContent(responseBody?.output_text) ||
+    normalizeMessageContent(responseBody?.output?.[0]?.content) ||
+    normalizeMessageContent(responseBody?.output?.[0]?.content?.[0]?.text) ||
+    normalizeMessageContent(responseBody?.content) ||
+    collectTextSnippets(responseBody?.output || responseBody).join('\n').trim() ||
     ''
   )
 }
@@ -360,6 +387,68 @@ async function requestOpenAiCompatibleInsights(normalizedConfig, payload) {
   }
 }
 
+async function requestNativeOpenAiInsights(normalizedConfig, payload) {
+  const messages = buildDashboardAnalysisMessages(normalizedConfig.aiDashboardPrompt, payload)
+  const input = messages.map((message) => ({
+    role: message.role,
+    content: [
+      {
+        type: 'input_text',
+        text: String(message.content || ''),
+      },
+    ],
+  }))
+
+  const attemptBodies = [
+    {
+      model: normalizedConfig.aiModel,
+      max_output_tokens: 1400,
+      input,
+    },
+    {
+      model: normalizedConfig.aiModel,
+      input,
+    },
+  ]
+
+  let response = null
+  let responseBody = null
+
+  for (let index = 0; index < attemptBodies.length; index += 1) {
+    const attempt = await postOpenAiResponse(
+      normalizedConfig.aiBaseUrl,
+      normalizedConfig.aiApiKey,
+      attemptBodies[index]
+    )
+
+    response = attempt.response
+    responseBody = attempt.responseBody
+
+    if (response.ok) {
+      break
+    }
+
+    if (index >= attemptBodies.length - 1) {
+      break
+    }
+  }
+
+  if (!response?.ok) {
+    throw new Error(
+      formatProviderErrorMessage(
+        responseBody,
+        'Nao foi possivel gerar insights com a IA configurada para o dashboard.'
+      )
+    )
+  }
+
+  return {
+    content: extractOpenAiResponsesContent(responseBody),
+    usage: responseBody?.usage || null,
+    responseBody,
+  }
+}
+
 async function requestAnthropicInsights(normalizedConfig, payload) {
   const anthropicBody = {
     model: normalizedConfig.aiModel,
@@ -433,9 +522,16 @@ export async function requestDashboardInsights(config, payload) {
   }
 
   const supportsAnthropicMessages = normalizedConfig.aiProvider === 'anthropic'
-  const providerResponse = supportsAnthropicMessages
+  let providerResponse = supportsAnthropicMessages
     ? await requestAnthropicInsights(normalizedConfig, payload)
     : await requestOpenAiCompatibleInsights(normalizedConfig, payload)
+
+  if (
+    normalizedConfig.aiProvider === 'openai' &&
+    !String(providerResponse?.content || '').trim()
+  ) {
+    providerResponse = await requestNativeOpenAiInsights(normalizedConfig, payload)
+  }
 
   const content = String(providerResponse.content || '').trim()
   const sanitizedContent = content === 'assistant' ? '' : content
