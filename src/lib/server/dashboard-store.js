@@ -1,4 +1,5 @@
 import { USER_ROLES } from '@/lib/server/access-control'
+import { DEFAULT_AI_SETTINGS } from '@/lib/ai-config'
 
 const DEFAULT_FUNNEL_STEPS = ['impressions', 'clicks', 'leads', 'purchases']
 const DEFAULT_DASHBOARD_TEMPLATE_NAME = 'Principal'
@@ -21,6 +22,7 @@ const DEFAULT_GLOBAL_INTEGRATIONS = {
   rdStationToken: '',
   salesforceToken: '',
   agendorToken: '',
+  ...DEFAULT_AI_SETTINGS,
 }
 
 function isMissingRelationError(error) {
@@ -153,6 +155,12 @@ function normalizeClientRecord(client) {
       rdStationToken: payload.integrations?.rdStationToken || '',
       salesforceToken: payload.integrations?.salesforceToken || '',
       agendorToken: payload.integrations?.agendorToken || '',
+      aiAnalysisEnabled: Boolean(payload.integrations?.aiAnalysisEnabled),
+      aiProvider: payload.integrations?.aiProvider || DEFAULT_AI_SETTINGS.aiProvider,
+      aiBaseUrl: payload.integrations?.aiBaseUrl || DEFAULT_AI_SETTINGS.aiBaseUrl,
+      aiApiKey: payload.integrations?.aiApiKey || '',
+      aiModel: payload.integrations?.aiModel || '',
+      aiDashboardPrompt: payload.integrations?.aiDashboardPrompt || DEFAULT_AI_SETTINGS.aiDashboardPrompt,
     },
   }
 }

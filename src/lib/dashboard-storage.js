@@ -1,3 +1,5 @@
+import { DEFAULT_AI_SETTINGS } from '@/lib/ai-config'
+
 export const DASHBOARD_STORAGE_KEY = 'nype-dashboard-preferences'
 
 export const DEFAULT_INTEGRATIONS = {
@@ -12,6 +14,7 @@ export const DEFAULT_INTEGRATIONS = {
   rdStationToken: '',
   salesforceToken: '',
   agendorToken: '',
+  ...DEFAULT_AI_SETTINGS,
 }
 
 export const DEFAULT_PREFERENCES = {
@@ -32,6 +35,7 @@ export const DEFAULT_PREFERENCES = {
     rdStationToken: '',
     salesforceToken: '',
     agendorToken: '',
+    ...DEFAULT_AI_SETTINGS,
   },
   clients: [],
   clientGroups: [],

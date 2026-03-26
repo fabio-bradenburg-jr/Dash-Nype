@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useUser } from '@/lib/contexts/UserContext'
 import { USER_APPEARANCE_PRESETS } from '@/lib/user-appearance-storage'
 import { DEFAULT_PREFERENCES, loadDashboardPreferences, saveDashboardPreferences } from '@/lib/dashboard-storage'
+import { AI_PROVIDER_OPTIONS, getAiProviderOption } from '@/lib/ai-config'
 
 const PANEL_BACKGROUND_PRESETS = [
   { label: 'Azulado', value: '#3b82f6' },
@@ -190,6 +191,7 @@ export default function SettingsPage() {
   const advertisingIntegrationGroups = generalIntegrationGroups.filter((group) => AD_ACCOUNT_INTEGRATION_TITLES.has(group.title))
   const crmIntegrationGroups = generalIntegrationGroups.filter((group) => CRM_INTEGRATION_TITLES.has(group.title))
   const backgroundTintRgb = hexToRgb(appearance.backgroundTint)
+  const selectedAiProvider = getAiProviderOption(globalIntegrations.aiProvider)
 
   const persistGlobalIntegrations = useCallback(
     async (nextIntegrations) => {
@@ -318,6 +320,8 @@ export default function SettingsPage() {
 
     if (tab === 'operation') {
       setActiveSettingsTab('operation')
+    } else if (tab === 'ai') {
+      setActiveSettingsTab('ai')
     } else if (tab === 'general') {
       setActiveSettingsTab('general')
     } else if (tab === 'panel') {
@@ -358,6 +362,27 @@ export default function SettingsPage() {
 
       persistGlobalIntegrations(nextIntegrations).catch((error) => {
         console.error('Erro ao salvar integrações globais no servidor:', error)
+      })
+
+      return nextIntegrations
+    })
+  }
+
+  const handleAiProviderChange = (providerValue) => {
+    const providerOption = getAiProviderOption(providerValue)
+
+    setGlobalIntegrations((current) => {
+      const currentProvider = getAiProviderOption(current.aiProvider)
+      const currentBaseUrl = String(current.aiBaseUrl || '').trim()
+      const shouldReplaceBaseUrl = !currentBaseUrl || currentBaseUrl === currentProvider.baseUrl
+      const nextIntegrations = {
+        ...current,
+        aiProvider: providerOption.value,
+        aiBaseUrl: shouldReplaceBaseUrl ? providerOption.baseUrl : current.aiBaseUrl,
+      }
+
+      persistGlobalIntegrations(nextIntegrations).catch((error) => {
+        console.error('Erro ao salvar configurações de IA no servidor:', error)
       })
 
       return nextIntegrations
@@ -503,6 +528,18 @@ export default function SettingsPage() {
                       <div>
                         <strong>Operação</strong>
                         <span>ClickUp, Monday e IDs globais.</span>
+                      </div>
+                    </button>
+
+                    <button
+                      type="button"
+                      className={`settings-sidebar-link ${activeSettingsTab === 'ai' ? 'active' : ''}`}
+                      onClick={() => handleSettingsTabChange('ai')}
+                    >
+                      <i className="bx bx-bot"></i>
+                      <div>
+                        <strong>IA</strong>
+                        <span>Provider, modelo e prompt de análise.</span>
                       </div>
                     </button>
                   </>
@@ -863,6 +900,136 @@ export default function SettingsPage() {
                         ))}
                       </div>
                     ))}
+                  </div>
+                </div>
+              )}
+
+              {canManageClients && activeSettingsTab === 'ai' && (
+                <div className="glass-item settings-block settings-block-full">
+                  <div className="settings-section-head">
+                    <div>
+                      <h2>IA para análise do dashboard</h2>
+                      <p>Configure aqui a API, o modelo e o prompt base que a IA vai usar para interpretar os números da dashboard.</p>
+                    </div>
+                  </div>
+
+                  <div className="settings-general-layout">
+                    <section className="settings-category-shell">
+                      <div className="settings-category-head">
+                        <span className="settings-category-kicker">Provider</span>
+                        <h3>Conexão da IA</h3>
+                        <p>Essa primeira versão trabalha com APIs compatíveis com o formato de chat da OpenAI, o que também cobre OpenRouter, Groq e endpoints próprios.</p>
+                      </div>
+
+                      <div className="settings-integrations-grid settings-category-grid">
+                        <div className="integration-block integration-block-meta">
+                          <div className="integration-heading">
+                            <div className="integration-icon" style={{ color: '#8b5cf6', borderColor: '#8b5cf633' }}>
+                              <i className="bx bx-bot"></i>
+                            </div>
+                            <div>
+                              <h3>Insights com IA</h3>
+                              <p>Você escolhe o provider, informa a chave e define o modelo que vai analisar os dados do dashboard.</p>
+                            </div>
+                          </div>
+
+                          <div className="settings-choice-row settings-choice-row-compact">
+                            <button
+                              type="button"
+                              className={`settings-choice ${globalIntegrations.aiAnalysisEnabled ? 'active' : ''}`}
+                              onClick={() => handleGlobalIntegrationChange('aiAnalysisEnabled', true)}
+                            >
+                              <i className="bx bx-check-circle"></i>
+                              Ativar análise
+                            </button>
+                            <button
+                              type="button"
+                              className={`settings-choice ${!globalIntegrations.aiAnalysisEnabled ? 'active' : ''}`}
+                              onClick={() => handleGlobalIntegrationChange('aiAnalysisEnabled', false)}
+                            >
+                              <i className="bx bx-x-circle"></i>
+                              Pausar análise
+                            </button>
+                          </div>
+
+                          <div className="settings-ai-grid">
+                            <div className="input-group">
+                              <label>Provider</label>
+                              <select
+                                value={globalIntegrations.aiProvider || selectedAiProvider.value}
+                                onChange={(event) => handleAiProviderChange(event.target.value)}
+                              >
+                                {AI_PROVIDER_OPTIONS.map((option) => (
+                                  <option key={option.value} value={option.value}>
+                                    {option.label}
+                                  </option>
+                                ))}
+                              </select>
+                              <small>{selectedAiProvider.description}</small>
+                            </div>
+
+                            <div className="input-group">
+                              <label>Base URL</label>
+                              <input
+                                type="text"
+                                value={globalIntegrations.aiBaseUrl || ''}
+                                onChange={(event) => handleGlobalIntegrationChange('aiBaseUrl', event.target.value)}
+                                placeholder="https://api.openai.com/v1"
+                              />
+                            </div>
+
+                            <div className="input-group">
+                              <label>Modelo</label>
+                              <input
+                                type="text"
+                                value={globalIntegrations.aiModel || ''}
+                                onChange={(event) => handleGlobalIntegrationChange('aiModel', event.target.value)}
+                                placeholder={selectedAiProvider.modelPlaceholder}
+                              />
+                            </div>
+
+                            <div className="input-group">
+                              <label>Chave da API</label>
+                              <input
+                                type="password"
+                                value={globalIntegrations.aiApiKey || ''}
+                                onChange={(event) => handleGlobalIntegrationChange('aiApiKey', event.target.value)}
+                                placeholder="Cole aqui a chave da API"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="settings-callout info">
+                            A chamada da IA roda somente no servidor. A chave não é exposta no browser quando o botão de insights for usado na dashboard.
+                          </div>
+                        </div>
+                      </div>
+                    </section>
+
+                    <section className="settings-category-shell">
+                      <div className="settings-category-head">
+                        <span className="settings-category-kicker">Prompt</span>
+                        <h3>Instrução base da análise</h3>
+                        <p>Esse prompt será combinado com os números da dashboard para a IA devolver resumo executivo, alertas, oportunidades e próximos passos.</p>
+                      </div>
+
+                      <div className="settings-integrations-grid settings-category-grid">
+                        <div className="integration-block integration-block-meta">
+                          <div className="input-group">
+                            <label>Prompt do dashboard</label>
+                            <textarea
+                              value={globalIntegrations.aiDashboardPrompt || ''}
+                              onChange={(event) => handleGlobalIntegrationChange('aiDashboardPrompt', event.target.value)}
+                              placeholder="Descreva como a IA deve analisar os números da dashboard."
+                              rows={14}
+                            />
+                            <small>
+                              Dica: peça retorno em JSON, com headline, resumo, insights e próximos passos. Isso facilita mostrar o resultado em um painel de insights depois.
+                            </small>
+                          </div>
+                        </div>
+                      </div>
+                    </section>
                   </div>
                 </div>
               )}
@@ -1321,7 +1488,9 @@ export default function SettingsPage() {
           line-height: 1.5;
         }
 
-        .input-group input {
+        .input-group input,
+        .input-group select,
+        .input-group textarea {
           width: 100%;
           min-height: 48px;
           padding: 0 14px;
@@ -1334,9 +1503,29 @@ export default function SettingsPage() {
           box-sizing: border-box;
         }
 
-        .input-group input:focus {
+        .input-group select {
+          appearance: none;
+          cursor: pointer;
+        }
+
+        .input-group textarea {
+          min-height: 240px;
+          padding: 14px;
+          resize: vertical;
+          line-height: 1.6;
+        }
+
+        .input-group input:focus,
+        .input-group select:focus,
+        .input-group textarea:focus {
           outline: none;
           border-color: var(--accent-blue);
+        }
+
+        .settings-ai-grid {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 14px;
         }
 
         .settings-preset-swatch {
@@ -1433,6 +1622,10 @@ export default function SettingsPage() {
           }
 
           .settings-background-shell {
+            grid-template-columns: 1fr;
+          }
+
+          .settings-ai-grid {
             grid-template-columns: 1fr;
           }
 

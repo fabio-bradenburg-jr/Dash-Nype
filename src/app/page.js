@@ -69,6 +69,14 @@ const THEME_LABELS = {
   slate: 'Ciano',
 }
 
+const AI_INSIGHT_TYPE_LABELS = {
+  opportunity: 'Oportunidade',
+  alert: 'Alerta',
+  anomaly: 'Anomalia',
+  win: 'Destaque',
+  insight: 'Insight',
+}
+
 const EMPTY_META_BREAKDOWNS = {
   ages: [],
   states: [],
@@ -1948,6 +1956,10 @@ export default function DashboardPage() {
   const [isMetaStructureReady, setIsMetaStructureReady] = useState(false)
   const [isSavingIntegrations, setIsSavingIntegrations] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
+  const [isAiInsightsModalOpen, setIsAiInsightsModalOpen] = useState(false)
+  const [isAiInsightsLoading, setIsAiInsightsLoading] = useState(false)
+  const [aiInsightsError, setAiInsightsError] = useState('')
+  const [aiInsightsResult, setAiInsightsResult] = useState(null)
   const [hasSyncedServerState, setHasSyncedServerState] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
   const [dragMetricKey, setDragMetricKey] = useState('')
@@ -2073,6 +2085,43 @@ export default function DashboardPage() {
   const clientIdsSet = useMemo(() => new Set(clients.map((client) => client.id)), [clients])
   const activeIntegrations = activeClient?.integrations || DEFAULT_INTEGRATIONS
   const selectedAdAccount = activeClient?.metaAdAccountId || ''
+  const isAiInsightsConfigured = Boolean(
+    globalIntegrations.aiAnalysisEnabled &&
+    String(globalIntegrations.aiApiKey || '').trim() &&
+    String(globalIntegrations.aiModel || '').trim() &&
+    String(globalIntegrations.aiBaseUrl || '').trim()
+  )
+  const aiInsightGroups = useMemo(() => {
+    const items = Array.isArray(aiInsightsResult?.structured?.insights) ? aiInsightsResult.structured.insights : []
+
+    return [
+      {
+        key: 'opportunity',
+        title: 'Oportunidades',
+        items: items.filter((item) => String(item.type || '').trim().toLowerCase() === 'opportunity'),
+      },
+      {
+        key: 'win',
+        title: 'Destaques',
+        items: items.filter((item) => String(item.type || '').trim().toLowerCase() === 'win'),
+      },
+      {
+        key: 'alert',
+        title: 'Alertas',
+        items: items.filter((item) => String(item.type || '').trim().toLowerCase() === 'alert'),
+      },
+      {
+        key: 'anomaly',
+        title: 'Anomalias',
+        items: items.filter((item) => String(item.type || '').trim().toLowerCase() === 'anomaly'),
+      },
+      {
+        key: 'insight',
+        title: 'Leituras gerais',
+        items: items.filter((item) => !['opportunity', 'win', 'alert', 'anomaly'].includes(String(item.type || '').trim().toLowerCase())),
+      },
+    ].filter((group) => group.items.length > 0)
+  }, [aiInsightsResult])
   const selectedQualifiedStages = useMemo(
     () => activeClient?.rdQualifiedStages || [],
     [activeClient]
@@ -2277,6 +2326,14 @@ export default function DashboardPage() {
         .map((campaign) => campaign.id)
         .filter(Boolean),
     [campaigns, normalizedDraftMetaResultFilters, availableMetaResultFilters, activeDraftMetaCampaignIds]
+  )
+  const draftMetaResultMatchedCampaignIds = useMemo(
+    () =>
+      campaigns
+        .filter((campaign) => campaignMatchesMetaResultFilters(campaign, normalizedDraftMetaResultFilters, availableMetaResultFilters.map((item) => item.key)))
+        .map((campaign) => campaign.id)
+        .filter((campaignId) => availableMetaCampaignOptions.some((campaign) => campaign.id === campaignId)),
+    [campaigns, normalizedDraftMetaResultFilters, availableMetaResultFilters, availableMetaCampaignOptions]
   )
   const availableMetaAdsetOptions = useMemo(() => {
     const adsetMap = new Map()
@@ -2649,6 +2706,21 @@ export default function DashboardPage() {
     activeClientId,
     selectedAdAccount,
   ])
+
+  useEffect(() => {
+    const availableCampaignIds = availableMetaCampaignOptions.map((campaign) => campaign.id)
+    if (!availableCampaignIds.length) return
+
+    const matchedCampaignIds = draftMetaResultMatchedCampaignIds.filter((campaignId) => availableCampaignIds.includes(campaignId))
+    const nextCampaignSelection =
+      matchedCampaignIds.length === availableCampaignIds.length ? [] : matchedCampaignIds
+
+    if (haveSameSelection(draftMetaCampaignFilters, nextCampaignSelection)) return
+
+    setDraftMetaCampaignFilters(nextCampaignSelection)
+    setDraftMetaAdsetFilters([])
+    setDraftMetaAdFilters([])
+  }, [normalizedDraftMetaResultFilters, availableMetaCampaignOptions, draftMetaResultMatchedCampaignIds, draftMetaCampaignFilters])
 
   useEffect(() => {
     setDraftMondayDateRange(mondayDateRange)
@@ -4438,6 +4510,42 @@ export default function DashboardPage() {
     }
   }
 
+  const handleGenerateAiInsights = async () => {
+    if (!isAiInsightsConfigured) {
+      setAiInsightsError('Configure provider, chave, endpoint e modelo na aba IA antes de gerar insights.')
+      setAiInsightsResult(null)
+      setIsAiInsightsModalOpen(true)
+      return
+    }
+
+    try {
+      setIsAiInsightsModalOpen(true)
+      setIsAiInsightsLoading(true)
+      setAiInsightsError('')
+      setAiInsightsResult(null)
+
+      const response = await fetch('/api/ai/dashboard-insights', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(dashboardAiInsightsPayload),
+      })
+
+      const data = await response.json().catch(() => ({}))
+
+      if (!response.ok) {
+        throw new Error(data?.error || 'Não foi possível gerar os insights da dashboard agora.')
+      }
+
+      setAiInsightsResult(data)
+    } catch (error) {
+      setAiInsightsError(error.message || 'Não foi possível gerar os insights da dashboard agora.')
+    } finally {
+      setIsAiInsightsLoading(false)
+    }
+  }
+
   const replaceDraftFunnelSteps = (steps) => {
     setDraftFunnelSteps(steps)
   }
@@ -5106,6 +5214,179 @@ export default function DashboardPage() {
       }),
     [activeMetaRankingResultKeys, breakdowns.ages, breakdowns.cities, breakdowns.creatives, breakdowns.geoScope, breakdowns.states, metaGeoRankingDescription, metaGeoRankingTitle]
   )
+  const dashboardAiInsightsPayload = useMemo(() => {
+    const selectedResultLabels = availableMetaResultFilters
+      .filter((item) => normalizedMetaResultFilters.includes(item.key))
+      .map((item) => item.label)
+
+    const selectedCampaignLabels = availableMetaCampaignOptions
+      .filter((campaign) => activeMetaCampaignIds.includes(campaign.id))
+      .map((campaign) => campaign.name)
+
+    return {
+      source: 'meta_dashboard',
+      dashboardName: activeDashboardTemplate?.name || 'Dashboard principal',
+      clientName: activeClient?.name || '',
+      adAccountId: selectedAdAccount || '',
+      period: {
+        preset: DATE_PRESETS.find((preset) => preset.value === dateRange)?.label || dateRange,
+        since: currentMetaResultWindow?.start ? formatLocalDateInput(currentMetaResultWindow.start) : '',
+        until: currentMetaResultWindow?.end ? formatLocalDateInput(currentMetaResultWindow.end) : '',
+      },
+      filters: {
+        resultKeys: normalizedMetaResultFilters,
+        resultLabels: selectedResultLabels,
+        campaignIds: activeMetaCampaignIds,
+        campaignNames: selectedCampaignLabels,
+        adsetIds: activeMetaAdsetIds,
+        adIds: activeMetaAdIds,
+      },
+      summary: {
+        spend,
+        impressions,
+        reach,
+        clicks,
+        cpc,
+        cpm,
+        ctr,
+        frequency,
+        totalConversions,
+        conversionRate,
+        purchaseValue,
+        purchases,
+        costPerPurchase,
+        leads,
+        costPerLead,
+        messages,
+        costPerMessage,
+        reachResults,
+        costPerReach,
+        thruplays,
+        costPerTruplay,
+        roas,
+        purchaseRoas,
+      },
+      previousSummary: {
+        spend: parseFloat(previousInsights?.spend || 0),
+        impressions: parseInt(previousInsights?.impressions || 0, 10),
+        clicks: previousCustomMetrics.clicks || parseInt(previousInsights?.clicks || 0, 10),
+        cpc: previousCustomMetrics.cpc || parseFloat(previousInsights?.cpc || 0),
+        cpm: previousCustomMetrics.cpm || 0,
+        ctr: previousCustomMetrics.ctr || parseFloat(previousInsights?.ctr || 0),
+        frequency: previousCustomMetrics.frequency || 0,
+        reach: parseInt(previousInsights?.reach || 0, 10),
+        totalConversions: previousCustomMetrics.totalConversions || 0,
+        conversionRate: previousCustomMetrics.conversionRate || 0,
+        purchases: previousCustomMetrics.purchases || 0,
+        costPerPurchase: previousCustomMetrics.cost_per_purchase || 0,
+        purchaseValue: previousCustomMetrics.purchaseValue || 0,
+        leads: previousCustomMetrics.leads || 0,
+        costPerLead: previousCustomMetrics.cost_per_lead || 0,
+        messages: previousCustomMetrics.messages || 0,
+        costPerMessage: previousCustomMetrics.cost_per_message || 0,
+        reachResults: previousCustomMetrics.reach_results || 0,
+        costPerReach: previousCustomMetrics.cost_per_reach || 0,
+        thruplays: previousCustomMetrics.thruplays || 0,
+        costPerTruplay: previousCustomMetrics.cost_per_thruplay || 0,
+        roas: previousCustomMetrics.roas || 0,
+      },
+      daily: filledMetaDailyData.map((day) => ({
+        date: day.date_start,
+        spend: parseFloat(day.spend || 0),
+        impressions: parseInt(day.impressions || 0, 10),
+        reach: parseInt(day.reach || 0, 10),
+        clicks: parseInt(day.clicks || 0, 10),
+        purchases: day.custom_metrics?.purchases || 0,
+        leads: day.custom_metrics?.leads || 0,
+        messages: day.custom_metrics?.messages || 0,
+        reachResults: day.custom_metrics?.reach_results || 0,
+        thruplays: day.custom_metrics?.thruplays || 0,
+        purchaseValue: day.custom_metrics?.purchaseValue || 0,
+        cpa: day.custom_metrics?.cpa || 0,
+        roas: day.custom_metrics?.roas || 0,
+      })),
+      topCampaigns: filteredCampaigns.slice(0, 10).map((campaign) => ({
+        id: campaign.id,
+        name: campaign.name,
+        objective: campaign.objective || '',
+        status: campaign.status || '',
+        spend: Number(campaign.spend || 0),
+        purchases: campaign.custom_metrics?.purchases || 0,
+        costPerPurchase: campaign.custom_metrics?.cost_per_purchase || 0,
+        leads: campaign.custom_metrics?.leads || 0,
+        costPerLead: campaign.custom_metrics?.cost_per_lead || 0,
+        messages: campaign.custom_metrics?.messages || 0,
+        costPerMessage: campaign.custom_metrics?.cost_per_message || 0,
+        roas: campaign.custom_metrics?.roas || 0,
+      })),
+      rankingLayers: metaRankingLayers.map((layer) => ({
+        resultKey: layer.resultKey,
+        resultLabel: layer.resultLabel,
+        creatives: layer.creatives.items.slice(0, 5).map((item) => ({
+          label: item.label,
+          conversions: item.conversions,
+          averageCost: item.averageCost,
+          spend: item.spend || 0,
+        })),
+        ages: layer.ages.items.slice(0, 5).map((item) => ({
+          label: item.label,
+          conversions: item.conversions,
+          averageCost: item.averageCost,
+          conversionRate: item.conversionRateValue || 0,
+        })),
+        states: layer.map.topStateItems.slice(0, 5).map((item) => ({
+          label: item.name,
+          conversions: item.conversions,
+          averageCost: item.averageCost,
+        })),
+        cities: layer.cities.items.slice(0, 5).map((item) => ({
+          label: item.label,
+          conversions: item.conversions,
+          averageCost: item.averageCost,
+        })),
+      })),
+    }
+  }, [
+    activeDashboardTemplate,
+    activeClient,
+    selectedAdAccount,
+    dateRange,
+    currentMetaResultWindow,
+    normalizedMetaResultFilters,
+    availableMetaResultFilters,
+    activeMetaCampaignIds,
+    availableMetaCampaignOptions,
+    activeMetaAdsetIds,
+    activeMetaAdIds,
+    spend,
+    impressions,
+    reach,
+    clicks,
+    cpc,
+    cpm,
+    ctr,
+    frequency,
+    totalConversions,
+    conversionRate,
+    purchaseValue,
+    purchases,
+    costPerPurchase,
+    leads,
+    costPerLead,
+    messages,
+    costPerMessage,
+    reachResults,
+    costPerReach,
+    thruplays,
+    costPerTruplay,
+    roas,
+    purchaseRoas,
+    filledMetaDailyData,
+    filteredCampaigns,
+    metaRankingLayers,
+    previousInsights,
+    previousCustomMetrics,
+  ])
   const activeMetaRankingDrilldownConfig = useMemo(() => {
     if (!metaRankingDrilldown) return null
     const activeLayer = metaRankingLayers.find((layer) => layer.resultKey === metaRankingDrilldown.resultKey) || null
@@ -7485,6 +7766,16 @@ export default function DashboardPage() {
                   </select>
                 </div>
 
+                <button
+                  type="button"
+                  onClick={handleGenerateAiInsights}
+                  disabled={!hasMetaConfigured || !isAiInsightsConfigured || isAiInsightsLoading}
+                  className="btn btn-secondary"
+                >
+                  <i className={isAiInsightsLoading ? 'bx bx-loader-alt bx-spin' : 'bx bx-bulb'}></i>
+                  {isAiInsightsLoading ? 'Gerando insights...' : 'Insights'}
+                </button>
+
                 <button onClick={exportPDF} disabled={isExporting} className="btn btn-primary">
                   <i className={isExporting ? 'bx bx-loader-alt bx-spin' : 'bx bx-export'}></i>
                   {isExporting ? 'Gerando PDF...' : 'Exportar PDF'}
@@ -9663,6 +9954,115 @@ export default function DashboardPage() {
           </button>
         )}
 
+        {activeTab === 'apresentacao' && isAiInsightsModalOpen && typeof document !== 'undefined' && createPortal(
+          <div className="modal-overlay" onClick={() => setIsAiInsightsModalOpen(false)}>
+            <div className="modal-card glass-panel ai-insights-modal" onClick={(event) => event.stopPropagation()}>
+              <div className="modal-header">
+                <div>
+                  <h3>Insights da dashboard</h3>
+                  <p>Análise resumida dos números ativos da apresentação, usando a configuração da aba IA.</p>
+                </div>
+                <button type="button" className="modal-close" onClick={() => setIsAiInsightsModalOpen(false)} aria-label="Fechar insights da dashboard">
+                  <i className="bx bx-x"></i>
+                </button>
+              </div>
+
+              {isAiInsightsLoading ? (
+                <div className="glass-item ai-insights-state">
+                  <i className="bx bx-loader-alt bx-spin"></i>
+                  <strong>Gerando insights...</strong>
+                  <p>A IA está analisando os números do dashboard com base no período e nos filtros ativos.</p>
+                </div>
+              ) : aiInsightsError ? (
+                <div className="glass-item ai-insights-state ai-insights-state-error">
+                  <i className="bx bx-error-circle"></i>
+                  <strong>Não foi possível gerar insights agora.</strong>
+                  <p>{aiInsightsError}</p>
+                </div>
+              ) : aiInsightsResult?.structured ? (
+                <>
+                  <div className="glass-item ai-insights-summary-shell">
+                    <div className="ai-insights-summary-top">
+                      <div>
+                        <span className="ai-insights-kicker">Resumo executivo</span>
+                        <strong className="ai-insights-headline">{aiInsightsResult.structured.headline || 'Insight gerado'}</strong>
+                      </div>
+                      <div className="ai-insights-context">
+                        <span>{dashboardAiInsightsPayload.period?.since || '--'} ate {dashboardAiInsightsPayload.period?.until || '--'}</span>
+                        <span>{(dashboardAiInsightsPayload.filters?.resultLabels || []).join(', ') || 'Todos os resultados'}</span>
+                      </div>
+                    </div>
+                    <p className="ai-insights-summary">
+                      {aiInsightsResult.structured.summary || 'A IA respondeu sem um resumo adicional para esse recorte.'}
+                    </p>
+                  </div>
+
+                  {aiInsightGroups.length ? (
+                    <div className="ai-insights-sections">
+                      {aiInsightGroups.map((group) => (
+                        <section key={group.key} className="ai-insights-section">
+                          <div className="ai-insights-section-head">
+                            <span className={`ai-insight-chip ai-insight-chip-${group.key}`}>{group.title}</span>
+                            <small>{group.items.length} leitura(s)</small>
+                          </div>
+                          <div className="ai-insights-grid">
+                            {group.items.map((item, index) => {
+                              const typeKey = String(item.type || 'insight').trim().toLowerCase()
+                              const typeLabel = AI_INSIGHT_TYPE_LABELS[typeKey] || 'Insight'
+
+                              return (
+                                <div key={`${group.key}-${index}`} className="glass-item ai-insight-card">
+                                  <span className={`ai-insight-chip ai-insight-chip-${typeKey}`}>{typeLabel}</span>
+                                  <strong>{item.title || 'Leitura do período'}</strong>
+                                  {item.evidence ? <p>{item.evidence}</p> : null}
+                                  {item.action ? <p className="ai-insight-action">{item.action}</p> : null}
+                                </div>
+                              )
+                            })}
+                          </div>
+                        </section>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="glass-item ai-insight-card ai-insight-card-empty">
+                      <strong>Sem cards de insight estruturados</strong>
+                      <p>O provider respondeu, mas não trouxe blocos separados de oportunidade, alerta ou anomalia.</p>
+                    </div>
+                  )}
+
+                  <div className="glass-item ai-insights-actions-shell">
+                    <div>
+                      <span className="ai-insights-kicker">Próximos passos</span>
+                      <strong className="ai-insights-section-title">Ações recomendadas pela IA</strong>
+                    </div>
+                    {(aiInsightsResult.structured.nextActions || []).length ? (
+                      <ul className="ai-insights-actions-list">
+                        {aiInsightsResult.structured.nextActions.map((item, index) => (
+                          <li key={`${item}-${index}`}>{item}</li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="ai-insights-empty-note">A resposta não trouxe próximos passos sugeridos para esse período.</p>
+                    )}
+                  </div>
+
+                  <div className="ai-insights-meta">
+                    <span>Provider: {aiInsightsResult.provider || globalIntegrations.aiProvider || 'IA configurada'}</span>
+                    <span>Modelo: {aiInsightsResult.model || globalIntegrations.aiModel || 'não informado'}</span>
+                  </div>
+                </>
+              ) : (
+                <div className="glass-item ai-insights-state">
+                  <i className="bx bx-bulb"></i>
+                  <strong>Pronto para analisar</strong>
+                  <p>Clique em <strong>Insights</strong> no topo da dashboard para gerar uma leitura guiada dos números ativos.</p>
+                </div>
+              )}
+            </div>
+          </div>,
+          document.body
+        )}
+
         {metaSecondaryResultDrilldown && activeMetaSecondaryResultGroup && activeMetaSecondaryResultInsights && typeof document !== 'undefined' && createPortal(
           <div className="modal-overlay" onClick={() => setMetaSecondaryResultDrilldown(null)}>
             <div className="modal-card glass-panel meta-secondary-result-modal" onClick={(event) => event.stopPropagation()}>
@@ -10627,6 +11027,182 @@ export default function DashboardPage() {
           justify-content: flex-end;
           gap: 12px;
           flex-wrap: wrap;
+        }
+
+        .ai-insights-modal {
+          width: min(100%, 960px);
+          gap: 18px;
+        }
+
+        .ai-insights-state,
+        .ai-insights-summary-shell,
+        .ai-insights-actions-shell,
+        .ai-insight-card {
+          padding: 20px;
+          display: grid;
+          gap: 12px;
+        }
+
+        .ai-insights-state {
+          justify-items: start;
+        }
+
+        .ai-insights-state i {
+          font-size: 28px;
+          color: #93c5fd;
+        }
+
+        .ai-insights-state strong,
+        .ai-insight-card strong,
+        .ai-insights-section-title,
+        .ai-insights-headline {
+          font-size: 22px;
+          line-height: 1.2;
+          color: var(--text-primary);
+        }
+
+        .ai-insights-state p,
+        .ai-insights-summary,
+        .ai-insight-card p,
+        .ai-insights-empty-note {
+          margin: 0;
+          color: var(--text-secondary);
+          line-height: 1.6;
+        }
+
+        .ai-insights-state-error {
+          border-color: rgba(248, 113, 113, 0.28);
+          background: rgba(127, 29, 29, 0.18);
+        }
+
+        .ai-insights-state-error i {
+          color: #fda4af;
+        }
+
+        .ai-insights-kicker {
+          color: #93c5fd;
+          font-size: 11px;
+          font-weight: 700;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+        }
+
+        .ai-insights-summary-top {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 16px;
+          flex-wrap: wrap;
+        }
+
+        .ai-insights-context {
+          display: grid;
+          gap: 8px;
+          justify-items: end;
+        }
+
+        .ai-insights-context span {
+          width: fit-content;
+          min-height: 32px;
+          padding: 0 12px;
+          border-radius: 999px;
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          background: rgba(255, 255, 255, 0.04);
+          display: inline-flex;
+          align-items: center;
+          color: var(--text-secondary);
+          font-size: 12px;
+          font-weight: 600;
+        }
+
+        .ai-insights-sections {
+          display: grid;
+          gap: 18px;
+        }
+
+        .ai-insights-section {
+          display: grid;
+          gap: 12px;
+        }
+
+        .ai-insights-section-head {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          flex-wrap: wrap;
+        }
+
+        .ai-insights-section-head small {
+          color: var(--text-muted);
+          font-size: 12px;
+          font-weight: 600;
+        }
+
+        .ai-insights-grid {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 14px;
+        }
+
+        .ai-insight-card {
+          align-content: start;
+        }
+
+        .ai-insight-card-empty {
+          grid-column: 1 / -1;
+        }
+
+        .ai-insight-chip {
+          width: fit-content;
+          min-height: 30px;
+          padding: 0 12px;
+          border-radius: 999px;
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          background: rgba(255, 255, 255, 0.04);
+          display: inline-flex;
+          align-items: center;
+          font-size: 12px;
+          font-weight: 700;
+          letter-spacing: 0.03em;
+          text-transform: uppercase;
+        }
+
+        .ai-insight-chip-opportunity,
+        .ai-insight-chip-win {
+          border-color: rgba(16, 185, 129, 0.28);
+          background: rgba(16, 185, 129, 0.14);
+          color: #86efac;
+        }
+
+        .ai-insight-chip-alert,
+        .ai-insight-chip-anomaly {
+          border-color: rgba(245, 158, 11, 0.28);
+          background: rgba(245, 158, 11, 0.14);
+          color: #fde68a;
+        }
+
+        .ai-insight-action {
+          color: var(--text-primary);
+          font-weight: 600;
+        }
+
+        .ai-insights-actions-list {
+          margin: 0;
+          padding-left: 20px;
+          display: grid;
+          gap: 10px;
+          color: var(--text-primary);
+        }
+
+        .ai-insights-meta {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          flex-wrap: wrap;
+          color: var(--text-muted);
+          font-size: 13px;
         }
 
         .meta-result-modal {
@@ -13565,6 +14141,14 @@ export default function DashboardPage() {
             grid-template-columns: repeat(2, minmax(0, 1fr));
           }
 
+          .ai-insights-grid {
+            grid-template-columns: 1fr;
+          }
+
+          .ai-insights-context {
+            justify-items: start;
+          }
+
           .meta-ranking-body {
             grid-template-columns: 1fr;
           }
@@ -13646,6 +14230,17 @@ export default function DashboardPage() {
 
           .meta-result-summary {
             grid-template-columns: 1fr;
+          }
+
+          .ai-insights-meta {
+            flex-direction: column;
+            align-items: flex-start;
+          }
+
+          .ai-insights-summary-top,
+          .ai-insights-section-head {
+            flex-direction: column;
+            align-items: flex-start;
           }
 
           .meta-result-inline-chart-wrapper {
