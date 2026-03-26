@@ -12,6 +12,8 @@ function normalizeMessageContent(content) {
       .map((item) => {
         if (typeof item === 'string') return item
         if (item?.type === 'text' && typeof item.text === 'string') return item.text
+        if (item?.type === 'output_text' && typeof item.text === 'string') return item.text
+        if (item?.text && typeof item.text?.value === 'string') return item.text.value
         if (typeof item?.text === 'string') return item.text
         if (typeof item?.content === 'string') return item.content
         if (typeof item?.value === 'string') return item.value
@@ -33,6 +35,7 @@ function normalizeMessageContent(content) {
 
   if (content && typeof content === 'object') {
     if (typeof content.text === 'string') return content.text.trim()
+    if (content.text && typeof content.text?.value === 'string') return content.text.value.trim()
     if (typeof content.content === 'string') return content.content.trim()
     if (typeof content.value === 'string') return content.value.trim()
     if (typeof content.output_text === 'string') return content.output_text.trim()
@@ -49,6 +52,39 @@ function normalizeMessageContent(content) {
   }
 
   return ''
+}
+
+function collectTextSnippets(value, depth = 0) {
+  if (depth > 6 || value == null) return []
+  if (typeof value === 'string') {
+    const normalized = value.trim()
+    return normalized ? [normalized] : []
+  }
+
+  if (Array.isArray(value)) {
+    return value.flatMap((item) => collectTextSnippets(item, depth + 1))
+  }
+
+  if (typeof value === 'object') {
+    const preferredKeys = [
+      'output_text',
+      'text',
+      'content',
+      'value',
+      'refusal',
+      'reasoning',
+      'message',
+      'delta',
+      'parts',
+    ]
+
+    const snippets = preferredKeys.flatMap((key) => collectTextSnippets(value[key], depth + 1))
+    if (snippets.length > 0) return snippets
+
+    return Object.values(value).flatMap((item) => collectTextSnippets(item, depth + 1))
+  }
+
+  return []
 }
 
 function extractChoiceMessageContent(choice) {
@@ -211,6 +247,7 @@ function extractOpenAiCompatibleContent(responseBody) {
   const choicesContent = Array.isArray(responseBody?.choices)
     ? responseBody.choices.map((choice) => extractChoiceMessageContent(choice)).filter(Boolean).join('\n').trim()
     : ''
+  const recursiveContent = collectTextSnippets(responseBody?.choices || responseBody).join('\n').trim()
 
   return (
     choicesContent ||
@@ -225,6 +262,7 @@ function extractOpenAiCompatibleContent(responseBody) {
     normalizeMessageContent(responseBody?.candidates?.[0]?.content) ||
     normalizeMessageContent(responseBody?.result?.message?.content) ||
     normalizeMessageContent(responseBody?.result?.content) ||
+    recursiveContent ||
     ''
   )
 }
