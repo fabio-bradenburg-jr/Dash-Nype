@@ -12,10 +12,40 @@ function normalizeMessageContent(content) {
       .map((item) => {
         if (typeof item === 'string') return item
         if (item?.type === 'text' && typeof item.text === 'string') return item.text
+        if (typeof item?.text === 'string') return item.text
+        if (typeof item?.content === 'string') return item.content
+        if (typeof item?.value === 'string') return item.value
+        if (typeof item?.output_text === 'string') return item.output_text
+        if (Array.isArray(item?.parts)) {
+          return item.parts
+            .map((part) => {
+              if (typeof part === 'string') return part
+              if (typeof part?.text === 'string') return part.text
+              return ''
+            })
+            .join('\n')
+        }
         return ''
       })
       .join('\n')
       .trim()
+  }
+
+  if (content && typeof content === 'object') {
+    if (typeof content.text === 'string') return content.text.trim()
+    if (typeof content.content === 'string') return content.content.trim()
+    if (typeof content.value === 'string') return content.value.trim()
+    if (typeof content.output_text === 'string') return content.output_text.trim()
+    if (Array.isArray(content.parts)) {
+      return content.parts
+        .map((part) => {
+          if (typeof part === 'string') return part
+          if (typeof part?.text === 'string') return part.text
+          return ''
+        })
+        .join('\n')
+        .trim()
+    }
   }
 
   return ''
@@ -163,6 +193,29 @@ function extractAnthropicContent(responseBody) {
     .trim()
 }
 
+function extractOpenAiCompatibleContent(responseBody) {
+  return (
+    normalizeMessageContent(responseBody?.choices?.[0]?.message?.content) ||
+    normalizeMessageContent(responseBody?.choices?.[0]?.message) ||
+    normalizeMessageContent(responseBody?.choices?.[0]?.text) ||
+    normalizeMessageContent(responseBody?.output_text) ||
+    normalizeMessageContent(responseBody?.content) ||
+    normalizeMessageContent(responseBody?.candidates?.[0]?.content?.parts) ||
+    normalizeMessageContent(responseBody?.candidates?.[0]?.content) ||
+    normalizeMessageContent(responseBody?.result?.message?.content) ||
+    normalizeMessageContent(responseBody?.result?.content) ||
+    ''
+  )
+}
+
+function buildEmptyContentError(provider, responseBody) {
+  const topLevelKeys = responseBody && typeof responseBody === 'object'
+    ? Object.keys(responseBody).slice(0, 8).join(', ')
+    : 'sem chaves'
+
+  return `A IA respondeu sem conteúdo textual para análise. Provider: ${provider || 'desconhecido'}. Campos recebidos: ${topLevelKeys || 'sem dados'}.`
+}
+
 async function requestOpenAiCompatibleInsights(normalizedConfig, payload) {
   const messages = buildDashboardAnalysisMessages(normalizedConfig.aiDashboardPrompt, payload)
   const attemptBodies = [
@@ -232,8 +285,9 @@ async function requestOpenAiCompatibleInsights(normalizedConfig, payload) {
   }
 
   return {
-    content: normalizeMessageContent(responseBody?.choices?.[0]?.message?.content),
+    content: extractOpenAiCompatibleContent(responseBody),
     usage: responseBody?.usage || null,
+    responseBody,
   }
 }
 
@@ -290,6 +344,7 @@ async function requestAnthropicInsights(normalizedConfig, payload) {
   return {
     content: extractAnthropicContent(responseBody),
     usage: responseBody?.usage || null,
+    responseBody,
   }
 }
 
@@ -316,7 +371,7 @@ export async function requestDashboardInsights(config, payload) {
   const content = String(providerResponse.content || '').trim()
 
   if (!content) {
-    throw new Error('A IA respondeu sem conteudo para a analise do dashboard.')
+    throw new Error(buildEmptyContentError(normalizedConfig.aiProvider, providerResponse.responseBody))
   }
 
   const parsed = tryParseJson(content)

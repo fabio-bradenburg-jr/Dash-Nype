@@ -21,6 +21,7 @@ function normalizeInsightPayload(body) {
     topCreatives: Array.isArray(payload.topCreatives) ? payload.topCreatives : [],
     topAges: Array.isArray(payload.topAges) ? payload.topAges : [],
     topRegions: Array.isArray(payload.topRegions) ? payload.topRegions : [],
+    rankingLayers: Array.isArray(payload.rankingLayers) ? payload.rankingLayers : [],
     notes: Array.isArray(payload.notes) ? payload.notes : [],
     generatedAt: new Date().toISOString(),
   }
