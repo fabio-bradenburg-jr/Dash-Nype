@@ -502,25 +502,33 @@ export default function AssistantPage() {
           flex: 1;
         }
 
-        .assistant-nav-item {
+        .assistant-nav-item,
+        .assistant-nav :global(a.assistant-nav-item),
+        .assistant-nav :global(a.assistant-nav-item:link),
+        .assistant-nav :global(a.assistant-nav-item:visited),
+        .assistant-nav :global(a.assistant-nav-item:hover),
+        .assistant-nav :global(a.assistant-nav-item:active) {
           display: flex;
           align-items: center;
           gap: 12px;
+          width: 100%;
           min-height: 48px;
           padding: 0 16px;
           border-radius: 14px;
           color: var(--text-secondary);
-          text-decoration: none;
+          text-decoration: none !important;
           font-size: 14px;
           font-weight: 600;
           transition: 180ms ease;
         }
 
-        .assistant-nav-item i {
+        .assistant-nav-item i,
+        .assistant-nav :global(a.assistant-nav-item i) {
           font-size: 18px;
         }
 
-        .assistant-nav-item:hover {
+        .assistant-nav-item:hover,
+        .assistant-nav :global(a.assistant-nav-item:hover) {
           background: rgba(255, 255, 255, 0.03);
           color: var(--text-primary);
         }
