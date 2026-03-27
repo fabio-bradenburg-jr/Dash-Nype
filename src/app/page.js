@@ -31,6 +31,7 @@ import {
 import { Bar, Doughnut, Line } from 'react-chartjs-2'
 import html2canvas from 'html2canvas'
 import { jsPDF } from 'jspdf'
+import { normalizeAiSettings } from '@/lib/ai-config'
 import {
   buildMetaSummaryFromCampaigns,
   campaignMatchesMetaResultFilters,
@@ -2085,11 +2086,15 @@ export default function DashboardPage() {
   const clientIdsSet = useMemo(() => new Set(clients.map((client) => client.id)), [clients])
   const activeIntegrations = activeClient?.integrations || DEFAULT_INTEGRATIONS
   const selectedAdAccount = activeClient?.metaAdAccountId || ''
+  const normalizedAiIntegrations = useMemo(
+    () => normalizeAiSettings(globalIntegrations),
+    [globalIntegrations]
+  )
   const isAiInsightsConfigured = Boolean(
-    globalIntegrations.aiAnalysisEnabled &&
-    String(globalIntegrations.aiApiKey || '').trim() &&
-    String(globalIntegrations.aiModel || '').trim() &&
-    String(globalIntegrations.aiBaseUrl || '').trim()
+    normalizedAiIntegrations.aiAnalysisEnabled &&
+    String(normalizedAiIntegrations.aiApiKey || '').trim() &&
+    String(normalizedAiIntegrations.aiModel || '').trim() &&
+    String(normalizedAiIntegrations.aiBaseUrl || '').trim()
   )
   const aiInsightGroups = useMemo(() => {
     const items = Array.isArray(aiInsightsResult?.structured?.insights) ? aiInsightsResult.structured.insights : []
@@ -2599,6 +2604,7 @@ export default function DashboardPage() {
       {
         ...DEFAULT_PREFERENCES.globalIntegrations,
         ...(preferences.globalIntegrations || {}),
+        ...normalizeAiSettings(preferences.globalIntegrations || {}),
       }
     )
     setClients(initialClients)
@@ -2868,10 +2874,17 @@ export default function DashboardPage() {
         setThemeColor(state.themeColor || 'blue')
         setMetric1(state.metric1 || 'spend')
         setMetric2(state.metric2 || 'roas')
-        setGlobalIntegrations((current) => ({
-          ...current,
-          ...(state.globalIntegrations || {}),
-        }))
+        setGlobalIntegrations((current) => {
+          const nextIntegrations = {
+            ...current,
+            ...(state.globalIntegrations || {}),
+          }
+
+          return {
+            ...nextIntegrations,
+            ...normalizeAiSettings(nextIntegrations),
+          }
+        })
         setClients(Array.isArray(state.clients) ? state.clients : [])
         setClientGroups(Array.isArray(state.clientGroups) ? cloneClientGroups(state.clientGroups) : [])
         setActiveClientId(state.activeClientId || state.clients?.[0]?.id || '')
