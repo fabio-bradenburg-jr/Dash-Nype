@@ -6521,6 +6521,13 @@ export default function DashboardPage() {
   const userAvatarFallback = `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.user_metadata?.full_name || user?.email || 'Usuario')}&background=0D8ABC&color=fff`
   const userAvatarSrc = user?.user_metadata?.avatar_url || userAvatarFallback
   const userFirstName = (user?.user_metadata?.full_name || user?.email || 'por aí').split(' ')[0]
+  const currentHour = new Date().getHours()
+  const assistantGreeting =
+    currentHour < 12
+      ? `Bom dia, ${userFirstName}. O que vamos mover hoje?`
+      : currentHour < 18
+        ? `Boa tarde, ${userFirstName}. O que vamos mover hoje?`
+        : `Boa noite, ${userFirstName}. O que vamos mover hoje?`
 
   const renderDashboardMetricGrid = (cards, source) => {
     if (!cards.length) return null
@@ -7754,11 +7761,11 @@ export default function DashboardPage() {
         </div>
 
         <nav className="nav-menu">
-          <button type="button" data-tooltip="Home" className={`nav-item nav-button ${activeTab === 'home' ? 'active' : ''}`} onClick={() => setActiveTab('home')}>
-            <i className="bx bxs-home-heart"></i> Home
-          </button>
           <button type="button" data-tooltip="Assistente" className={`nav-item nav-button ${activeTab === 'assistant' ? 'active' : ''}`} onClick={() => setActiveTab('assistant')}>
             <i className="bx bx-bot"></i> Assistente
+          </button>
+          <button type="button" data-tooltip="Home" className={`nav-item nav-button ${activeTab === 'home' ? 'active' : ''}`} onClick={() => setActiveTab('home')}>
+            <i className="bx bxs-home-heart"></i> Home
           </button>
           {canManageClients && (
             <button type="button" data-tooltip="Clientes" className={`nav-item nav-button ${activeTab === 'clientes' ? 'active' : ''}`} onClick={() => setActiveTab('clientes')}>
@@ -7825,7 +7832,7 @@ export default function DashboardPage() {
               {activeTab === 'home' && 'Home'}
               {activeTab === 'clientes' && 'Base de clientes'}
               {activeTab === 'apresentacao' && `Dashboard ${activeClient?.name || 'do cliente'}`}
-              {activeTab === 'assistant' && `O que vamos fazer hoje, ${userFirstName}?`}
+              {activeTab === 'assistant' && assistantGreeting}
               {activeTab === 'calendar' && 'Agenda da operação'}
               {activeTab === 'clickup' && 'Operação ClickUp'}
               {activeTab === 'monday' && 'Operação Monday'}
@@ -7835,7 +7842,7 @@ export default function DashboardPage() {
               {activeTab === 'home' && 'Entre por aqui sempre que abrir o app e escolha rapidamente qual área da operação você quer acessar.'}
               {activeTab === 'clientes' && 'Cadastre seus clientes e mantenha cada operação separada dentro do dashboard.'}
               {activeTab === 'apresentacao' && 'Uma visão executiva consolidada dos principais resultados do cliente, organizada por fonte de dados.'}
-              {activeTab === 'assistant' && 'Seu copiloto do dia para revisar clientes, campanhas, gargalos e próximos passos sem sair da Home.'}
+              {activeTab === 'assistant' && 'Abra a conversa como camada principal do dia e use o copiloto para priorizar ações, cruzar dados e destravar a operação.'}
               {activeTab === 'calendar' && 'Acompanhe a agenda da operação dentro da mesma Home, sem trocar de área.'}
               {activeTab === 'clickup' && 'Acompanhe tarefas, responsáveis e status operacionais do ClickUp a partir da configuração global da operação.'}
               {activeTab === 'monday' && 'Acompanhe boards, itens, status e responsáveis do Monday a partir da configuração global da operação.'}
@@ -7989,15 +7996,24 @@ export default function DashboardPage() {
         {activeTab === 'home' && renderHomeHub()}
 
         {activeTab === 'assistant' && (
-          <section style={{ width: '100%', minHeight: 'calc(100vh - 220px)' }}>
+          <section
+            style={{
+              width: '100%',
+              minHeight: 'calc(100vh - 220px)',
+              border: '1px solid var(--border-color)',
+              borderRadius: '28px',
+              overflow: 'hidden',
+              background: 'rgba(15, 18, 26, 0.92)',
+            }}
+          >
             <iframe
               src="/assistant?embed=1"
               title="Assistente da operação"
               style={{
+                display: 'block',
                 width: '100%',
                 minHeight: 'calc(100vh - 220px)',
-                border: '1px solid var(--border-color)',
-                borderRadius: '28px',
+                border: 'none',
                 background: 'rgba(15, 18, 26, 0.92)',
               }}
             />
@@ -8005,15 +8021,24 @@ export default function DashboardPage() {
         )}
 
         {activeTab === 'calendar' && (
-          <section style={{ width: '100%', minHeight: 'calc(100vh - 220px)' }}>
+          <section
+            style={{
+              width: '100%',
+              minHeight: 'calc(100vh - 220px)',
+              border: '1px solid var(--border-color)',
+              borderRadius: '28px',
+              overflow: 'hidden',
+              background: 'rgba(15, 18, 26, 0.92)',
+            }}
+          >
             <iframe
               src="/calendar?embed=1"
               title="Agenda da operação"
               style={{
+                display: 'block',
                 width: '100%',
                 minHeight: 'calc(100vh - 220px)',
-                border: '1px solid var(--border-color)',
-                borderRadius: '28px',
+                border: 'none',
                 background: 'rgba(15, 18, 26, 0.92)',
               }}
             />
