@@ -34,10 +34,11 @@ function normalizeStoredMessages(value) {
     .slice(-20)
 }
 
-export default function AssistantPage() {
+export default function AssistantPage({ embeddedOverride = null } = {}) {
   const { access, loading, user, profile } = useUser()
   const canViewDashboard = access?.canViewDashboard !== false
-  const [isEmbedded, setIsEmbedded] = useState(false)
+  const [detectedEmbedded, setDetectedEmbedded] = useState(false)
+  const isEmbedded = embeddedOverride ?? detectedEmbedded
 
   const [dashboardState, setDashboardState] = useState(null)
   const [isLoadingState, setIsLoadingState] = useState(true)
@@ -83,10 +84,11 @@ export default function AssistantPage() {
   }, [])
 
   useEffect(() => {
+    if (embeddedOverride !== null) return
     if (typeof window === 'undefined') return
     const params = new URLSearchParams(window.location.search)
-    setIsEmbedded(params.get('embed') === '1')
-  }, [])
+    setDetectedEmbedded(params.get('embed') === '1')
+  }, [embeddedOverride])
 
   useEffect(() => {
     if (typeof window === 'undefined') return

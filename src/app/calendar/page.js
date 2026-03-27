@@ -83,11 +83,12 @@ function createEventFormFromEvent(event) {
   }
 }
 
-export default function CalendarPage() {
+export default function CalendarPage({ embeddedOverride = null } = {}) {
   const { access, loading } = useUser()
   const canViewDashboard = access?.canViewDashboard !== false
   const canEditCalendar = Boolean(access?.canEditIntegrations)
-  const [isEmbedded, setIsEmbedded] = useState(false)
+  const [detectedEmbedded, setDetectedEmbedded] = useState(false)
+  const isEmbedded = embeddedOverride ?? detectedEmbedded
 
   const [connection, setConnection] = useState(null)
   const [setupRequired, setSetupRequired] = useState(false)
@@ -215,10 +216,11 @@ export default function CalendarPage() {
   }, [])
 
   useEffect(() => {
+    if (embeddedOverride !== null) return
     if (typeof window === 'undefined') return
     const params = new URLSearchParams(window.location.search)
-    setIsEmbedded(params.get('embed') === '1')
-  }, [])
+    setDetectedEmbedded(params.get('embed') === '1')
+  }, [embeddedOverride])
 
   const handleConnectGoogle = () => {
     window.location.href = '/api/google-calendar/auth/start?return_to=/calendar'

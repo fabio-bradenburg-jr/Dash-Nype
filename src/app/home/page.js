@@ -3,6 +3,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { createPortal } from 'react-dom'
+import AssistantPage from '@/app/assistant/page'
+import CalendarPage from '@/app/calendar/page'
 import { useUser } from '@/lib/contexts/UserContext'
 import { createClient } from '@/lib/supabase/client'
 import {
@@ -7996,52 +7998,14 @@ export default function DashboardPage() {
         {activeTab === 'home' && renderHomeHub()}
 
         {activeTab === 'assistant' && (
-          <section
-            style={{
-              width: '100%',
-              minHeight: 'calc(100vh - 220px)',
-              border: '1px solid var(--border-color)',
-              borderRadius: '28px',
-              overflow: 'hidden',
-              background: 'rgba(15, 18, 26, 0.92)',
-            }}
-          >
-            <iframe
-              src="/assistant?embed=1"
-              title="Assistente da operação"
-              style={{
-                display: 'block',
-                width: '100%',
-                minHeight: 'calc(100vh - 220px)',
-                border: 'none',
-                background: 'rgba(15, 18, 26, 0.92)',
-              }}
-            />
+          <section style={{ width: '100%', minHeight: 'calc(100vh - 220px)' }}>
+            <AssistantPage embeddedOverride={true} />
           </section>
         )}
 
         {activeTab === 'calendar' && (
-          <section
-            style={{
-              width: '100%',
-              minHeight: 'calc(100vh - 220px)',
-              border: '1px solid var(--border-color)',
-              borderRadius: '28px',
-              overflow: 'hidden',
-              background: 'rgba(15, 18, 26, 0.92)',
-            }}
-          >
-            <iframe
-              src="/calendar?embed=1"
-              title="Agenda da operação"
-              style={{
-                display: 'block',
-                width: '100%',
-                minHeight: 'calc(100vh - 220px)',
-                border: 'none',
-                background: 'rgba(15, 18, 26, 0.92)',
-              }}
-            />
+          <section style={{ width: '100%', minHeight: 'calc(100vh - 220px)' }}>
+            <CalendarPage embeddedOverride={true} />
           </section>
         )}
 
