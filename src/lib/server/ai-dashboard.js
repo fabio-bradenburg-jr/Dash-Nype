@@ -190,6 +190,43 @@ function toCleanString(value) {
   return ''
 }
 
+function findNestedValueByKeys(value, keys, depth = 0) {
+  if (depth > 8 || value == null) return undefined
+
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const nested = findNestedValueByKeys(item, keys, depth + 1)
+      if (nested !== undefined) return nested
+    }
+    return undefined
+  }
+
+  if (typeof value !== 'object') return undefined
+
+  for (const key of keys) {
+    if (Object.prototype.hasOwnProperty.call(value, key) && value[key] != null) {
+      return value[key]
+    }
+  }
+
+  for (const nestedValue of Object.values(value)) {
+    const nested = findNestedValueByKeys(nestedValue, keys, depth + 1)
+    if (nested !== undefined) return nested
+  }
+
+  return undefined
+}
+
+function findNestedStringByKeys(value, keys) {
+  const nestedValue = findNestedValueByKeys(value, keys)
+  return toCleanString(nestedValue)
+}
+
+function findNestedArrayByKeys(value, keys) {
+  const nestedValue = findNestedValueByKeys(value, keys)
+  return Array.isArray(nestedValue) ? nestedValue : []
+}
+
 function looksLikeJsonPayload(value) {
   const normalized = toCleanString(value)
   return normalized.startsWith('{') || normalized.startsWith('[')
@@ -351,32 +388,50 @@ function normalizeStructuredInsight(parsed, rawText) {
     return extractLooseStructuredInsight(rawText)
   }
 
-  const directInsights = normalizeInsightArray(parsed.insights, 'insight')
-  const problemInsights = normalizeInsightArray(parsed.principais_problemas, 'alert')
-  const opportunityInsights = normalizeInsightArray(parsed.oportunidades, 'opportunity')
-  const anomalyInsights = normalizeInsightArray(parsed.anomalias, 'anomaly')
-  const winInsights = normalizeInsightArray(parsed.destaques || parsed.ganhos, 'win')
+  const directInsights = normalizeInsightArray(
+    findNestedArrayByKeys(parsed, ['insights', 'leituras', 'cards']),
+    'insight'
+  )
+  const problemInsights = normalizeInsightArray(
+    findNestedArrayByKeys(parsed, ['principais_problemas', 'problemas', 'alerts', 'alertas']),
+    'alert'
+  )
+  const opportunityInsights = normalizeInsightArray(
+    findNestedArrayByKeys(parsed, ['oportunidades', 'opportunities']),
+    'opportunity'
+  )
+  const anomalyInsights = normalizeInsightArray(
+    findNestedArrayByKeys(parsed, ['anomalias', 'anomalies']),
+    'anomaly'
+  )
+  const winInsights = normalizeInsightArray(
+    findNestedArrayByKeys(parsed, ['destaques', 'ganhos', 'wins']),
+    'win'
+  )
 
-  const nextActions = Array.isArray(parsed.nextActions)
-    ? parsed.nextActions.map((item) => toCleanString(item)).filter(Boolean)
-    : Array.isArray(parsed.proximos_passos)
-      ? parsed.proximos_passos.map((item) => toCleanString(item)).filter(Boolean)
-      : normalizeInsightArray(parsed.oportunidades, 'opportunity')
-          .map((item) => item?.action || item?.title || '')
-          .filter(Boolean)
+  const nestedOpportunities = findNestedArrayByKeys(parsed, ['oportunidades', 'opportunities'])
+  const nestedDiagnostic = findNestedValueByKeys(parsed, ['diagnostico_geral', 'diagnostic', 'overview'])
 
-  const headline =
-    toCleanString(parsed.headline) ||
-    toCleanString(parsed.titulo) ||
-    toCleanString(parsed.diagnostico_geral?.headline) ||
-    toCleanString(parsed.diagnostico_geral?.titulo) ||
+  const nextActionsSource =
+    findNestedArrayByKeys(parsed, ['nextActions', 'proximos_passos', 'next_actions']) ||
+    []
+  const nextActions = nextActionsSource.length
+    ? nextActionsSource.map((item) => toCleanString(item)).filter(Boolean)
+    : normalizeInsightArray(nestedOpportunities, 'opportunity')
+        .map((item) => item?.action || item?.title || '')
+        .filter(Boolean)
+
+  const headline = (
+    findNestedStringByKeys(parsed, ['headline', 'titulo']) ||
+    findNestedStringByKeys(nestedDiagnostic, ['headline', 'titulo']) ||
     'Insight gerado'
+  )
 
-  const summary =
-    toCleanString(parsed.summary) ||
-    toCleanString(parsed.resumo) ||
-    buildSummaryFromDiagnostic(parsed.diagnostico_geral, rawText) ||
+  const summary = (
+    findNestedStringByKeys(parsed, ['summary', 'resumo']) ||
+    buildSummaryFromDiagnostic(nestedDiagnostic, rawText) ||
     toCleanString(rawText)
+  )
 
   const insights = [
     ...directInsights,
