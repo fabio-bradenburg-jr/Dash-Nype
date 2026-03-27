@@ -180,10 +180,13 @@ function buildDashboardAnalysisMessages(prompt, payload) {
 }
 
 function formatProviderErrorMessage(errorBody, fallbackMessage) {
+  const nestedError = errorBody?.error
   const providerMessage =
-    errorBody?.error?.message ||
+    (typeof nestedError === 'string' ? nestedError : nestedError?.message) ||
+    nestedError?.code ||
     errorBody?.message ||
     errorBody?.detail ||
+    (errorBody?.status === 'failed' ? 'A resposta da IA falhou antes de gerar conteúdo.' : '') ||
     fallbackMessage
 
   return String(providerMessage || fallbackMessage).trim()
@@ -313,9 +316,14 @@ function extractOpenAiResponsesContent(responseBody) {
 }
 
 function buildEmptyContentError(provider, responseBody) {
+  const nestedErrorMessage = formatProviderErrorMessage(responseBody, '')
   const topLevelKeys = responseBody && typeof responseBody === 'object'
     ? Object.keys(responseBody).slice(0, 8).join(', ')
     : 'sem chaves'
+
+  if (nestedErrorMessage) {
+    return `A IA não concluiu a análise. Provider: ${provider || 'desconhecido'}. Motivo: ${nestedErrorMessage}`
+  }
 
   return `A IA respondeu sem conteúdo textual para análise. Provider: ${provider || 'desconhecido'}. Campos recebidos: ${topLevelKeys || 'sem dados'}.`
 }
@@ -422,10 +430,12 @@ async function requestNativeOpenAiInsights(normalizedConfig, payload) {
     {
       model: normalizedConfig.aiModel,
       max_output_tokens: 1400,
+      background: false,
       input,
     },
     {
       model: normalizedConfig.aiModel,
+      background: false,
       input,
     },
   ]
@@ -461,6 +471,15 @@ async function requestNativeOpenAiInsights(normalizedConfig, payload) {
     )
   }
 
+  if (responseBody?.error || responseBody?.status === 'failed') {
+    throw new Error(
+      formatProviderErrorMessage(
+        responseBody,
+        'A OpenAI retornou erro ao gerar os insights da dashboard.'
+      )
+    )
+  }
+
   let resolvedResponseBody = responseBody
   let resolvedContent = extractOpenAiResponsesContent(responseBody)
 
@@ -479,6 +498,15 @@ async function requestNativeOpenAiInsights(normalizedConfig, payload) {
 
       resolvedResponseBody = followUp.responseBody
       resolvedContent = extractOpenAiResponsesContent(followUp.responseBody)
+
+      if (followUp.responseBody?.error || followUp.responseBody?.status === 'failed') {
+        throw new Error(
+          formatProviderErrorMessage(
+            followUp.responseBody,
+            'A OpenAI retornou erro ao concluir os insights da dashboard.'
+          )
+        )
+      }
 
       if (resolvedContent || followUp.responseBody?.status === 'completed') {
         break
