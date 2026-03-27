@@ -414,6 +414,57 @@ async function requestOpenAiCompatibleInsights(normalizedConfig, payload) {
   }
 }
 
+async function requestOpenAiCompatibleFallbackInsights(normalizedConfig, payload) {
+  const messages = buildDashboardAnalysisMessages(normalizedConfig.aiDashboardPrompt, payload)
+  const attemptBodies = [
+    {
+      model: normalizedConfig.aiModel,
+      messages,
+      response_format: { type: 'json_object' },
+    },
+    {
+      model: normalizedConfig.aiModel,
+      messages,
+    },
+  ]
+
+  for (let index = 0; index < attemptBodies.length; index += 1) {
+    const { response, responseBody } = await postChatCompletion(
+      normalizedConfig.aiBaseUrl,
+      normalizedConfig.aiApiKey,
+      attemptBodies[index]
+    )
+
+    if (!response.ok) {
+      if (index < attemptBodies.length - 1 && shouldRetryWithCompatiblePayload(responseBody)) {
+        continue
+      }
+
+      throw new Error(
+        formatProviderErrorMessage(
+          responseBody,
+          'Nao foi possivel gerar insights com a IA configurada para o dashboard.'
+        )
+      )
+    }
+
+    const content = extractOpenAiCompatibleContent(responseBody)
+    if (String(content || '').trim()) {
+      return {
+        content,
+        usage: responseBody?.usage || null,
+        responseBody,
+      }
+    }
+  }
+
+  return {
+    content: '',
+    usage: null,
+    responseBody: null,
+  }
+}
+
 async function requestNativeOpenAiInsights(normalizedConfig, payload) {
   const messages = buildDashboardAnalysisMessages(normalizedConfig.aiDashboardPrompt, payload)
   const userInput = String(messages.find((message) => message.role === 'user')?.content || '')
@@ -614,6 +665,13 @@ export async function requestDashboardInsights(config, payload) {
     !String(providerResponse?.content || '').trim()
   ) {
     providerResponse = await requestNativeOpenAiInsights(normalizedConfig, payload)
+  }
+
+  if (
+    normalizedConfig.aiProvider === 'openai' &&
+    !String(providerResponse?.content || '').trim()
+  ) {
+    providerResponse = await requestOpenAiCompatibleFallbackInsights(normalizedConfig, payload)
   }
 
   const content = String(providerResponse.content || '').trim()
