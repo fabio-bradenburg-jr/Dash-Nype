@@ -347,8 +347,10 @@ export default function CalendarPage({ embeddedOverride = null } = {}) {
     }
   }
 
+  const CalendarContentTag = isEmbedded ? 'div' : 'main'
+
   const calendarMainContent = (
-    <main className={`main-content settings-main ${isEmbedded ? 'calendar-main-embedded' : ''}`}>
+    <CalendarContentTag className={`${isEmbedded ? 'calendar-embedded-content' : 'main-content'} settings-main ${isEmbedded ? 'calendar-main-embedded' : ''}`}>
       <section className="glass-panel settings-panel calendar-panel">
         <div className="settings-head">
           <div>
@@ -517,11 +519,11 @@ export default function CalendarPage({ embeddedOverride = null } = {}) {
           </>
         )}
       </section>
-    </main>
+    </CalendarContentTag>
   )
 
   return (
-    <div className={`dashboard-container ${isEmbedded ? 'calendar-shell-embedded' : ''}`}>
+    <div className={`${isEmbedded ? 'calendar-embedded-shell' : 'dashboard-container'} ${isEmbedded ? 'calendar-shell-embedded' : ''}`}>
       {!isEmbedded ? (
       <aside className="sidebar glass-panel">
         <div className="logo">
@@ -694,14 +696,21 @@ export default function CalendarPage({ embeddedOverride = null } = {}) {
           min-height: 100%;
         }
 
+        .calendar-embedded-shell {
+          min-height: 100%;
+        }
+
         .settings-main {
           width: 100%;
         }
 
         .calendar-main-embedded {
-          margin-left: 0;
           min-height: 100%;
           padding: 0;
+        }
+
+        .calendar-embedded-content {
+          width: 100%;
         }
 
         .settings-panel {

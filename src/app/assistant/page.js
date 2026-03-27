@@ -193,8 +193,10 @@ export default function AssistantPage({ embeddedOverride = null } = {}) {
     }
   }
 
+  const AssistantContentTag = isEmbedded ? 'div' : 'main'
+
   const assistantMainContent = (
-    <main className={`main-content assistant-main ${isEmbedded ? 'assistant-main-embedded' : ''}`}>
+    <AssistantContentTag className={`${isEmbedded ? 'assistant-embedded-content' : 'main-content'} assistant-main ${isEmbedded ? 'assistant-main-embedded' : ''}`}>
       <header className={`header assistant-page-header ${isEmbedded ? 'assistant-page-header-embedded' : ''}`}>
         <div className="page-title">
           <h1>Assistente de Negócio</h1>
@@ -416,11 +418,11 @@ export default function AssistantPage({ embeddedOverride = null } = {}) {
             </section>
           </div>
         )}
-    </main>
+    </AssistantContentTag>
   )
 
   return (
-    <div className={`dashboard-container assistant-shell ${isEmbedded ? 'assistant-shell-embedded' : ''}`}>
+    <div className={`${isEmbedded ? 'assistant-embedded-shell' : 'dashboard-container'} assistant-shell ${isEmbedded ? 'assistant-shell-embedded' : ''}`}>
       {!isEmbedded ? (
         <aside className="sidebar glass-panel assistant-sidebar">
         <div className="logo">
@@ -470,6 +472,10 @@ export default function AssistantPage({ embeddedOverride = null } = {}) {
           min-height: 100%;
         }
 
+        .assistant-embedded-shell {
+          min-height: 100%;
+        }
+
         .assistant-shell {
           background:
             radial-gradient(circle at top center, rgba(59, 130, 246, 0.08), transparent 22%),
@@ -477,9 +483,12 @@ export default function AssistantPage({ embeddedOverride = null } = {}) {
         }
 
         .assistant-main-embedded {
-          margin-left: 0;
           min-height: 100%;
           padding: 0;
+        }
+
+        .assistant-embedded-content {
+          width: 100%;
         }
 
         .assistant-page-header-embedded {
