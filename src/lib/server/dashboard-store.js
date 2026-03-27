@@ -171,6 +171,13 @@ function normalizeGlobalIntegrations(globalIntegrations) {
 }
 
 function extractGlobalIntegrations(clients) {
+  const hasIntegrationValue = (value) => {
+    if (typeof value === 'boolean') return true
+    if (typeof value === 'number') return Number.isFinite(value)
+    if (typeof value === 'string') return value.trim().length > 0
+    return value != null
+  }
+
   return clients.reduce((current, client) => {
     const next = { ...current }
     const integrations = client?.integrations || {}
@@ -186,7 +193,7 @@ function extractGlobalIntegrations(clients) {
         return
       }
 
-      if (!next[fieldName] && integrations[fieldName]) {
+      if (hasIntegrationValue(integrations[fieldName])) {
         next[fieldName] = integrations[fieldName]
       }
     })
