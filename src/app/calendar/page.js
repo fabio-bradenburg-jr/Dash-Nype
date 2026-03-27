@@ -87,6 +87,7 @@ export default function CalendarPage() {
   const { access, loading } = useUser()
   const canViewDashboard = access?.canViewDashboard !== false
   const canEditCalendar = Boolean(access?.canEditIntegrations)
+  const [isEmbedded, setIsEmbedded] = useState(false)
 
   const [connection, setConnection] = useState(null)
   const [setupRequired, setSetupRequired] = useState(false)
@@ -211,6 +212,12 @@ export default function CalendarPage() {
     if (error) {
       setErrorMessage(error)
     }
+  }, [])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const params = new URLSearchParams(window.location.search)
+    setIsEmbedded(params.get('embed') === '1')
   }, [])
 
   const handleConnectGoogle = () => {
@@ -338,8 +345,182 @@ export default function CalendarPage() {
     }
   }
 
+  const calendarMainContent = (
+    <main className={`main-content settings-main ${isEmbedded ? 'calendar-main-embedded' : ''}`}>
+      <section className="glass-panel settings-panel calendar-panel">
+        <div className="settings-head">
+          <div>
+            <h1>Google Calendar</h1>
+            <p>Conecte a agenda da operação, escolha o calendário ativo e gerencie eventos com link do Google Meet direto pelo app.</p>
+          </div>
+          <div className="calendar-head-actions">
+            {canEditCalendar && connection?.connected && (
+              <button type="button" className="btn btn-secondary" onClick={handleDisconnectGoogle}>
+                Desconectar conta
+              </button>
+            )}
+            {canEditCalendar && (
+              <button type="button" className="btn btn-primary" onClick={handleConnectGoogle}>
+                {connection?.connected ? 'Reconectar Google' : 'Conectar Google'}
+              </button>
+            )}
+          </div>
+        </div>
+
+        {errorMessage && <div className="form-alert">{errorMessage}</div>}
+        {successMessage && <div className="success-banner">{successMessage}</div>}
+
+        {!canViewDashboard ? (
+          <div className="empty-panel glass-item">
+            <h3>Sem acesso à agenda</h3>
+            <p>Seu usuário ainda não possui dashboards liberados neste workspace.</p>
+          </div>
+        ) : isLoadingConnection ? (
+          <div className="empty-panel glass-item">
+            <h3>Carregando Google Calendar</h3>
+            <p>Estamos verificando a conexão e os calendários disponíveis.</p>
+          </div>
+        ) : !connection?.connected ? (
+          <div className="glass-item calendar-connect-card">
+            <div>
+              <h2>Nenhuma conta conectada</h2>
+              <p>
+                {setupRequired
+                  ? 'A integração do Google Calendar ainda precisa da migration no Supabase antes da conexão da conta.'
+                  : 'Conecte uma conta do Google para listar calendários, criar eventos, editar compromissos e gerar reuniões do Google Meet.'}
+              </p>
+            </div>
+            {canEditCalendar ? (
+              <button type="button" className="btn btn-primary" onClick={handleConnectGoogle} disabled={setupRequired}>
+                Conectar Google Calendar
+              </button>
+            ) : (
+              <div className="field-helper">
+                Somente usuários com permissão de edição podem conectar a agenda.
+              </div>
+            )}
+          </div>
+        ) : (
+          <>
+            <div className="settings-grid calendar-grid">
+              <div className="glass-item settings-block">
+                <h2>Conta conectada</h2>
+                <p>Essa conta abastece o calendário do workspace inteiro.</p>
+                <div className="calendar-connection-meta">
+                  <strong>{connection.email || 'Conta conectada'}</strong>
+                  <span>{connection.selectedCalendarSummary || 'Calendário principal'}</span>
+                </div>
+              </div>
+
+              <div className="glass-item settings-block">
+                <h2>Calendário ativo</h2>
+                <p>Escolha em qual agenda os eventos devem ser lidos e gravados.</p>
+                <select
+                  className="client-select-input"
+                  value={selectedCalendarId}
+                  onChange={(event) => handleCalendarSelectionChange(event.target.value)}
+                  disabled={!canEditCalendar}
+                >
+                  {calendars.map((calendar) => (
+                    <option key={calendar.id} value={calendar.id}>
+                      {calendar.summary}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="glass-item settings-block settings-block-full">
+              <div className="calendar-toolbar">
+                <div className="calendar-range-grid">
+                  <div className="input-group">
+                    <label>De</label>
+                    <input
+                      type="date"
+                      value={range.from}
+                      onChange={(event) => setRange((current) => ({ ...current, from: event.target.value }))}
+                    />
+                  </div>
+                  <div className="input-group">
+                    <label>Até</label>
+                    <input
+                      type="date"
+                      value={range.to}
+                      onChange={(event) => setRange((current) => ({ ...current, to: event.target.value }))}
+                    />
+                  </div>
+                </div>
+
+                {canEditCalendar && (
+                  <button type="button" className="btn btn-primary" onClick={handleOpenNewEvent}>
+                    Novo evento
+                  </button>
+                )}
+              </div>
+
+              {isLoadingEvents ? (
+                <div className="empty-panel glass-item compact-empty-state">
+                  <h3>Buscando eventos</h3>
+                  <p>Estamos carregando a agenda do período selecionado.</p>
+                </div>
+              ) : !events.length ? (
+                <div className="empty-panel glass-item compact-empty-state">
+                  <h3>Nenhum evento no período</h3>
+                  <p>Não encontramos compromissos no calendário selecionado para esse intervalo.</p>
+                </div>
+              ) : (
+                <div className="calendar-events-grid">
+                  {events.map((event) => (
+                    <article key={event.id} className="glass-item calendar-event-card">
+                      <div className="calendar-event-head">
+                        <div>
+                          <strong>{event.summary}</strong>
+                          <span>{formatEventDate(event)}</span>
+                        </div>
+                        {canEditCalendar && (
+                          <div className="calendar-event-actions">
+                            <button type="button" className="btn btn-secondary" onClick={() => handleOpenEditEvent(event)}>
+                              Editar
+                            </button>
+                            <button type="button" className="btn btn-secondary" onClick={() => handleDeleteEvent(event.id)}>
+                              Excluir
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
+                      {event.location && <p><strong>Local:</strong> {event.location}</p>}
+                      {event.description && <p>{event.description}</p>}
+                      {event.attendees.length > 0 && (
+                        <p><strong>Convidados:</strong> {event.attendees.join(', ')}</p>
+                      )}
+
+                      <div className="calendar-event-links">
+                        {event.meetLink && (
+                          <a href={event.meetLink} target="_blank" rel="noreferrer" className="btn btn-secondary">
+                            Abrir Meet
+                          </a>
+                        )}
+                        {event.htmlLink && (
+                          <a href={event.htmlLink} target="_blank" rel="noreferrer" className="btn btn-secondary">
+                            Ver no Google
+                          </a>
+                        )}
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              )}
+            </div>
+          </>
+        )}
+      </section>
+    </main>
+  )
+
   return (
-    <div className="dashboard-container">
+    <div className={`dashboard-container ${isEmbedded ? 'calendar-shell-embedded' : ''}`}>
+      {!isEmbedded ? (
       <aside className="sidebar glass-panel">
         <div className="logo">
           <i className="bx bx-bar-chart-alt-2"></i>
@@ -369,177 +550,9 @@ export default function CalendarPage() {
           </Link>
         </nav>
       </aside>
+      ) : null}
 
-      <main className="main-content settings-main">
-        <section className="glass-panel settings-panel calendar-panel">
-          <div className="settings-head">
-            <div>
-              <h1>Google Calendar</h1>
-              <p>Conecte a agenda da operação, escolha o calendário ativo e gerencie eventos com link do Google Meet direto pelo app.</p>
-            </div>
-            <div className="calendar-head-actions">
-              {canEditCalendar && connection?.connected && (
-                <button type="button" className="btn btn-secondary" onClick={handleDisconnectGoogle}>
-                  Desconectar conta
-                </button>
-              )}
-              {canEditCalendar && (
-                <button type="button" className="btn btn-primary" onClick={handleConnectGoogle}>
-                  {connection?.connected ? 'Reconectar Google' : 'Conectar Google'}
-                </button>
-              )}
-            </div>
-          </div>
-
-          {errorMessage && <div className="form-alert">{errorMessage}</div>}
-          {successMessage && <div className="success-banner">{successMessage}</div>}
-
-          {!canViewDashboard ? (
-            <div className="empty-panel glass-item">
-              <h3>Sem acesso à agenda</h3>
-              <p>Seu usuário ainda não possui dashboards liberados neste workspace.</p>
-            </div>
-          ) : isLoadingConnection ? (
-            <div className="empty-panel glass-item">
-              <h3>Carregando Google Calendar</h3>
-              <p>Estamos verificando a conexão e os calendários disponíveis.</p>
-            </div>
-          ) : !connection?.connected ? (
-            <div className="glass-item calendar-connect-card">
-              <div>
-                <h2>Nenhuma conta conectada</h2>
-                <p>
-                  {setupRequired
-                    ? 'A integração do Google Calendar ainda precisa da migration no Supabase antes da conexão da conta.'
-                    : 'Conecte uma conta do Google para listar calendários, criar eventos, editar compromissos e gerar reuniões do Google Meet.'}
-                </p>
-              </div>
-              {canEditCalendar ? (
-                <button type="button" className="btn btn-primary" onClick={handleConnectGoogle} disabled={setupRequired}>
-                  Conectar Google Calendar
-                </button>
-              ) : (
-                <div className="field-helper">
-                  Somente usuários com permissão de edição podem conectar a agenda.
-                </div>
-              )}
-            </div>
-          ) : (
-            <>
-              <div className="settings-grid calendar-grid">
-                <div className="glass-item settings-block">
-                  <h2>Conta conectada</h2>
-                  <p>Essa conta abastece o calendário do workspace inteiro.</p>
-                  <div className="calendar-connection-meta">
-                    <strong>{connection.email || 'Conta conectada'}</strong>
-                    <span>{connection.selectedCalendarSummary || 'Calendário principal'}</span>
-                  </div>
-                </div>
-
-                <div className="glass-item settings-block">
-                  <h2>Calendário ativo</h2>
-                  <p>Escolha em qual agenda os eventos devem ser lidos e gravados.</p>
-                  <select
-                    className="client-select-input"
-                    value={selectedCalendarId}
-                    onChange={(event) => handleCalendarSelectionChange(event.target.value)}
-                    disabled={!canEditCalendar}
-                  >
-                    {calendars.map((calendar) => (
-                      <option key={calendar.id} value={calendar.id}>
-                        {calendar.summary}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div className="glass-item settings-block settings-block-full">
-                <div className="calendar-toolbar">
-                  <div className="calendar-range-grid">
-                    <div className="input-group">
-                      <label>De</label>
-                      <input
-                        type="date"
-                        value={range.from}
-                        onChange={(event) => setRange((current) => ({ ...current, from: event.target.value }))}
-                      />
-                    </div>
-                    <div className="input-group">
-                      <label>Até</label>
-                      <input
-                        type="date"
-                        value={range.to}
-                        onChange={(event) => setRange((current) => ({ ...current, to: event.target.value }))}
-                      />
-                    </div>
-                  </div>
-
-                  {canEditCalendar && (
-                    <button type="button" className="btn btn-primary" onClick={handleOpenNewEvent}>
-                      Novo evento
-                    </button>
-                  )}
-                </div>
-
-                {isLoadingEvents ? (
-                  <div className="empty-panel glass-item compact-empty-state">
-                    <h3>Buscando eventos</h3>
-                    <p>Estamos carregando a agenda do período selecionado.</p>
-                  </div>
-                ) : !events.length ? (
-                  <div className="empty-panel glass-item compact-empty-state">
-                    <h3>Nenhum evento no período</h3>
-                    <p>Não encontramos compromissos no calendário selecionado para esse intervalo.</p>
-                  </div>
-                ) : (
-                  <div className="calendar-events-grid">
-                    {events.map((event) => (
-                      <article key={event.id} className="glass-item calendar-event-card">
-                        <div className="calendar-event-head">
-                          <div>
-                            <strong>{event.summary}</strong>
-                            <span>{formatEventDate(event)}</span>
-                          </div>
-                          {canEditCalendar && (
-                            <div className="calendar-event-actions">
-                              <button type="button" className="btn btn-secondary" onClick={() => handleOpenEditEvent(event)}>
-                                Editar
-                              </button>
-                              <button type="button" className="btn btn-secondary" onClick={() => handleDeleteEvent(event.id)}>
-                                Excluir
-                              </button>
-                            </div>
-                          )}
-                        </div>
-
-                        {event.location && <p><strong>Local:</strong> {event.location}</p>}
-                        {event.description && <p>{event.description}</p>}
-                        {event.attendees.length > 0 && (
-                          <p><strong>Convidados:</strong> {event.attendees.join(', ')}</p>
-                        )}
-
-                        <div className="calendar-event-links">
-                          {event.meetLink && (
-                            <a href={event.meetLink} target="_blank" rel="noreferrer" className="btn btn-secondary">
-                              Abrir Meet
-                            </a>
-                          )}
-                          {event.htmlLink && (
-                            <a href={event.htmlLink} target="_blank" rel="noreferrer" className="btn btn-secondary">
-                              Ver no Google
-                            </a>
-                          )}
-                        </div>
-                      </article>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </>
-          )}
-        </section>
-      </main>
+      {calendarMainContent}
 
       {isEventModalOpen && (
         <div className="modal-overlay" onClick={() => setIsEventModalOpen(false)}>
@@ -675,8 +688,18 @@ export default function CalendarPage() {
       )}
 
       <style jsx>{`
+        .calendar-shell-embedded {
+          min-height: 100%;
+        }
+
         .settings-main {
           width: 100%;
+        }
+
+        .calendar-main-embedded {
+          margin-left: 0;
+          min-height: 100%;
+          padding: 0;
         }
 
         .settings-panel {

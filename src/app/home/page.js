@@ -6694,7 +6694,7 @@ export default function DashboardPage() {
         accent: 'blue',
         helper: activeClient ? `Fale sobre ${activeClient.name} ou use foco geral para cruzar o app inteiro.` : 'Use a IA como camada principal de leitura e direcionamento.',
         actionLabel: 'Abrir IA',
-        href: '/assistant',
+        onClick: () => setActiveTab('assistant'),
       },
       {
         key: 'apresentacao',
@@ -6738,7 +6738,7 @@ export default function DashboardPage() {
         accent: 'emerald',
         helper: 'Acesso rápido ao calendário da operação.',
         actionLabel: 'Abrir agenda',
-        href: '/calendar',
+        onClick: () => setActiveTab('calendar'),
       },
       {
         key: 'configuracoes',
@@ -7770,23 +7770,23 @@ export default function DashboardPage() {
           <button type="button" data-tooltip="Monday" className={`nav-item nav-button ${activeTab === 'monday' ? 'active' : ''}`} onClick={() => setActiveTab('monday')}>
             <i className="bx bx-columns"></i> Monday
           </button>
-          <Link href="/calendar" data-tooltip="Agenda" className="nav-item">
+          <button type="button" data-tooltip="Agenda" className={`nav-item nav-button ${activeTab === 'calendar' ? 'active' : ''}`} onClick={() => setActiveTab('calendar')}>
             <i className="bx bx-calendar-event"></i> Agenda
-          </Link>
-          <Link href="/assistant" data-tooltip="Assistente" className="nav-item">
+          </button>
+          <button type="button" data-tooltip="Assistente" className={`nav-item nav-button ${activeTab === 'assistant' ? 'active' : ''}`} onClick={() => setActiveTab('assistant')}>
             <i className="bx bx-bot"></i> Assistente
-          </Link>
+          </button>
           {canManageUsers && (
             <button type="button" data-tooltip="Usuários" className={`nav-item nav-button ${activeTab === 'usuarios' ? 'active' : ''}`} onClick={() => setActiveTab('usuarios')}>
               <i className="bx bxs-user-detail"></i> Usuários
             </button>
           )}
-          <Link href="/settings" data-tooltip="Configurações" className="nav-item">
+          <a href="/settings" data-tooltip="Configurações" className="nav-item">
             <i className="bx bx-cog"></i> Configurações
-          </Link>
-          <Link href="/privacy" data-tooltip="Política e Privacidade" className="nav-item" target="_blank" rel="noreferrer">
+          </a>
+          <a href="/privacy" data-tooltip="Política e Privacidade" className="nav-item" target="_blank" rel="noreferrer">
             <i className="bx bx-shield-quarter"></i> Política e Privacidade
-          </Link>
+          </a>
         </nav>
 
         {!isSidebarCollapsed && activeTab === 'apresentacao' && (
@@ -7824,6 +7824,8 @@ export default function DashboardPage() {
               {activeTab === 'home' && 'Home'}
               {activeTab === 'clientes' && 'Base de clientes'}
               {activeTab === 'apresentacao' && `Dashboard ${activeClient?.name || 'do cliente'}`}
+              {activeTab === 'assistant' && 'IA da operação'}
+              {activeTab === 'calendar' && 'Agenda da operação'}
               {activeTab === 'clickup' && 'Operação ClickUp'}
               {activeTab === 'monday' && 'Operação Monday'}
               {activeTab === 'usuarios' && 'Gestão de usuários'}
@@ -7832,6 +7834,8 @@ export default function DashboardPage() {
               {activeTab === 'home' && 'Entre por aqui sempre que abrir o app e escolha rapidamente qual área da operação você quer acessar.'}
               {activeTab === 'clientes' && 'Cadastre seus clientes e mantenha cada operação separada dentro do dashboard.'}
               {activeTab === 'apresentacao' && 'Uma visão executiva consolidada dos principais resultados do cliente, organizada por fonte de dados.'}
+              {activeTab === 'assistant' && 'Use a IA como copiloto da operação sem sair da mesma camada principal do app.'}
+              {activeTab === 'calendar' && 'Acompanhe a agenda da operação dentro da mesma Home, sem trocar de área.'}
               {activeTab === 'clickup' && 'Acompanhe tarefas, responsáveis e status operacionais do ClickUp a partir da configuração global da operação.'}
               {activeTab === 'monday' && 'Acompanhe boards, itens, status e responsáveis do Monday a partir da configuração global da operação.'}
               {activeTab === 'usuarios' && 'Defina quem pode visualizar dashboards, editar integrações e acessar clientes específicos.'}
@@ -7982,6 +7986,38 @@ export default function DashboardPage() {
         )}
 
         {activeTab === 'home' && renderHomeHub()}
+
+        {activeTab === 'assistant' && (
+          <section style={{ width: '100%', minHeight: 'calc(100vh - 220px)' }}>
+            <iframe
+              src="/assistant?embed=1"
+              title="Assistente da operação"
+              style={{
+                width: '100%',
+                minHeight: 'calc(100vh - 220px)',
+                border: '1px solid var(--border-color)',
+                borderRadius: '28px',
+                background: 'rgba(15, 18, 26, 0.92)',
+              }}
+            />
+          </section>
+        )}
+
+        {activeTab === 'calendar' && (
+          <section style={{ width: '100%', minHeight: 'calc(100vh - 220px)' }}>
+            <iframe
+              src="/calendar?embed=1"
+              title="Agenda da operação"
+              style={{
+                width: '100%',
+                minHeight: 'calc(100vh - 220px)',
+                border: '1px solid var(--border-color)',
+                borderRadius: '28px',
+                background: 'rgba(15, 18, 26, 0.92)',
+              }}
+            />
+          </section>
+        )}
 
         {activeTab === 'clickup' && renderClickUpOperationalPanel()}
 

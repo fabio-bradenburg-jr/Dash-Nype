@@ -37,6 +37,7 @@ function normalizeStoredMessages(value) {
 export default function AssistantPage() {
   const { access, loading, user, profile } = useUser()
   const canViewDashboard = access?.canViewDashboard !== false
+  const [isEmbedded, setIsEmbedded] = useState(false)
 
   const [dashboardState, setDashboardState] = useState(null)
   const [isLoadingState, setIsLoadingState] = useState(true)
@@ -79,6 +80,12 @@ export default function AssistantPage() {
           : 'operation'
       )
     } catch {}
+  }, [])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const params = new URLSearchParams(window.location.search)
+    setIsEmbedded(params.get('embed') === '1')
   }, [])
 
   useEffect(() => {
@@ -184,9 +191,232 @@ export default function AssistantPage() {
     }
   }
 
+  const assistantMainContent = (
+    <main className={`main-content assistant-main ${isEmbedded ? 'assistant-main-embedded' : ''}`}>
+      <header className="header assistant-page-header">
+        <div className="page-title">
+          <h1>Assistente de Negócio</h1>
+          <p>Converse com a IA da operação usando o mesmo contexto do app inteiro, sem sair do fluxo principal.</p>
+        </div>
+        <div className="header-actions assistant-header-actions">
+          <button type="button" className="btn btn-secondary assistant-header-button" onClick={handleResetChat}>
+            <i className="bx bx-refresh"></i>
+            Novo contexto
+          </button>
+        </div>
+      </header>
+
+        {!canViewDashboard ? (
+          <div className="assistant-empty glass-panel">
+            <h3>Sem acesso ao assistente</h3>
+            <p>Seu usuário ainda não possui dashboards liberados neste workspace.</p>
+          </div>
+        ) : isLoadingState ? (
+          <div className="assistant-empty glass-panel">
+            <h3>Carregando contexto do negócio</h3>
+            <p>Estamos preparando os dados internos para a conversa.</p>
+          </div>
+        ) : (
+          <div className="assistant-content">
+            <section className="assistant-context-column">
+              <div className="assistant-context-card glass-panel">
+                <div className="assistant-section-head">
+                  <span className="assistant-section-kicker">Contexto da conversa</span>
+                </div>
+
+                <label className="assistant-field">
+                  <span>Foco</span>
+                  <div className="assistant-select-wrap">
+                    <select value={focusMode} onChange={(event) => setFocusMode(event.target.value)}>
+                      {FOCUS_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                    <i className="bx bx-chevron-down"></i>
+                  </div>
+                </label>
+
+                <div className="assistant-context-stats">
+                  <div className="assistant-context-stat">
+                    <div>
+                      <i className="bx bx-group"></i>
+                      <span>Clientes</span>
+                    </div>
+                    <strong>{availableClients.length}</strong>
+                  </div>
+                  <div className="assistant-context-stat">
+                    <div>
+                      <i className="bx bx-sitemap"></i>
+                      <span>Configuração</span>
+                    </div>
+                    <strong>{dashboardState?.clientGroups?.length || 0} grupos</strong>
+                  </div>
+                  <div className="assistant-context-stat">
+                    <div>
+                      <i className="bx bx-chip"></i>
+                      <span>Provider</span>
+                    </div>
+                    <strong>{dashboardState?.globalIntegrations?.aiProvider || 'Não definido'}</strong>
+                  </div>
+                </div>
+
+                <div className="assistant-chip-group">
+                  <button type="button" className="assistant-chip" onClick={() => setInputValue('Me dê um resumo executivo da operação, com pontos positivos, atenção e urgência.')}>
+                    Resumo executivo
+                  </button>
+                  <button
+                    type="button"
+                    className="assistant-chip"
+                    onClick={() =>
+                      setInputValue(
+                        focusMode === 'clients'
+                          ? 'Quais clientes estão com melhor momento, quais pedem atenção e quais estão em urgência?'
+                          : focusMode === 'general'
+                            ? 'Me dê uma leitura geral do app inteiro, cruzando operação, clientes, campanhas e gargalos.'
+                            : `Como está a operação em foco? Quero leitura por campanha, impacto e depois um resumo com pontos positivos, atenção e urgência.`
+                      )
+                    }
+                  >
+                    {focusMode === 'clients' ? 'Leitura dos clientes' : focusMode === 'general' ? 'Visão geral do app' : 'Campanhas da operação'}
+                  </button>
+                  <button
+                    type="button"
+                    className="assistant-chip"
+                    onClick={() =>
+                      setInputValue(
+                        focusMode === 'clients'
+                          ? 'Quais riscos você vê hoje na base de clientes?'
+                          : focusMode === 'general'
+                            ? 'Quais riscos você vê hoje olhando o app inteiro como um copiloto da operação?'
+                            : 'Quais riscos você vê hoje na operação em foco?'
+                      )
+                    }
+                  >
+                    {focusMode === 'general' ? 'Riscos gerais' : focusMode === 'clients' ? 'Riscos dos clientes' : 'Riscos da operação'}
+                  </button>
+                </div>
+              </div>
+
+              <div className="assistant-status-card glass-panel">
+                <div className="assistant-status-head">
+                  <span className="assistant-status-dot"></span>
+                  <span>Status do sistema</span>
+                </div>
+                <p>
+                  Operação pronta para conversa com contexto interno do workspace. A próxima etapa pode conectar busca externa e ações automatizadas.
+                </p>
+              </div>
+            </section>
+
+            <section className="assistant-chat-panel glass-panel">
+              <div className="assistant-chat-intro">
+                <h2>Assistente de Negócio</h2>
+                <p>Fale com sua IA para entender clientes, campanhas, gargalos e próximos passos da operação.</p>
+              </div>
+
+              {errorMessage && <div className="form-alert">{errorMessage}</div>}
+              {chatError && <div className="form-alert">{chatError}</div>}
+
+              <div className="assistant-messages">
+                <div className="assistant-date-separator">
+                  <span>Hoje</span>
+                </div>
+
+                {messages.map((message) => (
+                  <article
+                    key={message.id}
+                    className={`assistant-message-row assistant-message-row-${message.role}`}
+                  >
+                    {message.role === 'assistant' ? (
+                      <div className="assistant-avatar assistant-avatar-bot">
+                        <i className="bx bx-bot"></i>
+                      </div>
+                    ) : null}
+
+                    <div className={`assistant-message assistant-message-${message.role}`}>
+                      <span className="assistant-message-role">
+                        {message.role === 'assistant' ? 'Assistente' : 'Você'}
+                      </span>
+                      <p>{message.content}</p>
+                      {message.role === 'assistant' ? (
+                        <div className="assistant-message-actions">
+                          <button type="button">
+                            <i className="bx bx-like"></i>
+                            Útil
+                          </button>
+                          <button type="button">
+                            <i className="bx bx-dislike"></i>
+                            Não ajudou
+                          </button>
+                          <button type="button" className="assistant-message-copy" onClick={() => navigator?.clipboard?.writeText(message.content)}>
+                            <i className="bx bx-copy-alt"></i>
+                            Copiar
+                          </button>
+                        </div>
+                      ) : null}
+                    </div>
+
+                    {message.role === 'user' ? (
+                      <div className="assistant-avatar assistant-avatar-user">
+                        <i className="bx bx-user"></i>
+                      </div>
+                    ) : null}
+                  </article>
+                ))}
+
+                {isSending ? (
+                  <article className="assistant-message-row assistant-message-row-assistant">
+                    <div className="assistant-avatar assistant-avatar-bot">
+                      <i className="bx bx-bot"></i>
+                    </div>
+                    <div className="assistant-message assistant-message-assistant assistant-message-loading">
+                      <span className="assistant-message-role">Assistente</span>
+                      <p>Pensando na melhor resposta com base no contexto do negócio...</p>
+                    </div>
+                  </article>
+                ) : null}
+              </div>
+
+              <form className="assistant-form-shell" onSubmit={handleSend}>
+                <div className="assistant-form-panel">
+                  <button type="button" className="assistant-form-icon" aria-label="Anexar">
+                    <i className="bx bx-paperclip"></i>
+                  </button>
+                  <textarea
+                    value={inputValue}
+                    onChange={(event) => setInputValue(event.target.value)}
+                    placeholder="Pergunte sobre clientes, operação, campanhas, CRM, gargalos ou próximos passos..."
+                    rows={1}
+                  />
+                  <div className="assistant-form-actions-inline">
+                    <button type="button" className="assistant-form-icon" aria-label="Microfone">
+                      <i className="bx bx-microphone"></i>
+                    </button>
+                    <button type="submit" className="assistant-submit" disabled={isSending || !inputValue.trim()}>
+                      <i className="bx bx-up-arrow-alt"></i>
+                    </button>
+                  </div>
+                </div>
+                <div className="assistant-form-footer">
+                  <div className="assistant-form-signals">
+                    <span><i className="bx bx-bolt-circle"></i> {dashboardState?.globalIntegrations?.aiModel || 'Modelo configurado'}</span>
+                    <span><i className="bx bx-shield-quarter"></i> Contexto interno ativo</span>
+                  </div>
+                  <span>Enter para enviar / Shift+Enter para nova linha</span>
+                </div>
+              </form>
+            </section>
+          </div>
+        )}
+    </main>
+  )
+
   return (
-    <div className="dashboard-container assistant-shell">
-      <aside className="sidebar glass-panel assistant-sidebar">
+    <div className={`dashboard-container assistant-shell ${isEmbedded ? 'assistant-shell-embedded' : ''}`}>
+      {!isEmbedded ? (
+        <aside className="sidebar glass-panel assistant-sidebar">
         <div className="logo">
           <i className="bx bx-bar-chart-alt-2"></i>
           <span>Dash</span>
@@ -225,232 +455,25 @@ export default function AssistantPage() {
           </div>
         </div>
       </aside>
+      ) : null}
 
-      <main className="main-content assistant-main">
-        <header className="header assistant-page-header">
-          <div className="page-title">
-            <h1>Assistente de Negócio</h1>
-            <p>Converse com a IA da operação usando o mesmo contexto do app inteiro, sem sair do fluxo principal.</p>
-          </div>
-          <div className="header-actions assistant-header-actions">
-            <button type="button" className="btn btn-secondary assistant-header-button" onClick={handleResetChat}>
-              <i className="bx bx-refresh"></i>
-              Novo contexto
-            </button>
-          </div>
-        </header>
-
-          {!canViewDashboard ? (
-            <div className="assistant-empty glass-panel">
-              <h3>Sem acesso ao assistente</h3>
-              <p>Seu usuário ainda não possui dashboards liberados neste workspace.</p>
-            </div>
-          ) : isLoadingState ? (
-            <div className="assistant-empty glass-panel">
-              <h3>Carregando contexto do negócio</h3>
-              <p>Estamos preparando os dados internos para a conversa.</p>
-            </div>
-          ) : (
-            <div className="assistant-content">
-              <section className="assistant-context-column">
-                <div className="assistant-context-card glass-panel">
-                  <div className="assistant-section-head">
-                    <span className="assistant-section-kicker">Contexto da conversa</span>
-                  </div>
-
-                  <label className="assistant-field">
-                    <span>Foco</span>
-                    <div className="assistant-select-wrap">
-                      <select value={focusMode} onChange={(event) => setFocusMode(event.target.value)}>
-                        {FOCUS_OPTIONS.map((option) => (
-                          <option key={option.value} value={option.value}>
-                            {option.label}
-                          </option>
-                        ))}
-                      </select>
-                      <i className="bx bx-chevron-down"></i>
-                    </div>
-                  </label>
-
-                  <div className="assistant-context-stats">
-                    <div className="assistant-context-stat">
-                      <div>
-                        <i className="bx bx-group"></i>
-                        <span>Clientes</span>
-                      </div>
-                      <strong>{availableClients.length}</strong>
-                    </div>
-                    <div className="assistant-context-stat">
-                      <div>
-                        <i className="bx bx-sitemap"></i>
-                        <span>Configuração</span>
-                      </div>
-                      <strong>{dashboardState?.clientGroups?.length || 0} grupos</strong>
-                    </div>
-                    <div className="assistant-context-stat">
-                      <div>
-                        <i className="bx bx-chip"></i>
-                        <span>Provider</span>
-                      </div>
-                      <strong>{dashboardState?.globalIntegrations?.aiProvider || 'Não definido'}</strong>
-                    </div>
-                  </div>
-
-                  <div className="assistant-chip-group">
-                    <button type="button" className="assistant-chip" onClick={() => setInputValue('Me dê um resumo executivo da operação, com pontos positivos, atenção e urgência.')}>
-                      Resumo executivo
-                    </button>
-                    <button
-                      type="button"
-                      className="assistant-chip"
-                      onClick={() =>
-                        setInputValue(
-                          focusMode === 'clients'
-                            ? 'Quais clientes estão com melhor momento, quais pedem atenção e quais estão em urgência?'
-                            : focusMode === 'general'
-                              ? 'Me dê uma leitura geral do app inteiro, cruzando operação, clientes, campanhas e gargalos.'
-                              : `Como está a operação em foco? Quero leitura por campanha, impacto e depois um resumo com pontos positivos, atenção e urgência.`
-                        )
-                      }
-                    >
-                      {focusMode === 'clients' ? 'Leitura dos clientes' : focusMode === 'general' ? 'Visão geral do app' : 'Campanhas da operação'}
-                    </button>
-                    <button
-                      type="button"
-                      className="assistant-chip"
-                      onClick={() =>
-                        setInputValue(
-                          focusMode === 'clients'
-                            ? 'Quais riscos você vê hoje na base de clientes?'
-                            : focusMode === 'general'
-                              ? 'Quais riscos você vê hoje olhando o app inteiro como um copiloto da operação?'
-                              : 'Quais riscos você vê hoje na operação em foco?'
-                        )
-                      }
-                    >
-                      {focusMode === 'general' ? 'Riscos gerais' : focusMode === 'clients' ? 'Riscos dos clientes' : 'Riscos da operação'}
-                    </button>
-                  </div>
-                </div>
-
-                <div className="assistant-status-card glass-panel">
-                  <div className="assistant-status-head">
-                    <span className="assistant-status-dot"></span>
-                    <span>Status do sistema</span>
-                  </div>
-                  <p>
-                    Operação pronta para conversa com contexto interno do workspace. A próxima etapa pode conectar busca externa e ações automatizadas.
-                  </p>
-                </div>
-              </section>
-
-              <section className="assistant-chat-panel glass-panel">
-                <div className="assistant-chat-intro">
-                  <h2>Assistente de Negócio</h2>
-                  <p>Fale com sua IA para entender clientes, campanhas, gargalos e próximos passos da operação.</p>
-                </div>
-
-                {errorMessage && <div className="form-alert">{errorMessage}</div>}
-                {chatError && <div className="form-alert">{chatError}</div>}
-
-                <div className="assistant-messages">
-                  <div className="assistant-date-separator">
-                    <span>Hoje</span>
-                  </div>
-
-                  {messages.map((message) => (
-                    <article
-                      key={message.id}
-                      className={`assistant-message-row assistant-message-row-${message.role}`}
-                    >
-                      {message.role === 'assistant' ? (
-                        <div className="assistant-avatar assistant-avatar-bot">
-                          <i className="bx bx-bot"></i>
-                        </div>
-                      ) : null}
-
-                      <div className={`assistant-message assistant-message-${message.role}`}>
-                        <span className="assistant-message-role">
-                          {message.role === 'assistant' ? 'Assistente' : 'Você'}
-                        </span>
-                        <p>{message.content}</p>
-                        {message.role === 'assistant' ? (
-                          <div className="assistant-message-actions">
-                            <button type="button">
-                              <i className="bx bx-like"></i>
-                              Útil
-                            </button>
-                            <button type="button">
-                              <i className="bx bx-dislike"></i>
-                              Não ajudou
-                            </button>
-                            <button type="button" className="assistant-message-copy" onClick={() => navigator?.clipboard?.writeText(message.content)}>
-                              <i className="bx bx-copy-alt"></i>
-                              Copiar
-                            </button>
-                          </div>
-                        ) : null}
-                      </div>
-
-                      {message.role === 'user' ? (
-                        <div className="assistant-avatar assistant-avatar-user">
-                          <i className="bx bx-user"></i>
-                        </div>
-                      ) : null}
-                    </article>
-                  ))}
-
-                  {isSending ? (
-                    <article className="assistant-message-row assistant-message-row-assistant">
-                      <div className="assistant-avatar assistant-avatar-bot">
-                        <i className="bx bx-bot"></i>
-                      </div>
-                      <div className="assistant-message assistant-message-assistant assistant-message-loading">
-                        <span className="assistant-message-role">Assistente</span>
-                        <p>Pensando na melhor resposta com base no contexto do negócio...</p>
-                      </div>
-                    </article>
-                  ) : null}
-                </div>
-
-                <form className="assistant-form-shell" onSubmit={handleSend}>
-                  <div className="assistant-form-panel">
-                    <button type="button" className="assistant-form-icon" aria-label="Anexar">
-                      <i className="bx bx-paperclip"></i>
-                    </button>
-                    <textarea
-                      value={inputValue}
-                      onChange={(event) => setInputValue(event.target.value)}
-                      placeholder="Pergunte sobre clientes, operação, campanhas, CRM, gargalos ou próximos passos..."
-                      rows={1}
-                    />
-                    <div className="assistant-form-actions-inline">
-                      <button type="button" className="assistant-form-icon" aria-label="Microfone">
-                        <i className="bx bx-microphone"></i>
-                      </button>
-                      <button type="submit" className="assistant-submit" disabled={isSending || !inputValue.trim()}>
-                        <i className="bx bx-up-arrow-alt"></i>
-                      </button>
-                    </div>
-                  </div>
-                  <div className="assistant-form-footer">
-                    <div className="assistant-form-signals">
-                      <span><i className="bx bx-bolt-circle"></i> {dashboardState?.globalIntegrations?.aiModel || 'Modelo configurado'}</span>
-                      <span><i className="bx bx-shield-quarter"></i> Contexto interno ativo</span>
-                    </div>
-                    <span>Enter para enviar / Shift+Enter para nova linha</span>
-                  </div>
-                </form>
-              </section>
-            </div>
-          )}
-      </main>
+      {assistantMainContent}
 
       <style jsx>{`
+        .assistant-shell-embedded {
+          min-height: 100%;
+        }
+
         .assistant-shell {
           background:
             radial-gradient(circle at top center, rgba(59, 130, 246, 0.08), transparent 22%),
             linear-gradient(180deg, var(--bg-primary) 0%, #12151c 100%);
+        }
+
+        .assistant-main-embedded {
+          margin-left: 0;
+          min-height: 100%;
+          padding: 0;
         }
 
         .assistant-sidebar {
