@@ -538,13 +538,17 @@ export default function SettingsPage() {
         </div>
 
         <nav className="nav-menu">
-          <Link href="/" className="nav-item">
+          <Link href="/dashboard" className="nav-item">
             <i className="bx bx-arrow-back"></i>
             Voltar ao dashboard
           </Link>
           <Link href="/calendar" className="nav-item">
             <i className="bx bx-calendar-event"></i>
             Agenda
+          </Link>
+          <Link href="/assistant" className="nav-item">
+            <i className="bx bx-bot"></i>
+            Assistente
           </Link>
           <Link href="/privacy" className="nav-item" target="_blank" rel="noreferrer">
             <i className="bx bx-shield-quarter"></i>
@@ -564,7 +568,7 @@ export default function SettingsPage() {
               <h1>Configurações</h1>
               <p>Centralize aqui a aparência da sua conta e as credenciais globais da operação.</p>
             </div>
-            <Link href="/" className="btn btn-secondary">
+            <Link href="/dashboard" className="btn btn-secondary">
               Voltar
             </Link>
           </div>

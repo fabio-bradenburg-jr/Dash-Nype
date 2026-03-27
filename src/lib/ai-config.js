@@ -13,6 +13,20 @@ Formato esperado:
 {
   "headline": "string curta",
   "summary": "resumo executivo em 2 a 4 frases",
+  "campaignAnalyses": [
+    {
+      "campaignName": "nome da campanha",
+      "status": "positive | attention | urgent",
+      "summary": "leitura objetiva da campanha",
+      "evidence": "numeros principais da campanha",
+      "action": "acao sugerida para a campanha"
+    }
+  ],
+  "focusSummary": {
+    "positives": ["ponto positivo 1", "ponto positivo 2"],
+    "attention": ["ponto de atencao 1", "ponto de atencao 2"],
+    "urgency": ["ponto urgente 1", "ponto urgente 2"]
+  },
   "insights": [
     {
       "type": "opportunity | alert | anomaly | win",
@@ -32,12 +46,28 @@ export const DEFAULT_AI_DASHBOARD_PROMPT_JSON = JSON.stringify(
       'Nao invente dados.',
       'Nao assuma causalidade sem evidencias.',
       'Destaque oportunidades, alertas e proximos passos.',
+      'Analise tambem as campanhas listadas em topCampaigns, falando de cada uma com objetividade.',
+      'Depois traga um resumo separado em pontos positivos, pontos de atencao e urgencias.',
       'Use linguagem objetiva em portugues do Brasil.',
       'Retorne somente JSON valido.',
     ],
     output: {
       headline: 'string curta',
       summary: 'resumo executivo em 2 a 4 frases',
+      campaignAnalyses: [
+        {
+          campaignName: 'nome da campanha',
+          status: 'positive | attention | urgent',
+          summary: 'leitura objetiva da campanha',
+          evidence: 'numeros principais da campanha',
+          action: 'acao sugerida para a campanha',
+        },
+      ],
+      focusSummary: {
+        positives: ['ponto positivo 1', 'ponto positivo 2'],
+        attention: ['ponto de atencao 1', 'ponto de atencao 2'],
+        urgency: ['ponto urgente 1', 'ponto urgente 2'],
+      },
       insights: [
         {
           type: 'opportunity | alert | anomaly | win',

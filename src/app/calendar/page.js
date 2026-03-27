@@ -347,7 +347,7 @@ export default function CalendarPage() {
         </div>
 
         <nav className="nav-menu">
-          <Link href="/" className="nav-item">
+          <Link href="/dashboard" className="nav-item">
             <i className="bx bx-layout"></i>
             Apresentação
           </Link>
@@ -355,6 +355,10 @@ export default function CalendarPage() {
             <i className="bx bx-calendar-event"></i>
             Agenda
           </span>
+          <Link href="/assistant" className="nav-item">
+            <i className="bx bx-bot"></i>
+            Assistente
+          </Link>
           <Link href="/settings" className="nav-item">
             <i className="bx bx-cog"></i>
             Configurações

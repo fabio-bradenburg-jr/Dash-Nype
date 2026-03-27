@@ -363,6 +363,78 @@ function normalizeInsightArray(items, fallbackType) {
   return items.map((item) => normalizeInsightItem(item, fallbackType)).filter(Boolean)
 }
 
+function normalizeCampaignAnalysisItem(item) {
+  if (!item || typeof item !== 'object') return null
+
+  const campaignName =
+    toCleanString(item.campaignName) ||
+    toCleanString(item.campaign_name) ||
+    toCleanString(item.nomeCampanha) ||
+    toCleanString(item.campaign) ||
+    toCleanString(item.nome) ||
+    toCleanString(item.title) ||
+    'Campanha'
+
+  const status = toCleanString(item.status || item.tone || item.prioridade || item.level).toLowerCase()
+  const normalizedStatus =
+    ['positive', 'positivo', 'positiva'].includes(status) ? 'positive'
+      : ['urgent', 'urgencia', 'urgente'].includes(status) ? 'urgent'
+      : 'attention'
+
+  const summary =
+    toCleanString(item.summary) ||
+    toCleanString(item.resumo) ||
+    toCleanString(item.description) ||
+    toCleanString(item.descricao) ||
+    ''
+
+  const evidence =
+    toCleanString(item.evidence) ||
+    toCleanString(item.evidencia) ||
+    toCleanString(item.details) ||
+    toCleanString(item.detalhes) ||
+    toCleanString(item.metrics) ||
+    ''
+
+  const action =
+    toCleanString(item.action) ||
+    toCleanString(item.acao) ||
+    toCleanString(item.recommendation) ||
+    toCleanString(item.recomendacao) ||
+    ''
+
+  return {
+    campaignName,
+    status: normalizedStatus,
+    summary,
+    evidence,
+    action,
+  }
+}
+
+function normalizeCampaignAnalysisArray(items) {
+  if (!Array.isArray(items)) return []
+  return items.map((item) => normalizeCampaignAnalysisItem(item)).filter(Boolean)
+}
+
+function normalizeFocusSummary(value) {
+  if (!value || typeof value !== 'object') {
+    return {
+      positives: [],
+      attention: [],
+      urgency: [],
+    }
+  }
+
+  const mapList = (items) => (Array.isArray(items) ? items.map((item) => toCleanString(item)).filter(Boolean) : [])
+
+  return {
+    positives: mapList(value.positives || value.positive || value.positivos),
+    attention: mapList(value.attention || value.atencao),
+    urgency: mapList(value.urgency || value.urgencias || value.urgente),
+  }
+}
+
 function buildSummaryFromDiagnostic(diagnostic, rawText) {
   if (!diagnostic || typeof diagnostic !== 'object') return toCleanString(rawText)
 
@@ -445,6 +517,12 @@ function extractLooseStructuredInsight(rawText) {
   return {
     headline: toTitleCaseLabel(headline, 'Insight gerado'),
     summary,
+    campaignAnalyses: [],
+    focusSummary: {
+      positives: [],
+      attention: [],
+      urgency: [],
+    },
     insights,
     nextActions,
   }
@@ -492,6 +570,12 @@ function normalizeStructuredInsight(parsed, rawText) {
 
     return normalizeInsightArray(entry.items, normalizeInsightType(entry.key, 'insight'))
   })
+  const campaignAnalyses = normalizeCampaignAnalysisArray(
+    findNestedArrayByKeys(parsed, ['campaignAnalyses', 'campaign_analyses', 'campanhas', 'campaigns'])
+  )
+  const focusSummary = normalizeFocusSummary(
+    findNestedValueByKeys(parsed, ['focusSummary', 'focus_summary', 'resumo_final', 'resumoCategorias'])
+  )
 
   const nextActionsSource =
     findNestedArrayByKeys(parsed, ['nextActions', 'proximos_passos', 'next_actions']) ||
@@ -541,6 +625,8 @@ function normalizeStructuredInsight(parsed, rawText) {
   return {
     headline,
     summary,
+    campaignAnalyses,
+    focusSummary,
     insights,
     nextActions,
   }
