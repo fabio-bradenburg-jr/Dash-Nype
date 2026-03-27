@@ -6520,6 +6520,7 @@ export default function DashboardPage() {
   }))
   const userAvatarFallback = `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.user_metadata?.full_name || user?.email || 'Usuario')}&background=0D8ABC&color=fff`
   const userAvatarSrc = user?.user_metadata?.avatar_url || userAvatarFallback
+  const userFirstName = (user?.user_metadata?.full_name || user?.email || 'por aí').split(' ')[0]
 
   const renderDashboardMetricGrid = (cards, source) => {
     if (!cards.length) return null
@@ -7756,6 +7757,9 @@ export default function DashboardPage() {
           <button type="button" data-tooltip="Home" className={`nav-item nav-button ${activeTab === 'home' ? 'active' : ''}`} onClick={() => setActiveTab('home')}>
             <i className="bx bxs-home-heart"></i> Home
           </button>
+          <button type="button" data-tooltip="Assistente" className={`nav-item nav-button ${activeTab === 'assistant' ? 'active' : ''}`} onClick={() => setActiveTab('assistant')}>
+            <i className="bx bx-bot"></i> Assistente
+          </button>
           {canManageClients && (
             <button type="button" data-tooltip="Clientes" className={`nav-item nav-button ${activeTab === 'clientes' ? 'active' : ''}`} onClick={() => setActiveTab('clientes')}>
               <i className="bx bxs-buildings"></i> Clientes
@@ -7772,9 +7776,6 @@ export default function DashboardPage() {
           </button>
           <button type="button" data-tooltip="Agenda" className={`nav-item nav-button ${activeTab === 'calendar' ? 'active' : ''}`} onClick={() => setActiveTab('calendar')}>
             <i className="bx bx-calendar-event"></i> Agenda
-          </button>
-          <button type="button" data-tooltip="Assistente" className={`nav-item nav-button ${activeTab === 'assistant' ? 'active' : ''}`} onClick={() => setActiveTab('assistant')}>
-            <i className="bx bx-bot"></i> Assistente
           </button>
           {canManageUsers && (
             <button type="button" data-tooltip="Usuários" className={`nav-item nav-button ${activeTab === 'usuarios' ? 'active' : ''}`} onClick={() => setActiveTab('usuarios')}>
@@ -7824,7 +7825,7 @@ export default function DashboardPage() {
               {activeTab === 'home' && 'Home'}
               {activeTab === 'clientes' && 'Base de clientes'}
               {activeTab === 'apresentacao' && `Dashboard ${activeClient?.name || 'do cliente'}`}
-              {activeTab === 'assistant' && 'IA da operação'}
+              {activeTab === 'assistant' && `O que vamos fazer hoje, ${userFirstName}?`}
               {activeTab === 'calendar' && 'Agenda da operação'}
               {activeTab === 'clickup' && 'Operação ClickUp'}
               {activeTab === 'monday' && 'Operação Monday'}
@@ -7834,7 +7835,7 @@ export default function DashboardPage() {
               {activeTab === 'home' && 'Entre por aqui sempre que abrir o app e escolha rapidamente qual área da operação você quer acessar.'}
               {activeTab === 'clientes' && 'Cadastre seus clientes e mantenha cada operação separada dentro do dashboard.'}
               {activeTab === 'apresentacao' && 'Uma visão executiva consolidada dos principais resultados do cliente, organizada por fonte de dados.'}
-              {activeTab === 'assistant' && 'Use a IA como copiloto da operação sem sair da mesma camada principal do app.'}
+              {activeTab === 'assistant' && 'Seu copiloto do dia para revisar clientes, campanhas, gargalos e próximos passos sem sair da Home.'}
               {activeTab === 'calendar' && 'Acompanhe a agenda da operação dentro da mesma Home, sem trocar de área.'}
               {activeTab === 'clickup' && 'Acompanhe tarefas, responsáveis e status operacionais do ClickUp a partir da configuração global da operação.'}
               {activeTab === 'monday' && 'Acompanhe boards, itens, status e responsáveis do Monday a partir da configuração global da operação.'}

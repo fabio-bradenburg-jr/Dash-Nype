@@ -193,7 +193,7 @@ export default function AssistantPage() {
 
   const assistantMainContent = (
     <main className={`main-content assistant-main ${isEmbedded ? 'assistant-main-embedded' : ''}`}>
-      <header className="header assistant-page-header">
+      <header className={`header assistant-page-header ${isEmbedded ? 'assistant-page-header-embedded' : ''}`}>
         <div className="page-title">
           <h1>Assistente de Negócio</h1>
           <p>Converse com a IA da operação usando o mesmo contexto do app inteiro, sem sair do fluxo principal.</p>
@@ -311,9 +311,13 @@ export default function AssistantPage() {
             </section>
 
             <section className="assistant-chat-panel glass-panel">
-              <div className="assistant-chat-intro">
-                <h2>Assistente de Negócio</h2>
-                <p>Fale com sua IA para entender clientes, campanhas, gargalos e próximos passos da operação.</p>
+              <div className={`assistant-chat-intro ${isEmbedded ? 'assistant-chat-intro-embedded' : ''}`}>
+                <h2>{isEmbedded ? 'Vamos organizar a operação?' : 'Assistente de Negócio'}</h2>
+                <p>
+                  {isEmbedded
+                    ? 'Use esse espaço como copiloto do dia para cruzar clientes, campanhas, rotina e próximos passos.'
+                    : 'Fale com sua IA para entender clientes, campanhas, gargalos e próximos passos da operação.'}
+                </p>
               </div>
 
               {errorMessage && <div className="form-alert">{errorMessage}</div>}
@@ -474,6 +478,10 @@ export default function AssistantPage() {
           margin-left: 0;
           min-height: 100%;
           padding: 0;
+        }
+
+        .assistant-page-header-embedded {
+          display: none;
         }
 
         .assistant-sidebar {
@@ -728,6 +736,11 @@ export default function AssistantPage() {
           border-bottom: 1px solid var(--border-color);
         }
 
+        .assistant-chat-intro-embedded {
+          padding-top: 26px;
+          padding-bottom: 20px;
+        }
+
         .assistant-chat-intro p {
           margin-top: 8px;
           max-width: 680px;
@@ -943,6 +956,16 @@ export default function AssistantPage() {
           display: inline-flex;
           align-items: center;
           gap: 6px;
+        }
+
+        .assistant-main-embedded .assistant-content {
+          min-height: calc(100vh - 280px);
+        }
+
+        .assistant-main-embedded .assistant-context-card,
+        .assistant-main-embedded .assistant-status-card,
+        .assistant-main-embedded .assistant-chat-panel {
+          border-radius: 24px;
         }
 
         @media (max-width: 1120px) {
