@@ -2131,33 +2131,6 @@ export default function DashboardPage() {
     () => aiInsightGroups.reduce((total, group) => total + group.items.length, 0),
     [aiInsightGroups]
   )
-  const aiInsightsDateLabel = `${dashboardAiInsightsPayload.period?.since || '--'} ate ${dashboardAiInsightsPayload.period?.until || '--'}`
-  const aiInsightsFilterLabel = (dashboardAiInsightsPayload.filters?.resultLabels || []).join(', ') || 'Todos os resultados'
-  const aiHighlights = useMemo(
-    () => [
-      {
-        label: 'Leituras',
-        value: totalAiInsights,
-        tone: 'neutral',
-      },
-      {
-        label: 'Alertas',
-        value: aiInsightGroups.find((group) => group.key === 'alert')?.items.length || 0,
-        tone: 'alert',
-      },
-      {
-        label: 'Oportunidades',
-        value: aiInsightGroups.find((group) => group.key === 'opportunity')?.items.length || 0,
-        tone: 'opportunity',
-      },
-      {
-        label: 'Próximos passos',
-        value: Array.isArray(aiInsightsResult?.structured?.nextActions) ? aiInsightsResult.structured.nextActions.length : 0,
-        tone: 'info',
-      },
-    ],
-    [aiInsightGroups, aiInsightsResult, totalAiInsights]
-  )
   const selectedQualifiedStages = useMemo(
     () => activeClient?.rdQualifiedStages || [],
     [activeClient]
@@ -5431,6 +5404,33 @@ export default function DashboardPage() {
     previousInsights,
     previousCustomMetrics,
   ])
+  const aiInsightsDateLabel = `${dashboardAiInsightsPayload.period?.since || '--'} ate ${dashboardAiInsightsPayload.period?.until || '--'}`
+  const aiInsightsFilterLabel = (dashboardAiInsightsPayload.filters?.resultLabels || []).join(', ') || 'Todos os resultados'
+  const aiHighlights = useMemo(
+    () => [
+      {
+        label: 'Leituras',
+        value: totalAiInsights,
+        tone: 'neutral',
+      },
+      {
+        label: 'Alertas',
+        value: aiInsightGroups.find((group) => group.key === 'alert')?.items.length || 0,
+        tone: 'alert',
+      },
+      {
+        label: 'Oportunidades',
+        value: aiInsightGroups.find((group) => group.key === 'opportunity')?.items.length || 0,
+        tone: 'opportunity',
+      },
+      {
+        label: 'Próximos passos',
+        value: Array.isArray(aiInsightsResult?.structured?.nextActions) ? aiInsightsResult.structured.nextActions.length : 0,
+        tone: 'info',
+      },
+    ],
+    [aiInsightGroups, aiInsightsResult, totalAiInsights]
+  )
   const activeMetaRankingDrilldownConfig = useMemo(() => {
     if (!metaRankingDrilldown) return null
     const activeLayer = metaRankingLayers.find((layer) => layer.resultKey === metaRankingDrilldown.resultKey) || null
