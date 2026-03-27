@@ -190,6 +190,11 @@ function toCleanString(value) {
   return ''
 }
 
+function looksLikeJsonPayload(value) {
+  const normalized = toCleanString(value)
+  return normalized.startsWith('{') || normalized.startsWith('[')
+}
+
 function toTitleCaseLabel(value, fallback = 'Insight') {
   const normalized = toCleanString(value)
   if (!normalized) return fallback
@@ -266,14 +271,84 @@ function buildSummaryFromDiagnostic(diagnostic, rawText) {
   return parts.join(' ').trim()
 }
 
+function extractQuotedValue(text, key) {
+  const pattern = new RegExp(`["']${key}["']\\s*:\\s*["']([^"']+)["']`, 'i')
+  const match = String(text || '').match(pattern)
+  return match?.[1]?.trim() || ''
+}
+
+function extractLooseInsightObjects(text, sectionKey, fallbackType) {
+  const source = String(text || '')
+  const sectionPattern = new RegExp(`["']${sectionKey}["']\\s*:\\s*\\[(.*?)](?=\\s*,\\s*["'][^"']+["']\\s*:|\\s*}$)`, 'is')
+  const sectionMatch = source.match(sectionPattern)
+  const sectionBody = sectionMatch?.[1] || ''
+  if (!sectionBody) return []
+
+  const objectMatches = sectionBody.match(/\{[^{}]*\}/g) || []
+
+  return objectMatches
+    .map((item) => ({
+      title: extractQuotedValue(item, 'titulo') || extractQuotedValue(item, 'title'),
+      evidence:
+        extractQuotedValue(item, 'descricao') ||
+        extractQuotedValue(item, 'description') ||
+        extractQuotedValue(item, 'impacto') ||
+        extractQuotedValue(item, 'impact'),
+      action:
+        extractQuotedValue(item, 'acao') ||
+        extractQuotedValue(item, 'action') ||
+        extractQuotedValue(item, 'recomendacao') ||
+        extractQuotedValue(item, 'recommendation'),
+      type: fallbackType,
+    }))
+    .filter((item) => item.title || item.evidence || item.action)
+}
+
+function extractLooseNextActions(text) {
+  const source = String(text || '')
+  const arrayPattern = /["'](?:nextActions|proximos_passos)["']\s*:\s*\[(.*?)](?=\s*,\s*["'][^"']+["']\s*:|\s*}$)/is
+  const match = source.match(arrayPattern)
+  const body = match?.[1] || ''
+  if (!body) return []
+
+  return Array.from(body.matchAll(/["']([^"']+)["']/g))
+    .map((item) => item?.[1]?.trim() || '')
+    .filter(Boolean)
+}
+
+function extractLooseStructuredInsight(rawText) {
+  const headline =
+    extractQuotedValue(rawText, 'headline') ||
+    extractQuotedValue(rawText, 'titulo') ||
+    extractQuotedValue(rawText, 'status') ||
+    'Insight gerado'
+
+  const summary =
+    extractQuotedValue(rawText, 'summary') ||
+    extractQuotedValue(rawText, 'resumo') ||
+    toCleanString(rawText)
+
+  const insights = [
+    ...extractLooseInsightObjects(rawText, 'principais_problemas', 'alert'),
+    ...extractLooseInsightObjects(rawText, 'oportunidades', 'opportunity'),
+    ...extractLooseInsightObjects(rawText, 'anomalias', 'anomaly'),
+    ...extractLooseInsightObjects(rawText, 'destaques', 'win'),
+    ...extractLooseInsightObjects(rawText, 'insights', 'insight'),
+  ]
+
+  const nextActions = extractLooseNextActions(rawText)
+
+  return {
+    headline: toTitleCaseLabel(headline, 'Insight gerado'),
+    summary,
+    insights,
+    nextActions,
+  }
+}
+
 function normalizeStructuredInsight(parsed, rawText) {
   if (!parsed || typeof parsed !== 'object') {
-    return {
-      headline: 'Insight gerado',
-      summary: rawText || 'A IA respondeu sem um JSON estruturado.',
-      insights: [],
-      nextActions: [],
-    }
+    return extractLooseStructuredInsight(rawText)
   }
 
   const directInsights = normalizeInsightArray(parsed.insights, 'insight')
@@ -844,11 +919,32 @@ export async function requestDashboardInsights(config, payload) {
   }
 
   const parsed = tryParseJson(sanitizedContent)
+  const structured = normalizeStructuredInsight(parsed, sanitizedContent)
+  const shouldLogDiagnostics =
+    !parsed ||
+    !structured.summary ||
+    structured.insights.length === 0 ||
+    looksLikeJsonPayload(structured.summary) ||
+    looksLikeJsonPayload(structured.headline)
+
+  if (shouldLogDiagnostics) {
+    console.warn('Dashboard AI partial-parse diagnostic:', {
+      provider: normalizedConfig.aiProvider,
+      model: normalizedConfig.aiModel,
+      parsedType: Array.isArray(parsed) ? 'array' : typeof parsed,
+      parsedKeys: parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? Object.keys(parsed).slice(0, 20) : [],
+      headlinePreview: String(structured.headline || '').slice(0, 160),
+      summaryPreview: String(structured.summary || '').slice(0, 220),
+      insightsCount: structured.insights.length,
+      nextActionsCount: structured.nextActions.length,
+      rawPreview: sanitizedContent.slice(0, 1200),
+    })
+  }
 
   return {
     provider: normalizedConfig.aiProvider,
     model: normalizedConfig.aiModel,
-    structured: normalizeStructuredInsight(parsed, sanitizedContent),
+    structured,
     rawText: sanitizedContent,
     usage: providerResponse.usage || null,
   }
