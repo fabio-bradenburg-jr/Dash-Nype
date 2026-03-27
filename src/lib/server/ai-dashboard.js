@@ -131,6 +131,89 @@ function tryParseJson(text) {
   }
 }
 
+function toCleanString(value) {
+  if (value == null) return ''
+  if (typeof value === 'string') return value.trim()
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value).trim()
+  return ''
+}
+
+function toTitleCaseLabel(value, fallback = 'Insight') {
+  const normalized = toCleanString(value)
+  if (!normalized) return fallback
+
+  return normalized
+    .replace(/[_-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/^\w/, (char) => char.toUpperCase())
+}
+
+function normalizeInsightType(value, fallback = 'insight') {
+  const normalized = toCleanString(value).toLowerCase()
+
+  if (!normalized) return fallback
+  if (['opportunity', 'oportunidade'].includes(normalized)) return 'opportunity'
+  if (['alert', 'alerta', 'problema'].includes(normalized)) return 'alert'
+  if (['anomaly', 'anomalia'].includes(normalized)) return 'anomaly'
+  if (['win', 'destaque', 'ganho'].includes(normalized)) return 'win'
+
+  return fallback
+}
+
+function normalizeInsightItem(item, fallbackType = 'insight') {
+  if (!item || typeof item !== 'object') return null
+
+  const title =
+    toCleanString(item.title) ||
+    toCleanString(item.titulo) ||
+    toTitleCaseLabel(item.area, '') ||
+    toTitleCaseLabel(item.category, '') ||
+    'Leitura do período'
+
+  const evidenceParts = [
+    toCleanString(item.evidence),
+    toCleanString(item.evidencia),
+    toCleanString(item.description),
+    toCleanString(item.descricao),
+    toCleanString(item.impact),
+    toCleanString(item.impacto),
+    toCleanString(item.summary),
+    toCleanString(item.resumo),
+  ].filter(Boolean)
+
+  const action =
+    toCleanString(item.action) ||
+    toCleanString(item.acao) ||
+    toCleanString(item.recommendation) ||
+    toCleanString(item.recomendacao) ||
+    ''
+
+  return {
+    type: normalizeInsightType(item.type || item.tipo || item.status || item.gravidade, fallbackType),
+    title,
+    evidence: evidenceParts.join(' ').trim(),
+    action,
+  }
+}
+
+function normalizeInsightArray(items, fallbackType) {
+  if (!Array.isArray(items)) return []
+  return items.map((item) => normalizeInsightItem(item, fallbackType)).filter(Boolean)
+}
+
+function buildSummaryFromDiagnostic(diagnostic, rawText) {
+  if (!diagnostic || typeof diagnostic !== 'object') return toCleanString(rawText)
+
+  const parts = [
+    toCleanString(diagnostic.summary),
+    toCleanString(diagnostic.resumo),
+    toCleanString(diagnostic.status) ? `Status: ${toCleanString(diagnostic.status)}.` : '',
+  ].filter(Boolean)
+
+  return parts.join(' ').trim()
+}
+
 function normalizeStructuredInsight(parsed, rawText) {
   if (!parsed || typeof parsed !== 'object') {
     return {
@@ -141,22 +224,46 @@ function normalizeStructuredInsight(parsed, rawText) {
     }
   }
 
+  const directInsights = normalizeInsightArray(parsed.insights, 'insight')
+  const problemInsights = normalizeInsightArray(parsed.principais_problemas, 'alert')
+  const opportunityInsights = normalizeInsightArray(parsed.oportunidades, 'opportunity')
+  const anomalyInsights = normalizeInsightArray(parsed.anomalias, 'anomaly')
+  const winInsights = normalizeInsightArray(parsed.destaques || parsed.ganhos, 'win')
+
+  const nextActions = Array.isArray(parsed.nextActions)
+    ? parsed.nextActions.map((item) => toCleanString(item)).filter(Boolean)
+    : Array.isArray(parsed.proximos_passos)
+      ? parsed.proximos_passos.map((item) => toCleanString(item)).filter(Boolean)
+      : normalizeInsightArray(parsed.oportunidades, 'opportunity')
+          .map((item) => item?.action || item?.title || '')
+          .filter(Boolean)
+
+  const headline =
+    toCleanString(parsed.headline) ||
+    toCleanString(parsed.titulo) ||
+    toCleanString(parsed.diagnostico_geral?.headline) ||
+    toCleanString(parsed.diagnostico_geral?.titulo) ||
+    'Insight gerado'
+
+  const summary =
+    toCleanString(parsed.summary) ||
+    toCleanString(parsed.resumo) ||
+    buildSummaryFromDiagnostic(parsed.diagnostico_geral, rawText) ||
+    toCleanString(rawText)
+
+  const insights = [
+    ...directInsights,
+    ...problemInsights,
+    ...opportunityInsights,
+    ...anomalyInsights,
+    ...winInsights,
+  ]
+
   return {
-    headline: String(parsed.headline || 'Insight gerado').trim(),
-    summary: String(parsed.summary || rawText || '').trim(),
-    insights: Array.isArray(parsed.insights)
-      ? parsed.insights
-          .filter((item) => item && typeof item === 'object')
-          .map((item) => ({
-            type: String(item.type || 'insight').trim(),
-            title: String(item.title || '').trim(),
-            evidence: String(item.evidence || '').trim(),
-            action: String(item.action || '').trim(),
-          }))
-      : [],
-    nextActions: Array.isArray(parsed.nextActions)
-      ? parsed.nextActions.map((item) => String(item || '').trim()).filter(Boolean)
-      : [],
+    headline,
+    summary,
+    insights,
+    nextActions,
   }
 }
 

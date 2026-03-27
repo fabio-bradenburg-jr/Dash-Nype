@@ -863,6 +863,39 @@ export default function SettingsPage() {
                                 </div>
                               </div>
 
+                              <div className="meta-connection-guide">
+                                <div className="meta-connection-guide-card">
+                                  <span className="meta-connection-guide-kicker">Status</span>
+                                  <strong>{hasMetaOauthConnection ? 'Conexão pronta para uso' : 'Conexão ainda pendente'}</strong>
+                                  <p>
+                                    {hasMetaOauthConnection
+                                      ? 'A conta da Meta já está vinculada a esta operação e pode ser usada para listar contas de anúncio.'
+                                      : 'Conecte uma conta com acesso ao Business Manager e às contas de anúncio que você quer usar no app.'}
+                                  </p>
+                                </div>
+
+                                <div className="meta-connection-guide-card">
+                                  <span className="meta-connection-guide-kicker">Infraestrutura</span>
+                                  <strong>{metaConnectionSetupRequired ? 'Falta liberar a tabela da conexão' : 'Base pronta para autenticação'}</strong>
+                                  <p>
+                                    {metaConnectionSetupRequired
+                                      ? 'A tabela workspace_meta_connections ainda não existe no Supabase. Sem ela, o login conecta mas não consegue persistir a sessão da Meta.'
+                                      : 'A persistência da conexão está pronta. O próximo passo é garantir redirect URI e permissões avançadas no Facebook Developers.'}
+                                  </p>
+                                </div>
+
+                                <div className="meta-connection-guide-card">
+                                  <span className="meta-connection-guide-kicker">Próximos passos</span>
+                                  <strong>Checklist do Facebook Developers</strong>
+                                  <div className="meta-connection-checklist">
+                                    <span>1. Configure a redirect URI com <code>/api/meta/auth/callback</code>.</span>
+                                    <span>2. Ative <code>Login OAuth na Web</code> e mantenha HTTPS ligado.</span>
+                                    <span>3. Use a página pública em <Link href="/privacy" target="_blank" rel="noreferrer">Política e Privacidade</Link>.</span>
+                                    <span>4. Solicite <code>ads_read</code>, <code>ads_management</code> e <code>business_management</code> com acesso avançado.</span>
+                                  </div>
+                                </div>
+                              </div>
+
                               {metaConnectionNotice ? <div className="settings-callout success">{metaConnectionNotice}</div> : null}
                               {metaConnectionError ? <div className="settings-callout error">{metaConnectionError}</div> : null}
                               {metaConnectionSetupRequired ? (
@@ -871,12 +904,6 @@ export default function SettingsPage() {
                                 </div>
                               ) : null}
                               {isMetaConnectionLoading ? <div className="settings-callout info">Carregando status da conexão da Meta...</div> : null}
-                              <div className="settings-callout info">
-                                Para configurar o app no Facebook Developers, use a página pública de política em{' '}
-                                <Link href="/privacy" target="_blank" rel="noreferrer">
-                                  Política e Privacidade
-                                </Link>.
-                              </div>
                             </>
                           )}
                         </div>
@@ -1694,6 +1721,54 @@ export default function SettingsPage() {
           flex-wrap: wrap;
         }
 
+        .meta-connection-guide {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 14px;
+        }
+
+        .meta-connection-guide-card {
+          padding: 18px;
+          border-radius: 18px;
+          background: rgba(255, 255, 255, 0.03);
+          border: 1px solid rgba(255, 255, 255, 0.06);
+          display: grid;
+          gap: 10px;
+          align-content: start;
+        }
+
+        .meta-connection-guide-kicker {
+          color: #93c5fd;
+          font-size: 11px;
+          font-weight: 800;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+        }
+
+        .meta-connection-guide-card strong {
+          font-size: 16px;
+          line-height: 1.3;
+          color: var(--text-primary);
+        }
+
+        .meta-connection-guide-card p {
+          color: var(--text-secondary);
+          font-size: 13px;
+          line-height: 1.6;
+        }
+
+        .meta-connection-checklist {
+          display: grid;
+          gap: 8px;
+          color: var(--text-secondary);
+          font-size: 13px;
+          line-height: 1.6;
+        }
+
+        .meta-connection-checklist span {
+          display: block;
+        }
+
         .settings-callout {
           border-radius: 14px;
           padding: 14px 16px;
@@ -1761,6 +1836,10 @@ export default function SettingsPage() {
           .meta-connection-card {
             flex-direction: column;
             align-items: stretch;
+          }
+
+          .meta-connection-guide {
+            grid-template-columns: 1fr;
           }
         }
 
