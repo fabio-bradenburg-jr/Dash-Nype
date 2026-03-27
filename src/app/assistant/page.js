@@ -177,7 +177,7 @@ export default function AssistantPage() {
     <div className="assistant-shell">
       <aside className="assistant-sidenav">
         <div className="assistant-brand">
-          <h1>Nype AI</h1>
+          <h1>IA</h1>
           <p>Assistente da operação</p>
         </div>
 
