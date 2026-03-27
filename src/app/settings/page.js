@@ -337,8 +337,10 @@ export default function SettingsPage() {
 
     if (tab === 'operation') {
       setActiveSettingsTab('operation')
+    } else if (tab === 'calendar') {
+      setActiveSettingsTab('calendar')
     } else if (tab === 'ai') {
-      setActiveSettingsTab('ai')
+      setActiveSettingsTab('general')
     } else if (tab === 'general') {
       setActiveSettingsTab('general')
     } else if (tab === 'panel') {
@@ -539,16 +541,8 @@ export default function SettingsPage() {
 
         <nav className="nav-menu">
           <Link href="/home" className="nav-item">
-            <i className="bx bx-arrow-back"></i>
-            Voltar ao dashboard
-          </Link>
-          <Link href="/calendar" className="nav-item">
-            <i className="bx bx-calendar-event"></i>
-            Agenda
-          </Link>
-          <Link href="/assistant" className="nav-item">
-            <i className="bx bx-bot"></i>
-            Assistente
+            <i className="bx bxs-home-heart"></i>
+            Home
           </Link>
           <Link href="/privacy" className="nav-item" target="_blank" rel="noreferrer">
             <i className="bx bx-shield-quarter"></i>
@@ -621,13 +615,13 @@ export default function SettingsPage() {
 
                     <button
                       type="button"
-                      className={`settings-sidebar-link ${activeSettingsTab === 'ai' ? 'active' : ''}`}
-                      onClick={() => handleSettingsTabChange('ai')}
+                      className={`settings-sidebar-link ${activeSettingsTab === 'calendar' ? 'active' : ''}`}
+                      onClick={() => handleSettingsTabChange('calendar')}
                     >
-                      <i className="bx bx-bot"></i>
+                      <i className="bx bx-calendar-event"></i>
                       <div>
-                        <strong>IA</strong>
-                        <span>Provider, modelo e prompt de análise.</span>
+                        <strong>Agenda</strong>
+                        <span>Google Calendar e rotina da operação.</span>
                       </div>
                     </button>
                   </>
@@ -975,71 +969,12 @@ export default function SettingsPage() {
                         ))}
                       </div>
                     </section>
-                  </div>
-                </div>
-              )}
 
-              {canManageClients && activeSettingsTab === 'operation' && (
-                <div className="glass-item settings-block settings-block-full">
-                  <div className="settings-section-head">
-                    <div>
-                      <h2>Operação</h2>
-                      <p>Essas credenciais ficam no nível da operação para abastecer as dashboards internas do time.</p>
-                    </div>
-                  </div>
-
-                  <div className="settings-integrations-grid settings-integrations-grid-operation">
-                    <div className="settings-callout info settings-operation-callout">
-                      Essa aba centraliza as credenciais globais do ClickUp e Monday usadas nas dashboards operacionais. Os IDs ficam aqui no nível da operação, não dentro dos clientes.
-                    </div>
-
-                    {operationIntegrationGroups.map((group) => (
-                      <div key={group.title} className="integration-block">
-                        <div className="integration-heading">
-                          <div className="integration-icon" style={{ color: group.accent, borderColor: `${group.accent}33` }}>
-                            <i className={`bx ${group.icon}`}></i>
-                          </div>
-                          <div>
-                            <h3>{group.title}</h3>
-                            <p>{group.description}</p>
-                          </div>
-                        </div>
-
-                        {(group.fields || (group.field ? [group.field] : [])).map((field) => (
-                          <div key={field.name} className="input-group">
-                            <label>{field.label}</label>
-                            <input
-                              type={field.name.toLowerCase().includes('token') ? 'password' : 'text'}
-                              value={globalIntegrations[field.name] || ''}
-                              onChange={(event) => handleGlobalIntegrationChange(field.name, event.target.value)}
-                              placeholder={field.placeholder}
-                            />
-                            {field.name === 'clickUpListIds' || field.name === 'mondayBoardIds' ? (
-                              <small className="settings-help-text">Separe múltiplos IDs por vírgula. Esses IDs ficam globais na operação.</small>
-                            ) : null}
-                          </div>
-                        ))}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {canManageClients && activeSettingsTab === 'ai' && (
-                <div className="glass-item settings-block settings-block-full">
-                  <div className="settings-section-head">
-                    <div>
-                      <h2>IA para análise do dashboard</h2>
-                      <p>Configure aqui a API, o modelo e o prompt base que a IA vai usar para interpretar os números da dashboard.</p>
-                    </div>
-                  </div>
-
-                  <div className="settings-general-layout">
                     <section className="settings-category-shell">
                       <div className="settings-category-head">
-                        <span className="settings-category-kicker">Provider</span>
-                        <h3>Conexão da IA</h3>
-                        <p>Cadastre as credenciais por provider e escolha abaixo qual IA fica ativa para a análise da dashboard.</p>
+                        <span className="settings-category-kicker">IA</span>
+                        <h3>Configuração da IA da operação</h3>
+                        <p>A área de uso da IA fica na Home, mas a configuração do provider e do prompt continua centralizada aqui.</p>
                       </div>
 
                       <div className="settings-integrations-grid settings-category-grid">
@@ -1125,17 +1060,7 @@ export default function SettingsPage() {
                             A chamada da IA roda somente no servidor. Claude usa a API nativa da Anthropic, Gemini funciona pelo endpoint compatível, e OpenRouter/Groq/Manus podem ser configurados pela Base URL do provider. Trocar a IA ativa não apaga os dados salvos das outras.
                           </div>
                         </div>
-                      </div>
-                    </section>
 
-                    <section className="settings-category-shell">
-                      <div className="settings-category-head">
-                        <span className="settings-category-kicker">Prompt</span>
-                        <h3>Instrução base da análise</h3>
-                        <p>Esse prompt será combinado com os números da dashboard para a IA devolver resumo executivo, alertas, oportunidades e próximos passos.</p>
-                      </div>
-
-                      <div className="settings-integrations-grid settings-category-grid">
                         <div className="integration-block integration-block-meta">
                           <div className="input-group">
                             <label>Prompt do dashboard</label>
@@ -1182,6 +1107,99 @@ export default function SettingsPage() {
                             <small>
                               Dica: no modo JSON, você pode usar chaves como `role`, `objective`, `instructions`, `rules`, `style`, `context`, `output` ou `outputSchema`.
                             </small>
+                          </div>
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </div>
+              )}
+
+              {canManageClients && activeSettingsTab === 'operation' && (
+                <div className="glass-item settings-block settings-block-full">
+                  <div className="settings-section-head">
+                    <div>
+                      <h2>Operação</h2>
+                      <p>Essas credenciais ficam no nível da operação para abastecer as dashboards internas do time.</p>
+                    </div>
+                  </div>
+
+                  <div className="settings-integrations-grid settings-integrations-grid-operation">
+                    <div className="settings-callout info settings-operation-callout">
+                      Essa aba centraliza as credenciais globais do ClickUp e Monday usadas nas dashboards operacionais. Os IDs ficam aqui no nível da operação, não dentro dos clientes.
+                    </div>
+
+                    {operationIntegrationGroups.map((group) => (
+                      <div key={group.title} className="integration-block">
+                        <div className="integration-heading">
+                          <div className="integration-icon" style={{ color: group.accent, borderColor: `${group.accent}33` }}>
+                            <i className={`bx ${group.icon}`}></i>
+                          </div>
+                          <div>
+                            <h3>{group.title}</h3>
+                            <p>{group.description}</p>
+                          </div>
+                        </div>
+
+                        {(group.fields || (group.field ? [group.field] : [])).map((field) => (
+                          <div key={field.name} className="input-group">
+                            <label>{field.label}</label>
+                            <input
+                              type={field.name.toLowerCase().includes('token') ? 'password' : 'text'}
+                              value={globalIntegrations[field.name] || ''}
+                              onChange={(event) => handleGlobalIntegrationChange(field.name, event.target.value)}
+                              placeholder={field.placeholder}
+                            />
+                            {field.name === 'clickUpListIds' || field.name === 'mondayBoardIds' ? (
+                              <small className="settings-help-text">Separe múltiplos IDs por vírgula. Esses IDs ficam globais na operação.</small>
+                            ) : null}
+                          </div>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {canManageClients && activeSettingsTab === 'calendar' && (
+                <div className="glass-item settings-block settings-block-full">
+                  <div className="settings-section-head">
+                    <div>
+                      <h2>Agenda da operação</h2>
+                      <p>Centralize aqui a configuração da agenda operacional e o acesso ao Google Calendar da equipe.</p>
+                    </div>
+                  </div>
+
+                  <div className="settings-general-layout">
+                    <section className="settings-category-shell">
+                      <div className="settings-category-head">
+                        <span className="settings-category-kicker">Agenda</span>
+                        <h3>Google Calendar</h3>
+                        <p>A área de agenda aparece na Home como produto do app, mas a configuração operacional dela fica centralizada aqui.</p>
+                      </div>
+
+                      <div className="settings-integrations-grid settings-category-grid">
+                        <div className="integration-block integration-block-meta">
+                          <div className="integration-heading">
+                            <div className="integration-icon" style={{ color: '#10b981', borderColor: '#10b98133' }}>
+                              <i className="bx bx-calendar-event"></i>
+                            </div>
+                            <div>
+                              <h3>Configuração da agenda</h3>
+                              <p>Use essa área para conectar sua conta Google, escolher o calendário ativo e organizar a rotina operacional fora da leitura analítica.</p>
+                            </div>
+                          </div>
+
+                          <div className="settings-callout info">
+                            A agenda continua como área do produto na Home, mas a conexão e os detalhes operacionais ficam organizados dentro de Configurações.
+                          </div>
+                          <div className="settings-choice-row settings-choice-row-compact">
+                            <Link href="/calendar" className="btn btn-primary">
+                              Abrir agenda
+                            </Link>
+                            <Link href="/calendar" className="btn btn-secondary">
+                              Gerenciar conexão
+                            </Link>
                           </div>
                         </div>
                       </div>
