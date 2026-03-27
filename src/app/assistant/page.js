@@ -467,7 +467,7 @@ export default function AssistantPage({ embeddedOverride = null } = {}) {
 
       {assistantMainContent}
 
-      <style jsx>{`
+      <style jsx global>{`
         .assistant-shell-embedded {
           min-height: 100%;
         }

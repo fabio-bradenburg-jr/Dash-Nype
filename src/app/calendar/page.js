@@ -691,7 +691,7 @@ export default function CalendarPage({ embeddedOverride = null } = {}) {
         </div>
       )}
 
-      <style jsx>{`
+      <style jsx global>{`
         .calendar-shell-embedded {
           min-height: 100%;
         }
