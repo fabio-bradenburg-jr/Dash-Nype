@@ -177,8 +177,8 @@ export default function AssistantPage() {
     <div className="assistant-shell">
       <aside className="assistant-sidenav">
         <div className="assistant-brand">
-          <h1>Luminous AI</h1>
-          <p>The Synthetic Ether</p>
+          <h1>Nype AI</h1>
+          <p>Assistente da operação</p>
         </div>
 
         <button type="button" className="assistant-new-chat" onClick={handleResetChat}>
@@ -436,10 +436,8 @@ export default function AssistantPage() {
       <style jsx>{`
         .assistant-shell {
           min-height: 100vh;
-          background:
-            radial-gradient(circle at top center, rgba(123, 209, 250, 0.08), transparent 24%),
-            linear-gradient(180deg, #0b1326 0%, #0a1020 100%);
-          color: #dae2fd;
+          background: var(--bg-primary);
+          color: var(--text-primary);
         }
 
         .assistant-sidenav {
@@ -450,8 +448,8 @@ export default function AssistantPage() {
           flex-direction: column;
           gap: 22px;
           padding: 28px 18px 20px;
-          background: rgba(19, 27, 46, 0.94);
-          border-right: 1px solid rgba(66, 70, 85, 0.35);
+          background: color-mix(in srgb, var(--bg-secondary) 88%, #0b0f17 12%);
+          border-right: 1px solid var(--border-color);
           z-index: 30;
         }
 
@@ -461,7 +459,7 @@ export default function AssistantPage() {
           font-size: clamp(24px, 4vw, 36px);
           line-height: 0.95;
           letter-spacing: -0.04em;
-          color: #f6f7fb;
+          color: var(--text-primary);
         }
 
         .assistant-brand p,
@@ -470,7 +468,7 @@ export default function AssistantPage() {
         .assistant-message p,
         .assistant-context-card p {
           margin: 0;
-          color: #b5bfd6;
+          color: var(--text-secondary);
           line-height: 1.65;
         }
 
@@ -479,22 +477,22 @@ export default function AssistantPage() {
           font-size: 11px;
           text-transform: uppercase;
           letter-spacing: 0.14em;
-          color: rgba(194, 198, 215, 0.72);
+          color: var(--text-muted);
         }
 
         .assistant-new-chat {
           border: none;
           border-radius: 16px;
           min-height: 52px;
-          background: linear-gradient(135deg, #b0c6ff 0%, #558dff 100%);
-          color: #071326;
+          background: var(--accent-blue);
+          color: white;
           font-weight: 700;
           display: flex;
           align-items: center;
           justify-content: center;
           gap: 8px;
           cursor: pointer;
-          box-shadow: 0 18px 40px rgba(85, 141, 255, 0.2);
+          box-shadow: 0 14px 28px rgba(37, 99, 235, 0.22);
         }
 
         .assistant-nav {
@@ -510,8 +508,8 @@ export default function AssistantPage() {
           gap: 12px;
           min-height: 48px;
           padding: 0 16px;
-          border-radius: 0 16px 16px 0;
-          color: #c2c6d7;
+          border-radius: 14px;
+          color: var(--text-secondary);
           text-decoration: none;
           font-size: 14px;
           font-weight: 600;
@@ -523,15 +521,14 @@ export default function AssistantPage() {
         }
 
         .assistant-nav-item:hover {
-          background: rgba(34, 42, 61, 0.65);
-          color: #e7ecfb;
+          background: rgba(255, 255, 255, 0.03);
+          color: var(--text-primary);
         }
 
         .assistant-nav-item.active {
-          background: rgba(34, 42, 61, 0.95);
-          border-left: 4px solid #7bd1fa;
-          color: #7bd1fa;
-          padding-left: 12px;
+          background: color-mix(in srgb, var(--accent-blue) 14%, transparent);
+          border: 1px solid color-mix(in srgb, var(--accent-blue) 42%, transparent);
+          color: #93c5fd;
         }
 
         .assistant-nav-item-footer {
@@ -543,7 +540,7 @@ export default function AssistantPage() {
           align-items: center;
           gap: 12px;
           padding: 16px 8px 4px;
-          border-top: 1px solid rgba(66, 70, 85, 0.24);
+          border-top: 1px solid var(--border-color);
         }
 
         .assistant-profile-avatar,
@@ -557,9 +554,9 @@ export default function AssistantPage() {
         .assistant-profile-avatar {
           width: 38px;
           height: 38px;
-          background: rgba(45, 52, 73, 0.88);
-          border: 1px solid rgba(176, 198, 255, 0.16);
-          color: #dae2fd;
+          background: rgba(255, 255, 255, 0.04);
+          border: 1px solid var(--border-color);
+          color: var(--text-primary);
         }
 
         .assistant-profile-copy {
@@ -569,14 +566,14 @@ export default function AssistantPage() {
 
         .assistant-profile-copy strong {
           font-size: 13px;
-          color: #f6f7fb;
+          color: var(--text-primary);
         }
 
         .assistant-profile-copy span {
           font-size: 10px;
           letter-spacing: 0.14em;
           text-transform: uppercase;
-          color: rgba(194, 198, 215, 0.62);
+          color: var(--text-muted);
         }
 
         .assistant-main-shell {
@@ -584,6 +581,9 @@ export default function AssistantPage() {
           min-height: 100vh;
           display: grid;
           grid-template-rows: 72px minmax(0, 1fr);
+          background:
+            radial-gradient(circle at top center, rgba(59, 130, 246, 0.08), transparent 22%),
+            linear-gradient(180deg, var(--bg-primary) 0%, #12151c 100%);
         }
 
         .assistant-topbar {
@@ -595,9 +595,9 @@ export default function AssistantPage() {
           align-items: center;
           justify-content: space-between;
           padding: 0 28px;
-          background: rgba(11, 19, 38, 0.82);
-          backdrop-filter: blur(22px);
-          border-bottom: 1px solid rgba(66, 70, 85, 0.22);
+          background: color-mix(in srgb, var(--bg-primary) 88%, transparent);
+          backdrop-filter: blur(18px);
+          border-bottom: 1px solid var(--border-color);
         }
 
         .assistant-topbar-title strong {
@@ -624,20 +624,20 @@ export default function AssistantPage() {
         }
 
         .assistant-icon-button:hover {
-          background: rgba(34, 42, 61, 0.7);
-          color: #7bd1fa;
+          background: rgba(255, 255, 255, 0.04);
+          color: #93c5fd;
         }
 
         .assistant-topbar-user {
           width: 38px;
           height: 38px;
-          background: rgba(34, 42, 61, 0.8);
-          border: 1px solid rgba(66, 70, 85, 0.3);
-          color: #dae2fd;
+          background: rgba(255, 255, 255, 0.04);
+          border: 1px solid var(--border-color);
+          color: var(--text-primary);
         }
 
         .assistant-main {
-          padding: 24px;
+          padding: 18px 24px 24px;
         }
 
         .assistant-empty {
@@ -653,10 +653,10 @@ export default function AssistantPage() {
         }
 
         .glass-panel {
-          background: rgba(23, 31, 51, 0.68);
-          backdrop-filter: blur(24px);
-          border: 1px solid rgba(66, 70, 85, 0.18);
-          box-shadow: 0 18px 60px rgba(2, 6, 23, 0.32);
+          background: rgba(255, 255, 255, 0.03);
+          backdrop-filter: blur(10px);
+          border: 1px solid var(--border-color);
+          box-shadow: 0 18px 42px rgba(0, 0, 0, 0.16);
         }
 
         .assistant-context-column {
@@ -669,8 +669,8 @@ export default function AssistantPage() {
 
         .assistant-context-card,
         .assistant-status-card {
-          padding: 22px;
-          border-radius: 22px;
+          padding: 24px;
+          border-radius: 20px;
         }
 
         .assistant-section-head {
@@ -682,7 +682,7 @@ export default function AssistantPage() {
           font-size: 11px;
           text-transform: uppercase;
           letter-spacing: 0.16em;
-          color: #7bd1fa;
+          color: #93c5fd;
           font-weight: 800;
         }
 
@@ -694,7 +694,7 @@ export default function AssistantPage() {
 
         .assistant-field span {
           font-size: 12px;
-          color: #c2c6d7;
+          color: var(--text-secondary);
           font-weight: 600;
         }
 
@@ -705,10 +705,10 @@ export default function AssistantPage() {
         .assistant-select-wrap select {
           width: 100%;
           min-height: 50px;
-          border-radius: 16px;
-          border: 1px solid rgba(66, 70, 85, 0.34);
-          background: rgba(45, 52, 73, 0.74);
-          color: #dae2fd;
+          border-radius: 14px;
+          border: 1px solid var(--border-color);
+          background: rgba(255, 255, 255, 0.03);
+          color: var(--text-primary);
           padding: 0 44px 0 16px;
           outline: none;
           appearance: none;
@@ -719,44 +719,45 @@ export default function AssistantPage() {
           right: 14px;
           top: 50%;
           transform: translateY(-50%);
-          color: #8c90a0;
+          color: var(--text-muted);
           pointer-events: none;
         }
 
         .assistant-context-stats {
           display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
           gap: 12px;
           margin-bottom: 18px;
         }
 
         .assistant-context-stat {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 12px;
-          padding: 14px 16px;
-          border-radius: 16px;
-          background: rgba(19, 27, 46, 0.62);
-          border: 1px solid rgba(66, 70, 85, 0.16);
+          display: grid;
+          gap: 14px;
+          align-content: space-between;
+          min-height: 112px;
+          padding: 18px 18px 16px;
+          border-radius: 18px;
+          background: rgba(255, 255, 255, 0.025);
+          border: 1px solid var(--border-color);
         }
 
         .assistant-context-stat div {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          color: #c2c6d7;
+          display: grid;
+          gap: 8px;
+          color: var(--text-secondary);
           font-size: 12px;
           font-weight: 600;
         }
 
         .assistant-context-stat i {
-          color: #b0c6ff;
-          font-size: 18px;
+          color: #93c5fd;
+          font-size: 20px;
         }
 
         .assistant-context-stat strong {
-          font-size: 14px;
-          color: #f6f7fb;
+          font-size: 16px;
+          color: var(--text-primary);
+          line-height: 1.2;
         }
 
         .assistant-chip-group {
@@ -769,9 +770,9 @@ export default function AssistantPage() {
           min-height: 38px;
           padding: 0 14px;
           border-radius: 999px;
-          border: 1px solid rgba(66, 70, 85, 0.2);
-          background: rgba(34, 42, 61, 0.8);
-          color: #c2c6d7;
+          border: 1px solid var(--border-color);
+          background: rgba(255, 255, 255, 0.035);
+          color: var(--text-secondary);
           font-size: 11px;
           font-weight: 700;
           cursor: pointer;
@@ -779,8 +780,8 @@ export default function AssistantPage() {
         }
 
         .assistant-chip:hover {
-          color: #7bd1fa;
-          border-color: rgba(123, 209, 250, 0.35);
+          color: #93c5fd;
+          border-color: color-mix(in srgb, var(--accent-blue) 36%, transparent);
         }
 
         .assistant-status-head {
@@ -792,7 +793,7 @@ export default function AssistantPage() {
           font-weight: 800;
           letter-spacing: 0.14em;
           text-transform: uppercase;
-          color: #c2c6d7;
+          color: var(--text-secondary);
         }
 
         .assistant-status-dot {
@@ -807,28 +808,33 @@ export default function AssistantPage() {
           min-height: 0;
           display: grid;
           grid-template-rows: auto minmax(0, 1fr) auto;
-          border-radius: 28px;
+          border-radius: 20px;
           overflow: hidden;
+          background:
+            radial-gradient(circle at top left, rgba(59, 130, 246, 0.1), transparent 28%),
+            rgba(255, 255, 255, 0.03);
         }
 
         .assistant-chat-intro {
-          padding: 36px 36px 10px;
+          padding: 30px 32px 14px;
+          border-bottom: 1px solid var(--border-color);
         }
 
         .assistant-chat-intro p {
           margin-top: 8px;
           max-width: 680px;
-          font-size: 18px;
-          font-weight: 300;
+          font-size: 15px;
+          font-weight: 400;
+          color: var(--text-secondary);
         }
 
         .assistant-messages {
           min-height: 0;
           overflow-y: auto;
           display: grid;
-          gap: 24px;
+          gap: 20px;
           align-content: start;
-          padding: 18px 36px 24px;
+          padding: 24px 32px 24px;
         }
 
         .assistant-date-separator {
@@ -839,8 +845,8 @@ export default function AssistantPage() {
         .assistant-date-separator span {
           padding: 7px 14px;
           border-radius: 999px;
-          background: rgba(34, 42, 61, 0.88);
-          color: rgba(194, 198, 215, 0.7);
+          background: rgba(255, 255, 255, 0.04);
+          color: var(--text-muted);
           font-size: 10px;
           font-weight: 800;
           letter-spacing: 0.2em;
@@ -850,7 +856,7 @@ export default function AssistantPage() {
         .assistant-message-row {
           display: flex;
           gap: 14px;
-          max-width: min(780px, 100%);
+          max-width: min(900px, 100%);
         }
 
         .assistant-message-row-user {
@@ -863,36 +869,36 @@ export default function AssistantPage() {
           height: 36px;
           flex: 0 0 36px;
           margin-top: 2px;
-          border: 1px solid rgba(66, 70, 85, 0.24);
+          border: 1px solid var(--border-color);
         }
 
         .assistant-avatar-bot {
-          background: rgba(123, 209, 250, 0.14);
-          color: #7bd1fa;
-          box-shadow: 0 0 24px rgba(123, 209, 250, 0.12);
+          background: color-mix(in srgb, var(--accent-blue) 14%, transparent);
+          color: #93c5fd;
+          box-shadow: 0 0 24px rgba(59, 110, 228, 0.12);
         }
 
         .assistant-avatar-user {
-          background: rgba(34, 42, 61, 0.88);
-          color: #dae2fd;
+          background: rgba(255, 255, 255, 0.04);
+          color: var(--text-primary);
         }
 
         .assistant-message {
           display: grid;
           gap: 10px;
-          padding: 22px 24px;
-          border-radius: 22px;
-          border: 1px solid rgba(66, 70, 85, 0.18);
+          padding: 20px 22px;
+          border-radius: 18px;
+          border: 1px solid var(--border-color);
         }
 
         .assistant-message-assistant {
-          background: rgba(45, 52, 73, 0.55);
-          border-top-left-radius: 8px;
+          background: linear-gradient(180deg, rgba(31, 36, 47, 0.92) 0%, rgba(27, 31, 40, 0.98) 100%);
+          border-top-left-radius: 10px;
         }
 
         .assistant-message-user {
-          background: rgba(34, 42, 61, 0.8);
-          border-top-right-radius: 8px;
+          background: linear-gradient(180deg, rgba(37, 43, 55, 0.96) 0%, rgba(31, 36, 46, 0.98) 100%);
+          border-top-right-radius: 10px;
         }
 
         .assistant-message p {
@@ -914,7 +920,7 @@ export default function AssistantPage() {
         .assistant-message-actions button {
           border: none;
           background: transparent;
-          color: #aeb6ca;
+          color: var(--text-muted);
           font-size: 11px;
           font-weight: 600;
           display: inline-flex;
@@ -924,7 +930,7 @@ export default function AssistantPage() {
         }
 
         .assistant-message-actions button:hover {
-          color: #e6ebfb;
+          color: #93c5fd;
         }
 
         .assistant-message-copy {
@@ -932,7 +938,9 @@ export default function AssistantPage() {
         }
 
         .assistant-form-shell {
-          padding: 18px 28px 24px;
+          padding: 20px 28px 24px;
+          border-top: 1px solid var(--border-color);
+          background: linear-gradient(180deg, rgba(24, 28, 37, 0.1) 0%, rgba(16, 18, 24, 0.5) 100%);
         }
 
         .assistant-form-panel {
@@ -940,13 +948,13 @@ export default function AssistantPage() {
           display: flex;
           align-items: flex-end;
           gap: 6px;
-          padding: 8px;
-          border-radius: 24px;
-          background: rgba(6, 14, 32, 0.92);
-          border: 1px solid rgba(66, 70, 85, 0.22);
+          padding: 10px;
+          border-radius: 18px;
+          background: rgba(12, 15, 22, 0.92);
+          border: 1px solid var(--border-color);
           box-shadow:
-            0 0 0 1px rgba(123, 209, 250, 0.04),
-            0 20px 60px rgba(2, 6, 23, 0.38);
+            0 0 0 1px rgba(123, 209, 250, 0.03),
+            0 20px 60px rgba(0, 0, 0, 0.28);
         }
 
         .assistant-form-panel textarea {
@@ -956,7 +964,7 @@ export default function AssistantPage() {
           resize: none;
           border: none;
           background: transparent;
-          color: #dae2fd;
+          color: var(--text-primary);
           outline: none;
           padding: 14px 8px;
           line-height: 1.6;
@@ -971,7 +979,7 @@ export default function AssistantPage() {
           width: 46px;
           height: 46px;
           border: none;
-          border-radius: 16px;
+          border-radius: 14px;
           display: grid;
           place-items: center;
           cursor: pointer;
@@ -979,11 +987,11 @@ export default function AssistantPage() {
 
         .assistant-form-icon {
           background: transparent;
-          color: #9fa8bd;
+          color: var(--text-muted);
         }
 
         .assistant-form-icon:hover {
-          color: #7bd1fa;
+          color: #93c5fd;
         }
 
         .assistant-form-actions-inline {
@@ -993,9 +1001,9 @@ export default function AssistantPage() {
         }
 
         .assistant-submit {
-          background: linear-gradient(135deg, #b0c6ff 0%, #558dff 100%);
-          color: #0a1628;
-          box-shadow: 0 14px 30px rgba(85, 141, 255, 0.24);
+          background: linear-gradient(135deg, var(--accent-blue) 0%, #1d4ed8 100%);
+          color: #eef5ff;
+          box-shadow: 0 14px 30px rgba(52, 103, 233, 0.28);
         }
 
         .assistant-submit:disabled {
@@ -1010,7 +1018,7 @@ export default function AssistantPage() {
           gap: 12px;
           flex-wrap: wrap;
           padding: 14px 6px 0;
-          color: rgba(194, 198, 215, 0.56);
+          color: var(--text-muted);
           font-size: 10px;
           font-weight: 700;
           letter-spacing: 0.08em;
@@ -1037,6 +1045,10 @@ export default function AssistantPage() {
 
           .assistant-context-column {
             overflow: visible;
+          }
+
+          .assistant-context-stats {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
           }
         }
 
@@ -1077,6 +1089,10 @@ export default function AssistantPage() {
 
           .assistant-message-row {
             max-width: 100%;
+          }
+
+          .assistant-context-stats {
+            grid-template-columns: 1fr;
           }
         }
       `}</style>
