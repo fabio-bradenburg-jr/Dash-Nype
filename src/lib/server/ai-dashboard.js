@@ -109,40 +109,78 @@ function stripMarkdownCodeFence(text) {
   return normalized.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim()
 }
 
-function tryParseJson(text) {
+function createLooseJsonCandidates(text) {
   const normalized = stripMarkdownCodeFence(text)
-  if (!normalized) return null
+  if (!normalized) return []
 
-  try {
-    const parsed = JSON.parse(normalized)
+  const candidates = new Set([normalized])
 
-    if (typeof parsed === 'string') {
-      const nestedParsed = tryParseJson(parsed)
-      return nestedParsed ?? parsed
-    }
+  if (normalized.startsWith('"') && normalized.endsWith('"')) {
+    try {
+      const unwrapped = JSON.parse(normalized)
+      if (typeof unwrapped === 'string' && unwrapped.trim()) {
+        candidates.add(unwrapped.trim())
+      }
+    } catch {}
+  }
 
-    return parsed
-  } catch (error) {
-    const firstBrace = normalized.indexOf('{')
-    const lastBrace = normalized.lastIndexOf('}')
+  const repaired = normalized
+    .replace(/\\n/g, '\n')
+    .replace(/\\"/g, '"')
+    .replace(/,\s*([}\]])/g, '$1')
+    .trim()
 
-    if (firstBrace >= 0 && lastBrace > firstBrace) {
-      try {
-        const parsed = JSON.parse(normalized.slice(firstBrace, lastBrace + 1))
+  if (repaired) candidates.add(repaired)
 
-        if (typeof parsed === 'string') {
-          const nestedParsed = tryParseJson(parsed)
-          return nestedParsed ?? parsed
-        }
+  const firstBrace = repaired.indexOf('{')
+  const lastBrace = repaired.lastIndexOf('}')
+  if (firstBrace >= 0 && lastBrace > firstBrace) {
+    candidates.add(repaired.slice(firstBrace, lastBrace + 1).trim())
+  }
 
-        return parsed
-      } catch (nestedError) {
-        return null
+  const firstBracket = repaired.indexOf('[')
+  const lastBracket = repaired.lastIndexOf(']')
+  if (firstBracket >= 0 && lastBracket > firstBracket) {
+    candidates.add(repaired.slice(firstBracket, lastBracket + 1).trim())
+  }
+
+  return Array.from(candidates).filter(Boolean)
+}
+
+function tryParseJson(text) {
+  const candidates = createLooseJsonCandidates(text)
+  if (!candidates.length) return null
+
+  for (const candidate of candidates) {
+    try {
+      const parsed = JSON.parse(candidate)
+
+      if (typeof parsed === 'string') {
+        const nestedParsed = tryParseJson(parsed)
+        return nestedParsed ?? parsed
+      }
+
+      return parsed
+    } catch (error) {
+      const firstBrace = candidate.indexOf('{')
+      const lastBrace = candidate.lastIndexOf('}')
+
+      if (firstBrace >= 0 && lastBrace > firstBrace) {
+        try {
+          const parsed = JSON.parse(candidate.slice(firstBrace, lastBrace + 1))
+
+          if (typeof parsed === 'string') {
+            const nestedParsed = tryParseJson(parsed)
+            return nestedParsed ?? parsed
+          }
+
+          return parsed
+        } catch {}
       }
     }
-
-    return null
   }
+
+  return null
 }
 
 function toCleanString(value) {
