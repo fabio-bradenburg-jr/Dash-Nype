@@ -2142,6 +2142,23 @@ export default function DashboardPage() {
   const aiStructuredSummary = !looksLikeJsonBlock(aiInsightsResult?.structured?.summary)
     ? aiInsightsResult?.structured?.summary || ''
     : ''
+  const aiHasStructuredInsights = aiInsightGroups.length > 0
+  const aiHasNextActions = Array.isArray(aiInsightsResult?.structured?.nextActions) && aiInsightsResult.structured.nextActions.length > 0
+  const aiHasStructuredResponse = aiHasStructuredInsights || aiHasNextActions
+  const aiFallbackTakeaways = useMemo(() => {
+    const source = String(aiStructuredSummary || aiInsightsResult?.rawText || '').replace(/\s+/g, ' ').trim()
+    if (!source) return []
+
+    return source
+      .split(/(?:\.\s+|\!\s+|\?\s+|;\s+)/)
+      .map((item) => item.trim())
+      .filter(Boolean)
+      .slice(0, 4)
+      .map((item, index) => ({
+        title: index === 0 ? 'Diagnóstico central' : `Leitura ${index + 1}`,
+        text: /[.!?]$/.test(item) ? item : `${item}.`,
+      }))
+  }, [aiStructuredSummary, aiInsightsResult])
   const selectedQualifiedStages = useMemo(
     () => activeClient?.rdQualifiedStages || [],
     [activeClient]
@@ -10054,14 +10071,21 @@ export default function DashboardPage() {
                         <span>{aiInsightsResult.provider || globalIntegrations.aiProvider || 'IA configurada'} · {aiInsightsResult.model || globalIntegrations.aiModel || 'modelo não informado'}</span>
                       </div>
                     </div>
-                    <div className="ai-insights-highlight-grid">
-                      {aiHighlights.map((item) => (
-                        <div key={item.label} className={`ai-insights-highlight-card ai-insights-highlight-${item.tone}`}>
-                          <small>{item.label}</small>
-                          <strong>{item.value}</strong>
-                        </div>
-                      ))}
-                    </div>
+                    {aiHasStructuredResponse ? (
+                      <div className="ai-insights-highlight-grid">
+                        {aiHighlights.map((item) => (
+                          <div key={item.label} className={`ai-insights-highlight-card ai-insights-highlight-${item.tone}`}>
+                            <small>{item.label}</small>
+                            <strong>{item.value}</strong>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="ai-insights-fallback-banner">
+                        <span className="ai-insight-chip">Leitura livre</span>
+                        <p>A resposta veio mais narrativa do que estruturada. Organizamos abaixo os principais pontos já identificados no resumo.</p>
+                      </div>
+                    )}
                   </div>
 
                   {aiInsightGroups.length ? (
@@ -10106,6 +10130,29 @@ export default function DashboardPage() {
                         </section>
                       ))}
                     </div>
+                  ) : aiFallbackTakeaways.length ? (
+                    <div className="ai-insights-sections">
+                      <section className="ai-insights-section">
+                        <div className="ai-insights-section-head">
+                          <div className="ai-insights-section-title-wrap">
+                            <span className="ai-insight-chip">Leitura guiada</span>
+                            <strong>Principais pontos do resumo</strong>
+                          </div>
+                          <small>{aiFallbackTakeaways.length} bloco(s)</small>
+                        </div>
+                        <div className="ai-insights-grid ai-insights-grid-fallback">
+                          {aiFallbackTakeaways.map((item, index) => (
+                            <div key={`${item.title}-${index}`} className="glass-item ai-insight-card ai-insight-card-fallback">
+                              <div className="ai-insight-card-head">
+                                <span className="ai-insight-chip ai-insight-chip-insight">{item.title}</span>
+                                <span className="ai-insight-index">{String(index + 1).padStart(2, '0')}</span>
+                              </div>
+                              <p>{item.text}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </section>
+                    </div>
                   ) : (
                     <div className="glass-item ai-insight-card ai-insight-card-empty">
                       <span className="ai-insight-chip">Formato livre</span>
@@ -10114,17 +10161,17 @@ export default function DashboardPage() {
                     </div>
                   )}
 
-                  <div className="glass-item ai-insights-actions-shell">
-                    <div className="ai-insights-actions-head">
-                      <div>
-                        <span className="ai-insights-kicker">Próximos passos</span>
-                        <strong className="ai-insights-section-title">Ações recomendadas pela IA</strong>
+                  {aiHasNextActions ? (
+                    <div className="glass-item ai-insights-actions-shell">
+                      <div className="ai-insights-actions-head">
+                        <div>
+                          <span className="ai-insights-kicker">Próximos passos</span>
+                          <strong className="ai-insights-section-title">Ações recomendadas pela IA</strong>
+                        </div>
+                        <span className="ai-insights-actions-badge">
+                          {(aiInsightsResult.structured.nextActions || []).length} item(ns)
+                        </span>
                       </div>
-                      <span className="ai-insights-actions-badge">
-                        {(aiInsightsResult.structured.nextActions || []).length} item(ns)
-                      </span>
-                    </div>
-                    {(aiInsightsResult.structured.nextActions || []).length ? (
                       <ul className="ai-insights-actions-list">
                         {aiInsightsResult.structured.nextActions.map((item, index) => (
                           <li key={`${item}-${index}`}>
@@ -10133,10 +10180,8 @@ export default function DashboardPage() {
                           </li>
                         ))}
                       </ul>
-                    ) : (
-                      <p className="ai-insights-empty-note">A resposta não trouxe próximos passos sugeridos para esse período.</p>
-                    )}
-                  </div>
+                    </div>
+                  ) : null}
 
                   <div className="ai-insights-meta">
                     <span>Provider: {aiInsightsResult.provider || globalIntegrations.aiProvider || 'IA configurada'}</span>
@@ -11242,6 +11287,22 @@ export default function DashboardPage() {
           gap: 12px;
         }
 
+        .ai-insights-fallback-banner {
+          display: grid;
+          gap: 10px;
+          padding: 16px 18px;
+          border-radius: 18px;
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          background: rgba(255, 255, 255, 0.04);
+        }
+
+        .ai-insights-fallback-banner p {
+          margin: 0;
+          color: var(--text-secondary);
+          line-height: 1.6;
+          max-width: 70ch;
+        }
+
         .ai-insights-highlight-card {
           min-height: 108px;
           border-radius: 20px;
@@ -11322,12 +11383,20 @@ export default function DashboardPage() {
           gap: 14px;
         }
 
+        .ai-insights-grid-fallback {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
         .ai-insight-card {
           align-content: start;
           gap: 14px;
           background:
             linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.025)),
             radial-gradient(circle at top right, rgba(255, 255, 255, 0.08), transparent 34%);
+        }
+
+        .ai-insight-card-fallback {
+          min-height: 180px;
         }
 
         .ai-insight-card-empty {
@@ -14405,7 +14474,8 @@ export default function DashboardPage() {
           }
 
           .ai-insights-grid,
-          .ai-insights-highlight-grid {
+          .ai-insights-highlight-grid,
+          .ai-insights-grid-fallback {
             grid-template-columns: 1fr;
           }
 
