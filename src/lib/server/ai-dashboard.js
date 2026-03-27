@@ -114,14 +114,28 @@ function tryParseJson(text) {
   if (!normalized) return null
 
   try {
-    return JSON.parse(normalized)
+    const parsed = JSON.parse(normalized)
+
+    if (typeof parsed === 'string') {
+      const nestedParsed = tryParseJson(parsed)
+      return nestedParsed ?? parsed
+    }
+
+    return parsed
   } catch (error) {
     const firstBrace = normalized.indexOf('{')
     const lastBrace = normalized.lastIndexOf('}')
 
     if (firstBrace >= 0 && lastBrace > firstBrace) {
       try {
-        return JSON.parse(normalized.slice(firstBrace, lastBrace + 1))
+        const parsed = JSON.parse(normalized.slice(firstBrace, lastBrace + 1))
+
+        if (typeof parsed === 'string') {
+          const nestedParsed = tryParseJson(parsed)
+          return nestedParsed ?? parsed
+        }
+
+        return parsed
       } catch (nestedError) {
         return null
       }

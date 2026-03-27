@@ -78,6 +78,11 @@ const AI_INSIGHT_TYPE_LABELS = {
   insight: 'Insight',
 }
 
+function looksLikeJsonBlock(value) {
+  const normalized = String(value || '').trim()
+  return normalized.startsWith('{') || normalized.startsWith('[')
+}
+
 const EMPTY_META_BREAKDOWNS = {
   ages: [],
   states: [],
@@ -2131,6 +2136,12 @@ export default function DashboardPage() {
     () => aiInsightGroups.reduce((total, group) => total + group.items.length, 0),
     [aiInsightGroups]
   )
+  const aiStructuredHeadline = !looksLikeJsonBlock(aiInsightsResult?.structured?.headline)
+    ? aiInsightsResult?.structured?.headline || 'Insight gerado'
+    : 'Leitura processada'
+  const aiStructuredSummary = !looksLikeJsonBlock(aiInsightsResult?.structured?.summary)
+    ? aiInsightsResult?.structured?.summary || ''
+    : ''
   const selectedQualifiedStages = useMemo(
     () => activeClient?.rdQualifiedStages || [],
     [activeClient]
@@ -10032,9 +10043,9 @@ export default function DashboardPage() {
                     <div className="ai-insights-summary-hero">
                       <div className="ai-insights-summary-copy">
                         <span className="ai-insights-kicker">Leitura executiva</span>
-                        <strong className="ai-insights-headline">{aiInsightsResult.structured.headline || 'Insight gerado'}</strong>
+                        <strong className="ai-insights-headline">{aiStructuredHeadline}</strong>
                         <p className="ai-insights-summary">
-                          {aiInsightsResult.structured.summary || 'A IA respondeu sem um resumo adicional para esse recorte.'}
+                          {aiStructuredSummary || 'A IA respondeu com um formato parcial. Ajuste o prompt JSON para separar headline, resumo, insights e próximos passos.'}
                         </p>
                       </div>
                       <div className="ai-insights-context ai-insights-context-hero">
