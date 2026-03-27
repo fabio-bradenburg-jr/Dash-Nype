@@ -416,27 +416,35 @@ async function requestOpenAiCompatibleInsights(normalizedConfig, payload) {
 
 async function requestNativeOpenAiInsights(normalizedConfig, payload) {
   const messages = buildDashboardAnalysisMessages(normalizedConfig.aiDashboardPrompt, payload)
-  const input = messages.map((message) => ({
-    role: message.role,
-    content: [
-      {
-        type: 'input_text',
-        text: String(message.content || ''),
-      },
-    ],
-  }))
+  const userInput = String(messages.find((message) => message.role === 'user')?.content || '')
+  const instructions = String(messages.find((message) => message.role === 'system')?.content || '')
 
   const attemptBodies = [
     {
       model: normalizedConfig.aiModel,
+      reasoning: { effort: 'low' },
+      instructions,
+      text: {
+        format: {
+          type: 'json_object',
+        },
+      },
       max_output_tokens: 1400,
       background: false,
-      input,
+      input: userInput,
     },
     {
       model: normalizedConfig.aiModel,
+      reasoning: { effort: 'low' },
+      instructions,
       background: false,
-      input,
+      input: userInput,
+    },
+    {
+      model: normalizedConfig.aiModel,
+      instructions,
+      background: false,
+      input: userInput,
     },
   ]
 
@@ -483,9 +491,12 @@ async function requestNativeOpenAiInsights(normalizedConfig, payload) {
   let resolvedResponseBody = responseBody
   let resolvedContent = extractOpenAiResponsesContent(responseBody)
 
-  if (!resolvedContent && responseBody?.id && responseBody?.status && responseBody.status !== 'completed') {
+  if (!resolvedContent && responseBody?.id) {
     for (let attempt = 0; attempt < 6; attempt += 1) {
-      await sleep(800)
+      if (attempt > 0 || responseBody?.status !== 'completed') {
+        await sleep(800)
+      }
+
       const followUp = await getOpenAiResponse(
         normalizedConfig.aiBaseUrl,
         normalizedConfig.aiApiKey,
@@ -509,7 +520,7 @@ async function requestNativeOpenAiInsights(normalizedConfig, payload) {
       }
 
       if (resolvedContent || followUp.responseBody?.status === 'completed') {
-        break
+        if (resolvedContent) break
       }
     }
   }
