@@ -538,7 +538,7 @@ export default function SettingsPage() {
         </div>
 
         <nav className="nav-menu">
-          <Link href="/dashboard" className="nav-item">
+          <Link href="/home" className="nav-item">
             <i className="bx bx-arrow-back"></i>
             Voltar ao dashboard
           </Link>
@@ -568,7 +568,7 @@ export default function SettingsPage() {
               <h1>Configurações</h1>
               <p>Centralize aqui a aparência da sua conta e as credenciais globais da operação.</p>
             </div>
-            <Link href="/dashboard" className="btn btn-secondary">
+            <Link href="/home" className="btn btn-secondary">
               Voltar
             </Link>
           </div>

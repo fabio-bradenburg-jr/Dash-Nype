@@ -347,7 +347,7 @@ export default function CalendarPage() {
         </div>
 
         <nav className="nav-menu">
-          <Link href="/dashboard" className="nav-item">
+          <Link href="/home" className="nav-item">
             <i className="bx bx-layout"></i>
             Apresentação
           </Link>
