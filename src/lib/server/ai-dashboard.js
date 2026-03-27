@@ -227,6 +227,56 @@ function findNestedArrayByKeys(value, keys) {
   return Array.isArray(nestedValue) ? nestedValue : []
 }
 
+function findFirstNestedStringByPredicate(value, predicate, depth = 0) {
+  if (depth > 8 || value == null) return ''
+
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const nested = findFirstNestedStringByPredicate(item, predicate, depth + 1)
+      if (nested) return nested
+    }
+    return ''
+  }
+
+  if (typeof value !== 'object') return ''
+
+  for (const [key, nestedValue] of Object.entries(value)) {
+    if (predicate(key, nestedValue)) {
+      const cleaned = toCleanString(nestedValue)
+      if (cleaned) return cleaned
+    }
+  }
+
+  for (const nestedValue of Object.values(value)) {
+    const nested = findFirstNestedStringByPredicate(nestedValue, predicate, depth + 1)
+    if (nested) return nested
+  }
+
+  return ''
+}
+
+function collectNestedObjectArrays(value, depth = 0, path = []) {
+  if (depth > 8 || value == null || typeof value !== 'object') return []
+
+  if (Array.isArray(value)) {
+    return value.flatMap((item, index) => collectNestedObjectArrays(item, depth + 1, [...path, String(index)]))
+  }
+
+  return Object.entries(value).flatMap(([key, nestedValue]) => {
+    const nextPath = [...path, key]
+
+    if (
+      Array.isArray(nestedValue) &&
+      nestedValue.length > 0 &&
+      nestedValue.every((item) => item && typeof item === 'object' && !Array.isArray(item))
+    ) {
+      return [{ key, path: nextPath, items: nestedValue }]
+    }
+
+    return collectNestedObjectArrays(nestedValue, depth + 1, nextPath)
+  })
+}
+
 function looksLikeJsonPayload(value) {
   const normalized = toCleanString(value)
   return normalized.startsWith('{') || normalized.startsWith('[')
@@ -261,6 +311,15 @@ function normalizeInsightItem(item, fallbackType = 'insight') {
   const title =
     toCleanString(item.title) ||
     toCleanString(item.titulo) ||
+    toCleanString(item.name) ||
+    toCleanString(item.nome) ||
+    toCleanString(item.label) ||
+    toCleanString(item.rotulo) ||
+    toCleanString(item.problem) ||
+    toCleanString(item.problema) ||
+    toCleanString(item.issue) ||
+    toCleanString(item.recommendation) ||
+    toCleanString(item.recomendacao) ||
     toTitleCaseLabel(item.area, '') ||
     toTitleCaseLabel(item.category, '') ||
     'Leitura do período'
@@ -274,6 +333,14 @@ function normalizeInsightItem(item, fallbackType = 'insight') {
     toCleanString(item.impacto),
     toCleanString(item.summary),
     toCleanString(item.resumo),
+    toCleanString(item.details),
+    toCleanString(item.detalhes),
+    toCleanString(item.detail),
+    toCleanString(item.detalhe),
+    toCleanString(item.analysis),
+    toCleanString(item.analise),
+    toCleanString(item.potential_impact),
+    toCleanString(item.potencial_impacto),
   ].filter(Boolean)
 
   const action =
@@ -411,6 +478,20 @@ function normalizeStructuredInsight(parsed, rawText) {
 
   const nestedOpportunities = findNestedArrayByKeys(parsed, ['oportunidades', 'opportunities'])
   const nestedDiagnostic = findNestedValueByKeys(parsed, ['diagnostico_geral', 'diagnostic', 'overview'])
+  const genericObjectArrays = collectNestedObjectArrays(parsed)
+  const genericInsights = genericObjectArrays.flatMap((entry) => {
+    const pathKey = entry.path.join('.').toLowerCase()
+    if (
+      pathKey.includes('usage') ||
+      pathKey.includes('metadata') ||
+      pathKey.includes('metrics') ||
+      pathKey.includes('filters')
+    ) {
+      return []
+    }
+
+    return normalizeInsightArray(entry.items, normalizeInsightType(entry.key, 'insight'))
+  })
 
   const nextActionsSource =
     findNestedArrayByKeys(parsed, ['nextActions', 'proximos_passos', 'next_actions']) ||
@@ -429,6 +510,21 @@ function normalizeStructuredInsight(parsed, rawText) {
 
   const summary = (
     findNestedStringByKeys(parsed, ['summary', 'resumo']) ||
+    findNestedStringByKeys(nestedDiagnostic, ['summary', 'resumo', 'descricao', 'analysis', 'analise']) ||
+    findFirstNestedStringByPredicate(parsed, (key, value) => {
+      if (typeof value !== 'string') return false
+      const normalizedKey = String(key || '').toLowerCase()
+      return [
+        'summary',
+        'resumo',
+        'descricao',
+        'description',
+        'analysis',
+        'analise',
+        'overview',
+        'diagnostico',
+      ].includes(normalizedKey)
+    }) ||
     buildSummaryFromDiagnostic(nestedDiagnostic, rawText) ||
     toCleanString(rawText)
   )
@@ -439,6 +535,7 @@ function normalizeStructuredInsight(parsed, rawText) {
     ...opportunityInsights,
     ...anomalyInsights,
     ...winInsights,
+    ...genericInsights,
   ]
 
   return {
