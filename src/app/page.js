@@ -2127,6 +2127,37 @@ export default function DashboardPage() {
       },
     ].filter((group) => group.items.length > 0)
   }, [aiInsightsResult])
+  const totalAiInsights = useMemo(
+    () => aiInsightGroups.reduce((total, group) => total + group.items.length, 0),
+    [aiInsightGroups]
+  )
+  const aiInsightsDateLabel = `${dashboardAiInsightsPayload.period?.since || '--'} ate ${dashboardAiInsightsPayload.period?.until || '--'}`
+  const aiInsightsFilterLabel = (dashboardAiInsightsPayload.filters?.resultLabels || []).join(', ') || 'Todos os resultados'
+  const aiHighlights = useMemo(
+    () => [
+      {
+        label: 'Leituras',
+        value: totalAiInsights,
+        tone: 'neutral',
+      },
+      {
+        label: 'Alertas',
+        value: aiInsightGroups.find((group) => group.key === 'alert')?.items.length || 0,
+        tone: 'alert',
+      },
+      {
+        label: 'Oportunidades',
+        value: aiInsightGroups.find((group) => group.key === 'opportunity')?.items.length || 0,
+        tone: 'opportunity',
+      },
+      {
+        label: 'Próximos passos',
+        value: Array.isArray(aiInsightsResult?.structured?.nextActions) ? aiInsightsResult.structured.nextActions.length : 0,
+        tone: 'info',
+      },
+    ],
+    [aiInsightGroups, aiInsightsResult, totalAiInsights]
+  )
   const selectedQualifiedStages = useMemo(
     () => activeClient?.rdQualifiedStages || [],
     [activeClient]
@@ -7675,6 +7706,9 @@ export default function DashboardPage() {
           <Link href="/settings" data-tooltip="Configurações" className="nav-item">
             <i className="bx bx-cog"></i> Configurações
           </Link>
+          <Link href="/privacy" data-tooltip="Política e Privacidade" className="nav-item" target="_blank" rel="noreferrer">
+            <i className="bx bx-shield-quarter"></i> Política e Privacidade
+          </Link>
         </nav>
 
         {!isSidebarCollapsed && activeTab === 'apresentacao' && (
@@ -9995,19 +10029,28 @@ export default function DashboardPage() {
               ) : aiInsightsResult?.structured ? (
                 <>
                   <div className="glass-item ai-insights-summary-shell">
-                    <div className="ai-insights-summary-top">
-                      <div>
-                        <span className="ai-insights-kicker">Resumo executivo</span>
+                    <div className="ai-insights-summary-hero">
+                      <div className="ai-insights-summary-copy">
+                        <span className="ai-insights-kicker">Leitura executiva</span>
                         <strong className="ai-insights-headline">{aiInsightsResult.structured.headline || 'Insight gerado'}</strong>
+                        <p className="ai-insights-summary">
+                          {aiInsightsResult.structured.summary || 'A IA respondeu sem um resumo adicional para esse recorte.'}
+                        </p>
                       </div>
-                      <div className="ai-insights-context">
-                        <span>{dashboardAiInsightsPayload.period?.since || '--'} ate {dashboardAiInsightsPayload.period?.until || '--'}</span>
-                        <span>{(dashboardAiInsightsPayload.filters?.resultLabels || []).join(', ') || 'Todos os resultados'}</span>
+                      <div className="ai-insights-context ai-insights-context-hero">
+                        <span>{aiInsightsDateLabel}</span>
+                        <span>{aiInsightsFilterLabel}</span>
+                        <span>{aiInsightsResult.provider || globalIntegrations.aiProvider || 'IA configurada'} · {aiInsightsResult.model || globalIntegrations.aiModel || 'modelo não informado'}</span>
                       </div>
                     </div>
-                    <p className="ai-insights-summary">
-                      {aiInsightsResult.structured.summary || 'A IA respondeu sem um resumo adicional para esse recorte.'}
-                    </p>
+                    <div className="ai-insights-highlight-grid">
+                      {aiHighlights.map((item) => (
+                        <div key={item.label} className={`ai-insights-highlight-card ai-insights-highlight-${item.tone}`}>
+                          <small>{item.label}</small>
+                          <strong>{item.value}</strong>
+                        </div>
+                      ))}
+                    </div>
                   </div>
 
                   {aiInsightGroups.length ? (
@@ -10015,7 +10058,10 @@ export default function DashboardPage() {
                       {aiInsightGroups.map((group) => (
                         <section key={group.key} className="ai-insights-section">
                           <div className="ai-insights-section-head">
-                            <span className={`ai-insight-chip ai-insight-chip-${group.key}`}>{group.title}</span>
+                            <div className="ai-insights-section-title-wrap">
+                              <span className={`ai-insight-chip ai-insight-chip-${group.key}`}>{group.title}</span>
+                              <strong>{group.title}</strong>
+                            </div>
                             <small>{group.items.length} leitura(s)</small>
                           </div>
                           <div className="ai-insights-grid">
@@ -10025,10 +10071,23 @@ export default function DashboardPage() {
 
                               return (
                                 <div key={`${group.key}-${index}`} className="glass-item ai-insight-card">
-                                  <span className={`ai-insight-chip ai-insight-chip-${typeKey}`}>{typeLabel}</span>
+                                  <div className="ai-insight-card-head">
+                                    <span className={`ai-insight-chip ai-insight-chip-${typeKey}`}>{typeLabel}</span>
+                                    <span className="ai-insight-index">{String(index + 1).padStart(2, '0')}</span>
+                                  </div>
                                   <strong>{item.title || 'Leitura do período'}</strong>
-                                  {item.evidence ? <p>{item.evidence}</p> : null}
-                                  {item.action ? <p className="ai-insight-action">{item.action}</p> : null}
+                                  {item.evidence ? (
+                                    <div className="ai-insight-block">
+                                      <small>Evidência</small>
+                                      <p>{item.evidence}</p>
+                                    </div>
+                                  ) : null}
+                                  {item.action ? (
+                                    <div className="ai-insight-block ai-insight-block-action">
+                                      <small>Ação sugerida</small>
+                                      <p className="ai-insight-action">{item.action}</p>
+                                    </div>
+                                  ) : null}
                                 </div>
                               )
                             })}
@@ -10038,20 +10097,29 @@ export default function DashboardPage() {
                     </div>
                   ) : (
                     <div className="glass-item ai-insight-card ai-insight-card-empty">
-                      <strong>Sem cards de insight estruturados</strong>
-                      <p>O provider respondeu, mas não trouxe blocos separados de oportunidade, alerta ou anomalia.</p>
+                      <span className="ai-insight-chip">Formato livre</span>
+                      <strong>Sem cards estruturados neste retorno</strong>
+                      <p>O provider respondeu, mas não separou a análise em blocos de oportunidade, alerta ou anomalia.</p>
                     </div>
                   )}
 
                   <div className="glass-item ai-insights-actions-shell">
-                    <div>
-                      <span className="ai-insights-kicker">Próximos passos</span>
-                      <strong className="ai-insights-section-title">Ações recomendadas pela IA</strong>
+                    <div className="ai-insights-actions-head">
+                      <div>
+                        <span className="ai-insights-kicker">Próximos passos</span>
+                        <strong className="ai-insights-section-title">Ações recomendadas pela IA</strong>
+                      </div>
+                      <span className="ai-insights-actions-badge">
+                        {(aiInsightsResult.structured.nextActions || []).length} item(ns)
+                      </span>
                     </div>
                     {(aiInsightsResult.structured.nextActions || []).length ? (
                       <ul className="ai-insights-actions-list">
                         {aiInsightsResult.structured.nextActions.map((item, index) => (
-                          <li key={`${item}-${index}`}>{item}</li>
+                          <li key={`${item}-${index}`}>
+                            <span className="ai-insights-actions-step">{index + 1}</span>
+                            <span>{item}</span>
+                          </li>
                         ))}
                       </ul>
                     ) : (
@@ -11100,18 +11168,47 @@ export default function DashboardPage() {
           text-transform: uppercase;
         }
 
-        .ai-insights-summary-top {
+        .ai-insights-summary-shell {
+          gap: 18px;
+          background:
+            linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.02)),
+            radial-gradient(circle at top right, rgba(59, 130, 246, 0.2), transparent 34%);
+        }
+
+        .ai-insights-summary-hero {
           display: flex;
           align-items: flex-start;
           justify-content: space-between;
-          gap: 16px;
+          gap: 20px;
           flex-wrap: wrap;
+        }
+
+        .ai-insights-summary-copy {
+          flex: 1 1 420px;
+          display: grid;
+          gap: 12px;
+        }
+
+        .ai-insights-headline {
+          max-width: 18ch;
+          font-size: clamp(28px, 4vw, 42px);
+          line-height: 0.98;
+          letter-spacing: -0.03em;
+        }
+
+        .ai-insights-summary {
+          max-width: 62ch;
+          font-size: 16px;
         }
 
         .ai-insights-context {
           display: grid;
           gap: 8px;
           justify-items: end;
+        }
+
+        .ai-insights-context-hero {
+          flex: 0 0 260px;
         }
 
         .ai-insights-context span {
@@ -11126,6 +11223,49 @@ export default function DashboardPage() {
           color: var(--text-secondary);
           font-size: 12px;
           font-weight: 600;
+        }
+
+        .ai-insights-highlight-grid {
+          display: grid;
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+          gap: 12px;
+        }
+
+        .ai-insights-highlight-card {
+          min-height: 108px;
+          border-radius: 20px;
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          background: rgba(255, 255, 255, 0.03);
+          padding: 16px;
+          display: grid;
+          align-content: space-between;
+          gap: 12px;
+        }
+
+        .ai-insights-highlight-card small {
+          color: var(--text-muted);
+          font-size: 11px;
+          font-weight: 700;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+        }
+
+        .ai-insights-highlight-card strong {
+          font-size: 34px;
+          line-height: 1;
+          color: var(--text-primary);
+        }
+
+        .ai-insights-highlight-opportunity {
+          background: linear-gradient(180deg, rgba(16, 185, 129, 0.16), rgba(255, 255, 255, 0.03));
+        }
+
+        .ai-insights-highlight-alert {
+          background: linear-gradient(180deg, rgba(245, 158, 11, 0.16), rgba(255, 255, 255, 0.03));
+        }
+
+        .ai-insights-highlight-info {
+          background: linear-gradient(180deg, rgba(59, 130, 246, 0.16), rgba(255, 255, 255, 0.03));
         }
 
         .ai-insights-sections {
@@ -11152,6 +11292,19 @@ export default function DashboardPage() {
           font-weight: 600;
         }
 
+        .ai-insights-section-title-wrap {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          flex-wrap: wrap;
+        }
+
+        .ai-insights-section-title-wrap strong {
+          font-size: 22px;
+          color: var(--text-primary);
+          line-height: 1.1;
+        }
+
         .ai-insights-grid {
           display: grid;
           grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -11160,10 +11313,29 @@ export default function DashboardPage() {
 
         .ai-insight-card {
           align-content: start;
+          gap: 14px;
+          background:
+            linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.025)),
+            radial-gradient(circle at top right, rgba(255, 255, 255, 0.08), transparent 34%);
         }
 
         .ai-insight-card-empty {
           grid-column: 1 / -1;
+        }
+
+        .ai-insight-card-head {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+        }
+
+        .ai-insight-index {
+          color: rgba(255, 255, 255, 0.24);
+          font-size: 22px;
+          font-weight: 800;
+          line-height: 1;
+          letter-spacing: -0.04em;
         }
 
         .ai-insight-chip {
@@ -11195,17 +11367,84 @@ export default function DashboardPage() {
           color: #fde68a;
         }
 
+        .ai-insight-block {
+          display: grid;
+          gap: 6px;
+          padding-top: 2px;
+        }
+
+        .ai-insight-block small {
+          color: var(--text-muted);
+          font-size: 11px;
+          font-weight: 700;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+        }
+
+        .ai-insight-block-action {
+          margin-top: auto;
+          padding: 14px;
+          border-radius: 16px;
+          border: 1px solid rgba(59, 130, 246, 0.18);
+          background: rgba(59, 130, 246, 0.08);
+        }
+
         .ai-insight-action {
           color: var(--text-primary);
           font-weight: 600;
         }
 
+        .ai-insights-actions-head {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          flex-wrap: wrap;
+        }
+
+        .ai-insights-actions-badge {
+          min-height: 32px;
+          padding: 0 12px;
+          border-radius: 999px;
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          background: rgba(255, 255, 255, 0.04);
+          display: inline-flex;
+          align-items: center;
+          color: var(--text-secondary);
+          font-size: 12px;
+          font-weight: 700;
+        }
+
         .ai-insights-actions-list {
           margin: 0;
-          padding-left: 20px;
+          padding: 0;
+          list-style: none;
           display: grid;
           gap: 10px;
           color: var(--text-primary);
+        }
+
+        .ai-insights-actions-list li {
+          display: grid;
+          grid-template-columns: 32px minmax(0, 1fr);
+          gap: 12px;
+          align-items: start;
+          padding: 14px 16px;
+          border-radius: 16px;
+          background: rgba(255, 255, 255, 0.03);
+          border: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .ai-insights-actions-step {
+          width: 32px;
+          height: 32px;
+          border-radius: 999px;
+          display: grid;
+          place-items: center;
+          background: rgba(59, 130, 246, 0.16);
+          color: #bfdbfe;
+          font-size: 13px;
+          font-weight: 800;
         }
 
         .ai-insights-meta {
@@ -14154,7 +14393,8 @@ export default function DashboardPage() {
             grid-template-columns: repeat(2, minmax(0, 1fr));
           }
 
-          .ai-insights-grid {
+          .ai-insights-grid,
+          .ai-insights-highlight-grid {
             grid-template-columns: 1fr;
           }
 
@@ -14250,7 +14490,7 @@ export default function DashboardPage() {
             align-items: flex-start;
           }
 
-          .ai-insights-summary-top,
+          .ai-insights-summary-hero,
           .ai-insights-section-head {
             flex-direction: column;
             align-items: flex-start;

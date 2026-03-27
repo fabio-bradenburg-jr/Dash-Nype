@@ -1,4 +1,4 @@
-import { normalizeAiSettings } from '@/lib/ai-config'
+import { normalizeAiSettings, resolveAiDashboardPromptText } from '@/lib/ai-config'
 
 function trimTrailingSlash(value) {
   return String(value || '').replace(/\/+$/, '')
@@ -161,10 +161,12 @@ function normalizeStructuredInsight(parsed, rawText) {
 }
 
 function buildDashboardAnalysisMessages(prompt, payload) {
+  const resolvedPrompt = resolveAiDashboardPromptText(prompt)
+
   return [
     {
       role: 'system',
-      content: prompt,
+      content: resolvedPrompt,
     },
     {
       role: 'user',
@@ -584,11 +586,12 @@ async function requestNativeOpenAiInsights(normalizedConfig, payload) {
 }
 
 async function requestAnthropicInsights(normalizedConfig, payload) {
+  const resolvedPrompt = resolveAiDashboardPromptText(normalizedConfig.aiDashboardPrompt)
   const anthropicBody = {
     model: normalizedConfig.aiModel,
     max_tokens: 1400,
     temperature: 0.2,
-    system: normalizedConfig.aiDashboardPrompt,
+    system: resolvedPrompt,
     messages: [
       {
         role: 'user',
@@ -616,7 +619,7 @@ async function requestAnthropicInsights(normalizedConfig, payload) {
       {
         model: normalizedConfig.aiModel,
         max_tokens: 1400,
-        system: normalizedConfig.aiDashboardPrompt,
+        system: resolvedPrompt,
         messages: anthropicBody.messages,
       }
     )

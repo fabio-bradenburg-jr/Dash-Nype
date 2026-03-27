@@ -24,6 +24,35 @@ Formato esperado:
   "nextActions": ["acao 1", "acao 2", "acao 3"]
 }`
 
+export const DEFAULT_AI_DASHBOARD_PROMPT_JSON = JSON.stringify(
+  {
+    role: 'Analista senior de marketing e performance',
+    objective: 'Analisar apenas os numeros recebidos do dashboard e devolver insights uteis para tomada de decisao.',
+    rules: [
+      'Nao invente dados.',
+      'Nao assuma causalidade sem evidencias.',
+      'Destaque oportunidades, alertas e proximos passos.',
+      'Use linguagem objetiva em portugues do Brasil.',
+      'Retorne somente JSON valido.',
+    ],
+    output: {
+      headline: 'string curta',
+      summary: 'resumo executivo em 2 a 4 frases',
+      insights: [
+        {
+          type: 'opportunity | alert | anomaly | win',
+          title: 'titulo curto',
+          evidence: 'evidencia numerica objetiva',
+          action: 'acao recomendada',
+        },
+      ],
+      nextActions: ['acao 1', 'acao 2', 'acao 3'],
+    },
+  },
+  null,
+  2
+)
+
 export const AI_PROVIDER_OPTIONS = [
   {
     value: 'openai',
@@ -102,6 +131,121 @@ export const DEFAULT_AI_SETTINGS = {
 
 export function getAiProviderOption(providerValue) {
   return AI_PROVIDER_OPTIONS.find((option) => option.value === providerValue) || AI_PROVIDER_OPTIONS[0]
+}
+
+function isJsonLikePrompt(value) {
+  const normalized = String(value || '').trim()
+  return normalized.startsWith('{') || normalized.startsWith('[')
+}
+
+function stringifyPromptSection(value, depth = 0) {
+  if (depth > 4 || value == null) return ''
+  if (typeof value === 'string') return value.trim()
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value)
+
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => stringifyPromptSection(item, depth + 1))
+      .filter(Boolean)
+      .map((item) => `- ${item}`)
+      .join('\n')
+      .trim()
+  }
+
+  if (typeof value === 'object') {
+    return Object.entries(value)
+      .map(([key, item]) => {
+        const normalizedKey = key.replace(/([a-z])([A-Z])/g, '$1 $2')
+        const normalizedValue = stringifyPromptSection(item, depth + 1)
+        if (!normalizedValue) return ''
+        if (normalizedValue.includes('\n')) {
+          return `${normalizedKey}:\n${normalizedValue}`
+        }
+        return `${normalizedKey}: ${normalizedValue}`
+      })
+      .filter(Boolean)
+      .join('\n')
+      .trim()
+  }
+
+  return ''
+}
+
+export function resolveAiDashboardPromptText(value) {
+  const rawPrompt = String(value || '').trim()
+  if (!rawPrompt) return DEFAULT_AI_DASHBOARD_PROMPT
+
+  if (!isJsonLikePrompt(rawPrompt)) return rawPrompt
+
+  try {
+    const parsed = JSON.parse(rawPrompt)
+
+    if (typeof parsed === 'string') {
+      return parsed.trim() || DEFAULT_AI_DASHBOARD_PROMPT
+    }
+
+    if (!parsed || typeof parsed !== 'object') {
+      return rawPrompt
+    }
+
+    const sections = [
+      parsed.role ? `Funcao:\n${stringifyPromptSection(parsed.role)}` : '',
+      parsed.objective ? `Objetivo:\n${stringifyPromptSection(parsed.objective)}` : '',
+      parsed.instructions ? `Instrucoes:\n${stringifyPromptSection(parsed.instructions)}` : '',
+      parsed.rules ? `Regras:\n${stringifyPromptSection(parsed.rules)}` : '',
+      parsed.style ? `Estilo:\n${stringifyPromptSection(parsed.style)}` : '',
+      parsed.context ? `Contexto:\n${stringifyPromptSection(parsed.context)}` : '',
+      parsed.output ? `Saida esperada:\n${stringifyPromptSection(parsed.output)}` : '',
+      parsed.outputSchema ? `Schema de saida:\n${stringifyPromptSection(parsed.outputSchema)}` : '',
+    ].filter(Boolean)
+
+    if (sections.length > 0) {
+      return sections.join('\n\n').trim()
+    }
+
+    return stringifyPromptSection(parsed) || rawPrompt
+  } catch (error) {
+    return rawPrompt
+  }
+}
+
+export function inspectAiDashboardPrompt(value) {
+  const rawPrompt = String(value || '').trim()
+
+  if (!rawPrompt) {
+    return {
+      mode: 'text',
+      isJson: false,
+      isValid: true,
+      error: '',
+    }
+  }
+
+  if (!isJsonLikePrompt(rawPrompt)) {
+    return {
+      mode: 'text',
+      isJson: false,
+      isValid: true,
+      error: '',
+    }
+  }
+
+  try {
+    JSON.parse(rawPrompt)
+    return {
+      mode: 'json',
+      isJson: true,
+      isValid: true,
+      error: '',
+    }
+  } catch (error) {
+    return {
+      mode: 'json',
+      isJson: true,
+      isValid: false,
+      error: error.message || 'JSON invalido.',
+    }
+  }
 }
 
 export function normalizeAiSettings(value) {

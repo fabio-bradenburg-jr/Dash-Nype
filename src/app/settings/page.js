@@ -5,7 +5,15 @@ import Link from 'next/link'
 import { useUser } from '@/lib/contexts/UserContext'
 import { USER_APPEARANCE_PRESETS } from '@/lib/user-appearance-storage'
 import { DEFAULT_PREFERENCES, loadDashboardPreferences, saveDashboardPreferences } from '@/lib/dashboard-storage'
-import { AI_PROVIDER_OPTIONS, createDefaultAiProviders, getAiProviderOption, normalizeAiSettings } from '@/lib/ai-config'
+import {
+  AI_PROVIDER_OPTIONS,
+  createDefaultAiProviders,
+  DEFAULT_AI_DASHBOARD_PROMPT,
+  DEFAULT_AI_DASHBOARD_PROMPT_JSON,
+  getAiProviderOption,
+  inspectAiDashboardPrompt,
+  normalizeAiSettings,
+} from '@/lib/ai-config'
 
 const PANEL_BACKGROUND_PRESETS = [
   { label: 'Azulado', value: '#3b82f6' },
@@ -193,6 +201,7 @@ export default function SettingsPage() {
   const backgroundTintRgb = hexToRgb(appearance.backgroundTint)
   const selectedAiProvider = getAiProviderOption(globalIntegrations.aiProvider)
   const activeAiProviderConfig = globalIntegrations.aiProviders?.[selectedAiProvider.value] || createDefaultAiProviders()[selectedAiProvider.value]
+  const aiPromptInspection = inspectAiDashboardPrompt(globalIntegrations.aiDashboardPrompt)
 
   const persistGlobalIntegrations = useCallback(
     async (nextIntegrations) => {
@@ -442,6 +451,24 @@ export default function SettingsPage() {
     })
   }
 
+  const handleApplyPromptTemplate = (mode) => {
+    handleGlobalIntegrationChange(
+      'aiDashboardPrompt',
+      mode === 'json' ? DEFAULT_AI_DASHBOARD_PROMPT_JSON : DEFAULT_AI_DASHBOARD_PROMPT
+    )
+  }
+
+  const handleFormatJsonPrompt = () => {
+    if (!aiPromptInspection.isJson || !aiPromptInspection.isValid) return
+
+    try {
+      const formatted = JSON.stringify(JSON.parse(globalIntegrations.aiDashboardPrompt), null, 2)
+      handleGlobalIntegrationChange('aiDashboardPrompt', formatted)
+    } catch (error) {
+      console.error('Erro ao formatar prompt JSON:', error)
+    }
+  }
+
   const handleMetaDisconnect = async () => {
     setMetaConnectionError('')
     setMetaConnectionNotice('')
@@ -518,6 +545,10 @@ export default function SettingsPage() {
           <Link href="/calendar" className="nav-item">
             <i className="bx bx-calendar-event"></i>
             Agenda
+          </Link>
+          <Link href="/privacy" className="nav-item" target="_blank" rel="noreferrer">
+            <i className="bx bx-shield-quarter"></i>
+            Política e Privacidade
           </Link>
           <span className="nav-item active">
             <i className="bx bx-cog"></i>
@@ -840,6 +871,12 @@ export default function SettingsPage() {
                                 </div>
                               ) : null}
                               {isMetaConnectionLoading ? <div className="settings-callout info">Carregando status da conexão da Meta...</div> : null}
+                              <div className="settings-callout info">
+                                Para configurar o app no Facebook Developers, use a página pública de política em{' '}
+                                <Link href="/privacy" target="_blank" rel="noreferrer">
+                                  Política e Privacidade
+                                </Link>.
+                              </div>
                             </>
                           )}
                         </div>
@@ -1071,14 +1108,48 @@ export default function SettingsPage() {
                         <div className="integration-block integration-block-meta">
                           <div className="input-group">
                             <label>Prompt do dashboard</label>
+                            <div className="settings-choice-row settings-choice-row-compact">
+                              <button
+                                type="button"
+                                className="settings-choice"
+                                onClick={() => handleApplyPromptTemplate('text')}
+                              >
+                                <i className="bx bx-text"></i>
+                                Modelo texto
+                              </button>
+                              <button
+                                type="button"
+                                className={`settings-choice ${aiPromptInspection.isJson ? 'active' : ''}`}
+                                onClick={() => handleApplyPromptTemplate('json')}
+                              >
+                                <i className="bx bx-code-curly"></i>
+                                Modelo JSON
+                              </button>
+                              <button
+                                type="button"
+                                className="settings-choice"
+                                onClick={handleFormatJsonPrompt}
+                                disabled={!aiPromptInspection.isJson || !aiPromptInspection.isValid}
+                              >
+                                <i className="bx bx-magic-wand"></i>
+                                Formatar JSON
+                              </button>
+                            </div>
                             <textarea
                               value={globalIntegrations.aiDashboardPrompt || ''}
                               onChange={(event) => handleGlobalIntegrationChange('aiDashboardPrompt', event.target.value)}
-                              placeholder="Descreva como a IA deve analisar os números da dashboard."
-                              rows={14}
+                              placeholder='Descreva como a IA deve analisar os números da dashboard, ou cole um JSON como {"role":"...","rules":["..."],"output":{...}}.'
+                              rows={18}
                             />
                             <small>
-                              Dica: peça retorno em JSON, com headline, resumo, insights e próximos passos. Isso facilita mostrar o resultado em um painel de insights depois.
+                              {aiPromptInspection.isJson
+                                ? aiPromptInspection.isValid
+                                  ? 'JSON válido. O app vai converter esse objeto em instruções de sistema antes de chamar a IA.'
+                                  : `JSON inválido: ${aiPromptInspection.error}`
+                                : 'Texto livre também continua funcionando normalmente.'}
+                            </small>
+                            <small>
+                              Dica: no modo JSON, você pode usar chaves como `role`, `objective`, `instructions`, `rules`, `style`, `context`, `output` ou `outputSchema`.
                             </small>
                           </div>
                         </div>
