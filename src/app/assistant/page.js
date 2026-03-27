@@ -5,6 +5,11 @@ import Link from 'next/link'
 import { useUser } from '@/lib/contexts/UserContext'
 
 const STORAGE_KEY = 'nype-assistant-chat-v1'
+const FOCUS_OPTIONS = [
+  { value: 'operation', label: 'Operação' },
+  { value: 'clients', label: 'Clientes' },
+  { value: 'general', label: 'Geral' },
+]
 
 function createWelcomeMessage(clientName = '') {
   return {
@@ -38,7 +43,7 @@ export default function AssistantPage() {
   const [errorMessage, setErrorMessage] = useState('')
   const [chatError, setChatError] = useState('')
   const [isSending, setIsSending] = useState(false)
-  const [selectedClientId, setSelectedClientId] = useState('')
+  const [focusMode, setFocusMode] = useState('operation')
   const [inputValue, setInputValue] = useState('')
   const [messages, setMessages] = useState([])
 
@@ -46,9 +51,9 @@ export default function AssistantPage() {
     () => (Array.isArray(dashboardState?.clients) ? dashboardState.clients : []),
     [dashboardState]
   )
-  const selectedClient = useMemo(
-    () => availableClients.find((client) => client.id === selectedClientId) || null,
-    [availableClients, selectedClientId]
+  const focusLabel = useMemo(
+    () => FOCUS_OPTIONS.find((option) => option.value === focusMode)?.label || 'Operação',
+    [focusMode]
   )
   const userDisplayName = useMemo(
     () =>
@@ -68,7 +73,11 @@ export default function AssistantPage() {
     try {
       const parsed = JSON.parse(stored)
       setMessages(normalizeStoredMessages(parsed.messages))
-      setSelectedClientId(String(parsed.selectedClientId || ''))
+      setFocusMode(
+        FOCUS_OPTIONS.some((option) => option.value === parsed.focusMode)
+          ? parsed.focusMode
+          : 'operation'
+      )
     } catch {}
   }, [])
 
@@ -77,11 +86,11 @@ export default function AssistantPage() {
     window.localStorage.setItem(
       STORAGE_KEY,
       JSON.stringify({
-        selectedClientId,
+        focusMode,
         messages: messages.slice(-20),
       })
     )
-  }, [messages, selectedClientId])
+  }, [messages, focusMode])
 
   const loadDashboardState = useCallback(async () => {
     try {
@@ -96,7 +105,6 @@ export default function AssistantPage() {
       }
 
       setDashboardState(data)
-      setSelectedClientId((current) => current || data?.activeClientId || data?.clients?.[0]?.id || '')
       setMessages((current) => (current.length ? current : [createWelcomeMessage(data?.clients?.[0]?.name || '')]))
     } catch (error) {
       setErrorMessage(error.message || 'Não foi possível carregar o contexto do assistente.')
@@ -136,7 +144,10 @@ export default function AssistantPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          clientId: selectedClientId,
+          clientId: focusMode === 'operation' ? String(dashboardState?.activeClientId || '') : '',
+          contextSnapshot: {
+            focusMode,
+          },
           messages: nextMessages.map((message) => ({
             role: message.role,
             content: message.content,
@@ -166,7 +177,7 @@ export default function AssistantPage() {
   }
 
   const handleResetChat = () => {
-    setMessages([createWelcomeMessage(selectedClient?.name || availableClients[0]?.name || '')])
+    setMessages([createWelcomeMessage(availableClients[0]?.name || '')])
     setChatError('')
     if (typeof window !== 'undefined') {
       window.localStorage.removeItem(STORAGE_KEY)
@@ -174,71 +185,61 @@ export default function AssistantPage() {
   }
 
   return (
-    <div className="assistant-shell">
-      <aside className="assistant-sidenav">
-        <div className="assistant-brand">
-          <h1>IA</h1>
-          <p>Assistente da operação</p>
+    <div className="dashboard-container assistant-shell">
+      <aside className="sidebar glass-panel assistant-sidebar">
+        <div className="logo">
+          <i className="bx bx-bar-chart-alt-2"></i>
+          <span>Dash</span>
         </div>
 
-        <button type="button" className="assistant-new-chat" onClick={handleResetChat}>
-          <i className="bx bx-plus"></i>
-          Novo Chat
-        </button>
-
-        <nav className="assistant-nav">
-          <Link href="/dashboard" className="assistant-nav-item">
-            <i className="bx bx-line-chart"></i>
+        <nav className="nav-menu">
+          <Link href="/dashboard" className="nav-item">
+            <i className="bx bx-layout"></i>
             Apresentação
           </Link>
-          <span className="assistant-nav-item active">
+          <span className="nav-item active">
             <i className="bx bx-bot"></i>
             Assistente
           </span>
-          <Link href="/calendar" className="assistant-nav-item">
+          <Link href="/calendar" className="nav-item">
             <i className="bx bx-calendar-event"></i>
             Agenda
           </Link>
-          <Link href="/settings" className="assistant-nav-item">
+          <Link href="/settings" className="nav-item">
             <i className="bx bx-cog"></i>
             Configurações
           </Link>
-          <Link href="/privacy" className="assistant-nav-item assistant-nav-item-footer" target="_blank" rel="noreferrer">
+          <Link href="/privacy" className="nav-item" target="_blank" rel="noreferrer">
             <i className="bx bx-shield-quarter"></i>
             Política e Privacidade
           </Link>
         </nav>
 
-        <div className="assistant-profile">
+        <div className="user-profile assistant-user-profile">
           <div className="assistant-profile-avatar">
             <i className="bx bx-user"></i>
           </div>
-          <div className="assistant-profile-copy">
-            <strong>{userDisplayName}</strong>
-            <span>{userPlanLabel}</span>
+          <div className="user-info assistant-profile-copy">
+            <p className="name">{userDisplayName}</p>
+            <p className="role">{userPlanLabel}</p>
           </div>
         </div>
       </aside>
 
-      <div className="assistant-main-shell">
-        <header className="assistant-topbar">
-          <div className="assistant-topbar-title">
-            <strong>Assistente de Negócio</strong>
+      <main className="main-content assistant-main">
+        <header className="header assistant-page-header">
+          <div className="page-title">
+            <h1>Assistente de Negócio</h1>
+            <p>Converse com a IA da operação usando o mesmo contexto do app inteiro, sem sair do fluxo principal.</p>
           </div>
-          <div className="assistant-topbar-actions">
-            <button type="button" className="assistant-icon-button" onClick={handleResetChat} aria-label="Limpar conversa">
+          <div className="header-actions assistant-header-actions">
+            <button type="button" className="btn btn-secondary assistant-header-button" onClick={handleResetChat}>
               <i className="bx bx-refresh"></i>
+              Novo contexto
             </button>
-            <button type="button" className="assistant-icon-button" aria-label="Mais opções">
-              <i className="bx bx-dots-vertical-rounded"></i>
-            </button>
-            <div className="assistant-topbar-user">
-              <i className="bx bx-user"></i>
-            </div>
           </div>
         </header>
 
-        <main className="assistant-main">
           {!canViewDashboard ? (
             <div className="assistant-empty glass-panel">
               <h3>Sem acesso ao assistente</h3>
@@ -258,13 +259,12 @@ export default function AssistantPage() {
                   </div>
 
                   <label className="assistant-field">
-                    <span>Cliente em foco</span>
+                    <span>Foco</span>
                     <div className="assistant-select-wrap">
-                      <select value={selectedClientId} onChange={(event) => setSelectedClientId(event.target.value)}>
-                        <option value="">Operação inteira</option>
-                        {availableClients.map((client) => (
-                          <option key={client.id} value={client.id}>
-                            {client.name}
+                      <select value={focusMode} onChange={(event) => setFocusMode(event.target.value)}>
+                        {FOCUS_OPTIONS.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
                           </option>
                         ))}
                       </select>
@@ -305,16 +305,30 @@ export default function AssistantPage() {
                       className="assistant-chip"
                       onClick={() =>
                         setInputValue(
-                          selectedClient?.name
-                            ? `Como estão as campanhas de ${selectedClient.name}? Quero leitura por campanha e depois um resumo com pontos positivos, atenção e urgência.`
-                            : 'Como estão as campanhas do cliente em foco? Quero leitura por campanha e depois um resumo com pontos positivos, atenção e urgência.'
+                          focusMode === 'clients'
+                            ? 'Quais clientes estão com melhor momento, quais pedem atenção e quais estão em urgência?'
+                            : focusMode === 'general'
+                              ? 'Me dê uma leitura geral do app inteiro, cruzando operação, clientes, campanhas e gargalos.'
+                              : `Como está a operação em foco? Quero leitura por campanha, impacto e depois um resumo com pontos positivos, atenção e urgência.`
                         )
                       }
                     >
-                      Campanhas do cliente
+                      {focusMode === 'clients' ? 'Leitura dos clientes' : focusMode === 'general' ? 'Visão geral do app' : 'Campanhas da operação'}
                     </button>
-                    <button type="button" className="assistant-chip" onClick={() => setInputValue('Quais riscos você vê no contexto atual desse cliente?')}>
-                      Riscos do cliente
+                    <button
+                      type="button"
+                      className="assistant-chip"
+                      onClick={() =>
+                        setInputValue(
+                          focusMode === 'clients'
+                            ? 'Quais riscos você vê hoje na base de clientes?'
+                            : focusMode === 'general'
+                              ? 'Quais riscos você vê hoje olhando o app inteiro como um copiloto da operação?'
+                              : 'Quais riscos você vê hoje na operação em foco?'
+                        )
+                      }
+                    >
+                      {focusMode === 'general' ? 'Riscos gerais' : focusMode === 'clients' ? 'Riscos dos clientes' : 'Riscos da operação'}
                     </button>
                   </div>
                 </div>
@@ -430,30 +444,19 @@ export default function AssistantPage() {
               </section>
             </div>
           )}
-        </main>
-      </div>
+      </main>
 
       <style jsx>{`
         .assistant-shell {
-          min-height: 100vh;
-          background: var(--bg-primary);
-          color: var(--text-primary);
+          background:
+            radial-gradient(circle at top center, rgba(59, 130, 246, 0.08), transparent 22%),
+            linear-gradient(180deg, var(--bg-primary) 0%, #12151c 100%);
         }
 
-        .assistant-sidenav {
-          position: fixed;
-          inset: 0 auto 0 0;
-          width: 264px;
-          display: flex;
-          flex-direction: column;
-          gap: 22px;
-          padding: 28px 18px 20px;
-          background: color-mix(in srgb, var(--bg-secondary) 88%, #0b0f17 12%);
-          border-right: 1px solid var(--border-color);
-          z-index: 30;
+        .assistant-sidebar {
+          gap: 0;
         }
 
-        .assistant-brand h1,
         .assistant-chat-intro h2 {
           margin: 0;
           font-size: clamp(24px, 4vw, 36px);
@@ -462,7 +465,6 @@ export default function AssistantPage() {
           color: var(--text-primary);
         }
 
-        .assistant-brand p,
         .assistant-chat-intro p,
         .assistant-status-card p,
         .assistant-message p,
@@ -470,14 +472,6 @@ export default function AssistantPage() {
           margin: 0;
           color: var(--text-secondary);
           line-height: 1.65;
-        }
-
-        .assistant-brand p {
-          margin-top: 6px;
-          font-size: 11px;
-          text-transform: uppercase;
-          letter-spacing: 0.14em;
-          color: var(--text-muted);
         }
 
         .assistant-new-chat {
@@ -495,64 +489,11 @@ export default function AssistantPage() {
           box-shadow: 0 14px 28px rgba(37, 99, 235, 0.22);
         }
 
-        .assistant-nav {
-          display: flex;
-          flex-direction: column;
-          gap: 4px;
-          flex: 1;
-        }
-
-        .assistant-nav-item,
-        .assistant-nav :global(a.assistant-nav-item),
-        .assistant-nav :global(a.assistant-nav-item:link),
-        .assistant-nav :global(a.assistant-nav-item:visited),
-        .assistant-nav :global(a.assistant-nav-item:hover),
-        .assistant-nav :global(a.assistant-nav-item:active) {
-          display: flex;
+        .assistant-user-profile {
           align-items: center;
-          gap: 12px;
-          width: 100%;
-          min-height: 48px;
-          padding: 0 16px;
-          border-radius: 14px;
-          color: var(--text-secondary);
-          text-decoration: none !important;
-          font-size: 14px;
-          font-weight: 600;
-          transition: 180ms ease;
-        }
-
-        .assistant-nav-item i,
-        .assistant-nav :global(a.assistant-nav-item i) {
-          font-size: 18px;
-        }
-
-        .assistant-nav-item:hover,
-        .assistant-nav :global(a.assistant-nav-item:hover) {
-          background: rgba(255, 255, 255, 0.03);
-          color: var(--text-primary);
-        }
-
-        .assistant-nav-item.active {
-          background: color-mix(in srgb, var(--accent-blue) 14%, transparent);
-          border: 1px solid color-mix(in srgb, var(--accent-blue) 42%, transparent);
-          color: #93c5fd;
-        }
-
-        .assistant-nav-item-footer {
-          margin-top: auto;
-        }
-
-        .assistant-profile {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-          padding: 16px 8px 4px;
-          border-top: 1px solid var(--border-color);
         }
 
         .assistant-profile-avatar,
-        .assistant-topbar-user,
         .assistant-avatar {
           display: grid;
           place-items: center;
@@ -567,85 +508,21 @@ export default function AssistantPage() {
           color: var(--text-primary);
         }
 
-        .assistant-profile-copy {
-          display: grid;
-          gap: 3px;
-        }
-
-        .assistant-profile-copy strong {
-          font-size: 13px;
-          color: var(--text-primary);
-        }
-
-        .assistant-profile-copy span {
-          font-size: 10px;
-          letter-spacing: 0.14em;
-          text-transform: uppercase;
-          color: var(--text-muted);
-        }
-
-        .assistant-main-shell {
-          margin-left: 264px;
-          min-height: 100vh;
-          display: grid;
-          grid-template-rows: 72px minmax(0, 1fr);
-          background:
-            radial-gradient(circle at top center, rgba(59, 130, 246, 0.08), transparent 22%),
-            linear-gradient(180deg, var(--bg-primary) 0%, #12151c 100%);
-        }
-
-        .assistant-topbar {
-          position: sticky;
-          top: 0;
-          z-index: 20;
-          height: 72px;
+        .assistant-header-actions {
           display: flex;
           align-items: center;
-          justify-content: space-between;
-          padding: 0 28px;
-          background: color-mix(in srgb, var(--bg-primary) 88%, transparent);
-          backdrop-filter: blur(18px);
-          border-bottom: 1px solid var(--border-color);
+          gap: 10px;
         }
 
-        .assistant-topbar-title strong {
-          font-size: 20px;
-          font-weight: 700;
-          letter-spacing: -0.02em;
-        }
-
-        .assistant-topbar-actions {
-          display: flex;
+        .assistant-header-button {
+          display: inline-flex;
           align-items: center;
-          gap: 12px;
-        }
-
-        .assistant-icon-button {
-          width: 38px;
-          height: 38px;
-          border: none;
-          border-radius: 12px;
-          background: transparent;
-          color: #c2c6d7;
-          cursor: pointer;
-          transition: 180ms ease;
-        }
-
-        .assistant-icon-button:hover {
-          background: rgba(255, 255, 255, 0.04);
-          color: #93c5fd;
-        }
-
-        .assistant-topbar-user {
-          width: 38px;
-          height: 38px;
-          background: rgba(255, 255, 255, 0.04);
-          border: 1px solid var(--border-color);
-          color: var(--text-primary);
+          gap: 8px;
         }
 
         .assistant-main {
-          padding: 18px 24px 24px;
+          display: grid;
+          gap: 24px;
         }
 
         .assistant-empty {
@@ -654,7 +531,7 @@ export default function AssistantPage() {
         }
 
         .assistant-content {
-          height: calc(100vh - 120px);
+          min-height: calc(100vh - 180px);
           display: grid;
           grid-template-columns: 320px minmax(0, 1fr);
           gap: 24px;
@@ -1048,7 +925,7 @@ export default function AssistantPage() {
         @media (max-width: 1120px) {
           .assistant-content {
             grid-template-columns: 1fr;
-            height: auto;
+            min-height: auto;
           }
 
           .assistant-context-column {
@@ -1061,31 +938,8 @@ export default function AssistantPage() {
         }
 
         @media (max-width: 860px) {
-          .assistant-sidenav {
-            position: static;
-            width: 100%;
-            border-right: none;
-            border-bottom: 1px solid rgba(66, 70, 85, 0.28);
-          }
-
-          .assistant-main-shell {
-            margin-left: 0;
-            grid-template-rows: auto minmax(0, 1fr);
-          }
-
-          .assistant-shell {
-            display: block;
-          }
-
-          .assistant-topbar,
           .assistant-main {
-            padding-left: 18px;
-            padding-right: 18px;
-          }
-
-          .assistant-topbar {
-            height: auto;
-            min-height: 72px;
+            gap: 18px;
           }
 
           .assistant-chat-intro,

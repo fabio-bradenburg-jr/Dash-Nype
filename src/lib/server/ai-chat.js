@@ -209,6 +209,31 @@ function sanitizeConversationMessages(messages) {
     .slice(-12)
 }
 
+function normalizeFocusMode(value) {
+  return ['operation', 'clients', 'general'].includes(value) ? value : 'operation'
+}
+
+function resolveClientMentionFromMessages(clients, messages) {
+  if (!Array.isArray(clients) || !clients.length || !Array.isArray(messages) || !messages.length) return null
+
+  const recentConversation = messages
+    .slice(-6)
+    .map((message) => String(message?.content || '').toLowerCase())
+    .join('\n')
+
+  if (!recentConversation.trim()) return null
+
+  const candidates = clients
+    .map((client) => ({
+      client,
+      normalizedName: String(client?.name || '').trim().toLowerCase(),
+    }))
+    .filter((item) => item.normalizedName.length >= 3 && recentConversation.includes(item.normalizedName))
+    .sort((left, right) => right.normalizedName.length - left.normalizedName.length)
+
+  return candidates[0]?.client || null
+}
+
 function normalizeCampaignHealth(metrics) {
   if ((metrics.purchases || 0) > 0 || (metrics.roas || 0) >= 2) return 'positive'
   if ((metrics.spend || 0) > 0 && (metrics.totalConversions || 0) === 0) return 'urgent'
@@ -286,13 +311,16 @@ async function fetchClientCampaignSnapshot({ adminSupabase, dashboardState, acce
   }
 }
 
-async function buildBusinessContext({ adminSupabase, dashboardState, accessContext, clientId, contextSnapshot }) {
+async function buildBusinessContext({ adminSupabase, dashboardState, accessContext, clientId, contextSnapshot, messages }) {
   const clients = Array.isArray(dashboardState?.clients) ? dashboardState.clients : []
+  const focusMode = normalizeFocusMode(contextSnapshot?.focusMode)
+  const mentionedClient = resolveClientMentionFromMessages(clients, messages)
   const selectedClient =
     clients.find((client) => client.id === clientId) ||
-    clients.find((client) => client.id === dashboardState?.activeClientId) ||
-    clients[0] ||
-    null
+    mentionedClient ||
+    (focusMode === 'operation'
+      ? clients.find((client) => client.id === dashboardState?.activeClientId) || clients[0] || null
+      : null)
   const clientCampaignSnapshot = await fetchClientCampaignSnapshot({
     adminSupabase,
     dashboardState,
@@ -303,6 +331,15 @@ async function buildBusinessContext({ adminSupabase, dashboardState, accessConte
   return {
     workspaceId: accessContext.workspaceId || '',
     role: accessContext.role || '',
+    focus: {
+      mode: focusMode,
+      label:
+        focusMode === 'clients'
+          ? 'Clientes'
+          : focusMode === 'general'
+            ? 'Geral'
+            : 'Operação',
+    },
     activeClientId: dashboardState?.activeClientId || '',
     selectedClient: selectedClient
       ? {
@@ -379,6 +416,7 @@ function buildAssistantSystemPrompt(aiDashboardPrompt) {
     'Quando fizer sentido, estruture em blocos curtos: diagnostico, causa provavel, impacto e proximo passo.',
     'Se o usuario pedir comparacoes, organize por cliente, campanha, area ou prioridade.',
     'Quando o usuario pedir um resumo executivo, destaque: pontos positivos, pontos de atencao e urgencias.',
+    'Respeite o foco selecionado no contexto: operacao, clientes ou geral.',
     'Quando houver campaignSnapshot no contexto e o usuario perguntar sobre campanhas, responda campanha por campanha antes do resumo final.',
     'Ao falar de campanhas, prefira o formato: campanha, leitura, impacto e direcionamento.',
     'Voce ainda nao possui navegacao web ativa neste fluxo, entao nao afirme dados externos em tempo real como se tivesse pesquisado.',
@@ -580,6 +618,7 @@ export async function requestAssistantReply({ config, adminSupabase, dashboardSt
     accessContext,
     clientId,
     contextSnapshot,
+    messages,
   })
   const systemPrompt = buildAssistantSystemPrompt(normalizedConfig.aiDashboardPrompt)
   const builtMessages = buildAssistantMessages({
