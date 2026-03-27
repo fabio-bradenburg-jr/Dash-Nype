@@ -30,7 +30,7 @@ function normalizeStoredMessages(value) {
 }
 
 export default function AssistantPage() {
-  const { access, loading } = useUser()
+  const { access, loading, user, profile } = useUser()
   const canViewDashboard = access?.canViewDashboard !== false
 
   const [dashboardState, setDashboardState] = useState(null)
@@ -50,6 +50,15 @@ export default function AssistantPage() {
     () => availableClients.find((client) => client.id === selectedClientId) || null,
     [availableClients, selectedClientId]
   )
+  const userDisplayName = useMemo(
+    () =>
+      profile?.full_name ||
+      user?.user_metadata?.full_name ||
+      user?.email?.split('@')[0] ||
+      'Usuário',
+    [profile?.full_name, user?.email, user?.user_metadata?.full_name]
+  )
+  const userPlanLabel = access?.canManageClients ? 'Workspace Owner' : 'Workspace Member'
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -165,344 +174,909 @@ export default function AssistantPage() {
   }
 
   return (
-    <div className="dashboard-container">
-      <aside className="sidebar glass-panel">
-        <div className="logo">
-          <i className="bx bx-bar-chart-alt-2"></i>
-          <span>Dash</span>
+    <div className="assistant-shell">
+      <aside className="assistant-sidenav">
+        <div className="assistant-brand">
+          <h1>Luminous AI</h1>
+          <p>The Synthetic Ether</p>
         </div>
 
-        <nav className="nav-menu">
-          <Link href="/dashboard" className="nav-item">
-            <i className="bx bx-layout"></i>
+        <button type="button" className="assistant-new-chat" onClick={handleResetChat}>
+          <i className="bx bx-plus"></i>
+          Novo Chat
+        </button>
+
+        <nav className="assistant-nav">
+          <Link href="/dashboard" className="assistant-nav-item">
+            <i className="bx bx-line-chart"></i>
             Apresentação
           </Link>
-          <span className="nav-item active">
+          <span className="assistant-nav-item active">
             <i className="bx bx-bot"></i>
             Assistente
           </span>
-          <Link href="/calendar" className="nav-item">
+          <Link href="/calendar" className="assistant-nav-item">
             <i className="bx bx-calendar-event"></i>
             Agenda
           </Link>
-          <Link href="/settings" className="nav-item">
+          <Link href="/settings" className="assistant-nav-item">
             <i className="bx bx-cog"></i>
             Configurações
           </Link>
-          <Link href="/privacy" className="nav-item" target="_blank" rel="noreferrer">
+          <Link href="/privacy" className="assistant-nav-item assistant-nav-item-footer" target="_blank" rel="noreferrer">
             <i className="bx bx-shield-quarter"></i>
             Política e Privacidade
           </Link>
         </nav>
+
+        <div className="assistant-profile">
+          <div className="assistant-profile-avatar">
+            <i className="bx bx-user"></i>
+          </div>
+          <div className="assistant-profile-copy">
+            <strong>{userDisplayName}</strong>
+            <span>{userPlanLabel}</span>
+          </div>
+        </div>
       </aside>
 
-      <main className="main-content settings-main">
-        <section className="glass-panel settings-panel assistant-panel">
-          <div className="settings-head assistant-head">
-            <div>
-              <h1>Assistente do negócio</h1>
-              <p>Converse com a IA usando o contexto do workspace, clientes, integrações e estrutura atual do app.</p>
-            </div>
-            <div className="assistant-head-actions">
-              <button type="button" className="btn btn-secondary" onClick={handleResetChat}>
-                Limpar conversa
-              </button>
+      <div className="assistant-main-shell">
+        <header className="assistant-topbar">
+          <div className="assistant-topbar-title">
+            <strong>Assistente de Negócio</strong>
+          </div>
+          <div className="assistant-topbar-actions">
+            <button type="button" className="assistant-icon-button" onClick={handleResetChat} aria-label="Limpar conversa">
+              <i className="bx bx-refresh"></i>
+            </button>
+            <button type="button" className="assistant-icon-button" aria-label="Mais opções">
+              <i className="bx bx-dots-vertical-rounded"></i>
+            </button>
+            <div className="assistant-topbar-user">
+              <i className="bx bx-user"></i>
             </div>
           </div>
+        </header>
 
+        <main className="assistant-main">
           {!canViewDashboard ? (
-            <div className="empty-panel glass-item">
+            <div className="assistant-empty glass-panel">
               <h3>Sem acesso ao assistente</h3>
               <p>Seu usuário ainda não possui dashboards liberados neste workspace.</p>
             </div>
           ) : isLoadingState ? (
-            <div className="empty-panel glass-item">
+            <div className="assistant-empty glass-panel">
               <h3>Carregando contexto do negócio</h3>
               <p>Estamos preparando os dados internos para a conversa.</p>
             </div>
           ) : (
-            <div className="assistant-layout">
-              <aside className="glass-item assistant-sidebar">
-                <div className="assistant-sidebar-block">
-                  <span className="assistant-kicker">Escopo</span>
-                  <h2>Contexto da conversa</h2>
-                  <p>Escolha um cliente para orientar melhor as respostas. Sem seleção específica, a IA responde olhando a operação como um todo.</p>
+            <div className="assistant-content">
+              <section className="assistant-context-column">
+                <div className="assistant-context-card glass-panel">
+                  <div className="assistant-section-head">
+                    <span className="assistant-section-kicker">Contexto da conversa</span>
+                  </div>
+
+                  <label className="assistant-field">
+                    <span>Cliente em foco</span>
+                    <div className="assistant-select-wrap">
+                      <select value={selectedClientId} onChange={(event) => setSelectedClientId(event.target.value)}>
+                        <option value="">Operação inteira</option>
+                        {availableClients.map((client) => (
+                          <option key={client.id} value={client.id}>
+                            {client.name}
+                          </option>
+                        ))}
+                      </select>
+                      <i className="bx bx-chevron-down"></i>
+                    </div>
+                  </label>
+
+                  <div className="assistant-context-stats">
+                    <div className="assistant-context-stat">
+                      <div>
+                        <i className="bx bx-group"></i>
+                        <span>Clientes</span>
+                      </div>
+                      <strong>{availableClients.length}</strong>
+                    </div>
+                    <div className="assistant-context-stat">
+                      <div>
+                        <i className="bx bx-sitemap"></i>
+                        <span>Configuração</span>
+                      </div>
+                      <strong>{dashboardState?.clientGroups?.length || 0} grupos</strong>
+                    </div>
+                    <div className="assistant-context-stat">
+                      <div>
+                        <i className="bx bx-chip"></i>
+                        <span>Provider</span>
+                      </div>
+                      <strong>{dashboardState?.globalIntegrations?.aiProvider || 'Não definido'}</strong>
+                    </div>
+                  </div>
+
+                  <div className="assistant-chip-group">
+                    <button type="button" className="assistant-chip" onClick={() => setInputValue('Me dê um resumo executivo da operação, com pontos positivos, atenção e urgência.')}>
+                      Resumo executivo
+                    </button>
+                    <button
+                      type="button"
+                      className="assistant-chip"
+                      onClick={() =>
+                        setInputValue(
+                          selectedClient?.name
+                            ? `Como estão as campanhas de ${selectedClient.name}? Quero leitura por campanha e depois um resumo com pontos positivos, atenção e urgência.`
+                            : 'Como estão as campanhas do cliente em foco? Quero leitura por campanha e depois um resumo com pontos positivos, atenção e urgência.'
+                        )
+                      }
+                    >
+                      Campanhas do cliente
+                    </button>
+                    <button type="button" className="assistant-chip" onClick={() => setInputValue('Quais riscos você vê no contexto atual desse cliente?')}>
+                      Riscos do cliente
+                    </button>
+                  </div>
                 </div>
 
-                <label className="assistant-field">
-                  <span>Cliente em foco</span>
-                  <select value={selectedClientId} onChange={(event) => setSelectedClientId(event.target.value)}>
-                    <option value="">Operação inteira</option>
-                    {availableClients.map((client) => (
-                      <option key={client.id} value={client.id}>
-                        {client.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                <div className="assistant-status-card glass-panel">
+                  <div className="assistant-status-head">
+                    <span className="assistant-status-dot"></span>
+                    <span>Status do sistema</span>
+                  </div>
+                  <p>
+                    Operação pronta para conversa com contexto interno do workspace. A próxima etapa pode conectar busca externa e ações automatizadas.
+                  </p>
+                </div>
+              </section>
 
-                <div className="assistant-sidebar-block assistant-context-card">
-                  <span className="assistant-kicker">Resumo</span>
-                  <strong>{selectedClient?.name || 'Visão geral da operação'}</strong>
-                  <ul>
-                    <li>{availableClients.length} cliente(s) visível(is) no workspace</li>
-                    <li>{dashboardState?.clientGroups?.length || 0} grupo(s) configurado(s)</li>
-                    <li>Provider atual: {dashboardState?.globalIntegrations?.aiProvider || 'não configurado'}</li>
-                  </ul>
+              <section className="assistant-chat-panel glass-panel">
+                <div className="assistant-chat-intro">
+                  <h2>Assistente de Negócio</h2>
+                  <p>Fale com sua IA para entender clientes, campanhas, gargalos e próximos passos da operação.</p>
                 </div>
 
-                <div className="assistant-sidebar-block assistant-suggestion-card">
-                  <span className="assistant-kicker">Perguntas úteis</span>
-                  <button type="button" className="assistant-suggestion" onClick={() => setInputValue('Me dê um resumo executivo da operação, com pontos positivos, atenção e urgência.')}>
-                    Resumo executivo da operação
-                  </button>
-                  <button
-                    type="button"
-                    className="assistant-suggestion"
-                    onClick={() =>
-                      setInputValue(
-                        selectedClient?.name
-                          ? `Como estão as campanhas de ${selectedClient.name}? Quero leitura por campanha e depois um resumo com pontos positivos, atenção e urgência.`
-                          : 'Como estão as campanhas do cliente em foco? Quero leitura por campanha e depois um resumo com pontos positivos, atenção e urgência.'
-                      )
-                    }
-                  >
-                    Campanhas do cliente em foco
-                  </button>
-                  <button type="button" className="assistant-suggestion" onClick={() => setInputValue('Quais riscos você vê no contexto atual desse cliente?')}>
-                    Riscos do cliente em foco
-                  </button>
-                  <button type="button" className="assistant-suggestion" onClick={() => setInputValue('Quais integrações ou dados ainda parecem faltar para uma análise mais completa?')}>
-                    Gaps de dados e integrações
-                  </button>
-                </div>
-              </aside>
-
-              <section className="glass-item assistant-chat-shell">
                 {errorMessage && <div className="form-alert">{errorMessage}</div>}
                 {chatError && <div className="form-alert">{chatError}</div>}
 
                 <div className="assistant-messages">
+                  <div className="assistant-date-separator">
+                    <span>Hoje</span>
+                  </div>
+
                   {messages.map((message) => (
                     <article
                       key={message.id}
-                      className={`assistant-message assistant-message-${message.role}`}
+                      className={`assistant-message-row assistant-message-row-${message.role}`}
                     >
-                      <span className="assistant-message-role">
-                        {message.role === 'assistant' ? 'Assistente' : 'Você'}
-                      </span>
-                      <p>{message.content}</p>
+                      {message.role === 'assistant' ? (
+                        <div className="assistant-avatar assistant-avatar-bot">
+                          <i className="bx bx-bot"></i>
+                        </div>
+                      ) : null}
+
+                      <div className={`assistant-message assistant-message-${message.role}`}>
+                        <span className="assistant-message-role">
+                          {message.role === 'assistant' ? 'Assistente' : 'Você'}
+                        </span>
+                        <p>{message.content}</p>
+                        {message.role === 'assistant' ? (
+                          <div className="assistant-message-actions">
+                            <button type="button">
+                              <i className="bx bx-like"></i>
+                              Útil
+                            </button>
+                            <button type="button">
+                              <i className="bx bx-dislike"></i>
+                              Não ajudou
+                            </button>
+                            <button type="button" className="assistant-message-copy" onClick={() => navigator?.clipboard?.writeText(message.content)}>
+                              <i className="bx bx-copy-alt"></i>
+                              Copiar
+                            </button>
+                          </div>
+                        ) : null}
+                      </div>
+
+                      {message.role === 'user' ? (
+                        <div className="assistant-avatar assistant-avatar-user">
+                          <i className="bx bx-user"></i>
+                        </div>
+                      ) : null}
                     </article>
                   ))}
+
                   {isSending ? (
-                    <article className="assistant-message assistant-message-assistant assistant-message-loading">
-                      <span className="assistant-message-role">Assistente</span>
-                      <p>Pensando na melhor resposta com base no contexto do negócio...</p>
+                    <article className="assistant-message-row assistant-message-row-assistant">
+                      <div className="assistant-avatar assistant-avatar-bot">
+                        <i className="bx bx-bot"></i>
+                      </div>
+                      <div className="assistant-message assistant-message-assistant assistant-message-loading">
+                        <span className="assistant-message-role">Assistente</span>
+                        <p>Pensando na melhor resposta com base no contexto do negócio...</p>
+                      </div>
                     </article>
                   ) : null}
                 </div>
 
-                <form className="assistant-form" onSubmit={handleSend}>
-                  <textarea
-                    value={inputValue}
-                    onChange={(event) => setInputValue(event.target.value)}
-                    placeholder="Pergunte sobre clientes, operação, campanhas, CRM, gargalos ou próximos passos..."
-                    rows={4}
-                  />
-                  <div className="assistant-form-actions">
-                    <span className="assistant-form-hint">
-                      Primeira versão com foco em dados internos do app. Busca externa pode entrar na próxima etapa.
-                    </span>
-                    <button type="submit" className="btn btn-primary" disabled={isSending || !inputValue.trim()}>
-                      {isSending ? 'Respondendo...' : 'Enviar'}
+                <form className="assistant-form-shell" onSubmit={handleSend}>
+                  <div className="assistant-form-panel">
+                    <button type="button" className="assistant-form-icon" aria-label="Anexar">
+                      <i className="bx bx-paperclip"></i>
                     </button>
+                    <textarea
+                      value={inputValue}
+                      onChange={(event) => setInputValue(event.target.value)}
+                      placeholder="Pergunte sobre clientes, operação, campanhas, CRM, gargalos ou próximos passos..."
+                      rows={1}
+                    />
+                    <div className="assistant-form-actions-inline">
+                      <button type="button" className="assistant-form-icon" aria-label="Microfone">
+                        <i className="bx bx-microphone"></i>
+                      </button>
+                      <button type="submit" className="assistant-submit" disabled={isSending || !inputValue.trim()}>
+                        <i className="bx bx-up-arrow-alt"></i>
+                      </button>
+                    </div>
+                  </div>
+                  <div className="assistant-form-footer">
+                    <div className="assistant-form-signals">
+                      <span><i className="bx bx-bolt-circle"></i> {dashboardState?.globalIntegrations?.aiModel || 'Modelo configurado'}</span>
+                      <span><i className="bx bx-shield-quarter"></i> Contexto interno ativo</span>
+                    </div>
+                    <span>Enter para enviar / Shift+Enter para nova linha</span>
                   </div>
                 </form>
               </section>
             </div>
           )}
-        </section>
-      </main>
+        </main>
+      </div>
 
       <style jsx>{`
-        .assistant-panel {
-          gap: 20px;
+        .assistant-shell {
+          min-height: 100vh;
+          background:
+            radial-gradient(circle at top center, rgba(123, 209, 250, 0.08), transparent 24%),
+            linear-gradient(180deg, #0b1326 0%, #0a1020 100%);
+          color: #dae2fd;
         }
 
-        .assistant-layout {
-          display: grid;
-          grid-template-columns: minmax(280px, 320px) minmax(0, 1fr);
-          gap: 18px;
+        .assistant-sidenav {
+          position: fixed;
+          inset: 0 auto 0 0;
+          width: 264px;
+          display: flex;
+          flex-direction: column;
+          gap: 22px;
+          padding: 28px 18px 20px;
+          background: rgba(19, 27, 46, 0.94);
+          border-right: 1px solid rgba(66, 70, 85, 0.35);
+          z-index: 30;
         }
 
-        .assistant-sidebar,
-        .assistant-chat-shell {
-          display: grid;
-          gap: 18px;
-          padding: 20px;
+        .assistant-brand h1,
+        .assistant-chat-intro h2 {
+          margin: 0;
+          font-size: clamp(24px, 4vw, 36px);
+          line-height: 0.95;
+          letter-spacing: -0.04em;
+          color: #f6f7fb;
         }
 
-        .assistant-sidebar {
-          align-content: start;
+        .assistant-brand p,
+        .assistant-chat-intro p,
+        .assistant-status-card p,
+        .assistant-message p,
+        .assistant-context-card p {
+          margin: 0;
+          color: #b5bfd6;
+          line-height: 1.65;
         }
 
-        .assistant-sidebar-block {
-          display: grid;
-          gap: 10px;
-        }
-
-        .assistant-kicker {
-          color: #93c5fd;
+        .assistant-brand p {
+          margin-top: 6px;
           font-size: 11px;
-          font-weight: 700;
-          letter-spacing: 0.08em;
           text-transform: uppercase;
+          letter-spacing: 0.14em;
+          color: rgba(194, 198, 215, 0.72);
         }
 
-        .assistant-sidebar h2,
-        .assistant-head h1 {
-          margin: 0;
-          color: var(--text-primary);
+        .assistant-new-chat {
+          border: none;
+          border-radius: 16px;
+          min-height: 52px;
+          background: linear-gradient(135deg, #b0c6ff 0%, #558dff 100%);
+          color: #071326;
+          font-weight: 700;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          cursor: pointer;
+          box-shadow: 0 18px 40px rgba(85, 141, 255, 0.2);
         }
 
-        .assistant-sidebar p,
-        .assistant-context-card li,
-        .assistant-form-hint,
-        .assistant-message p {
-          margin: 0;
-          color: var(--text-secondary);
-          line-height: 1.6;
+        .assistant-nav {
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+          flex: 1;
+        }
+
+        .assistant-nav-item {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          min-height: 48px;
+          padding: 0 16px;
+          border-radius: 0 16px 16px 0;
+          color: #c2c6d7;
+          text-decoration: none;
+          font-size: 14px;
+          font-weight: 600;
+          transition: 180ms ease;
+        }
+
+        .assistant-nav-item i {
+          font-size: 18px;
+        }
+
+        .assistant-nav-item:hover {
+          background: rgba(34, 42, 61, 0.65);
+          color: #e7ecfb;
+        }
+
+        .assistant-nav-item.active {
+          background: rgba(34, 42, 61, 0.95);
+          border-left: 4px solid #7bd1fa;
+          color: #7bd1fa;
+          padding-left: 12px;
+        }
+
+        .assistant-nav-item-footer {
+          margin-top: auto;
+        }
+
+        .assistant-profile {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          padding: 16px 8px 4px;
+          border-top: 1px solid rgba(66, 70, 85, 0.24);
+        }
+
+        .assistant-profile-avatar,
+        .assistant-topbar-user,
+        .assistant-avatar {
+          display: grid;
+          place-items: center;
+          border-radius: 14px;
+        }
+
+        .assistant-profile-avatar {
+          width: 38px;
+          height: 38px;
+          background: rgba(45, 52, 73, 0.88);
+          border: 1px solid rgba(176, 198, 255, 0.16);
+          color: #dae2fd;
+        }
+
+        .assistant-profile-copy {
+          display: grid;
+          gap: 3px;
+        }
+
+        .assistant-profile-copy strong {
+          font-size: 13px;
+          color: #f6f7fb;
+        }
+
+        .assistant-profile-copy span {
+          font-size: 10px;
+          letter-spacing: 0.14em;
+          text-transform: uppercase;
+          color: rgba(194, 198, 215, 0.62);
+        }
+
+        .assistant-main-shell {
+          margin-left: 264px;
+          min-height: 100vh;
+          display: grid;
+          grid-template-rows: 72px minmax(0, 1fr);
+        }
+
+        .assistant-topbar {
+          position: sticky;
+          top: 0;
+          z-index: 20;
+          height: 72px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 0 28px;
+          background: rgba(11, 19, 38, 0.82);
+          backdrop-filter: blur(22px);
+          border-bottom: 1px solid rgba(66, 70, 85, 0.22);
+        }
+
+        .assistant-topbar-title strong {
+          font-size: 20px;
+          font-weight: 700;
+          letter-spacing: -0.02em;
+        }
+
+        .assistant-topbar-actions {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+        }
+
+        .assistant-icon-button {
+          width: 38px;
+          height: 38px;
+          border: none;
+          border-radius: 12px;
+          background: transparent;
+          color: #c2c6d7;
+          cursor: pointer;
+          transition: 180ms ease;
+        }
+
+        .assistant-icon-button:hover {
+          background: rgba(34, 42, 61, 0.7);
+          color: #7bd1fa;
+        }
+
+        .assistant-topbar-user {
+          width: 38px;
+          height: 38px;
+          background: rgba(34, 42, 61, 0.8);
+          border: 1px solid rgba(66, 70, 85, 0.3);
+          color: #dae2fd;
+        }
+
+        .assistant-main {
+          padding: 24px;
+        }
+
+        .assistant-empty {
+          padding: 28px;
+          border-radius: 24px;
+        }
+
+        .assistant-content {
+          height: calc(100vh - 120px);
+          display: grid;
+          grid-template-columns: 320px minmax(0, 1fr);
+          gap: 24px;
+        }
+
+        .glass-panel {
+          background: rgba(23, 31, 51, 0.68);
+          backdrop-filter: blur(24px);
+          border: 1px solid rgba(66, 70, 85, 0.18);
+          box-shadow: 0 18px 60px rgba(2, 6, 23, 0.32);
+        }
+
+        .assistant-context-column {
+          display: grid;
+          align-content: start;
+          gap: 18px;
+          overflow-y: auto;
+          padding-right: 4px;
+        }
+
+        .assistant-context-card,
+        .assistant-status-card {
+          padding: 22px;
+          border-radius: 22px;
+        }
+
+        .assistant-section-head {
+          margin-bottom: 18px;
+        }
+
+        .assistant-section-kicker,
+        .assistant-message-role {
+          font-size: 11px;
+          text-transform: uppercase;
+          letter-spacing: 0.16em;
+          color: #7bd1fa;
+          font-weight: 800;
         }
 
         .assistant-field {
           display: grid;
           gap: 8px;
+          margin-bottom: 18px;
         }
 
         .assistant-field span {
-          color: var(--text-muted);
+          font-size: 12px;
+          color: #c2c6d7;
+          font-weight: 600;
+        }
+
+        .assistant-select-wrap {
+          position: relative;
+        }
+
+        .assistant-select-wrap select {
+          width: 100%;
+          min-height: 50px;
+          border-radius: 16px;
+          border: 1px solid rgba(66, 70, 85, 0.34);
+          background: rgba(45, 52, 73, 0.74);
+          color: #dae2fd;
+          padding: 0 44px 0 16px;
+          outline: none;
+          appearance: none;
+        }
+
+        .assistant-select-wrap i {
+          position: absolute;
+          right: 14px;
+          top: 50%;
+          transform: translateY(-50%);
+          color: #8c90a0;
+          pointer-events: none;
+        }
+
+        .assistant-context-stats {
+          display: grid;
+          gap: 12px;
+          margin-bottom: 18px;
+        }
+
+        .assistant-context-stat {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          padding: 14px 16px;
+          border-radius: 16px;
+          background: rgba(19, 27, 46, 0.62);
+          border: 1px solid rgba(66, 70, 85, 0.16);
+        }
+
+        .assistant-context-stat div {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          color: #c2c6d7;
           font-size: 12px;
           font-weight: 600;
         }
 
-        .assistant-field select,
-        .assistant-form textarea {
-          border-radius: 16px;
-          border: 1px solid rgba(255, 255, 255, 0.08);
-          background: rgba(15, 23, 42, 0.58);
-          color: var(--text-primary);
-          padding: 14px 16px;
-          outline: none;
-        }
-
-        .assistant-context-card,
-        .assistant-suggestion-card {
-          border-radius: 18px;
-          border: 1px solid rgba(255, 255, 255, 0.08);
-          background: rgba(255, 255, 255, 0.03);
-          padding: 16px;
-        }
-
-        .assistant-context-card strong {
-          color: var(--text-primary);
+        .assistant-context-stat i {
+          color: #b0c6ff;
           font-size: 18px;
         }
 
-        .assistant-context-card ul {
-          margin: 0;
-          padding-left: 18px;
-          display: grid;
-          gap: 8px;
+        .assistant-context-stat strong {
+          font-size: 14px;
+          color: #f6f7fb;
         }
 
-        .assistant-suggestion {
-          border: 1px solid rgba(255, 255, 255, 0.08);
-          background: rgba(255, 255, 255, 0.04);
-          color: var(--text-primary);
-          border-radius: 14px;
-          padding: 12px 14px;
-          text-align: left;
+        .assistant-chip-group {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 10px;
+        }
+
+        .assistant-chip {
+          min-height: 38px;
+          padding: 0 14px;
+          border-radius: 999px;
+          border: 1px solid rgba(66, 70, 85, 0.2);
+          background: rgba(34, 42, 61, 0.8);
+          color: #c2c6d7;
+          font-size: 11px;
+          font-weight: 700;
           cursor: pointer;
+          transition: 180ms ease;
         }
 
-        .assistant-suggestion:hover {
-          border-color: rgba(59, 130, 246, 0.34);
-          background: rgba(59, 130, 246, 0.08);
+        .assistant-chip:hover {
+          color: #7bd1fa;
+          border-color: rgba(123, 209, 250, 0.35);
         }
 
-        .assistant-chat-shell {
-          min-height: 72vh;
-          grid-template-rows: minmax(0, 1fr) auto;
+        .assistant-status-head {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          margin-bottom: 10px;
+          font-size: 11px;
+          font-weight: 800;
+          letter-spacing: 0.14em;
+          text-transform: uppercase;
+          color: #c2c6d7;
+        }
+
+        .assistant-status-dot {
+          width: 8px;
+          height: 8px;
+          border-radius: 999px;
+          background: #22c55e;
+          box-shadow: 0 0 18px rgba(34, 197, 94, 0.8);
+        }
+
+        .assistant-chat-panel {
+          min-height: 0;
+          display: grid;
+          grid-template-rows: auto minmax(0, 1fr) auto;
+          border-radius: 28px;
+          overflow: hidden;
+        }
+
+        .assistant-chat-intro {
+          padding: 36px 36px 10px;
+        }
+
+        .assistant-chat-intro p {
+          margin-top: 8px;
+          max-width: 680px;
+          font-size: 18px;
+          font-weight: 300;
         }
 
         .assistant-messages {
           min-height: 0;
           overflow-y: auto;
           display: grid;
-          gap: 14px;
+          gap: 24px;
           align-content: start;
-          padding-right: 4px;
+          padding: 18px 36px 24px;
+        }
+
+        .assistant-date-separator {
+          display: flex;
+          justify-content: center;
+        }
+
+        .assistant-date-separator span {
+          padding: 7px 14px;
+          border-radius: 999px;
+          background: rgba(34, 42, 61, 0.88);
+          color: rgba(194, 198, 215, 0.7);
+          font-size: 10px;
+          font-weight: 800;
+          letter-spacing: 0.2em;
+          text-transform: uppercase;
+        }
+
+        .assistant-message-row {
+          display: flex;
+          gap: 14px;
+          max-width: min(780px, 100%);
+        }
+
+        .assistant-message-row-user {
+          margin-left: auto;
+          justify-content: flex-end;
+        }
+
+        .assistant-avatar {
+          width: 36px;
+          height: 36px;
+          flex: 0 0 36px;
+          margin-top: 2px;
+          border: 1px solid rgba(66, 70, 85, 0.24);
+        }
+
+        .assistant-avatar-bot {
+          background: rgba(123, 209, 250, 0.14);
+          color: #7bd1fa;
+          box-shadow: 0 0 24px rgba(123, 209, 250, 0.12);
+        }
+
+        .assistant-avatar-user {
+          background: rgba(34, 42, 61, 0.88);
+          color: #dae2fd;
         }
 
         .assistant-message {
           display: grid;
-          gap: 8px;
-          padding: 16px 18px;
-          border-radius: 18px;
-          border: 1px solid rgba(255, 255, 255, 0.08);
-        }
-
-        .assistant-message-user {
-          background: rgba(59, 130, 246, 0.12);
-          border-color: rgba(59, 130, 246, 0.24);
+          gap: 10px;
+          padding: 22px 24px;
+          border-radius: 22px;
+          border: 1px solid rgba(66, 70, 85, 0.18);
         }
 
         .assistant-message-assistant {
-          background: rgba(255, 255, 255, 0.03);
+          background: rgba(45, 52, 73, 0.55);
+          border-top-left-radius: 8px;
+        }
+
+        .assistant-message-user {
+          background: rgba(34, 42, 61, 0.8);
+          border-top-right-radius: 8px;
+        }
+
+        .assistant-message p {
+          font-size: 15px;
+          white-space: pre-wrap;
         }
 
         .assistant-message-loading {
-          opacity: 0.8;
+          opacity: 0.78;
         }
 
-        .assistant-message-role {
-          color: var(--text-muted);
+        .assistant-message-actions {
+          display: flex;
+          align-items: center;
+          gap: 16px;
+          padding-top: 8px;
+        }
+
+        .assistant-message-actions button {
+          border: none;
+          background: transparent;
+          color: #aeb6ca;
           font-size: 11px;
+          font-weight: 600;
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          cursor: pointer;
+        }
+
+        .assistant-message-actions button:hover {
+          color: #e6ebfb;
+        }
+
+        .assistant-message-copy {
+          margin-left: auto;
+        }
+
+        .assistant-form-shell {
+          padding: 18px 28px 24px;
+        }
+
+        .assistant-form-panel {
+          position: relative;
+          display: flex;
+          align-items: flex-end;
+          gap: 6px;
+          padding: 8px;
+          border-radius: 24px;
+          background: rgba(6, 14, 32, 0.92);
+          border: 1px solid rgba(66, 70, 85, 0.22);
+          box-shadow:
+            0 0 0 1px rgba(123, 209, 250, 0.04),
+            0 20px 60px rgba(2, 6, 23, 0.38);
+        }
+
+        .assistant-form-panel textarea {
+          flex: 1;
+          min-height: 60px;
+          max-height: 180px;
+          resize: none;
+          border: none;
+          background: transparent;
+          color: #dae2fd;
+          outline: none;
+          padding: 14px 8px;
+          line-height: 1.6;
+        }
+
+        .assistant-form-panel textarea::placeholder {
+          color: rgba(194, 198, 215, 0.42);
+        }
+
+        .assistant-form-icon,
+        .assistant-submit {
+          width: 46px;
+          height: 46px;
+          border: none;
+          border-radius: 16px;
+          display: grid;
+          place-items: center;
+          cursor: pointer;
+        }
+
+        .assistant-form-icon {
+          background: transparent;
+          color: #9fa8bd;
+        }
+
+        .assistant-form-icon:hover {
+          color: #7bd1fa;
+        }
+
+        .assistant-form-actions-inline {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .assistant-submit {
+          background: linear-gradient(135deg, #b0c6ff 0%, #558dff 100%);
+          color: #0a1628;
+          box-shadow: 0 14px 30px rgba(85, 141, 255, 0.24);
+        }
+
+        .assistant-submit:disabled {
+          opacity: 0.45;
+          cursor: not-allowed;
+          box-shadow: none;
+        }
+
+        .assistant-form-footer {
+          display: flex;
+          justify-content: space-between;
+          gap: 12px;
+          flex-wrap: wrap;
+          padding: 14px 6px 0;
+          color: rgba(194, 198, 215, 0.56);
+          font-size: 10px;
           font-weight: 700;
           letter-spacing: 0.08em;
           text-transform: uppercase;
         }
 
-        .assistant-form {
-          display: grid;
-          gap: 12px;
-        }
-
-        .assistant-form textarea {
-          min-height: 112px;
-          resize: vertical;
-        }
-
-        .assistant-form-actions {
+        .assistant-form-signals {
           display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 12px;
+          gap: 14px;
           flex-wrap: wrap;
         }
 
-        .assistant-head-actions {
-          display: flex;
-          gap: 12px;
+        .assistant-form-signals span {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
         }
 
-        @media (max-width: 980px) {
-          .assistant-layout {
+        @media (max-width: 1120px) {
+          .assistant-content {
             grid-template-columns: 1fr;
+            height: auto;
           }
 
-          .assistant-chat-shell {
-            min-height: auto;
+          .assistant-context-column {
+            overflow: visible;
+          }
+        }
+
+        @media (max-width: 860px) {
+          .assistant-sidenav {
+            position: static;
+            width: 100%;
+            border-right: none;
+            border-bottom: 1px solid rgba(66, 70, 85, 0.28);
+          }
+
+          .assistant-main-shell {
+            margin-left: 0;
+            grid-template-rows: auto minmax(0, 1fr);
+          }
+
+          .assistant-shell {
+            display: block;
+          }
+
+          .assistant-topbar,
+          .assistant-main {
+            padding-left: 18px;
+            padding-right: 18px;
+          }
+
+          .assistant-topbar {
+            height: auto;
+            min-height: 72px;
+          }
+
+          .assistant-chat-intro,
+          .assistant-messages,
+          .assistant-form-shell {
+            padding-left: 18px;
+            padding-right: 18px;
+          }
+
+          .assistant-message-row {
+            max-width: 100%;
           }
         }
       `}</style>
