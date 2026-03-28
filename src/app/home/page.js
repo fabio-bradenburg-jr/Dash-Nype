@@ -6624,10 +6624,11 @@ export default function DashboardPage() {
   const currentHour = new Date().getHours()
   const assistantGreeting =
     currentHour < 12
-      ? `Bom dia, ${userFirstName}. O que vamos mover hoje?`
+      ? `Bom dia, ${userFirstName}.`
       : currentHour < 18
-        ? `Boa tarde, ${userFirstName}. O que vamos mover hoje?`
-        : `Boa noite, ${userFirstName}. O que vamos mover hoje?`
+        ? `Boa tarde, ${userFirstName}.`
+        : `Boa noite, ${userFirstName}.`
+  const assistantGreetingPrompt = 'O que vamos fazer hoje?'
 
   const renderDashboardMetricGrid = (cards, source) => {
     if (!cards.length) return null
@@ -8070,6 +8071,9 @@ export default function DashboardPage() {
                 {activeTab === 'monday' && 'Acompanhe boards, itens, status e responsáveis do Monday a partir da configuração global da operação.'}
                 {activeTab === 'usuarios' && 'Defina quem pode visualizar dashboards, editar integrações e acessar clientes específicos.'}
               </p>
+            )}
+            {activeTab === 'assistant' && (
+              <p className="assistant-header-prompt">{assistantGreetingPrompt}</p>
             )}
           </div>
 
@@ -11323,6 +11327,14 @@ export default function DashboardPage() {
         .nav-tools-group {
           display: grid;
           gap: 10px;
+        }
+
+        .assistant-header-prompt {
+          margin-top: 10px;
+          font-size: 15px;
+          line-height: 1.45;
+          color: var(--text-secondary);
+          max-width: 680px;
         }
 
         .nav-tools-trigger {
