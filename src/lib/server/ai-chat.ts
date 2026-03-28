@@ -3,12 +3,149 @@ import { fetchMetaJson } from '@/lib/server/meta-fetch'
 import { buildMetaInsightsFilterExpression } from '@/lib/server/meta-date-range'
 import { getWorkspaceMetaConnection } from '@/lib/server/meta-connection'
 import { extractMetaCampaignMetrics } from '@/lib/meta-metrics'
+import type {
+  AiSettings,
+  AssistantContextSnapshot,
+  AssistantMessage,
+  AssistantReplyResult,
+} from '@/lib/types/ai'
 
-function trimTrailingSlash(value) {
+type LooseRecord = Record<string, any>
+
+interface ConversationMessage {
+  role: 'system' | 'assistant' | 'user'
+  content: string
+}
+
+interface AccessContextLike {
+  workspaceId?: string | null
+  role?: string | null
+}
+
+interface ClientLike {
+  id?: string
+  name?: string
+  metaAdAccountId?: string
+  googleSheetsUrl?: string
+  rdPipelineId?: string
+  rdQualifiedStages?: string[]
+  funnelSteps?: string[]
+}
+
+interface ClientGroupLike {
+  id?: string
+  name?: string
+  clientIds?: string[]
+}
+
+interface DashboardStateLike {
+  clients?: ClientLike[]
+  activeClientId?: string
+  clientGroups?: ClientGroupLike[]
+  globalIntegrations?: LooseRecord
+}
+
+interface CampaignSnapshotCampaign {
+  id: string
+  name: string
+  status: string
+  objective: string
+  health: 'positive' | 'attention' | 'urgent'
+  spend: number
+  impressions: number
+  clicks: number
+  ctr: number
+  cpc: number
+  purchases: number
+  leads: number
+  messages: number
+  totalConversions: number
+  costPerPurchase: number
+  costPerLead: number
+  costPerMessage: number
+  roas: number
+  primaryConversionType: string
+}
+
+interface CampaignSnapshot {
+  period: string
+  campaignCount: number
+  totals: {
+    spend: number
+    purchases: number
+    leads: number
+    messages: number
+    conversions: number
+  }
+  campaigns: CampaignSnapshotCampaign[]
+}
+
+interface BusinessContext {
+  workspaceId: string
+  role: string
+  focus: {
+    mode: 'operation' | 'clients' | 'general'
+    label: string
+  }
+  activeClientId: string
+  selectedClient: null | {
+    id?: string
+    name?: string
+    metaAdAccountId: string
+    googleSheetsUrl: string
+    rdPipelineId: string
+    rdQualifiedStages: string[]
+    funnelSteps: string[]
+    integrations: {
+      hasMetaAdAccount: boolean
+      hasSheets: boolean
+      hasRdPipeline: boolean
+    }
+  }
+  clients: Array<{
+    id?: string
+    name?: string
+    metaAdAccountId: string
+    hasSheets: boolean
+    hasRdPipeline: boolean
+  }>
+  clientGroups: Array<{
+    id?: string
+    name?: string
+    clientCount: number
+  }>
+  globalIntegrations: {
+    aiProvider: string
+    metaConnectionMode: string
+    hasMetaToken: boolean
+    hasRdToken: boolean
+    hasClickUpToken: boolean
+    hasMondayToken: boolean
+  }
+  campaignSnapshot: CampaignSnapshot | null
+  contextSnapshot: AssistantContextSnapshot | null
+}
+
+interface ChatRequestConfig {
+  config: Partial<AiSettings> | LooseRecord | null | undefined
+  adminSupabase: unknown
+  dashboardState: DashboardStateLike
+  accessContext: AccessContextLike
+  clientId: string
+  contextSnapshot: AssistantContextSnapshot | null
+  messages: AssistantMessage[]
+}
+
+interface ProviderRequestResult {
+  content: string
+  usage: unknown
+}
+
+function trimTrailingSlash(value: unknown): string {
   return String(value || '').replace(/\/+$/, '')
 }
 
-function normalizeMessageContent(content) {
+function normalizeMessageContent(content: unknown): string {
   if (typeof content === 'string') return content.trim()
 
   if (Array.isArray(content)) {
@@ -29,18 +166,19 @@ function normalizeMessageContent(content) {
   }
 
   if (content && typeof content === 'object') {
-    if (Array.isArray(content.content)) return normalizeMessageContent(content.content)
-    if (typeof content.text === 'string') return content.text.trim()
-    if (content.text && typeof content.text?.value === 'string') return content.text.value.trim()
-    if (typeof content.content === 'string') return content.content.trim()
-    if (typeof content.value === 'string') return content.value.trim()
-    if (typeof content.output_text === 'string') return content.output_text.trim()
+    const contentRecord = content as LooseRecord
+    if (Array.isArray(contentRecord.content)) return normalizeMessageContent(contentRecord.content)
+    if (typeof contentRecord.text === 'string') return contentRecord.text.trim()
+    if (contentRecord.text && typeof contentRecord.text?.value === 'string') return contentRecord.text.value.trim()
+    if (typeof contentRecord.content === 'string') return contentRecord.content.trim()
+    if (typeof contentRecord.value === 'string') return contentRecord.value.trim()
+    if (typeof contentRecord.output_text === 'string') return contentRecord.output_text.trim()
   }
 
   return ''
 }
 
-function collectTextSnippets(value, depth = 0) {
+function collectTextSnippets(value: unknown, depth = 0): string[] {
   if (depth > 6 || value == null) return []
   if (typeof value === 'string') {
     const normalized = value.trim()
@@ -60,7 +198,7 @@ function collectTextSnippets(value, depth = 0) {
   return []
 }
 
-function formatProviderErrorMessage(errorBody, fallbackMessage) {
+function formatProviderErrorMessage(errorBody: LooseRecord | null | undefined, fallbackMessage: string): string {
   const nestedError = errorBody?.error
   const providerMessage =
     (typeof nestedError === 'string' ? nestedError : nestedError?.message) ||
@@ -73,7 +211,7 @@ function formatProviderErrorMessage(errorBody, fallbackMessage) {
   return String(providerMessage || fallbackMessage).trim()
 }
 
-function shouldRetryWithCompatiblePayload(errorBody) {
+function shouldRetryWithCompatiblePayload(errorBody: LooseRecord | null | undefined): boolean {
   const message = formatProviderErrorMessage(errorBody, '').toLowerCase()
 
   return (
@@ -85,7 +223,7 @@ function shouldRetryWithCompatiblePayload(errorBody) {
   )
 }
 
-async function postChatCompletion(baseUrl, apiKey, body) {
+async function postChatCompletion(baseUrl: string, apiKey: string, body: LooseRecord) {
   const response = await fetch(`${trimTrailingSlash(baseUrl)}/chat/completions`, {
     method: 'POST',
     headers: {
@@ -101,7 +239,7 @@ async function postChatCompletion(baseUrl, apiKey, body) {
   return { response, responseBody }
 }
 
-async function postOpenAiResponse(baseUrl, apiKey, body) {
+async function postOpenAiResponse(baseUrl: string, apiKey: string, body: LooseRecord) {
   const response = await fetch(`${trimTrailingSlash(baseUrl)}/responses`, {
     method: 'POST',
     headers: {
@@ -117,7 +255,7 @@ async function postOpenAiResponse(baseUrl, apiKey, body) {
   return { response, responseBody }
 }
 
-async function getOpenAiResponse(baseUrl, apiKey, responseId) {
+async function getOpenAiResponse(baseUrl: string, apiKey: string, responseId: string) {
   const response = await fetch(`${trimTrailingSlash(baseUrl)}/responses/${responseId}`, {
     method: 'GET',
     headers: {
@@ -132,7 +270,7 @@ async function getOpenAiResponse(baseUrl, apiKey, responseId) {
   return { response, responseBody }
 }
 
-async function postAnthropicMessage(baseUrl, apiKey, body) {
+async function postAnthropicMessage(baseUrl: string, apiKey: string, body: LooseRecord) {
   const response = await fetch(`${trimTrailingSlash(baseUrl)}/messages`, {
     method: 'POST',
     headers: {
@@ -149,7 +287,7 @@ async function postAnthropicMessage(baseUrl, apiKey, body) {
   return { response, responseBody }
 }
 
-function extractOpenAiCompatibleContent(responseBody) {
+function extractOpenAiCompatibleContent(responseBody: LooseRecord | null | undefined): string {
   const choices = Array.isArray(responseBody?.choices) ? responseBody.choices : []
   const choicesContent = choices
     .map((choice) =>
@@ -173,7 +311,7 @@ function extractOpenAiCompatibleContent(responseBody) {
   )
 }
 
-function extractOpenAiResponsesContent(responseBody) {
+function extractOpenAiResponsesContent(responseBody: LooseRecord | null | undefined): string {
   return (
     normalizeMessageContent(responseBody?.output_text) ||
     normalizeMessageContent(responseBody?.output?.[0]?.content) ||
@@ -184,7 +322,7 @@ function extractOpenAiResponsesContent(responseBody) {
   )
 }
 
-function extractAnthropicContent(responseBody) {
+function extractAnthropicContent(responseBody: LooseRecord | null | undefined): string {
   if (!Array.isArray(responseBody?.content)) return ''
 
   return responseBody.content
@@ -193,27 +331,32 @@ function extractAnthropicContent(responseBody) {
     .trim()
 }
 
-function sleep(ms) {
+function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
-function sanitizeConversationMessages(messages) {
+function sanitizeConversationMessages(messages: AssistantMessage[]): ConversationMessage[] {
   if (!Array.isArray(messages)) return []
 
   return messages
     .map((message) => ({
-      role: message?.role === 'assistant' ? 'assistant' : 'user',
+      role: (message?.role === 'assistant' ? 'assistant' : 'user') as ConversationMessage['role'],
       content: String(message?.content || '').trim(),
     }))
     .filter((message) => message.content)
     .slice(-12)
 }
 
-function normalizeFocusMode(value) {
-  return ['operation', 'clients', 'general'].includes(value) ? value : 'operation'
+function normalizeFocusMode(value: unknown): BusinessContext['focus']['mode'] {
+  return ['operation', 'clients', 'general'].includes(String(value || ''))
+    ? (String(value) as BusinessContext['focus']['mode'])
+    : 'operation'
 }
 
-function resolveClientMentionFromMessages(clients, messages) {
+function resolveClientMentionFromMessages(
+  clients: ClientLike[],
+  messages: AssistantMessage[]
+): ClientLike | null {
   if (!Array.isArray(clients) || !clients.length || !Array.isArray(messages) || !messages.length) return null
 
   const recentConversation = messages
@@ -234,13 +377,23 @@ function resolveClientMentionFromMessages(clients, messages) {
   return candidates[0]?.client || null
 }
 
-function normalizeCampaignHealth(metrics) {
+function normalizeCampaignHealth(metrics: LooseRecord): CampaignSnapshotCampaign['health'] {
   if ((metrics.purchases || 0) > 0 || (metrics.roas || 0) >= 2) return 'positive'
   if ((metrics.spend || 0) > 0 && (metrics.totalConversions || 0) === 0) return 'urgent'
   return 'attention'
 }
 
-async function fetchClientCampaignSnapshot({ adminSupabase, dashboardState, accessContext, selectedClient }) {
+async function fetchClientCampaignSnapshot({
+  adminSupabase,
+  dashboardState,
+  accessContext,
+  selectedClient,
+}: {
+  adminSupabase: unknown
+  dashboardState: DashboardStateLike
+  accessContext: AccessContextLike
+  selectedClient: ClientLike | null
+}): Promise<CampaignSnapshot | null> {
   if (!selectedClient?.metaAdAccountId) return null
 
   const manualToken = String(dashboardState?.globalIntegrations?.metaAccessToken || '').trim()
@@ -311,7 +464,21 @@ async function fetchClientCampaignSnapshot({ adminSupabase, dashboardState, acce
   }
 }
 
-async function buildBusinessContext({ adminSupabase, dashboardState, accessContext, clientId, contextSnapshot, messages }) {
+async function buildBusinessContext({
+  adminSupabase,
+  dashboardState,
+  accessContext,
+  clientId,
+  contextSnapshot,
+  messages,
+}: {
+  adminSupabase: unknown
+  dashboardState: DashboardStateLike
+  accessContext: AccessContextLike
+  clientId: string
+  contextSnapshot: AssistantContextSnapshot | null
+  messages: AssistantMessage[]
+}): Promise<BusinessContext> {
   const clients = Array.isArray(dashboardState?.clients) ? dashboardState.clients : []
   const focusMode = normalizeFocusMode(contextSnapshot?.focusMode)
   const mentionedClient = resolveClientMentionFromMessages(clients, messages)
@@ -384,7 +551,15 @@ async function buildBusinessContext({ adminSupabase, dashboardState, accessConte
   }
 }
 
-function buildAssistantMessages({ systemPrompt, businessContext, messages }) {
+function buildAssistantMessages({
+  systemPrompt,
+  businessContext,
+  messages,
+}: {
+  systemPrompt: string
+  businessContext: BusinessContext
+  messages: AssistantMessage[]
+}): ConversationMessage[] {
   const conversationMessages = sanitizeConversationMessages(messages)
 
   return [
@@ -406,7 +581,7 @@ function buildAssistantMessages({ systemPrompt, businessContext, messages }) {
   ]
 }
 
-function buildAssistantSystemPrompt(aiDashboardPrompt) {
+function buildAssistantSystemPrompt(aiDashboardPrompt: string): string {
   const dashboardPrompt = resolveAiDashboardPromptText(aiDashboardPrompt)
 
   return [
@@ -426,7 +601,10 @@ function buildAssistantSystemPrompt(aiDashboardPrompt) {
   ].join('\n')
 }
 
-async function requestOpenAiChat(normalizedConfig, messages) {
+async function requestOpenAiChat(
+  normalizedConfig: AiSettings,
+  messages: ConversationMessage[]
+): Promise<ProviderRequestResult> {
   const attemptBodies = [
     {
       model: normalizedConfig.aiModel,
@@ -538,7 +716,11 @@ async function requestOpenAiChat(normalizedConfig, messages) {
   }
 }
 
-async function requestAnthropicChat(normalizedConfig, systemPrompt, messages) {
+async function requestAnthropicChat(
+  normalizedConfig: AiSettings,
+  systemPrompt: string,
+  messages: ConversationMessage[]
+): Promise<ProviderRequestResult> {
   const userMessage = messages
     .filter((message) => message.role !== 'system')
     .map((message) => `${message.role === 'assistant' ? 'Assistente' : 'Usuario'}:\n${message.content}`)
@@ -597,11 +779,21 @@ async function requestAnthropicChat(normalizedConfig, systemPrompt, messages) {
   }
 }
 
-export function resolveAssistantAiConfig(globalIntegrations) {
+export function resolveAssistantAiConfig(
+  globalIntegrations: Partial<AiSettings> | LooseRecord | null | undefined
+): AiSettings {
   return normalizeAiSettings(globalIntegrations)
 }
 
-export async function requestAssistantReply({ config, adminSupabase, dashboardState, accessContext, clientId, contextSnapshot, messages }) {
+export async function requestAssistantReply({
+  config,
+  adminSupabase,
+  dashboardState,
+  accessContext,
+  clientId,
+  contextSnapshot,
+  messages,
+}: ChatRequestConfig): Promise<AssistantReplyResult> {
   const normalizedConfig = normalizeAiSettings(config)
 
   if (!normalizedConfig.aiAnalysisEnabled) {

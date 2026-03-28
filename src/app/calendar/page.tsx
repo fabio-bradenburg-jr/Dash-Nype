@@ -1,24 +1,105 @@
 'use client'
 
+import type { ChangeEvent, FormEvent, MouseEvent } from 'react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useUser } from '@/lib/contexts/UserContext'
 
-function addDays(date, days) {
+interface CalendarPageProps {
+  embeddedOverride?: boolean | null
+}
+
+interface CalendarConnectionState {
+  connected: boolean
+  email: string
+  selectedCalendarId: string
+  selectedCalendarSummary: string
+}
+
+interface CalendarItem {
+  id: string
+  summary: string
+}
+
+interface CalendarRange {
+  from: string
+  to: string
+}
+
+interface CalendarEventItem {
+  id: string
+  summary: string
+  description: string
+  location: string
+  attendees: string[]
+  allDay: boolean
+  meetLink?: string
+  htmlLink?: string
+  startDateTime?: string
+  endDateTime?: string
+  startDate?: string
+  endDate?: string
+}
+
+interface EventFormState {
+  id: string
+  summary: string
+  description: string
+  location: string
+  attendees: string
+  allDay: boolean
+  withMeet: boolean
+  startDateTime: string
+  endDateTime: string
+  startDate: string
+  endDate: string
+}
+
+interface CalendarConnectionPayload {
+  connection?: Partial<CalendarConnectionState> | null
+  setupRequired?: boolean
+  error?: string
+}
+
+interface CalendarListPayload {
+  calendars?: CalendarItem[]
+  selectedCalendarId?: string
+  error?: string
+}
+
+interface CalendarEventsPayload {
+  events?: CalendarEventItem[]
+  error?: string
+}
+
+function normalizeConnectionState(
+  value?: Partial<CalendarConnectionState> | null
+): CalendarConnectionState | null {
+  if (!value) return null
+
+  return {
+    connected: Boolean(value.connected),
+    email: String(value.email || ''),
+    selectedCalendarId: String(value.selectedCalendarId || 'primary'),
+    selectedCalendarSummary: String(value.selectedCalendarSummary || ''),
+  }
+}
+
+function addDays(date: Date, days: number): Date {
   const nextDate = new Date(date)
   nextDate.setDate(nextDate.getDate() + days)
   return nextDate
 }
 
-function toDateInputValue(date) {
+function toDateInputValue(date: Date): string {
   return new Date(date.getTime() - date.getTimezoneOffset() * 60 * 1000).toISOString().slice(0, 10)
 }
 
-function toDateTimeInputValue(date) {
+function toDateTimeInputValue(date: Date): string {
   return new Date(date.getTime() - date.getTimezoneOffset() * 60 * 1000).toISOString().slice(0, 16)
 }
 
-function defaultEventForm() {
+function defaultEventForm(): EventFormState {
   const now = new Date()
   const startDate = addDays(now, 1)
   startDate.setHours(9, 0, 0, 0)
@@ -39,7 +120,7 @@ function defaultEventForm() {
   }
 }
 
-function buildInitialRange() {
+function buildInitialRange(): CalendarRange {
   const today = new Date()
   const end = addDays(today, 30)
 
@@ -49,7 +130,7 @@ function buildInitialRange() {
   }
 }
 
-function formatEventDate(event) {
+function formatEventDate(event: CalendarEventItem): string {
   if (event.allDay) {
     return `${event.startDate}${event.endDate && event.endDate !== event.startDate ? ` ate ${event.endDate}` : ''}`
   }
@@ -67,7 +148,7 @@ function formatEventDate(event) {
   return end ? `${start} - ${end}` : start
 }
 
-function createEventFormFromEvent(event) {
+function createEventFormFromEvent(event: CalendarEventItem): EventFormState {
   return {
     id: event.id,
     summary: event.summary || '',
@@ -83,26 +164,26 @@ function createEventFormFromEvent(event) {
   }
 }
 
-export default function CalendarPage({ embeddedOverride = null } = {}) {
+export default function CalendarPage({ embeddedOverride = null }: CalendarPageProps = {}) {
   const { access, loading } = useUser()
   const canViewDashboard = access?.canViewDashboard !== false
   const canEditCalendar = Boolean(access?.canEditIntegrations)
   const [detectedEmbedded, setDetectedEmbedded] = useState(false)
   const isEmbedded = embeddedOverride ?? detectedEmbedded
 
-  const [connection, setConnection] = useState(null)
+  const [connection, setConnection] = useState<CalendarConnectionState | null>(null)
   const [setupRequired, setSetupRequired] = useState(false)
-  const [calendars, setCalendars] = useState([])
+  const [calendars, setCalendars] = useState<CalendarItem[]>([])
   const [selectedCalendarId, setSelectedCalendarId] = useState('primary')
-  const [range, setRange] = useState(buildInitialRange)
-  const [events, setEvents] = useState([])
+  const [range, setRange] = useState<CalendarRange>(buildInitialRange)
+  const [events, setEvents] = useState<CalendarEventItem[]>([])
   const [isLoadingConnection, setIsLoadingConnection] = useState(true)
   const [isLoadingEvents, setIsLoadingEvents] = useState(false)
   const [isSavingEvent, setIsSavingEvent] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
   const [successMessage, setSuccessMessage] = useState('')
   const [isEventModalOpen, setIsEventModalOpen] = useState(false)
-  const [eventForm, setEventForm] = useState(defaultEventForm)
+  const [eventForm, setEventForm] = useState<EventFormState>(defaultEventForm)
 
   const selectedCalendarSummary = useMemo(
     () => calendars.find((calendar) => calendar.id === selectedCalendarId)?.summary || connection?.selectedCalendarSummary || 'Calendário principal',
@@ -115,20 +196,24 @@ export default function CalendarPage({ embeddedOverride = null } = {}) {
       setErrorMessage('')
 
       const response = await fetch('/api/google-calendar/connection', { cache: 'no-store' })
-      const data = await response.json()
+      const data = (await response.json()) as CalendarConnectionPayload
 
       if (!response.ok) {
         throw new Error(data.error || 'Não foi possível carregar a conexão do Google Calendar.')
       }
 
-      setConnection(data.connection || null)
+      setConnection(normalizeConnectionState(data.connection))
       setSetupRequired(Boolean(data.setupRequired))
       setSelectedCalendarId(data.connection?.selectedCalendarId || 'primary')
       if (data.setupRequired && data.error) {
         setErrorMessage(data.error)
       }
     } catch (error) {
-      setErrorMessage(error.message || 'Não foi possível carregar a conexão do Google Calendar.')
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : 'Não foi possível carregar a conexão do Google Calendar.'
+      )
     } finally {
       setIsLoadingConnection(false)
     }
@@ -137,7 +222,7 @@ export default function CalendarPage({ embeddedOverride = null } = {}) {
   const loadCalendars = useCallback(async () => {
     try {
       const response = await fetch('/api/google-calendar/calendars', { cache: 'no-store' })
-      const data = await response.json()
+      const data = (await response.json()) as CalendarListPayload
 
       if (!response.ok) {
         throw new Error(data.error || 'Não foi possível carregar os calendários.')
@@ -146,7 +231,9 @@ export default function CalendarPage({ embeddedOverride = null } = {}) {
       setCalendars(Array.isArray(data.calendars) ? data.calendars : [])
       setSelectedCalendarId(data.selectedCalendarId || connection?.selectedCalendarId || 'primary')
     } catch (error) {
-      setErrorMessage(error.message || 'Não foi possível carregar os calendários.')
+      setErrorMessage(
+        error instanceof Error ? error.message : 'Não foi possível carregar os calendários.'
+      )
     }
   }, [connection?.selectedCalendarId])
 
@@ -167,7 +254,7 @@ export default function CalendarPage({ embeddedOverride = null } = {}) {
       })
 
       const response = await fetch(`/api/google-calendar/events?${params.toString()}`, { cache: 'no-store' })
-      const data = await response.json()
+      const data = (await response.json()) as CalendarEventsPayload
 
       if (!response.ok) {
         throw new Error(data.error || 'Não foi possível carregar os eventos.')
@@ -175,7 +262,9 @@ export default function CalendarPage({ embeddedOverride = null } = {}) {
 
       setEvents(Array.isArray(data.events) ? data.events : [])
     } catch (error) {
-      setErrorMessage(error.message || 'Não foi possível carregar os eventos.')
+      setErrorMessage(
+        error instanceof Error ? error.message : 'Não foi possível carregar os eventos.'
+      )
     } finally {
       setIsLoadingEvents(false)
     }
@@ -250,7 +339,7 @@ export default function CalendarPage({ embeddedOverride = null } = {}) {
     }
   }
 
-  const handleCalendarSelectionChange = async (calendarId) => {
+  const handleCalendarSelectionChange = async (calendarId: string) => {
     const calendar = calendars.find((item) => item.id === calendarId)
     setSelectedCalendarId(calendarId)
 
@@ -265,16 +354,20 @@ export default function CalendarPage({ embeddedOverride = null } = {}) {
           calendarSummary: calendar?.summary || 'Calendário principal',
         }),
       })
-      const data = await response.json()
+      const data = (await response.json()) as CalendarConnectionPayload
 
       if (!response.ok) {
         throw new Error(data.error || 'Não foi possível atualizar o calendário ativo.')
       }
 
-      setConnection(data.connection || null)
+      setConnection(normalizeConnectionState(data.connection))
       setSuccessMessage('Calendário ativo atualizado.')
     } catch (error) {
-      setErrorMessage(error.message || 'Não foi possível atualizar o calendário ativo.')
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : 'Não foi possível atualizar o calendário ativo.'
+      )
     }
   }
 
@@ -283,12 +376,12 @@ export default function CalendarPage({ embeddedOverride = null } = {}) {
     setIsEventModalOpen(true)
   }
 
-  const handleOpenEditEvent = (event) => {
+  const handleOpenEditEvent = (event: CalendarEventItem) => {
     setEventForm(createEventFormFromEvent(event))
     setIsEventModalOpen(true)
   }
 
-  const handleSaveEvent = async (submitEvent) => {
+  const handleSaveEvent = async (submitEvent: FormEvent<HTMLFormElement>) => {
     submitEvent.preventDefault()
 
     try {
@@ -312,7 +405,7 @@ export default function CalendarPage({ embeddedOverride = null } = {}) {
         }),
       })
 
-      const data = await response.json()
+      const data = (await response.json()) as { error?: string }
 
       if (!response.ok) {
         throw new Error(data.error || 'Não foi possível salvar o evento.')
@@ -322,19 +415,21 @@ export default function CalendarPage({ embeddedOverride = null } = {}) {
       setSuccessMessage(eventForm.id ? 'Evento atualizado com sucesso.' : 'Evento criado com sucesso.')
       await loadEvents()
     } catch (error) {
-      setErrorMessage(error.message || 'Não foi possível salvar o evento.')
+      setErrorMessage(
+        error instanceof Error ? error.message : 'Não foi possível salvar o evento.'
+      )
     } finally {
       setIsSavingEvent(false)
     }
   }
 
-  const handleDeleteEvent = async (eventId) => {
+  const handleDeleteEvent = async (eventId: string) => {
     try {
       setErrorMessage('')
       const response = await fetch(`/api/google-calendar/events/${eventId}?calendarId=${encodeURIComponent(selectedCalendarId)}`, {
         method: 'DELETE',
       })
-      const data = await response.json()
+      const data = (await response.json()) as { error?: string }
 
       if (!response.ok) {
         throw new Error(data.error || 'Não foi possível excluir o evento.')
@@ -343,7 +438,9 @@ export default function CalendarPage({ embeddedOverride = null } = {}) {
       setSuccessMessage('Evento excluído com sucesso.')
       await loadEvents()
     } catch (error) {
-      setErrorMessage(error.message || 'Não foi possível excluir o evento.')
+      setErrorMessage(
+        error instanceof Error ? error.message : 'Não foi possível excluir o evento.'
+      )
     }
   }
 
@@ -560,7 +657,10 @@ export default function CalendarPage({ embeddedOverride = null } = {}) {
 
       {isEventModalOpen && (
         <div className="modal-overlay" onClick={() => setIsEventModalOpen(false)}>
-          <div className="modal-card glass-panel" onClick={(event) => event.stopPropagation()}>
+          <div
+            className="modal-card glass-panel"
+            onClick={(event: MouseEvent<HTMLDivElement>) => event.stopPropagation()}
+          >
             <div className="modal-header">
               <div>
                 <h3>{eventForm.id ? 'Editar evento' : 'Novo evento'}</h3>
@@ -578,7 +678,9 @@ export default function CalendarPage({ embeddedOverride = null } = {}) {
                   <input
                     type="text"
                     value={eventForm.summary}
-                    onChange={(event) => setEventForm((current) => ({ ...current, summary: event.target.value }))}
+                    onChange={(event: ChangeEvent<HTMLInputElement>) =>
+                      setEventForm((current) => ({ ...current, summary: event.target.value }))
+                    }
                     placeholder="Ex.: Reunião comercial"
                     required
                   />
@@ -588,7 +690,9 @@ export default function CalendarPage({ embeddedOverride = null } = {}) {
                   <input
                     type="text"
                     value={eventForm.location}
-                    onChange={(event) => setEventForm((current) => ({ ...current, location: event.target.value }))}
+                    onChange={(event: ChangeEvent<HTMLInputElement>) =>
+                      setEventForm((current) => ({ ...current, location: event.target.value }))
+                    }
                     placeholder="Presencial ou remoto"
                   />
                 </div>
@@ -600,7 +704,9 @@ export default function CalendarPage({ embeddedOverride = null } = {}) {
                   <input
                     type="text"
                     value={eventForm.attendees}
-                    onChange={(event) => setEventForm((current) => ({ ...current, attendees: event.target.value }))}
+                    onChange={(event: ChangeEvent<HTMLInputElement>) =>
+                      setEventForm((current) => ({ ...current, attendees: event.target.value }))
+                    }
                     placeholder="email1@empresa.com, email2@empresa.com"
                   />
                 </div>
@@ -609,7 +715,9 @@ export default function CalendarPage({ embeddedOverride = null } = {}) {
                     <input
                       type="checkbox"
                       checked={eventForm.allDay}
-                      onChange={(event) => setEventForm((current) => ({ ...current, allDay: event.target.checked }))}
+                      onChange={(event: ChangeEvent<HTMLInputElement>) =>
+                        setEventForm((current) => ({ ...current, allDay: event.target.checked }))
+                      }
                     />
                     Evento de dia inteiro
                   </label>
@@ -617,7 +725,9 @@ export default function CalendarPage({ embeddedOverride = null } = {}) {
                     <input
                       type="checkbox"
                       checked={eventForm.withMeet}
-                      onChange={(event) => setEventForm((current) => ({ ...current, withMeet: event.target.checked }))}
+                      onChange={(event: ChangeEvent<HTMLInputElement>) =>
+                        setEventForm((current) => ({ ...current, withMeet: event.target.checked }))
+                      }
                     />
                     Gerar Google Meet
                   </label>
@@ -631,7 +741,9 @@ export default function CalendarPage({ embeddedOverride = null } = {}) {
                     <input
                       type="date"
                       value={eventForm.startDate}
-                      onChange={(event) => setEventForm((current) => ({ ...current, startDate: event.target.value }))}
+                      onChange={(event: ChangeEvent<HTMLInputElement>) =>
+                        setEventForm((current) => ({ ...current, startDate: event.target.value }))
+                      }
                       required
                     />
                   </div>
@@ -640,7 +752,9 @@ export default function CalendarPage({ embeddedOverride = null } = {}) {
                     <input
                       type="date"
                       value={eventForm.endDate}
-                      onChange={(event) => setEventForm((current) => ({ ...current, endDate: event.target.value }))}
+                      onChange={(event: ChangeEvent<HTMLInputElement>) =>
+                        setEventForm((current) => ({ ...current, endDate: event.target.value }))
+                      }
                       required
                     />
                   </div>
@@ -652,7 +766,9 @@ export default function CalendarPage({ embeddedOverride = null } = {}) {
                     <input
                       type="datetime-local"
                       value={eventForm.startDateTime}
-                      onChange={(event) => setEventForm((current) => ({ ...current, startDateTime: event.target.value }))}
+                      onChange={(event: ChangeEvent<HTMLInputElement>) =>
+                        setEventForm((current) => ({ ...current, startDateTime: event.target.value }))
+                      }
                       required
                     />
                   </div>
@@ -661,7 +777,9 @@ export default function CalendarPage({ embeddedOverride = null } = {}) {
                     <input
                       type="datetime-local"
                       value={eventForm.endDateTime}
-                      onChange={(event) => setEventForm((current) => ({ ...current, endDateTime: event.target.value }))}
+                      onChange={(event: ChangeEvent<HTMLInputElement>) =>
+                        setEventForm((current) => ({ ...current, endDateTime: event.target.value }))
+                      }
                       required
                     />
                   </div>
@@ -672,7 +790,9 @@ export default function CalendarPage({ embeddedOverride = null } = {}) {
                 <label>Descrição</label>
                 <textarea
                   value={eventForm.description}
-                  onChange={(event) => setEventForm((current) => ({ ...current, description: event.target.value }))}
+                  onChange={(event: ChangeEvent<HTMLTextAreaElement>) =>
+                    setEventForm((current) => ({ ...current, description: event.target.value }))
+                  }
                   placeholder="Pauta, observações ou contexto da reunião"
                   rows={4}
                 />

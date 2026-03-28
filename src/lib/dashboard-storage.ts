@@ -1,8 +1,19 @@
 import { DEFAULT_AI_SETTINGS, normalizeAiSettings } from '@/lib/ai-config'
+import type {
+  ClientGroupRecord,
+  ClientRecord,
+  DashboardIntegrations,
+  DashboardMetricLayout,
+  DashboardPreferences,
+  DashboardTemplate,
+} from '@/lib/types/dashboard'
 
 export const DASHBOARD_STORAGE_KEY = 'nype-dashboard-preferences'
 
-export const DEFAULT_INTEGRATIONS = {
+type DashboardTemplateOverrides = Partial<DashboardTemplate>
+type ClientRecordOverrides = Partial<ClientRecord> & { integrations?: Partial<DashboardIntegrations> }
+
+export const DEFAULT_INTEGRATIONS: DashboardIntegrations = {
   metaAccessToken: '',
   metaConnectionMode: 'manual',
   metaAdAccountId: '',
@@ -17,7 +28,7 @@ export const DEFAULT_INTEGRATIONS = {
   ...DEFAULT_AI_SETTINGS,
 }
 
-export const DEFAULT_PREFERENCES = {
+export const DEFAULT_PREFERENCES: DashboardPreferences = {
   themeColor: 'blue',
   metric1: 'spend',
   metric2: 'roas',
@@ -42,29 +53,32 @@ export const DEFAULT_PREFERENCES = {
 }
 
 export const DEFAULT_DASHBOARD_TEMPLATE_NAME = 'Principal'
-const DEFAULT_META_DASHBOARD_METRIC_KEYS = []
-const DEFAULT_META_DASHBOARD_METRIC_LAYOUTS = []
+const DEFAULT_META_DASHBOARD_METRIC_KEYS: string[] = []
+const DEFAULT_META_DASHBOARD_METRIC_LAYOUTS: DashboardMetricLayout[] = []
 export const DEFAULT_META_CAMPAIGN_TABLE_COLUMN_KEYS = ['spend', 'totalConversions', 'cpa', 'roas']
-const DEFAULT_RD_DASHBOARD_METRIC_KEYS = []
-const DEFAULT_RD_DASHBOARD_METRIC_LAYOUTS = []
-const DEFAULT_SHEETS_DASHBOARD_METRIC_KEYS = []
-const DEFAULT_SHEETS_DASHBOARD_METRIC_LAYOUTS = []
+const DEFAULT_RD_DASHBOARD_METRIC_KEYS: string[] = []
+const DEFAULT_RD_DASHBOARD_METRIC_LAYOUTS: DashboardMetricLayout[] = []
+const DEFAULT_SHEETS_DASHBOARD_METRIC_KEYS: string[] = []
+const DEFAULT_SHEETS_DASHBOARD_METRIC_LAYOUTS: DashboardMetricLayout[] = []
 
-function createRecordId(prefix) {
+function createRecordId(prefix: string): string {
   return globalThis.crypto?.randomUUID?.() || `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2, 10)}`
 }
 
-function normalizeTemplateMetricKeys(metricKeys) {
+function normalizeTemplateMetricKeys(metricKeys: unknown): string[] {
   if (!Array.isArray(metricKeys)) return []
   return Array.from(new Set(metricKeys.filter((metricKey) => typeof metricKey === 'string' && metricKey.trim())))
 }
 
-function normalizeMetaCampaignTableColumnKeys(columnKeys) {
+function normalizeMetaCampaignTableColumnKeys(columnKeys: unknown): string[] {
   const normalized = normalizeTemplateMetricKeys(columnKeys)
   return normalized.length ? normalized : [...DEFAULT_META_CAMPAIGN_TABLE_COLUMN_KEYS]
 }
 
-function createDashboardMetricLayout(metricKey, overrides = {}) {
+function createDashboardMetricLayout(
+  metricKey: string,
+  overrides: Partial<DashboardMetricLayout> = {}
+): DashboardMetricLayout {
   return {
     id: overrides.id || createRecordId('dashboard-card'),
     metricKey,
@@ -72,7 +86,10 @@ function createDashboardMetricLayout(metricKey, overrides = {}) {
   }
 }
 
-function normalizeDashboardMetricLayouts(layouts, fallbackMetricKeys = []) {
+function normalizeDashboardMetricLayouts(
+  layouts: unknown,
+  fallbackMetricKeys: string[] = []
+): DashboardMetricLayout[] {
   const normalizedLayouts = Array.isArray(layouts)
     ? layouts
         .filter((item) => typeof item?.metricKey === 'string' && item.metricKey.trim())
@@ -96,7 +113,7 @@ function normalizeDashboardMetricLayouts(layouts, fallbackMetricKeys = []) {
   return normalizeTemplateMetricKeys(fallbackMetricKeys).map((metricKey) => createDashboardMetricLayout(metricKey))
 }
 
-export function createDashboardTemplate(overrides = {}) {
+export function createDashboardTemplate(overrides: DashboardTemplateOverrides = {}): DashboardTemplate {
   const metaMetricLayouts = normalizeDashboardMetricLayouts(
     overrides.metaMetricLayouts,
     overrides.metaMetricKeys || DEFAULT_META_DASHBOARD_METRIC_KEYS
@@ -113,13 +130,6 @@ export function createDashboardTemplate(overrides = {}) {
   return {
     id: createRecordId('dashboard-template'),
     name: DEFAULT_DASHBOARD_TEMPLATE_NAME,
-    metaMetricKeys: metaMetricLayouts.map((item) => item.metricKey),
-    metaCampaignTableColumnKeys: normalizeMetaCampaignTableColumnKeys(overrides.metaCampaignTableColumnKeys),
-    rdMetricKeys: rdMetricLayouts.map((item) => item.metricKey),
-    sheetsMetricKeys: sheetsMetricLayouts.map((item) => item.metricKey),
-    metaMetricLayouts,
-    rdMetricLayouts,
-    sheetsMetricLayouts,
     ...overrides,
     metaMetricKeys: metaMetricLayouts.map((item) => item.metricKey),
     metaCampaignTableColumnKeys: normalizeMetaCampaignTableColumnKeys(overrides.metaCampaignTableColumnKeys),
@@ -131,12 +141,12 @@ export function createDashboardTemplate(overrides = {}) {
   }
 }
 
-function normalizeClientGroupClientIds(clientIds) {
+function normalizeClientGroupClientIds(clientIds: unknown): string[] {
   if (!Array.isArray(clientIds)) return []
   return Array.from(new Set(clientIds.filter((clientId) => typeof clientId === 'string' && clientId.trim())))
 }
 
-export function createClientGroupRecord(overrides = {}) {
+export function createClientGroupRecord(overrides: Partial<ClientGroupRecord> = {}): ClientGroupRecord {
   return {
     id: overrides.id || createRecordId('client-group'),
     name: String(overrides.name || 'Novo grupo').trim() || 'Novo grupo',
@@ -144,7 +154,7 @@ export function createClientGroupRecord(overrides = {}) {
   }
 }
 
-export function normalizeClientGroupRecord(group) {
+export function normalizeClientGroupRecord(group: Partial<ClientGroupRecord> | null | undefined): ClientGroupRecord {
   return {
     id: group?.id || createRecordId('client-group'),
     name: String(group?.name || 'Novo grupo').trim() || 'Novo grupo',
@@ -152,7 +162,10 @@ export function normalizeClientGroupRecord(group) {
   }
 }
 
-export function normalizeDashboardTemplate(template, fallbackName = DEFAULT_DASHBOARD_TEMPLATE_NAME) {
+export function normalizeDashboardTemplate(
+  template: Partial<DashboardTemplate> | null | undefined,
+  fallbackName = DEFAULT_DASHBOARD_TEMPLATE_NAME
+): DashboardTemplate {
   const metaMetricLayouts = normalizeDashboardMetricLayouts(
     template?.metaMetricLayouts,
     template?.metaMetricKeys || DEFAULT_META_DASHBOARD_METRIC_KEYS
@@ -179,7 +192,7 @@ export function normalizeDashboardTemplate(template, fallbackName = DEFAULT_DASH
   }
 }
 
-function normalizeClientDashboardTemplates(client) {
+function normalizeClientDashboardTemplates(client: ClientRecordOverrides) {
   const rawTemplates = Array.isArray(client?.dashboardTemplates) ? client.dashboardTemplates : []
   const dashboardTemplates = rawTemplates.length
     ? rawTemplates.map((template, index) =>
@@ -197,7 +210,7 @@ function normalizeClientDashboardTemplates(client) {
   }
 }
 
-export function createClientRecord(overrides = {}) {
+export function createClientRecord(overrides: ClientRecordOverrides = {}): ClientRecord {
   const { dashboardTemplates, activeDashboardTemplateId } = normalizeClientDashboardTemplates(overrides)
   const normalizedAiSettings = normalizeAiSettings(overrides.integrations || {})
 
@@ -211,17 +224,12 @@ export function createClientRecord(overrides = {}) {
     tiktokAdsAccountId: '',
     linkedInAdsAccountId: '',
     googleSheetsUrl: '',
-    googleSheetsHeaderRow: 1,
-    googleSheetsStatusColumn: '',
     rdStationAccountId: '',
     rdPipelineId: '',
     salesforceAccountId: '',
     agendorAccountId: '',
     rdQualifiedStages: [],
     funnelSteps: ['impressions', 'clicks', 'leads', 'purchases'],
-    integrations: { ...DEFAULT_INTEGRATIONS },
-    dashboardTemplates,
-    activeDashboardTemplateId,
     ...overrides,
     googleSheetsHeaderRow: Number.isFinite(Number(overrides.googleSheetsHeaderRow)) && Number(overrides.googleSheetsHeaderRow) > 0
       ? Number(overrides.googleSheetsHeaderRow)
@@ -237,7 +245,7 @@ export function createClientRecord(overrides = {}) {
   }
 }
 
-export function loadDashboardPreferences() {
+export function loadDashboardPreferences(): DashboardPreferences {
   if (typeof window === 'undefined') {
     return DEFAULT_PREFERENCES
   }
@@ -248,7 +256,7 @@ export function loadDashboardPreferences() {
       return DEFAULT_PREFERENCES
     }
 
-    const parsed = JSON.parse(raw)
+    const parsed = JSON.parse(raw) as Partial<DashboardPreferences>
     const normalizedAiSettings = normalizeAiSettings(parsed.globalIntegrations || {})
 
     return {
@@ -272,7 +280,7 @@ export function loadDashboardPreferences() {
   }
 }
 
-export function saveDashboardPreferences(preferences) {
+export function saveDashboardPreferences(preferences: DashboardPreferences): void {
   if (typeof window === 'undefined') {
     return
   }

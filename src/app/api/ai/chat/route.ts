@@ -4,18 +4,22 @@ import { createAdminClient } from '@/lib/server/supabase-admin'
 import { getAccessContext } from '@/lib/server/access-control'
 import { getDashboardState } from '@/lib/server/dashboard-store'
 import { requestAssistantReply, resolveAssistantAiConfig } from '@/lib/server/ai-chat'
+import type { AssistantChatBody, AssistantContextSnapshot, AssistantMessage } from '@/lib/types/ai'
 
-function normalizeChatBody(body) {
-  const payload = body && typeof body === 'object' ? body : {}
+function normalizeChatBody(body: unknown): AssistantChatBody {
+  const payload = body && typeof body === 'object' ? (body as Record<string, unknown>) : {}
 
   return {
     clientId: String(payload.clientId || '').trim(),
-    messages: Array.isArray(payload.messages) ? payload.messages : [],
-    contextSnapshot: payload.contextSnapshot && typeof payload.contextSnapshot === 'object' ? payload.contextSnapshot : null,
+    messages: Array.isArray(payload.messages) ? (payload.messages as AssistantMessage[]) : [],
+    contextSnapshot:
+      payload.contextSnapshot && typeof payload.contextSnapshot === 'object'
+        ? (payload.contextSnapshot as AssistantContextSnapshot)
+        : null,
   }
 }
 
-export async function POST(request) {
+export async function POST(request: Request) {
   try {
     const supabase = await createClient()
     const {
@@ -36,7 +40,10 @@ export async function POST(request) {
     const accessContext = await getAccessContext(adminSupabase, user)
 
     if (!accessContext.canViewDashboard) {
-      return NextResponse.json({ error: 'Seu usuário não tem permissão para usar o assistente.' }, { status: 403 })
+      return NextResponse.json(
+        { error: 'Seu usuário não tem permissão para usar o assistente.' },
+        { status: 403 }
+      )
     }
 
     const dashboardState = await getDashboardState(adminSupabase, accessContext)
@@ -55,7 +62,12 @@ export async function POST(request) {
   } catch (error) {
     console.error('Assistant chat error:', error)
     return NextResponse.json(
-      { error: error.message || 'Não foi possível gerar a resposta do assistente.' },
+      {
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Não foi possível gerar a resposta do assistente.',
+      },
       { status: 500 }
     )
   }

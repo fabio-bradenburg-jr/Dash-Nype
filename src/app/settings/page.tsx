@@ -1,5 +1,6 @@
 'use client'
 
+import type { ChangeEvent, CSSProperties } from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useUser } from '@/lib/contexts/UserContext'
@@ -14,8 +15,45 @@ import {
   inspectAiDashboardPrompt,
   normalizeAiSettings,
 } from '@/lib/ai-config'
+import type { AiProviderConfig, AiProvidersMap, AiSettings } from '@/lib/types/ai'
+import type { DashboardIntegrations } from '@/lib/types/dashboard'
 
-const PANEL_BACKGROUND_PRESETS = [
+interface IntegrationField {
+  name: string
+  label: string
+  placeholder: string
+}
+
+interface IntegrationGroup {
+  title: string
+  description: string
+  icon: string
+  accent: string
+  fields: IntegrationField[]
+}
+
+interface MetaConnectionState {
+  connected: boolean
+  userId: string
+  userName: string
+  scopes: string
+  expiresAt: string
+}
+
+type SettingsTab = 'panel' | 'general' | 'operation' | 'calendar'
+
+type GlobalIntegrationsState = DashboardIntegrations & Record<string, unknown>
+
+interface SettingsServerState {
+  globalIntegrations?: Partial<GlobalIntegrationsState>
+  [key: string]: unknown
+}
+
+type BackgroundPreviewStyle = CSSProperties & {
+  '--panel-bg-tint': string
+}
+
+const PANEL_BACKGROUND_PRESETS: Array<{ label: string; value: string }> = [
   { label: 'Azulado', value: '#3b82f6' },
   { label: 'Esmeralda', value: '#10b981' },
   { label: 'Laranja', value: '#f59e0b' },
@@ -24,7 +62,7 @@ const PANEL_BACKGROUND_PRESETS = [
   { label: 'Turquesa', value: '#14b8a6' },
 ]
 
-const GLOBAL_INTEGRATION_GROUPS = [
+const GLOBAL_INTEGRATION_GROUPS: IntegrationGroup[] = [
   {
     title: 'Google Ads',
     description: 'Espaço reservado para a credencial central do Google Ads da operação.',
@@ -145,13 +183,13 @@ const OPERATION_INTEGRATION_TITLES = new Set(['ClickUp', 'Monday'])
 const AD_ACCOUNT_INTEGRATION_TITLES = new Set(['Google Ads', 'TikTok Ads', 'LinkedIn Ads'])
 const CRM_INTEGRATION_TITLES = new Set(['RD Station CRM', 'Salesforce', 'Agendor'])
 
-function clampRgbChannel(value) {
-  const parsed = Number.parseInt(value, 10)
+function clampRgbChannel(value: string | number): number {
+  const parsed = Number.parseInt(String(value), 10)
   if (!Number.isFinite(parsed)) return 0
   return Math.max(0, Math.min(255, parsed))
 }
 
-function hexToRgb(hexValue) {
+function hexToRgb(hexValue: string): { r: number; g: number; b: number } {
   const normalized = String(hexValue || '').trim().replace('#', '')
   if (!/^[0-9a-fA-F]{6}$/.test(normalized)) {
     return { r: 59, g: 130, b: 246 }
@@ -164,22 +202,22 @@ function hexToRgb(hexValue) {
   }
 }
 
-function rgbToHex({ r, g, b }) {
+function rgbToHex({ r, g, b }: { r: number; g: number; b: number }): string {
   return `#${[r, g, b].map((channel) => clampRgbChannel(channel).toString(16).padStart(2, '0')).join('')}`
 }
 
 export default function SettingsPage() {
   const { appearance, updateAppearance, access } = useUser()
   const canManageClients = Boolean(access?.canManageClients)
-  const [serverState, setServerState] = useState(null)
-  const [globalIntegrations, setGlobalIntegrations] = useState(() => {
+  const [serverState, setServerState] = useState<SettingsServerState | null>(null)
+  const [globalIntegrations, setGlobalIntegrations] = useState<GlobalIntegrationsState>(() => {
     const preferences = loadDashboardPreferences()
     return {
       ...DEFAULT_PREFERENCES.globalIntegrations,
       ...(preferences.globalIntegrations || {}),
-    }
+    } as GlobalIntegrationsState
   })
-  const [metaConnection, setMetaConnection] = useState({
+  const [metaConnection, setMetaConnection] = useState<MetaConnectionState>({
     connected: false,
     userId: '',
     userName: '',
@@ -190,7 +228,7 @@ export default function SettingsPage() {
   const [metaConnectionError, setMetaConnectionError] = useState('')
   const [metaConnectionNotice, setMetaConnectionNotice] = useState('')
   const [metaConnectionSetupRequired, setMetaConnectionSetupRequired] = useState(false)
-  const [activeSettingsTab, setActiveSettingsTab] = useState('panel')
+  const [activeSettingsTab, setActiveSettingsTab] = useState<SettingsTab>('panel')
   const metaConnectionMode = globalIntegrations.metaConnectionMode === 'oauth' ? 'oauth' : 'manual'
   const hasMetaManualToken = Boolean(String(globalIntegrations.metaAccessToken || '').trim())
   const hasMetaOauthConnection = Boolean(metaConnection.connected)
@@ -199,12 +237,17 @@ export default function SettingsPage() {
   const advertisingIntegrationGroups = generalIntegrationGroups.filter((group) => AD_ACCOUNT_INTEGRATION_TITLES.has(group.title))
   const crmIntegrationGroups = generalIntegrationGroups.filter((group) => CRM_INTEGRATION_TITLES.has(group.title))
   const backgroundTintRgb = hexToRgb(appearance.backgroundTint)
+  const backgroundPreviewStyle: BackgroundPreviewStyle = {
+    '--panel-bg-tint': appearance.backgroundTint,
+  }
   const selectedAiProvider = getAiProviderOption(globalIntegrations.aiProvider)
-  const activeAiProviderConfig = globalIntegrations.aiProviders?.[selectedAiProvider.value] || createDefaultAiProviders()[selectedAiProvider.value]
+  const activeAiProviderConfig: AiProviderConfig =
+    (globalIntegrations.aiProviders?.[selectedAiProvider.value] as AiProviderConfig | undefined) ||
+    createDefaultAiProviders()[selectedAiProvider.value]
   const aiPromptInspection = inspectAiDashboardPrompt(globalIntegrations.aiDashboardPrompt)
 
   const persistGlobalIntegrations = useCallback(
-    async (nextIntegrations) => {
+    async (nextIntegrations: GlobalIntegrationsState) => {
       const preferences = loadDashboardPreferences()
       saveDashboardPreferences({
         ...preferences,
@@ -244,7 +287,7 @@ export default function SettingsPage() {
         const response = await fetch('/api/dashboard/state', { cache: 'no-store' })
         if (!response.ok) return
 
-        const state = await response.json()
+        const state = (await response.json()) as SettingsServerState
         if (cancelled) return
 
         setServerState(state)
@@ -260,9 +303,9 @@ export default function SettingsPage() {
             ...normalizeAiSettings(nextIntegrations),
           }
         })
-      } catch (error) {
-        console.error('Erro ao carregar integrações globais do servidor:', error)
-      }
+    } catch (error) {
+      console.error('Erro ao carregar integrações globais do servidor:', error)
+    }
     }
 
     loadServerState()
@@ -282,7 +325,9 @@ export default function SettingsPage() {
 
       try {
         const response = await fetch('/api/meta/connection', { cache: 'no-store' })
-        const data = await response.json().catch(() => null)
+        const data = (await response.json().catch(() => null)) as
+          | { connection?: MetaConnectionState; setupRequired?: boolean; error?: string }
+          | null
 
         if (cancelled) return
 
@@ -312,7 +357,11 @@ export default function SettingsPage() {
           scopes: '',
           expiresAt: '',
         })
-        setMetaConnectionError(error.message || 'Não foi possível carregar a conexão da Meta.')
+        setMetaConnectionError(
+          error instanceof Error
+            ? error.message
+            : 'Não foi possível carregar a conexão da Meta.'
+        )
       } finally {
         if (!cancelled) {
           setIsMetaConnectionLoading(false)
@@ -372,12 +421,12 @@ export default function SettingsPage() {
     }
   }, [activeSettingsTab, canManageClients])
 
-  const handleGlobalIntegrationChange = (fieldName, value) => {
+  const handleGlobalIntegrationChange = (fieldName: string, value: unknown) => {
     setGlobalIntegrations((current) => {
       const nextIntegrations = {
         ...current,
         [fieldName]: value,
-      }
+      } as GlobalIntegrationsState
 
       persistGlobalIntegrations(nextIntegrations).catch((error) => {
         console.error('Erro ao salvar integrações globais no servidor:', error)
@@ -387,15 +436,16 @@ export default function SettingsPage() {
     })
   }
 
-  const handleAiProviderChange = (providerValue) => {
+  const handleAiProviderChange = (providerValue: string) => {
     const providerOption = getAiProviderOption(providerValue)
 
     setGlobalIntegrations((current) => {
       const nextProviders = {
         ...createDefaultAiProviders(),
         ...(current.aiProviders || {}),
-      }
-      const currentProviderConfig = nextProviders[providerOption.value] || createDefaultAiProviders()[providerOption.value]
+      } as AiProvidersMap
+      const currentProviderConfig =
+        nextProviders[providerOption.value] || createDefaultAiProviders()[providerOption.value]
       const nextIntegrations = {
         ...current,
         aiProvider: providerOption.value,
@@ -407,12 +457,12 @@ export default function SettingsPage() {
             model: String(currentProviderConfig.model || '').trim(),
           },
         },
-      }
+      } as GlobalIntegrationsState
 
       const normalizedNextIntegrations = {
         ...nextIntegrations,
         ...normalizeAiSettings(nextIntegrations),
-      }
+      } as GlobalIntegrationsState
 
       persistGlobalIntegrations(normalizedNextIntegrations).catch((error) => {
         console.error('Erro ao salvar configurações de IA no servidor:', error)
@@ -422,14 +472,18 @@ export default function SettingsPage() {
     })
   }
 
-  const handleAiProviderFieldChange = (fieldName, value) => {
+  const handleAiProviderFieldChange = (
+    fieldName: keyof AiProviderConfig,
+    value: string
+  ) => {
     setGlobalIntegrations((current) => {
       const providerKey = getAiProviderOption(current.aiProvider).value
       const nextProviders = {
         ...createDefaultAiProviders(),
         ...(current.aiProviders || {}),
-      }
-      const currentProviderConfig = nextProviders[providerKey] || createDefaultAiProviders()[providerKey]
+      } as AiProvidersMap
+      const currentProviderConfig =
+        nextProviders[providerKey] || createDefaultAiProviders()[providerKey]
       const nextIntegrations = {
         ...current,
         aiProviders: {
@@ -439,11 +493,11 @@ export default function SettingsPage() {
             [fieldName]: value,
           },
         },
-      }
+      } as GlobalIntegrationsState
       const normalizedNextIntegrations = {
         ...nextIntegrations,
         ...normalizeAiSettings(nextIntegrations),
-      }
+      } as GlobalIntegrationsState
 
       persistGlobalIntegrations(normalizedNextIntegrations).catch((error) => {
         console.error('Erro ao salvar credenciais do provider de IA:', error)
@@ -453,7 +507,7 @@ export default function SettingsPage() {
     })
   }
 
-  const handleApplyPromptTemplate = (mode) => {
+  const handleApplyPromptTemplate = (mode: 'text' | 'json') => {
     handleGlobalIntegrationChange(
       'aiDashboardPrompt',
       mode === 'json' ? DEFAULT_AI_DASHBOARD_PROMPT_JSON : DEFAULT_AI_DASHBOARD_PROMPT
@@ -477,7 +531,7 @@ export default function SettingsPage() {
 
     try {
       const response = await fetch('/api/meta/connection', { method: 'DELETE' })
-      const data = await response.json().catch(() => null)
+      const data = (await response.json().catch(() => null)) as { error?: string } | null
 
       if (!response.ok) {
         throw new Error(data?.error || 'Não foi possível desconectar a conta da Meta.')
@@ -496,17 +550,24 @@ export default function SettingsPage() {
         const nextIntegrations = {
           ...globalIntegrations,
           metaConnectionMode: 'manual',
-        }
+        } as GlobalIntegrationsState
 
         setGlobalIntegrations(nextIntegrations)
         await persistGlobalIntegrations(nextIntegrations)
       }
     } catch (error) {
-      setMetaConnectionError(error.message || 'Não foi possível desconectar a conta da Meta.')
+      setMetaConnectionError(
+        error instanceof Error
+          ? error.message
+          : 'Não foi possível desconectar a conta da Meta.'
+      )
     }
   }
 
-  const handleBackgroundRgbChannelChange = (channel, value) => {
+  const handleBackgroundRgbChannelChange = (
+    channel: 'r' | 'g' | 'b',
+    value: string
+  ) => {
     updateAppearance((current) => {
       const currentRgb = hexToRgb(current.backgroundTint)
       const nextRgb = {
@@ -521,7 +582,7 @@ export default function SettingsPage() {
     })
   }
 
-  const handleSettingsTabChange = (nextTab) => {
+  const handleSettingsTabChange = (nextTab: SettingsTab) => {
     setActiveSettingsTab(nextTab)
 
     if (typeof window === 'undefined') return
@@ -700,7 +761,7 @@ export default function SettingsPage() {
                       <p>Esse RGB controla a névoa/gradiente do fundo do painel. Se quiser, deixe mais azulado, esverdeado, laranja ou qualquer outro clima.</p>
 
                       <div className="settings-background-shell">
-                        <div className="settings-background-preview" style={{ '--panel-bg-tint': appearance.backgroundTint }}>
+                        <div className="settings-background-preview" style={backgroundPreviewStyle}>
                           <div className="settings-background-preview-card">
                             <span>Prévia do fundo</span>
                             <strong>{appearance.backgroundTint.toUpperCase()}</strong>
@@ -918,12 +979,12 @@ export default function SettingsPage() {
                               </div>
                             </div>
 
-                            {(group.fields || (group.field ? [group.field] : [])).map((field) => (
+                            {group.fields.map((field) => (
                               <div key={field.name} className="input-group">
                                 <label>{field.label}</label>
                                 <input
                                   type={field.name.toLowerCase().includes('token') ? 'password' : 'text'}
-                                  value={globalIntegrations[field.name] || ''}
+                                  value={String(globalIntegrations[field.name] || '')}
                                   onChange={(event) => handleGlobalIntegrationChange(field.name, event.target.value)}
                                   placeholder={field.placeholder}
                                 />
@@ -954,12 +1015,12 @@ export default function SettingsPage() {
                               </div>
                             </div>
 
-                            {(group.fields || (group.field ? [group.field] : [])).map((field) => (
+                            {group.fields.map((field) => (
                               <div key={field.name} className="input-group">
                                 <label>{field.label}</label>
                                 <input
                                   type={field.name.toLowerCase().includes('token') ? 'password' : 'text'}
-                                  value={globalIntegrations[field.name] || ''}
+                                  value={String(globalIntegrations[field.name] || '')}
                                   onChange={(event) => handleGlobalIntegrationChange(field.name, event.target.value)}
                                   placeholder={field.placeholder}
                                 />
@@ -1141,12 +1202,12 @@ export default function SettingsPage() {
                           </div>
                         </div>
 
-                        {(group.fields || (group.field ? [group.field] : [])).map((field) => (
+                        {group.fields.map((field) => (
                           <div key={field.name} className="input-group">
                             <label>{field.label}</label>
                             <input
                               type={field.name.toLowerCase().includes('token') ? 'password' : 'text'}
-                              value={globalIntegrations[field.name] || ''}
+                              value={String(globalIntegrations[field.name] || '')}
                               onChange={(event) => handleGlobalIntegrationChange(field.name, event.target.value)}
                               placeholder={field.placeholder}
                             />

@@ -1,15 +1,25 @@
 import { USER_ROLES } from '@/lib/server/access-control'
 import { DEFAULT_AI_SETTINGS, normalizeAiSettings } from '@/lib/ai-config'
+import type {
+  AccessContextLike,
+  ClientGroupRecord,
+  ClientRecord,
+  DashboardIntegrations,
+  DashboardMetricLayout,
+  DashboardPreferences,
+  DashboardTemplate,
+} from '@/lib/types/dashboard'
 
 const DEFAULT_FUNNEL_STEPS = ['impressions', 'clicks', 'leads', 'purchases']
 const DEFAULT_DASHBOARD_TEMPLATE_NAME = 'Principal'
-const DEFAULT_META_DASHBOARD_METRIC_KEYS = []
-const DEFAULT_META_DASHBOARD_METRIC_LAYOUTS = []
-const DEFAULT_RD_DASHBOARD_METRIC_KEYS = []
-const DEFAULT_RD_DASHBOARD_METRIC_LAYOUTS = []
-const DEFAULT_SHEETS_DASHBOARD_METRIC_KEYS = []
-const DEFAULT_SHEETS_DASHBOARD_METRIC_LAYOUTS = []
-const DEFAULT_GLOBAL_INTEGRATIONS = {
+const DEFAULT_META_DASHBOARD_METRIC_KEYS: string[] = []
+const DEFAULT_META_DASHBOARD_METRIC_LAYOUTS: DashboardMetricLayout[] = []
+const DEFAULT_META_CAMPAIGN_TABLE_COLUMN_KEYS = ['spend', 'totalConversions', 'cpa', 'roas']
+const DEFAULT_RD_DASHBOARD_METRIC_KEYS: string[] = []
+const DEFAULT_RD_DASHBOARD_METRIC_LAYOUTS: DashboardMetricLayout[] = []
+const DEFAULT_SHEETS_DASHBOARD_METRIC_KEYS: string[] = []
+const DEFAULT_SHEETS_DASHBOARD_METRIC_LAYOUTS: DashboardMetricLayout[] = []
+const DEFAULT_GLOBAL_INTEGRATIONS: DashboardIntegrations = {
   metaAccessToken: '',
   metaConnectionMode: 'manual',
   googleAdsToken: '',
@@ -25,21 +35,32 @@ const DEFAULT_GLOBAL_INTEGRATIONS = {
   ...DEFAULT_AI_SETTINGS,
 }
 
-function isMissingRelationError(error) {
+type LooseRecord = Record<string, any>
+type DashboardStateInput = Partial<DashboardPreferences> & { [key: string]: unknown }
+
+function isMissingRelationError(error: LooseRecord | null | undefined): boolean {
   const message = String(error?.message || '').toLowerCase()
   return error?.code === 'PGRST205' || message.includes('schema cache') || message.includes('could not find the table')
 }
 
-function createRecordId(prefix) {
+function createRecordId(prefix: string): string {
   return globalThis.crypto?.randomUUID?.() || `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2, 10)}`
 }
 
-function normalizeTemplateMetricKeys(metricKeys) {
+function normalizeTemplateMetricKeys(metricKeys: unknown): string[] {
   if (!Array.isArray(metricKeys)) return []
   return Array.from(new Set(metricKeys.filter((metricKey) => typeof metricKey === 'string' && metricKey.trim())))
 }
 
-function createDashboardMetricLayout(metricKey, overrides = {}) {
+function normalizeMetaCampaignTableColumnKeys(columnKeys: unknown): string[] {
+  const normalized = normalizeTemplateMetricKeys(columnKeys)
+  return normalized.length ? normalized : [...DEFAULT_META_CAMPAIGN_TABLE_COLUMN_KEYS]
+}
+
+function createDashboardMetricLayout(
+  metricKey: string,
+  overrides: Partial<DashboardMetricLayout> = {}
+): DashboardMetricLayout {
   return {
     id: overrides.id || createRecordId('dashboard-card'),
     metricKey,
@@ -47,7 +68,10 @@ function createDashboardMetricLayout(metricKey, overrides = {}) {
   }
 }
 
-function normalizeDashboardMetricLayouts(layouts, fallbackMetricKeys = []) {
+function normalizeDashboardMetricLayouts(
+  layouts: unknown,
+  fallbackMetricKeys: string[] = []
+): DashboardMetricLayout[] {
   const normalizedLayouts = Array.isArray(layouts)
     ? layouts
         .filter((item) => typeof item?.metricKey === 'string' && item.metricKey.trim())
@@ -71,7 +95,10 @@ function normalizeDashboardMetricLayouts(layouts, fallbackMetricKeys = []) {
   return normalizeTemplateMetricKeys(fallbackMetricKeys).map((metricKey) => createDashboardMetricLayout(metricKey))
 }
 
-function normalizeDashboardTemplate(template, fallbackName = DEFAULT_DASHBOARD_TEMPLATE_NAME) {
+function normalizeDashboardTemplate(
+  template: Partial<DashboardTemplate> | null | undefined,
+  fallbackName = DEFAULT_DASHBOARD_TEMPLATE_NAME
+): DashboardTemplate {
   const metaMetricLayouts = normalizeDashboardMetricLayouts(
     template?.metaMetricLayouts,
     template?.metaMetricKeys || DEFAULT_META_DASHBOARD_METRIC_KEYS
@@ -89,6 +116,7 @@ function normalizeDashboardTemplate(template, fallbackName = DEFAULT_DASHBOARD_T
     id: template?.id || createRecordId('dashboard-template'),
     name: String(template?.name || fallbackName).trim() || fallbackName,
     metaMetricKeys: metaMetricLayouts.map((item) => item.metricKey),
+    metaCampaignTableColumnKeys: normalizeMetaCampaignTableColumnKeys(template?.metaCampaignTableColumnKeys),
     rdMetricKeys: rdMetricLayouts.map((item) => item.metricKey),
     sheetsMetricKeys: sheetsMetricLayouts.map((item) => item.metricKey),
     metaMetricLayouts,
@@ -97,7 +125,7 @@ function normalizeDashboardTemplate(template, fallbackName = DEFAULT_DASHBOARD_T
   }
 }
 
-function normalizeClientDashboardTemplates(payload) {
+function normalizeClientDashboardTemplates(payload: LooseRecord) {
   const rawTemplates = Array.isArray(payload?.dashboardTemplates) ? payload.dashboardTemplates : []
   const dashboardTemplates = rawTemplates.length
     ? rawTemplates.map((template, index) =>
@@ -115,7 +143,7 @@ function normalizeClientDashboardTemplates(payload) {
   }
 }
 
-function normalizeClientRecord(client) {
+function normalizeClientRecord(client: LooseRecord): ClientRecord {
   const payload = client?.payload && typeof client.payload === 'object' ? client.payload : client || {}
   const { dashboardTemplates, activeDashboardTemplateId } = normalizeClientDashboardTemplates(payload)
   const normalizedAiSettings = normalizeAiSettings(payload.integrations || {})
@@ -161,7 +189,9 @@ function normalizeClientRecord(client) {
   }
 }
 
-function normalizeGlobalIntegrations(globalIntegrations) {
+function normalizeGlobalIntegrations(
+  globalIntegrations: Partial<DashboardIntegrations> | LooseRecord | null | undefined
+): DashboardIntegrations {
   const normalizedAiSettings = normalizeAiSettings(globalIntegrations)
   return {
     ...DEFAULT_GLOBAL_INTEGRATIONS,
@@ -170,8 +200,8 @@ function normalizeGlobalIntegrations(globalIntegrations) {
   }
 }
 
-function extractGlobalIntegrations(clients) {
-  const hasIntegrationValue = (value) => {
+function extractGlobalIntegrations(clients: ClientRecord[]): DashboardIntegrations {
+  const hasIntegrationValue = (value: unknown) => {
     if (typeof value === 'boolean') return true
     if (typeof value === 'number') return Number.isFinite(value)
     if (typeof value === 'string') return value.trim().length > 0
@@ -180,7 +210,7 @@ function extractGlobalIntegrations(clients) {
 
   return clients.reduce((current, client) => {
     const next = { ...current }
-    const integrations = client?.integrations || {}
+    const integrations = (client?.integrations || {}) as LooseRecord
 
     Object.keys(DEFAULT_GLOBAL_INTEGRATIONS).forEach((fieldName) => {
       if (fieldName === 'aiProviders') {
@@ -205,12 +235,12 @@ function extractGlobalIntegrations(clients) {
   }, { ...DEFAULT_GLOBAL_INTEGRATIONS })
 }
 
-function normalizeClientGroupClientIds(clientIds) {
+function normalizeClientGroupClientIds(clientIds: unknown): string[] {
   if (!Array.isArray(clientIds)) return []
   return Array.from(new Set(clientIds.filter((clientId) => typeof clientId === 'string' && clientId.trim())))
 }
 
-function normalizeClientGroupRecord(group) {
+function normalizeClientGroupRecord(group: Partial<ClientGroupRecord> | null | undefined): ClientGroupRecord {
   return {
     id: group?.id || createRecordId('client-group'),
     name: String(group?.name || 'Novo grupo').trim() || 'Novo grupo',
@@ -218,14 +248,20 @@ function normalizeClientGroupRecord(group) {
   }
 }
 
-function filterClientsByAccess(clients, accessContext) {
+function filterClientsByAccess(
+  clients: ClientRecord[],
+  accessContext: AccessContextLike
+): ClientRecord[] {
   if (accessContext.role === USER_ROLES.MASTER) return clients
 
   const allowedIds = new Set(accessContext.viewableClientIds)
   return clients.filter((client) => allowedIds.has(client.id))
 }
 
-function filterClientGroupsByAccess(clientGroups, accessContext) {
+function filterClientGroupsByAccess(
+  clientGroups: ClientGroupRecord[],
+  accessContext: AccessContextLike
+): ClientGroupRecord[] {
   if (accessContext.role === USER_ROLES.MASTER) return clientGroups
 
   const allowedIds = new Set(accessContext.viewableClientIds)
@@ -238,7 +274,10 @@ function filterClientGroupsByAccess(clientGroups, accessContext) {
     .filter((group) => group.clientIds.length > 0)
 }
 
-export async function getDashboardState(adminSupabase, accessContext) {
+export async function getDashboardState(
+  adminSupabase: any,
+  accessContext: AccessContextLike
+): Promise<DashboardPreferences> {
   if (!accessContext.workspaceId) {
     return {
       themeColor: 'blue',
@@ -313,7 +352,11 @@ export async function getDashboardState(adminSupabase, accessContext) {
   }
 }
 
-export async function saveDashboardState(adminSupabase, accessContext, state) {
+export async function saveDashboardState(
+  adminSupabase: any,
+  accessContext: AccessContextLike,
+  state: DashboardStateInput
+): Promise<DashboardPreferences> {
   if (!accessContext.workspaceId) {
     throw new Error('Usuario sem workspace vinculado.')
   }

@@ -1,3 +1,22 @@
+import type {
+  AiProviderConfig,
+  AiProviderOption,
+  AiProviderValue,
+  AiProvidersMap,
+  AiSettings,
+  PromptInspectionResult,
+} from '@/lib/types/ai'
+
+type JsonLikePrompt = Record<string, unknown> | unknown[] | string | number | boolean | null
+
+type PartialAiProviderConfig = Partial<AiProviderConfig>
+type PartialAiSettingsInput = Partial<
+  AiSettings & {
+    aiProvider: string
+    aiProviders: Partial<Record<string, PartialAiProviderConfig>>
+  }
+>
+
 export const DEFAULT_AI_DASHBOARD_PROMPT = `Voce e um analista senior de marketing e performance.
 
 Sua funcao e analisar apenas os numeros recebidos do dashboard e devolver insights uteis para tomada de decisao.
@@ -83,7 +102,7 @@ export const DEFAULT_AI_DASHBOARD_PROMPT_JSON = JSON.stringify(
   2
 )
 
-export const AI_PROVIDER_OPTIONS = [
+export const AI_PROVIDER_OPTIONS: AiProviderOption[] = [
   {
     value: 'openai',
     label: 'OpenAI',
@@ -135,7 +154,7 @@ export const AI_PROVIDER_OPTIONS = [
   },
 ]
 
-function buildDefaultProviderConfig(option) {
+function buildDefaultProviderConfig(option: AiProviderOption): AiProviderConfig {
   return {
     baseUrl: option.baseUrl || '',
     apiKey: '',
@@ -143,13 +162,13 @@ function buildDefaultProviderConfig(option) {
   }
 }
 
-export function createDefaultAiProviders() {
+export function createDefaultAiProviders(): AiProvidersMap {
   return Object.fromEntries(
     AI_PROVIDER_OPTIONS.map((option) => [option.value, buildDefaultProviderConfig(option)])
-  )
+  ) as AiProvidersMap
 }
 
-export const DEFAULT_AI_SETTINGS = {
+export const DEFAULT_AI_SETTINGS: AiSettings = {
   aiAnalysisEnabled: false,
   aiProvider: 'openai',
   aiProviders: createDefaultAiProviders(),
@@ -159,23 +178,23 @@ export const DEFAULT_AI_SETTINGS = {
   aiDashboardPrompt: DEFAULT_AI_DASHBOARD_PROMPT,
 }
 
-export function getAiProviderOption(providerValue) {
+export function getAiProviderOption(providerValue: string): AiProviderOption {
   return AI_PROVIDER_OPTIONS.find((option) => option.value === providerValue) || AI_PROVIDER_OPTIONS[0]
 }
 
-function isJsonLikePrompt(value) {
+function isJsonLikePrompt(value: unknown): boolean {
   const normalized = String(value || '').trim()
   return normalized.startsWith('{') || normalized.startsWith('[')
 }
 
-function stringifyPromptSection(value, depth = 0) {
+function stringifyPromptSection(value: JsonLikePrompt, depth = 0): string {
   if (depth > 4 || value == null) return ''
   if (typeof value === 'string') return value.trim()
   if (typeof value === 'number' || typeof value === 'boolean') return String(value)
 
   if (Array.isArray(value)) {
     return value
-      .map((item) => stringifyPromptSection(item, depth + 1))
+      .map((item) => stringifyPromptSection(item as JsonLikePrompt, depth + 1))
       .filter(Boolean)
       .map((item) => `- ${item}`)
       .join('\n')
@@ -186,7 +205,7 @@ function stringifyPromptSection(value, depth = 0) {
     return Object.entries(value)
       .map(([key, item]) => {
         const normalizedKey = key.replace(/([a-z])([A-Z])/g, '$1 $2')
-        const normalizedValue = stringifyPromptSection(item, depth + 1)
+        const normalizedValue = stringifyPromptSection(item as JsonLikePrompt, depth + 1)
         if (!normalizedValue) return ''
         if (normalizedValue.includes('\n')) {
           return `${normalizedKey}:\n${normalizedValue}`
@@ -201,14 +220,14 @@ function stringifyPromptSection(value, depth = 0) {
   return ''
 }
 
-export function resolveAiDashboardPromptText(value) {
+export function resolveAiDashboardPromptText(value: unknown): string {
   const rawPrompt = String(value || '').trim()
   if (!rawPrompt) return DEFAULT_AI_DASHBOARD_PROMPT
 
   if (!isJsonLikePrompt(rawPrompt)) return rawPrompt
 
   try {
-    const parsed = JSON.parse(rawPrompt)
+    const parsed = JSON.parse(rawPrompt) as JsonLikePrompt
 
     if (typeof parsed === 'string') {
       return parsed.trim() || DEFAULT_AI_DASHBOARD_PROMPT
@@ -218,15 +237,16 @@ export function resolveAiDashboardPromptText(value) {
       return rawPrompt
     }
 
+    const parsedRecord = parsed as Record<string, JsonLikePrompt>
     const sections = [
-      parsed.role ? `Funcao:\n${stringifyPromptSection(parsed.role)}` : '',
-      parsed.objective ? `Objetivo:\n${stringifyPromptSection(parsed.objective)}` : '',
-      parsed.instructions ? `Instrucoes:\n${stringifyPromptSection(parsed.instructions)}` : '',
-      parsed.rules ? `Regras:\n${stringifyPromptSection(parsed.rules)}` : '',
-      parsed.style ? `Estilo:\n${stringifyPromptSection(parsed.style)}` : '',
-      parsed.context ? `Contexto:\n${stringifyPromptSection(parsed.context)}` : '',
-      parsed.output ? `Saida esperada:\n${stringifyPromptSection(parsed.output)}` : '',
-      parsed.outputSchema ? `Schema de saida:\n${stringifyPromptSection(parsed.outputSchema)}` : '',
+      parsedRecord.role ? `Funcao:\n${stringifyPromptSection(parsedRecord.role)}` : '',
+      parsedRecord.objective ? `Objetivo:\n${stringifyPromptSection(parsedRecord.objective)}` : '',
+      parsedRecord.instructions ? `Instrucoes:\n${stringifyPromptSection(parsedRecord.instructions)}` : '',
+      parsedRecord.rules ? `Regras:\n${stringifyPromptSection(parsedRecord.rules)}` : '',
+      parsedRecord.style ? `Estilo:\n${stringifyPromptSection(parsedRecord.style)}` : '',
+      parsedRecord.context ? `Contexto:\n${stringifyPromptSection(parsedRecord.context)}` : '',
+      parsedRecord.output ? `Saida esperada:\n${stringifyPromptSection(parsedRecord.output)}` : '',
+      parsedRecord.outputSchema ? `Schema de saida:\n${stringifyPromptSection(parsedRecord.outputSchema)}` : '',
     ].filter(Boolean)
 
     if (sections.length > 0) {
@@ -234,24 +254,15 @@ export function resolveAiDashboardPromptText(value) {
     }
 
     return stringifyPromptSection(parsed) || rawPrompt
-  } catch (error) {
+  } catch {
     return rawPrompt
   }
 }
 
-export function inspectAiDashboardPrompt(value) {
+export function inspectAiDashboardPrompt(value: unknown): PromptInspectionResult {
   const rawPrompt = String(value || '').trim()
 
-  if (!rawPrompt) {
-    return {
-      mode: 'text',
-      isJson: false,
-      isValid: true,
-      error: '',
-    }
-  }
-
-  if (!isJsonLikePrompt(rawPrompt)) {
+  if (!rawPrompt || !isJsonLikePrompt(rawPrompt)) {
     return {
       mode: 'text',
       isJson: false,
@@ -273,52 +284,65 @@ export function inspectAiDashboardPrompt(value) {
       mode: 'json',
       isJson: true,
       isValid: false,
-      error: error.message || 'JSON invalido.',
+      error: error instanceof Error ? error.message : 'JSON invalido.',
     }
   }
 }
 
-export function normalizeAiSettings(value) {
+export function normalizeAiSettings(value: PartialAiSettingsInput | null | undefined): AiSettings {
   const raw = value && typeof value === 'object' ? value : {}
-  const provider = getAiProviderOption(raw.aiProvider).value
+  const provider = getAiProviderOption(String(raw.aiProvider || '')).value
   const providerOption = getAiProviderOption(provider)
   const defaultProviders = createDefaultAiProviders()
-  const rawProviders = raw.aiProviders && typeof raw.aiProviders === 'object' ? raw.aiProviders : {}
+  const rawProviders =
+    raw.aiProviders && typeof raw.aiProviders === 'object'
+      ? raw.aiProviders
+      : ({} as Partial<Record<string, PartialAiProviderConfig>>)
 
   const aiProviders = Object.fromEntries(
     AI_PROVIDER_OPTIONS.map((option) => {
-      const currentProvider = rawProviders[option.value] && typeof rawProviders[option.value] === 'object'
-        ? rawProviders[option.value]
-        : {}
+      const rawProviderCandidate = rawProviders[option.value]
+      const currentProvider =
+        rawProviderCandidate && typeof rawProviderCandidate === 'object'
+          ? rawProviderCandidate
+          : {}
 
-      const legacyProviderValues = option.value === provider
-        ? {
-            baseUrl: raw.aiBaseUrl,
-            apiKey: raw.aiApiKey,
-            model: raw.aiModel,
-          }
-        : {}
+      const legacyProviderValues: PartialAiProviderConfig =
+        option.value === provider
+          ? {
+              baseUrl: raw.aiBaseUrl,
+              apiKey: raw.aiApiKey,
+              model: raw.aiModel,
+            }
+          : {}
 
       return [
         option.value,
         {
-          baseUrl: String(currentProvider.baseUrl || legacyProviderValues.baseUrl || defaultProviders[option.value].baseUrl || '').trim(),
+          baseUrl: String(
+            currentProvider.baseUrl ||
+              legacyProviderValues.baseUrl ||
+              defaultProviders[option.value].baseUrl ||
+              ''
+          ).trim(),
           apiKey: String(currentProvider.apiKey || legacyProviderValues.apiKey || '').trim(),
           model: String(currentProvider.model || legacyProviderValues.model || '').trim(),
         },
       ]
     })
-  )
+  ) as AiProvidersMap
 
   const activeProviderConfig = aiProviders[provider] || buildDefaultProviderConfig(providerOption)
 
   return {
     aiAnalysisEnabled: Boolean(raw.aiAnalysisEnabled),
-    aiProvider: provider,
+    aiProvider: provider as AiProviderValue,
     aiProviders,
     aiBaseUrl: String(activeProviderConfig.baseUrl || providerOption.baseUrl || '').trim(),
     aiApiKey: String(activeProviderConfig.apiKey || '').trim(),
     aiModel: String(activeProviderConfig.model || '').trim(),
-    aiDashboardPrompt: String(raw.aiDashboardPrompt || DEFAULT_AI_DASHBOARD_PROMPT).trim() || DEFAULT_AI_DASHBOARD_PROMPT,
+    aiDashboardPrompt:
+      String(raw.aiDashboardPrompt || DEFAULT_AI_DASHBOARD_PROMPT).trim() ||
+      DEFAULT_AI_DASHBOARD_PROMPT,
   }
 }
