@@ -56,6 +56,10 @@ type BackgroundPreviewStyle = CSSProperties & {
   '--panel-bg-tint': string
 }
 
+function appearancesMatch(left: UserAppearance, right: UserAppearance): boolean {
+  return left.mode === right.mode && left.accent === right.accent && left.backgroundTint === right.backgroundTint
+}
+
 const PANEL_BACKGROUND_PRESETS: Array<{ label: string; value: string }> = [
   { label: 'Azulado', value: '#3b82f6' },
   { label: 'Esmeralda', value: '#10b981' },
@@ -234,6 +238,7 @@ export default function SettingsPage() {
   const [activeSettingsTab, setActiveSettingsTab] = useState<SettingsTab>('panel')
   const [panelDraft, setPanelDraft] = useState<UserAppearance>(appearance)
   const [panelFeedback, setPanelFeedback] = useState('')
+  const [settingsSaveFeedback, setSettingsSaveFeedback] = useState('')
   const metaConnectionMode = globalIntegrations.metaConnectionMode === 'oauth' ? 'oauth' : 'manual'
   const hasMetaManualToken = Boolean(String(globalIntegrations.metaAccessToken || '').trim())
   const hasMetaOauthConnection = Boolean(metaConnection.connected)
@@ -256,6 +261,7 @@ export default function SettingsPage() {
   const [selectedAiAgentId, setSelectedAiAgentId] = useState<string>(availableAiAgents[0]?.id || 'copilot')
   const selectedAiAgent =
     availableAiAgents.find((agent) => agent.id === selectedAiAgentId) || availableAiAgents[0] || null
+  const hasPendingPanelChanges = !appearancesMatch(panelDraft, appearance)
 
   useEffect(() => {
     setPanelDraft(appearance)
@@ -644,11 +650,40 @@ export default function SettingsPage() {
   const handleResetPanelDraft = () => {
     setPanelDraft(appearance || (DEFAULT_USER_APPEARANCE as UserAppearance))
     setPanelFeedback('')
+    setSettingsSaveFeedback('')
   }
 
   const handleSavePanelPreferences = () => {
     updateAppearance(panelDraft)
     setPanelFeedback('Preferências visuais salvas e aplicadas neste navegador.')
+    setSettingsSaveFeedback('Preferências visuais salvas e aplicadas neste navegador.')
+  }
+
+  const handleSaveCurrentSettings = async () => {
+    setSettingsSaveFeedback('')
+
+    if (hasPendingPanelChanges) {
+      updateAppearance(panelDraft)
+      setPanelFeedback('Preferências visuais salvas e aplicadas neste navegador.')
+      setSettingsSaveFeedback('Preferências visuais salvas e aplicadas neste navegador.')
+      return
+    }
+
+    if (canManageClients) {
+      try {
+        await persistGlobalIntegrations(globalIntegrations)
+        setSettingsSaveFeedback('Configurações da operação sincronizadas com sucesso.')
+      } catch (error) {
+        setSettingsSaveFeedback(
+          error instanceof Error
+            ? error.message
+            : 'Não foi possível sincronizar as configurações da operação.'
+        )
+      }
+      return
+    }
+
+    setSettingsSaveFeedback('Não há alterações pendentes para salvar nesta aba.')
   }
 
   const handleSettingsTabChange = (nextTab: SettingsTab) => {
@@ -969,22 +1004,6 @@ export default function SettingsPage() {
                       </div>
                     </div>
 
-                    <div className="settings-action-bar">
-                      <div className="settings-action-copy">
-                        <strong>Digital Obsidian ativo</strong>
-                        <span>
-                          {panelFeedback || 'Prepare as mudanças com calma. Elas só entram em vigor depois que você salvar as preferências.'}
-                        </span>
-                      </div>
-                      <div className="settings-action-buttons">
-                        <button type="button" className="btn btn-secondary settings-ghost-button" onClick={handleResetPanelDraft}>
-                          Descartar alterações
-                        </button>
-                        <button type="button" className="btn btn-primary settings-save-button" onClick={handleSavePanelPreferences}>
-                          Salvar preferências
-                        </button>
-                      </div>
-                    </div>
                   </div>
                 </div>
               )}
@@ -1504,6 +1523,32 @@ export default function SettingsPage() {
                   </div>
                 </div>
               )}
+
+              <div className="settings-action-bar settings-action-bar-global">
+                <div className="settings-action-copy">
+                  <strong>Configuração pronta para aplicar</strong>
+                  <span>
+                    {settingsSaveFeedback ||
+                      panelFeedback ||
+                      (activeSettingsTab === 'panel'
+                        ? 'Ajuste aparência, modo e atmosfera. Salve quando quiser aplicar o tema em todo o app.'
+                        : 'As integrações operacionais já sincronizam em tempo real, mas você pode usar este botão para confirmar e reaplicar a configuração atual.')}
+                  </span>
+                </div>
+                <div className="settings-action-buttons">
+                  <button
+                    type="button"
+                    className="btn btn-secondary settings-ghost-button"
+                    onClick={handleResetPanelDraft}
+                    disabled={!hasPendingPanelChanges}
+                  >
+                    Descartar alterações
+                  </button>
+                  <button type="button" className="btn btn-primary settings-save-button" onClick={handleSaveCurrentSettings}>
+                    Salvar configuração
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </section>
@@ -1558,7 +1603,11 @@ export default function SettingsPage() {
           padding: 28px;
           display: grid;
           gap: 18px;
-          position: static;
+          position: sticky;
+          top: 24px;
+          align-self: start;
+          max-height: calc(100vh - 120px);
+          overflow: auto;
           background: rgba(25, 28, 34, 0.78);
           border: 1px solid rgba(69, 71, 75, 0.2);
           border-radius: 24px;
@@ -1722,6 +1771,7 @@ export default function SettingsPage() {
           gap: 18px;
           text-align: left;
           cursor: pointer;
+          color: var(--text-primary);
           transition: all 0.3s ease;
         }
 
@@ -1733,6 +1783,9 @@ export default function SettingsPage() {
         .settings-mode-card.active {
           border-color: color-mix(in srgb, var(--accent-blue) 45%, transparent);
           box-shadow: 0 0 30px color-mix(in srgb, var(--accent-blue) 8%, transparent);
+          background:
+            linear-gradient(180deg, color-mix(in srgb, var(--accent-blue) 7%, transparent), rgba(25, 28, 34, 0.7)),
+            rgba(25, 28, 34, 0.7);
         }
 
         .settings-mode-preview {
@@ -1825,10 +1878,12 @@ export default function SettingsPage() {
           font-size: 20px;
           font-weight: 800;
           letter-spacing: -0.03em;
+          color: var(--text-primary);
         }
 
         .settings-mode-copy p {
           margin: 0;
+          color: var(--text-secondary);
         }
 
         .settings-mode-check {
@@ -1844,6 +1899,10 @@ export default function SettingsPage() {
           color: #001944;
           font-size: 16px;
           box-shadow: 0 0 20px color-mix(in srgb, var(--accent-blue) 20%, transparent);
+        }
+
+        .settings-mode-check i {
+          color: #001944;
         }
 
         .settings-grid-obsidian {
@@ -2128,6 +2187,13 @@ export default function SettingsPage() {
           backdrop-filter: blur(20px);
         }
 
+        .settings-action-bar-global {
+          position: sticky;
+          bottom: 16px;
+          z-index: 10;
+          margin-top: 8px;
+        }
+
         .settings-action-copy {
           display: grid;
           gap: 6px;
@@ -2156,6 +2222,11 @@ export default function SettingsPage() {
         .settings-ghost-button {
           background: rgba(255, 255, 255, 0.02);
           border-color: rgba(69, 71, 75, 0.22);
+        }
+
+        .settings-ghost-button:disabled {
+          opacity: 0.45;
+          cursor: not-allowed;
         }
 
         .settings-save-button {
@@ -2444,6 +2515,8 @@ export default function SettingsPage() {
         @media (max-width: 980px) {
           .settings-section-sidebar {
             position: static;
+            max-height: none;
+            overflow: visible;
           }
 
           .settings-sidebar-nav {
