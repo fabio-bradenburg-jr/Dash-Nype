@@ -1933,7 +1933,7 @@ export default function DashboardPage() {
   const metaFilteredAdIdsRef = useRef([])
 
   const [hasLoadedPreferences, setHasLoadedPreferences] = useState(false)
-  const [activeTab, setActiveTab] = useState('home')
+  const [activeTab, setActiveTab] = useState('assistant')
   const [dateRange, setDateRange] = useState('last_7d')
   const [draftDateRange, setDraftDateRange] = useState('last_7d')
   const [customSince, setCustomSince] = useState('')
@@ -1948,6 +1948,7 @@ export default function DashboardPage() {
   const [draftMondayCustomUntil, setDraftMondayCustomUntil] = useState('')
   const [themeColor, setThemeColor] = useState('blue')
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(true)
+  const [isHomeToolsExpanded, setIsHomeToolsExpanded] = useState(false)
   const [metric1, setMetric1] = useState('spend')
   const [metric2, setMetric2] = useState('roas')
   const [campaignSearch, setCampaignSearch] = useState('')
@@ -2081,6 +2082,12 @@ export default function DashboardPage() {
   }, [breakdowns, activeClientId])
 
   useEffect(() => {
+    if (activeTab !== 'home') {
+      setIsHomeToolsExpanded(false)
+    }
+  }, [activeTab])
+
+  useEffect(() => {
     setMetaResultDrilldown(null)
   }, [activeClientId, dateRange, customSince, customUntil, dailyData])
 
@@ -2151,6 +2158,45 @@ export default function DashboardPage() {
     const score = ((connectedClientsCount + brandedClientsCount) / (clients.length * 2)) * 100
     return Math.round(score * 10) / 10
   }, [clients.length, connectedClientsCount, brandedClientsCount])
+  const mondayBoardsConfigured = useMemo(
+    () =>
+      Array.from(new Set(
+        String(globalIntegrations.mondayBoardIds || '')
+          .split(',')
+          .map((item) => item.trim())
+          .filter(Boolean)
+      )).length,
+    [globalIntegrations.mondayBoardIds]
+  )
+  const clickUpListsConfigured = useMemo(
+    () =>
+      Array.from(new Set(
+        String(globalIntegrations.clickUpListIds || '')
+          .split(',')
+          .map((item) => item.trim())
+          .filter(Boolean)
+      )).length,
+    [globalIntegrations.clickUpListIds]
+  )
+  const homeToolsMenuItems = useMemo(() => {
+    const items = [
+      { key: 'assistant', label: 'AI Search', helper: 'Copiloto da operação', onClick: () => setActiveTab('assistant') },
+      { key: 'apresentacao', label: 'Pitch Deck', helper: activeClient ? activeClient.name : 'Leitura executiva', onClick: () => setActiveTab('apresentacao') },
+      { key: 'clickup', label: 'ClickUp', helper: clickUpListsConfigured ? `${formatNumber(clickUpListsConfigured)} listas` : 'Configuração pendente', onClick: () => setActiveTab('clickup') },
+      { key: 'monday', label: 'Monday', helper: mondayBoardsConfigured ? `${formatNumber(mondayBoardsConfigured)} boards` : 'Configuração pendente', onClick: () => setActiveTab('monday') },
+      { key: 'calendar', label: 'Agenda', helper: 'Rotina operacional', onClick: () => setActiveTab('calendar') },
+    ]
+
+    if (canManageClients) {
+      items.splice(2, 0, { key: 'clientes', label: 'Clientes', helper: `${formatNumber(clients.length)} na base`, onClick: () => setActiveTab('clientes') })
+    }
+
+    if (canManageUsers) {
+      items.push({ key: 'usuarios', label: 'Users', helper: `${formatNumber(usersList.length || 0)} usuários`, onClick: () => setActiveTab('usuarios') })
+    }
+
+    return items
+  }, [activeClient, clickUpListsConfigured, mondayBoardsConfigured, canManageClients, canManageUsers, clients.length, usersList.length])
   const activeIntegrations = activeClient?.integrations || DEFAULT_INTEGRATIONS
   const selectedAdAccount = activeClient?.metaAdAccountId || ''
   const normalizedAiIntegrations = useMemo(
@@ -3055,11 +3101,9 @@ export default function DashboardPage() {
   }, [hasLoadedPreferences, themeColor, metric1, metric2, activeClientId, globalIntegrations, clients, clientGroups, userLoading, user, canManageClients, hasSyncedServerState])
 
   useEffect(() => {
-    const root = document.documentElement
-    root.style.setProperty('--theme-surface', currentTheme.surface)
     ChartJS.defaults.color = '#94a3b8'
     ChartJS.defaults.font.family = "'Inter', sans-serif"
-  }, [currentTheme])
+  }, [])
 
   useEffect(() => {
     if (userLoading) return
@@ -6736,18 +6780,6 @@ export default function DashboardPage() {
   )
 
   const renderHomeHub = () => {
-    const mondayBoardsConfigured = Array.from(new Set(
-      String(globalIntegrations.mondayBoardIds || '')
-        .split(',')
-        .map((item) => item.trim())
-        .filter(Boolean)
-    )).length
-    const clickUpListsConfigured = Array.from(new Set(
-      String(globalIntegrations.clickUpListIds || '')
-        .split(',')
-        .map((item) => item.trim())
-        .filter(Boolean)
-    )).length
     const reportsPreview = [
       {
         title: activeClient ? `Leitura executiva de ${activeClient.name}` : 'Leitura executiva da operação',
@@ -7882,6 +7914,18 @@ export default function DashboardPage() {
     return <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', color: 'white' }}>Carregando painel...</div>
   }
 
+  const handleHomeToolsLauncher = () => {
+    setActiveTab('home')
+
+    if (isSidebarCollapsed) {
+      setIsSidebarCollapsed(false)
+      setIsHomeToolsExpanded(true)
+      return
+    }
+
+    setIsHomeToolsExpanded((current) => !current)
+  }
+
   return (
     <div className="dashboard-container">
       <aside className={`sidebar glass-panel ${isSidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
@@ -7911,9 +7955,40 @@ export default function DashboardPage() {
           <button type="button" data-tooltip="Assistente" className={`nav-item nav-button ${activeTab === 'assistant' ? 'active' : ''}`} onClick={() => setActiveTab('assistant')}>
             <i className="bx bx-bot"></i> Assistente
           </button>
-          <button type="button" data-tooltip="Home" className={`nav-item nav-button ${activeTab === 'home' ? 'active' : ''}`} onClick={() => setActiveTab('home')}>
-            <i className="bx bxs-home-heart"></i> Home
-          </button>
+          <div className={`nav-tools-group ${isHomeToolsExpanded && !isSidebarCollapsed ? 'open' : ''}`}>
+            <button
+              type="button"
+              data-tooltip="Ferramentas"
+              className={`nav-item nav-button nav-tools-trigger ${activeTab === 'home' || isHomeToolsExpanded ? 'active' : ''}`}
+              onClick={handleHomeToolsLauncher}
+            >
+              <i className="bx bx-grid-alt"></i>
+              {!isSidebarCollapsed && (
+                <>
+                  Ferramentas
+                  <span className="nav-tools-chevron">
+                    <i className={`bx ${isHomeToolsExpanded ? 'bx-chevron-up' : 'bx-chevron-down'}`}></i>
+                  </span>
+                </>
+              )}
+            </button>
+
+            {!isSidebarCollapsed && isHomeToolsExpanded && (
+              <div className="home-tools-menu">
+                {homeToolsMenuItems.map((item) => (
+                  <button
+                    key={item.key}
+                    type="button"
+                    className={`home-tools-link ${activeTab === item.key ? 'active' : ''}`}
+                    onClick={item.onClick}
+                  >
+                    <strong>{item.label}</strong>
+                    <span>{item.helper}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
           {canManageClients && (
             <button type="button" data-tooltip="Clientes" className={`nav-item nav-button ${activeTab === 'clientes' ? 'active' : ''}`} onClick={() => setActiveTab('clientes')}>
               <i className="bx bxs-buildings"></i> Clientes
@@ -7985,16 +8060,17 @@ export default function DashboardPage() {
               {activeTab === 'monday' && 'Operação Monday'}
               {activeTab === 'usuarios' && 'Gestão de usuários'}
             </h1>
-            <p>
-              {activeTab === 'home' && 'Entre por aqui sempre que abrir o app e escolha rapidamente qual área da operação você quer acessar.'}
-              {activeTab === 'clientes' && 'Cadastre seus clientes e mantenha cada operação separada dentro do dashboard.'}
-              {activeTab === 'apresentacao' && 'Uma visão executiva consolidada dos principais resultados do cliente, organizada por fonte de dados.'}
-              {activeTab === 'assistant' && 'Abra a conversa como camada principal do dia e use o copiloto para priorizar ações, cruzar dados e destravar a operação.'}
-              {activeTab === 'calendar' && 'Acompanhe a agenda da operação dentro da mesma Home, sem trocar de área.'}
-              {activeTab === 'clickup' && 'Acompanhe tarefas, responsáveis e status operacionais do ClickUp a partir da configuração global da operação.'}
-              {activeTab === 'monday' && 'Acompanhe boards, itens, status e responsáveis do Monday a partir da configuração global da operação.'}
-              {activeTab === 'usuarios' && 'Defina quem pode visualizar dashboards, editar integrações e acessar clientes específicos.'}
-            </p>
+            {activeTab !== 'assistant' && (
+              <p>
+                {activeTab === 'home' && 'Entre por aqui sempre que abrir o app e escolha rapidamente qual área da operação você quer acessar.'}
+                {activeTab === 'clientes' && 'Cadastre seus clientes e mantenha cada operação separada dentro do dashboard.'}
+                {activeTab === 'apresentacao' && 'Uma visão executiva consolidada dos principais resultados do cliente, organizada por fonte de dados.'}
+                {activeTab === 'calendar' && 'Acompanhe a agenda da operação dentro da mesma Home, sem trocar de área.'}
+                {activeTab === 'clickup' && 'Acompanhe tarefas, responsáveis e status operacionais do ClickUp a partir da configuração global da operação.'}
+                {activeTab === 'monday' && 'Acompanhe boards, itens, status e responsáveis do Monday a partir da configuração global da operação.'}
+                {activeTab === 'usuarios' && 'Defina quem pode visualizar dashboards, editar integrações e acessar clientes específicos.'}
+              </p>
+            )}
           </div>
 
           <div className="header-actions header-actions-wrap">
@@ -11223,6 +11299,67 @@ export default function DashboardPage() {
           cursor: pointer;
         }
 
+        .nav-tools-group {
+          display: grid;
+          gap: 10px;
+        }
+
+        .nav-tools-trigger {
+          justify-content: space-between;
+        }
+
+        .nav-tools-chevron {
+          margin-left: auto;
+          display: inline-flex;
+          align-items: center;
+        }
+
+        .nav-tools-chevron i {
+          font-size: 18px;
+          margin: 0;
+        }
+
+        .home-tools-menu {
+          display: grid;
+          gap: 8px;
+          padding: 0 0 0 18px;
+        }
+
+        .home-tools-link {
+          width: 100%;
+          padding: 12px 14px;
+          border-radius: 16px;
+          border: 1px solid rgba(69, 71, 75, 0.14);
+          background: rgba(17, 24, 39, 0.48);
+          color: var(--text-primary);
+          text-align: left;
+          cursor: pointer;
+          display: grid;
+          gap: 4px;
+          transition: border-color 0.2s ease, background 0.2s ease, transform 0.2s ease;
+        }
+
+        .home-tools-link strong {
+          font-family: var(--font-family-headline);
+          font-size: 12px;
+          font-weight: 800;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+        }
+
+        .home-tools-link span {
+          color: var(--text-muted);
+          font-size: 11px;
+          line-height: 1.45;
+        }
+
+        .home-tools-link:hover,
+        .home-tools-link.active {
+          border-color: rgba(175, 198, 255, 0.24);
+          background: rgba(175, 198, 255, 0.08);
+          transform: translateX(2px);
+        }
+
         .sidebar-toggle {
           position: absolute;
           top: 26px;
@@ -11382,7 +11519,7 @@ export default function DashboardPage() {
           grid-template-columns: minmax(0, 1.4fr) minmax(320px, 0.9fr);
           gap: 24px;
           background:
-            radial-gradient(circle at top left, rgba(175, 198, 255, 0.14), transparent 34%),
+            radial-gradient(circle at top left, color-mix(in srgb, var(--accent-blue) 14%, transparent), transparent 34%),
             linear-gradient(180deg, rgba(255, 255, 255, 0.028), rgba(255, 255, 255, 0.012));
           border: 1px solid rgba(143, 144, 149, 0.14);
           border-radius: 28px;
@@ -11397,7 +11534,7 @@ export default function DashboardPage() {
 
         .management-hero-kicker,
         .management-card-kicker {
-          color: #afc6ff;
+          color: var(--accent-blue);
           font-size: 11px;
           font-weight: 800;
           letter-spacing: 0.18em;
@@ -11532,7 +11669,7 @@ export default function DashboardPage() {
         }
 
         .clients-metric-card-score strong {
-          color: #4edea3;
+          color: var(--accent-emerald);
         }
 
         .client-create-grid > .client-create-bar {
@@ -11742,9 +11879,9 @@ export default function DashboardPage() {
 
         .user-directory-card:hover {
           transform: translateY(-2px);
-          border-color: rgba(175, 198, 255, 0.24);
+          border-color: color-mix(in srgb, var(--accent-blue) 24%, transparent);
           background:
-            linear-gradient(180deg, rgba(175, 198, 255, 0.05), rgba(255, 255, 255, 0.014)),
+            linear-gradient(180deg, color-mix(in srgb, var(--accent-blue) 5%, transparent), rgba(255, 255, 255, 0.014)),
             rgba(11, 14, 20, 0.78);
         }
 
@@ -11761,9 +11898,9 @@ export default function DashboardPage() {
           border-radius: 18px;
           display: grid;
           place-items: center;
-          color: #afc6ff;
-          background: rgba(175, 198, 255, 0.08);
-          border: 1px solid rgba(175, 198, 255, 0.16);
+          color: var(--accent-blue);
+          background: color-mix(in srgb, var(--accent-blue) 8%, transparent);
+          border: 1px solid color-mix(in srgb, var(--accent-blue) 16%, transparent);
           box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
         }
 
@@ -11804,9 +11941,9 @@ export default function DashboardPage() {
         .user-role-badge {
           padding: 7px 12px;
           border-radius: 999px;
-          background: rgba(175, 198, 255, 0.08);
-          border: 1px solid rgba(175, 198, 255, 0.16);
-          color: #afc6ff;
+          background: color-mix(in srgb, var(--accent-blue) 8%, transparent);
+          border: 1px solid color-mix(in srgb, var(--accent-blue) 16%, transparent);
+          color: var(--accent-blue);
           font-size: 11px;
           font-weight: 800;
           letter-spacing: 0.08em;
@@ -11819,9 +11956,9 @@ export default function DashboardPage() {
         }
 
         .client-directory-card-active {
-          border-color: rgba(175, 198, 255, 0.32);
+          border-color: color-mix(in srgb, var(--accent-blue) 32%, transparent);
           background:
-            linear-gradient(180deg, rgba(175, 198, 255, 0.08), rgba(255, 255, 255, 0.016)),
+            linear-gradient(180deg, color-mix(in srgb, var(--accent-blue) 8%, transparent), rgba(255, 255, 255, 0.016)),
             rgba(11, 14, 20, 0.82);
         }
 
@@ -11883,15 +12020,15 @@ export default function DashboardPage() {
         }
 
         .client-status-success {
-          color: #4edea3;
-          background: rgba(78, 222, 163, 0.08);
-          border-color: rgba(78, 222, 163, 0.18);
+          color: var(--accent-emerald);
+          background: color-mix(in srgb, var(--accent-emerald) 8%, transparent);
+          border-color: color-mix(in srgb, var(--accent-emerald) 18%, transparent);
         }
 
         .client-status-info {
-          color: #afc6ff;
-          background: rgba(175, 198, 255, 0.08);
-          border-color: rgba(175, 198, 255, 0.18);
+          color: var(--accent-blue);
+          background: color-mix(in srgb, var(--accent-blue) 8%, transparent);
+          border-color: color-mix(in srgb, var(--accent-blue) 18%, transparent);
         }
 
         .client-status-neutral {
@@ -11909,11 +12046,11 @@ export default function DashboardPage() {
           width: 68px;
           height: 68px;
           border-radius: 22px;
-          background: rgba(175, 198, 255, 0.1);
-          border: 1px solid rgba(175, 198, 255, 0.16);
+          background: color-mix(in srgb, var(--accent-blue) 10%, transparent);
+          border: 1px solid color-mix(in srgb, var(--accent-blue) 16%, transparent);
           display: grid;
           place-items: center;
-          color: #afc6ff;
+          color: var(--accent-blue);
           font-size: 22px;
           font-weight: 800;
           letter-spacing: -0.04em;
@@ -12014,7 +12151,7 @@ export default function DashboardPage() {
           display: inline-flex;
           align-items: center;
           gap: 8px;
-          color: #4edea3;
+          color: var(--accent-emerald);
           font-size: 11px;
           font-weight: 800;
           letter-spacing: 0.14em;
@@ -12048,7 +12185,7 @@ export default function DashboardPage() {
         .client-activity-link {
           border: none;
           background: transparent;
-          color: #afc6ff;
+          color: var(--accent-blue);
           font-size: 12px;
           font-weight: 700;
           cursor: pointer;
@@ -12092,15 +12229,15 @@ export default function DashboardPage() {
         }
 
         .client-activity-icon-primary {
-          color: #afc6ff;
-          background: rgba(175, 198, 255, 0.08);
-          border-color: rgba(175, 198, 255, 0.2);
+          color: var(--accent-blue);
+          background: color-mix(in srgb, var(--accent-blue) 8%, transparent);
+          border-color: color-mix(in srgb, var(--accent-blue) 20%, transparent);
         }
 
         .client-activity-icon-success {
-          color: #4edea3;
-          background: rgba(78, 222, 163, 0.08);
-          border-color: rgba(78, 222, 163, 0.2);
+          color: var(--accent-emerald);
+          background: color-mix(in srgb, var(--accent-emerald) 8%, transparent);
+          border-color: color-mix(in srgb, var(--accent-emerald) 20%, transparent);
         }
 
         .client-activity-icon-alert {
@@ -12139,7 +12276,7 @@ export default function DashboardPage() {
 
         .client-security-head i {
           font-size: 24px;
-          color: #4edea3;
+          color: var(--accent-emerald);
         }
 
         .client-security-meters {
@@ -12168,7 +12305,7 @@ export default function DashboardPage() {
         }
 
         .client-security-meter strong {
-          color: #4edea3;
+          color: var(--accent-emerald);
           font-size: 12px;
           font-weight: 800;
           letter-spacing: 0.12em;
@@ -12189,18 +12326,26 @@ export default function DashboardPage() {
         }
 
         .client-security-fill-primary {
-          background: linear-gradient(90deg, rgba(175, 198, 255, 0.9), rgba(78, 137, 255, 0.9));
+          background: linear-gradient(
+            90deg,
+            color-mix(in srgb, var(--accent-blue) 55%, white 45%),
+            color-mix(in srgb, var(--accent-blue) 90%, black 10%)
+          );
         }
 
         .client-security-fill-tertiary {
-          background: linear-gradient(90deg, rgba(78, 222, 163, 0.9), rgba(111, 251, 190, 0.9));
+          background: linear-gradient(
+            90deg,
+            color-mix(in srgb, var(--accent-emerald) 90%, white 10%),
+            color-mix(in srgb, var(--accent-emerald) 70%, white 30%)
+          );
         }
 
         .client-security-note {
           padding: 20px;
           border-radius: 22px;
-          border: 1px solid rgba(78, 222, 163, 0.12);
-          background: rgba(78, 222, 163, 0.06);
+          border: 1px solid color-mix(in srgb, var(--accent-emerald) 12%, transparent);
+          background: color-mix(in srgb, var(--accent-emerald) 6%, transparent);
           display: grid;
           gap: 12px;
         }
@@ -12209,7 +12354,7 @@ export default function DashboardPage() {
           display: inline-flex;
           align-items: center;
           gap: 10px;
-          color: #4edea3;
+          color: var(--accent-emerald);
           font-size: 11px;
           font-weight: 800;
           letter-spacing: 0.14em;
@@ -12232,11 +12377,11 @@ export default function DashboardPage() {
         }
 
         .client-activity-dot-primary {
-          background: #afc6ff;
+          background: var(--accent-blue);
         }
 
         .client-activity-dot-success {
-          background: #4edea3;
+          background: var(--accent-emerald);
         }
 
         .client-activity-dot-muted {
