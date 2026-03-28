@@ -652,20 +652,34 @@ export default function AssistantPage({ embeddedOverride = null } = {}) {
 
         .assistant-context-stats {
           display: grid;
-          grid-template-columns: repeat(3, minmax(0, 1fr));
+          grid-template-columns: repeat(2, minmax(0, 1fr));
           gap: 12px;
-          margin-bottom: 18px;
+          margin-bottom: 20px;
         }
 
         .assistant-context-stat {
           display: grid;
-          gap: 14px;
+          gap: 16px;
           align-content: space-between;
-          min-height: 112px;
-          padding: 18px 18px 16px;
+          min-height: 118px;
+          padding: 18px;
           border-radius: 18px;
           background: rgba(255, 255, 255, 0.025);
           border: 1px solid var(--border-color);
+          transition: border-color 160ms ease, transform 160ms ease, background 160ms ease;
+        }
+
+        .assistant-context-stat:hover {
+          border-color: color-mix(in srgb, var(--accent-blue) 24%, var(--border-color));
+          background: rgba(255, 255, 255, 0.038);
+          transform: translateY(-1px);
+        }
+
+        .assistant-context-stat:last-child {
+          grid-column: 1 / -1;
+          grid-template-columns: auto 1fr;
+          align-items: center;
+          min-height: unset;
         }
 
         .assistant-context-stat div {
@@ -682,9 +696,18 @@ export default function AssistantPage({ embeddedOverride = null } = {}) {
         }
 
         .assistant-context-stat strong {
-          font-size: 16px;
+          font-size: 17px;
           color: var(--text-primary);
           line-height: 1.2;
+          font-weight: 800;
+        }
+
+        .assistant-context-stat:last-child div {
+          gap: 4px;
+        }
+
+        .assistant-context-stat:last-child strong {
+          justify-self: end;
         }
 
         .assistant-chip-group {
@@ -991,6 +1014,16 @@ export default function AssistantPage({ embeddedOverride = null } = {}) {
 
           .assistant-context-stats {
             grid-template-columns: repeat(3, minmax(0, 1fr));
+          }
+
+          .assistant-context-stat:last-child {
+            grid-column: auto;
+            grid-template-columns: 1fr;
+            min-height: 118px;
+          }
+
+          .assistant-context-stat:last-child strong {
+            justify-self: start;
           }
         }
 
