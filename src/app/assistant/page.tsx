@@ -1,7 +1,7 @@
 'use client'
 
 import type { ChangeEvent, FormEvent } from 'react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useUser } from '@/lib/contexts/UserContext'
 
@@ -83,6 +83,7 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
   const [focusMode, setFocusMode] = useState<FocusMode>('operation')
   const [inputValue, setInputValue] = useState('')
   const [messages, setMessages] = useState<AssistantMessageItem[]>([])
+  const messagesContainerRef = useRef<HTMLDivElement | null>(null)
 
   const availableClients = useMemo(
     () => (Array.isArray(dashboardState?.clients) ? dashboardState.clients : []),
@@ -135,6 +136,15 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
       })
     )
   }, [messages, focusMode])
+
+  useEffect(() => {
+    const container = messagesContainerRef.current
+    if (!container) return
+    container.scrollTo({
+      top: container.scrollHeight,
+      behavior: 'smooth',
+    })
+  }, [messages, isSending])
 
   const loadDashboardState = useCallback(async () => {
     try {
@@ -381,7 +391,7 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
               {errorMessage && <div className="form-alert">{errorMessage}</div>}
               {chatError && <div className="form-alert">{chatError}</div>}
 
-              <div className="assistant-messages">
+              <div className="assistant-messages" ref={messagesContainerRef}>
                 <div className="assistant-date-separator">
                   <span>Hoje</span>
                 </div>
@@ -621,6 +631,7 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
         .assistant-main {
           display: grid;
           gap: 24px;
+          min-height: 0;
         }
 
         .assistant-empty {
@@ -629,10 +640,12 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
         }
 
         .assistant-content {
-          min-height: calc(100vh - 180px);
+          min-height: 0;
+          height: calc(100vh - 180px);
           display: grid;
           grid-template-columns: 320px minmax(0, 1fr);
           gap: 24px;
+          align-items: stretch;
         }
 
         .glass-panel {
@@ -648,6 +661,7 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
           gap: 18px;
           overflow-y: auto;
           padding-right: 4px;
+          min-height: 0;
         }
 
         .assistant-context-card,
@@ -862,6 +876,7 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
 
         .assistant-chat-panel {
           min-height: 0;
+          height: 100%;
           display: grid;
           grid-template-rows: auto minmax(0, 1fr) auto;
           border-radius: 20px;
@@ -896,6 +911,7 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
           gap: 20px;
           align-content: start;
           padding: 24px 32px 24px;
+          overscroll-behavior: contain;
         }
 
         .assistant-date-separator {
@@ -1099,7 +1115,8 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
         }
 
         .assistant-main-embedded .assistant-content {
-          min-height: calc(100vh - 280px);
+          min-height: 0;
+          height: calc(100vh - 240px);
         }
 
         .assistant-main-embedded .assistant-context-card,
@@ -1111,7 +1128,7 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
         @media (max-width: 1120px) {
           .assistant-content {
             grid-template-columns: 1fr;
-            min-height: auto;
+            height: auto;
           }
 
           .assistant-context-column {

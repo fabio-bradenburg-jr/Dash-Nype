@@ -107,6 +107,15 @@ interface ClickUpOperationSnapshot {
     blockedCount: number
     overdueCount: number
   }>
+  keyTasks: Array<{
+    name: string
+    listName: string
+    statusLabel: string
+    assignees: string[]
+    dueDate: string
+    urgency: 'urgent' | 'attention' | 'normal'
+    url: string
+  }>
 }
 
 interface MondayOperationSnapshot {
@@ -144,6 +153,16 @@ interface MondayOperationSnapshot {
     totalItems: number
     blockedCount: number
     overdueCount: number
+  }>
+  keyTasks: Array<{
+    name: string
+    boardName: string
+    groupLabel: string
+    statusLabel: string
+    owners: string[]
+    dueDate: string
+    trackedTime: string
+    urgency: 'urgent' | 'attention' | 'normal'
   }>
 }
 
@@ -474,6 +493,7 @@ function normalizeClickUpOperationSnapshot(summary: LooseRecord | null | undefin
   const statusCounts = Array.isArray(summary.statusSummary?.counts) ? summary.statusSummary.counts : []
   const assigneeRanking = Array.isArray(summary.assigneeRanking) ? summary.assigneeRanking : []
   const listSummary = Array.isArray(summary.listSummary) ? summary.listSummary : []
+  const taskCatalog = Array.isArray(summary.taskCatalog) ? summary.taskCatalog : []
 
   return {
     listsConfigured: toPositiveNumber(summary.listsConfigured),
@@ -500,6 +520,15 @@ function normalizeClickUpOperationSnapshot(summary: LooseRecord | null | undefin
       blockedCount: toPositiveNumber(item?.blockedCount),
       overdueCount: toPositiveNumber(item?.overdueCount),
     })),
+    keyTasks: taskCatalog.slice(0, 12).map((item) => ({
+      name: String(item?.name || 'Tarefa sem nome'),
+      listName: String(item?.listName || 'Lista'),
+      statusLabel: String(item?.statusLabel || 'Sem status'),
+      assignees: Array.isArray(item?.assignees) ? item.assignees.slice(0, 3).map((name) => String(name || '')) : [],
+      dueDate: String(item?.dueDate || ''),
+      urgency: item?.isOverdue || item?.isBlocked ? 'urgent' : item?.isDueSoon || item?.isUnassigned ? 'attention' : 'normal',
+      url: String(item?.url || ''),
+    })),
   }
 }
 
@@ -508,6 +537,10 @@ function normalizeMondayOperationSnapshot(summary: LooseRecord | null | undefine
 
   const boardSummary = Array.isArray(summary.boardSummary) ? summary.boardSummary : []
   const groupSummary = Array.isArray(summary.groupSummary) ? summary.groupSummary : []
+  const overdueTasks = Array.isArray(summary.overdueTasks) ? summary.overdueTasks : []
+  const longestTasks = Array.isArray(summary.longestTasks) ? summary.longestTasks : []
+  const taskCatalog = Array.isArray(summary.taskCatalog) ? summary.taskCatalog : []
+  const prioritizedTasks = [...overdueTasks, ...taskCatalog, ...longestTasks]
 
   return {
     boardsConfigured: toPositiveNumber(summary.boardsConfigured),
@@ -550,6 +583,16 @@ function normalizeMondayOperationSnapshot(summary: LooseRecord | null | undefine
       totalItems: toPositiveNumber(item?.totalItems),
       blockedCount: toPositiveNumber(item?.blockedCount),
       overdueCount: toPositiveNumber(item?.overdueCount),
+    })),
+    keyTasks: prioritizedTasks.slice(0, 12).map((item) => ({
+      name: String(item?.name || 'Item sem nome'),
+      boardName: String(item?.boardName || 'Board'),
+      groupLabel: String(item?.groupLabel || 'Grupo'),
+      statusLabel: String(item?.statusLabel || 'Sem status'),
+      owners: Array.isArray(item?.owners) ? item.owners.slice(0, 3).map((name) => String(name || '')) : [],
+      dueDate: String(item?.dueDate || ''),
+      trackedTime: toTrackedHoursLabel(item?.trackedSeconds),
+      urgency: item?.isOverdue || item?.daysOverdue > 0 ? 'urgent' : item?.isDueSoon || item?.isBlocked ? 'attention' : 'normal',
     })),
   }
 }
@@ -793,6 +836,8 @@ function buildAssistantSystemPrompt(aiDashboardPrompt: string): string {
     'Ao falar de operacao, prefira o formato: area, leitura, impacto e direcionamento.',
     'Ao falar de campanhas, prefira o formato: campanha, leitura, impacto e direcionamento.',
     'Se houver dados de Monday e ClickUp ao mesmo tempo, cruze prioridades, bloqueios, atrasos e carga operacional para apontar onde agir primeiro.',
+    'Se houver keyTasks no contexto operacional, voce pode citar tarefas nominais, responsaveis, status e vencimentos ao responder.',
+    'Quando o usuario pedir para ver tudo ou listar tarefas, priorize mostrar os itens nominais mais criticos recebidos no contexto.',
     'Quando houver gargalos operacionais claros, feche com uma priorizacao curta: positivo, atencao e urgencia.',
     'Voce ainda nao possui navegacao web ativa neste fluxo, entao nao afirme dados externos em tempo real como se tivesse pesquisado.',
     '',

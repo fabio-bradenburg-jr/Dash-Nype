@@ -54,6 +54,16 @@ function createAssigneeSummary(name) {
   }
 }
 
+function normalizePriorityValue(priority) {
+  const label = String(priority?.priority || priority?.color || priority || '').toLowerCase()
+  if (!label) return 0
+  if (/(urgent|urgente)/i.test(label)) return 5
+  if (/(high|alta|alto)/i.test(label)) return 4
+  if (/(normal|medium|m[eé]dia|medio)/i.test(label)) return 3
+  if (/(low|baixa|baixo)/i.test(label)) return 2
+  return 1
+}
+
 async function requestClickUp(token, path, searchParams = {}) {
   const url = new URL(`${CLICKUP_API_BASE}${path}`)
 
@@ -139,6 +149,7 @@ export async function readClickUpSummary({ token, listIds }) {
   const statusCounts = new Map()
   const assigneeCounts = new Map()
   const listCounts = new Map()
+  const taskCatalog = []
 
   dedupedTasks.forEach((task) => {
     const closed = isClosedStatus(task?.status)
@@ -189,6 +200,25 @@ export async function readClickUpSummary({ token, listIds }) {
       })
     }
 
+    taskCatalog.push({
+      id: task?.id || '',
+      name: String(task?.name || 'Tarefa sem nome'),
+      listName: listLabel,
+      statusLabel,
+      assignees: assignees.map((assignee) =>
+        String(assignee?.username || assignee?.email || assignee?.initials || assignee?.id || 'Sem nome').trim()
+      ),
+      dueDate: dueDate?.toISOString() || '',
+      isClosed: closed,
+      isBlocked: blocked,
+      isInProgress: inProgress,
+      isOverdue: !closed && Boolean(dueDate && dueDate < now),
+      isDueSoon: !closed && Boolean(dueDate && dueDate >= now && dueDate <= nextWeek),
+      isUnassigned: assignees.length === 0,
+      priorityRank: normalizePriorityValue(task?.priority),
+      url: String(task?.url || ''),
+    })
+
     listCounts.set(listLabel, currentListSummary)
   })
 
@@ -222,5 +252,15 @@ export async function readClickUpSummary({ token, listIds }) {
       }))
       .sort((left, right) => right.totalTasks - left.totalTasks || left.label.localeCompare(right.label, 'pt-BR'))
       .slice(0, 8),
+    taskCatalog: taskCatalog
+      .sort((left, right) => {
+        if (left.isOverdue !== right.isOverdue) return Number(right.isOverdue) - Number(left.isOverdue)
+        if (left.isBlocked !== right.isBlocked) return Number(right.isBlocked) - Number(left.isBlocked)
+        if (left.isDueSoon !== right.isDueSoon) return Number(right.isDueSoon) - Number(left.isDueSoon)
+        if (left.isUnassigned !== right.isUnassigned) return Number(right.isUnassigned) - Number(left.isUnassigned)
+        if ((right.priorityRank || 0) !== (left.priorityRank || 0)) return (right.priorityRank || 0) - (left.priorityRank || 0)
+        return left.name.localeCompare(right.name, 'pt-BR')
+      })
+      .slice(0, 30),
   }
 }
