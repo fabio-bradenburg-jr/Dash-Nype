@@ -14404,9 +14404,17 @@ export default function DashboardPage() {
         }
 
         :root[data-ui-mode='light'] .home-tools-menu {
-          background: rgba(255, 255, 255, 0.82) !important;
+          background: linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(248, 250, 252, 0.98)) !important;
+          border-color: rgba(15, 23, 42, 0.08) !important;
+          box-shadow: 0 18px 38px rgba(15, 23, 42, 0.06) !important;
           backdrop-filter: blur(18px);
           -webkit-backdrop-filter: blur(18px);
+        }
+
+        :root[data-ui-mode='light'] .home-tools-link {
+          background: rgba(255, 255, 255, 0.86) !important;
+          border-color: rgba(15, 23, 42, 0.08) !important;
+          box-shadow: 0 12px 28px rgba(15, 23, 42, 0.05) !important;
         }
 
         :root[data-ui-mode='light'] .home-tools-link:hover,
@@ -14421,6 +14429,13 @@ export default function DashboardPage() {
           border-color: rgba(15, 23, 42, 0.08) !important;
           color: #0f172a !important;
           box-shadow: 0 16px 30px rgba(15, 23, 42, 0.08) !important;
+        }
+
+        :root[data-ui-mode='light'] .sidebar-toggle:hover {
+          background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(241, 245, 249, 0.98)) !important;
+          border-color: color-mix(in srgb, var(--accent-blue) 22%, rgba(15, 23, 42, 0.08)) !important;
+          color: #0f172a !important;
+          box-shadow: 0 18px 34px rgba(15, 23, 42, 0.1) !important;
         }
 
         :root[data-ui-mode='light'] .home-tools-link strong,
@@ -14491,6 +14506,85 @@ export default function DashboardPage() {
         :root[data-ui-mode='light'] .grouped-results,
         :root[data-ui-mode='light'] .monday-operations-shell {
           padding: 24px;
+        }
+
+        :root[data-ui-mode='light'] .sidebar-collapsed :global(.nav-item)::after {
+          background: linear-gradient(180deg, rgba(255, 255, 255, 0.97), rgba(248, 250, 252, 0.98)) !important;
+          color: #0f172a !important;
+          border-color: rgba(15, 23, 42, 0.08) !important;
+          box-shadow: 0 16px 36px rgba(15, 23, 42, 0.12) !important;
+        }
+
+        :root[data-ui-mode='light'] .sidebar-collapsed :global(.nav-item:hover)::after {
+          opacity: 1;
+          transform: translateY(-50%) translateX(4px);
+        }
+
+        :root[data-ui-mode='light'] .home-hub-hero,
+        :root[data-ui-mode='light'] .home-hub-hero-obsidian,
+        :root[data-ui-mode='light'] .clients-intro,
+        :root[data-ui-mode='light'] .clients-hero-main,
+        :root[data-ui-mode='light'] .monday-operations-shell,
+        :root[data-ui-mode='light'] .monday-command-panel,
+        :root[data-ui-mode='light'] .hero-panel,
+        :root[data-ui-mode='light'] .meta-filter-panel,
+        :root[data-ui-mode='light'] .grouped-results {
+          background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 252, 0.98)) !important;
+          border-color: rgba(15, 23, 42, 0.08) !important;
+          box-shadow: 0 22px 44px rgba(15, 23, 42, 0.06) !important;
+        }
+
+        :root[data-ui-mode='light'] .clients-metric-card,
+        :root[data-ui-mode='light'] .client-create-bar,
+        :root[data-ui-mode='light'] .management-directory-card,
+        :root[data-ui-mode='light'] .client-activity-card,
+        :root[data-ui-mode='light'] .client-security-card,
+        :root[data-ui-mode='light'] .client-group-card,
+        :root[data-ui-mode='light'] .management-stat-card {
+          background: linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(248, 250, 252, 0.98)) !important;
+          border-color: rgba(15, 23, 42, 0.08) !important;
+          box-shadow: 0 18px 36px rgba(15, 23, 42, 0.05) !important;
+        }
+
+        :root[data-ui-mode='light'] .hero-stat,
+        :root[data-ui-mode='light'] .operations-meta-card,
+        :root[data-ui-mode='light'] .operations-filter-card,
+        :root[data-ui-mode='light'] .operations-spotlight-card {
+          background: rgba(255, 255, 255, 0.92) !important;
+          border-color: rgba(15, 23, 42, 0.08) !important;
+        }
+
+        :root[data-ui-mode='light'] .monday-command-panel select,
+        :root[data-ui-mode='light'] .hero-select,
+        :root[data-ui-mode='light'] .client-create-inline input,
+        :root[data-ui-mode='light'] .search-box input,
+        :root[data-ui-mode='light'] .compact-filter select {
+          background: rgba(255, 255, 255, 0.98) !important;
+          color: #0f172a !important;
+          border-color: rgba(15, 23, 42, 0.08) !important;
+        }
+
+        :root[data-ui-mode='light'] .monday-command-panel h2,
+        :root[data-ui-mode='light'] .monday-command-panel h3,
+        :root[data-ui-mode='light'] .hero-panel h2,
+        :root[data-ui-mode='light'] .meta-filter-panel-head h2,
+        :root[data-ui-mode='light'] .management-directory-card h3,
+        :root[data-ui-mode='light'] .client-create-bar h3,
+        :root[data-ui-mode='light'] .clients-metric-card strong,
+        :root[data-ui-mode='light'] .management-stat-card strong {
+          color: #0f172a !important;
+        }
+
+        :root[data-ui-mode='light'] .monday-command-panel p,
+        :root[data-ui-mode='light'] .hero-panel p,
+        :root[data-ui-mode='light'] .meta-filter-panel p,
+        :root[data-ui-mode='light'] .management-directory-card p,
+        :root[data-ui-mode='light'] .client-create-bar p,
+        :root[data-ui-mode='light'] .clients-metric-card span,
+        :root[data-ui-mode='light'] .management-stat-card span,
+        :root[data-ui-mode='light'] .management-stat-card small,
+        :root[data-ui-mode='light'] .clients-metric-card small {
+          color: #475569 !important;
         }
 
         @media (max-width: 1100px) {

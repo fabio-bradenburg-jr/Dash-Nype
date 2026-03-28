@@ -7,6 +7,7 @@ import { useUser } from '@/lib/contexts/UserContext'
 import type { AiAgent } from '@/lib/types/ai'
 
 const STORAGE_KEY = 'nype-assistant-chat-v1'
+const DEFAULT_VOICE_LANGUAGE = 'pt-BR'
 const FOCUS_OPTIONS = [
   { value: 'operation', label: 'Operação' },
   { value: 'clients', label: 'Clientes' },
@@ -48,6 +49,38 @@ interface AssistantPageProps {
   embeddedOverride?: boolean | null
 }
 
+interface SpeechRecognitionResultLike {
+  isFinal: boolean
+  0?: {
+    transcript?: string
+  }
+}
+
+interface SpeechRecognitionEventLike extends Event {
+  resultIndex: number
+  results: ArrayLike<SpeechRecognitionResultLike>
+}
+
+interface SpeechRecognitionLike extends EventTarget {
+  continuous: boolean
+  interimResults: boolean
+  lang: string
+  onresult: ((event: SpeechRecognitionEventLike) => void) | null
+  onerror: ((event: Event & { error?: string }) => void) | null
+  onend: (() => void) | null
+  start: () => void
+  stop: () => void
+}
+
+type SpeechRecognitionConstructor = new () => SpeechRecognitionLike
+
+declare global {
+  interface Window {
+    SpeechRecognition?: SpeechRecognitionConstructor
+    webkitSpeechRecognition?: SpeechRecognitionConstructor
+  }
+}
+
 function createWelcomeMessage(clientName = ''): AssistantMessageItem {
   return {
     id: `assistant-welcome-${Date.now()}`,
@@ -87,8 +120,14 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
   const [messages, setMessages] = useState<AssistantMessageItem[]>([])
   const [selectedAgentId, setSelectedAgentId] = useState('copilot')
   const [isAgentMenuOpen, setIsAgentMenuOpen] = useState(false)
+  const [isVoiceSupported, setIsVoiceSupported] = useState(false)
+  const [isListening, setIsListening] = useState(false)
+  const [voiceEnabled, setVoiceEnabled] = useState(true)
+  const [voiceTranscript, setVoiceTranscript] = useState('')
   const messagesContainerRef = useRef<HTMLDivElement | null>(null)
   const agentMenuRef = useRef<HTMLDivElement | null>(null)
+  const recognitionRef = useRef<SpeechRecognitionLike | null>(null)
+  const lastSpokenMessageIdRef = useRef('')
 
   const availableClients = useMemo(
     () => (Array.isArray(dashboardState?.clients) ? dashboardState.clients : []),
@@ -130,6 +169,7 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
           : 'operation'
       )
       setSelectedAgentId(String(parsed.agentId || 'copilot'))
+      setVoiceEnabled(parsed.voiceEnabled !== false)
     } catch {}
   }, [])
 
@@ -144,13 +184,14 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
     if (typeof window === 'undefined') return
     window.localStorage.setItem(
       STORAGE_KEY,
-      JSON.stringify({
-        focusMode,
-        agentId: selectedAgentId,
-        messages: messages.slice(-20),
-      })
-    )
-  }, [messages, focusMode, selectedAgentId])
+        JSON.stringify({
+          focusMode,
+          agentId: selectedAgentId,
+          voiceEnabled,
+          messages: messages.slice(-20),
+        })
+      )
+  }, [messages, focusMode, selectedAgentId, voiceEnabled])
 
   useEffect(() => {
     if (!availableAgents.length) return
@@ -180,6 +221,144 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
     document.addEventListener('mousedown', handlePointerDown)
     return () => document.removeEventListener('mousedown', handlePointerDown)
   }, [isAgentMenuOpen])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    const Recognition =
+      window.SpeechRecognition || window.webkitSpeechRecognition
+
+    if (!Recognition) {
+      setIsVoiceSupported(false)
+      return
+    }
+
+    setIsVoiceSupported(true)
+
+    const recognition = new Recognition()
+    recognition.lang = DEFAULT_VOICE_LANGUAGE
+    recognition.continuous = true
+    recognition.interimResults = true
+
+    recognition.onresult = (event) => {
+      let finalText = ''
+      let interimText = ''
+
+      for (let index = event.resultIndex; index < event.results.length; index += 1) {
+        const result = event.results[index]
+        const transcript = String(result?.[0]?.transcript || '').trim()
+        if (!transcript) continue
+
+        if (result.isFinal) {
+          finalText = `${finalText} ${transcript}`.trim()
+        } else {
+          interimText = `${interimText} ${transcript}`.trim()
+        }
+      }
+
+      setVoiceTranscript(interimText)
+
+      if (finalText) {
+        setInputValue((current) => `${current.trim()} ${finalText}`.trim())
+      }
+    }
+
+    recognition.onerror = (event) => {
+      setIsListening(false)
+      setVoiceTranscript('')
+
+      if (event.error === 'not-allowed') {
+        setChatError('Permita o uso do microfone no navegador para conversar por voz.')
+        return
+      }
+
+      if (event.error === 'no-speech') {
+        return
+      }
+
+      setChatError('Não foi possível capturar o áudio agora. Tente novamente.')
+    }
+
+    recognition.onend = () => {
+      setIsListening(false)
+      setVoiceTranscript('')
+    }
+
+    recognitionRef.current = recognition
+
+    return () => {
+      recognition.stop()
+      recognitionRef.current = null
+      setIsListening(false)
+      setVoiceTranscript('')
+      if (typeof window !== 'undefined') {
+        window.speechSynthesis?.cancel()
+      }
+    }
+  }, [])
+
+  const stopSpeaking = useCallback(() => {
+    if (typeof window === 'undefined') return
+    window.speechSynthesis?.cancel()
+  }, [])
+
+  const speakMessage = useCallback(
+    (message: string, messageId?: string) => {
+      if (typeof window === 'undefined') return
+      if (!('speechSynthesis' in window)) {
+        setChatError('A leitura em voz alta não é suportada neste navegador.')
+        return
+      }
+
+      stopSpeaking()
+
+      const utterance = new SpeechSynthesisUtterance(message)
+      utterance.lang = DEFAULT_VOICE_LANGUAGE
+
+      const voices = window.speechSynthesis.getVoices()
+      const ptBrVoice =
+        voices.find((voice) => voice.lang.toLowerCase().startsWith('pt-br')) ||
+        voices.find((voice) => voice.lang.toLowerCase().startsWith('pt'))
+
+      if (ptBrVoice) {
+        utterance.voice = ptBrVoice
+      }
+
+      utterance.onend = () => {
+        if (messageId && lastSpokenMessageIdRef.current === messageId) {
+          lastSpokenMessageIdRef.current = ''
+        }
+      }
+
+      utterance.onerror = () => {
+        setChatError('Não consegui reproduzir a resposta em voz alta agora.')
+        if (messageId && lastSpokenMessageIdRef.current === messageId) {
+          lastSpokenMessageIdRef.current = ''
+        }
+      }
+
+      if (messageId) {
+        lastSpokenMessageIdRef.current = messageId
+      }
+
+      window.speechSynthesis.speak(utterance)
+    },
+    [stopSpeaking]
+  )
+
+  useEffect(() => {
+    if (!voiceEnabled) return
+
+    const lastAssistantMessage = [...messages]
+      .reverse()
+      .find((message) => message.role === 'assistant')
+
+    if (!lastAssistantMessage) return
+    if (lastAssistantMessage.id === lastSpokenMessageIdRef.current) return
+    if (lastAssistantMessage.id.startsWith('assistant-welcome-')) return
+
+    speakMessage(lastAssistantMessage.content, lastAssistantMessage.id)
+  }, [messages, speakMessage, voiceEnabled])
 
   const loadDashboardState = useCallback(async () => {
     try {
@@ -275,11 +454,43 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
   }
 
   const handleResetChat = () => {
+    recognitionRef.current?.stop()
+    stopSpeaking()
     setMessages([createWelcomeMessage(availableClients[0]?.name || '')])
     setChatError('')
+    setVoiceTranscript('')
     if (typeof window !== 'undefined') {
       window.localStorage.removeItem(STORAGE_KEY)
     }
+  }
+
+  const handleToggleListening = () => {
+    if (!isVoiceSupported || !recognitionRef.current) {
+      setChatError('O ditado por voz não é suportado neste navegador.')
+      return
+    }
+
+    setChatError('')
+
+    if (isListening) {
+      recognitionRef.current.stop()
+      return
+    }
+
+    stopSpeaking()
+    setVoiceTranscript('')
+    recognitionRef.current.start()
+    setIsListening(true)
+  }
+
+  const handleToggleVoicePlayback = () => {
+    setVoiceEnabled((current) => {
+      const nextValue = !current
+      if (!nextValue) {
+        stopSpeaking()
+      }
+      return nextValue
+    })
   }
 
   const AssistantContentTag = isEmbedded ? 'div' : 'main'
@@ -454,6 +665,10 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
                             <i className="bx bx-dislike"></i>
                             Não ajudou
                           </button>
+                          <button type="button" onClick={() => speakMessage(message.content, message.id)}>
+                            <i className="bx bx-volume-full"></i>
+                            Ouvir
+                          </button>
                           <button type="button" className="assistant-message-copy" onClick={() => navigator?.clipboard?.writeText(message.content)}>
                             <i className="bx bx-copy-alt"></i>
                             Copiar
@@ -497,8 +712,14 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
                     rows={1}
                   />
                   <div className="assistant-form-actions-inline">
-                    <button type="button" className="assistant-form-icon" aria-label="Microfone">
-                      <i className="bx bx-microphone"></i>
+                    <button
+                      type="button"
+                      className={`assistant-form-icon ${isListening ? 'assistant-form-icon-active' : ''}`}
+                      aria-label={isListening ? 'Parar microfone' : 'Ativar microfone'}
+                      aria-pressed={isListening}
+                      onClick={handleToggleListening}
+                    >
+                      <i className={`bx ${isListening ? 'bx-microphone-off' : 'bx-microphone'}`}></i>
                     </button>
                     <button type="submit" className="assistant-submit" disabled={isSending || !inputValue.trim()}>
                       <i className="bx bx-up-arrow-alt"></i>
@@ -543,8 +764,24 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
                     <span><i className="bx bx-bolt-circle"></i> {dashboardState?.globalIntegrations?.aiModel || 'Modelo configurado'}</span>
                     <span><i className="bx bx-shield-quarter"></i> Contexto interno ativo</span>
                     <span><i className="bx bx-layout"></i> {focusLabel}</span>
+                    <button
+                      type="button"
+                      className={`assistant-voice-toggle ${voiceEnabled ? 'active' : ''}`}
+                      onClick={handleToggleVoicePlayback}
+                    >
+                      <i className={`bx ${voiceEnabled ? 'bx-volume-full' : 'bx-volume-mute'}`}></i>
+                      {voiceEnabled ? 'Voz ativa' : 'Voz desligada'}
+                    </button>
+                    <span>
+                      <i className={`bx ${isListening ? 'bx-loader-circle' : isVoiceSupported ? 'bx-microphone' : 'bx-microphone-off'}`}></i>
+                      {isListening
+                        ? 'Ouvindo agora'
+                        : isVoiceSupported
+                          ? 'Ditado disponível'
+                          : 'Ditado indisponível'}
+                    </span>
                   </div>
-                  <span>Enter para enviar / Shift+Enter para nova linha</span>
+                  <span>{voiceTranscript ? `Ouvindo: ${voiceTranscript}` : 'Enter para enviar / Shift+Enter para nova linha'}</span>
                 </div>
               </form>
             </section>
@@ -1187,6 +1424,12 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
           color: #93c5fd;
         }
 
+        .assistant-form-icon-active {
+          color: #93c5fd;
+          background: rgba(59, 130, 246, 0.14);
+          box-shadow: inset 0 0 0 1px rgba(147, 197, 253, 0.24);
+        }
+
         .assistant-form-actions-inline {
           display: flex;
           align-items: center;
@@ -1229,6 +1472,27 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
           display: inline-flex;
           align-items: center;
           gap: 6px;
+        }
+
+        .assistant-voice-toggle {
+          border: 1px solid var(--border-color);
+          background: rgba(255, 255, 255, 0.04);
+          color: inherit;
+          border-radius: 999px;
+          padding: 8px 12px;
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          cursor: pointer;
+          font: inherit;
+          text-transform: inherit;
+          letter-spacing: inherit;
+        }
+
+        .assistant-voice-toggle.active {
+          border-color: rgba(59, 130, 246, 0.35);
+          color: #93c5fd;
+          background: rgba(59, 130, 246, 0.12);
         }
 
         .assistant-main-embedded .assistant-content {
@@ -1348,6 +1612,11 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
           color: var(--accent-blue);
         }
 
+        :root[data-ui-mode='light'] .assistant-form-icon-active {
+          background: color-mix(in srgb, var(--accent-blue) 12%, white);
+          box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-blue) 16%, transparent);
+        }
+
         :root[data-ui-mode='light'] .assistant-submit {
           background: linear-gradient(
             135deg,
@@ -1362,6 +1631,17 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
           background: rgba(255, 255, 255, 0.98);
           border-color: rgba(15, 23, 42, 0.08);
           box-shadow: 0 24px 48px rgba(15, 23, 42, 0.12);
+        }
+
+        :root[data-ui-mode='light'] .assistant-voice-toggle {
+          background: rgba(15, 23, 42, 0.03);
+          border-color: rgba(15, 23, 42, 0.08);
+        }
+
+        :root[data-ui-mode='light'] .assistant-voice-toggle.active {
+          background: color-mix(in srgb, var(--accent-blue) 10%, white);
+          border-color: color-mix(in srgb, var(--accent-blue) 18%, rgba(15, 23, 42, 0.08));
+          color: var(--accent-blue);
         }
 
         :root[data-ui-mode='light'] .assistant-agent-option:hover,
