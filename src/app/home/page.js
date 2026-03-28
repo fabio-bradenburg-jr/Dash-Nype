@@ -244,6 +244,43 @@ function getDashboardColorLabel(colorValue) {
   return parsedColor ? rgbToHex(parsedColor).toUpperCase() : 'Azul'
 }
 
+function getNameInitials(value) {
+  const parts = String(value || '')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+
+  if (!parts.length) return 'CL'
+  return parts
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() || '')
+    .join('')
+}
+
+function getClientStatusMeta(client) {
+  if (client?.metaAdAccountId) {
+    return {
+      label: 'Ativo',
+      tone: 'success',
+      description: 'Conta operacional conectada',
+    }
+  }
+
+  if (client?.logoUrl) {
+    return {
+      label: 'Em setup',
+      tone: 'info',
+      description: 'Identidade pronta, integração pendente',
+    }
+  }
+
+  return {
+    label: 'Onboarding',
+    tone: 'neutral',
+    description: 'Configuração inicial em andamento',
+  }
+}
+
 const METRIC_OPTIONS = {
   spend: { label: 'Investimento', type: 'currency' },
   impressions: { label: 'Impressões', type: 'number' },
@@ -6694,27 +6731,41 @@ export default function DashboardPage() {
         .map((item) => item.trim())
         .filter(Boolean)
     )).length
+    const reportsPreview = [
+      {
+        title: activeClient ? `Leitura executiva de ${activeClient.name}` : 'Leitura executiva da operação',
+        time: 'Agora',
+      },
+      {
+        title: clickUpListsConfigured ? `ClickUp com ${formatNumber(clickUpListsConfigured)} lista(s) ativa(s)` : 'ClickUp aguardando configuração',
+        time: 'Sincronizado',
+      },
+      {
+        title: mondayBoardsConfigured ? `Monday com ${formatNumber(mondayBoardsConfigured)} board(s) monitorado(s)` : 'Monday aguardando conexão',
+        time: 'Operação',
+      },
+    ]
     const homeCards = [
       {
         key: 'assistente',
-        title: 'IA',
+        title: 'AI Search',
         description: 'Entre no copiloto da operação para conversar sobre campanhas, clientes, gargalos e próximos passos.',
         icon: 'bx bx-bot',
         tone: 'blue',
         accent: 'blue',
         helper: activeClient ? `Fale sobre ${activeClient.name} ou use foco geral para cruzar o app inteiro.` : 'Use a IA como camada principal de leitura e direcionamento.',
-        actionLabel: 'Abrir IA',
+        actionLabel: 'Semantic query',
         onClick: () => setActiveTab('assistant'),
       },
       {
         key: 'apresentacao',
-        title: 'Apresentação',
+        title: 'Pitch Deck',
         description: 'Abra a leitura executiva dos clientes com filtros, métricas e visual de resultado.',
         icon: 'bx bxs-dashboard',
         tone: 'blue',
         accent: 'blue',
         helper: activeClient ? `Cliente ativo: ${activeClient.name}` : 'Escolha um cliente para abrir a visão executiva.',
-        actionLabel: 'Abrir dashboard',
+        actionLabel: 'Auto-gen',
         onClick: () => setActiveTab('apresentacao'),
       },
       {
@@ -6725,7 +6776,7 @@ export default function DashboardPage() {
         tone: 'purple',
         accent: 'purple',
         helper: clickUpListsConfigured ? `${formatNumber(clickUpListsConfigured)} lista(s) operacional(is) configurada(s).` : 'Configuração global pendente.',
-        actionLabel: 'Abrir ClickUp',
+        actionLabel: 'Workflow sync',
         onClick: () => setActiveTab('clickup'),
       },
       {
@@ -6736,7 +6787,7 @@ export default function DashboardPage() {
         tone: 'gold',
         accent: 'gold',
         helper: mondayBoardsConfigured ? `${formatNumber(mondayBoardsConfigured)} board(s) monitorado(s) na operação.` : 'Configuração global pendente.',
-        actionLabel: 'Abrir Monday',
+        actionLabel: 'Timeline api',
         onClick: () => setActiveTab('monday'),
       },
       {
@@ -6747,18 +6798,18 @@ export default function DashboardPage() {
         tone: 'emerald',
         accent: 'emerald',
         helper: 'Acesso rápido ao calendário da operação.',
-        actionLabel: 'Abrir agenda',
+        actionLabel: 'Agenda viva',
         onClick: () => setActiveTab('calendar'),
       },
       {
         key: 'configuracoes',
-        title: 'Configurações',
+        title: 'Synthesizer',
         description: 'Ajuste integrações, credenciais globais e preferências da plataforma.',
         icon: 'bx bx-cog',
         tone: 'cyan',
         accent: 'cyan',
         helper: 'Central de configuração e conexões.',
-        actionLabel: 'Abrir configurações',
+        actionLabel: 'Advanced BI',
         href: '/settings',
       },
     ]
@@ -6766,13 +6817,13 @@ export default function DashboardPage() {
     if (canManageClients) {
       homeCards.splice(3, 0, {
         key: 'clientes',
-        title: 'Clientes',
+        title: 'Clients',
         description: 'Cadastre clientes, grupos e organize quem enxerga cada dashboard.',
         icon: 'bx bxs-buildings',
         tone: 'orange',
         accent: 'orange',
         helper: `${formatNumber(clients.length)} cliente(s) cadastrado(s) na base.`,
-        actionLabel: 'Abrir clientes',
+        actionLabel: 'Directory',
         onClick: () => setActiveTab('clientes'),
       })
     }
@@ -6780,50 +6831,56 @@ export default function DashboardPage() {
     if (canManageUsers) {
       homeCards.splice(canManageClients ? 4 : 3, 0, {
         key: 'usuarios',
-        title: 'Usuários',
+        title: 'Users',
         description: 'Gerencie acessos, permissões e quais dashboards cada pessoa pode abrir.',
         icon: 'bx bxs-user-detail',
         tone: 'pink',
         accent: 'pink',
         helper: `${formatNumber(usersList.length || 0)} usuário(s) carregado(s) nesta operação.`,
-        actionLabel: 'Abrir usuários',
+        actionLabel: 'Access layer',
         onClick: () => setActiveTab('usuarios'),
       })
     }
 
     return (
       <section className="source-section">
-        <section className="glass-panel home-hub-hero">
+        <section className="glass-panel home-hub-hero home-hub-hero-obsidian">
           <div className="home-hub-copy">
-            <span className="home-hub-kicker">Central de navegação</span>
-            <h2>Escolha por onde você quer tocar a operação agora</h2>
+            <span className="home-hub-kicker">Systems online</span>
+            <h2>Executive Dashboard</h2>
             <p>
-              Essa Home vira a porta de entrada do app. A IA fica em primeiro plano como copiloto do dia a dia, e abaixo
-              você escolhe rapidamente se vai aprofundar em resultado, operação, clientes ou estrutura.
+              Use essa Home como centro operacional do produto. A partir daqui você cruza IA, clientes, boards e integrações
+              sem perder a visão executiva do que precisa acontecer agora.
             </p>
           </div>
 
-          <div className="home-hub-metrics">
+          <div className="home-hub-metrics home-hub-metrics-obsidian">
             <div className="home-hub-metric glass-item">
-              <span>Clientes</span>
+              <span>Total portfolio</span>
               <strong>{formatNumber(clients.length || 0)}</strong>
+              <small>{canManageClients ? 'clientes ativos na base' : 'camada de operação conectada'}</small>
             </div>
             <div className="home-hub-metric glass-item">
-              <span>Grupos</span>
+              <span>Active groups</span>
               <strong>{formatNumber(clientGroups.length || 0)}</strong>
+              <small>grupos operacionais em leitura</small>
             </div>
             <div className="home-hub-metric glass-item">
-              <span>ClickUp</span>
-              <strong>{clickUpListsConfigured ? `${formatNumber(clickUpListsConfigured)} listas` : 'Pendente'}</strong>
-            </div>
-            <div className="home-hub-metric glass-item">
-              <span>Monday</span>
-              <strong>{mondayBoardsConfigured ? `${formatNumber(mondayBoardsConfigured)} boards` : 'Pendente'}</strong>
+              <span>Operational boards</span>
+              <strong>{formatNumber(mondayBoardsConfigured + clickUpListsConfigured)}</strong>
+              <small>{mondayBoardsConfigured || clickUpListsConfigured ? 'fontes ativas de operação' : 'aguardando configuração'}</small>
             </div>
           </div>
         </section>
 
-        <section className="home-hub-grid">
+        <section className="home-hub-section-head">
+          <h3>Tools & integrations</h3>
+          <button type="button" className="home-hub-manage-link" onClick={() => setActiveTab('assistant')}>
+            Ir para o copiloto
+          </button>
+        </section>
+
+        <section className="home-hub-grid home-hub-grid-obsidian">
           {homeCards.map((card) => {
             const cardContent = (
               <>
@@ -6861,6 +6918,62 @@ export default function DashboardPage() {
               </button>
             )
           })}
+        </section>
+
+        <section className="home-hub-lower-grid">
+          <article className="glass-panel home-hub-analytics-card">
+            <div className="home-hub-analytics-head">
+              <div>
+                <span className="home-hub-kicker">Synthesis performance</span>
+                <h3>Leitura consolidada da operação</h3>
+              </div>
+              <div className="home-hub-analytics-badges">
+                <span>AI enhanced</span>
+                <span>Monthly</span>
+              </div>
+            </div>
+            <div className="home-hub-chart">
+              <div className="home-hub-chart-bar home-hub-chart-bar-sm"></div>
+              <div className="home-hub-chart-bar home-hub-chart-bar-md"></div>
+              <div className="home-hub-chart-bar home-hub-chart-bar-lg home-hub-chart-bar-highlight">
+                <small>Peak</small>
+              </div>
+              <div className="home-hub-chart-bar home-hub-chart-bar-mid"></div>
+              <div className="home-hub-chart-bar home-hub-chart-bar-md"></div>
+              <div className="home-hub-chart-bar home-hub-chart-bar-xs"></div>
+            </div>
+          </article>
+
+          <aside className="home-hub-side-stack">
+            <div className="glass-panel home-hub-reports-card">
+              <div className="home-hub-reports-head">
+                <h3>Recent reports</h3>
+                <button type="button" className="home-hub-manage-link" onClick={() => setActiveTab('assistant')}>
+                  Ver tudo
+                </button>
+              </div>
+              <div className="home-hub-reports-list">
+                {reportsPreview.map((item, index) => (
+                  <div key={`${item.title}-${index}`} className="home-hub-report-item">
+                    <span className={`home-hub-report-dot ${index === 1 ? 'success' : index === 2 ? 'muted' : 'primary'}`}></span>
+                    <div>
+                      <strong>{item.title}</strong>
+                      <small>{item.time}</small>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="glass-panel home-hub-ai-note">
+              <span className="home-hub-kicker home-hub-kicker-success">AI insight</span>
+              <p>
+                {activeClient
+                  ? `${activeClient.name} segue como principal foco de leitura. O copiloto já consegue cruzar campanhas, operação e contexto do cliente.`
+                  : 'O copiloto já consegue cruzar campanhas, operação e contexto interno para priorizar os próximos passos.'}
+              </p>
+            </div>
+          </aside>
         </section>
       </section>
     )
@@ -7758,7 +7871,12 @@ export default function DashboardPage() {
         <div className="sidebar-top">
           <div className="logo">
             <i className="bx bx-bar-chart-alt-2"></i>
-            {!isSidebarCollapsed && <span>Dash</span>}
+            {!isSidebarCollapsed && (
+              <div className="logo-copy">
+                <span>Nype OS</span>
+                <small>Control center</small>
+              </div>
+            )}
           </div>
         </div>
 
@@ -8015,16 +8133,49 @@ export default function DashboardPage() {
 
         {activeTab === 'clientes' && (
           <section className="clients-layout">
-            <div className="glass-panel clients-intro">
-              <h2>Organize sua operação por cliente</h2>
-              <p>
-                Aqui você edita o cliente inteiro: contas vinculadas, cor da dashboard e logo que vai aparecer na apresentação final.
-              </p>
+            <div className="management-header-row">
+              <div className="management-header-copy">
+                <h2>Gestão de Clientes</h2>
+                <p>Controle direto sobre parceiros, identidade de marca e contas ativas da operação.</p>
+              </div>
+              <button type="button" className="btn btn-secondary management-header-button" onClick={() => document.querySelector('.client-create-bar input')?.focus()}>
+                <i className="bx bx-user-plus"></i>
+                Adicionar cliente
+              </button>
+            </div>
+
+            <div className="glass-panel management-hero clients-intro">
+              <div className="management-hero-copy">
+                <span className="management-hero-kicker">Client control</span>
+                <h2>Organize clientes, grupos e a identidade visual da operação</h2>
+                <p>
+                  Centralize aqui a base de clientes do workspace, escolha quais contas entram na leitura executiva e mantenha a apresentação alinhada com cada operação.
+                </p>
+              </div>
+              <div className="management-stats-grid">
+                <div className="management-stat-card">
+                  <small>Total de clientes</small>
+                  <strong>{formatNumber(clients.length)}</strong>
+                </div>
+                <div className="management-stat-card">
+                  <small>Clientes ativos</small>
+                  <strong>{formatNumber(clients.filter((client) => Boolean(client.metaAdAccountId)).length)}</strong>
+                </div>
+                <div className="management-stat-card">
+                  <small>Grupos ativos</small>
+                  <strong>{formatNumber(clientGroups.length)}</strong>
+                </div>
+                <div className="management-stat-card">
+                  <small>Com identidade pronta</small>
+                  <strong>{formatNumber(clients.filter((client) => Boolean(client.logoUrl)).length)}</strong>
+                </div>
+              </div>
             </div>
 
             <div className="client-create-grid">
-              <form className="glass-panel client-create-bar" onSubmit={handleCreateClient}>
+              <form className="glass-panel client-create-bar management-action-card" onSubmit={handleCreateClient}>
                 <div>
+                  <span className="management-card-kicker">New client</span>
                   <h3>Novo cliente</h3>
                   <p>Crie um cliente e depois ajuste a configuração dele logo abaixo.</p>
                 </div>
@@ -8034,8 +8185,9 @@ export default function DashboardPage() {
                 </div>
               </form>
 
-              <form className="glass-panel client-create-bar" onSubmit={handleCreateClientGroup}>
+              <form className="glass-panel client-create-bar management-action-card" onSubmit={handleCreateClientGroup}>
                 <div>
+                  <span className="management-card-kicker">New cluster</span>
                   <h3>Novo grupo de clientes</h3>
                   <p>Monte grupos para liberar acesso em lote e organizar dashboards relacionados.</p>
                 </div>
@@ -8047,25 +8199,59 @@ export default function DashboardPage() {
             </div>
 
             <div className="clients-grid clients-grid-single">
-              <div className="glass-panel users-toolbar-card">
+              <div className="glass-panel users-toolbar-card management-directory-card">
                 <div className="user-picker-head">
                   <div>
+                    <span className="management-card-kicker">Client registry</span>
                     <h3>Clientes cadastrados</h3>
                     <p>Abra a edição de um cliente somente quando precisar ajustar contas, identidade ou integrações.</p>
                   </div>
                 </div>
 
                 <div className="user-directory-grid client-directory-grid">
-                  {clients.map((client) => (
-                    <div key={client.id} className={`user-directory-card glass-item ${client.id === activeClientId ? 'client-directory-card-active' : ''}`}>
-                      <div className="user-directory-main">
-                        <strong>{client.name}</strong>
-                        <span>{client.metaAdAccountId || 'Conta Meta não selecionada'}</span>
+                  {clients.map((client) => {
+                    const statusMeta = getClientStatusMeta(client)
+
+                    return (
+                    <div key={client.id} className={`user-directory-card glass-item client-spotlight-card ${client.id === activeClientId ? 'client-directory-card-active' : ''}`}>
+                      <div className="client-spotlight-badge-wrap">
+                        <span className={`client-status-badge client-status-${statusMeta.tone}`}>{statusMeta.label}</span>
                       </div>
+
+                      <div className="client-spotlight-head">
+                        <div className="client-avatar-shell">
+                          {client.logoUrl ? (
+                            <img
+                              src={client.logoUrl}
+                              alt={`Logo ${client.name}`}
+                              className="client-avatar-image"
+                            />
+                          ) : (
+                            <span>{getNameInitials(client.name)}</span>
+                          )}
+                        </div>
+                        <div className="client-spotlight-copy">
+                          <strong>{client.name}</strong>
+                          <span>{`ID: ${String(client.id || '').slice(0, 8).toUpperCase()}`}</span>
+                        </div>
+                      </div>
+
+                      <div className="client-spotlight-grid">
+                        <div>
+                          <small>Conta Meta</small>
+                          <p>{client.metaAdAccountId || 'Não conectada'}</p>
+                        </div>
+                        <div>
+                          <small>Identidade visual</small>
+                          <p>{client.logoUrl ? 'Logo configurada' : 'Logo pendente'}</p>
+                        </div>
+                      </div>
+
                       <div className="user-directory-meta">
                         <span className="user-role-badge">{getDashboardColorLabel(client.dashboardColor || 'blue')}</span>
-                        <small>{client.logoUrl ? 'Logo configurada' : 'Sem logo configurada'}</small>
+                        <small>{statusMeta.description}</small>
                       </div>
+
                       <div className="user-directory-actions client-directory-actions">
                         <button
                           type="button"
@@ -8084,7 +8270,7 @@ export default function DashboardPage() {
                         )}
                       </div>
                     </div>
-                  ))}
+                  )})}
                 </div>
 
                 {!clients.length && (
@@ -8097,9 +8283,10 @@ export default function DashboardPage() {
             </div>
 
             <div className="clients-grid clients-grid-single">
-              <div className="glass-panel users-toolbar-card">
+              <div className="glass-panel users-toolbar-card management-directory-card">
                 <div className="user-picker-head">
                   <div>
+                    <span className="management-card-kicker">Access grouping</span>
                     <h3>Grupos de clientes</h3>
                     <p>Escolha os dashboards que pertencem a cada grupo para depois liberar acesso por grupo aos usuários.</p>
                   </div>
@@ -8161,6 +8348,58 @@ export default function DashboardPage() {
                 )}
               </div>
             </div>
+
+            <section className="client-intelligence-grid">
+              <div className="glass-panel client-intelligence-feature">
+                <div className="client-intelligence-kicker">
+                  <i className="bx bx-bulb"></i>
+                  Insight operacional
+                </div>
+                <h3>
+                  {clients.length
+                    ? `${clients.filter((client) => client.metaAdAccountId).length} cliente(s) já estão prontos para leitura com dados conectados.`
+                    : 'Comece cadastrando o primeiro cliente para estruturar a operação.'}
+                </h3>
+                <p>
+                  {clients.filter((client) => client.metaAdAccountId).length
+                    ? 'Priorize agora os clientes com conta Meta ativa e complete a identidade dos demais para deixar a apresentação consistente.'
+                    : 'Assim que o primeiro cliente entrar, você já pode conectar Meta, CRM, planilhas e identidade visual no mesmo fluxo.'}
+                </p>
+                <button type="button" className="btn btn-primary">
+                  Gerar plano de expansão
+                </button>
+              </div>
+
+              <div className="glass-panel client-activity-card">
+                <div className="client-activity-head">
+                  <h3>Atividade recente da base</h3>
+                  <button type="button" className="client-activity-link">Ver auditoria</button>
+                </div>
+                <div className="client-activity-list">
+                  <div className="client-activity-item">
+                    <span className="client-activity-dot client-activity-dot-primary"></span>
+                    <div>
+                      <strong>{clients[0]?.name ? `${clients[0].name} aparece como cliente em foco do workspace.` : 'Nenhum cliente selecionado como principal no momento.'}</strong>
+                      <small>Agora</small>
+                    </div>
+                  </div>
+                  <div className="client-activity-item">
+                    <span className="client-activity-dot client-activity-dot-success"></span>
+                    <div>
+                      <strong>{`${formatNumber(clientGroups.length)} grupo(s) disponíveis para liberar acesso em lote.`}</strong>
+                      <small>Estrutura de acesso</small>
+                    </div>
+                  </div>
+                  <div className="client-activity-item">
+                    <span className="client-activity-dot client-activity-dot-muted"></span>
+                    <div>
+                      <strong>{`${formatNumber(clients.filter((client) => !client.logoUrl).length)} cliente(s) ainda sem logo configurada.`}</strong>
+                      <small>Identidade visual</small>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
           </section>
         )}
 
@@ -8436,9 +8675,36 @@ export default function DashboardPage() {
 
         {activeTab === 'usuarios' && canManageUsers && (
           <section className="clients-layout users-management-layout">
-            <div className="glass-panel users-toolbar-card">
+            <div className="glass-panel management-hero users-intro-card">
+              <div className="management-hero-copy">
+                <span className="management-hero-kicker">Access governance</span>
+                <h2>Gerencie acessos, permissões e leitura por workspace</h2>
+                <p>Defina quem entra na operação, quais dashboards cada pessoa pode visualizar e como o acesso se distribui entre master, operador, cliente e visualizador.</p>
+              </div>
+              <div className="management-stats-grid">
+                <div className="management-stat-card">
+                  <small>Total de usuários</small>
+                  <strong>{formatNumber(users.length)}</strong>
+                </div>
+                <div className="management-stat-card">
+                  <small>Masters</small>
+                  <strong>{formatNumber(users.filter((managedUser) => managedUser.role === 'master').length)}</strong>
+                </div>
+                <div className="management-stat-card">
+                  <small>Clientes liberados</small>
+                  <strong>{formatNumber(clients.length)}</strong>
+                </div>
+                <div className="management-stat-card">
+                  <small>Grupos disponíveis</small>
+                  <strong>{formatNumber(clientGroups.length)}</strong>
+                </div>
+              </div>
+            </div>
+
+            <div className="glass-panel users-toolbar-card management-directory-card">
               <div className="user-picker-head">
                 <div>
+                  <span className="management-card-kicker">Team registry</span>
                   <h3>Usuários cadastrados</h3>
                   <p>Use a busca para encontrar um acesso e abra a edição em um pop-up, sem ocupar a tela principal.</p>
                 </div>
@@ -8470,12 +8736,17 @@ export default function DashboardPage() {
                 <div className="user-directory-grid">
                   {filteredUsers.map((managedUser) => (
                     <div key={`user-list-${managedUser.id}`} className="user-directory-card glass-item">
+                      <div className="user-directory-topline">
+                        <div className="directory-card-icon">
+                          <i className="bx bx-user"></i>
+                        </div>
+                        <span className="user-role-badge">{roleLabels[managedUser.role] || managedUser.role}</span>
+                      </div>
                       <div className="user-directory-main">
                         <strong>{managedUser.full_name || managedUser.email}</strong>
                         <span>{managedUser.email}</span>
                       </div>
                       <div className="user-directory-meta">
-                        <span className="user-role-badge">{roleLabels[managedUser.role] || managedUser.role}</span>
                         <small>
                           {managedUser.role === 'master'
                             ? 'Acesso total'
@@ -10954,6 +11225,112 @@ export default function DashboardPage() {
           gap: 24px;
         }
 
+        .management-header-row {
+          display: flex;
+          align-items: flex-end;
+          justify-content: space-between;
+          gap: 20px;
+          flex-wrap: wrap;
+        }
+
+        .management-header-copy h2 {
+          margin: 0 0 8px;
+          color: #ffffff;
+          font-size: clamp(34px, 4vw, 48px);
+          line-height: 0.98;
+          letter-spacing: -0.04em;
+        }
+
+        .management-header-copy p {
+          margin: 0;
+          color: rgba(225, 226, 235, 0.62);
+          font-size: 16px;
+          line-height: 1.6;
+        }
+
+        .management-header-button {
+          min-height: 54px;
+          padding: 0 24px;
+          border-radius: 18px;
+        }
+
+        .management-hero {
+          padding: 34px;
+          display: grid;
+          grid-template-columns: minmax(0, 1.4fr) minmax(320px, 0.9fr);
+          gap: 24px;
+          background:
+            radial-gradient(circle at top left, rgba(175, 198, 255, 0.14), transparent 34%),
+            linear-gradient(180deg, rgba(255, 255, 255, 0.028), rgba(255, 255, 255, 0.012));
+          border: 1px solid rgba(143, 144, 149, 0.14);
+          border-radius: 28px;
+          box-shadow: 0 18px 48px rgba(0, 0, 0, 0.22);
+        }
+
+        .management-hero-copy {
+          display: grid;
+          align-content: start;
+          gap: 12px;
+        }
+
+        .management-hero-kicker,
+        .management-card-kicker {
+          color: #afc6ff;
+          font-size: 11px;
+          font-weight: 800;
+          letter-spacing: 0.18em;
+          text-transform: uppercase;
+        }
+
+        .management-hero h2 {
+          margin: 0;
+          color: #ffffff;
+          font-size: clamp(34px, 4vw, 54px);
+          line-height: 0.98;
+          letter-spacing: -0.04em;
+        }
+
+        .management-hero p {
+          margin: 0;
+          max-width: 64ch;
+          color: rgba(225, 226, 235, 0.7);
+          font-size: 18px;
+          line-height: 1.65;
+        }
+
+        .management-stats-grid {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 16px;
+        }
+
+        .management-stat-card {
+          min-height: 132px;
+          padding: 22px;
+          border-radius: 22px;
+          border: 1px solid rgba(143, 144, 149, 0.12);
+          background: rgba(11, 14, 20, 0.64);
+          display: grid;
+          align-content: space-between;
+          gap: 14px;
+          box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+        }
+
+        .management-stat-card small {
+          color: rgba(225, 226, 235, 0.45);
+          font-size: 10px;
+          font-weight: 800;
+          letter-spacing: 0.16em;
+          text-transform: uppercase;
+        }
+
+        .management-stat-card strong {
+          color: #ffffff;
+          font-size: clamp(30px, 3vw, 42px);
+          line-height: 1;
+          letter-spacing: -0.04em;
+        }
+
         .client-create-grid {
           display: flex;
           flex-wrap: wrap;
@@ -11000,6 +11377,17 @@ export default function DashboardPage() {
           display: grid;
           align-content: start;
           gap: 12px;
+        }
+
+        .management-action-card,
+        .management-directory-card,
+        .users-intro-card {
+          border-radius: 28px;
+          border: 1px solid rgba(143, 144, 149, 0.14);
+          background:
+            linear-gradient(180deg, rgba(255, 255, 255, 0.028), rgba(255, 255, 255, 0.012)),
+            rgba(16, 19, 26, 0.92);
+          box-shadow: 0 16px 40px rgba(0, 0, 0, 0.2);
         }
 
         .client-create-inline {
@@ -11135,7 +11523,7 @@ export default function DashboardPage() {
         .user-directory-grid {
           display: grid;
           grid-template-columns: repeat(2, minmax(0, 1fr));
-          gap: 14px;
+          gap: 18px;
         }
 
         .client-directory-grid {
@@ -11143,22 +11531,61 @@ export default function DashboardPage() {
         }
 
         .user-directory-card {
-          padding: 18px;
-          border-radius: 20px;
+          padding: 20px;
+          border-radius: 24px;
           display: grid;
-          gap: 14px;
-          border: 1px solid rgba(255, 255, 255, 0.06);
+          gap: 16px;
+          border: 1px solid rgba(143, 144, 149, 0.14);
+          background:
+            linear-gradient(180deg, rgba(255, 255, 255, 0.024), rgba(255, 255, 255, 0.012)),
+            rgba(11, 14, 20, 0.7);
+          box-shadow: 0 12px 34px rgba(0, 0, 0, 0.18);
+          transition: transform 0.3s ease, border-color 0.3s ease, background 0.3s ease;
+        }
+
+        .user-directory-card:hover {
+          transform: translateY(-2px);
+          border-color: rgba(175, 198, 255, 0.24);
+          background:
+            linear-gradient(180deg, rgba(175, 198, 255, 0.05), rgba(255, 255, 255, 0.014)),
+            rgba(11, 14, 20, 0.78);
+        }
+
+        .user-directory-topline {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+        }
+
+        .directory-card-icon {
+          width: 52px;
+          height: 52px;
+          border-radius: 18px;
+          display: grid;
+          place-items: center;
+          color: #afc6ff;
+          background: rgba(175, 198, 255, 0.08);
+          border: 1px solid rgba(175, 198, 255, 0.16);
+          box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+        }
+
+        .directory-card-icon i {
+          font-size: 23px;
         }
 
         .user-directory-main strong {
           display: block;
-          font-size: 18px;
+          color: #ffffff;
+          font-size: 20px;
           margin-bottom: 6px;
+          letter-spacing: -0.03em;
         }
 
         .user-directory-main span {
-          color: var(--text-muted);
-          font-size: 13px;
+          color: rgba(225, 226, 235, 0.5);
+          font-size: 12px;
+          letter-spacing: 0.02em;
           display: block;
           overflow-wrap: anywhere;
         }
@@ -11172,18 +11599,21 @@ export default function DashboardPage() {
         }
 
         .user-directory-meta small {
-          color: var(--text-muted);
+          color: rgba(225, 226, 235, 0.58);
           font-size: 12px;
+          line-height: 1.5;
         }
 
         .user-role-badge {
           padding: 7px 12px;
           border-radius: 999px;
-          background: rgba(255, 255, 255, 0.05);
-          border: 1px solid rgba(255, 255, 255, 0.08);
-          color: var(--text-secondary);
-          font-size: 12px;
-          font-weight: 700;
+          background: rgba(175, 198, 255, 0.08);
+          border: 1px solid rgba(175, 198, 255, 0.16);
+          color: #afc6ff;
+          font-size: 11px;
+          font-weight: 800;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
         }
 
         .user-directory-actions {
@@ -11192,8 +11622,10 @@ export default function DashboardPage() {
         }
 
         .client-directory-card-active {
-          border-color: var(--accent-blue);
-          background: var(--theme-surface);
+          border-color: rgba(175, 198, 255, 0.32);
+          background:
+            linear-gradient(180deg, rgba(175, 198, 255, 0.08), rgba(255, 255, 255, 0.016)),
+            rgba(11, 14, 20, 0.82);
         }
 
         .client-directory-actions {
@@ -11210,9 +11642,263 @@ export default function DashboardPage() {
         .client-group-card {
           display: grid;
           gap: 16px;
-          padding: 20px;
-          border-radius: 20px;
-          border: 1px solid rgba(255, 255, 255, 0.06);
+          padding: 22px;
+          border-radius: 24px;
+          border: 1px solid rgba(143, 144, 149, 0.14);
+          background:
+            linear-gradient(180deg, rgba(255, 255, 255, 0.024), rgba(255, 255, 255, 0.012)),
+            rgba(11, 14, 20, 0.7);
+        }
+
+        .client-spotlight-card {
+          position: relative;
+          overflow: hidden;
+        }
+
+        .client-spotlight-card::before {
+          content: '';
+          position: absolute;
+          inset: auto -14% 72% auto;
+          width: 180px;
+          height: 180px;
+          border-radius: 999px;
+          background: radial-gradient(circle, rgba(175, 198, 255, 0.08), transparent 68%);
+          pointer-events: none;
+        }
+
+        .client-spotlight-badge-wrap {
+          display: flex;
+          justify-content: flex-end;
+        }
+
+        .client-status-badge {
+          min-height: 28px;
+          padding: 0 12px;
+          border-radius: 999px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 10px;
+          font-weight: 800;
+          letter-spacing: 0.12em;
+          text-transform: uppercase;
+          border: 1px solid rgba(143, 144, 149, 0.16);
+        }
+
+        .client-status-success {
+          color: #4edea3;
+          background: rgba(78, 222, 163, 0.08);
+          border-color: rgba(78, 222, 163, 0.18);
+        }
+
+        .client-status-info {
+          color: #afc6ff;
+          background: rgba(175, 198, 255, 0.08);
+          border-color: rgba(175, 198, 255, 0.18);
+        }
+
+        .client-status-neutral {
+          color: rgba(225, 226, 235, 0.68);
+          background: rgba(255, 255, 255, 0.04);
+        }
+
+        .client-spotlight-head {
+          display: flex;
+          align-items: flex-start;
+          gap: 18px;
+        }
+
+        .client-avatar-shell {
+          width: 68px;
+          height: 68px;
+          border-radius: 22px;
+          background: rgba(175, 198, 255, 0.1);
+          border: 1px solid rgba(175, 198, 255, 0.16);
+          display: grid;
+          place-items: center;
+          color: #afc6ff;
+          font-size: 22px;
+          font-weight: 800;
+          letter-spacing: -0.04em;
+          overflow: hidden;
+          flex-shrink: 0;
+        }
+
+        .client-avatar-image {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+        }
+
+        .client-spotlight-copy {
+          display: grid;
+          gap: 8px;
+        }
+
+        .client-spotlight-copy strong {
+          color: #ffffff;
+          font-size: 22px;
+          line-height: 1.02;
+          letter-spacing: -0.04em;
+        }
+
+        .client-spotlight-copy span {
+          color: rgba(225, 226, 235, 0.42);
+          font-size: 11px;
+          font-weight: 700;
+          letter-spacing: 0.14em;
+          text-transform: uppercase;
+        }
+
+        .client-spotlight-grid {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 16px;
+          padding: 18px 0;
+          border-top: 1px solid rgba(143, 144, 149, 0.12);
+          border-bottom: 1px solid rgba(143, 144, 149, 0.12);
+        }
+
+        .client-spotlight-grid small {
+          display: block;
+          margin-bottom: 4px;
+          color: rgba(225, 226, 235, 0.38);
+          font-size: 10px;
+          font-weight: 800;
+          letter-spacing: 0.14em;
+          text-transform: uppercase;
+        }
+
+        .client-spotlight-grid p {
+          margin: 0;
+          color: #ffffff;
+          font-size: 14px;
+          font-weight: 600;
+          line-height: 1.5;
+          overflow-wrap: anywhere;
+        }
+
+        .client-intelligence-grid {
+          display: grid;
+          grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.85fr);
+          gap: 24px;
+        }
+
+        .client-intelligence-feature,
+        .client-activity-card {
+          padding: 30px;
+          border-radius: 28px;
+          border: 1px solid rgba(143, 144, 149, 0.14);
+          background:
+            linear-gradient(180deg, rgba(255, 255, 255, 0.025), rgba(255, 255, 255, 0.012)),
+            rgba(16, 19, 26, 0.92);
+          box-shadow: 0 16px 44px rgba(0, 0, 0, 0.22);
+        }
+
+        .client-intelligence-feature {
+          position: relative;
+          overflow: hidden;
+          display: grid;
+          gap: 18px;
+          align-content: start;
+          background:
+            radial-gradient(circle at top right, rgba(78, 222, 163, 0.08), transparent 34%),
+            linear-gradient(180deg, rgba(255, 255, 255, 0.025), rgba(255, 255, 255, 0.012)),
+            rgba(16, 19, 26, 0.92);
+        }
+
+        .client-intelligence-kicker {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          color: #4edea3;
+          font-size: 11px;
+          font-weight: 800;
+          letter-spacing: 0.14em;
+          text-transform: uppercase;
+        }
+
+        .client-intelligence-feature h3,
+        .client-activity-head h3 {
+          margin: 0;
+          color: #ffffff;
+          font-size: 28px;
+          line-height: 1.08;
+          letter-spacing: -0.04em;
+        }
+
+        .client-intelligence-feature p {
+          margin: 0;
+          max-width: 56ch;
+          color: rgba(225, 226, 235, 0.64);
+          font-size: 15px;
+          line-height: 1.65;
+        }
+
+        .client-activity-head {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 16px;
+        }
+
+        .client-activity-link {
+          border: none;
+          background: transparent;
+          color: #afc6ff;
+          font-size: 12px;
+          font-weight: 700;
+          cursor: pointer;
+        }
+
+        .client-activity-list {
+          display: grid;
+          gap: 22px;
+          margin-top: 26px;
+        }
+
+        .client-activity-item {
+          display: flex;
+          align-items: flex-start;
+          gap: 14px;
+        }
+
+        .client-activity-dot {
+          width: 8px;
+          height: 8px;
+          border-radius: 999px;
+          margin-top: 6px;
+          flex-shrink: 0;
+        }
+
+        .client-activity-dot-primary {
+          background: #afc6ff;
+        }
+
+        .client-activity-dot-success {
+          background: #4edea3;
+        }
+
+        .client-activity-dot-muted {
+          background: rgba(225, 226, 235, 0.4);
+        }
+
+        .client-activity-item strong {
+          display: block;
+          color: #ffffff;
+          font-size: 14px;
+          font-weight: 600;
+          line-height: 1.55;
+        }
+
+        .client-activity-item small {
+          display: inline-block;
+          margin-top: 6px;
+          color: rgba(225, 226, 235, 0.38);
+          font-size: 10px;
+          font-weight: 800;
+          letter-spacing: 0.14em;
+          text-transform: uppercase;
         }
 
         .client-group-head {
@@ -12223,8 +12909,402 @@ export default function DashboardPage() {
 
         .source-section {
           display: grid;
+          gap: 28px;
+          margin-bottom: 28px;
+        }
+
+        .home-hub-hero-obsidian {
+          padding: 34px;
+          display: grid;
+          grid-template-columns: minmax(0, 1.3fr) minmax(320px, 0.95fr);
+          gap: 24px;
+          background:
+            linear-gradient(180deg, rgba(255, 255, 255, 0.018), rgba(255, 255, 255, 0.008)),
+            radial-gradient(circle at top right, rgba(175, 198, 255, 0.12), transparent 34%);
+          border-radius: 24px;
+        }
+
+        .home-hub-copy {
+          display: grid;
+          align-content: start;
+          gap: 14px;
+        }
+
+        .home-hub-kicker {
+          color: #4ede63;
+          font-size: 10px;
+          font-weight: 800;
+          letter-spacing: 0.22em;
+          text-transform: uppercase;
+        }
+
+        .home-hub-kicker-success {
+          color: #4ede63;
+        }
+
+        .home-hub-copy h2 {
+          margin: 0;
+          color: #ffffff;
+          font-size: clamp(34px, 4vw, 54px);
+          line-height: 0.98;
+          letter-spacing: -0.05em;
+        }
+
+        .home-hub-copy p {
+          margin: 0;
+          max-width: 56ch;
+          color: rgba(225, 226, 235, 0.7);
+          font-size: 17px;
+          line-height: 1.65;
+        }
+
+        .home-hub-metrics-obsidian {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 16px;
+        }
+
+        .home-hub-metric {
+          min-height: 156px;
+          padding: 22px;
+          display: grid;
+          align-content: space-between;
+          gap: 14px;
+          border-radius: 20px;
+          background: rgba(11, 14, 20, 0.74);
+          border: 1px solid rgba(143, 144, 149, 0.12);
+        }
+
+        .home-hub-metric span {
+          display: block;
+          color: rgba(225, 226, 235, 0.38);
+          font-size: 10px;
+          font-weight: 800;
+          letter-spacing: 0.16em;
+          text-transform: uppercase;
+        }
+
+        .home-hub-metric strong {
+          display: block;
+          color: #ffffff;
+          font-size: clamp(34px, 4vw, 52px);
+          line-height: 0.96;
+          letter-spacing: -0.05em;
+        }
+
+        .home-hub-metric small {
+          display: block;
+          color: rgba(225, 226, 235, 0.56);
+          font-size: 12px;
+          line-height: 1.5;
+        }
+
+        .home-hub-section-head {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 18px;
+          flex-wrap: wrap;
+        }
+
+        .home-hub-section-head h3 {
+          margin: 0;
+          color: #ffffff;
+          font-size: 26px;
+          line-height: 1.1;
+          letter-spacing: -0.04em;
+        }
+
+        .home-hub-manage-link {
+          border: none;
+          background: transparent;
+          color: #afc6ff;
+          font: inherit;
+          font-size: 12px;
+          font-weight: 700;
+          letter-spacing: 0.12em;
+          text-transform: uppercase;
+          cursor: pointer;
+        }
+
+        .home-hub-grid-obsidian {
+          display: grid;
+          grid-template-columns: repeat(6, minmax(0, 1fr));
+          gap: 18px;
+        }
+
+        .home-hub-card {
+          padding: 22px;
+          min-height: 208px;
+          display: grid;
+          gap: 18px;
+          align-content: start;
+          text-align: left;
+          border-radius: 20px;
+          cursor: pointer;
+          transition: transform 0.3s ease, border-color 0.3s ease, background 0.3s ease;
+        }
+
+        .home-hub-card:hover {
+          transform: translateY(-2px);
+          border-color: rgba(175, 198, 255, 0.2);
+          background:
+            linear-gradient(180deg, rgba(175, 198, 255, 0.04), rgba(255, 255, 255, 0.012)),
+            rgba(22, 27, 34, 0.92);
+        }
+
+        .home-hub-grid-obsidian .home-hub-card:nth-child(1),
+        .home-hub-grid-obsidian .home-hub-card:nth-child(2) {
+          grid-column: span 2;
+        }
+
+        .home-hub-grid-obsidian .home-hub-card:nth-child(n + 3) {
+          grid-column: span 1;
+        }
+
+        .home-hub-card-top {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+        }
+
+        .home-hub-card-pill {
+          min-height: 28px;
+          padding: 0 12px;
+          border-radius: 999px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 10px;
+          font-weight: 800;
+          letter-spacing: 0.14em;
+          text-transform: uppercase;
+          border: 1px solid rgba(143, 144, 149, 0.12);
+          background: rgba(255, 255, 255, 0.04);
+          color: rgba(225, 226, 235, 0.62);
+        }
+
+        .home-hub-card-copy {
+          display: grid;
+          gap: 10px;
+        }
+
+        .home-hub-card-copy h3 {
+          margin: 0;
+          color: #ffffff;
+          font-size: 22px;
+          line-height: 1.05;
+          letter-spacing: -0.04em;
+        }
+
+        .home-hub-card-copy p {
+          margin: 0;
+          color: rgba(225, 226, 235, 0.64);
+          font-size: 14px;
+          line-height: 1.6;
+        }
+
+        .home-hub-card-footer {
+          margin-top: auto;
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-end;
+          gap: 14px;
+        }
+
+        .home-hub-card-footer span {
+          color: rgba(225, 226, 235, 0.42);
+          font-size: 12px;
+          line-height: 1.5;
+          max-width: 26ch;
+        }
+
+        .home-hub-card-footer strong {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          color: #ffffff;
+          font-size: 13px;
+          font-weight: 700;
+          white-space: nowrap;
+        }
+
+        .home-hub-lower-grid {
+          display: grid;
+          grid-template-columns: minmax(0, 1.4fr) minmax(320px, 0.8fr);
+          gap: 24px;
+          align-items: start;
+        }
+
+        .home-hub-analytics-card,
+        .home-hub-reports-card,
+        .home-hub-ai-note {
+          padding: 28px;
+          border-radius: 20px;
+        }
+
+        .home-hub-analytics-card {
+          min-height: 420px;
+          display: grid;
+          gap: 24px;
+          background:
+            linear-gradient(180deg, rgba(255, 255, 255, 0.018), rgba(255, 255, 255, 0.008)),
+            radial-gradient(circle at center bottom, rgba(78, 137, 255, 0.08), transparent 46%);
+        }
+
+        .home-hub-analytics-head {
+          display: flex;
+          justify-content: space-between;
+          gap: 18px;
+          align-items: flex-start;
+          flex-wrap: wrap;
+        }
+
+        .home-hub-analytics-head h3,
+        .home-hub-reports-head h3 {
+          margin: 6px 0 0;
+          color: #ffffff;
+          font-size: 24px;
+          line-height: 1.08;
+          letter-spacing: -0.04em;
+        }
+
+        .home-hub-analytics-badges {
+          display: flex;
+          gap: 8px;
+          flex-wrap: wrap;
+        }
+
+        .home-hub-analytics-badges span {
+          min-height: 28px;
+          padding: 0 12px;
+          border-radius: 999px;
+          background: rgba(255, 255, 255, 0.04);
+          border: 1px solid rgba(143, 144, 149, 0.14);
+          color: rgba(225, 226, 235, 0.62);
+          font-size: 10px;
+          font-weight: 800;
+          letter-spacing: 0.14em;
+          text-transform: uppercase;
+          display: inline-flex;
+          align-items: center;
+        }
+
+        .home-hub-chart {
+          margin-top: auto;
+          min-height: 240px;
+          display: flex;
+          align-items: end;
+          gap: 16px;
+          padding: 10px 28px 0;
+        }
+
+        .home-hub-chart-bar {
+          flex: 1 1 0;
+          border-radius: 18px 18px 0 0;
+          background: linear-gradient(180deg, rgba(175, 198, 255, 0.24), rgba(78, 137, 255, 0.12));
+          min-height: 48px;
+          position: relative;
+        }
+
+        .home-hub-chart-bar-highlight {
+          background: linear-gradient(180deg, rgba(78, 222, 99, 0.9), rgba(78, 137, 255, 0.28));
+          box-shadow: 0 0 28px rgba(78, 222, 99, 0.12);
+        }
+
+        .home-hub-chart-bar-highlight small {
+          position: absolute;
+          top: -42px;
+          left: 50%;
+          transform: translateX(-50%);
+          min-height: 26px;
+          padding: 0 10px;
+          border-radius: 999px;
+          background: rgba(11, 14, 20, 0.92);
+          border: 1px solid rgba(78, 222, 99, 0.18);
+          color: #4ede63;
+          display: inline-flex;
+          align-items: center;
+          font-size: 10px;
+          font-weight: 800;
+          letter-spacing: 0.12em;
+          text-transform: uppercase;
+        }
+
+        .home-hub-chart-bar-xs { height: 26%; }
+        .home-hub-chart-bar-sm { height: 34%; }
+        .home-hub-chart-bar-md { height: 56%; }
+        .home-hub-chart-bar-mid { height: 48%; }
+        .home-hub-chart-bar-lg { height: 82%; }
+
+        .home-hub-side-stack {
+          display: grid;
+          gap: 24px;
+        }
+
+        .home-hub-reports-head {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 16px;
+        }
+
+        .home-hub-reports-list {
+          display: grid;
           gap: 20px;
-          margin-bottom: 24px;
+          margin-top: 26px;
+        }
+
+        .home-hub-report-item {
+          display: flex;
+          align-items: flex-start;
+          gap: 14px;
+        }
+
+        .home-hub-report-dot {
+          width: 7px;
+          height: 7px;
+          margin-top: 7px;
+          border-radius: 999px;
+          flex-shrink: 0;
+        }
+
+        .home-hub-report-dot.primary { background: #afc6ff; }
+        .home-hub-report-dot.success { background: #4ede63; }
+        .home-hub-report-dot.muted { background: rgba(225, 226, 235, 0.4); }
+
+        .home-hub-report-item strong {
+          display: block;
+          color: #ffffff;
+          font-size: 14px;
+          line-height: 1.55;
+        }
+
+        .home-hub-report-item small {
+          display: inline-block;
+          margin-top: 6px;
+          color: rgba(225, 226, 235, 0.38);
+          font-size: 10px;
+          font-weight: 800;
+          letter-spacing: 0.14em;
+          text-transform: uppercase;
+        }
+
+        .home-hub-ai-note {
+          background:
+            linear-gradient(180deg, rgba(78, 137, 255, 0.08), rgba(255, 255, 255, 0.01)),
+            rgba(0, 15, 47, 0.4);
+          border: 1px solid rgba(175, 198, 255, 0.16);
+          display: grid;
+          gap: 12px;
+        }
+
+        .home-hub-ai-note p {
+          margin: 0;
+          color: rgba(225, 226, 235, 0.72);
+          font-size: 14px;
+          line-height: 1.65;
         }
 
         .source-section-header {

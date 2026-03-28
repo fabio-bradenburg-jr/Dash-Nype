@@ -86,7 +86,9 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
   const [inputValue, setInputValue] = useState('')
   const [messages, setMessages] = useState<AssistantMessageItem[]>([])
   const [selectedAgentId, setSelectedAgentId] = useState('copilot')
+  const [isAgentMenuOpen, setIsAgentMenuOpen] = useState(false)
   const messagesContainerRef = useRef<HTMLDivElement | null>(null)
+  const agentMenuRef = useRef<HTMLDivElement | null>(null)
 
   const availableClients = useMemo(
     () => (Array.isArray(dashboardState?.clients) ? dashboardState.clients : []),
@@ -165,6 +167,19 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
       behavior: 'smooth',
     })
   }, [messages, isSending])
+
+  useEffect(() => {
+    if (!isAgentMenuOpen) return
+
+    const handlePointerDown = (event: MouseEvent) => {
+      if (!agentMenuRef.current?.contains(event.target as Node)) {
+        setIsAgentMenuOpen(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handlePointerDown)
+    return () => document.removeEventListener('mousedown', handlePointerDown)
+  }, [isAgentMenuOpen])
 
   const loadDashboardState = useCallback(async () => {
     try {
@@ -490,31 +505,44 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
                     </button>
                   </div>
                 </div>
-                {availableAgents.length ? (
-                  <div className="assistant-agent-toolbar">
-                    <button type="button" className="assistant-agent-trigger">
-                      <i className="bx bx-cog"></i>
-                      {selectedAgent ? `Agente: ${selectedAgent.name}` : 'Selecionar agente'}
-                    </button>
-                    <div className="assistant-agent-list">
-                      {availableAgents.map((agent) => (
-                        <button
-                          key={agent.id}
-                          type="button"
-                          className={`assistant-agent-chip ${selectedAgent?.id === agent.id ? 'active' : ''}`}
-                          onClick={() => setSelectedAgentId(agent.id)}
-                        >
-                          {agent.name}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                ) : null}
                 <div className="assistant-form-footer">
                   <div className="assistant-form-signals">
+                    {availableAgents.length ? (
+                      <div className="assistant-agent-toolbar" ref={agentMenuRef}>
+                        <button
+                          type="button"
+                          className={`assistant-agent-trigger ${isAgentMenuOpen ? 'active' : ''}`}
+                          onClick={() => setIsAgentMenuOpen((current) => !current)}
+                        >
+                          <span className="assistant-agent-trigger-copy">
+                            <i className="bx bx-bot"></i>
+                            <span>{selectedAgent ? selectedAgent.name : 'Selecionar agente'}</span>
+                          </span>
+                          <i className={`bx bx-chevron-down assistant-agent-chevron ${isAgentMenuOpen ? 'open' : ''}`}></i>
+                        </button>
+                        <div className={`assistant-agent-menu ${isAgentMenuOpen ? 'open' : ''}`}>
+                          {availableAgents.map((agent) => (
+                            <button
+                              key={agent.id}
+                              type="button"
+                              className={`assistant-agent-option ${selectedAgent?.id === agent.id ? 'active' : ''}`}
+                              onClick={() => {
+                                setSelectedAgentId(agent.id)
+                                setIsAgentMenuOpen(false)
+                              }}
+                            >
+                              <span className="assistant-agent-option-name">{agent.name}</span>
+                              {agent.description ? (
+                                <span className="assistant-agent-option-description">{agent.description}</span>
+                              ) : null}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
                     <span><i className="bx bx-bolt-circle"></i> {dashboardState?.globalIntegrations?.aiModel || 'Modelo configurado'}</span>
                     <span><i className="bx bx-shield-quarter"></i> Contexto interno ativo</span>
-                    {selectedAgent ? <span><i className="bx bx-bot"></i> {selectedAgent.name}</span> : null}
+                    <span><i className="bx bx-layout"></i> {focusLabel}</span>
                   </div>
                   <span>Enter para enviar / Shift+Enter para nova linha</span>
                 </div>
@@ -820,50 +848,108 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
         }
 
         .assistant-agent-toolbar {
-          display: grid;
-          gap: 10px;
-          margin-top: 16px;
+          position: relative;
+          display: inline-flex;
+          align-items: center;
+          flex-shrink: 0;
         }
 
         .assistant-agent-trigger {
-          width: fit-content;
-          min-height: 34px;
-          padding: 0 12px;
-          border-radius: 999px;
+          min-height: 28px;
+          padding: 0 8px 0 10px;
+          border-radius: 10px;
           border: 1px solid var(--border-color);
           background: rgba(255, 255, 255, 0.02);
           color: var(--text-secondary);
-          font-size: 11px;
+          font-size: 10px;
           font-weight: 800;
           display: inline-flex;
           align-items: center;
-          gap: 8px;
+          gap: 6px;
+          cursor: pointer;
+          transition: 160ms ease;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
         }
 
-        .assistant-agent-list {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 8px;
+        .assistant-agent-trigger:hover,
+        .assistant-agent-trigger.active {
+          border-color: color-mix(in srgb, var(--accent-blue) 36%, transparent);
+          color: #cfe2ff;
+          background: rgba(59, 130, 246, 0.08);
         }
 
-        .assistant-agent-chip {
-          min-height: 34px;
-          padding: 0 12px;
-          border-radius: 999px;
+        .assistant-agent-trigger-copy {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+        }
+
+        .assistant-agent-chevron {
+          font-size: 16px;
+          color: var(--text-muted);
+          transition: transform 160ms ease, color 160ms ease;
+        }
+
+        .assistant-agent-chevron.open {
+          transform: rotate(180deg);
+          color: #93c5fd;
+        }
+
+        .assistant-agent-menu {
+          position: absolute;
+          left: 0;
+          bottom: calc(100% + 10px);
+          min-width: 280px;
+          max-width: 340px;
+          padding: 8px;
+          border-radius: 16px;
           border: 1px solid var(--border-color);
-          background: rgba(255, 255, 255, 0.03);
+          background: rgba(19, 23, 32, 0.98);
+          box-shadow: 0 24px 48px rgba(0, 0, 0, 0.34);
+          opacity: 0;
+          pointer-events: none;
+          transform: translateY(6px);
+          transition: opacity 160ms ease, transform 160ms ease;
+          z-index: 20;
+        }
+
+        .assistant-agent-menu.open {
+          opacity: 1;
+          pointer-events: auto;
+          transform: translateY(0);
+        }
+
+        .assistant-agent-option {
+          width: 100%;
+          display: grid;
+          gap: 4px;
+          text-align: left;
+          padding: 12px 14px;
+          border: 1px solid transparent;
+          border-radius: 12px;
+          background: transparent;
           color: var(--text-secondary);
-          font-size: 11px;
-          font-weight: 700;
           cursor: pointer;
           transition: 160ms ease;
         }
 
-        .assistant-agent-chip.active,
-        .assistant-agent-chip:hover {
-          border-color: color-mix(in srgb, var(--accent-blue) 36%, transparent);
-          color: #93c5fd;
-          background: rgba(59, 130, 246, 0.1);
+        .assistant-agent-option:hover,
+        .assistant-agent-option.active {
+          border-color: color-mix(in srgb, var(--accent-blue) 30%, transparent);
+          background: rgba(59, 130, 246, 0.08);
+        }
+
+        .assistant-agent-option-name {
+          color: var(--text-primary);
+          font-size: 13px;
+          font-weight: 800;
+        }
+
+        .assistant-agent-option-description {
+          color: var(--text-muted);
+          font-size: 11px;
+          line-height: 1.45;
         }
 
         .assistant-chip {
@@ -1136,6 +1222,7 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
           display: flex;
           gap: 14px;
           flex-wrap: wrap;
+          align-items: center;
         }
 
         .assistant-form-signals span {
