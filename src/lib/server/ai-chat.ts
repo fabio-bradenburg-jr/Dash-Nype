@@ -2,6 +2,8 @@ import { normalizeAiSettings, resolveAiDashboardPromptText } from '@/lib/ai-conf
 import { fetchMetaJson } from '@/lib/server/meta-fetch'
 import { buildMetaInsightsFilterExpression } from '@/lib/server/meta-date-range'
 import { getWorkspaceMetaConnection } from '@/lib/server/meta-connection'
+import { readClickUpSummary } from '@/lib/server/clickup'
+import { readMondaySummary } from '@/lib/server/monday'
 import { extractMetaCampaignMetrics } from '@/lib/meta-metrics'
 import type {
   AiSettings,
@@ -80,6 +82,76 @@ interface CampaignSnapshot {
   campaigns: CampaignSnapshotCampaign[]
 }
 
+interface ClickUpOperationSnapshot {
+  listsConfigured: number
+  totalTasks: number
+  openTasks: number
+  completedTasks: number
+  blockedTasks: number
+  overdueTasks: number
+  dueSoonTasks: number
+  unassignedTasks: number
+  topStatuses: Array<{
+    label: string
+    count: number
+  }>
+  topAssignees: Array<{
+    name: string
+    totalTasks: number
+    openTasks: number
+    overdueTasks: number
+  }>
+  topLists: Array<{
+    label: string
+    totalTasks: number
+    blockedCount: number
+    overdueCount: number
+  }>
+}
+
+interface MondayOperationSnapshot {
+  boardsConfigured: number
+  totalItems: number
+  activeItems: number
+  doneItems: number
+  blockedItems: number
+  overdueItems: number
+  dueSoonItems: number
+  unassignedItems: number
+  trackedSecondsTotal: number
+  activeOwnersCount: number
+  topStatus: null | {
+    label: string
+    count: number
+  }
+  topOverdueOwner: null | {
+    name: string
+    overdueItems: number
+    totalItems: number
+  }
+  topLongestTask: null | {
+    name: string
+    trackedSeconds: number
+  }
+  topBoards: Array<{
+    label: string
+    totalItems: number
+    blockedCount: number
+    overdueCount: number
+  }>
+  topGroups: Array<{
+    label: string
+    totalItems: number
+    blockedCount: number
+    overdueCount: number
+  }>
+}
+
+interface OperationSnapshot {
+  clickup: ClickUpOperationSnapshot | null
+  monday: MondayOperationSnapshot | null
+}
+
 interface BusinessContext {
   workspaceId: string
   role: string
@@ -123,6 +195,7 @@ interface BusinessContext {
     hasMondayToken: boolean
   }
   campaignSnapshot: CampaignSnapshot | null
+  operationSnapshot: OperationSnapshot | null
   contextSnapshot: AssistantContextSnapshot | null
 }
 
@@ -383,6 +456,127 @@ function normalizeCampaignHealth(metrics: LooseRecord): CampaignSnapshotCampaign
   return 'attention'
 }
 
+function toPositiveNumber(value: unknown): number {
+  const numericValue = Number(value)
+  return Number.isFinite(numericValue) ? numericValue : 0
+}
+
+function toTrackedHoursLabel(seconds: unknown): string {
+  const totalSeconds = toPositiveNumber(seconds)
+  if (totalSeconds <= 0) return '0h'
+  const hours = totalSeconds / 3600
+  return `${hours.toFixed(hours >= 10 ? 0 : 1)}h`
+}
+
+function normalizeClickUpOperationSnapshot(summary: LooseRecord | null | undefined): ClickUpOperationSnapshot | null {
+  if (!summary || typeof summary !== 'object') return null
+
+  const statusCounts = Array.isArray(summary.statusSummary?.counts) ? summary.statusSummary.counts : []
+  const assigneeRanking = Array.isArray(summary.assigneeRanking) ? summary.assigneeRanking : []
+  const listSummary = Array.isArray(summary.listSummary) ? summary.listSummary : []
+
+  return {
+    listsConfigured: toPositiveNumber(summary.listsConfigured),
+    totalTasks: toPositiveNumber(summary.totalTasks),
+    openTasks: toPositiveNumber(summary.openTasks),
+    completedTasks: toPositiveNumber(summary.completedTasks),
+    blockedTasks: toPositiveNumber(summary.blockedTasks),
+    overdueTasks: toPositiveNumber(summary.overdueTasks),
+    dueSoonTasks: toPositiveNumber(summary.dueSoonTasks),
+    unassignedTasks: toPositiveNumber(summary.unassignedTasks),
+    topStatuses: statusCounts.slice(0, 4).map((item) => ({
+      label: String(item?.label || 'Sem status'),
+      count: toPositiveNumber(item?.count),
+    })),
+    topAssignees: assigneeRanking.slice(0, 4).map((item) => ({
+      name: String(item?.name || 'Sem nome'),
+      totalTasks: toPositiveNumber(item?.totalTasks),
+      openTasks: toPositiveNumber(item?.openTasks),
+      overdueTasks: toPositiveNumber(item?.overdueTasks),
+    })),
+    topLists: listSummary.slice(0, 4).map((item) => ({
+      label: String(item?.label || 'Lista'),
+      totalTasks: toPositiveNumber(item?.totalTasks),
+      blockedCount: toPositiveNumber(item?.blockedCount),
+      overdueCount: toPositiveNumber(item?.overdueCount),
+    })),
+  }
+}
+
+function normalizeMondayOperationSnapshot(summary: LooseRecord | null | undefined): MondayOperationSnapshot | null {
+  if (!summary || typeof summary !== 'object') return null
+
+  const boardSummary = Array.isArray(summary.boardSummary) ? summary.boardSummary : []
+  const groupSummary = Array.isArray(summary.groupSummary) ? summary.groupSummary : []
+
+  return {
+    boardsConfigured: toPositiveNumber(summary.boardsConfigured),
+    totalItems: toPositiveNumber(summary.totalItems),
+    activeItems: toPositiveNumber(summary.activeItems),
+    doneItems: toPositiveNumber(summary.doneItems),
+    blockedItems: toPositiveNumber(summary.blockedItems),
+    overdueItems: toPositiveNumber(summary.overdueItems),
+    dueSoonItems: toPositiveNumber(summary.dueSoonItems),
+    unassignedItems: toPositiveNumber(summary.unassignedItems),
+    trackedSecondsTotal: toPositiveNumber(summary.trackedSecondsTotal),
+    activeOwnersCount: toPositiveNumber(summary.activeOwnersCount),
+    topStatus: summary.topStatus
+      ? {
+          label: String(summary.topStatus.label || 'Sem status'),
+          count: toPositiveNumber(summary.topStatus.count),
+        }
+      : null,
+    topOverdueOwner: summary.topOverdueOwner
+      ? {
+          name: String(summary.topOverdueOwner.name || 'Sem nome'),
+          overdueItems: toPositiveNumber(summary.topOverdueOwner.overdueItems),
+          totalItems: toPositiveNumber(summary.topOverdueOwner.totalItems),
+        }
+      : null,
+    topLongestTask: summary.topLongestTask
+      ? {
+          name: String(summary.topLongestTask.name || 'Sem nome'),
+          trackedSeconds: toPositiveNumber(summary.topLongestTask.trackedSeconds),
+        }
+      : null,
+    topBoards: boardSummary.slice(0, 4).map((item) => ({
+      label: String(item?.label || 'Board'),
+      totalItems: toPositiveNumber(item?.totalItems),
+      blockedCount: toPositiveNumber(item?.blockedCount),
+      overdueCount: toPositiveNumber(item?.overdueCount),
+    })),
+    topGroups: groupSummary.slice(0, 4).map((item) => ({
+      label: String(item?.label || 'Grupo'),
+      totalItems: toPositiveNumber(item?.totalItems),
+      blockedCount: toPositiveNumber(item?.blockedCount),
+      overdueCount: toPositiveNumber(item?.overdueCount),
+    })),
+  }
+}
+
+async function fetchOperationSnapshot(globalIntegrations: LooseRecord | null | undefined): Promise<OperationSnapshot | null> {
+  const clickUpToken = String(globalIntegrations?.clickUpToken || '').trim()
+  const clickUpListIds = String(globalIntegrations?.clickUpListIds || '').trim()
+  const mondayToken = String(globalIntegrations?.mondayToken || '').trim()
+  const mondayBoardIds = String(globalIntegrations?.mondayBoardIds || '').trim()
+
+  const [clickupResult, mondayResult] = await Promise.all([
+    clickUpToken && clickUpListIds
+      ? readClickUpSummary({ token: clickUpToken, listIds: clickUpListIds }).catch(() => null)
+      : Promise.resolve(null),
+    mondayToken && mondayBoardIds
+      ? readMondaySummary({ token: mondayToken, boardIds: mondayBoardIds, since: '', until: '', owner: '' }).catch(() => null)
+      : Promise.resolve(null),
+  ])
+
+  const snapshot = {
+    clickup: normalizeClickUpOperationSnapshot(clickupResult),
+    monday: normalizeMondayOperationSnapshot(mondayResult),
+  }
+
+  return snapshot.clickup || snapshot.monday ? snapshot : null
+}
+
 async function fetchClientCampaignSnapshot({
   adminSupabase,
   dashboardState,
@@ -494,6 +688,7 @@ async function buildBusinessContext({
     accessContext,
     selectedClient,
   })
+  const operationSnapshot = await fetchOperationSnapshot(dashboardState?.globalIntegrations)
 
   return {
     workspaceId: accessContext.workspaceId || '',
@@ -547,6 +742,7 @@ async function buildBusinessContext({
       hasMondayToken: Boolean(String(dashboardState?.globalIntegrations?.mondayToken || '').trim()),
     },
     campaignSnapshot: clientCampaignSnapshot,
+    operationSnapshot,
     contextSnapshot: contextSnapshot && typeof contextSnapshot === 'object' ? contextSnapshot : null,
   }
 }
@@ -593,7 +789,11 @@ function buildAssistantSystemPrompt(aiDashboardPrompt: string): string {
     'Quando o usuario pedir um resumo executivo, destaque: pontos positivos, pontos de atencao e urgencias.',
     'Respeite o foco selecionado no contexto: operacao, clientes ou geral.',
     'Quando houver campaignSnapshot no contexto e o usuario perguntar sobre campanhas, responda campanha por campanha antes do resumo final.',
+    'Quando houver operationSnapshot no contexto e o usuario perguntar sobre operacao, rotina, gargalos, Monday ou ClickUp, use esses dados explicitamente na resposta.',
+    'Ao falar de operacao, prefira o formato: area, leitura, impacto e direcionamento.',
     'Ao falar de campanhas, prefira o formato: campanha, leitura, impacto e direcionamento.',
+    'Se houver dados de Monday e ClickUp ao mesmo tempo, cruze prioridades, bloqueios, atrasos e carga operacional para apontar onde agir primeiro.',
+    'Quando houver gargalos operacionais claros, feche com uma priorizacao curta: positivo, atencao e urgencia.',
     'Voce ainda nao possui navegacao web ativa neste fluxo, entao nao afirme dados externos em tempo real como se tivesse pesquisado.',
     '',
     'Playbook de analise ja configurado no app:',
