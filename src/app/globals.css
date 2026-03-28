@@ -17,8 +17,9 @@
     /* Brand Colors */
     --meta-blue: #4E89FF;
     --accent-blue: #4E89FF;
+    --accent-rgb: 78, 137, 255;
     --accent-purple: #8b5cf6;
-    --accent-cyan: #AFC6FF;
+    --accent-cyan: var(--accent-blue);
     --accent-emerald: #4EDE63;
     --accent-orange: #f59e0b;
     --accent-red: #ef4444;
@@ -27,6 +28,10 @@
 
     /* Glows */
     --glow-blue: rgba(78, 137, 255, 0.18);
+    --accent-soft: rgba(78, 137, 255, 0.12);
+    --accent-muted: rgba(78, 137, 255, 0.18);
+    --accent-strong: rgba(78, 137, 255, 0.28);
+    --theme-surface: rgba(78, 137, 255, 0.10);
     --glow-emerald: rgba(78, 222, 99, 0.14);
     --app-bg-primary: rgba(175, 198, 255, 0.09);
     --app-bg-secondary: rgba(78, 137, 255, 0.06);
@@ -180,9 +185,9 @@ body {
 }
 
 .logo i {
-    color: var(--meta-blue);
+    color: var(--accent-blue);
     font-size: 30px;
-    filter: drop-shadow(0 0 10px rgba(78, 137, 255, 0.32));
+    filter: drop-shadow(0 0 10px var(--glow-blue));
 }
 
 .nav-menu {
@@ -224,10 +229,10 @@ body {
 }
 
 .nav-item.active {
-    background: linear-gradient(90deg, rgba(175, 198, 255, 0.12) 0%, transparent 100%);
-    color: #afc6ff;
+    background: linear-gradient(90deg, var(--accent-soft) 0%, transparent 100%);
+    color: var(--accent-blue);
     border-left: none;
-    border-right: 4px solid #afc6ff;
+    border-right: 4px solid var(--accent-blue);
 }
 
 .user-profile {
@@ -349,13 +354,21 @@ body {
 }
 
 .btn-primary {
-    background: linear-gradient(135deg, #afc6ff 0%, #2576f9 100%);
+    background: linear-gradient(
+        135deg,
+        var(--accent-blue) 0%,
+        color-mix(in srgb, var(--accent-blue) 72%, #001944 28%) 100%
+    );
     color: white;
     box-shadow: 0 4px 12px var(--glow-blue);
 }
 
 .btn-primary:hover {
-    background: #2563eb;
+    background: linear-gradient(
+        135deg,
+        color-mix(in srgb, var(--accent-blue) 92%, white 8%) 0%,
+        color-mix(in srgb, var(--accent-blue) 78%, #001944 22%) 100%
+    );
     transform: translateY(-2px);
     box-shadow: 0 6px 16px var(--glow-blue);
 }

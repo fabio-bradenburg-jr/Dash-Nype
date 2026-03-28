@@ -1549,17 +1549,16 @@ export default function SettingsPage() {
 
         .settings-shell {
           display: grid;
-          grid-template-columns: 300px minmax(0, 1fr);
+          grid-template-columns: 1fr;
           gap: 24px;
           align-items: start;
         }
 
         .settings-section-sidebar {
-          padding: 22px;
+          padding: 28px;
           display: grid;
-          gap: 22px;
-          position: sticky;
-          top: 24px;
+          gap: 18px;
+          position: static;
           background: rgba(25, 28, 34, 0.78);
           border: 1px solid rgba(69, 71, 75, 0.2);
           border-radius: 24px;
@@ -1567,11 +1566,11 @@ export default function SettingsPage() {
 
         .settings-sidebar-title {
           display: grid;
-          gap: 6px;
+          gap: 8px;
         }
 
         .settings-sidebar-title span {
-          color: #afc6ff;
+          color: var(--accent-blue);
           font-size: 11px;
           font-weight: 800;
           letter-spacing: 0.16em;
@@ -1579,7 +1578,8 @@ export default function SettingsPage() {
         }
 
         .settings-sidebar-title strong {
-          font-size: 22px;
+          max-width: 24ch;
+          font-size: 28px;
           line-height: 1.2;
           font-family: var(--font-family-headline);
           letter-spacing: -0.03em;
@@ -1587,12 +1587,14 @@ export default function SettingsPage() {
 
         .settings-sidebar-nav {
           display: grid;
-          gap: 10px;
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+          gap: 12px;
         }
 
         .settings-sidebar-link {
           width: 100%;
-          padding: 18px;
+          min-height: 120px;
+          padding: 18px 20px;
           border-radius: 20px;
           border: 1px solid rgba(69, 71, 75, 0.18);
           background: rgba(29, 32, 38, 0.84);
@@ -1600,21 +1602,22 @@ export default function SettingsPage() {
           font: inherit;
           text-align: left;
           cursor: pointer;
-          display: flex;
-          gap: 12px;
-          align-items: flex-start;
+          display: grid;
+          grid-template-rows: auto 1fr;
+          gap: 14px;
+          align-content: start;
           transition: border-color 0.2s ease, background 0.2s ease, transform 0.2s ease;
         }
 
         .settings-sidebar-link i {
           font-size: 20px;
-          color: #afc6ff;
+          color: var(--accent-blue);
           margin-top: 1px;
         }
 
         .settings-sidebar-link div {
           display: grid;
-          gap: 4px;
+          gap: 6px;
         }
 
         .settings-sidebar-link strong {
@@ -1630,10 +1633,10 @@ export default function SettingsPage() {
         }
 
         .settings-sidebar-link.active {
-          border-color: rgba(78, 222, 99, 0.3);
-          background: linear-gradient(90deg, rgba(175, 198, 255, 0.1), transparent);
-          transform: translateX(4px);
-          box-shadow: 0 0 0 1px rgba(175, 198, 255, 0.1);
+          border-color: color-mix(in srgb, var(--accent-blue) 28%, transparent);
+          background: linear-gradient(180deg, color-mix(in srgb, var(--accent-blue) 10%, transparent), transparent);
+          transform: translateY(-2px);
+          box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent-blue) 10%, transparent);
         }
 
         .settings-section-content,
@@ -1681,7 +1684,7 @@ export default function SettingsPage() {
 
         .settings-hero-kicker,
         .settings-obsidian-head span {
-          color: #afc6ff;
+          color: var(--accent-blue);
           font-size: 11px;
           font-weight: 800;
           letter-spacing: 0.16em;
@@ -1723,13 +1726,13 @@ export default function SettingsPage() {
         }
 
         .settings-mode-card:hover {
-          border-color: rgba(175, 198, 255, 0.25);
+          border-color: color-mix(in srgb, var(--accent-blue) 25%, transparent);
           transform: translateY(-2px);
         }
 
         .settings-mode-card.active {
-          border-color: rgba(175, 198, 255, 0.45);
-          box-shadow: 0 0 30px rgba(175, 198, 255, 0.08);
+          border-color: color-mix(in srgb, var(--accent-blue) 45%, transparent);
+          box-shadow: 0 0 30px color-mix(in srgb, var(--accent-blue) 8%, transparent);
         }
 
         .settings-mode-preview {
@@ -1787,12 +1790,12 @@ export default function SettingsPage() {
         }
 
         .settings-mode-preview-dark div i {
-          background: rgba(78, 137, 255, 0.16);
-          color: #afc6ff;
+          background: color-mix(in srgb, var(--accent-blue) 16%, transparent);
+          color: var(--accent-blue);
         }
 
         .settings-mode-preview-dark div strong {
-          background: rgba(175, 198, 255, 0.08);
+          background: color-mix(in srgb, var(--accent-blue) 8%, transparent);
         }
 
         .settings-mode-preview-light {
@@ -1804,12 +1807,12 @@ export default function SettingsPage() {
         }
 
         .settings-mode-preview-light div i {
-          background: #2576f9;
+          background: var(--accent-blue);
           color: white;
         }
 
         .settings-mode-preview-light div strong {
-          background: rgba(37, 118, 249, 0.14);
+          background: color-mix(in srgb, var(--accent-blue) 14%, transparent);
         }
 
         .settings-mode-copy {
@@ -1837,10 +1840,10 @@ export default function SettingsPage() {
           border-radius: 999px;
           display: grid;
           place-items: center;
-          background: #afc6ff;
+          background: var(--accent-blue);
           color: #001944;
           font-size: 16px;
-          box-shadow: 0 0 20px rgba(175, 198, 255, 0.2);
+          box-shadow: 0 0 20px color-mix(in srgb, var(--accent-blue) 20%, transparent);
         }
 
         .settings-grid-obsidian {
@@ -1948,7 +1951,7 @@ export default function SettingsPage() {
           border-radius: 12px;
           background: rgba(11, 14, 20, 0.9);
           border: 1px solid rgba(69, 71, 75, 0.18);
-          color: #afc6ff;
+          color: var(--accent-blue);
           font-weight: 700;
         }
 
@@ -1964,8 +1967,8 @@ export default function SettingsPage() {
         }
 
         .settings-copy-button:hover {
-          color: #afc6ff;
-          border-color: rgba(175, 198, 255, 0.24);
+          color: var(--accent-blue);
+          border-color: color-mix(in srgb, var(--accent-blue) 24%, transparent);
         }
 
         .settings-background-shell {
@@ -2439,12 +2442,12 @@ export default function SettingsPage() {
         }
 
         @media (max-width: 980px) {
-          .settings-shell {
-            grid-template-columns: 1fr;
-          }
-
           .settings-section-sidebar {
             position: static;
+          }
+
+          .settings-sidebar-nav {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
           }
 
           .settings-grid {
@@ -2487,6 +2490,21 @@ export default function SettingsPage() {
 
           .meta-connection-guide {
             grid-template-columns: 1fr;
+          }
+        }
+
+        @media (max-width: 640px) {
+          .settings-sidebar-nav {
+            grid-template-columns: 1fr;
+          }
+
+          .settings-sidebar-title strong {
+            max-width: none;
+            font-size: 24px;
+          }
+
+          .settings-sidebar-link {
+            min-height: 0;
           }
         }
 
