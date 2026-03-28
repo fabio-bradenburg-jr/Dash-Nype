@@ -1,4 +1,5 @@
 import type {
+  AiAgent,
   AiProviderConfig,
   AiProviderOption,
   AiProviderValue,
@@ -10,12 +11,47 @@ import type {
 type JsonLikePrompt = Record<string, unknown> | unknown[] | string | number | boolean | null
 
 type PartialAiProviderConfig = Partial<AiProviderConfig>
+type PartialAiAgent = Partial<AiAgent>
 type PartialAiSettingsInput = Partial<
   AiSettings & {
     aiProvider: string
     aiProviders: Partial<Record<string, PartialAiProviderConfig>>
+    aiAgents: PartialAiAgent[]
   }
 >
+
+export function createDefaultAiAgents(): AiAgent[] {
+  return [
+    {
+      id: 'copilot',
+      name: 'Copiloto',
+      description: 'Leitura geral da operação, cruzando clientes, campanhas e gargalos.',
+      prompt:
+        'Atue como copiloto principal da operação. Priorize clareza, priorização e próximos passos. Cruze clientes, campanhas, operação, CRM e contexto interno antes de responder.',
+    },
+    {
+      id: 'copywriter',
+      name: 'Copywriter',
+      description: 'Headlines, copies, ângulos e CTAs alinhados ao cliente.',
+      prompt:
+        'Atue como copywriter senior. Gere headlines, copies, ganchos, argumentos e CTAs alinhados ao cliente, ao produto e ao material contextual disponível. Mantenha aderência à oferta real e evite promessas não sustentadas.',
+    },
+    {
+      id: 'media',
+      name: 'Analista de mídia',
+      description: 'Leitura técnica de campanhas, criativos, conjuntos e orçamento.',
+      prompt:
+        'Atue como analista senior de mídia paga. Leia campanhas, conjuntos, anúncios, criativos, orçamento e breakdowns. Explique o impacto dos números, identifique gargalos e proponha ajustes objetivos.',
+    },
+    {
+      id: 'operations',
+      name: 'Operação',
+      description: 'Gargalos, prioridades, rotina e execução do time.',
+      prompt:
+        'Atue como líder de operações. Priorize backlog, bloqueios, responsáveis, vencimentos e próximas ações. Organize a resposta em diagnóstico, impacto, prioridade e encaminhamento.',
+    },
+  ]
+}
 
 export const DEFAULT_AI_DASHBOARD_PROMPT = `Voce e um analista senior de marketing e performance.
 
@@ -172,6 +208,7 @@ export const DEFAULT_AI_SETTINGS: AiSettings = {
   aiAnalysisEnabled: false,
   aiProvider: 'openai',
   aiProviders: createDefaultAiProviders(),
+  aiAgents: createDefaultAiAgents(),
   aiBaseUrl: 'https://api.openai.com/v1',
   aiApiKey: '',
   aiModel: '',
@@ -333,11 +370,29 @@ export function normalizeAiSettings(value: PartialAiSettingsInput | null | undef
   ) as AiProvidersMap
 
   const activeProviderConfig = aiProviders[provider] || buildDefaultProviderConfig(providerOption)
+  const defaultAgents = createDefaultAiAgents()
+  const rawAgents = Array.isArray(raw.aiAgents) ? raw.aiAgents : []
+  const normalizedCustomAgents = rawAgents
+    .map((agent, index) => ({
+      id: String(agent?.id || `agent-${index + 1}`)
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9-_]+/g, '-'),
+      name: String(agent?.name || '').trim(),
+      description: String(agent?.description || '').trim(),
+      prompt: String(agent?.prompt || '').trim(),
+    }))
+    .filter((agent) => agent.id && agent.name && agent.prompt)
+
+  const aiAgents = normalizedCustomAgents.length
+    ? normalizedCustomAgents
+    : defaultAgents
 
   return {
     aiAnalysisEnabled: Boolean(raw.aiAnalysisEnabled),
     aiProvider: provider as AiProviderValue,
     aiProviders,
+    aiAgents,
     aiBaseUrl: String(activeProviderConfig.baseUrl || providerOption.baseUrl || '').trim(),
     aiApiKey: String(activeProviderConfig.apiKey || '').trim(),
     aiModel: String(activeProviderConfig.model || '').trim(),

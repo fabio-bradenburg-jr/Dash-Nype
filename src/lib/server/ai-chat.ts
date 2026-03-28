@@ -6,6 +6,7 @@ import { readClickUpSummary } from '@/lib/server/clickup'
 import { readMondaySummary } from '@/lib/server/monday'
 import { extractMetaCampaignMetrics } from '@/lib/meta-metrics'
 import type {
+  AiAgent,
   AiSettings,
   AssistantContextSnapshot,
   AssistantMessage,
@@ -80,6 +81,77 @@ interface CampaignSnapshot {
     conversions: number
   }
   campaigns: CampaignSnapshotCampaign[]
+}
+
+interface MetaPerformanceEntitySnapshot {
+  id: string
+  name: string
+  campaignId?: string
+  campaignName?: string
+  adsetId?: string
+  adsetName?: string
+  status?: string
+  spend: number
+  impressions: number
+  clicks: number
+  ctr: number
+  cpc: number
+  purchases: number
+  leads: number
+  messages: number
+  totalConversions: number
+  roas: number
+  primaryConversionType: string
+}
+
+interface MetaBreakdownSnapshotItem {
+  label: string
+  spend: number
+  impressions: number
+  clicks: number
+  purchases: number
+  leads: number
+  messages: number
+  totalConversions: number
+  roas: number
+}
+
+interface MetaDailyCampaignSnapshotItem {
+  dateStart: string
+  campaignId: string
+  campaignName: string
+  spend: number
+  impressions: number
+  clicks: number
+  purchases: number
+  leads: number
+  messages: number
+  totalConversions: number
+}
+
+interface MetaMarketingSnapshot {
+  period: string
+  campaigns: MetaPerformanceEntitySnapshot[]
+  adsets: MetaPerformanceEntitySnapshot[]
+  ads: MetaPerformanceEntitySnapshot[]
+  creatives: Array<{
+    adId: string
+    adName: string
+    campaignId: string
+    adsetId: string
+    spend: number
+    purchases: number
+    leads: number
+    messages: number
+    totalConversions: number
+    roas: number
+  }>
+  breakdowns: {
+    ages: MetaBreakdownSnapshotItem[]
+    states: MetaBreakdownSnapshotItem[]
+    cities: MetaBreakdownSnapshotItem[]
+  }
+  dailyByCampaign: MetaDailyCampaignSnapshotItem[]
 }
 
 interface ClickUpOperationSnapshot {
@@ -214,6 +286,7 @@ interface BusinessContext {
     hasMondayToken: boolean
   }
   campaignSnapshot: CampaignSnapshot | null
+  metaMarketingSnapshot: MetaMarketingSnapshot | null
   operationSnapshot: OperationSnapshot | null
   contextSnapshot: AssistantContextSnapshot | null
 }
@@ -475,6 +548,62 @@ function normalizeCampaignHealth(metrics: LooseRecord): CampaignSnapshotCampaign
   return 'attention'
 }
 
+function normalizeMetaEntitySnapshot(entity: LooseRecord, idKey: string, nameKey: string): MetaPerformanceEntitySnapshot {
+  const metrics = extractMetaCampaignMetrics(entity)
+
+  return {
+    id: String(entity?.[idKey] || ''),
+    name: String(entity?.[nameKey] || 'Item sem nome'),
+    campaignId: String(entity?.campaign_id || ''),
+    campaignName: String(entity?.campaign_name || ''),
+    adsetId: String(entity?.adset_id || ''),
+    adsetName: String(entity?.adset_name || ''),
+    status: String(entity?.status || ''),
+    spend: metrics.spend || 0,
+    impressions: metrics.impressions || 0,
+    clicks: metrics.clicks || 0,
+    ctr: metrics.ctr || 0,
+    cpc: metrics.cpc || 0,
+    purchases: metrics.purchases || 0,
+    leads: metrics.leads || 0,
+    messages: metrics.messages || 0,
+    totalConversions: metrics.totalConversions || 0,
+    roas: metrics.roas || 0,
+    primaryConversionType: metrics.primaryConversionType || 'Nenhuma',
+  }
+}
+
+function normalizeMetaBreakdownSnapshotItem(item: LooseRecord, labelKey: string): MetaBreakdownSnapshotItem {
+  const metrics = extractMetaCampaignMetrics(item)
+  return {
+    label: String(item?.[labelKey] || item?.label || 'Não informado'),
+    spend: metrics.spend || 0,
+    impressions: metrics.impressions || 0,
+    clicks: metrics.clicks || 0,
+    purchases: metrics.purchases || 0,
+    leads: metrics.leads || 0,
+    messages: metrics.messages || 0,
+    totalConversions: metrics.totalConversions || 0,
+    roas: metrics.roas || 0,
+  }
+}
+
+function normalizeMetaDailyCampaignSnapshotItem(item: LooseRecord): MetaDailyCampaignSnapshotItem {
+  const metrics = extractMetaCampaignMetrics(item)
+  return {
+    dateStart: String(item?.date_start || ''),
+    campaignId: String(item?.campaign_id || ''),
+    campaignName: String(item?.campaign_name || 'Campanha sem nome'),
+    spend: metrics.spend || 0,
+    impressions: metrics.impressions || 0,
+    clicks: metrics.clicks || 0,
+    purchases: metrics.purchases || 0,
+    leads: metrics.leads || 0,
+    messages: metrics.messages || 0,
+    totalConversions: metrics.totalConversions || 0,
+  }
+}
+
 function toPositiveNumber(value: unknown): number {
   const numericValue = Number(value)
   return Number.isFinite(numericValue) ? numericValue : 0
@@ -701,6 +830,131 @@ async function fetchClientCampaignSnapshot({
   }
 }
 
+async function fetchClientMetaMarketingSnapshot({
+  dashboardState,
+  accessContext,
+  selectedClient,
+  adminSupabase,
+}: {
+  dashboardState: DashboardStateLike
+  accessContext: AccessContextLike
+  selectedClient: ClientLike | null
+  adminSupabase: unknown
+}): Promise<MetaMarketingSnapshot | null> {
+  if (!selectedClient?.metaAdAccountId) return null
+
+  const manualToken = String(dashboardState?.globalIntegrations?.metaAccessToken || '').trim()
+  const connection = await getWorkspaceMetaConnection(adminSupabase, accessContext.workspaceId).catch(() => null)
+  const accessToken = manualToken || connection?.access_token || ''
+  if (!accessToken) return null
+
+  const adAccountId = String(selectedClient.metaAdAccountId || '').trim()
+  const id = adAccountId.startsWith('act_') ? adAccountId : `act_${adAccountId}`
+  const timeFilter = buildMetaInsightsFilterExpression('last_7d')
+  const metricFields = 'spend,reach,impressions,clicks,cpc,ctr,actions,action_values,cost_per_action_type,video_play_actions,video_p25_watched_actions,video_thruplay_watched_actions'
+
+  const campaignUrl = `https://graph.facebook.com/v19.0/${id}/campaigns?fields=id,name,status,objective,${timeFilter}{${metricFields}}&limit=20&access_token=${accessToken}`
+  const adsetsUrl = `https://graph.facebook.com/v19.0/${id}/insights?level=adset&fields=campaign_id,campaign_name,adset_id,adset_name,${metricFields}&date_preset=last_7d&limit=20&access_token=${accessToken}`
+  const adsUrl = `https://graph.facebook.com/v19.0/${id}/insights?level=ad&fields=campaign_id,campaign_name,adset_id,adset_name,ad_id,ad_name,${metricFields}&date_preset=last_7d&limit=30&access_token=${accessToken}`
+  const creativesUrl = `https://graph.facebook.com/v19.0/${id}/ads?fields=id,name,campaign_id,adset_id,${timeFilter}{${metricFields}}&limit=20&access_token=${accessToken}`
+  const dailyCampaignUrl = `https://graph.facebook.com/v19.0/${id}/insights?level=campaign&fields=campaign_id,campaign_name,${metricFields}&date_preset=last_7d&time_increment=1&limit=100&access_token=${accessToken}`
+  const agesUrl = `https://graph.facebook.com/v19.0/${id}/insights?fields=${encodeURIComponent(metricFields)}&date_preset=last_7d&breakdowns=age&access_token=${accessToken}`
+  const statesUrl = `https://graph.facebook.com/v19.0/${id}/insights?fields=${encodeURIComponent(metricFields)}&date_preset=last_7d&breakdowns=region&access_token=${accessToken}`
+  const citiesUrl = `https://graph.facebook.com/v19.0/${id}/insights?fields=${encodeURIComponent(metricFields)}&date_preset=last_7d&breakdowns=city&access_token=${accessToken}`
+
+  const [campaignData, adsetsData, adsData, creativesData, dailyCampaignData, agesData, statesData, citiesData] = await Promise.all([
+    fetchMetaJson(campaignUrl, 'A Meta demorou para responder ao carregar campanhas do assistente.').catch(() => null),
+    fetchMetaJson(adsetsUrl, 'A Meta demorou para responder ao carregar conjuntos do assistente.').catch(() => null),
+    fetchMetaJson(adsUrl, 'A Meta demorou para responder ao carregar anúncios do assistente.').catch(() => null),
+    fetchMetaJson(creativesUrl, 'A Meta demorou para responder ao carregar criativos do assistente.').catch(() => null),
+    fetchMetaJson(dailyCampaignUrl, 'A Meta demorou para responder ao carregar a série diária do assistente.').catch(() => null),
+    fetchMetaJson(agesUrl, 'A Meta demorou para responder ao carregar o breakdown por idade.').catch(() => null),
+    fetchMetaJson(statesUrl, 'A Meta demorou para responder ao carregar o breakdown por estado.').catch(() => null),
+    fetchMetaJson(citiesUrl, 'A Meta demorou para responder ao carregar o breakdown por cidade.').catch(() => null),
+  ])
+
+  const campaigns = (Array.isArray(campaignData?.data) ? campaignData.data : [])
+    .map((item) => normalizeMetaEntitySnapshot(item, 'id', 'name'))
+    .filter((item) => item.spend > 0)
+    .sort((left, right) => right.spend - left.spend)
+    .slice(0, 15)
+
+  const adsets = (Array.isArray(adsetsData?.data) ? adsetsData.data : [])
+    .map((item) => normalizeMetaEntitySnapshot(item, 'adset_id', 'adset_name'))
+    .filter((item) => item.spend > 0)
+    .sort((left, right) => right.spend - left.spend)
+    .slice(0, 15)
+
+  const ads = (Array.isArray(adsData?.data) ? adsData.data : [])
+    .map((item) => normalizeMetaEntitySnapshot(item, 'ad_id', 'ad_name'))
+    .filter((item) => item.spend > 0)
+    .sort((left, right) => right.spend - left.spend)
+    .slice(0, 20)
+
+  const creatives = (Array.isArray(creativesData?.data) ? creativesData.data : [])
+    .map((ad) => {
+      const metrics = extractMetaCampaignMetrics(ad?.insights?.data?.[0] || {})
+      return {
+        adId: String(ad?.id || ''),
+        adName: String(ad?.name || 'Criativo sem nome'),
+        campaignId: String(ad?.campaign_id || ''),
+        adsetId: String(ad?.adset_id || ''),
+        spend: metrics.spend || 0,
+        purchases: metrics.purchases || 0,
+        leads: metrics.leads || 0,
+        messages: metrics.messages || 0,
+        totalConversions: metrics.totalConversions || 0,
+        roas: metrics.roas || 0,
+      }
+    })
+    .filter((item) => item.spend > 0)
+    .sort((left, right) => right.spend - left.spend)
+    .slice(0, 15)
+
+  const dailyByCampaign = (Array.isArray(dailyCampaignData?.data) ? dailyCampaignData.data : [])
+    .map(normalizeMetaDailyCampaignSnapshotItem)
+    .filter((item) => item.spend > 0)
+    .sort((left, right) => {
+      const leftDate = left.dateStart || ''
+      const rightDate = right.dateStart || ''
+      if (leftDate !== rightDate) return rightDate.localeCompare(leftDate)
+      return right.spend - left.spend
+    })
+    .slice(0, 40)
+
+  const breakdowns = {
+    ages: (Array.isArray(agesData?.data) ? agesData.data : [])
+      .map((item) => normalizeMetaBreakdownSnapshotItem(item, 'age'))
+      .filter((item) => item.spend > 0)
+      .sort((left, right) => right.totalConversions - left.totalConversions || right.spend - left.spend)
+      .slice(0, 12),
+    states: (Array.isArray(statesData?.data) ? statesData.data : [])
+      .map((item) => normalizeMetaBreakdownSnapshotItem(item, 'region'))
+      .filter((item) => item.spend > 0)
+      .sort((left, right) => right.totalConversions - left.totalConversions || right.spend - left.spend)
+      .slice(0, 12),
+    cities: (Array.isArray(citiesData?.data) ? citiesData.data : [])
+      .map((item) => normalizeMetaBreakdownSnapshotItem(item, 'city'))
+      .filter((item) => item.spend > 0)
+      .sort((left, right) => right.totalConversions - left.totalConversions || right.spend - left.spend)
+      .slice(0, 15),
+  }
+
+  if (!campaigns.length && !adsets.length && !ads.length && !creatives.length && !dailyByCampaign.length) {
+    return null
+  }
+
+  return {
+    period: 'last_7d',
+    campaigns,
+    adsets,
+    ads,
+    creatives,
+    breakdowns,
+    dailyByCampaign,
+  }
+}
+
 async function buildBusinessContext({
   adminSupabase,
   dashboardState,
@@ -726,6 +980,12 @@ async function buildBusinessContext({
       ? clients.find((client) => client.id === dashboardState?.activeClientId) || clients[0] || null
       : null)
   const clientCampaignSnapshot = await fetchClientCampaignSnapshot({
+    adminSupabase,
+    dashboardState,
+    accessContext,
+    selectedClient,
+  })
+  const clientMetaMarketingSnapshot = await fetchClientMetaMarketingSnapshot({
     adminSupabase,
     dashboardState,
     accessContext,
@@ -785,6 +1045,7 @@ async function buildBusinessContext({
       hasMondayToken: Boolean(String(dashboardState?.globalIntegrations?.mondayToken || '').trim()),
     },
     campaignSnapshot: clientCampaignSnapshot,
+    metaMarketingSnapshot: clientMetaMarketingSnapshot,
     operationSnapshot,
     contextSnapshot: contextSnapshot && typeof contextSnapshot === 'object' ? contextSnapshot : null,
   }
@@ -832,6 +1093,8 @@ function buildAssistantSystemPrompt(aiDashboardPrompt: string): string {
     'Quando o usuario pedir um resumo executivo, destaque: pontos positivos, pontos de atencao e urgencias.',
     'Respeite o foco selecionado no contexto: operacao, clientes ou geral.',
     'Quando houver campaignSnapshot no contexto e o usuario perguntar sobre campanhas, responda campanha por campanha antes do resumo final.',
+    'Quando houver metaMarketingSnapshot no contexto, voce tambem pode analisar conjuntos, anuncios, criativos, breakdowns e serie diaria.',
+    'Se o usuario pedir para puxar tudo das campanhas, considere campaignSnapshot e metaMarketingSnapshot juntos para responder com profundidade.',
     'Quando houver operationSnapshot no contexto e o usuario perguntar sobre operacao, rotina, gargalos, Monday ou ClickUp, use esses dados explicitamente na resposta.',
     'Ao falar de operacao, prefira o formato: area, leitura, impacto e direcionamento.',
     'Ao falar de campanhas, prefira o formato: campanha, leitura, impacto e direcionamento.',
@@ -844,6 +1107,33 @@ function buildAssistantSystemPrompt(aiDashboardPrompt: string): string {
     'Playbook de analise ja configurado no app:',
     dashboardPrompt,
   ].join('\n')
+}
+
+function resolveSelectedAgent(
+  config: AiSettings,
+  contextSnapshot: AssistantContextSnapshot | null
+): AiAgent | null {
+  const agents = Array.isArray(config.aiAgents) ? config.aiAgents : []
+  if (!agents.length) return null
+
+  const requestedAgentId = String(contextSnapshot?.agentId || '').trim()
+  return agents.find((agent) => agent.id === requestedAgentId) || agents[0] || null
+}
+
+function buildAssistantPromptWithAgent(aiDashboardPrompt: string, agent: AiAgent | null): string {
+  const basePrompt = buildAssistantSystemPrompt(aiDashboardPrompt)
+  if (!agent) return basePrompt
+
+  return [
+    basePrompt,
+    '',
+    `Agente ativo: ${agent.name}`,
+    agent.description ? `Descricao do agente: ${agent.description}` : '',
+    'Comportamento adicional do agente:',
+    agent.prompt,
+  ]
+    .filter(Boolean)
+    .join('\n')
 }
 
 async function requestOpenAiChat(
@@ -1057,7 +1347,8 @@ export async function requestAssistantReply({
     contextSnapshot,
     messages,
   })
-  const systemPrompt = buildAssistantSystemPrompt(normalizedConfig.aiDashboardPrompt)
+  const selectedAgent = resolveSelectedAgent(normalizedConfig, contextSnapshot)
+  const systemPrompt = buildAssistantPromptWithAgent(normalizedConfig.aiDashboardPrompt, selectedAgent)
   const builtMessages = buildAssistantMessages({
     systemPrompt,
     businessContext,

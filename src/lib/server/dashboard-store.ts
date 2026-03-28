@@ -223,6 +223,13 @@ function extractGlobalIntegrations(clients: ClientRecord[]): DashboardIntegratio
         return
       }
 
+      if (fieldName === 'aiAgents') {
+        if (Array.isArray(integrations.aiAgents) && integrations.aiAgents.length) {
+          next.aiAgents = integrations.aiAgents
+        }
+        return
+      }
+
       if (hasIntegrationValue(integrations[fieldName])) {
         next[fieldName] = integrations[fieldName]
       }

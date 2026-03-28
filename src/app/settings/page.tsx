@@ -8,6 +8,7 @@ import { USER_APPEARANCE_PRESETS } from '@/lib/user-appearance-storage'
 import { DEFAULT_PREFERENCES, loadDashboardPreferences, saveDashboardPreferences } from '@/lib/dashboard-storage'
 import {
   AI_PROVIDER_OPTIONS,
+  createDefaultAiAgents,
   createDefaultAiProviders,
   DEFAULT_AI_DASHBOARD_PROMPT,
   DEFAULT_AI_DASHBOARD_PROMPT_JSON,
@@ -15,7 +16,7 @@ import {
   inspectAiDashboardPrompt,
   normalizeAiSettings,
 } from '@/lib/ai-config'
-import type { AiProviderConfig, AiProvidersMap, AiSettings } from '@/lib/types/ai'
+import type { AiAgent, AiProviderConfig, AiProvidersMap, AiSettings } from '@/lib/types/ai'
 import type { DashboardIntegrations } from '@/lib/types/dashboard'
 
 interface IntegrationField {
@@ -245,6 +246,12 @@ export default function SettingsPage() {
     (globalIntegrations.aiProviders?.[selectedAiProvider.value] as AiProviderConfig | undefined) ||
     createDefaultAiProviders()[selectedAiProvider.value]
   const aiPromptInspection = inspectAiDashboardPrompt(globalIntegrations.aiDashboardPrompt)
+  const availableAiAgents = Array.isArray(globalIntegrations.aiAgents) && globalIntegrations.aiAgents.length
+    ? (globalIntegrations.aiAgents as AiAgent[])
+    : createDefaultAiAgents()
+  const [selectedAiAgentId, setSelectedAiAgentId] = useState<string>(availableAiAgents[0]?.id || 'copilot')
+  const selectedAiAgent =
+    availableAiAgents.find((agent) => agent.id === selectedAiAgentId) || availableAiAgents[0] || null
 
   const persistGlobalIntegrations = useCallback(
     async (nextIntegrations: GlobalIntegrationsState) => {
@@ -421,6 +428,12 @@ export default function SettingsPage() {
     }
   }, [activeSettingsTab, canManageClients])
 
+  useEffect(() => {
+    if (!availableAiAgents.some((agent) => agent.id === selectedAiAgentId)) {
+      setSelectedAiAgentId(availableAiAgents[0]?.id || 'copilot')
+    }
+  }, [availableAiAgents, selectedAiAgentId])
+
   const handleGlobalIntegrationChange = (fieldName: string, value: unknown) => {
     setGlobalIntegrations((current) => {
       const nextIntegrations = {
@@ -512,6 +525,39 @@ export default function SettingsPage() {
       'aiDashboardPrompt',
       mode === 'json' ? DEFAULT_AI_DASHBOARD_PROMPT_JSON : DEFAULT_AI_DASHBOARD_PROMPT
     )
+  }
+
+  const handleAiAgentsChange = (nextAgents: AiAgent[]) => {
+    const normalizedAgents = nextAgents.filter((agent) => agent.id && agent.name.trim() && agent.prompt.trim())
+    handleGlobalIntegrationChange('aiAgents', normalizedAgents)
+  }
+
+  const handleCreateAiAgent = () => {
+    const nextAgent: AiAgent = {
+      id: `agent-${Date.now()}`,
+      name: 'Novo agente',
+      description: 'Descreva o foco desse agente.',
+      prompt: 'Explique como esse agente deve se comportar, o tom, o foco e o tipo de resposta esperado.',
+    }
+    const nextAgents = [...availableAiAgents, nextAgent]
+    handleAiAgentsChange(nextAgents)
+    setSelectedAiAgentId(nextAgent.id)
+  }
+
+  const handleAiAgentFieldChange = (agentId: string, fieldName: keyof AiAgent, value: string) => {
+    const nextAgents = availableAiAgents.map((agent) =>
+      agent.id === agentId ? { ...agent, [fieldName]: value } : agent
+    )
+    handleAiAgentsChange(nextAgents)
+  }
+
+  const handleRemoveAiAgent = (agentId: string) => {
+    if (availableAiAgents.length <= 1) return
+    const nextAgents = availableAiAgents.filter((agent) => agent.id !== agentId)
+    handleAiAgentsChange(nextAgents)
+    if (selectedAiAgentId === agentId) {
+      setSelectedAiAgentId(nextAgents[0]?.id || 'copilot')
+    }
   }
 
   const handleFormatJsonPrompt = () => {
@@ -1170,6 +1216,89 @@ export default function SettingsPage() {
                             </small>
                           </div>
                         </div>
+
+                        <div className="integration-block integration-block-meta">
+                          <div className="integration-heading">
+                            <div className="integration-icon" style={{ color: '#38bdf8', borderColor: '#38bdf833' }}>
+                              <i className="bx bx-cog"></i>
+                            </div>
+                            <div>
+                              <h3>Agentes do chat</h3>
+                              <p>Crie agentes com prompts próprios para copy, mídia, operação ou qualquer outro papel que você queira usar no chat.</p>
+                            </div>
+                          </div>
+
+                          <div className="settings-choice-row settings-choice-row-compact">
+                            {availableAiAgents.map((agent) => (
+                              <button
+                                key={agent.id}
+                                type="button"
+                                className={`settings-choice ${selectedAiAgentId === agent.id ? 'active' : ''}`}
+                                onClick={() => setSelectedAiAgentId(agent.id)}
+                              >
+                                <i className="bx bx-bot"></i>
+                                {agent.name}
+                              </button>
+                            ))}
+                            <button type="button" className="settings-choice" onClick={handleCreateAiAgent}>
+                              <i className="bx bx-plus"></i>
+                              Novo agente
+                            </button>
+                          </div>
+
+                          {selectedAiAgent ? (
+                            <div className="settings-ai-grid">
+                              <div className="input-group">
+                                <label>Nome do agente</label>
+                                <input
+                                  type="text"
+                                  value={selectedAiAgent.name}
+                                  onChange={(event) =>
+                                    handleAiAgentFieldChange(selectedAiAgent.id, 'name', event.target.value)
+                                  }
+                                  placeholder="Ex.: Copywriter"
+                                />
+                              </div>
+
+                              <div className="input-group">
+                                <label>Descrição curta</label>
+                                <input
+                                  type="text"
+                                  value={selectedAiAgent.description}
+                                  onChange={(event) =>
+                                    handleAiAgentFieldChange(selectedAiAgent.id, 'description', event.target.value)
+                                  }
+                                  placeholder="Ex.: Headlines, copies e CTAs"
+                                />
+                              </div>
+
+                              <div className="input-group settings-ai-grid-full">
+                                <label>Prompt do agente</label>
+                                <textarea
+                                  value={selectedAiAgent.prompt}
+                                  onChange={(event) =>
+                                    handleAiAgentFieldChange(selectedAiAgent.id, 'prompt', event.target.value)
+                                  }
+                                  placeholder="Descreva como esse agente deve se comportar."
+                                  rows={10}
+                                />
+                                <small>Esse prompt será somado ao prompt global da IA quando o agente for escolhido no chat.</small>
+                              </div>
+                            </div>
+                          ) : null}
+
+                          <div className="settings-choice-row settings-choice-row-compact">
+                            <button
+                              type="button"
+                              className="settings-choice"
+                              onClick={() => handleRemoveAiAgent(selectedAiAgent?.id || '')}
+                              disabled={availableAiAgents.length <= 1 || !selectedAiAgent}
+                            >
+                              <i className="bx bx-trash"></i>
+                              Remover agente
+                            </button>
+                          </div>
+                        </div>
                       </div>
                     </section>
                   </div>
@@ -1761,6 +1890,10 @@ export default function SettingsPage() {
           display: grid;
           grid-template-columns: repeat(2, minmax(0, 1fr));
           gap: 14px;
+        }
+
+        .settings-ai-grid-full {
+          grid-column: 1 / -1;
         }
 
         .settings-preset-swatch {

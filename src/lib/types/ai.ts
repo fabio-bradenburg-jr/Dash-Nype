@@ -23,10 +23,18 @@ export interface AiProviderConfig {
 
 export type AiProvidersMap = Record<AiProviderValue, AiProviderConfig>
 
+export interface AiAgent {
+  id: string
+  name: string
+  description: string
+  prompt: string
+}
+
 export interface AiSettings {
   aiAnalysisEnabled: boolean
   aiProvider: AiProviderValue
   aiProviders: AiProvidersMap
+  aiAgents: AiAgent[]
   aiBaseUrl: string
   aiApiKey: string
   aiModel: string
@@ -47,6 +55,7 @@ export interface AssistantMessage {
 
 export interface AssistantContextSnapshot {
   focusMode?: string | null
+  agentId?: string | null
   [key: string]: unknown
 }
 

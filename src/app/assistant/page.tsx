@@ -4,6 +4,7 @@ import type { ChangeEvent, FormEvent } from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useUser } from '@/lib/contexts/UserContext'
+import type { AiAgent } from '@/lib/types/ai'
 
 const STORAGE_KEY = 'nype-assistant-chat-v1'
 const FOCUS_OPTIONS = [
@@ -34,6 +35,7 @@ interface AssistantDashboardState {
   globalIntegrations?: {
     aiProvider?: string
     aiModel?: string
+    aiAgents?: AiAgent[]
   }
 }
 
@@ -83,6 +85,7 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
   const [focusMode, setFocusMode] = useState<FocusMode>('operation')
   const [inputValue, setInputValue] = useState('')
   const [messages, setMessages] = useState<AssistantMessageItem[]>([])
+  const [selectedAgentId, setSelectedAgentId] = useState('copilot')
   const messagesContainerRef = useRef<HTMLDivElement | null>(null)
 
   const availableClients = useMemo(
@@ -92,6 +95,14 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
   const focusLabel = useMemo(
     () => FOCUS_OPTIONS.find((option) => option.value === focusMode)?.label || 'Operação',
     [focusMode]
+  )
+  const availableAgents = useMemo(
+    () => (Array.isArray(dashboardState?.globalIntegrations?.aiAgents) ? dashboardState.globalIntegrations.aiAgents : []),
+    [dashboardState]
+  )
+  const selectedAgent = useMemo(
+    () => availableAgents.find((agent) => agent.id === selectedAgentId) || availableAgents[0] || null,
+    [availableAgents, selectedAgentId]
   )
   const userDisplayName = useMemo(
     () =>
@@ -116,6 +127,7 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
           ? (parsed.focusMode as FocusMode)
           : 'operation'
       )
+      setSelectedAgentId(String(parsed.agentId || 'copilot'))
     } catch {}
   }, [])
 
@@ -132,10 +144,18 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
       STORAGE_KEY,
       JSON.stringify({
         focusMode,
+        agentId: selectedAgentId,
         messages: messages.slice(-20),
       })
     )
-  }, [messages, focusMode])
+  }, [messages, focusMode, selectedAgentId])
+
+  useEffect(() => {
+    if (!availableAgents.length) return
+    if (!availableAgents.some((agent) => agent.id === selectedAgentId)) {
+      setSelectedAgentId(availableAgents[0].id)
+    }
+  }, [availableAgents, selectedAgentId])
 
   useEffect(() => {
     const container = messagesContainerRef.current
@@ -205,6 +225,7 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
           clientId: focusMode === 'operation' ? String(dashboardState?.activeClientId || '') : '',
           contextSnapshot: {
             focusMode,
+            agentId: selectedAgentId,
           },
           messages: nextMessages.map((message) => ({
             role: message.role,
@@ -311,23 +332,18 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
                   <div className="assistant-context-stat">
                     <div>
                       <i className="bx bx-sitemap"></i>
-                      <span>Configuração</span>
+                      <span>Grupos</span>
                     </div>
-                    <strong>{dashboardState?.clientGroups?.length || 0} grupos</strong>
+                    <strong>{dashboardState?.clientGroups?.length || 0}</strong>
                   </div>
-                </div>
-
-                <div className="assistant-context-provider">
-                  <div className="assistant-context-provider-copy">
-                    <i className="bx bx-chip"></i>
+                  <div className="assistant-context-stat assistant-context-stat-provider">
                     <div>
-                      <span>Provider ativo</span>
-                      <strong>{dashboardState?.globalIntegrations?.aiProvider || 'Não definido'}</strong>
+                      <i className="bx bx-chip"></i>
+                      <span>Provider</span>
                     </div>
+                    <strong>{dashboardState?.globalIntegrations?.aiProvider || 'Nao definido'}</strong>
+                    <small>{dashboardState?.globalIntegrations?.aiModel || 'Modelo padrao'}</small>
                   </div>
-                  <span className="assistant-context-provider-tag">
-                    {dashboardState?.globalIntegrations?.aiModel || 'Modelo padrão'}
-                  </span>
                 </div>
 
                 <div className="assistant-chip-group">
@@ -365,6 +381,7 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
                     {focusMode === 'general' ? 'Riscos gerais' : focusMode === 'clients' ? 'Riscos dos clientes' : 'Riscos da operação'}
                   </button>
                 </div>
+
               </div>
 
               <div className="assistant-status-card glass-panel">
@@ -473,10 +490,31 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
                     </button>
                   </div>
                 </div>
+                {availableAgents.length ? (
+                  <div className="assistant-agent-toolbar">
+                    <button type="button" className="assistant-agent-trigger">
+                      <i className="bx bx-cog"></i>
+                      {selectedAgent ? `Agente: ${selectedAgent.name}` : 'Selecionar agente'}
+                    </button>
+                    <div className="assistant-agent-list">
+                      {availableAgents.map((agent) => (
+                        <button
+                          key={agent.id}
+                          type="button"
+                          className={`assistant-agent-chip ${selectedAgent?.id === agent.id ? 'active' : ''}`}
+                          onClick={() => setSelectedAgentId(agent.id)}
+                        >
+                          {agent.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
                 <div className="assistant-form-footer">
                   <div className="assistant-form-signals">
                     <span><i className="bx bx-bolt-circle"></i> {dashboardState?.globalIntegrations?.aiModel || 'Modelo configurado'}</span>
                     <span><i className="bx bx-shield-quarter"></i> Contexto interno ativo</span>
+                    {selectedAgent ? <span><i className="bx bx-bot"></i> {selectedAgent.name}</span> : null}
                   </div>
                   <span>Enter para enviar / Shift+Enter para nova linha</span>
                 </div>
@@ -722,17 +760,17 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
 
         .assistant-context-stats {
           display: grid;
-          grid-template-columns: repeat(2, minmax(0, 1fr));
+          grid-template-columns: repeat(3, minmax(0, 1fr));
           gap: 12px;
-          margin-bottom: 12px;
+          margin-bottom: 20px;
         }
 
         .assistant-context-stat {
           display: grid;
-          gap: 16px;
-          align-content: space-between;
-          min-height: 118px;
-          padding: 18px;
+          gap: 10px;
+          align-content: start;
+          min-height: 104px;
+          padding: 16px 14px;
           border-radius: 18px;
           background: rgba(255, 255, 255, 0.025);
           border: 1px solid var(--border-color);
@@ -747,93 +785,85 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
 
         .assistant-context-stat div {
           display: grid;
-          gap: 8px;
+          gap: 6px;
           color: var(--text-secondary);
-          font-size: 12px;
+          font-size: 11px;
           font-weight: 600;
         }
 
         .assistant-context-stat i {
           color: #93c5fd;
-          font-size: 20px;
+          font-size: 18px;
         }
 
         .assistant-context-stat strong {
-          font-size: 17px;
+          font-size: 14px;
           color: var(--text-primary);
-          line-height: 1.2;
-          font-weight: 800;
-        }
-
-        .assistant-context-provider {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 14px;
-          padding: 16px 18px;
-          border-radius: 18px;
-          background: rgba(255, 255, 255, 0.025);
-          border: 1px solid var(--border-color);
-          margin-bottom: 20px;
-        }
-
-        .assistant-context-provider-copy {
-          display: flex;
-          align-items: center;
-          gap: 14px;
-          min-width: 0;
-        }
-
-        .assistant-context-provider-copy i {
-          display: grid;
-          place-items: center;
-          width: 40px;
-          height: 40px;
-          border-radius: 14px;
-          background: rgba(59, 130, 246, 0.12);
-          color: #93c5fd;
-          font-size: 20px;
-          flex-shrink: 0;
-        }
-
-        .assistant-context-provider-copy div {
-          display: grid;
-          gap: 4px;
-          min-width: 0;
-        }
-
-        .assistant-context-provider-copy span {
-          color: var(--text-secondary);
-          font-size: 12px;
-          font-weight: 600;
-        }
-
-        .assistant-context-provider-copy strong {
-          color: var(--text-primary);
-          font-size: 17px;
-          line-height: 1.2;
+          line-height: 1.25;
           font-weight: 800;
           word-break: break-word;
         }
 
-        .assistant-context-provider-tag {
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          padding: 10px 12px;
-          border-radius: 999px;
-          background: rgba(255, 255, 255, 0.04);
-          border: 1px solid var(--border-color);
-          color: var(--text-secondary);
-          font-size: 12px;
+        .assistant-context-stat-provider small {
+          color: var(--text-muted);
+          font-size: 10px;
+          line-height: 1.35;
           font-weight: 700;
-          white-space: nowrap;
+          letter-spacing: 0.02em;
+          word-break: break-word;
         }
 
         .assistant-chip-group {
           display: flex;
           flex-wrap: wrap;
           gap: 10px;
+        }
+
+        .assistant-agent-toolbar {
+          display: grid;
+          gap: 10px;
+          margin-top: 16px;
+        }
+
+        .assistant-agent-trigger {
+          width: fit-content;
+          min-height: 34px;
+          padding: 0 12px;
+          border-radius: 999px;
+          border: 1px solid var(--border-color);
+          background: rgba(255, 255, 255, 0.02);
+          color: var(--text-secondary);
+          font-size: 11px;
+          font-weight: 800;
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .assistant-agent-list {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px;
+        }
+
+        .assistant-agent-chip {
+          min-height: 34px;
+          padding: 0 12px;
+          border-radius: 999px;
+          border: 1px solid var(--border-color);
+          background: rgba(255, 255, 255, 0.03);
+          color: var(--text-secondary);
+          font-size: 11px;
+          font-weight: 700;
+          cursor: pointer;
+          transition: 160ms ease;
+        }
+
+        .assistant-agent-chip.active,
+        .assistant-agent-chip:hover {
+          border-color: color-mix(in srgb, var(--accent-blue) 36%, transparent);
+          color: #93c5fd;
+          background: rgba(59, 130, 246, 0.1);
         }
 
         .assistant-chip {
@@ -1139,14 +1169,6 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
             grid-template-columns: repeat(3, minmax(0, 1fr));
           }
 
-          .assistant-context-provider {
-            flex-direction: column;
-            align-items: stretch;
-          }
-
-          .assistant-context-provider-tag {
-            justify-content: flex-start;
-          }
         }
 
         @media (max-width: 860px) {
@@ -1167,10 +1189,6 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
 
           .assistant-context-stats {
             grid-template-columns: 1fr;
-          }
-
-          .assistant-context-provider-copy {
-            align-items: flex-start;
           }
         }
       `}</style>
