@@ -11439,6 +11439,8 @@ export default function DashboardPage() {
           pointer-events: none;
           transition: opacity 0.2s ease, transform 0.2s ease;
           transform-origin: left center;
+          z-index: 12;
+          box-shadow: 0 10px 24px rgba(0, 0, 0, 0.22);
         }
 
         .sidebar-collapsed :global(.nav-item:hover)::after {
@@ -13808,6 +13810,556 @@ export default function DashboardPage() {
           color: rgba(225, 226, 235, 0.72);
           font-size: 14px;
           line-height: 1.65;
+        }
+
+        :root[data-ui-mode='light'] .home-tools-link {
+          background: rgba(255, 255, 255, 0.84);
+          border-color: rgba(15, 23, 42, 0.08);
+          color: var(--text-primary);
+          box-shadow: 0 10px 22px rgba(15, 23, 42, 0.04);
+        }
+
+        :root[data-ui-mode='light'] .home-tools-link span {
+          color: var(--text-secondary);
+        }
+
+        :root[data-ui-mode='light'] .home-tools-link:hover,
+        :root[data-ui-mode='light'] .home-tools-link.active {
+          background: color-mix(in srgb, var(--accent-blue) 8%, white);
+          border-color: color-mix(in srgb, var(--accent-blue) 24%, rgba(15, 23, 42, 0.08));
+        }
+
+        :root[data-ui-mode='light'] .sidebar-toggle {
+          background: rgba(255, 255, 255, 0.96);
+          border-color: rgba(15, 23, 42, 0.08);
+          color: var(--text-primary);
+          box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+        }
+
+        :root[data-ui-mode='light'] .sidebar-collapsed :global(.nav-item)::after {
+          background: rgba(255, 255, 255, 0.98);
+          color: #0f172a;
+          border-color: rgba(15, 23, 42, 0.1);
+          box-shadow: 0 12px 28px rgba(15, 23, 42, 0.1);
+        }
+
+        :root[data-ui-mode='light'] .home-hub-hero-obsidian {
+          background:
+            linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(248, 250, 252, 0.92)),
+            radial-gradient(circle at top right, color-mix(in srgb, var(--accent-blue) 12%, transparent), transparent 34%);
+          border: 1px solid rgba(15, 23, 42, 0.08);
+          box-shadow: 0 18px 40px rgba(15, 23, 42, 0.06);
+        }
+
+        :root[data-ui-mode='light'] .home-hub-kicker,
+        :root[data-ui-mode='light'] .home-hub-kicker-success,
+        :root[data-ui-mode='light'] .home-hub-manage-link {
+          color: var(--accent-blue);
+        }
+
+        :root[data-ui-mode='light'] .home-hub-copy h2,
+        :root[data-ui-mode='light'] .home-hub-section-head h3,
+        :root[data-ui-mode='light'] .home-hub-card-copy h3,
+        :root[data-ui-mode='light'] .home-hub-analytics-head h3,
+        :root[data-ui-mode='light'] .home-hub-reports-head h3,
+        :root[data-ui-mode='light'] .home-hub-report-item strong {
+          color: var(--text-primary);
+        }
+
+        :root[data-ui-mode='light'] .home-hub-copy p,
+        :root[data-ui-mode='light'] .home-hub-card-copy p,
+        :root[data-ui-mode='light'] .home-hub-analytics-copy,
+        :root[data-ui-mode='light'] .home-hub-ai-note p,
+        :root[data-ui-mode='light'] .home-hub-report-item small,
+        :root[data-ui-mode='light'] .home-hub-card-footer span,
+        :root[data-ui-mode='light'] .home-hub-metric small,
+        :root[data-ui-mode='light'] .home-hub-metric span,
+        :root[data-ui-mode='light'] .home-hub-analytics-metric-card small,
+        :root[data-ui-mode='light'] .home-hub-analytics-metric-card span {
+          color: var(--text-secondary);
+        }
+
+        :root[data-ui-mode='light'] .home-hub-metric {
+          background: rgba(255, 255, 255, 0.74);
+          border-color: rgba(15, 23, 42, 0.08);
+        }
+
+        :root[data-ui-mode='light'] .home-hub-metric strong,
+        :root[data-ui-mode='light'] .home-hub-card-footer strong,
+        :root[data-ui-mode='light'] .home-hub-analytics-metric-card strong {
+          color: var(--text-primary);
+        }
+
+        :root[data-ui-mode='light'] .home-hub-card {
+          background: rgba(255, 255, 255, 0.88);
+          border-color: rgba(15, 23, 42, 0.08);
+          box-shadow: 0 14px 28px rgba(15, 23, 42, 0.05);
+        }
+
+        :root[data-ui-mode='light'] .home-hub-card:hover {
+          border-color: color-mix(in srgb, var(--accent-blue) 20%, rgba(15, 23, 42, 0.08));
+          background:
+            linear-gradient(180deg, color-mix(in srgb, var(--accent-blue) 6%, white), rgba(255, 255, 255, 0.94)),
+            rgba(255, 255, 255, 0.94);
+        }
+
+        :root[data-ui-mode='light'] .home-hub-card-pill,
+        :root[data-ui-mode='light'] .home-hub-analytics-badges span {
+          background: rgba(15, 23, 42, 0.04);
+          border-color: rgba(15, 23, 42, 0.08);
+          color: var(--text-secondary);
+        }
+
+        :root[data-ui-mode='light'] .home-hub-analytics-card,
+        :root[data-ui-mode='light'] .home-hub-reports-card {
+          background:
+            linear-gradient(180deg, rgba(255, 255, 255, 0.78), rgba(248, 250, 252, 0.94)),
+            radial-gradient(circle at center bottom, color-mix(in srgb, var(--accent-blue) 8%, transparent), transparent 46%);
+          border-color: rgba(15, 23, 42, 0.08);
+          box-shadow: 0 18px 40px rgba(15, 23, 42, 0.06);
+        }
+
+        :root[data-ui-mode='light'] .home-hub-analytics-metric-card {
+          background: rgba(248, 250, 252, 0.92);
+          border-color: rgba(15, 23, 42, 0.08);
+        }
+
+        :root[data-ui-mode='light'] .home-hub-report-dot.muted {
+          background: rgba(71, 85, 105, 0.3);
+        }
+
+        :root[data-ui-mode='light'] .home-hub-ai-note {
+          background:
+            linear-gradient(180deg, color-mix(in srgb, var(--accent-blue) 8%, white), rgba(255, 255, 255, 0.94)),
+            rgba(255, 255, 255, 0.94);
+          border-color: color-mix(in srgb, var(--accent-blue) 16%, rgba(15, 23, 42, 0.08));
+          box-shadow: 0 16px 34px rgba(15, 23, 42, 0.05);
+        }
+
+        :root[data-ui-mode='light'] .management-hero {
+          background:
+            radial-gradient(circle at top left, color-mix(in srgb, var(--accent-blue) 10%, transparent), transparent 34%),
+            linear-gradient(180deg, rgba(255, 255, 255, 0.8), rgba(248, 250, 252, 0.96));
+          border-color: rgba(15, 23, 42, 0.08);
+          box-shadow: 0 18px 40px rgba(15, 23, 42, 0.06);
+        }
+
+        :root[data-ui-mode='light'] .management-hero h2,
+        :root[data-ui-mode='light'] .client-intelligence-feature h3,
+        :root[data-ui-mode='light'] .client-activity-head h3,
+        :root[data-ui-mode='light'] .client-security-head h3,
+        :root[data-ui-mode='light'] .client-spotlight-copy strong,
+        :root[data-ui-mode='light'] .client-spotlight-grid p,
+        :root[data-ui-mode='light'] .user-directory-main strong,
+        :root[data-ui-mode='light'] .client-activity-item strong {
+          color: var(--text-primary);
+        }
+
+        :root[data-ui-mode='light'] .management-hero p,
+        :root[data-ui-mode='light'] .management-header-copy p,
+        :root[data-ui-mode='light'] .client-intelligence-feature p,
+        :root[data-ui-mode='light'] .client-security-note p,
+        :root[data-ui-mode='light'] .user-directory-main span,
+        :root[data-ui-mode='light'] .user-directory-meta small,
+        :root[data-ui-mode='light'] .client-activity-item small {
+          color: var(--text-secondary);
+        }
+
+        :root[data-ui-mode='light'] .management-stat-card,
+        :root[data-ui-mode='light'] .clients-metric-card {
+          background:
+            linear-gradient(180deg, rgba(255, 255, 255, 0.84), rgba(248, 250, 252, 0.96)),
+            rgba(255, 255, 255, 0.94);
+          border-color: rgba(15, 23, 42, 0.08);
+          box-shadow: 0 14px 30px rgba(15, 23, 42, 0.05);
+        }
+
+        :root[data-ui-mode='light'] .clients-metric-card-live {
+          border-color: color-mix(in srgb, var(--accent-emerald) 26%, rgba(15, 23, 42, 0.08));
+          background:
+            radial-gradient(circle at top right, color-mix(in srgb, var(--accent-emerald) 10%, transparent), transparent 42%),
+            linear-gradient(180deg, rgba(255, 255, 255, 0.84), rgba(248, 250, 252, 0.96));
+        }
+
+        :root[data-ui-mode='light'] .management-stat-card small,
+        :root[data-ui-mode='light'] .clients-metric-card small,
+        :root[data-ui-mode='light'] .client-spotlight-copy span,
+        :root[data-ui-mode='light'] .client-spotlight-grid small,
+        :root[data-ui-mode='light'] .client-security-meter span {
+          color: rgba(71, 85, 105, 0.78);
+        }
+
+        :root[data-ui-mode='light'] .management-stat-card strong,
+        :root[data-ui-mode='light'] .clients-metric-card strong {
+          color: var(--text-primary);
+        }
+
+        :root[data-ui-mode='light'] .clients-metric-card span {
+          color: var(--text-secondary);
+        }
+
+        :root[data-ui-mode='light'] .management-action-card,
+        :root[data-ui-mode='light'] .management-directory-card,
+        :root[data-ui-mode='light'] .users-intro-card,
+        :root[data-ui-mode='light'] .user-directory-card,
+        :root[data-ui-mode='light'] .client-group-card,
+        :root[data-ui-mode='light'] .client-intelligence-feature,
+        :root[data-ui-mode='light'] .client-activity-card,
+        :root[data-ui-mode='light'] .client-security-card {
+          background:
+            linear-gradient(180deg, rgba(255, 255, 255, 0.86), rgba(248, 250, 252, 0.96)),
+            rgba(255, 255, 255, 0.94);
+          border-color: rgba(15, 23, 42, 0.08);
+          box-shadow: 0 16px 34px rgba(15, 23, 42, 0.05);
+        }
+
+        :root[data-ui-mode='light'] .client-intelligence-feature {
+          background:
+            radial-gradient(circle at top right, color-mix(in srgb, var(--accent-emerald) 10%, transparent), transparent 34%),
+            linear-gradient(180deg, rgba(255, 255, 255, 0.86), rgba(248, 250, 252, 0.96));
+        }
+
+        :root[data-ui-mode='light'] .user-directory-card:hover {
+          border-color: color-mix(in srgb, var(--accent-blue) 22%, rgba(15, 23, 42, 0.08));
+          background:
+            linear-gradient(180deg, color-mix(in srgb, var(--accent-blue) 5%, white), rgba(255, 255, 255, 0.98)),
+            rgba(255, 255, 255, 0.98);
+        }
+
+        :root[data-ui-mode='light'] .client-directory-card-active {
+          border-color: color-mix(in srgb, var(--accent-blue) 28%, rgba(15, 23, 42, 0.08));
+          background:
+            linear-gradient(180deg, color-mix(in srgb, var(--accent-blue) 8%, white), rgba(255, 255, 255, 0.98)),
+            rgba(255, 255, 255, 0.98);
+        }
+
+        :root[data-ui-mode='light'] .directory-card-icon,
+        :root[data-ui-mode='light'] .client-avatar-shell {
+          background: color-mix(in srgb, var(--accent-blue) 10%, white);
+          border-color: color-mix(in srgb, var(--accent-blue) 20%, rgba(15, 23, 42, 0.08));
+          box-shadow: none;
+        }
+
+        :root[data-ui-mode='light'] .user-role-badge,
+        :root[data-ui-mode='light'] .client-status-info {
+          background: color-mix(in srgb, var(--accent-blue) 10%, white);
+          border-color: color-mix(in srgb, var(--accent-blue) 20%, rgba(15, 23, 42, 0.08));
+        }
+
+        :root[data-ui-mode='light'] .client-status-success,
+        :root[data-ui-mode='light'] .client-security-note {
+          background: color-mix(in srgb, var(--accent-emerald) 10%, white);
+          border-color: color-mix(in srgb, var(--accent-emerald) 18%, rgba(15, 23, 42, 0.08));
+        }
+
+        :root[data-ui-mode='light'] .client-status-neutral {
+          color: var(--text-secondary);
+          background: rgba(15, 23, 42, 0.04);
+          border-color: rgba(15, 23, 42, 0.08);
+        }
+
+        :root[data-ui-mode='light'] .client-spotlight-grid {
+          border-top-color: rgba(15, 23, 42, 0.08);
+          border-bottom-color: rgba(15, 23, 42, 0.08);
+        }
+
+        :root[data-ui-mode='light'] .client-security-track {
+          background: rgba(71, 85, 105, 0.14);
+        }
+
+        :root[data-ui-mode='light'] .client-activity-link {
+          color: var(--accent-blue);
+        }
+
+        :root[data-ui-mode='light'] .client-activity-icon {
+          background: rgba(15, 23, 42, 0.03);
+          border-color: rgba(15, 23, 42, 0.08);
+        }
+
+        :root[data-ui-mode='light'] .client-activity-icon-alert {
+          background: rgba(246, 178, 93, 0.12);
+          border-color: rgba(246, 178, 93, 0.22);
+        }
+
+        :root[data-ui-mode='light'] .client-activity-dot-muted {
+          background: rgba(71, 85, 105, 0.36);
+        }
+
+        :root[data-ui-mode='light'] .client-create-inline input {
+          background: rgba(255, 255, 255, 0.88);
+          border-color: rgba(15, 23, 42, 0.08);
+          color: var(--text-primary);
+        }
+
+        :root[data-ui-mode='light'] .client-create-inline input::placeholder {
+          color: rgba(71, 85, 105, 0.62);
+        }
+
+        :root[data-ui-mode='light'] .page-title h1,
+        :root[data-ui-mode='light'] .page-title p {
+          color: var(--text-primary);
+          text-shadow: none;
+        }
+
+        :root[data-ui-mode='light'] .page-title p {
+          color: var(--text-secondary);
+        }
+
+        :root[data-ui-mode='light'] .source-section-copy,
+        :root[data-ui-mode='light'] .chart-subtitle,
+        :root[data-ui-mode='light'] .hero-panel p,
+        :root[data-ui-mode='light'] .hero-stat span,
+        :root[data-ui-mode='light'] .meta-filter-helper,
+        :root[data-ui-mode='light'] .meta-campaign-filter-trigger p,
+        :root[data-ui-mode='light'] .meta-campaign-filter-note,
+        :root[data-ui-mode='light'] .rd-source-filter-bar p,
+        :root[data-ui-mode='light'] .result-group-head p,
+        :root[data-ui-mode='light'] .conversion-group-head p,
+        :root[data-ui-mode='light'] .meta-result-preview-head p,
+        :root[data-ui-mode='light'] .conversion-stat span,
+        :root[data-ui-mode='light'] .meta-summary-add-card span,
+        :root[data-ui-mode='light'] .metric-library-panel p,
+        :root[data-ui-mode='light'] .metric-library-chip small,
+        :root[data-ui-mode='light'] .metric-library-empty {
+          color: var(--text-secondary);
+        }
+
+        :root[data-ui-mode='light'] .source-section-badge {
+          background: rgba(255, 255, 255, 0.84);
+          box-shadow: 0 8px 20px rgba(15, 23, 42, 0.04);
+        }
+
+        :root[data-ui-mode='light'] .hero-panel,
+        :root[data-ui-mode='light'] .grouped-results,
+        :root[data-ui-mode='light'] .meta-filter-panel,
+        :root[data-ui-mode='light'] .chart-container,
+        :root[data-ui-mode='light'] .funnel-section,
+        :root[data-ui-mode='light'] .campaigns-section,
+        :root[data-ui-mode='light'] .ranking-card,
+        :root[data-ui-mode='light'] .meta-result-preview-panel,
+        :root[data-ui-mode='light'] .metric-library-panel,
+        :root[data-ui-mode='light'] .rd-source-filter-bar,
+        :root[data-ui-mode='light'] .crm-result-group,
+        :root[data-ui-mode='light'] .meta-secondary-result-summary,
+        :root[data-ui-mode='light'] .meta-secondary-result-item,
+        :root[data-ui-mode='light'] .monday-drilldown-stat.glass-item {
+          background:
+            linear-gradient(180deg, rgba(255, 255, 255, 0.86), rgba(248, 250, 252, 0.96)),
+            rgba(255, 255, 255, 0.94);
+          border-color: rgba(15, 23, 42, 0.08);
+          box-shadow: 0 16px 34px rgba(15, 23, 42, 0.05);
+        }
+
+        :root[data-ui-mode='light'] .hero-panel {
+          background:
+            linear-gradient(180deg, rgba(255, 255, 255, 0.86), rgba(248, 250, 252, 0.96)),
+            radial-gradient(circle at top right, color-mix(in srgb, var(--accent-blue) 10%, transparent), transparent 34%);
+        }
+
+        :root[data-ui-mode='light'] .hero-panel h2,
+        :root[data-ui-mode='light'] .meta-filter-panel-head h2,
+        :root[data-ui-mode='light'] .result-group-head h3,
+        :root[data-ui-mode='light'] .meta-result-preview-head h3,
+        :root[data-ui-mode='light'] .chart-header h2,
+        :root[data-ui-mode='light'] .campaigns-section h2,
+        :root[data-ui-mode='light'] .meta-secondary-result-summary strong,
+        :root[data-ui-mode='light'] .meta-secondary-result-item strong,
+        :root[data-ui-mode='light'] .meta-secondary-result-item b,
+        :root[data-ui-mode='light'] .conversion-stat strong {
+          color: var(--text-primary);
+        }
+
+        :root[data-ui-mode='light'] .hero-stat,
+        :root[data-ui-mode='light'] .conversion-stat,
+        :root[data-ui-mode='light'] .template-metric-remove,
+        :root[data-ui-mode='light'] .meta-campaign-filter-trigger,
+        :root[data-ui-mode='light'] .meta-campaign-filter-trigger-icon,
+        :root[data-ui-mode='light'] .meta-result-preview-tab {
+          background: rgba(248, 250, 252, 0.92);
+          border-color: rgba(15, 23, 42, 0.08);
+          color: var(--text-primary);
+        }
+
+        :root[data-ui-mode='light'] .hero-select,
+        :root[data-ui-mode='light'] .chart-metric-select {
+          background: rgba(255, 255, 255, 0.88);
+          border-color: rgba(15, 23, 42, 0.08);
+          color: var(--text-primary);
+        }
+
+        :root[data-ui-mode='light'] .meta-filter-kicker,
+        :root[data-ui-mode='light'] .meta-result-preview-kicker {
+          color: var(--accent-blue);
+        }
+
+        :root[data-ui-mode='light'] .meta-campaign-filter-trigger:hover,
+        :root[data-ui-mode='light'] .meta-campaign-filter-trigger.open,
+        :root[data-ui-mode='light'] .meta-result-preview-tab.active {
+          background: color-mix(in srgb, var(--accent-blue) 8%, white);
+          border-color: color-mix(in srgb, var(--accent-blue) 24%, rgba(15, 23, 42, 0.08));
+          color: var(--text-primary);
+        }
+
+        :root[data-ui-mode='light'] .template-metric-remove:hover,
+        :root[data-ui-mode='light'] .conversion-group-secondary-trigger:hover,
+        :root[data-ui-mode='light'] .metric-library-card:hover {
+          border-color: color-mix(in srgb, var(--accent-blue) 24%, rgba(15, 23, 42, 0.08));
+          background: color-mix(in srgb, var(--accent-blue) 8%, white);
+          color: var(--text-primary);
+        }
+
+        :root[data-ui-mode='light'] .template-metric-remove,
+        :root[data-ui-mode='light'] .conversion-group-secondary-trigger {
+          color: var(--text-secondary);
+        }
+
+        :root[data-ui-mode='light'] .metric-library-chip {
+          background: rgba(255, 255, 255, 0.88);
+          border-color: color-mix(in srgb, var(--accent-blue) 22%, rgba(15, 23, 42, 0.08));
+          color: var(--text-primary);
+        }
+
+        :root[data-ui-mode='light'] .metric-library-chip.active,
+        :root[data-ui-mode='light'] .meta-summary-add-card,
+        :root[data-ui-mode='light'] .metric-library-add-icon {
+          background: color-mix(in srgb, var(--accent-blue) 8%, white);
+          border-color: color-mix(in srgb, var(--accent-blue) 24%, rgba(15, 23, 42, 0.08));
+          color: var(--accent-blue);
+          box-shadow: none;
+        }
+
+        :root[data-ui-mode='light'] .meta-summary-add-card:hover {
+          background: color-mix(in srgb, var(--accent-blue) 12%, white);
+          border-color: color-mix(in srgb, var(--accent-blue) 32%, rgba(15, 23, 42, 0.08));
+        }
+
+        :root[data-ui-mode='light'] .conversion-group-card-active {
+          opacity: 1;
+          background:
+            linear-gradient(180deg, color-mix(in srgb, var(--accent-blue) 4%, white), rgba(255, 255, 255, 0.96)),
+            rgba(255, 255, 255, 0.94);
+        }
+
+        :root[data-ui-mode='light'] .conversion-group-card-muted {
+          opacity: 0.78;
+          filter: none;
+        }
+
+        :root[data-ui-mode='light'] .monday-operations-shell,
+        :root[data-ui-mode='light'] .monday-command-panel,
+        :root[data-ui-mode='light'] .monday-decision-card,
+        :root[data-ui-mode='light'] .monday-focus-card,
+        :root[data-ui-mode='light'] .interactive-kpi-card,
+        :root[data-ui-mode='light'] .ranking-row,
+        :root[data-ui-mode='light'] .weekly-time-row,
+        :root[data-ui-mode='light'] .weekly-time-owner-row,
+        :root[data-ui-mode='light'] .data-table thead th,
+        :root[data-ui-mode='light'] .data-table tbody td {
+          border-color: rgba(15, 23, 42, 0.08);
+        }
+
+        :root[data-ui-mode='light'] .monday-command-panel,
+        :root[data-ui-mode='light'] .monday-decision-card,
+        :root[data-ui-mode='light'] .monday-focus-card,
+        :root[data-ui-mode='light'] .interactive-kpi-card,
+        :root[data-ui-mode='light'] .ranking-row,
+        :root[data-ui-mode='light'] .weekly-time-row,
+        :root[data-ui-mode='light'] .weekly-time-owner-row,
+        :root[data-ui-mode='light'] .practice-card,
+        :root[data-ui-mode='light'] .pipeline-column-metrics div,
+        :root[data-ui-mode='light'] .integration-block {
+          background: rgba(248, 250, 252, 0.92);
+          border-color: rgba(15, 23, 42, 0.08);
+        }
+
+        :root[data-ui-mode='light'] .monday-command-panel {
+          background:
+            linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(248, 250, 252, 0.96)),
+            radial-gradient(circle at top right, color-mix(in srgb, var(--accent-blue) 10%, transparent), transparent 36%);
+        }
+
+        :root[data-ui-mode='light'] .monday-command-copy h3,
+        :root[data-ui-mode='light'] .monday-decision-value,
+        :root[data-ui-mode='light'] .monday-focus-value,
+        :root[data-ui-mode='light'] .ranking-row strong,
+        :root[data-ui-mode='light'] .ranking-row b,
+        :root[data-ui-mode='light'] .weekly-time-copy strong,
+        :root[data-ui-mode='light'] .weekly-time-row b,
+        :root[data-ui-mode='light'] .weekly-time-owner-row strong,
+        :root[data-ui-mode='light'] .practice-card strong,
+        :root[data-ui-mode='light'] .pipeline-column-card strong,
+        :root[data-ui-mode='light'] .pipeline-column-metrics b {
+          color: var(--text-primary);
+        }
+
+        :root[data-ui-mode='light'] .monday-command-copy p,
+        :root[data-ui-mode='light'] .monday-command-filter small,
+        :root[data-ui-mode='light'] .monday-decision-title,
+        :root[data-ui-mode='light'] .monday-decision-details span,
+        :root[data-ui-mode='light'] .monday-focus-helper,
+        :root[data-ui-mode='light'] .ranking-row span,
+        :root[data-ui-mode='light'] .ranking-metrics span,
+        :root[data-ui-mode='light'] .ranking-inline-note,
+        :root[data-ui-mode='light'] .weekly-time-copy span,
+        :root[data-ui-mode='light'] .weekly-time-owner-row span,
+        :root[data-ui-mode='light'] .practice-card span,
+        :root[data-ui-mode='light'] .pipeline-column-card span,
+        :root[data-ui-mode='light'] .pipeline-column-metrics small {
+          color: var(--text-secondary);
+        }
+
+        :root[data-ui-mode='light'] .monday-command-kicker,
+        :root[data-ui-mode='light'] .monday-decision-eyebrow,
+        :root[data-ui-mode='light'] .monday-focus-title {
+          color: var(--accent-blue);
+        }
+
+        :root[data-ui-mode='light'] .interactive-kpi-card .kpi-title,
+        :root[data-ui-mode='light'] .interactive-kpi-card .kpi-value,
+        :root[data-ui-mode='light'] .interactive-kpi-card .interactive-kpi-action span,
+        :root[data-ui-mode='light'] .interactive-kpi-card .interactive-kpi-action i {
+          color: var(--text-primary);
+        }
+
+        :root[data-ui-mode='light'] .interactive-kpi-card .kpi-trend span,
+        :root[data-ui-mode='light'] .interactive-kpi-preview-item {
+          color: var(--text-secondary);
+        }
+
+        :root[data-ui-mode='light'] .interactive-kpi-card-active {
+          background:
+            linear-gradient(180deg, color-mix(in srgb, var(--accent-blue) 6%, white), rgba(255, 255, 255, 0.98)),
+            rgba(255, 255, 255, 0.98);
+        }
+
+        :root[data-ui-mode='light'] .interactive-kpi-card-disabled {
+          background: rgba(248, 250, 252, 0.88);
+        }
+
+        :root[data-ui-mode='light'] .ranking-task-chip,
+        :root[data-ui-mode='light'] .data-table,
+        :root[data-ui-mode='light'] .data-table thead th,
+        :root[data-ui-mode='light'] .data-table tbody td {
+          background: transparent;
+          color: var(--text-primary);
+        }
+
+        :root[data-ui-mode='light'] .data-table thead th {
+          color: rgba(71, 85, 105, 0.9);
+        }
+
+        :root[data-ui-mode='light'] .data-table tbody td {
+          color: var(--text-secondary);
+        }
+
+        :root[data-ui-mode='light'] .data-table tbody td.campaign-name {
+          color: var(--text-primary);
+        }
+
+        :root[data-ui-mode='light'] .ranking-empty {
+          color: var(--text-secondary);
+          border-color: rgba(15, 23, 42, 0.1);
+          background: rgba(248, 250, 252, 0.72);
         }
 
         @media (max-width: 1100px) {

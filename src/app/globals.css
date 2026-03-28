@@ -291,11 +291,23 @@ body {
     -webkit-text-fill-color: transparent;
 }
 
+:root[data-ui-mode='light'] .page-title h1 {
+    background: none;
+    -webkit-background-clip: initial;
+    background-clip: initial;
+    -webkit-text-fill-color: initial;
+    color: var(--text-primary);
+}
+
 .page-title p {
     color: var(--text-secondary);
     font-size: 17px;
     line-height: 1.6;
     max-width: 860px;
+}
+
+:root[data-ui-mode='light'] .page-title p {
+    color: var(--text-secondary);
 }
 
 .header-actions {

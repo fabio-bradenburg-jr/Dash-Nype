@@ -661,25 +661,30 @@ export default function SettingsPage() {
 
   const handleSaveCurrentSettings = async () => {
     setSettingsSaveFeedback('')
+    const feedbackMessages: string[] = []
 
     if (hasPendingPanelChanges) {
       updateAppearance(panelDraft)
       setPanelFeedback('Preferências visuais salvas e aplicadas neste navegador.')
-      setSettingsSaveFeedback('Preferências visuais salvas e aplicadas neste navegador.')
-      return
+      feedbackMessages.push('Preferências visuais salvas e aplicadas neste navegador.')
     }
 
     if (canManageClients) {
       try {
         await persistGlobalIntegrations(globalIntegrations)
-        setSettingsSaveFeedback('Configurações da operação sincronizadas com sucesso.')
+        feedbackMessages.push('Configurações da operação sincronizadas com sucesso.')
       } catch (error) {
         setSettingsSaveFeedback(
           error instanceof Error
             ? error.message
             : 'Não foi possível sincronizar as configurações da operação.'
         )
+        return
       }
+    }
+
+    if (feedbackMessages.length) {
+      setSettingsSaveFeedback(feedbackMessages.join(' '))
       return
     }
 
@@ -2231,6 +2236,177 @@ export default function SettingsPage() {
 
         .settings-save-button {
           padding-inline: 24px;
+        }
+
+        :root[data-ui-mode='light'] .settings-main {
+          background: transparent;
+        }
+
+        :root[data-ui-mode='light'] .settings-panel,
+        :root[data-ui-mode='light'] .settings-block,
+        :root[data-ui-mode='light'] .settings-category-shell,
+        :root[data-ui-mode='light'] .integration-block,
+        :root[data-ui-mode='light'] .meta-connection-card,
+        :root[data-ui-mode='light'] .meta-connection-guide-card {
+          background: rgba(255, 255, 255, 0.9) !important;
+          border-color: rgba(15, 23, 42, 0.08);
+          box-shadow: 0 18px 40px rgba(15, 23, 42, 0.05);
+        }
+
+        :root[data-ui-mode='light'] .settings-panel {
+          background:
+            radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--accent-blue) 10%, transparent) 0%, transparent 24%),
+            radial-gradient(circle at 0% 100%, color-mix(in srgb, var(--accent-blue) 6%, transparent) 0%, transparent 22%),
+            rgba(255, 255, 255, 0.92) !important;
+          border-color: rgba(15, 23, 42, 0.08);
+        }
+
+        :root[data-ui-mode='light'] .settings-section-sidebar {
+          background: rgba(255, 255, 255, 0.92) !important;
+          border-color: rgba(15, 23, 42, 0.08);
+          box-shadow: 0 18px 40px rgba(15, 23, 42, 0.05);
+        }
+
+        :root[data-ui-mode='light'] .settings-block-obsidian,
+        :root[data-ui-mode='light'] .settings-block-hero {
+          background: rgba(255, 255, 255, 0.92) !important;
+          border-color: rgba(15, 23, 42, 0.08);
+        }
+
+        :root[data-ui-mode='light'] .settings-head h1,
+        :root[data-ui-mode='light'] .settings-block h2,
+        :root[data-ui-mode='light'] .settings-sidebar-title strong,
+        :root[data-ui-mode='light'] .settings-category-head h3,
+        :root[data-ui-mode='light'] .settings-action-copy strong {
+          color: var(--text-primary);
+        }
+
+        :root[data-ui-mode='light'] .settings-head p,
+        :root[data-ui-mode='light'] .settings-sidebar-link span,
+        :root[data-ui-mode='light'] .settings-category-head p,
+        :root[data-ui-mode='light'] .settings-action-copy span,
+        :root[data-ui-mode='light'] .settings-block p {
+          color: var(--text-secondary);
+        }
+
+        :root[data-ui-mode='light'] .settings-sidebar-link,
+        :root[data-ui-mode='light'] .settings-tab,
+        :root[data-ui-mode='light'] .settings-choice,
+        :root[data-ui-mode='light'] .settings-preset,
+        :root[data-ui-mode='light'] .settings-color-picker,
+        :root[data-ui-mode='light'] .settings-color-code-row input,
+        :root[data-ui-mode='light'] .settings-copy-button,
+        :root[data-ui-mode='light'] .settings-rgb-field input,
+        :root[data-ui-mode='light'] .input-group input,
+        :root[data-ui-mode='light'] .input-group select,
+        :root[data-ui-mode='light'] .input-group textarea {
+          background: rgba(248, 250, 252, 0.96);
+          border-color: rgba(15, 23, 42, 0.08);
+          color: var(--text-primary);
+        }
+
+        :root[data-ui-mode='light'] .settings-sidebar-link:hover,
+        :root[data-ui-mode='light'] .settings-choice:hover,
+        :root[data-ui-mode='light'] .settings-preset:hover,
+        :root[data-ui-mode='light'] .settings-tab:hover {
+          background: color-mix(in srgb, var(--accent-blue) 7%, white);
+        }
+
+        :root[data-ui-mode='light'] .settings-sidebar-link.active,
+        :root[data-ui-mode='light'] .settings-choice.active,
+        :root[data-ui-mode='light'] .settings-preset.active,
+        :root[data-ui-mode='light'] .settings-tab.active {
+          background: color-mix(in srgb, var(--accent-blue) 10%, white);
+          border-color: color-mix(in srgb, var(--accent-blue) 24%, rgba(15, 23, 42, 0.08));
+          color: var(--text-primary);
+        }
+
+        :root[data-ui-mode='light'] .settings-sidebar-link strong,
+        :root[data-ui-mode='light'] .settings-sidebar-link.active strong,
+        :root[data-ui-mode='light'] .settings-sidebar-link.active span,
+        :root[data-ui-mode='light'] .settings-choice,
+        :root[data-ui-mode='light'] .settings-preset,
+        :root[data-ui-mode='light'] .settings-tab {
+          color: var(--text-primary);
+        }
+
+        :root[data-ui-mode='light'] .settings-mode-card {
+          background: rgba(255, 255, 255, 0.92);
+          border-color: rgba(15, 23, 42, 0.08);
+          box-shadow: 0 12px 28px rgba(15, 23, 42, 0.04);
+        }
+
+        :root[data-ui-mode='light'] .settings-mode-card.active {
+          background:
+            linear-gradient(180deg, color-mix(in srgb, var(--accent-blue) 9%, white), rgba(255, 255, 255, 0.96)),
+            rgba(255, 255, 255, 0.96);
+          border-color: color-mix(in srgb, var(--accent-blue) 24%, rgba(15, 23, 42, 0.08));
+          box-shadow: 0 18px 32px color-mix(in srgb, var(--accent-blue) 10%, transparent);
+        }
+
+        :root[data-ui-mode='light'] .settings-mode-copy strong,
+        :root[data-ui-mode='light'] .settings-mode-copy p {
+          color: var(--text-primary);
+        }
+
+        :root[data-ui-mode='light'] .settings-mode-preview-light {
+          background: #f8fafc;
+          border-color: rgba(15, 23, 42, 0.08);
+        }
+
+        :root[data-ui-mode='light'] .settings-mode-preview-light span {
+          background: rgba(71, 85, 105, 0.18);
+        }
+
+        :root[data-ui-mode='light'] .settings-mode-preview-dark {
+          background: #0f172a;
+          border-color: rgba(15, 23, 42, 0.08);
+        }
+
+        :root[data-ui-mode='light'] .settings-mode-preview-dark span {
+          background: rgba(226, 232, 240, 0.22);
+        }
+
+        :root[data-ui-mode='light'] .settings-mode-check,
+        :root[data-ui-mode='light'] .settings-mode-check i {
+          color: #f8fbff;
+        }
+
+        :root[data-ui-mode='light'] .settings-background-preview {
+          background:
+            radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--panel-bg-tint) 18%, transparent) 0%, transparent 26%),
+            radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--panel-bg-tint) 12%, transparent) 0%, transparent 22%),
+            radial-gradient(circle at 50% 100%, color-mix(in srgb, var(--panel-bg-tint) 10%, transparent) 0%, transparent 24%),
+            linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(241, 245, 249, 0.94)),
+            #f8fafc;
+          border-color: rgba(15, 23, 42, 0.08);
+        }
+
+        :root[data-ui-mode='light'] .settings-background-preview-card {
+          background: rgba(255, 255, 255, 0.82);
+          border-color: rgba(15, 23, 42, 0.08);
+        }
+
+        :root[data-ui-mode='light'] .settings-background-preview-card span,
+        :root[data-ui-mode='light'] .settings-background-preview-card strong,
+        :root[data-ui-mode='light'] .settings-background-preview-card small {
+          color: var(--text-primary);
+        }
+
+        :root[data-ui-mode='light'] .settings-action-bar {
+          background: rgba(255, 255, 255, 0.9);
+          border-color: rgba(15, 23, 42, 0.08);
+          box-shadow: 0 16px 32px rgba(15, 23, 42, 0.06);
+        }
+
+        :root[data-ui-mode='light'] .settings-save-button {
+          box-shadow: 0 14px 28px color-mix(in srgb, var(--accent-blue) 16%, transparent);
+        }
+
+        :root[data-ui-mode='light'] .settings-ghost-button {
+          background: rgba(248, 250, 252, 0.95);
+          border-color: rgba(15, 23, 42, 0.08);
+          color: var(--text-primary);
         }
 
         .settings-integrations-grid {

@@ -1242,6 +1242,134 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
           border-radius: 24px;
         }
 
+        :root[data-ui-mode='light'] .assistant-main .glass-panel {
+          background: rgba(255, 255, 255, 0.78);
+          box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
+        }
+
+        :root[data-ui-mode='light'] .assistant-section-kicker,
+        :root[data-ui-mode='light'] .assistant-message-role,
+        :root[data-ui-mode='light'] .assistant-context-stat i,
+        :root[data-ui-mode='light'] .assistant-agent-chevron.open {
+          color: var(--accent-blue);
+        }
+
+        :root[data-ui-mode='light'] .assistant-select-wrap select,
+        :root[data-ui-mode='light'] .assistant-context-stat,
+        :root[data-ui-mode='light'] .assistant-chip,
+        :root[data-ui-mode='light'] .assistant-agent-trigger {
+          background: rgba(15, 23, 42, 0.025);
+          border-color: rgba(15, 23, 42, 0.08);
+          color: var(--text-secondary);
+        }
+
+        :root[data-ui-mode='light'] .assistant-context-stat:hover,
+        :root[data-ui-mode='light'] .assistant-chip:hover,
+        :root[data-ui-mode='light'] .assistant-agent-trigger:hover,
+        :root[data-ui-mode='light'] .assistant-agent-trigger.active {
+          background: color-mix(in srgb, var(--accent-blue) 8%, white);
+          border-color: color-mix(in srgb, var(--accent-blue) 22%, rgba(15, 23, 42, 0.08));
+          color: var(--text-primary);
+        }
+
+        :root[data-ui-mode='light'] .assistant-chat-panel {
+          background:
+            radial-gradient(circle at top left, color-mix(in srgb, var(--accent-blue) 10%, transparent), transparent 28%),
+            rgba(255, 255, 255, 0.72);
+        }
+
+        :root[data-ui-mode='light'] .assistant-date-separator span {
+          background: rgba(15, 23, 42, 0.05);
+          color: var(--text-muted);
+        }
+
+        :root[data-ui-mode='light'] .assistant-avatar-bot {
+          background: color-mix(in srgb, var(--accent-blue) 10%, white);
+          color: var(--accent-blue);
+          box-shadow: 0 0 20px color-mix(in srgb, var(--accent-blue) 16%, transparent);
+        }
+
+        :root[data-ui-mode='light'] .assistant-avatar-user {
+          background: rgba(255, 255, 255, 0.88);
+          color: var(--text-primary);
+        }
+
+        :root[data-ui-mode='light'] .assistant-message {
+          border-color: rgba(15, 23, 42, 0.08);
+          box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
+        }
+
+        :root[data-ui-mode='light'] .assistant-message-assistant {
+          background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(248, 250, 252, 0.96) 100%);
+        }
+
+        :root[data-ui-mode='light'] .assistant-message-user {
+          background: linear-gradient(
+            180deg,
+            color-mix(in srgb, var(--accent-blue) 10%, white) 0%,
+            color-mix(in srgb, var(--accent-blue) 6%, white) 100%
+          );
+        }
+
+        :root[data-ui-mode='light'] .assistant-message-actions button,
+        :root[data-ui-mode='light'] .assistant-message-copy {
+          color: var(--text-muted);
+        }
+
+        :root[data-ui-mode='light'] .assistant-message-actions button:hover {
+          color: var(--accent-blue);
+        }
+
+        :root[data-ui-mode='light'] .assistant-form-shell {
+          background: linear-gradient(180deg, rgba(248, 250, 252, 0.22) 0%, rgba(226, 232, 240, 0.34) 100%);
+        }
+
+        :root[data-ui-mode='light'] .assistant-form-panel {
+          background: rgba(255, 255, 255, 0.92);
+          border-color: rgba(15, 23, 42, 0.08);
+          box-shadow:
+            0 0 0 1px rgba(78, 137, 255, 0.03),
+            0 18px 40px rgba(15, 23, 42, 0.08);
+        }
+
+        :root[data-ui-mode='light'] .assistant-form-panel textarea {
+          color: var(--text-primary);
+        }
+
+        :root[data-ui-mode='light'] .assistant-form-panel textarea::placeholder {
+          color: rgba(71, 85, 105, 0.6);
+        }
+
+        :root[data-ui-mode='light'] .assistant-form-icon {
+          color: var(--text-muted);
+        }
+
+        :root[data-ui-mode='light'] .assistant-form-icon:hover {
+          color: var(--accent-blue);
+        }
+
+        :root[data-ui-mode='light'] .assistant-submit {
+          background: linear-gradient(
+            135deg,
+            var(--accent-blue) 0%,
+            color-mix(in srgb, var(--accent-blue) 72%, #0f172a) 100%
+          );
+          color: #f8fbff;
+          box-shadow: 0 14px 28px color-mix(in srgb, var(--accent-blue) 18%, transparent);
+        }
+
+        :root[data-ui-mode='light'] .assistant-agent-menu {
+          background: rgba(255, 255, 255, 0.98);
+          border-color: rgba(15, 23, 42, 0.08);
+          box-shadow: 0 24px 48px rgba(15, 23, 42, 0.12);
+        }
+
+        :root[data-ui-mode='light'] .assistant-agent-option:hover,
+        :root[data-ui-mode='light'] .assistant-agent-option.active {
+          background: color-mix(in srgb, var(--accent-blue) 8%, white);
+          border-color: color-mix(in srgb, var(--accent-blue) 20%, rgba(15, 23, 42, 0.08));
+        }
+
         @media (max-width: 1120px) {
           .assistant-content {
             grid-template-columns: 1fr;
