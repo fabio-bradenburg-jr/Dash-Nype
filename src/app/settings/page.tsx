@@ -4,6 +4,7 @@ import type { ChangeEvent, CSSProperties } from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useUser } from '@/lib/contexts/UserContext'
+import { DEFAULT_USER_APPEARANCE } from '@/lib/user-appearance-storage'
 import { USER_APPEARANCE_PRESETS } from '@/lib/user-appearance-storage'
 import { DEFAULT_PREFERENCES, loadDashboardPreferences, saveDashboardPreferences } from '@/lib/dashboard-storage'
 import {
@@ -18,6 +19,7 @@ import {
 } from '@/lib/ai-config'
 import type { AiAgent, AiProviderConfig, AiProvidersMap, AiSettings } from '@/lib/types/ai'
 import type { DashboardIntegrations } from '@/lib/types/dashboard'
+import type { UserAppearance } from '@/lib/types/user'
 
 interface IntegrationField {
   name: string
@@ -230,6 +232,8 @@ export default function SettingsPage() {
   const [metaConnectionNotice, setMetaConnectionNotice] = useState('')
   const [metaConnectionSetupRequired, setMetaConnectionSetupRequired] = useState(false)
   const [activeSettingsTab, setActiveSettingsTab] = useState<SettingsTab>('panel')
+  const [panelDraft, setPanelDraft] = useState<UserAppearance>(appearance)
+  const [panelFeedback, setPanelFeedback] = useState('')
   const metaConnectionMode = globalIntegrations.metaConnectionMode === 'oauth' ? 'oauth' : 'manual'
   const hasMetaManualToken = Boolean(String(globalIntegrations.metaAccessToken || '').trim())
   const hasMetaOauthConnection = Boolean(metaConnection.connected)
@@ -237,9 +241,9 @@ export default function SettingsPage() {
   const operationIntegrationGroups = GLOBAL_INTEGRATION_GROUPS.filter((group) => OPERATION_INTEGRATION_TITLES.has(group.title))
   const advertisingIntegrationGroups = generalIntegrationGroups.filter((group) => AD_ACCOUNT_INTEGRATION_TITLES.has(group.title))
   const crmIntegrationGroups = generalIntegrationGroups.filter((group) => CRM_INTEGRATION_TITLES.has(group.title))
-  const backgroundTintRgb = hexToRgb(appearance.backgroundTint)
+  const backgroundTintRgb = hexToRgb(panelDraft.backgroundTint)
   const backgroundPreviewStyle: BackgroundPreviewStyle = {
-    '--panel-bg-tint': appearance.backgroundTint,
+    '--panel-bg-tint': panelDraft.backgroundTint,
   }
   const selectedAiProvider = getAiProviderOption(globalIntegrations.aiProvider)
   const activeAiProviderConfig: AiProviderConfig =
@@ -252,6 +256,10 @@ export default function SettingsPage() {
   const [selectedAiAgentId, setSelectedAiAgentId] = useState<string>(availableAiAgents[0]?.id || 'copilot')
   const selectedAiAgent =
     availableAiAgents.find((agent) => agent.id === selectedAiAgentId) || availableAiAgents[0] || null
+
+  useEffect(() => {
+    setPanelDraft(appearance)
+  }, [appearance])
 
   const persistGlobalIntegrations = useCallback(
     async (nextIntegrations: GlobalIntegrationsState) => {
@@ -610,11 +618,16 @@ export default function SettingsPage() {
     }
   }
 
+  const updatePanelDraft = (updater: UserAppearance | ((current: UserAppearance) => UserAppearance)) => {
+    setPanelDraft((current) => (typeof updater === 'function' ? updater(current) : updater))
+    setPanelFeedback('')
+  }
+
   const handleBackgroundRgbChannelChange = (
     channel: 'r' | 'g' | 'b',
     value: string
   ) => {
-    updateAppearance((current) => {
+    updatePanelDraft((current) => {
       const currentRgb = hexToRgb(current.backgroundTint)
       const nextRgb = {
         ...currentRgb,
@@ -626,6 +639,16 @@ export default function SettingsPage() {
         backgroundTint: rgbToHex(nextRgb),
       }
     })
+  }
+
+  const handleResetPanelDraft = () => {
+    setPanelDraft(appearance || (DEFAULT_USER_APPEARANCE as UserAppearance))
+    setPanelFeedback('')
+  }
+
+  const handleSavePanelPreferences = () => {
+    updateAppearance(panelDraft)
+    setPanelFeedback('Preferências visuais salvas e aplicadas neste navegador.')
   }
 
   const handleSettingsTabChange = (nextTab: SettingsTab) => {
@@ -677,8 +700,8 @@ export default function SettingsPage() {
           <div className="settings-shell">
             <aside className="glass-item settings-section-sidebar">
               <div className="settings-sidebar-title">
-                <span>Painel de configuração</span>
-                <strong>Escolha a área que quer ajustar</strong>
+                <span>Digital Obsidian</span>
+                <strong>Escolha a camada da experiência que quer ajustar</strong>
               </div>
 
               <div className="settings-sidebar-nav">
@@ -687,12 +710,12 @@ export default function SettingsPage() {
                   className={`settings-sidebar-link ${activeSettingsTab === 'panel' ? 'active' : ''}`}
                   onClick={() => handleSettingsTabChange('panel')}
                 >
-                  <i className="bx bx-layout"></i>
-                  <div>
-                    <strong>Meu painel</strong>
-                    <span>Cores, fundo e aparência do app.</span>
-                  </div>
-                </button>
+                      <i className="bx bx-layout"></i>
+                      <div>
+                        <strong>Interface</strong>
+                        <span>Modo, destaque e atmosfera do sistema.</span>
+                      </div>
+                    </button>
 
                 {canManageClients && (
                   <>
@@ -704,7 +727,7 @@ export default function SettingsPage() {
                       <i className="bx bx-link-alt"></i>
                       <div>
                         <strong>Integrações gerais</strong>
-                        <span>Contas de anúncio e CRMs.</span>
+                        <span>Credenciais de mídia, CRM e IA.</span>
                       </div>
                     </button>
 
@@ -716,7 +739,7 @@ export default function SettingsPage() {
                       <i className="bx bx-cog"></i>
                       <div>
                         <strong>Operação</strong>
-                        <span>ClickUp, Monday e IDs globais.</span>
+                        <span>Boards, ferramentas e IDs globais.</span>
                       </div>
                     </button>
 
@@ -728,7 +751,7 @@ export default function SettingsPage() {
                       <i className="bx bx-calendar-event"></i>
                       <div>
                         <strong>Agenda</strong>
-                        <span>Google Calendar e rotina da operação.</span>
+                        <span>Google Calendar e rotina operacional.</span>
                       </div>
                     </button>
                   </>
@@ -738,61 +761,123 @@ export default function SettingsPage() {
 
             <div className="settings-section-content">
               {activeSettingsTab === 'panel' && (
-                <div className="settings-panel-layout">
-                  <div className="glass-item settings-block settings-block-full">
+                <div className="settings-panel-layout settings-panel-layout-obsidian">
+                  <div className="glass-item settings-block settings-block-full settings-block-hero">
                     <div className="settings-section-head">
                       <div>
-                        <h2>Meu painel</h2>
-                        <p>Defina aqui a atmosfera visual do app: modo, cor de destaque e a cor RGB do fundo mesclado no gradiente.</p>
+                        <span className="settings-hero-kicker">Configuração visual</span>
+                        <h2>Interface do sistema</h2>
+                        <p>Personalize o app dentro da linguagem Digital Obsidian, com foco em contraste, profundidade e leitura executiva.</p>
                       </div>
                     </div>
 
-                    <div className="settings-grid">
-                      <div className="glass-item settings-block">
-                        <h2>Modo de visualização</h2>
-                        <p>Escolha se quer trabalhar com a interface clara ou escura.</p>
-                        <div className="settings-choice-row">
-                          <button
-                            type="button"
-                            className={`settings-choice ${appearance.mode === 'dark' ? 'active' : ''}`}
-                            onClick={() => updateAppearance((current) => ({ ...current, mode: 'dark' }))}
-                          >
-                            <i className="bx bx-moon"></i>
-                            Escuro
-                          </button>
-                          <button
-                            type="button"
-                            className={`settings-choice ${appearance.mode === 'light' ? 'active' : ''}`}
-                            onClick={() => updateAppearance((current) => ({ ...current, mode: 'light' }))}
-                          >
-                            <i className="bx bx-sun"></i>
-                            Claro
-                          </button>
+                    <div className="settings-mode-grid">
+                      <button
+                        type="button"
+                        className={`settings-mode-card ${panelDraft.mode === 'dark' ? 'active' : ''}`}
+                        onClick={() => updatePanelDraft((current) => ({ ...current, mode: 'dark' }))}
+                      >
+                        <div className="settings-mode-preview settings-mode-preview-dark">
+                          <span></span>
+                          <span></span>
+                          <div>
+                            <i className="bx bx-circle"></i>
+                            <strong></strong>
+                          </div>
                         </div>
-                      </div>
+                        <div className="settings-mode-copy">
+                          <strong>Escuro</strong>
+                          <p>Otimizado para foco, profundidade e menor fadiga visual.</p>
+                        </div>
+                        {panelDraft.mode === 'dark' ? (
+                          <span className="settings-mode-check">
+                            <i className="bx bx-check"></i>
+                          </span>
+                        ) : null}
+                      </button>
 
-                      <div className="glass-item settings-block">
-                        <h2>Cor de destaque</h2>
-                        <p>Essa cor aparece nos botões, links ativos e detalhes principais da sua interface.</p>
+                      <button
+                        type="button"
+                        className={`settings-mode-card ${panelDraft.mode === 'light' ? 'active' : ''}`}
+                        onClick={() => updatePanelDraft((current) => ({ ...current, mode: 'light' }))}
+                      >
+                        <div className="settings-mode-preview settings-mode-preview-light">
+                          <span></span>
+                          <span></span>
+                          <div>
+                            <i className="bx bx-circle"></i>
+                            <strong></strong>
+                          </div>
+                        </div>
+                        <div className="settings-mode-copy">
+                          <strong>Claro</strong>
+                          <p>Alta legibilidade para ambientes iluminados e leitura aberta.</p>
+                        </div>
+                        {panelDraft.mode === 'light' ? (
+                          <span className="settings-mode-check">
+                            <i className="bx bx-check"></i>
+                          </span>
+                        ) : null}
+                      </button>
+                    </div>
+
+                    <div className="settings-grid settings-grid-obsidian">
+                      <div className="glass-item settings-block settings-block-obsidian">
+                        <div className="settings-obsidian-head">
+                          <div>
+                            <span>Cor de destaque</span>
+                            <h2>Assinatura visual</h2>
+                          </div>
+                          <p>Define a energia dos botões, links ativos e detalhes de navegação do sistema.</p>
+                        </div>
+
+                        <div className="settings-color-showcase">
+                          <div className="settings-color-display" style={{ '--settings-accent': panelDraft.accent } as CSSProperties}>
+                            <i className="bx bx-palette"></i>
+                          </div>
+                          <div className="settings-color-code">
+                            <label>Hex selecionado</label>
+                            <div className="settings-color-code-row">
+                              <input
+                                type="text"
+                                value={panelDraft.accent.toUpperCase()}
+                                readOnly
+                                aria-label="Código hexadecimal da cor de destaque"
+                              />
+                              <button
+                                type="button"
+                                className="settings-copy-button"
+                                onClick={() => {
+                                  void navigator.clipboard?.writeText(panelDraft.accent.toUpperCase())
+                                  setPanelFeedback('Código da cor copiado para a área de transferência.')
+                                }}
+                              >
+                                <i className="bx bx-copy"></i>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+
                         <div className="settings-color-picker">
                           <input
                             type="color"
-                            value={appearance.accent}
-                            onChange={(event) => updateAppearance((current) => ({ ...current, accent: event.target.value }))}
+                            value={panelDraft.accent}
+                            onChange={(event) => updatePanelDraft((current) => ({ ...current, accent: event.target.value }))}
                             aria-label="Selecionar cor de destaque"
                           />
                           <div className="settings-color-code">
-                            <strong>{appearance.accent.toUpperCase()}</strong>
-                            <span>Aplicado imediatamente na sua conta neste navegador.</span>
+                            <strong>{panelDraft.accent.toUpperCase()}</strong>
+                            <span>Aplicado quando você salvar as preferências visuais.</span>
                           </div>
                         </div>
-                        <div className="settings-preset-grid">
+
+                        <div className="settings-preset-grid settings-preset-grid-swatches">
                           {USER_APPEARANCE_PRESETS.map((preset) => (
                             <button
                               key={preset.value}
                               type="button"
-                              className={`settings-preset ${appearance.accent === preset.value ? 'active' : ''}`}
-                              onClick={() => updateAppearance((current) => ({ ...current, accent: preset.value }))}
+                              className={`settings-preset settings-preset-swatch-card ${panelDraft.accent === preset.value ? 'active' : ''}`}
+                              onClick={() => updatePanelDraft((current) => ({ ...current, accent: preset.value }))}
                             >
                               <span className="settings-preset-swatch" style={{ background: preset.value }}></span>
                               {preset.label}
@@ -800,82 +885,104 @@ export default function SettingsPage() {
                           ))}
                         </div>
                       </div>
-                    </div>
 
-                    <div className="glass-item settings-block settings-block-full">
-                      <h2>Cor do fundo do app</h2>
-                      <p>Esse RGB controla a névoa/gradiente do fundo do painel. Se quiser, deixe mais azulado, esverdeado, laranja ou qualquer outro clima.</p>
-
-                      <div className="settings-background-shell">
-                        <div className="settings-background-preview" style={backgroundPreviewStyle}>
-                          <div className="settings-background-preview-card">
-                            <span>Prévia do fundo</span>
-                            <strong>{appearance.backgroundTint.toUpperCase()}</strong>
-                            <small>{`rgb(${backgroundTintRgb.r}, ${backgroundTintRgb.g}, ${backgroundTintRgb.b})`}</small>
+                      <div className="glass-item settings-block settings-block-full settings-block-obsidian">
+                        <div className="settings-obsidian-head">
+                          <div>
+                            <span>Atmosfera de fundo</span>
+                            <h2>Profundidade e névoa do sistema</h2>
                           </div>
+                          <p>Controle a cor que sustenta o gradiente e a sensação de fundo da interface inteira.</p>
                         </div>
 
-                        <div className="settings-background-controls">
-                          <div className="settings-color-picker">
-                            <input
-                              type="color"
-                              value={appearance.backgroundTint}
-                              onChange={(event) => updateAppearance((current) => ({ ...current, backgroundTint: event.target.value }))}
-                              aria-label="Selecionar cor do fundo do app"
-                            />
-                            <div className="settings-color-code">
-                              <strong>{appearance.backgroundTint.toUpperCase()}</strong>
-                              <span>Essa cor é aplicada no fundo atmosférico do app inteiro.</span>
+                        <div className="settings-background-shell">
+                          <div className="settings-background-preview" style={backgroundPreviewStyle}>
+                            <div className="settings-background-preview-card">
+                              <span>Prévia do fundo</span>
+                              <strong>{panelDraft.backgroundTint.toUpperCase()}</strong>
+                              <small>{`rgb(${backgroundTintRgb.r}, ${backgroundTintRgb.g}, ${backgroundTintRgb.b})`}</small>
                             </div>
                           </div>
 
-                          <div className="settings-rgb-grid">
-                            <label className="settings-rgb-field">
-                              <span>R</span>
+                          <div className="settings-background-controls">
+                            <div className="settings-color-picker">
                               <input
-                                type="number"
-                                min="0"
-                                max="255"
-                                value={backgroundTintRgb.r}
-                                onChange={(event) => handleBackgroundRgbChannelChange('r', event.target.value)}
+                                type="color"
+                                value={panelDraft.backgroundTint}
+                                onChange={(event) => updatePanelDraft((current) => ({ ...current, backgroundTint: event.target.value }))}
+                                aria-label="Selecionar cor do fundo do app"
                               />
-                            </label>
-                            <label className="settings-rgb-field">
-                              <span>G</span>
-                              <input
-                                type="number"
-                                min="0"
-                                max="255"
-                                value={backgroundTintRgb.g}
-                                onChange={(event) => handleBackgroundRgbChannelChange('g', event.target.value)}
-                              />
-                            </label>
-                            <label className="settings-rgb-field">
-                              <span>B</span>
-                              <input
-                                type="number"
-                                min="0"
-                                max="255"
-                                value={backgroundTintRgb.b}
-                                onChange={(event) => handleBackgroundRgbChannelChange('b', event.target.value)}
-                              />
-                            </label>
-                          </div>
+                              <div className="settings-color-code">
+                                <strong>{panelDraft.backgroundTint.toUpperCase()}</strong>
+                                <span>Essa cor sustenta a névoa do app inteiro.</span>
+                              </div>
+                            </div>
 
-                          <div className="settings-preset-grid">
-                            {PANEL_BACKGROUND_PRESETS.map((preset) => (
-                              <button
-                                key={preset.value}
-                                type="button"
-                                className={`settings-preset ${appearance.backgroundTint === preset.value ? 'active' : ''}`}
-                                onClick={() => updateAppearance((current) => ({ ...current, backgroundTint: preset.value }))}
-                              >
-                                <span className="settings-preset-swatch" style={{ background: preset.value }}></span>
-                                {preset.label}
-                              </button>
-                            ))}
+                            <div className="settings-rgb-grid">
+                              <label className="settings-rgb-field">
+                                <span>R</span>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  max="255"
+                                  value={backgroundTintRgb.r}
+                                  onChange={(event) => handleBackgroundRgbChannelChange('r', event.target.value)}
+                                />
+                              </label>
+                              <label className="settings-rgb-field">
+                                <span>G</span>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  max="255"
+                                  value={backgroundTintRgb.g}
+                                  onChange={(event) => handleBackgroundRgbChannelChange('g', event.target.value)}
+                                />
+                              </label>
+                              <label className="settings-rgb-field">
+                                <span>B</span>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  max="255"
+                                  value={backgroundTintRgb.b}
+                                  onChange={(event) => handleBackgroundRgbChannelChange('b', event.target.value)}
+                                />
+                              </label>
+                            </div>
+
+                            <div className="settings-preset-grid">
+                              {PANEL_BACKGROUND_PRESETS.map((preset) => (
+                                <button
+                                  key={preset.value}
+                                  type="button"
+                                  className={`settings-preset ${panelDraft.backgroundTint === preset.value ? 'active' : ''}`}
+                                  onClick={() => updatePanelDraft((current) => ({ ...current, backgroundTint: preset.value }))}
+                                >
+                                  <span className="settings-preset-swatch" style={{ background: preset.value }}></span>
+                                  {preset.label}
+                                </button>
+                              ))}
+                            </div>
                           </div>
                         </div>
+                      </div>
+                    </div>
+
+                    <div className="settings-action-bar">
+                      <div className="settings-action-copy">
+                        <strong>Digital Obsidian ativo</strong>
+                        <span>
+                          {panelFeedback || 'Prepare as mudanças com calma. Elas só entram em vigor depois que você salvar as preferências.'}
+                        </span>
+                      </div>
+                      <div className="settings-action-buttons">
+                        <button type="button" className="btn btn-secondary settings-ghost-button" onClick={handleResetPanelDraft}>
+                          Descartar alterações
+                        </button>
+                        <button type="button" className="btn btn-primary settings-save-button" onClick={handleSavePanelPreferences}>
+                          Salvar preferências
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -1408,9 +1515,15 @@ export default function SettingsPage() {
         }
 
         .settings-panel {
-          padding: 32px;
+          padding: 40px;
           display: grid;
-          gap: 24px;
+          gap: 28px;
+          background:
+            radial-gradient(circle at 100% 0%, rgba(78, 137, 255, 0.08), transparent 28%),
+            radial-gradient(circle at 0% 100%, rgba(78, 222, 99, 0.06), transparent 24%),
+            rgba(16, 19, 26, 0.78);
+          border: 1px solid rgba(69, 71, 75, 0.22);
+          border-radius: 24px;
         }
 
         .settings-head {
@@ -1421,8 +1534,11 @@ export default function SettingsPage() {
         }
 
         .settings-head h1 {
-          font-size: 30px;
+          font-size: 42px;
           margin-bottom: 8px;
+          font-family: var(--font-family-headline);
+          font-weight: 800;
+          letter-spacing: -0.04em;
         }
 
         .settings-head p,
@@ -1433,17 +1549,20 @@ export default function SettingsPage() {
 
         .settings-shell {
           display: grid;
-          grid-template-columns: 280px minmax(0, 1fr);
-          gap: 20px;
+          grid-template-columns: 300px minmax(0, 1fr);
+          gap: 24px;
           align-items: start;
         }
 
         .settings-section-sidebar {
-          padding: 18px;
+          padding: 22px;
           display: grid;
-          gap: 18px;
+          gap: 22px;
           position: sticky;
           top: 24px;
+          background: rgba(25, 28, 34, 0.78);
+          border: 1px solid rgba(69, 71, 75, 0.2);
+          border-radius: 24px;
         }
 
         .settings-sidebar-title {
@@ -1452,16 +1571,18 @@ export default function SettingsPage() {
         }
 
         .settings-sidebar-title span {
-          color: #93c5fd;
+          color: #afc6ff;
           font-size: 11px;
-          font-weight: 700;
-          letter-spacing: 0.08em;
+          font-weight: 800;
+          letter-spacing: 0.16em;
           text-transform: uppercase;
         }
 
         .settings-sidebar-title strong {
-          font-size: 18px;
-          line-height: 1.35;
+          font-size: 22px;
+          line-height: 1.2;
+          font-family: var(--font-family-headline);
+          letter-spacing: -0.03em;
         }
 
         .settings-sidebar-nav {
@@ -1471,10 +1592,10 @@ export default function SettingsPage() {
 
         .settings-sidebar-link {
           width: 100%;
-          padding: 16px;
-          border-radius: 18px;
-          border: 1px solid var(--border-color);
-          background: rgba(255, 255, 255, 0.03);
+          padding: 18px;
+          border-radius: 20px;
+          border: 1px solid rgba(69, 71, 75, 0.18);
+          background: rgba(29, 32, 38, 0.84);
           color: var(--text-primary);
           font: inherit;
           text-align: left;
@@ -1487,7 +1608,7 @@ export default function SettingsPage() {
 
         .settings-sidebar-link i {
           font-size: 20px;
-          color: #93c5fd;
+          color: #afc6ff;
           margin-top: 1px;
         }
 
@@ -1498,6 +1619,8 @@ export default function SettingsPage() {
 
         .settings-sidebar-link strong {
           font-size: 15px;
+          font-family: var(--font-family-headline);
+          font-weight: 700;
         }
 
         .settings-sidebar-link span {
@@ -1507,15 +1630,20 @@ export default function SettingsPage() {
         }
 
         .settings-sidebar-link.active {
-          border-color: var(--accent-blue);
-          background: color-mix(in srgb, var(--accent-blue) 16%, transparent);
-          transform: translateY(-1px);
+          border-color: rgba(78, 222, 99, 0.3);
+          background: linear-gradient(90deg, rgba(175, 198, 255, 0.1), transparent);
+          transform: translateX(4px);
+          box-shadow: 0 0 0 1px rgba(175, 198, 255, 0.1);
         }
 
         .settings-section-content,
         .settings-panel-layout {
           display: grid;
-          gap: 20px;
+          gap: 24px;
+        }
+
+        .settings-panel-layout-obsidian {
+          gap: 28px;
         }
 
         .settings-grid {
@@ -1532,11 +1660,191 @@ export default function SettingsPage() {
           padding: 24px;
           display: grid;
           gap: 18px;
-          border-radius: 20px;
+          border-radius: 22px;
+        }
+
+        .settings-block-hero {
+          gap: 26px;
+        }
+
+        .settings-block-obsidian {
+          background: rgba(25, 28, 34, 0.72);
+          border: 1px solid rgba(69, 71, 75, 0.18);
         }
 
         .settings-block h2 {
           font-size: 22px;
+          font-family: var(--font-family-headline);
+          font-weight: 800;
+          letter-spacing: -0.03em;
+        }
+
+        .settings-hero-kicker,
+        .settings-obsidian-head span {
+          color: #afc6ff;
+          font-size: 11px;
+          font-weight: 800;
+          letter-spacing: 0.16em;
+          text-transform: uppercase;
+        }
+
+        .settings-hero-kicker {
+          display: inline-flex;
+          margin-bottom: 10px;
+        }
+
+        .settings-obsidian-head {
+          display: grid;
+          gap: 8px;
+        }
+
+        .settings-obsidian-head p {
+          margin: 0;
+          max-width: 660px;
+        }
+
+        .settings-mode-grid {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 18px;
+        }
+
+        .settings-mode-card {
+          position: relative;
+          padding: 22px;
+          border-radius: 22px;
+          border: 1px solid rgba(69, 71, 75, 0.18);
+          background: rgba(25, 28, 34, 0.7);
+          display: grid;
+          gap: 18px;
+          text-align: left;
+          cursor: pointer;
+          transition: all 0.3s ease;
+        }
+
+        .settings-mode-card:hover {
+          border-color: rgba(175, 198, 255, 0.25);
+          transform: translateY(-2px);
+        }
+
+        .settings-mode-card.active {
+          border-color: rgba(175, 198, 255, 0.45);
+          box-shadow: 0 0 30px rgba(175, 198, 255, 0.08);
+        }
+
+        .settings-mode-preview {
+          min-height: 136px;
+          border-radius: 14px;
+          padding: 14px;
+          display: grid;
+          gap: 8px;
+          border: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .settings-mode-preview span {
+          display: block;
+          height: 8px;
+          border-radius: 999px;
+        }
+
+        .settings-mode-preview span:first-child {
+          width: 44%;
+        }
+
+        .settings-mode-preview span:nth-child(2) {
+          width: 72%;
+        }
+
+        .settings-mode-preview div {
+          margin-top: auto;
+          display: flex;
+          gap: 10px;
+          align-items: center;
+        }
+
+        .settings-mode-preview div i {
+          width: 26px;
+          height: 26px;
+          border-radius: 999px;
+          display: grid;
+          place-items: center;
+          font-size: 8px;
+        }
+
+        .settings-mode-preview div strong {
+          display: block;
+          flex: 1;
+          min-height: 26px;
+          border-radius: 8px;
+        }
+
+        .settings-mode-preview-dark {
+          background: #0b0e14;
+        }
+
+        .settings-mode-preview-dark span {
+          background: #32353c;
+        }
+
+        .settings-mode-preview-dark div i {
+          background: rgba(78, 137, 255, 0.16);
+          color: #afc6ff;
+        }
+
+        .settings-mode-preview-dark div strong {
+          background: rgba(175, 198, 255, 0.08);
+        }
+
+        .settings-mode-preview-light {
+          background: #e1e2eb;
+        }
+
+        .settings-mode-preview-light span {
+          background: rgba(50, 53, 60, 0.24);
+        }
+
+        .settings-mode-preview-light div i {
+          background: #2576f9;
+          color: white;
+        }
+
+        .settings-mode-preview-light div strong {
+          background: rgba(37, 118, 249, 0.14);
+        }
+
+        .settings-mode-copy {
+          display: grid;
+          gap: 6px;
+        }
+
+        .settings-mode-copy strong {
+          font-family: var(--font-family-headline);
+          font-size: 20px;
+          font-weight: 800;
+          letter-spacing: -0.03em;
+        }
+
+        .settings-mode-copy p {
+          margin: 0;
+        }
+
+        .settings-mode-check {
+          position: absolute;
+          top: 18px;
+          right: 18px;
+          width: 28px;
+          height: 28px;
+          border-radius: 999px;
+          display: grid;
+          place-items: center;
+          background: #afc6ff;
+          color: #001944;
+          font-size: 16px;
+          box-shadow: 0 0 20px rgba(175, 198, 255, 0.2);
+        }
+
+        .settings-grid-obsidian {
+          grid-template-columns: minmax(320px, 0.9fr) minmax(0, 1.1fr);
         }
 
         .settings-choice-row {
@@ -1581,8 +1889,8 @@ export default function SettingsPage() {
           gap: 16px;
           padding: 18px;
           border-radius: 18px;
-          background: rgba(255, 255, 255, 0.03);
-          border: 1px solid var(--border-color);
+          background: rgba(11, 14, 20, 0.9);
+          border: 1px solid rgba(69, 71, 75, 0.18);
         }
 
         .settings-color-picker input[type='color'] {
@@ -1600,10 +1908,70 @@ export default function SettingsPage() {
           gap: 4px;
         }
 
+        .settings-color-code label {
+          color: var(--text-secondary);
+          font-size: 11px;
+          font-weight: 700;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+        }
+
+        .settings-color-showcase {
+          display: grid;
+          grid-template-columns: 96px minmax(0, 1fr);
+          gap: 20px;
+          align-items: center;
+          padding: 4px 0 6px;
+        }
+
+        .settings-color-display {
+          width: 96px;
+          height: 96px;
+          border-radius: 24px;
+          display: grid;
+          place-items: center;
+          background: var(--settings-accent, #4e89ff);
+          box-shadow: 0 0 40px color-mix(in srgb, var(--settings-accent, #4e89ff) 35%, transparent);
+          color: white;
+          font-size: 32px;
+        }
+
+        .settings-color-code-row {
+          display: flex;
+          gap: 10px;
+        }
+
+        .settings-color-code-row input {
+          width: 100%;
+          min-height: 48px;
+          padding: 0 14px;
+          border-radius: 12px;
+          background: rgba(11, 14, 20, 0.9);
+          border: 1px solid rgba(69, 71, 75, 0.18);
+          color: #afc6ff;
+          font-weight: 700;
+        }
+
+        .settings-copy-button {
+          width: 48px;
+          min-width: 48px;
+          border-radius: 12px;
+          border: 1px solid rgba(69, 71, 75, 0.18);
+          background: rgba(39, 42, 49, 0.72);
+          color: var(--text-secondary);
+          cursor: pointer;
+          transition: all 0.3s ease;
+        }
+
+        .settings-copy-button:hover {
+          color: #afc6ff;
+          border-color: rgba(175, 198, 255, 0.24);
+        }
+
         .settings-background-shell {
           display: grid;
           grid-template-columns: minmax(280px, 0.85fr) minmax(0, 1.15fr);
-          gap: 18px;
+          gap: 20px;
           align-items: stretch;
         }
 
@@ -1701,6 +2069,10 @@ export default function SettingsPage() {
           gap: 12px;
         }
 
+        .settings-preset-grid-swatches {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
         .settings-preset {
           padding: 14px 16px;
           display: inline-flex;
@@ -1739,6 +2111,52 @@ export default function SettingsPage() {
           border-color: var(--accent-blue);
           background: rgba(59, 130, 246, 0.12);
           color: var(--text-primary);
+        }
+
+        .settings-action-bar {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 18px;
+          padding: 24px 28px;
+          border-radius: 22px;
+          background: rgba(25, 28, 34, 0.7);
+          border: 1px solid rgba(69, 71, 75, 0.18);
+          backdrop-filter: blur(20px);
+        }
+
+        .settings-action-copy {
+          display: grid;
+          gap: 6px;
+        }
+
+        .settings-action-copy strong {
+          font-family: var(--font-family-headline);
+          font-size: 18px;
+          font-weight: 800;
+          letter-spacing: -0.03em;
+        }
+
+        .settings-action-copy span {
+          color: var(--text-secondary);
+          font-size: 13px;
+          line-height: 1.6;
+        }
+
+        .settings-action-buttons {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          flex-wrap: wrap;
+        }
+
+        .settings-ghost-button {
+          background: rgba(255, 255, 255, 0.02);
+          border-color: rgba(69, 71, 75, 0.22);
+        }
+
+        .settings-save-button {
+          padding-inline: 24px;
         }
 
         .settings-integrations-grid {
@@ -2033,6 +2451,10 @@ export default function SettingsPage() {
             grid-template-columns: 1fr;
           }
 
+          .settings-mode-grid {
+            grid-template-columns: 1fr;
+          }
+
           .settings-integrations-grid {
             grid-template-columns: 1fr;
           }
@@ -2043,6 +2465,15 @@ export default function SettingsPage() {
 
           .settings-ai-grid {
             grid-template-columns: 1fr;
+          }
+
+          .settings-color-showcase {
+            grid-template-columns: 1fr;
+          }
+
+          .settings-action-bar {
+            flex-direction: column;
+            align-items: stretch;
           }
 
           .settings-category-shell {
@@ -2063,6 +2494,14 @@ export default function SettingsPage() {
           .settings-head {
             flex-direction: column;
             align-items: flex-start;
+          }
+
+          .settings-panel {
+            padding: 24px;
+          }
+
+          .settings-head h1 {
+            font-size: 34px;
           }
 
           .settings-preset-grid {
