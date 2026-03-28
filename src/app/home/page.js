@@ -14362,6 +14362,137 @@ export default function DashboardPage() {
           background: rgba(248, 250, 252, 0.72);
         }
 
+        :root[data-ui-mode='light'] .home-hub-hero-obsidian,
+        :root[data-ui-mode='light'] .management-hero,
+        :root[data-ui-mode='light'] .clients-intro,
+        :root[data-ui-mode='light'] .clients-hero-main,
+        :root[data-ui-mode='light'] .hero-panel,
+        :root[data-ui-mode='light'] .grouped-results,
+        :root[data-ui-mode='light'] .monday-operations-shell,
+        :root[data-ui-mode='light'] .monday-command-panel,
+        :root[data-ui-mode='light'] .meta-filter-panel,
+        :root[data-ui-mode='light'] .management-directory-card,
+        :root[data-ui-mode='light'] .client-group-card,
+        :root[data-ui-mode='light'] .home-tools-menu,
+        :root[data-ui-mode='light'] .home-tools-link,
+        :root[data-ui-mode='light'] .clients-metric-card,
+        :root[data-ui-mode='light'] .management-stat-card {
+          background:
+            linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(248, 250, 252, 0.98)) !important;
+          border-color: rgba(15, 23, 42, 0.08) !important;
+          box-shadow: 0 18px 38px rgba(15, 23, 42, 0.06) !important;
+        }
+
+        :root[data-ui-mode='light'] .home-hub-hero-obsidian {
+          background:
+            radial-gradient(circle at top left, color-mix(in srgb, var(--panel-bg-tint) 16%, transparent) 0%, transparent 34%),
+            linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(241, 245, 249, 0.96)) !important;
+        }
+
+        :root[data-ui-mode='light'] .clients-metric-card-live,
+        :root[data-ui-mode='light'] .management-stat-card-live {
+          background:
+            linear-gradient(180deg, rgba(240, 253, 244, 0.96), rgba(236, 253, 245, 0.98)) !important;
+          border-color: rgba(34, 197, 94, 0.16) !important;
+        }
+
+        :root[data-ui-mode='light'] .clients-metric-card-score,
+        :root[data-ui-mode='light'] .management-stat-card-score {
+          background:
+            linear-gradient(180deg, rgba(240, 253, 244, 0.96), rgba(236, 253, 245, 0.98)) !important;
+          border-color: rgba(16, 185, 129, 0.18) !important;
+        }
+
+        :root[data-ui-mode='light'] .home-tools-menu {
+          background: rgba(255, 255, 255, 0.82) !important;
+          backdrop-filter: blur(18px);
+          -webkit-backdrop-filter: blur(18px);
+        }
+
+        :root[data-ui-mode='light'] .home-tools-link:hover,
+        :root[data-ui-mode='light'] .home-tools-link.active {
+          background:
+            linear-gradient(180deg, rgba(240, 249, 255, 0.98), rgba(239, 246, 255, 0.98)) !important;
+          border-color: color-mix(in srgb, var(--accent-blue) 28%, rgba(15, 23, 42, 0.08)) !important;
+        }
+
+        :root[data-ui-mode='light'] .sidebar-toggle {
+          background: rgba(255, 255, 255, 0.88) !important;
+          border-color: rgba(15, 23, 42, 0.08) !important;
+          color: #0f172a !important;
+          box-shadow: 0 16px 30px rgba(15, 23, 42, 0.08) !important;
+        }
+
+        :root[data-ui-mode='light'] .home-tools-link strong,
+        :root[data-ui-mode='light'] .management-hero h2,
+        :root[data-ui-mode='light'] .hero-panel h2,
+        :root[data-ui-mode='light'] .monday-command-copy h3,
+        :root[data-ui-mode='light'] .page-title h1 {
+          color: #0f172a !important;
+        }
+
+        :root[data-ui-mode='light'] .home-tools-link span,
+        :root[data-ui-mode='light'] .management-hero p,
+        :root[data-ui-mode='light'] .hero-panel p,
+        :root[data-ui-mode='light'] .monday-command-copy p,
+        :root[data-ui-mode='light'] .monday-command-filter small,
+        :root[data-ui-mode='light'] .page-title p {
+          color: #475569 !important;
+        }
+
+        :root[data-ui-mode='light'] .home-hub-kicker,
+        :root[data-ui-mode='light'] .management-hero-kicker,
+        :root[data-ui-mode='light'] .meta-filter-kicker,
+        :root[data-ui-mode='light'] .monday-command-kicker,
+        :root[data-ui-mode='light'] .monday-decision-eyebrow,
+        :root[data-ui-mode='light'] .monday-focus-title {
+          color: color-mix(in srgb, var(--accent-blue) 72%, #1d4ed8 28%) !important;
+        }
+
+        :root[data-ui-mode='light'] .client-create-bar,
+        :root[data-ui-mode='light'] .users-toolbar-card,
+        :root[data-ui-mode='light'] .client-activity-card,
+        :root[data-ui-mode='light'] .client-security-card,
+        :root[data-ui-mode='light'] .client-intelligence-feature,
+        :root[data-ui-mode='light'] .user-directory-card,
+        :root[data-ui-mode='light'] .client-group-card,
+        :root[data-ui-mode='light'] .hero-stat,
+        :root[data-ui-mode='light'] .operations-meta-card,
+        :root[data-ui-mode='light'] .operations-filter-card,
+        :root[data-ui-mode='light'] .operations-spotlight-card {
+          background: rgba(255, 255, 255, 0.9) !important;
+          border-color: rgba(15, 23, 42, 0.08) !important;
+        }
+
+        :root[data-ui-mode='light'] .client-spotlight-copy strong,
+        :root[data-ui-mode='light'] .client-spotlight-grid p,
+        :root[data-ui-mode='light'] .user-directory-main strong,
+        :root[data-ui-mode='light'] .hero-stat strong,
+        :root[data-ui-mode='light'] .operations-meta-value,
+        :root[data-ui-mode='light'] .operations-filter-value,
+        :root[data-ui-mode='light'] .operations-spotlight-value {
+          color: #0f172a !important;
+        }
+
+        :root[data-ui-mode='light'] .client-spotlight-copy span,
+        :root[data-ui-mode='light'] .client-spotlight-grid small,
+        :root[data-ui-mode='light'] .user-directory-main span,
+        :root[data-ui-mode='light'] .user-directory-meta small,
+        :root[data-ui-mode='light'] .hero-stat span,
+        :root[data-ui-mode='light'] .operations-meta-label,
+        :root[data-ui-mode='light'] .operations-filter-label,
+        :root[data-ui-mode='light'] .operations-filter-help,
+        :root[data-ui-mode='light'] .operations-spotlight-label,
+        :root[data-ui-mode='light'] .operations-spotlight-help {
+          color: #64748b !important;
+        }
+
+        :root[data-ui-mode='light'] .hero-panel,
+        :root[data-ui-mode='light'] .grouped-results,
+        :root[data-ui-mode='light'] .monday-operations-shell {
+          padding: 24px;
+        }
+
         @media (max-width: 1100px) {
           .home-hub-lower-grid {
             grid-template-columns: 1fr;

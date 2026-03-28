@@ -2688,6 +2688,74 @@ export default function SettingsPage() {
           grid-column: 1 / -1;
         }
 
+        :root[data-ui-mode='light'] .dashboard-container,
+        :root[data-ui-mode='light'] .sidebar.glass-panel,
+        :root[data-ui-mode='light'] .main-content.settings-main,
+        :root[data-ui-mode='light'] .settings-main,
+        :root[data-ui-mode='light'] .settings-panel,
+        :root[data-ui-mode='light'] .settings-block,
+        :root[data-ui-mode='light'] .settings-block-obsidian,
+        :root[data-ui-mode='light'] .settings-block-hero,
+        :root[data-ui-mode='light'] .settings-section-sidebar,
+        :root[data-ui-mode='light'] .settings-category-shell,
+        :root[data-ui-mode='light'] .settings-action-bar,
+        :root[data-ui-mode='light'] .integration-block,
+        :root[data-ui-mode='light'] .meta-connection-card,
+        :root[data-ui-mode='light'] .meta-connection-guide-card {
+          background:
+            linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(248, 250, 252, 0.98)) !important;
+          border-color: rgba(15, 23, 42, 0.08) !important;
+          box-shadow: 0 18px 38px rgba(15, 23, 42, 0.06) !important;
+        }
+
+        :root[data-ui-mode='light'] .dashboard-container {
+          background: linear-gradient(180deg, #f8fbff, #eef4ff) !important;
+        }
+
+        :root[data-ui-mode='light'] .sidebar.glass-panel {
+          background: rgba(255, 255, 255, 0.92) !important;
+          border-right-color: rgba(15, 23, 42, 0.08) !important;
+          box-shadow: 12px 0 30px rgba(15, 23, 42, 0.04) !important;
+        }
+
+        :root[data-ui-mode='light'] .main-content.settings-main {
+          background: transparent !important;
+        }
+
+        :root[data-ui-mode='light'] .settings-panel {
+          background:
+            radial-gradient(circle at top left, color-mix(in srgb, var(--panel-bg-tint) 14%, transparent) 0%, transparent 34%),
+            linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 252, 0.98)) !important;
+        }
+
+        :root[data-ui-mode='light'] .settings-head h1,
+        :root[data-ui-mode='light'] .settings-block h2,
+        :root[data-ui-mode='light'] .settings-sidebar-title strong,
+        :root[data-ui-mode='light'] .settings-category-head h3,
+        :root[data-ui-mode='light'] .settings-action-copy strong,
+        :root[data-ui-mode='light'] .settings-sidebar-link strong {
+          color: #0f172a !important;
+        }
+
+        :root[data-ui-mode='light'] .settings-head p,
+        :root[data-ui-mode='light'] .settings-block p,
+        :root[data-ui-mode='light'] .settings-sidebar-link span,
+        :root[data-ui-mode='light'] .settings-category-head p,
+        :root[data-ui-mode='light'] .settings-action-copy span {
+          color: #475569 !important;
+        }
+
+        :root[data-ui-mode='light'] .settings-sidebar-link {
+          background: rgba(255, 255, 255, 0.72) !important;
+          border-color: rgba(15, 23, 42, 0.08) !important;
+        }
+
+        :root[data-ui-mode='light'] .settings-sidebar-link.active {
+          background:
+            linear-gradient(180deg, rgba(240, 249, 255, 0.98), rgba(239, 246, 255, 0.98)) !important;
+          border-color: color-mix(in srgb, var(--accent-blue) 26%, rgba(15, 23, 42, 0.08)) !important;
+        }
+
         @media (max-width: 980px) {
           .settings-section-sidebar {
             position: static;
