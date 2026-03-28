@@ -11299,6 +11299,27 @@ export default function DashboardPage() {
           cursor: pointer;
         }
 
+        .sidebar :global(.nav-item) {
+          transition:
+            background 0.22s ease,
+            color 0.22s ease,
+            transform 0.22s ease,
+            border-color 0.22s ease,
+            box-shadow 0.22s ease;
+        }
+
+        .sidebar :global(.nav-item:hover) {
+          background: linear-gradient(90deg, rgba(175, 198, 255, 0.12), rgba(175, 198, 255, 0.04));
+          color: #f8fbff;
+          transform: translateX(4px);
+          box-shadow: inset 0 0 0 1px rgba(175, 198, 255, 0.08);
+        }
+
+        .sidebar :global(.nav-item.active:hover) {
+          background: linear-gradient(90deg, rgba(175, 198, 255, 0.16), rgba(175, 198, 255, 0.05));
+          box-shadow: inset 0 0 0 1px rgba(175, 198, 255, 0.12);
+        }
+
         .nav-tools-group {
           display: grid;
           gap: 10px;
@@ -11376,10 +11397,24 @@ export default function DashboardPage() {
           flex-shrink: 0;
           box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
           z-index: 3;
+          transition:
+            transform 0.22s ease,
+            background 0.22s ease,
+            border-color 0.22s ease,
+            box-shadow 0.22s ease,
+            color 0.22s ease;
         }
 
         .sidebar-toggle i {
           font-size: 18px;
+        }
+
+        .sidebar-toggle:hover {
+          transform: translateY(-1px) scale(1.03);
+          background: linear-gradient(180deg, rgba(30, 41, 59, 0.98), rgba(17, 24, 39, 0.98));
+          border-color: rgba(175, 198, 255, 0.28);
+          color: #ffffff;
+          box-shadow: 0 16px 34px rgba(0, 0, 0, 0.34);
         }
 
         .sidebar-collapsed {
@@ -13834,6 +13869,17 @@ export default function DashboardPage() {
           border-color: rgba(15, 23, 42, 0.08);
           color: var(--text-primary);
           box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+        }
+
+        :root[data-ui-mode='light'] .sidebar :global(.nav-item:hover) {
+          background: linear-gradient(90deg, rgba(219, 234, 254, 0.92), rgba(239, 246, 255, 0.88));
+          color: #0f172a;
+          box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.12);
+        }
+
+        :root[data-ui-mode='light'] .sidebar :global(.nav-item.active:hover) {
+          background: linear-gradient(90deg, rgba(219, 234, 254, 0.98), rgba(239, 246, 255, 0.92));
+          box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.16);
         }
 
         :root[data-ui-mode='light'] .sidebar-collapsed :global(.nav-item)::after {

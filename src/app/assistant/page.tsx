@@ -122,12 +122,10 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
   const [isAgentMenuOpen, setIsAgentMenuOpen] = useState(false)
   const [isVoiceSupported, setIsVoiceSupported] = useState(false)
   const [isListening, setIsListening] = useState(false)
-  const [voiceEnabled, setVoiceEnabled] = useState(true)
   const [voiceTranscript, setVoiceTranscript] = useState('')
   const messagesContainerRef = useRef<HTMLDivElement | null>(null)
   const agentMenuRef = useRef<HTMLDivElement | null>(null)
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null)
-  const lastSpokenMessageIdRef = useRef('')
 
   const availableClients = useMemo(
     () => (Array.isArray(dashboardState?.clients) ? dashboardState.clients : []),
@@ -169,7 +167,6 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
           : 'operation'
       )
       setSelectedAgentId(String(parsed.agentId || 'copilot'))
-      setVoiceEnabled(parsed.voiceEnabled !== false)
     } catch {}
   }, [])
 
@@ -187,11 +184,10 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
         JSON.stringify({
           focusMode,
           agentId: selectedAgentId,
-          voiceEnabled,
           messages: messages.slice(-20),
         })
       )
-  }, [messages, focusMode, selectedAgentId, voiceEnabled])
+  }, [messages, focusMode, selectedAgentId])
 
   useEffect(() => {
     if (!availableAgents.length) return
@@ -291,74 +287,8 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
       recognitionRef.current = null
       setIsListening(false)
       setVoiceTranscript('')
-      if (typeof window !== 'undefined') {
-        window.speechSynthesis?.cancel()
-      }
     }
   }, [])
-
-  const stopSpeaking = useCallback(() => {
-    if (typeof window === 'undefined') return
-    window.speechSynthesis?.cancel()
-  }, [])
-
-  const speakMessage = useCallback(
-    (message: string, messageId?: string) => {
-      if (typeof window === 'undefined') return
-      if (!('speechSynthesis' in window)) {
-        setChatError('A leitura em voz alta não é suportada neste navegador.')
-        return
-      }
-
-      stopSpeaking()
-
-      const utterance = new SpeechSynthesisUtterance(message)
-      utterance.lang = DEFAULT_VOICE_LANGUAGE
-
-      const voices = window.speechSynthesis.getVoices()
-      const ptBrVoice =
-        voices.find((voice) => voice.lang.toLowerCase().startsWith('pt-br')) ||
-        voices.find((voice) => voice.lang.toLowerCase().startsWith('pt'))
-
-      if (ptBrVoice) {
-        utterance.voice = ptBrVoice
-      }
-
-      utterance.onend = () => {
-        if (messageId && lastSpokenMessageIdRef.current === messageId) {
-          lastSpokenMessageIdRef.current = ''
-        }
-      }
-
-      utterance.onerror = () => {
-        setChatError('Não consegui reproduzir a resposta em voz alta agora.')
-        if (messageId && lastSpokenMessageIdRef.current === messageId) {
-          lastSpokenMessageIdRef.current = ''
-        }
-      }
-
-      if (messageId) {
-        lastSpokenMessageIdRef.current = messageId
-      }
-
-      window.speechSynthesis.speak(utterance)
-    },
-    [stopSpeaking]
-  )
-
-  useEffect(() => {
-    if (!voiceEnabled) return
-
-    const lastAssistantMessage = [...messages]
-      .reverse()
-      .find((message) => message.role === 'assistant')
-
-    if (!lastAssistantMessage) return
-    if (lastAssistantMessage.id === lastSpokenMessageIdRef.current) return
-    if (lastAssistantMessage.id.startsWith('assistant-welcome-')) return
-
-    speakMessage(lastAssistantMessage.content, lastAssistantMessage.id)
-  }, [messages, speakMessage, voiceEnabled])
 
   const loadDashboardState = useCallback(async () => {
     try {
@@ -455,7 +385,6 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
 
   const handleResetChat = () => {
     recognitionRef.current?.stop()
-    stopSpeaking()
     setMessages([createWelcomeMessage(availableClients[0]?.name || '')])
     setChatError('')
     setVoiceTranscript('')
@@ -477,20 +406,9 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
       return
     }
 
-    stopSpeaking()
     setVoiceTranscript('')
     recognitionRef.current.start()
     setIsListening(true)
-  }
-
-  const handleToggleVoicePlayback = () => {
-    setVoiceEnabled((current) => {
-      const nextValue = !current
-      if (!nextValue) {
-        stopSpeaking()
-      }
-      return nextValue
-    })
   }
 
   const AssistantContentTag = isEmbedded ? 'div' : 'main'
@@ -665,10 +583,6 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
                             <i className="bx bx-dislike"></i>
                             Não ajudou
                           </button>
-                          <button type="button" onClick={() => speakMessage(message.content, message.id)}>
-                            <i className="bx bx-volume-full"></i>
-                            Ouvir
-                          </button>
                           <button type="button" className="assistant-message-copy" onClick={() => navigator?.clipboard?.writeText(message.content)}>
                             <i className="bx bx-copy-alt"></i>
                             Copiar
@@ -764,14 +678,6 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
                     <span><i className="bx bx-bolt-circle"></i> {dashboardState?.globalIntegrations?.aiModel || 'Modelo configurado'}</span>
                     <span><i className="bx bx-shield-quarter"></i> Contexto interno ativo</span>
                     <span><i className="bx bx-layout"></i> {focusLabel}</span>
-                    <button
-                      type="button"
-                      className={`assistant-voice-toggle ${voiceEnabled ? 'active' : ''}`}
-                      onClick={handleToggleVoicePlayback}
-                    >
-                      <i className={`bx ${voiceEnabled ? 'bx-volume-full' : 'bx-volume-mute'}`}></i>
-                      {voiceEnabled ? 'Voz ativa' : 'Voz desligada'}
-                    </button>
                     <span>
                       <i className={`bx ${isListening ? 'bx-loader-circle' : isVoiceSupported ? 'bx-microphone' : 'bx-microphone-off'}`}></i>
                       {isListening
@@ -1474,27 +1380,6 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
           gap: 6px;
         }
 
-        .assistant-voice-toggle {
-          border: 1px solid var(--border-color);
-          background: rgba(255, 255, 255, 0.04);
-          color: inherit;
-          border-radius: 999px;
-          padding: 8px 12px;
-          display: inline-flex;
-          align-items: center;
-          gap: 6px;
-          cursor: pointer;
-          font: inherit;
-          text-transform: inherit;
-          letter-spacing: inherit;
-        }
-
-        .assistant-voice-toggle.active {
-          border-color: rgba(59, 130, 246, 0.35);
-          color: #93c5fd;
-          background: rgba(59, 130, 246, 0.12);
-        }
-
         .assistant-main-embedded .assistant-content {
           min-height: 0;
           height: calc(100vh - 240px);
@@ -1631,17 +1516,6 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
           background: rgba(255, 255, 255, 0.98);
           border-color: rgba(15, 23, 42, 0.08);
           box-shadow: 0 24px 48px rgba(15, 23, 42, 0.12);
-        }
-
-        :root[data-ui-mode='light'] .assistant-voice-toggle {
-          background: rgba(15, 23, 42, 0.03);
-          border-color: rgba(15, 23, 42, 0.08);
-        }
-
-        :root[data-ui-mode='light'] .assistant-voice-toggle.active {
-          background: color-mix(in srgb, var(--accent-blue) 10%, white);
-          border-color: color-mix(in srgb, var(--accent-blue) 18%, rgba(15, 23, 42, 0.08));
-          color: var(--accent-blue);
         }
 
         :root[data-ui-mode='light'] .assistant-agent-option:hover,
