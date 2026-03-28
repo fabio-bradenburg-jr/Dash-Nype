@@ -2134,6 +2134,23 @@ export default function DashboardPage() {
     [clientGroups]
   )
   const clientIdsSet = useMemo(() => new Set(clients.map((client) => client.id)), [clients])
+  const connectedClientsCount = useMemo(
+    () => clients.filter((client) => Boolean(client.metaAdAccountId)).length,
+    [clients]
+  )
+  const brandedClientsCount = useMemo(
+    () => clients.filter((client) => Boolean(client.logoUrl)).length,
+    [clients]
+  )
+  const pendingClientsCount = useMemo(
+    () => clients.filter((client) => !client.metaAdAccountId || !client.logoUrl).length,
+    [clients]
+  )
+  const clientSecurityScore = useMemo(() => {
+    if (!clients.length) return 0
+    const score = ((connectedClientsCount + brandedClientsCount) / (clients.length * 2)) * 100
+    return Math.round(score * 10) / 10
+  }, [clients.length, connectedClientsCount, brandedClientsCount])
   const activeIntegrations = activeClient?.integrations || DEFAULT_INTEGRATIONS
   const selectedAdAccount = activeClient?.metaAdAccountId || ''
   const normalizedAiIntegrations = useMemo(
@@ -6926,21 +6943,31 @@ export default function DashboardPage() {
               <div>
                 <span className="home-hub-kicker">Synthesis performance</span>
                 <h3>Leitura consolidada da operação</h3>
+                <p className="home-hub-analytics-copy">
+                  A camada de síntese reúne sinais do app, leitura de operação e contexto ativo para priorizar onde agir primeiro.
+                </p>
               </div>
               <div className="home-hub-analytics-badges">
                 <span>AI enhanced</span>
                 <span>Monthly</span>
               </div>
             </div>
-            <div className="home-hub-chart">
-              <div className="home-hub-chart-bar home-hub-chart-bar-sm"></div>
-              <div className="home-hub-chart-bar home-hub-chart-bar-md"></div>
-              <div className="home-hub-chart-bar home-hub-chart-bar-lg home-hub-chart-bar-highlight">
-                <small>Peak</small>
+            <div className="home-hub-analytics-metrics">
+              <div className="home-hub-analytics-metric-card">
+                <span>Sinal principal</span>
+                <strong>{activeClient ? activeClient.name : 'Operação geral'}</strong>
+                <small>Foco atual da leitura executiva.</small>
               </div>
-              <div className="home-hub-chart-bar home-hub-chart-bar-mid"></div>
-              <div className="home-hub-chart-bar home-hub-chart-bar-md"></div>
-              <div className="home-hub-chart-bar home-hub-chart-bar-xs"></div>
+              <div className="home-hub-analytics-metric-card">
+                <span>Camadas conectadas</span>
+                <strong>{`${clients.length} clientes · ${clientGroups.length} grupos`}</strong>
+                <small>Base pronta para cruzamentos e priorização.</small>
+              </div>
+              <div className="home-hub-analytics-metric-card">
+                <span>Ferramentas vivas</span>
+                <strong>{`${clickUpListsConfigured + mondayBoardsConfigured} fontes`}</strong>
+                <small>Operação, agenda e copiloto já entram no mesmo fluxo.</small>
+              </div>
             </div>
           </article>
 
@@ -8136,7 +8163,7 @@ export default function DashboardPage() {
             <div className="management-header-row">
               <div className="management-header-copy">
                 <h2>Gestão de Clientes</h2>
-                <p>Controle direto sobre parceiros, identidade de marca e contas ativas da operação.</p>
+                <p>Controle parceiros, identidade de marca e prontidão operacional dentro do mesmo painel executivo.</p>
               </div>
               <button type="button" className="btn btn-secondary management-header-button" onClick={() => document.querySelector('.client-create-bar input')?.focus()}>
                 <i className="bx bx-user-plus"></i>
@@ -8144,30 +8171,45 @@ export default function DashboardPage() {
               </button>
             </div>
 
-            <div className="glass-panel management-hero clients-intro">
-              <div className="management-hero-copy">
-                <span className="management-hero-kicker">Client control</span>
-                <h2>Organize clientes, grupos e a identidade visual da operação</h2>
-                <p>
-                  Centralize aqui a base de clientes do workspace, escolha quais contas entram na leitura executiva e mantenha a apresentação alinhada com cada operação.
-                </p>
+            <div className="clients-hero-strip">
+              <div className="glass-panel management-hero clients-intro clients-hero-main">
+                <div className="management-hero-copy">
+                  <span className="management-hero-kicker">Client control</span>
+                  <h2>Organize clientes, grupos e a identidade visual da operação</h2>
+                  <p>
+                    Centralize aqui a base de clientes do workspace, escolha quais contas entram na leitura executiva e mantenha a apresentação alinhada com cada operação.
+                  </p>
+                </div>
+                <div className="clients-hero-actions">
+                  <button type="button" className="btn btn-primary" onClick={() => document.querySelector('.client-create-bar input')?.focus()}>
+                    Novo cliente
+                  </button>
+                  <button type="button" className="btn btn-secondary" onClick={() => document.querySelector('.client-create-grid .client-create-bar:nth-child(2) input')?.focus()}>
+                    Novo grupo
+                  </button>
+                </div>
               </div>
-              <div className="management-stats-grid">
-                <div className="management-stat-card">
+
+              <div className="clients-metric-grid">
+                <div className="clients-metric-card">
                   <small>Total de clientes</small>
                   <strong>{formatNumber(clients.length)}</strong>
+                  <span>{`${formatNumber(clientGroups.length)} grupo(s) conectados à base`}</span>
                 </div>
-                <div className="management-stat-card">
-                  <small>Clientes ativos</small>
-                  <strong>{formatNumber(clients.filter((client) => Boolean(client.metaAdAccountId)).length)}</strong>
+                <div className="clients-metric-card clients-metric-card-live">
+                  <small>Ativos agora</small>
+                  <strong>{formatNumber(connectedClientsCount)}</strong>
+                  <span>{connectedClientsCount ? 'Prontos para leitura' : 'Sem contas conectadas'}</span>
                 </div>
-                <div className="management-stat-card">
-                  <small>Grupos ativos</small>
-                  <strong>{formatNumber(clientGroups.length)}</strong>
+                <div className="clients-metric-card">
+                  <small>Pendências</small>
+                  <strong>{formatNumber(pendingClientsCount)}</strong>
+                  <span>{pendingClientsCount ? 'Revisão necessária' : 'Sem gaps críticos'}</span>
                 </div>
-                <div className="management-stat-card">
-                  <small>Com identidade pronta</small>
-                  <strong>{formatNumber(clients.filter((client) => Boolean(client.logoUrl)).length)}</strong>
+                <div className="clients-metric-card clients-metric-card-score">
+                  <small>Score estrutural</small>
+                  <strong>{clientSecurityScore.toFixed(1)}</strong>
+                  <span>{clientSecurityScore >= 90 ? 'Base madura' : 'Melhorar conexões e identidade'}</span>
                 </div>
               </div>
             </div>
@@ -8204,13 +8246,14 @@ export default function DashboardPage() {
                   <div>
                     <span className="management-card-kicker">Client registry</span>
                     <h3>Clientes cadastrados</h3>
-                    <p>Abra a edição de um cliente somente quando precisar ajustar contas, identidade ou integrações.</p>
+                    <p>Abra a edição de um cliente quando precisar ajustar conta Meta, identidade visual ou integração da operação.</p>
                   </div>
                 </div>
 
                 <div className="user-directory-grid client-directory-grid">
                   {clients.map((client) => {
                     const statusMeta = getClientStatusMeta(client)
+                    const linkedGroupsCount = clientGroups.filter((group) => normalizeClientGroupClientIds(group.clientIds).includes(client.id)).length
 
                     return (
                     <div key={client.id} className={`user-directory-card glass-item client-spotlight-card ${client.id === activeClientId ? 'client-directory-card-active' : ''}`}>
@@ -8242,8 +8285,8 @@ export default function DashboardPage() {
                           <p>{client.metaAdAccountId || 'Não conectada'}</p>
                         </div>
                         <div>
-                          <small>Identidade visual</small>
-                          <p>{client.logoUrl ? 'Logo configurada' : 'Logo pendente'}</p>
+                          <small>Grupo / identidade</small>
+                          <p>{linkedGroupsCount ? `${linkedGroupsCount} grupo(s)` : client.logoUrl ? 'Logo pronta' : 'Pendente'}</p>
                         </div>
                       </div>
 
@@ -8282,13 +8325,92 @@ export default function DashboardPage() {
               </div>
             </div>
 
+            <section className="client-command-grid">
+              <div className="glass-panel client-activity-card client-activity-card-large">
+                <div className="client-activity-head">
+                  <div>
+                    <span className="management-card-kicker">Activity summary</span>
+                    <h3>Atividade recente da base</h3>
+                  </div>
+                  <button type="button" className="client-activity-link">Ver auditoria</button>
+                </div>
+                <div className="client-activity-list client-activity-list-extended">
+                  <div className="client-activity-item">
+                    <span className="client-activity-icon client-activity-icon-primary">
+                      <i className="bx bx-key"></i>
+                    </span>
+                    <div>
+                      <strong>{clients[0]?.name ? `${clients[0].name} segue como principal foco de leitura da operação.` : 'Nenhum cliente foi definido como foco principal ainda.'}</strong>
+                      <small>Agora</small>
+                    </div>
+                  </div>
+                  <div className="client-activity-item">
+                    <span className="client-activity-icon client-activity-icon-success">
+                      <i className="bx bx-user-plus"></i>
+                    </span>
+                    <div>
+                      <strong>{`${formatNumber(connectedClientsCount)} cliente(s) já conseguem entrar na leitura com dados conectados.`}</strong>
+                      <small>Conexões ativas</small>
+                    </div>
+                  </div>
+                  <div className="client-activity-item">
+                    <span className="client-activity-icon client-activity-icon-alert">
+                      <i className="bx bx-shield-quarter"></i>
+                    </span>
+                    <div>
+                      <strong>{pendingClientsCount ? `${formatNumber(pendingClientsCount)} cliente(s) exigem revisão de identidade ou conta Meta.` : 'Nenhuma pendência estrutural relevante nesta base.'}</strong>
+                      <small>Fila de revisão</small>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="glass-panel client-security-card">
+                <div className="client-security-head">
+                  <h3>Status estrutural</h3>
+                  <i className="bx bx-shield-quarter"></i>
+                </div>
+                <div className="client-security-meters">
+                  <div className="client-security-meter">
+                    <div>
+                      <span>Integridade da base</span>
+                      <strong>{`${Math.max(72, Math.round(clientSecurityScore))}%`}</strong>
+                    </div>
+                    <div className="client-security-track">
+                      <div className="client-security-fill client-security-fill-primary" style={{ width: `${Math.max(72, Math.round(clientSecurityScore))}%` }}></div>
+                    </div>
+                  </div>
+                  <div className="client-security-meter">
+                    <div>
+                      <span>Identidade visual</span>
+                      <strong>{brandedClientsCount ? 'Ativa' : 'Pendente'}</strong>
+                    </div>
+                    <div className="client-security-track">
+                      <div className="client-security-fill client-security-fill-tertiary" style={{ width: `${clients.length ? Math.round((brandedClientsCount / clients.length) * 100) : 0}%` }}></div>
+                    </div>
+                  </div>
+                </div>
+                <div className="client-security-note">
+                  <div className="client-security-note-head">
+                    <i className="bx bx-badge-check"></i>
+                    <span>Varredura operacional</span>
+                  </div>
+                  <p>
+                    {connectedClientsCount
+                      ? 'A base já está pronta para cruzar campanhas, operação e contexto do cliente em leituras executivas.'
+                      : 'Conecte ao menos uma conta Meta para liberar leitura operacional orientada por dados no copiloto.'}
+                  </p>
+                </div>
+              </div>
+            </section>
+
             <div className="clients-grid clients-grid-single">
               <div className="glass-panel users-toolbar-card management-directory-card">
                 <div className="user-picker-head">
                   <div>
                     <span className="management-card-kicker">Access grouping</span>
                     <h3>Grupos de clientes</h3>
-                    <p>Escolha os dashboards que pertencem a cada grupo para depois liberar acesso por grupo aos usuários.</p>
+                    <p>Escolha os dashboards que pertencem a cada grupo para depois liberar acesso em lote aos usuários.</p>
                   </div>
                 </div>
 
@@ -11338,6 +11460,81 @@ export default function DashboardPage() {
           gap: 18px;
         }
 
+        .clients-hero-strip {
+          display: grid;
+          gap: 24px;
+        }
+
+        .clients-hero-main {
+          grid-template-columns: minmax(0, 1fr) auto;
+          align-items: end;
+        }
+
+        .clients-hero-actions {
+          display: flex;
+          gap: 12px;
+          flex-wrap: wrap;
+          justify-content: flex-end;
+        }
+
+        .clients-hero-actions .btn {
+          min-height: 48px;
+          padding: 0 18px;
+        }
+
+        .clients-metric-grid {
+          display: grid;
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+          gap: 18px;
+        }
+
+        .clients-metric-card {
+          min-height: 148px;
+          padding: 24px;
+          border-radius: 24px;
+          border: 1px solid rgba(143, 144, 149, 0.14);
+          background:
+            linear-gradient(180deg, rgba(255, 255, 255, 0.024), rgba(255, 255, 255, 0.012)),
+            rgba(16, 19, 26, 0.92);
+          box-shadow: 0 14px 38px rgba(0, 0, 0, 0.18);
+          display: grid;
+          align-content: space-between;
+          gap: 14px;
+        }
+
+        .clients-metric-card small {
+          color: rgba(225, 226, 235, 0.38);
+          font-size: 10px;
+          font-weight: 800;
+          letter-spacing: 0.14em;
+          text-transform: uppercase;
+        }
+
+        .clients-metric-card strong {
+          color: #ffffff;
+          font-size: clamp(34px, 3vw, 50px);
+          line-height: 0.96;
+          letter-spacing: -0.05em;
+        }
+
+        .clients-metric-card span {
+          color: rgba(225, 226, 235, 0.56);
+          font-size: 12px;
+          line-height: 1.5;
+        }
+
+        .clients-metric-card-live {
+          border-color: rgba(78, 222, 163, 0.18);
+          background:
+            radial-gradient(circle at top right, rgba(78, 222, 163, 0.08), transparent 42%),
+            linear-gradient(180deg, rgba(255, 255, 255, 0.024), rgba(255, 255, 255, 0.012)),
+            rgba(16, 19, 26, 0.92);
+        }
+
+        .clients-metric-card-score strong {
+          color: #4edea3;
+        }
+
         .client-create-grid > .client-create-bar {
           flex: 1 1 520px;
         }
@@ -11784,6 +11981,12 @@ export default function DashboardPage() {
           gap: 24px;
         }
 
+        .client-command-grid {
+          display: grid;
+          grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+          gap: 24px;
+        }
+
         .client-intelligence-feature,
         .client-activity-card {
           padding: 30px;
@@ -11857,10 +12060,167 @@ export default function DashboardPage() {
           margin-top: 26px;
         }
 
+        .client-activity-list-extended {
+          margin-top: 0;
+        }
+
         .client-activity-item {
           display: flex;
           align-items: flex-start;
           gap: 14px;
+        }
+
+        .client-activity-card-large {
+          display: grid;
+          gap: 24px;
+          align-content: start;
+        }
+
+        .client-activity-icon {
+          width: 44px;
+          height: 44px;
+          border-radius: 16px;
+          display: grid;
+          place-items: center;
+          flex-shrink: 0;
+          border: 1px solid rgba(143, 144, 149, 0.14);
+          background: rgba(255, 255, 255, 0.03);
+        }
+
+        .client-activity-icon i {
+          font-size: 18px;
+        }
+
+        .client-activity-icon-primary {
+          color: #afc6ff;
+          background: rgba(175, 198, 255, 0.08);
+          border-color: rgba(175, 198, 255, 0.2);
+        }
+
+        .client-activity-icon-success {
+          color: #4edea3;
+          background: rgba(78, 222, 163, 0.08);
+          border-color: rgba(78, 222, 163, 0.2);
+        }
+
+        .client-activity-icon-alert {
+          color: #f6b25d;
+          background: rgba(246, 178, 93, 0.08);
+          border-color: rgba(246, 178, 93, 0.2);
+        }
+
+        .client-security-card {
+          padding: 30px;
+          border-radius: 28px;
+          border: 1px solid rgba(143, 144, 149, 0.14);
+          background:
+            linear-gradient(180deg, rgba(255, 255, 255, 0.025), rgba(255, 255, 255, 0.012)),
+            rgba(11, 14, 20, 0.92);
+          box-shadow: 0 16px 44px rgba(0, 0, 0, 0.22);
+          display: grid;
+          gap: 28px;
+          align-content: start;
+        }
+
+        .client-security-head {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 16px;
+        }
+
+        .client-security-head h3 {
+          margin: 0;
+          color: #ffffff;
+          font-size: 28px;
+          line-height: 1.08;
+          letter-spacing: -0.04em;
+        }
+
+        .client-security-head i {
+          font-size: 24px;
+          color: #4edea3;
+        }
+
+        .client-security-meters {
+          display: grid;
+          gap: 18px;
+        }
+
+        .client-security-meter {
+          display: grid;
+          gap: 10px;
+        }
+
+        .client-security-meter div:first-child {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 16px;
+        }
+
+        .client-security-meter span {
+          color: rgba(225, 226, 235, 0.42);
+          font-size: 10px;
+          font-weight: 800;
+          letter-spacing: 0.14em;
+          text-transform: uppercase;
+        }
+
+        .client-security-meter strong {
+          color: #4edea3;
+          font-size: 12px;
+          font-weight: 800;
+          letter-spacing: 0.12em;
+          text-transform: uppercase;
+        }
+
+        .client-security-track {
+          width: 100%;
+          height: 4px;
+          border-radius: 999px;
+          background: rgba(255, 255, 255, 0.08);
+          overflow: hidden;
+        }
+
+        .client-security-fill {
+          height: 100%;
+          border-radius: inherit;
+        }
+
+        .client-security-fill-primary {
+          background: linear-gradient(90deg, rgba(175, 198, 255, 0.9), rgba(78, 137, 255, 0.9));
+        }
+
+        .client-security-fill-tertiary {
+          background: linear-gradient(90deg, rgba(78, 222, 163, 0.9), rgba(111, 251, 190, 0.9));
+        }
+
+        .client-security-note {
+          padding: 20px;
+          border-radius: 22px;
+          border: 1px solid rgba(78, 222, 163, 0.12);
+          background: rgba(78, 222, 163, 0.06);
+          display: grid;
+          gap: 12px;
+        }
+
+        .client-security-note-head {
+          display: inline-flex;
+          align-items: center;
+          gap: 10px;
+          color: #4edea3;
+          font-size: 11px;
+          font-weight: 800;
+          letter-spacing: 0.14em;
+          text-transform: uppercase;
+        }
+
+        .client-security-note p {
+          margin: 0;
+          color: rgba(225, 226, 235, 0.68);
+          font-size: 14px;
+          line-height: 1.65;
         }
 
         .client-activity-dot {
@@ -13153,6 +13513,14 @@ export default function DashboardPage() {
             radial-gradient(circle at center bottom, rgba(78, 137, 255, 0.08), transparent 46%);
         }
 
+        .home-hub-analytics-copy {
+          margin: 12px 0 0;
+          max-width: 56ch;
+          color: rgba(225, 226, 235, 0.62);
+          font-size: 14px;
+          line-height: 1.7;
+        }
+
         .home-hub-analytics-head {
           display: flex;
           justify-content: space-between;
@@ -13191,52 +13559,42 @@ export default function DashboardPage() {
           align-items: center;
         }
 
-        .home-hub-chart {
+        .home-hub-analytics-metrics {
           margin-top: auto;
-          min-height: 240px;
-          display: flex;
-          align-items: end;
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
           gap: 16px;
-          padding: 10px 28px 0;
         }
 
-        .home-hub-chart-bar {
-          flex: 1 1 0;
-          border-radius: 18px 18px 0 0;
-          background: linear-gradient(180deg, rgba(175, 198, 255, 0.24), rgba(78, 137, 255, 0.12));
-          min-height: 48px;
-          position: relative;
+        .home-hub-analytics-metric-card {
+          padding: 20px;
+          border-radius: 18px;
+          background: rgba(11, 14, 20, 0.58);
+          border: 1px solid rgba(69, 71, 75, 0.16);
+          display: grid;
+          gap: 8px;
         }
 
-        .home-hub-chart-bar-highlight {
-          background: linear-gradient(180deg, rgba(78, 222, 99, 0.9), rgba(78, 137, 255, 0.28));
-          box-shadow: 0 0 28px rgba(78, 222, 99, 0.12);
-        }
-
-        .home-hub-chart-bar-highlight small {
-          position: absolute;
-          top: -42px;
-          left: 50%;
-          transform: translateX(-50%);
-          min-height: 26px;
-          padding: 0 10px;
-          border-radius: 999px;
-          background: rgba(11, 14, 20, 0.92);
-          border: 1px solid rgba(78, 222, 99, 0.18);
-          color: #4ede63;
-          display: inline-flex;
-          align-items: center;
+        .home-hub-analytics-metric-card span {
+          color: rgba(225, 226, 235, 0.42);
           font-size: 10px;
           font-weight: 800;
-          letter-spacing: 0.12em;
+          letter-spacing: 0.16em;
           text-transform: uppercase;
         }
 
-        .home-hub-chart-bar-xs { height: 26%; }
-        .home-hub-chart-bar-sm { height: 34%; }
-        .home-hub-chart-bar-md { height: 56%; }
-        .home-hub-chart-bar-mid { height: 48%; }
-        .home-hub-chart-bar-lg { height: 82%; }
+        .home-hub-analytics-metric-card strong {
+          color: #ffffff;
+          font-size: 20px;
+          line-height: 1.2;
+          letter-spacing: -0.03em;
+        }
+
+        .home-hub-analytics-metric-card small {
+          color: rgba(225, 226, 235, 0.5);
+          font-size: 12px;
+          line-height: 1.55;
+        }
 
         .home-hub-side-stack {
           display: grid;
@@ -13305,6 +13663,16 @@ export default function DashboardPage() {
           color: rgba(225, 226, 235, 0.72);
           font-size: 14px;
           line-height: 1.65;
+        }
+
+        @media (max-width: 1100px) {
+          .home-hub-lower-grid {
+            grid-template-columns: 1fr;
+          }
+
+          .home-hub-analytics-metrics {
+            grid-template-columns: 1fr;
+          }
         }
 
         .source-section-header {
