@@ -1168,6 +1168,14 @@ export default function SettingsPage() {
     setNewClientColumnOptionDraft('')
   }
 
+  const handleRemoveNewClientColumnOption = (optionToRemove: string) => {
+    setNewClientColumnOptions((current) =>
+      normalizeSelectOptionsInput(current)
+        .filter((option) => option !== optionToRemove)
+        .join(', ')
+    )
+  }
+
   const handleAddSystemFieldOption = (fieldKey: string) => {
     const nextOption = String(systemFieldOptionDrafts[fieldKey] || '').trim()
     if (!nextOption) return
@@ -1177,6 +1185,16 @@ export default function SettingsPage() {
     setSystemFieldOptionDrafts((current) => ({ ...current, [fieldKey]: '' }))
   }
 
+  const handleRemoveSystemFieldOption = (fieldKey: string, optionToRemove: string) => {
+    const currentField = clientSystemFields.find((field) => field.key === fieldKey)
+    if (!currentField) return
+    handleClientSystemFieldChange(
+      fieldKey,
+      'optionsInput',
+      (currentField.options || []).filter((option) => option !== optionToRemove).join(', ')
+    )
+  }
+
   const handleAddCustomFieldOption = (fieldId: string) => {
     const nextOption = String(customFieldOptionDrafts[fieldId] || '').trim()
     if (!nextOption) return
@@ -1184,6 +1202,16 @@ export default function SettingsPage() {
     if (!currentField) return
     handleClientCustomColumnFieldChange(fieldId, 'optionsInput', appendDropdownOption((currentField.options || []).join(', '), nextOption))
     setCustomFieldOptionDrafts((current) => ({ ...current, [fieldId]: '' }))
+  }
+
+  const handleRemoveCustomFieldOption = (fieldId: string, optionToRemove: string) => {
+    const currentField = clientCustomColumns.find((field) => field.id === fieldId)
+    if (!currentField) return
+    handleClientCustomColumnFieldChange(
+      fieldId,
+      'optionsInput',
+      (currentField.options || []).filter((option) => option !== optionToRemove).join(', ')
+    )
   }
 
   const handleSaveCurrentSettings = async () => {
@@ -1253,6 +1281,79 @@ export default function SettingsPage() {
       </aside>
 
       <main className="main-content settings-main">
+        <aside className="glass-item settings-section-sidebar">
+          <div className="settings-sidebar-title">
+            <span>Configuração</span>
+            <strong>Ajustes da operação</strong>
+          </div>
+
+          <div className="settings-sidebar-nav">
+            <button
+              type="button"
+              className={`settings-sidebar-link ${activeSettingsTab === 'panel' ? 'active' : ''}`}
+              onClick={() => handleSettingsTabChange('panel')}
+            >
+              <i className="bx bx-layout"></i>
+              <div>
+                <strong>Interface</strong>
+                <span>Modo, destaque e atmosfera do sistema.</span>
+              </div>
+            </button>
+
+            {canManageClients && (
+              <>
+                <button
+                  type="button"
+                  className={`settings-sidebar-link ${activeSettingsTab === 'general' ? 'active' : ''}`}
+                  onClick={() => handleSettingsTabChange('general')}
+                >
+                  <i className="bx bx-link-alt"></i>
+                  <div>
+                    <strong>Integrações gerais</strong>
+                    <span>Credenciais de mídia, CRM e IA.</span>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  className={`settings-sidebar-link ${activeSettingsTab === 'operation' ? 'active' : ''}`}
+                  onClick={() => handleSettingsTabChange('operation')}
+                >
+                  <i className="bx bx-cog"></i>
+                  <div>
+                    <strong>Operação</strong>
+                    <span>Boards, ferramentas e IDs globais.</span>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  className={`settings-sidebar-link ${activeSettingsTab === 'calendar' ? 'active' : ''}`}
+                  onClick={() => handleSettingsTabChange('calendar')}
+                >
+                  <i className="bx bx-calendar-event"></i>
+                  <div>
+                    <strong>Agenda</strong>
+                    <span>Google Calendar e rotina operacional.</span>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  className={`settings-sidebar-link ${activeSettingsTab === 'clients' ? 'active' : ''}`}
+                  onClick={() => handleSettingsTabChange('clients')}
+                >
+                  <i className="bx bx-data"></i>
+                  <div>
+                    <strong>Clientes</strong>
+                    <span>Campos e abas da base de clientes.</span>
+                  </div>
+                </button>
+              </>
+            )}
+          </div>
+        </aside>
+
         <section className="glass-panel settings-panel">
           <div className="settings-head">
             <div>
@@ -1263,82 +1364,7 @@ export default function SettingsPage() {
               Voltar
             </Link>
           </div>
-
-          <div className="settings-shell">
-            <aside className="glass-item settings-section-sidebar">
-              <div className="settings-sidebar-title">
-                <span>Configuração</span>
-                <strong>Ajustes da operação</strong>
-              </div>
-
-              <div className="settings-sidebar-nav">
-                <button
-                  type="button"
-                  className={`settings-sidebar-link ${activeSettingsTab === 'panel' ? 'active' : ''}`}
-                  onClick={() => handleSettingsTabChange('panel')}
-                >
-                      <i className="bx bx-layout"></i>
-                      <div>
-                        <strong>Interface</strong>
-                        <span>Modo, destaque e atmosfera do sistema.</span>
-                      </div>
-                    </button>
-
-                {canManageClients && (
-                  <>
-                    <button
-                      type="button"
-                      className={`settings-sidebar-link ${activeSettingsTab === 'general' ? 'active' : ''}`}
-                      onClick={() => handleSettingsTabChange('general')}
-                    >
-                      <i className="bx bx-link-alt"></i>
-                      <div>
-                        <strong>Integrações gerais</strong>
-                        <span>Credenciais de mídia, CRM e IA.</span>
-                      </div>
-                    </button>
-
-                    <button
-                      type="button"
-                      className={`settings-sidebar-link ${activeSettingsTab === 'operation' ? 'active' : ''}`}
-                      onClick={() => handleSettingsTabChange('operation')}
-                    >
-                      <i className="bx bx-cog"></i>
-                      <div>
-                        <strong>Operação</strong>
-                        <span>Boards, ferramentas e IDs globais.</span>
-                      </div>
-                    </button>
-
-                    <button
-                      type="button"
-                      className={`settings-sidebar-link ${activeSettingsTab === 'calendar' ? 'active' : ''}`}
-                      onClick={() => handleSettingsTabChange('calendar')}
-                    >
-                      <i className="bx bx-calendar-event"></i>
-                      <div>
-                        <strong>Agenda</strong>
-                        <span>Google Calendar e rotina operacional.</span>
-                      </div>
-                    </button>
-
-                    <button
-                      type="button"
-                      className={`settings-sidebar-link ${activeSettingsTab === 'clients' ? 'active' : ''}`}
-                      onClick={() => handleSettingsTabChange('clients')}
-                    >
-                      <i className="bx bx-data"></i>
-                      <div>
-                        <strong>Clientes</strong>
-                        <span>Campos e abas da base de clientes.</span>
-                      </div>
-                    </button>
-                  </>
-                )}
-              </div>
-            </aside>
-
-            <div className="settings-section-content">
+          <div className="settings-section-content">
               {activeSettingsTab === 'panel' && (
                 <div className="settings-panel-layout settings-panel-layout-obsidian">
                   <div className="glass-item settings-block settings-block-full settings-block-hero">
@@ -2131,13 +2157,27 @@ export default function SettingsPage() {
                                 <button type="button" className="settings-inline-confirm" onClick={handleAddNewClientColumnOption} disabled={newClientColumnType !== 'select'}>
                                   <i className="bx bx-check"></i>
                                 </button>
+                                <button
+                                  type="button"
+                                  className="settings-inline-confirm settings-inline-remove"
+                                  onClick={() => setNewClientColumnOptionDraft('')}
+                                  disabled={newClientColumnType !== 'select' || !newClientColumnOptionDraft}
+                                >
+                                  <i className="bx bx-x"></i>
+                                </button>
                               </div>
                               {Boolean(normalizeSelectOptionsInput(newClientColumnOptions).length) && (
                                 <div className="settings-option-chips">
                                   {normalizeSelectOptionsInput(newClientColumnOptions).map((option) => (
-                                    <span key={`new-option-${option}`} className="stage-chip active">
+                                    <button
+                                      key={`new-option-${option}`}
+                                      type="button"
+                                      className="stage-chip active settings-chip-button"
+                                      onClick={() => handleRemoveNewClientColumnOption(option)}
+                                    >
                                       <span>{option}</span>
-                                    </span>
+                                      <i className="bx bx-x"></i>
+                                    </button>
                                   ))}
                                 </div>
                               )}
@@ -2264,13 +2304,27 @@ export default function SettingsPage() {
                                         <button type="button" className="settings-inline-confirm" onClick={() => handleAddSystemFieldOption(field.key)}>
                                           <i className="bx bx-check"></i>
                                         </button>
+                                        <button
+                                          type="button"
+                                          className="settings-inline-confirm settings-inline-remove"
+                                          onClick={() => setSystemFieldOptionDrafts((current) => ({ ...current, [field.key]: '' }))}
+                                          disabled={!systemFieldOptionDrafts[field.key]}
+                                        >
+                                          <i className="bx bx-x"></i>
+                                        </button>
                                       </div>
                                       {Boolean((field.options || []).length) && (
                                         <div className="settings-option-chips">
                                           {(field.options || []).map((option) => (
-                                            <span key={`${field.key}-${option}`} className="stage-chip active">
+                                            <button
+                                              key={`${field.key}-${option}`}
+                                              type="button"
+                                              className="stage-chip active settings-chip-button"
+                                              onClick={() => handleRemoveSystemFieldOption(field.key, option)}
+                                            >
                                               <span>{option}</span>
-                                            </span>
+                                              <i className="bx bx-x"></i>
+                                            </button>
                                           ))}
                                         </div>
                                       )}
@@ -2371,13 +2425,27 @@ export default function SettingsPage() {
                                       <button type="button" className="settings-inline-confirm" onClick={() => handleAddCustomFieldOption(column.id)} disabled={column.type !== 'select'}>
                                         <i className="bx bx-check"></i>
                                       </button>
+                                      <button
+                                        type="button"
+                                        className="settings-inline-confirm settings-inline-remove"
+                                        onClick={() => setCustomFieldOptionDrafts((current) => ({ ...current, [column.id]: '' }))}
+                                        disabled={column.type !== 'select' || !customFieldOptionDrafts[column.id]}
+                                      >
+                                        <i className="bx bx-x"></i>
+                                      </button>
                                     </div>
                                     {Boolean((column.options || []).length) && (
                                       <div className="settings-option-chips">
                                         {(column.options || []).map((option) => (
-                                          <span key={`${column.id}-${option}`} className="stage-chip active">
+                                          <button
+                                            key={`${column.id}-${option}`}
+                                            type="button"
+                                            className="stage-chip active settings-chip-button"
+                                            onClick={() => handleRemoveCustomFieldOption(column.id, option)}
+                                          >
                                             <span>{option}</span>
-                                          </span>
+                                            <i className="bx bx-x"></i>
+                                          </button>
                                         ))}
                                       </div>
                                     )}
@@ -2538,7 +2606,6 @@ export default function SettingsPage() {
                   </button>
                 </div>
               </div>
-            </div>
           </div>
         </section>
       </main>
@@ -2546,6 +2613,14 @@ export default function SettingsPage() {
       <style jsx>{`
         .settings-main {
           width: 100%;
+        }
+
+        .settings-main {
+          width: 100%;
+          display: grid;
+          grid-template-columns: minmax(220px, 260px) minmax(0, 1fr);
+          gap: 24px;
+          align-items: start;
         }
 
         .settings-panel {
@@ -2579,13 +2654,6 @@ export default function SettingsPage() {
         .settings-block p {
           color: var(--text-secondary);
           line-height: 1.6;
-        }
-
-        .settings-shell {
-          display: grid;
-          grid-template-columns: minmax(220px, 260px) minmax(0, 1fr);
-          gap: 24px;
-          align-items: start;
         }
 
         .settings-section-sidebar {
@@ -3533,7 +3601,7 @@ export default function SettingsPage() {
 
         .settings-inline-action {
           display: grid;
-          grid-template-columns: minmax(0, 1fr) 40px;
+          grid-template-columns: minmax(0, 1fr) 40px 40px;
           gap: 8px;
           align-items: center;
         }
@@ -3545,6 +3613,12 @@ export default function SettingsPage() {
           border: 1px solid rgba(59, 130, 246, 0.2);
           background: color-mix(in srgb, var(--accent-blue) 12%, transparent);
           color: #93c5fd;
+        }
+
+        .settings-inline-remove {
+          border-color: rgba(244, 63, 94, 0.22);
+          background: color-mix(in srgb, #f43f5e 10%, transparent);
+          color: #fda4af;
         }
 
         .settings-option-chips {
@@ -3830,7 +3904,7 @@ export default function SettingsPage() {
         }
 
         @media (max-width: 980px) {
-          .settings-shell {
+          .settings-main {
             grid-template-columns: 1fr;
           }
 
