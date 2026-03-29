@@ -6,7 +6,13 @@ import Link from 'next/link'
 import { useUser } from '@/lib/contexts/UserContext'
 import { DEFAULT_USER_APPEARANCE } from '@/lib/user-appearance-storage'
 import { USER_APPEARANCE_PRESETS } from '@/lib/user-appearance-storage'
-import { DEFAULT_PREFERENCES, loadDashboardPreferences, saveDashboardPreferences } from '@/lib/dashboard-storage'
+import {
+  createClientCustomColumnRecord,
+  createClientCustomTabRecord,
+  DEFAULT_PREFERENCES,
+  loadDashboardPreferences,
+  saveDashboardPreferences,
+} from '@/lib/dashboard-storage'
 import {
   AI_PROVIDER_OPTIONS,
   createDefaultAiAgents,
@@ -18,7 +24,11 @@ import {
   normalizeAiSettings,
 } from '@/lib/ai-config'
 import type { AiAgent, AiProviderConfig, AiProvidersMap, AiSettings } from '@/lib/types/ai'
-import type { DashboardIntegrations } from '@/lib/types/dashboard'
+import type {
+  ClientCustomColumnRecord,
+  ClientCustomTabRecord,
+  DashboardIntegrations,
+} from '@/lib/types/dashboard'
 import type { UserAppearance } from '@/lib/types/user'
 
 interface IntegrationField {
@@ -43,12 +53,14 @@ interface MetaConnectionState {
   expiresAt: string
 }
 
-type SettingsTab = 'panel' | 'general' | 'operation' | 'calendar'
+type SettingsTab = 'panel' | 'general' | 'operation' | 'calendar' | 'clients'
 
 type GlobalIntegrationsState = DashboardIntegrations & Record<string, unknown>
 
 interface SettingsServerState {
   globalIntegrations?: Partial<GlobalIntegrationsState>
+  clientCustomColumns?: ClientCustomColumnRecord[]
+  clientCustomTabs?: ClientCustomTabRecord[]
   [key: string]: unknown
 }
 
@@ -190,6 +202,45 @@ const OPERATION_INTEGRATION_TITLES = new Set(['ClickUp', 'Monday'])
 const AD_ACCOUNT_INTEGRATION_TITLES = new Set(['Google Ads', 'TikTok Ads', 'LinkedIn Ads'])
 const CRM_INTEGRATION_TITLES = new Set(['RD Station CRM', 'Salesforce', 'Agendor'])
 
+const CLIENT_CUSTOM_COLUMN_TYPE_OPTIONS: Array<{ value: ClientCustomColumnRecord['type']; label: string }> = [
+  { value: 'text', label: 'Texto' },
+  { value: 'long_text', label: 'Area de texto' },
+  { value: 'number', label: 'Numero' },
+  { value: 'currency', label: 'Moeda' },
+  { value: 'percent', label: 'Percentual' },
+  { value: 'date', label: 'Data' },
+  { value: 'link', label: 'Link' },
+  { value: 'email', label: 'E-mail' },
+  { value: 'phone', label: 'Telefone' },
+  { value: 'person', label: 'Pessoas' },
+  { value: 'progress', label: 'Progresso' },
+  { value: 'checkbox', label: 'Caixa de selecao' },
+  { value: 'select', label: 'Dropdown' },
+  { value: 'formula', label: 'Formula' },
+  { value: 'flag', label: 'Flag' },
+]
+
+const DEFAULT_CLIENT_FIELD_TABS = [
+  { key: 'geral', label: 'Geral' },
+  { key: 'flags', label: 'Flags' },
+  { key: 'quality', label: 'Quality Check' },
+  { key: 'dados', label: 'Dados' },
+  { key: 'financeiro', label: 'Financeiro' },
+  { key: 'branding', label: 'Branding' },
+  { key: 'mais', label: 'Mais 1' },
+]
+
+function normalizeSelectOptionsInput(value: string): string[] {
+  return Array.from(
+    new Set(
+      String(value || '')
+        .split(',')
+        .map((item) => item.trim())
+        .filter(Boolean)
+    )
+  )
+}
+
 function clampRgbChannel(value: string | number): number {
   const parsed = Number.parseInt(String(value), 10)
   if (!Number.isFinite(parsed)) return 0
@@ -239,6 +290,20 @@ export default function SettingsPage() {
   const [panelDraft, setPanelDraft] = useState<UserAppearance>(appearance)
   const [panelFeedback, setPanelFeedback] = useState('')
   const [settingsSaveFeedback, setSettingsSaveFeedback] = useState('')
+  const [clientCustomColumns, setClientCustomColumns] = useState<ClientCustomColumnRecord[]>(() => {
+    const preferences = loadDashboardPreferences()
+    return Array.isArray(preferences.clientCustomColumns) ? preferences.clientCustomColumns : []
+  })
+  const [clientCustomTabs, setClientCustomTabs] = useState<ClientCustomTabRecord[]>(() => {
+    const preferences = loadDashboardPreferences()
+    return Array.isArray(preferences.clientCustomTabs) ? preferences.clientCustomTabs : []
+  })
+  const [newClientColumnLabel, setNewClientColumnLabel] = useState('')
+  const [newClientColumnType, setNewClientColumnType] = useState<ClientCustomColumnRecord['type']>('text')
+  const [newClientColumnTab, setNewClientColumnTab] = useState('geral')
+  const [newClientColumnOptions, setNewClientColumnOptions] = useState('')
+  const [newClientColumnFormula, setNewClientColumnFormula] = useState('')
+  const [newClientTabLabel, setNewClientTabLabel] = useState('')
   const metaConnectionMode = globalIntegrations.metaConnectionMode === 'oauth' ? 'oauth' : 'manual'
   const hasMetaManualToken = Boolean(String(globalIntegrations.metaAccessToken || '').trim())
   const hasMetaOauthConnection = Boolean(metaConnection.connected)
@@ -250,6 +315,10 @@ export default function SettingsPage() {
   const backgroundPreviewStyle: BackgroundPreviewStyle = {
     '--panel-bg-tint': panelDraft.backgroundTint,
   }
+  const clientFieldTabOptions = [
+    ...DEFAULT_CLIENT_FIELD_TABS,
+    ...clientCustomTabs.map((tab) => ({ key: tab.key, label: tab.label })),
+  ]
   const selectedAiProvider = getAiProviderOption(globalIntegrations.aiProvider)
   const activeAiProviderConfig: AiProviderConfig =
     (globalIntegrations.aiProviders?.[selectedAiProvider.value] as AiProviderConfig | undefined) ||
@@ -324,6 +393,8 @@ export default function SettingsPage() {
             ...normalizeAiSettings(nextIntegrations),
           }
         })
+        setClientCustomColumns(Array.isArray(state.clientCustomColumns) ? state.clientCustomColumns : [])
+        setClientCustomTabs(Array.isArray(state.clientCustomTabs) ? state.clientCustomTabs : [])
     } catch (error) {
       console.error('Erro ao carregar integrações globais do servidor:', error)
     }
@@ -409,6 +480,8 @@ export default function SettingsPage() {
       setActiveSettingsTab('operation')
     } else if (tab === 'calendar') {
       setActiveSettingsTab('calendar')
+    } else if (tab === 'clients') {
+      setActiveSettingsTab('clients')
     } else if (tab === 'ai') {
       setActiveSettingsTab('general')
     } else if (tab === 'general') {
@@ -659,6 +732,156 @@ export default function SettingsPage() {
     setSettingsSaveFeedback('Preferências visuais salvas e aplicadas neste navegador.')
   }
 
+  const persistClientStructure = useCallback(
+    async (nextColumns: ClientCustomColumnRecord[], nextTabs: ClientCustomTabRecord[]) => {
+      const preferences = loadDashboardPreferences()
+      saveDashboardPreferences({
+        ...preferences,
+        clientCustomColumns: nextColumns,
+        clientCustomTabs: nextTabs,
+      })
+
+      if (canManageClients && serverState) {
+        const response = await fetch('/api/dashboard/state', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            ...serverState,
+            clientCustomColumns: nextColumns,
+            clientCustomTabs: nextTabs,
+          }),
+        })
+
+        const data = await response.json().catch(() => null)
+        if (!response.ok) {
+          throw new Error(data?.error || 'Não foi possível salvar a estrutura de clientes.')
+        }
+
+        setServerState(data)
+      }
+    },
+    [canManageClients, serverState]
+  )
+
+  const handleCreateClientCustomColumn = () => {
+    if (!canManageClients) return
+    const trimmedLabel = newClientColumnLabel.trim()
+    if (!trimmedLabel) return
+
+    const nextColumns = [
+      ...clientCustomColumns,
+      createClientCustomColumnRecord({
+        label: trimmedLabel,
+        type: newClientColumnType,
+        tabKey: newClientColumnTab,
+        options: newClientColumnType === 'select' ? normalizeSelectOptionsInput(newClientColumnOptions) : [],
+        formulaExpression: newClientColumnType === 'formula' ? newClientColumnFormula : '',
+      }),
+    ]
+
+    setClientCustomColumns(nextColumns)
+    void persistClientStructure(nextColumns, clientCustomTabs)
+    setNewClientColumnLabel('')
+    setNewClientColumnType('text')
+    setNewClientColumnTab('geral')
+    setNewClientColumnOptions('')
+    setNewClientColumnFormula('')
+    setSettingsSaveFeedback('Campo salvo em Configurações e sincronizado com a base.')
+  }
+
+  const handleCreateClientCustomTab = () => {
+    if (!canManageClients) return
+    const trimmedLabel = newClientTabLabel.trim()
+    if (!trimmedLabel) return
+
+    const nextTabs = [...clientCustomTabs, createClientCustomTabRecord({ label: trimmedLabel })]
+    setClientCustomTabs(nextTabs)
+    void persistClientStructure(clientCustomColumns, nextTabs)
+    setNewClientTabLabel('')
+    setSettingsSaveFeedback('Aba salva em Configurações e sincronizada com a base.')
+  }
+
+  const handleClientCustomColumnFieldChange = (
+    columnId: string,
+    fieldName: keyof ClientCustomColumnRecord | 'optionsInput',
+    value: string
+  ) => {
+    if (!canManageClients) return
+
+    const nextColumns = clientCustomColumns.map((column) =>
+      column.id === columnId
+        ? createClientCustomColumnRecord({
+            ...column,
+            [fieldName === 'optionsInput' ? 'options' : fieldName]:
+              fieldName === 'optionsInput' ? normalizeSelectOptionsInput(value) : value,
+            options:
+              fieldName === 'type' && value !== 'select'
+                ? []
+                : fieldName === 'optionsInput'
+                  ? normalizeSelectOptionsInput(value)
+                  : column.options,
+            formulaExpression:
+              fieldName === 'type' && value !== 'formula'
+                ? ''
+                : fieldName === 'formulaExpression'
+                  ? value
+                  : column.formulaExpression,
+          })
+        : column
+    )
+
+    setClientCustomColumns(nextColumns)
+    void persistClientStructure(nextColumns, clientCustomTabs)
+  }
+
+  const handleRemoveClientCustomColumn = (columnKey: string) => {
+    if (!canManageClients) return
+    const nextColumns = clientCustomColumns.filter((column) => column.key !== columnKey)
+    const nextTabs = clientCustomTabs.map((tab) => ({
+      ...tab,
+      columnKeys: (tab.columnKeys || []).filter((currentKey) => currentKey !== columnKey),
+    }))
+    setClientCustomColumns(nextColumns)
+    setClientCustomTabs(nextTabs)
+    void persistClientStructure(nextColumns, nextTabs)
+    setSettingsSaveFeedback('Campo removido da estrutura de clientes.')
+  }
+
+  const handleClientCustomTabFieldChange = (tabId: string, value: string) => {
+    if (!canManageClients) return
+    const nextTabs = clientCustomTabs.map((tab) =>
+      tab.id === tabId ? createClientCustomTabRecord({ ...tab, label: value }) : tab
+    )
+    setClientCustomTabs(nextTabs)
+    void persistClientStructure(clientCustomColumns, nextTabs)
+  }
+
+  const handleClientCustomTabColumnToggle = (tabId: string, columnKey: string) => {
+    if (!canManageClients) return
+    const nextTabs = clientCustomTabs.map((tab) => {
+      if (tab.id !== tabId) return tab
+      const currentKeys = Array.isArray(tab.columnKeys) ? tab.columnKeys : []
+      return {
+        ...tab,
+        columnKeys: currentKeys.includes(columnKey)
+          ? currentKeys.filter((item) => item !== columnKey)
+          : [...currentKeys, columnKey],
+      }
+    })
+    setClientCustomTabs(nextTabs)
+    void persistClientStructure(clientCustomColumns, nextTabs)
+  }
+
+  const handleRemoveClientCustomTab = (tabId: string) => {
+    if (!canManageClients) return
+    const nextTabs = clientCustomTabs.filter((tab) => tab.id !== tabId)
+    setClientCustomTabs(nextTabs)
+    void persistClientStructure(clientCustomColumns, nextTabs)
+    setSettingsSaveFeedback('Aba removida da estrutura de clientes.')
+  }
+
   const handleSaveCurrentSettings = async () => {
     setSettingsSaveFeedback('')
     const feedbackMessages: string[] = []
@@ -792,6 +1015,18 @@ export default function SettingsPage() {
                       <div>
                         <strong>Agenda</strong>
                         <span>Google Calendar e rotina operacional.</span>
+                      </div>
+                    </button>
+
+                    <button
+                      type="button"
+                      className={`settings-sidebar-link ${activeSettingsTab === 'clients' ? 'active' : ''}`}
+                      onClick={() => handleSettingsTabChange('clients')}
+                    >
+                      <i className="bx bx-data"></i>
+                      <div>
+                        <strong>Clientes</strong>
+                        <span>Campos e abas da base de clientes.</span>
                       </div>
                     </button>
                   </>
@@ -1521,6 +1756,235 @@ export default function SettingsPage() {
                             <Link href="/calendar" className="btn btn-secondary">
                               Gerenciar conexão
                             </Link>
+                          </div>
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </div>
+              )}
+
+              {canManageClients && activeSettingsTab === 'clients' && (
+                <div className="glass-item settings-block settings-block-full">
+                  <div className="settings-section-head">
+                    <div>
+                      <h2>Estrutura da base de clientes</h2>
+                      <p>Edite aqui os campos e as abas que organizam o cadastro dos clientes. Tudo salva direto no Supabase.</p>
+                    </div>
+                  </div>
+
+                  <div className="settings-general-layout">
+                    <section className="settings-category-shell">
+                      <div className="settings-category-head">
+                        <span className="settings-category-kicker">Campos</span>
+                        <h3>Crie e edite a biblioteca de campos</h3>
+                        <p>Defina o tipo, a aba e as opções dos campos customizados da operação.</p>
+                      </div>
+
+                      <div className="settings-category-grid">
+                        <div className="integration-block">
+                          <div className="integration-heading">
+                            <div className="integration-icon" style={{ color: '#3b82f6', borderColor: '#3b82f633' }}>
+                              <i className="bx bx-list-plus"></i>
+                            </div>
+                            <div>
+                              <h3>Novo campo</h3>
+                              <p>Monte campos no estilo ClickUp e escolha em qual aba eles aparecem.</p>
+                            </div>
+                          </div>
+
+                          <div className="settings-form-grid">
+                            <div className="input-group">
+                              <label>Nome do campo</label>
+                              <input type="text" value={newClientColumnLabel} onChange={(event) => setNewClientColumnLabel(event.target.value)} placeholder="Ex.: SLA, Categoria, Ticket" />
+                            </div>
+                            <div className="input-group">
+                              <label>Tipo</label>
+                              <select value={newClientColumnType} onChange={(event) => setNewClientColumnType(event.target.value as ClientCustomColumnRecord['type'])}>
+                                {CLIENT_CUSTOM_COLUMN_TYPE_OPTIONS.map((option) => (
+                                  <option key={option.value} value={option.value}>{option.label}</option>
+                                ))}
+                              </select>
+                            </div>
+                            <div className="input-group">
+                              <label>Aba</label>
+                              <select value={newClientColumnTab} onChange={(event) => setNewClientColumnTab(event.target.value)}>
+                                {clientFieldTabOptions.map((tab) => (
+                                  <option key={tab.key} value={tab.key}>{tab.label}</option>
+                                ))}
+                              </select>
+                            </div>
+                            <div className="input-group">
+                              <label>Opções do dropdown</label>
+                              <input
+                                type="text"
+                                value={newClientColumnOptions}
+                                onChange={(event) => setNewClientColumnOptions(event.target.value)}
+                                placeholder="Ativo, Pausado, Revisão"
+                                disabled={newClientColumnType !== 'select'}
+                              />
+                            </div>
+                            <div className="input-group settings-field-span-2">
+                              <label>Fórmula</label>
+                              <input
+                                type="text"
+                                value={newClientColumnFormula}
+                                onChange={(event) => setNewClientColumnFormula(event.target.value)}
+                                placeholder="Ex.: ({fee} * 12) / {mediaInvestment}"
+                                disabled={newClientColumnType !== 'formula'}
+                              />
+                            </div>
+                          </div>
+
+                          <div className="modal-actions">
+                            <button type="button" className="btn btn-primary" onClick={handleCreateClientCustomColumn}>
+                              Criar campo
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="integration-block">
+                          <div className="integration-heading">
+                            <div className="integration-icon" style={{ color: '#8b5cf6', borderColor: '#8b5cf633' }}>
+                              <i className="bx bx-folder-open"></i>
+                            </div>
+                            <div>
+                              <h3>Nova aba</h3>
+                              <p>Crie novas abas para organizar a base de clientes da forma que fizer sentido para a operação.</p>
+                            </div>
+                          </div>
+
+                          <div className="settings-form-grid">
+                            <div className="input-group">
+                              <label>Nome da aba</label>
+                              <input type="text" value={newClientTabLabel} onChange={(event) => setNewClientTabLabel(event.target.value)} placeholder="Ex.: Comercial, CS, Financeiro" />
+                            </div>
+                          </div>
+
+                          <div className="modal-actions">
+                            <button type="button" className="btn btn-primary" onClick={handleCreateClientCustomTab}>
+                              Criar aba
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </section>
+
+                    <section className="settings-category-shell">
+                      <div className="settings-category-head">
+                        <span className="settings-category-kicker">Editor</span>
+                        <h3>Campos e abas atuais</h3>
+                        <p>Renomeie, troque o tipo, mova entre abas e ajuste as relações visuais por aqui.</p>
+                      </div>
+
+                      <div className="settings-category-grid">
+                        <div className="integration-block">
+                          <div className="integration-heading">
+                            <div className="integration-icon" style={{ color: '#10b981', borderColor: '#10b98133' }}>
+                              <i className="bx bx-table"></i>
+                            </div>
+                            <div>
+                              <h3>Campos customizados</h3>
+                              <p>Todos os campos extras da base ficam centralizados aqui.</p>
+                            </div>
+                          </div>
+
+                          <div className="settings-stack-list">
+                            {clientCustomColumns.map((column) => (
+                              <div key={column.id} className="glass-item settings-stack-card">
+                                <div className="settings-form-grid">
+                                  <div className="input-group">
+                                    <label>Nome</label>
+                                    <input type="text" value={column.label} onChange={(event) => handleClientCustomColumnFieldChange(column.id, 'label', event.target.value)} />
+                                  </div>
+                                  <div className="input-group">
+                                    <label>Tipo</label>
+                                    <select value={column.type} onChange={(event) => handleClientCustomColumnFieldChange(column.id, 'type', event.target.value)}>
+                                      {CLIENT_CUSTOM_COLUMN_TYPE_OPTIONS.map((option) => (
+                                        <option key={`${column.id}-${option.value}`} value={option.value}>{option.label}</option>
+                                      ))}
+                                    </select>
+                                  </div>
+                                  <div className="input-group">
+                                    <label>Aba</label>
+                                    <select value={column.tabKey || 'geral'} onChange={(event) => handleClientCustomColumnFieldChange(column.id, 'tabKey', event.target.value)}>
+                                      {clientFieldTabOptions.map((tab) => (
+                                        <option key={`${column.id}-${tab.key}`} value={tab.key}>{tab.label}</option>
+                                      ))}
+                                    </select>
+                                  </div>
+                                  <div className="input-group">
+                                    <label>Opções</label>
+                                    <input
+                                      type="text"
+                                      value={(column.options || []).join(', ')}
+                                      onChange={(event) => handleClientCustomColumnFieldChange(column.id, 'optionsInput', event.target.value)}
+                                      placeholder="Ativo, Pausado, Revisão"
+                                      disabled={column.type !== 'select'}
+                                    />
+                                  </div>
+                                  <div className="input-group settings-field-span-2">
+                                    <label>Fórmula</label>
+                                    <input
+                                      type="text"
+                                      value={column.formulaExpression || ''}
+                                      onChange={(event) => handleClientCustomColumnFieldChange(column.id, 'formulaExpression', event.target.value)}
+                                      placeholder="Ex.: ({fee} + {monthlyRevenue}) / 2"
+                                      disabled={column.type !== 'formula'}
+                                    />
+                                  </div>
+                                </div>
+
+                                <div className="modal-actions">
+                                  <button type="button" className="btn btn-secondary" onClick={() => handleRemoveClientCustomColumn(column.key)}>
+                                    Excluir campo
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                            {!clientCustomColumns.length && <p className="settings-empty-note">Nenhum campo customizado criado ainda.</p>}
+                          </div>
+                        </div>
+
+                        <div className="integration-block">
+                          <div className="integration-heading">
+                            <div className="integration-icon" style={{ color: '#f59e0b', borderColor: '#f59e0b33' }}>
+                              <i className="bx bx-columns"></i>
+                            </div>
+                            <div>
+                              <h3>Abas customizadas</h3>
+                              <p>Administre o nome das abas e quais campos entram em cada uma.</p>
+                            </div>
+                          </div>
+
+                          <div className="settings-stack-list">
+                            {clientCustomTabs.map((tab) => (
+                              <div key={tab.id} className="glass-item settings-stack-card">
+                                <div className="input-group">
+                                  <label>Nome da aba</label>
+                                  <input type="text" value={tab.label} onChange={(event) => handleClientCustomTabFieldChange(tab.id, event.target.value)} />
+                                </div>
+
+                                <div className="stage-selector">
+                                  {clientCustomColumns.map((column) => {
+                                    const checked = (tab.columnKeys || []).includes(column.key)
+                                    return (
+                                      <label key={`${tab.id}-${column.key}`} className={`stage-chip ${checked ? 'active' : ''}`}>
+                                        <input type="checkbox" checked={checked} onChange={() => handleClientCustomTabColumnToggle(tab.id, column.key)} />
+                                        <span>{column.label}</span>
+                                      </label>
+                                    )
+                                  })}
+                                </div>
+
+                                <div className="modal-actions">
+                                  <button type="button" className="btn btn-secondary" onClick={() => handleRemoveClientCustomTab(tab.id)}>
+                                    Excluir aba
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                            {!clientCustomTabs.length && <p className="settings-empty-note">Nenhuma aba customizada criada ainda.</p>}
                           </div>
                         </div>
                       </div>
@@ -2491,6 +2955,33 @@ export default function SettingsPage() {
 
         .settings-category-grid {
           align-items: start;
+        }
+
+        .settings-form-grid {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 14px;
+        }
+
+        .settings-field-span-2 {
+          grid-column: 1 / -1;
+        }
+
+        .settings-stack-list {
+          display: grid;
+          gap: 14px;
+        }
+
+        .settings-stack-card {
+          padding: 18px;
+          border-radius: 18px;
+          display: grid;
+          gap: 14px;
+        }
+
+        .settings-empty-note {
+          margin: 0;
+          color: var(--text-secondary);
         }
 
         .settings-integrations-grid-operation {

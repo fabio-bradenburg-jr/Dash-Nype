@@ -4243,7 +4243,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
 
   const handleCreateClientCustomColumn = (event) => {
     event.preventDefault()
-    if (!isMaster) return
+    if (!canManageClients) return
     const trimmedLabel = newClientColumnLabel.trim()
     if (!trimmedLabel) return
 
@@ -4265,7 +4265,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
 
   const handleCreateClientCustomTab = (event) => {
     event.preventDefault()
-    if (!isMaster) return
+    if (!canManageClients) return
     const trimmedLabel = newClientTabLabel.trim()
     if (!trimmedLabel) return
 
@@ -4306,6 +4306,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
   }
 
   const handleClientCustomColumnFieldChange = (columnId, fieldName, value) => {
+    if (!canManageClients) return
     setClientCustomColumns((current) =>
       current.map((column) =>
         column.id === columnId
@@ -4332,7 +4333,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
   }
 
   const handleRemoveClientCustomColumn = (columnKey) => {
-    if (!isMaster) return
+    if (!canManageClients) return
     setClientCustomColumns((current) => current.filter((column) => column.key !== columnKey))
     setClientCustomTabs((current) =>
       current.map((tab) => ({
@@ -4353,6 +4354,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
   }
 
   const handleClientCustomTabFieldChange = (tabId, fieldName, value) => {
+    if (!canManageClients) return
     setClientCustomTabs((current) =>
       current.map((tab) =>
         tab.id === tabId
@@ -4367,6 +4369,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
   }
 
   const handleClientCustomTabColumnToggle = (tabId, columnKey) => {
+    if (!canManageClients) return
     setClientCustomTabs((current) =>
       current.map((tab) => {
         if (tab.id !== tabId) return tab
@@ -4382,7 +4385,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
   }
 
   const handleRemoveClientCustomTab = (tabId) => {
-    if (!isMaster) return
+    if (!canManageClients) return
     setClientCustomTabs((current) => current.filter((tab) => tab.id !== tabId))
   }
 
@@ -9886,14 +9889,14 @@ export default function DashboardShell({ initialTab = 'home' }) {
                         value={newClientColumnLabel}
                         onChange={(event) => setNewClientColumnLabel(event.target.value)}
                         placeholder="Ex.: SLA, Categoria, Ticket..."
-                        disabled={!isMaster}
+                        disabled={!canManageClients}
                       />
-                      <select value={newClientColumnType} onChange={(event) => setNewClientColumnType(event.target.value)} disabled={!isMaster}>
+                      <select value={newClientColumnType} onChange={(event) => setNewClientColumnType(event.target.value)} disabled={!canManageClients}>
                         {CLIENT_CUSTOM_COLUMN_TYPE_OPTIONS.map((option) => (
                           <option key={option.value} value={option.value}>{option.label}</option>
                         ))}
                       </select>
-                      <select value={newClientColumnTab} onChange={(event) => setNewClientColumnTab(event.target.value)} disabled={!isMaster}>
+                      <select value={newClientColumnTab} onChange={(event) => setNewClientColumnTab(event.target.value)} disabled={!canManageClients}>
                         {clientFieldTabOptions.map((tab) => (
                           <option key={tab.key} value={tab.key}>{tab.label}</option>
                         ))}
@@ -9903,16 +9906,16 @@ export default function DashboardShell({ initialTab = 'home' }) {
                         value={newClientColumnOptions}
                         onChange={(event) => setNewClientColumnOptions(event.target.value)}
                         placeholder={newClientColumnType === 'select' ? 'Opções separadas por vírgula' : 'Use para dropdown'}
-                        disabled={!isMaster || newClientColumnType !== 'select'}
+                        disabled={!canManageClients || newClientColumnType !== 'select'}
                       />
                       <input
                         type="text"
                         value={newClientColumnFormula}
                         onChange={(event) => setNewClientColumnFormula(event.target.value)}
                         placeholder={newClientColumnType === 'formula' ? 'Ex.: ({fee} * 12) / {mediaInvestment}' : 'Use para fórmulas'}
-                        disabled={!isMaster || newClientColumnType !== 'formula'}
+                        disabled={!canManageClients || newClientColumnType !== 'formula'}
                       />
-                      <button type="submit" className="btn btn-primary" disabled={!isMaster}>Criar coluna</button>
+                      <button type="submit" className="btn btn-primary" disabled={!canManageClients}>Criar coluna</button>
                     </div>
                     {newClientColumnType === 'formula' && (
                       <div className="stage-selector">
@@ -9952,9 +9955,9 @@ export default function DashboardShell({ initialTab = 'home' }) {
                         value={newClientTabLabel}
                         onChange={(event) => setNewClientTabLabel(event.target.value)}
                         placeholder="Ex.: Suporte, Comercial, CS..."
-                        disabled={!isMaster}
+                        disabled={!canManageClients}
                       />
-                      <button type="submit" className="btn btn-primary" disabled={!isMaster}>Criar aba</button>
+                      <button type="submit" className="btn btn-primary" disabled={!canManageClients}>Criar aba</button>
                     </div>
                   </form>
                 </div>
@@ -9965,13 +9968,26 @@ export default function DashboardShell({ initialTab = 'home' }) {
                     <div className="client-structure-list">
                       {clientCustomColumns.map((column) => (
                         <div key={column.id} className="client-structure-item">
-                          <input type="text" value={column.label} onChange={(event) => handleClientCustomColumnFieldChange(column.id, 'label', event.target.value)} />
-                          <select value={column.type} onChange={(event) => handleClientCustomColumnFieldChange(column.id, 'type', event.target.value)}>
+                          <input
+                            type="text"
+                            value={column.label}
+                            onChange={(event) => handleClientCustomColumnFieldChange(column.id, 'label', event.target.value)}
+                            disabled={!canManageClients}
+                          />
+                          <select
+                            value={column.type}
+                            onChange={(event) => handleClientCustomColumnFieldChange(column.id, 'type', event.target.value)}
+                            disabled={!canManageClients}
+                          >
                             {CLIENT_CUSTOM_COLUMN_TYPE_OPTIONS.map((option) => (
                               <option key={option.value} value={option.value}>{option.label}</option>
                             ))}
                           </select>
-                          <select value={column.tabKey || 'geral'} onChange={(event) => handleClientCustomColumnFieldChange(column.id, 'tabKey', event.target.value)}>
+                          <select
+                            value={column.tabKey || 'geral'}
+                            onChange={(event) => handleClientCustomColumnFieldChange(column.id, 'tabKey', event.target.value)}
+                            disabled={!canManageClients}
+                          >
                             {clientFieldTabOptions.map((tab) => (
                               <option key={`${column.id}-${tab.key}`} value={tab.key}>{tab.label}</option>
                             ))}
@@ -9981,14 +9997,14 @@ export default function DashboardShell({ initialTab = 'home' }) {
                             value={(column.options || []).join(', ')}
                             onChange={(event) => handleClientCustomColumnFieldChange(column.id, 'options', event.target.value)}
                             placeholder={column.type === 'select' ? 'Ex.: Ativo, Pausado, Revisão' : 'Use para colunas dropdown'}
-                            disabled={column.type !== 'select'}
+                            disabled={!canManageClients || column.type !== 'select'}
                           />
                           <input
                             type="text"
                             value={column.formulaExpression || ''}
                             onChange={(event) => handleClientCustomColumnFieldChange(column.id, 'formulaExpression', event.target.value)}
                             placeholder={column.type === 'formula' ? 'Ex.: ({fee} + {monthlyRevenue}) / 2' : 'Use para campos fórmula'}
-                            disabled={column.type !== 'formula'}
+                            disabled={!canManageClients || column.type !== 'formula'}
                           />
                           {column.type === 'formula' && (
                             <div className="stage-selector">
@@ -9997,6 +10013,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
                                   key={`${column.id}-${token}`}
                                   type="button"
                                   className="stage-chip"
+                                  disabled={!canManageClients}
                                   onClick={() => handleClientCustomColumnFieldChange(column.id, 'formulaExpression', `${column.formulaExpression || ''}${token}`)}
                                 >
                                   <span>{token}</span>
@@ -10007,6 +10024,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
                                   key={`${column.id}-${field.key}`}
                                   type="button"
                                   className="stage-chip"
+                                  disabled={!canManageClients}
                                   onClick={() => handleClientCustomColumnFieldChange(column.id, 'formulaExpression', `${column.formulaExpression || ''}{${field.key}}`)}
                                 >
                                   <span>{field.label}</span>
@@ -10014,7 +10032,9 @@ export default function DashboardShell({ initialTab = 'home' }) {
                               ))}
                             </div>
                           )}
-                          <button type="button" className="btn btn-secondary" onClick={() => handleRemoveClientCustomColumn(column.key)}>Excluir</button>
+                          {canManageClients && (
+                            <button type="button" className="btn btn-secondary" onClick={() => handleRemoveClientCustomColumn(column.key)}>Excluir</button>
+                          )}
                         </div>
                       ))}
                       {!clientCustomColumns.length && <p className="field-helper">Nenhum campo customizado criado ainda.</p>}
@@ -10027,8 +10047,15 @@ export default function DashboardShell({ initialTab = 'home' }) {
                       {clientCustomTabs.map((tab) => (
                         <div key={tab.id} className="client-structure-tab-item">
                           <div className="client-structure-tab-head">
-                            <input type="text" value={tab.label} onChange={(event) => handleClientCustomTabFieldChange(tab.id, 'label', event.target.value)} />
-                            <button type="button" className="btn btn-secondary" onClick={() => handleRemoveClientCustomTab(tab.id)}>Excluir</button>
+                            <input
+                              type="text"
+                              value={tab.label}
+                              onChange={(event) => handleClientCustomTabFieldChange(tab.id, 'label', event.target.value)}
+                              disabled={!canManageClients}
+                            />
+                            {canManageClients && (
+                              <button type="button" className="btn btn-secondary" onClick={() => handleRemoveClientCustomTab(tab.id)}>Excluir</button>
+                            )}
                           </div>
                           <div className="stage-selector">
                             {clientCustomColumns.map((column) => {
@@ -10038,6 +10065,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
                                   <input
                                     type="checkbox"
                                     checked={checked}
+                                    disabled={!canManageClients}
                                     onChange={() => handleClientCustomTabColumnToggle(tab.id, column.key)}
                                   />
                                   <span>{column.label}</span>
