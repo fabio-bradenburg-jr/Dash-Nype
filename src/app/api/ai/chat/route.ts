@@ -11,6 +11,7 @@ function normalizeChatBody(body: unknown): AssistantChatBody {
 
   return {
     clientId: String(payload.clientId || '').trim(),
+    conversationId: String(payload.conversationId || '').trim(),
     messages: Array.isArray(payload.messages) ? (payload.messages as AssistantMessage[]) : [],
     contextSnapshot:
       payload.contextSnapshot && typeof payload.contextSnapshot === 'object'
@@ -39,7 +40,7 @@ export async function POST(request: Request) {
     const adminSupabase = createAdminClient()
     const accessContext = await getAccessContext(adminSupabase, user)
 
-    if (!accessContext.canViewDashboard) {
+    if (!accessContext.canUseAi) {
       return NextResponse.json(
         { error: 'Seu usuário não tem permissão para usar o assistente.' },
         { status: 403 }
@@ -54,6 +55,7 @@ export async function POST(request: Request) {
       dashboardState,
       accessContext,
       clientId: body.clientId,
+      conversationId: body.conversationId,
       contextSnapshot: body.contextSnapshot,
       messages: body.messages,
     })

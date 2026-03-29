@@ -4,7 +4,12 @@ import type { ChangeEvent, FormEvent } from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useUser } from '@/lib/contexts/UserContext'
-import type { AiAgent } from '@/lib/types/ai'
+import type {
+  AiAgent,
+  AssistantAiAccessLevel,
+  AssistantConversationDetail,
+  AssistantConversationSummary,
+} from '@/lib/types/ai'
 
 const STORAGE_KEY = 'nype-assistant-chat-v1'
 const DEFAULT_VOICE_LANGUAGE = 'pt-BR'
@@ -33,6 +38,10 @@ interface AssistantDashboardState {
   activeClientId?: string
   clientGroups?: unknown[]
   error?: string
+  access?: {
+    aiAccessLevel?: AssistantAiAccessLevel
+    canUseAi?: boolean
+  }
   globalIntegrations?: {
     aiProvider?: string
     aiModel?: string
@@ -43,6 +52,7 @@ interface AssistantDashboardState {
 interface AssistantReplyPayload {
   reply?: string
   error?: string
+  conversation?: AssistantConversationSummary
 }
 
 interface AssistantPageProps {
@@ -91,22 +101,14 @@ function createWelcomeMessage(clientName = ''): AssistantMessageItem {
   }
 }
 
-function normalizeStoredMessages(value: unknown): AssistantMessageItem[] {
-  if (!Array.isArray(value)) return []
-
-  return value
-    .map((item) => ({
-      id: String(item?.id || `msg-${Math.random().toString(16).slice(2)}`),
-      role: (item?.role === 'assistant' ? 'assistant' : 'user') as AssistantMessageRole,
-      content: String(item?.content || '').trim(),
-    }))
-    .filter((item) => item.content)
-    .slice(-20)
+function normalizeStoredConversationId(value: unknown): string {
+  return String(value || '').trim()
 }
 
 export default function AssistantPage({ embeddedOverride = null }: AssistantPageProps = {}) {
   const { access, loading, user, profile } = useUser()
   const canViewDashboard = access?.canViewDashboard !== false
+  const canUseAi = access?.canUseAi !== false && canViewDashboard
   const [detectedEmbedded, setDetectedEmbedded] = useState(false)
   const isEmbedded = embeddedOverride ?? detectedEmbedded
 
@@ -118,14 +120,18 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
   const [focusMode, setFocusMode] = useState<FocusMode>('operation')
   const [inputValue, setInputValue] = useState('')
   const [messages, setMessages] = useState<AssistantMessageItem[]>([])
+  const [conversations, setConversations] = useState<AssistantConversationSummary[]>([])
+  const [selectedConversationId, setSelectedConversationId] = useState('')
   const [selectedAgentId, setSelectedAgentId] = useState('copilot')
   const [isAgentMenuOpen, setIsAgentMenuOpen] = useState(false)
   const [isVoiceSupported, setIsVoiceSupported] = useState(false)
   const [isListening, setIsListening] = useState(false)
   const [voiceTranscript, setVoiceTranscript] = useState('')
+  const [isLoadingConversations, setIsLoadingConversations] = useState(false)
   const messagesContainerRef = useRef<HTMLDivElement | null>(null)
   const agentMenuRef = useRef<HTMLDivElement | null>(null)
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null)
+  const storedConversationIdRef = useRef('')
 
   const availableClients = useMemo(
     () => (Array.isArray(dashboardState?.clients) ? dashboardState.clients : []),
@@ -152,6 +158,12 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
     [profile?.full_name, user?.email, user?.user_metadata?.full_name]
   )
   const userPlanLabel = access?.canManageClients ? 'Workspace Owner' : 'Workspace Member'
+  const aiAccessLevel = dashboardState?.access?.aiAccessLevel || access?.aiAccessLevel || 'team'
+  const aiAccessLabel = aiAccessLevel === 'master' ? 'IA Master' : 'IA Time'
+  const aiAccessDescription =
+    aiAccessLevel === 'master'
+      ? 'Acesso total ao contexto interno do workspace.'
+      : 'Acesso restrito a dados de campanha.'
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -160,13 +172,13 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
 
     try {
       const parsed = JSON.parse(stored)
-      setMessages(normalizeStoredMessages(parsed.messages))
       setFocusMode(
         FOCUS_OPTIONS.some((option) => option.value === parsed.focusMode)
           ? (parsed.focusMode as FocusMode)
           : 'operation'
       )
       setSelectedAgentId(String(parsed.agentId || 'copilot'))
+      storedConversationIdRef.current = normalizeStoredConversationId(parsed.conversationId)
     } catch {}
   }, [])
 
@@ -184,10 +196,10 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
         JSON.stringify({
           focusMode,
           agentId: selectedAgentId,
-          messages: messages.slice(-20),
+          conversationId: selectedConversationId,
         })
       )
-  }, [messages, focusMode, selectedAgentId])
+  }, [focusMode, selectedAgentId, selectedConversationId])
 
   useEffect(() => {
     if (!availableAgents.length) return
@@ -303,7 +315,6 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
       }
 
       setDashboardState(data)
-      setMessages((current) => (current.length ? current : [createWelcomeMessage(data?.clients?.[0]?.name || '')]))
     } catch (error) {
       setErrorMessage(
         error instanceof Error
@@ -315,10 +326,98 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
     }
   }, [])
 
+  const applyWelcomeConversation = useCallback(() => {
+    setMessages([createWelcomeMessage(dashboardState?.clients?.[0]?.name || '')])
+  }, [dashboardState?.clients])
+
+  const loadConversationDetail = useCallback(
+    async (conversationId: string) => {
+      if (!conversationId) {
+        setSelectedConversationId('')
+        applyWelcomeConversation()
+        return
+      }
+
+      setIsLoadingConversations(true)
+
+      try {
+        const response = await fetch(`/api/ai/conversations/${conversationId}`, { cache: 'no-store' })
+        const data = (await response.json().catch(() => null)) as AssistantConversationDetail | null
+
+        if (!response.ok) {
+          throw new Error(data && 'conversation' in data ? 'Não foi possível abrir a conversa.' : 'Não foi possível abrir a conversa.')
+        }
+
+        setSelectedConversationId(conversationId)
+        setMessages(
+          data?.messages?.length
+            ? data.messages.map((message) => ({
+                id: message.id,
+                role: message.role,
+                content: message.content,
+              }))
+            : [createWelcomeMessage(dashboardState?.clients?.[0]?.name || '')]
+        )
+      } catch (error) {
+        setChatError(
+          error instanceof Error ? error.message : 'Não foi possível abrir a conversa.'
+        )
+        applyWelcomeConversation()
+      } finally {
+        setIsLoadingConversations(false)
+      }
+    },
+    [applyWelcomeConversation, dashboardState?.clients]
+  )
+
+  const loadConversations = useCallback(async () => {
+    if (!dashboardState) return
+
+    setIsLoadingConversations(true)
+
+    try {
+      const response = await fetch('/api/ai/conversations', { cache: 'no-store' })
+      const data = (await response.json().catch(() => null)) as { conversations?: AssistantConversationSummary[]; error?: string } | null
+
+      if (!response.ok) {
+        throw new Error(data?.error || 'Não foi possível carregar as conversas.')
+      }
+
+      const nextConversations = Array.isArray(data?.conversations) ? data.conversations : []
+      setConversations(nextConversations)
+
+      const preferredConversationId =
+        storedConversationIdRef.current && nextConversations.some((conversation) => conversation.id === storedConversationIdRef.current)
+          ? storedConversationIdRef.current
+          : selectedConversationId && nextConversations.some((conversation) => conversation.id === selectedConversationId)
+            ? selectedConversationId
+            : nextConversations[0]?.id || ''
+
+      if (preferredConversationId) {
+        await loadConversationDetail(preferredConversationId)
+      } else {
+        setSelectedConversationId('')
+        applyWelcomeConversation()
+      }
+    } catch (error) {
+      setChatError(
+        error instanceof Error ? error.message : 'Não foi possível carregar as conversas.'
+      )
+      applyWelcomeConversation()
+    } finally {
+      setIsLoadingConversations(false)
+    }
+  }, [applyWelcomeConversation, dashboardState, loadConversationDetail, selectedConversationId])
+
   useEffect(() => {
-    if (loading || !canViewDashboard) return
+    if (loading || !canUseAi) return
     loadDashboardState()
-  }, [loading, canViewDashboard, loadDashboardState])
+  }, [loading, canUseAi, loadDashboardState])
+
+  useEffect(() => {
+    if (!dashboardState || isLoadingState || loading || !canUseAi) return
+    loadConversations()
+  }, [canUseAi, dashboardState, isLoadingState, loadConversations, loading])
 
   const handleSend = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -346,6 +445,7 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
+          conversationId: selectedConversationId,
           clientId: focusMode === 'operation' ? String(dashboardState?.activeClientId || '') : '',
           contextSnapshot: {
             focusMode,
@@ -362,6 +462,15 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
 
       if (!response.ok) {
         throw new Error(data?.error || 'Não foi possível gerar a resposta do assistente.')
+      }
+
+      if (data?.conversation?.id) {
+        setSelectedConversationId(data.conversation.id)
+        setConversations((current) => {
+          const nextItem = data.conversation as AssistantConversationSummary
+          const remaining = current.filter((conversation) => conversation.id !== nextItem.id)
+          return [nextItem, ...remaining].slice(0, 20)
+        })
       }
 
       setMessages((current) => [
@@ -383,13 +492,36 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
     }
   }
 
-  const handleResetChat = () => {
+  const handleCreateConversation = async () => {
     recognitionRef.current?.stop()
-    setMessages([createWelcomeMessage(availableClients[0]?.name || '')])
     setChatError('')
     setVoiceTranscript('')
-    if (typeof window !== 'undefined') {
-      window.localStorage.removeItem(STORAGE_KEY)
+    setInputValue('')
+
+    try {
+      const response = await fetch('/api/ai/conversations', {
+        method: 'POST',
+      })
+      const data = (await response.json().catch(() => null)) as { conversation?: AssistantConversationSummary; error?: string } | null
+
+      if (!response.ok) {
+        throw new Error(data?.error || 'Não foi possível criar uma nova conversa.')
+      }
+
+      if (data?.conversation) {
+        setSelectedConversationId(data.conversation.id)
+        setConversations((current) => [data.conversation as AssistantConversationSummary, ...current].slice(0, 20))
+      } else {
+        setSelectedConversationId('')
+      }
+
+      applyWelcomeConversation()
+    } catch (error) {
+      setChatError(
+        error instanceof Error ? error.message : 'Não foi possível criar uma nova conversa.'
+      )
+      setSelectedConversationId('')
+      applyWelcomeConversation()
     }
   }
 
@@ -421,17 +553,17 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
           <p>Converse com a IA da operação usando o mesmo contexto do app inteiro, sem sair do fluxo principal.</p>
         </div>
         <div className="header-actions assistant-header-actions">
-          <button type="button" className="btn btn-secondary assistant-header-button" onClick={handleResetChat}>
-            <i className="bx bx-refresh"></i>
-            Novo contexto
+          <button type="button" className="btn btn-secondary assistant-header-button" onClick={handleCreateConversation}>
+            <i className="bx bx-message-square-add"></i>
+            Nova conversa
           </button>
         </div>
       </header>
 
-        {!canViewDashboard ? (
+        {!canUseAi ? (
           <div className="assistant-empty glass-panel">
             <h3>Sem acesso ao assistente</h3>
-            <p>Seu usuário ainda não possui dashboards liberados neste workspace.</p>
+            <p>Seu usuário ainda não possui liberação para usar a IA neste workspace.</p>
           </div>
         ) : isLoadingState ? (
           <div className="assistant-empty glass-panel">
@@ -528,6 +660,36 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
 
               </div>
 
+              <div className="assistant-history-card glass-panel">
+                <div className="assistant-section-head assistant-history-head">
+                  <span className="assistant-section-kicker">Conversas salvas</span>
+                  <button type="button" className="assistant-history-new" onClick={handleCreateConversation}>
+                    <i className="bx bx-plus"></i>
+                    Nova
+                  </button>
+                </div>
+
+                <div className="assistant-history-list">
+                  {conversations.length ? (
+                    conversations.map((conversation) => (
+                      <button
+                        key={conversation.id}
+                        type="button"
+                        className={`assistant-history-item ${selectedConversationId === conversation.id ? 'active' : ''}`}
+                        onClick={() => loadConversationDetail(conversation.id)}
+                      >
+                        <strong>{conversation.title}</strong>
+                        <span>{conversation.preview || 'Sem mensagens ainda.'}</span>
+                      </button>
+                    ))
+                  ) : (
+                    <div className="assistant-history-empty">
+                      {isLoadingConversations ? 'Carregando conversas...' : 'Suas novas conversas vão aparecer aqui.'}
+                    </div>
+                  )}
+                </div>
+              </div>
+
               <div className="assistant-status-card glass-panel">
                 <div className="assistant-status-head">
                   <span className="assistant-status-dot"></span>
@@ -536,6 +698,10 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
                 <p>
                   Operação pronta para conversa com contexto interno do workspace. A próxima etapa pode conectar busca externa e ações automatizadas.
                 </p>
+                <div className="assistant-access-badge">
+                  <strong>{aiAccessLabel}</strong>
+                  <span>{aiAccessDescription}</span>
+                </div>
               </div>
             </section>
 
@@ -599,14 +765,14 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
                   </article>
                 ))}
 
-                {isSending ? (
+                {isSending || isLoadingConversations ? (
                   <article className="assistant-message-row assistant-message-row-assistant">
                     <div className="assistant-avatar assistant-avatar-bot">
                       <i className="bx bx-bot"></i>
                     </div>
                     <div className="assistant-message assistant-message-assistant assistant-message-loading">
                       <span className="assistant-message-role">Assistente</span>
-                      <p>Pensando na melhor resposta com base no contexto do negócio...</p>
+                      <p>{isLoadingConversations ? 'Abrindo conversa salva...' : 'Pensando na melhor resposta com base no contexto do negócio...'}</p>
                     </div>
                   </article>
                 ) : null}
@@ -635,7 +801,7 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
                     >
                       <i className={`bx ${isListening ? 'bx-microphone-off' : 'bx-microphone'}`}></i>
                     </button>
-                    <button type="submit" className="assistant-submit" disabled={isSending || !inputValue.trim()}>
+                    <button type="submit" className="assistant-submit" disabled={isSending || isLoadingConversations || !inputValue.trim()}>
                       <i className="bx bx-up-arrow-alt"></i>
                     </button>
                   </div>
@@ -678,6 +844,7 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
                     <span><i className="bx bx-bolt-circle"></i> {dashboardState?.globalIntegrations?.aiModel || 'Modelo configurado'}</span>
                     <span><i className="bx bx-shield-quarter"></i> Contexto interno ativo</span>
                     <span><i className="bx bx-layout"></i> {focusLabel}</span>
+                    <span><i className="bx bx-lock-open-alt"></i> {aiAccessLabel}</span>
                     <span>
                       <i className={`bx ${isListening ? 'bx-loader-circle' : isVoiceSupported ? 'bx-microphone' : 'bx-microphone-off'}`}></i>
                       {isListening
@@ -791,21 +958,6 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
           line-height: 1.65;
         }
 
-        .assistant-new-chat {
-          border: none;
-          border-radius: 16px;
-          min-height: 52px;
-          background: var(--accent-blue);
-          color: white;
-          font-weight: 700;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 8px;
-          cursor: pointer;
-          box-shadow: 0 14px 28px rgba(37, 99, 235, 0.22);
-        }
-
         .assistant-user-profile {
           align-items: center;
         }
@@ -874,13 +1026,101 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
         }
 
         .assistant-context-card,
-        .assistant-status-card {
+        .assistant-status-card,
+        .assistant-history-card {
           padding: 24px;
           border-radius: 20px;
         }
 
         .assistant-section-head {
           margin-bottom: 18px;
+        }
+
+        .assistant-history-head {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+        }
+
+        .assistant-history-new {
+          border: 1px solid var(--border-color);
+          background: rgba(255, 255, 255, 0.04);
+          color: var(--text-primary);
+          min-height: 34px;
+          padding: 0 12px;
+          border-radius: 999px;
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          cursor: pointer;
+          font: inherit;
+          font-size: 11px;
+          font-weight: 700;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+        }
+
+        .assistant-history-list {
+          display: grid;
+          gap: 10px;
+        }
+
+        .assistant-history-item {
+          width: 100%;
+          padding: 14px 16px;
+          border-radius: 16px;
+          border: 1px solid rgba(255, 255, 255, 0.06);
+          background: rgba(255, 255, 255, 0.025);
+          color: inherit;
+          text-align: left;
+          display: grid;
+          gap: 6px;
+          cursor: pointer;
+          font: inherit;
+        }
+
+        .assistant-history-item strong {
+          color: var(--text-primary);
+          font-size: 13px;
+          line-height: 1.35;
+        }
+
+        .assistant-history-item span,
+        .assistant-history-empty {
+          color: var(--text-secondary);
+          font-size: 12px;
+          line-height: 1.5;
+        }
+
+        .assistant-history-item.active {
+          border-color: color-mix(in srgb, var(--accent-blue) 26%, transparent);
+          background: color-mix(in srgb, var(--accent-blue) 10%, transparent);
+          box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent-blue) 10%, transparent);
+        }
+
+        .assistant-access-badge {
+          margin-top: 18px;
+          padding: 14px 16px;
+          border-radius: 16px;
+          border: 1px solid rgba(147, 197, 253, 0.16);
+          background: rgba(59, 130, 246, 0.08);
+          display: grid;
+          gap: 4px;
+        }
+
+        .assistant-access-badge strong {
+          color: #dbeafe;
+          font-size: 12px;
+          font-weight: 800;
+          letter-spacing: 0.12em;
+          text-transform: uppercase;
+        }
+
+        .assistant-access-badge span {
+          color: var(--text-secondary);
+          font-size: 12px;
+          line-height: 1.5;
         }
 
         .assistant-section-kicker,
@@ -1415,6 +1655,7 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
         :root[data-ui-mode='light'] .assistant-context-stat:hover,
         :root[data-ui-mode='light'] .assistant-chip:hover,
         :root[data-ui-mode='light'] .assistant-agent-trigger:hover,
+        :root[data-ui-mode='light'] .assistant-history-item:hover,
         :root[data-ui-mode='light'] .assistant-agent-trigger.active {
           background: color-mix(in srgb, var(--accent-blue) 8%, white);
           border-color: color-mix(in srgb, var(--accent-blue) 22%, rgba(15, 23, 42, 0.08));
@@ -1516,6 +1757,22 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
           background: rgba(255, 255, 255, 0.98);
           border-color: rgba(15, 23, 42, 0.08);
           box-shadow: 0 24px 48px rgba(15, 23, 42, 0.12);
+        }
+
+        :root[data-ui-mode='light'] .assistant-history-new,
+        :root[data-ui-mode='light'] .assistant-history-item {
+          background: rgba(255, 255, 255, 0.88);
+          border-color: rgba(15, 23, 42, 0.08);
+        }
+
+        :root[data-ui-mode='light'] .assistant-history-item.active,
+        :root[data-ui-mode='light'] .assistant-access-badge {
+          background: color-mix(in srgb, var(--accent-blue) 8%, white);
+          border-color: color-mix(in srgb, var(--accent-blue) 20%, rgba(15, 23, 42, 0.08));
+        }
+
+        :root[data-ui-mode='light'] .assistant-access-badge strong {
+          color: var(--accent-blue);
         }
 
         :root[data-ui-mode='light'] .assistant-agent-option:hover,

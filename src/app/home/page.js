@@ -2046,6 +2046,7 @@ export default function DashboardPage() {
     email: '',
     password: '',
     role: 'visualizador',
+    aiAccessLevel: 'team',
     clientIds: [],
     clientGroupIds: [],
   })
@@ -2758,6 +2759,10 @@ export default function DashboardPage() {
     operador: 'Operador',
     cliente: 'Cliente',
     visualizador: 'Visualizador',
+  }
+  const aiAccessLabels = {
+    master: 'IA Master',
+    team: 'IA Time',
   }
 
   useEffect(() => {
@@ -3718,6 +3723,7 @@ export default function DashboardPage() {
         email: '',
         password: '',
         role: 'visualizador',
+        aiAccessLevel: 'team',
         clientIds: [],
         clientGroupIds: [],
       })
@@ -3744,6 +3750,7 @@ export default function DashboardPage() {
         body: JSON.stringify({
           fullName: managedUser.full_name || '',
           role: managedUser.role,
+          aiAccessLevel: managedUser.ai_access_level || (managedUser.role === 'master' ? 'master' : 'team'),
           clientIds: (managedUser.clientAccess || []).map((item) => item.client_id),
           clientGroupIds: (managedUser.clientGroupAccess || []).map((item) => item.group_id),
         }),
@@ -8949,6 +8956,7 @@ export default function DashboardPage() {
                         <span>{managedUser.email}</span>
                       </div>
                       <div className="user-directory-meta">
+                        <span className="user-role-badge">{aiAccessLabels[managedUser.ai_access_level] || 'IA Time'}</span>
                         <small>
                           {managedUser.role === 'master'
                             ? 'Acesso total'
@@ -9016,6 +9024,17 @@ export default function DashboardPage() {
                           <option value="operador">Operador</option>
                           <option value="cliente">Cliente</option>
                           <option value="master">Master</option>
+                        </select>
+                      </div>
+                      <div className="input-group">
+                        <label>Liberação da IA</label>
+                        <select
+                          className="client-select-input"
+                          value={userForm.aiAccessLevel}
+                          onChange={(event) => setUserForm((current) => ({ ...current, aiAccessLevel: event.target.value }))}
+                        >
+                          <option value="team">IA Time</option>
+                          <option value="master">IA Master</option>
                         </select>
                       </div>
                     </div>
@@ -9118,10 +9137,10 @@ export default function DashboardPage() {
                         }
                       />
                     </div>
-                    <div className="input-group">
-                      <label>Nível</label>
-                      <select
-                        className="client-select-input"
+                      <div className="input-group">
+                        <label>Nível</label>
+                        <select
+                          className="client-select-input"
                         value={selectedManagedUser.role}
                         onChange={(event) =>
                           handleManagedUserChange(selectedManagedUser.id, (item) => ({ ...item, role: event.target.value }))
@@ -9130,10 +9149,23 @@ export default function DashboardPage() {
                         <option value="visualizador">Visualizador</option>
                         <option value="operador">Operador</option>
                         <option value="cliente">Cliente</option>
-                        <option value="master">Master</option>
-                      </select>
+                          <option value="master">Master</option>
+                        </select>
+                      </div>
+                      <div className="input-group">
+                        <label>Liberação da IA</label>
+                        <select
+                          className="client-select-input"
+                          value={selectedManagedUser.ai_access_level || (selectedManagedUser.role === 'master' ? 'master' : 'team')}
+                          onChange={(event) =>
+                            handleManagedUserChange(selectedManagedUser.id, (item) => ({ ...item, ai_access_level: event.target.value }))
+                          }
+                        >
+                          <option value="team">IA Time</option>
+                          <option value="master">IA Master</option>
+                        </select>
+                      </div>
                     </div>
-                  </div>
 
                   {selectedManagedUser.role !== 'master' && (
                     <>
@@ -9230,6 +9262,10 @@ export default function DashboardPage() {
                       {selectedManagedUser.role === 'operador' && 'Pode editar integrações e clientes liberados.'}
                       {selectedManagedUser.role === 'visualizador' && 'Pode apenas visualizar os dashboards liberados.'}
                       {selectedManagedUser.role === 'cliente' && 'Acesso externo focado só nos dashboards atribuídos.'}
+                      {' '}
+                      {(selectedManagedUser.ai_access_level || (selectedManagedUser.role === 'master' ? 'master' : 'team')) === 'master'
+                        ? 'IA Master liberada com acesso completo ao contexto interno.'
+                        : 'IA Time liberada apenas para dados de campanha.'}
                     </span>
                     <div className="modal-actions">
                       <button type="button" className="btn btn-secondary" onClick={() => setIsEditUserModalOpen(false)}>

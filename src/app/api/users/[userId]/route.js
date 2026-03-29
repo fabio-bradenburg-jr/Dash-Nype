@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/server/supabase-admin'
-import { getAccessContext, USER_ROLES } from '@/lib/server/access-control'
+import { AI_ACCESS_LEVELS, getAccessContext, USER_ROLES } from '@/lib/server/access-control'
 
 function isMissingRelationError(error) {
   const message = String(error?.message || '').toLowerCase()
@@ -94,6 +94,11 @@ export async function PATCH(request, context) {
     }
 
     const role = Object.values(USER_ROLES).includes(body.role) ? body.role : USER_ROLES.VIEWER
+    const aiAccessLevel = Object.values(AI_ACCESS_LEVELS).includes(body.aiAccessLevel)
+      ? body.aiAccessLevel
+      : role === USER_ROLES.MASTER
+        ? AI_ACCESS_LEVELS.MASTER
+        : AI_ACCESS_LEVELS.TEAM
     const clientIds = Array.isArray(body.clientIds) ? body.clientIds.filter(Boolean) : []
     const clientGroupIds = Array.isArray(body.clientGroupIds) ? body.clientGroupIds.filter(Boolean) : []
 
@@ -102,6 +107,7 @@ export async function PATCH(request, context) {
       .update({
         full_name: String(body.fullName || '').trim(),
         role,
+        ai_access_level: aiAccessLevel,
         workspace_id: accessContext.workspaceId,
       })
       .eq('id', userId)

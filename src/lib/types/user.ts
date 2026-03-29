@@ -1,4 +1,5 @@
 import type { User } from '@supabase/supabase-js'
+import type { AssistantAiAccessLevel } from '@/lib/types/ai'
 
 export interface UserAppearance {
   mode: 'light' | 'dark'
@@ -12,6 +13,7 @@ export interface UserProfile {
   full_name: string
   avatar_url: string
   role: string
+  ai_access_level?: AssistantAiAccessLevel
   workspace_id: string | null
 }
 
@@ -23,6 +25,8 @@ export interface AccessContextValue {
   canManageClients: boolean
   canEditIntegrations: boolean
   canViewDashboard: boolean
+  canUseAi: boolean
+  aiAccessLevel: AssistantAiAccessLevel
   isClientRole: boolean
   viewableClientIds: string[]
   editableClientIds: string[]

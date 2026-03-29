@@ -2,12 +2,14 @@ import { normalizeAiSettings, resolveAiDashboardPromptText } from '@/lib/ai-conf
 import { fetchMetaJson } from '@/lib/server/meta-fetch'
 import { buildMetaInsightsFilterExpression } from '@/lib/server/meta-date-range'
 import { getWorkspaceMetaConnection } from '@/lib/server/meta-connection'
+import { appendAssistantConversationTurn } from '@/lib/server/assistant-conversations'
 import { readClickUpSummary } from '@/lib/server/clickup'
 import { readMondaySummary } from '@/lib/server/monday'
 import { extractMetaCampaignMetrics } from '@/lib/meta-metrics'
 import type {
   AiAgent,
   AiSettings,
+  AssistantAiAccessLevel,
   AssistantContextSnapshot,
   AssistantMessage,
   AssistantReplyResult,
@@ -21,8 +23,12 @@ interface ConversationMessage {
 }
 
 interface AccessContextLike {
+  profile?: {
+    id?: string | null
+  }
   workspaceId?: string | null
   role?: string | null
+  aiAccessLevel?: AssistantAiAccessLevel | string | null
 }
 
 interface ClientLike {
@@ -250,6 +256,8 @@ interface BusinessContext {
     mode: 'operation' | 'clients' | 'general'
     label: string
   }
+  aiAccessLevel: AssistantAiAccessLevel
+  permittedScope: 'full_workspace' | 'campaigns_only'
   activeClientId: string
   selectedClient: null | {
     id?: string
@@ -297,6 +305,7 @@ interface ChatRequestConfig {
   dashboardState: DashboardStateLike
   accessContext: AccessContextLike
   clientId: string
+  conversationId?: string
   contextSnapshot: AssistantContextSnapshot | null
   messages: AssistantMessage[]
 }
@@ -972,6 +981,8 @@ async function buildBusinessContext({
 }): Promise<BusinessContext> {
   const clients = Array.isArray(dashboardState?.clients) ? dashboardState.clients : []
   const focusMode = normalizeFocusMode(contextSnapshot?.focusMode)
+  const aiAccessLevel = accessContext.aiAccessLevel === 'master' ? 'master' : 'team'
+  const isTeamOnly = aiAccessLevel === 'team'
   const mentionedClient = resolveClientMentionFromMessages(clients, messages)
   const selectedClient =
     clients.find((client) => client.id === clientId) ||
@@ -996,6 +1007,8 @@ async function buildBusinessContext({
   return {
     workspaceId: accessContext.workspaceId || '',
     role: accessContext.role || '',
+    aiAccessLevel,
+    permittedScope: isTeamOnly ? 'campaigns_only' : 'full_workspace',
     focus: {
       mode: focusMode,
       label:
@@ -1011,42 +1024,53 @@ async function buildBusinessContext({
           id: selectedClient.id,
           name: selectedClient.name,
           metaAdAccountId: selectedClient.metaAdAccountId || '',
-          googleSheetsUrl: selectedClient.googleSheetsUrl || '',
-          rdPipelineId: selectedClient.rdPipelineId || '',
-          rdQualifiedStages: Array.isArray(selectedClient.rdQualifiedStages) ? selectedClient.rdQualifiedStages : [],
-          funnelSteps: Array.isArray(selectedClient.funnelSteps) ? selectedClient.funnelSteps : [],
+          googleSheetsUrl: isTeamOnly ? '' : selectedClient.googleSheetsUrl || '',
+          rdPipelineId: isTeamOnly ? '' : selectedClient.rdPipelineId || '',
+          rdQualifiedStages: isTeamOnly ? [] : Array.isArray(selectedClient.rdQualifiedStages) ? selectedClient.rdQualifiedStages : [],
+          funnelSteps: isTeamOnly ? [] : Array.isArray(selectedClient.funnelSteps) ? selectedClient.funnelSteps : [],
           integrations: {
             hasMetaAdAccount: Boolean(selectedClient.metaAdAccountId),
-            hasSheets: Boolean(String(selectedClient.googleSheetsUrl || '').trim()),
-            hasRdPipeline: Boolean(selectedClient.rdPipelineId),
+            hasSheets: isTeamOnly ? false : Boolean(String(selectedClient.googleSheetsUrl || '').trim()),
+            hasRdPipeline: isTeamOnly ? false : Boolean(selectedClient.rdPipelineId),
           },
         }
       : null,
-    clients: clients.slice(0, 25).map((client) => ({
-      id: client.id,
-      name: client.name,
-      metaAdAccountId: client.metaAdAccountId || '',
-      hasSheets: Boolean(String(client.googleSheetsUrl || '').trim()),
-      hasRdPipeline: Boolean(client.rdPipelineId),
-    })),
-    clientGroups: Array.isArray(dashboardState?.clientGroups)
+    clients: isTeamOnly
+      ? []
+      : clients.slice(0, 25).map((client) => ({
+          id: client.id,
+          name: client.name,
+          metaAdAccountId: client.metaAdAccountId || '',
+          hasSheets: Boolean(String(client.googleSheetsUrl || '').trim()),
+          hasRdPipeline: Boolean(client.rdPipelineId),
+        })),
+    clientGroups: !isTeamOnly && Array.isArray(dashboardState?.clientGroups)
       ? dashboardState.clientGroups.slice(0, 20).map((group) => ({
           id: group.id,
           name: group.name,
           clientCount: Array.isArray(group.clientIds) ? group.clientIds.length : 0,
         }))
       : [],
-    globalIntegrations: {
-      aiProvider: dashboardState?.globalIntegrations?.aiProvider || '',
-      metaConnectionMode: dashboardState?.globalIntegrations?.metaConnectionMode || 'manual',
-      hasMetaToken: Boolean(String(dashboardState?.globalIntegrations?.metaAccessToken || '').trim()),
-      hasRdToken: Boolean(String(dashboardState?.globalIntegrations?.rdStationToken || '').trim()),
-      hasClickUpToken: Boolean(String(dashboardState?.globalIntegrations?.clickUpToken || '').trim()),
-      hasMondayToken: Boolean(String(dashboardState?.globalIntegrations?.mondayToken || '').trim()),
-    },
+    globalIntegrations: isTeamOnly
+      ? {
+          aiProvider: dashboardState?.globalIntegrations?.aiProvider || '',
+          metaConnectionMode: dashboardState?.globalIntegrations?.metaConnectionMode || 'manual',
+          hasMetaToken: Boolean(String(dashboardState?.globalIntegrations?.metaAccessToken || '').trim()),
+          hasRdToken: false,
+          hasClickUpToken: false,
+          hasMondayToken: false,
+        }
+      : {
+          aiProvider: dashboardState?.globalIntegrations?.aiProvider || '',
+          metaConnectionMode: dashboardState?.globalIntegrations?.metaConnectionMode || 'manual',
+          hasMetaToken: Boolean(String(dashboardState?.globalIntegrations?.metaAccessToken || '').trim()),
+          hasRdToken: Boolean(String(dashboardState?.globalIntegrations?.rdStationToken || '').trim()),
+          hasClickUpToken: Boolean(String(dashboardState?.globalIntegrations?.clickUpToken || '').trim()),
+          hasMondayToken: Boolean(String(dashboardState?.globalIntegrations?.mondayToken || '').trim()),
+        },
     campaignSnapshot: clientCampaignSnapshot,
     metaMarketingSnapshot: clientMetaMarketingSnapshot,
-    operationSnapshot,
+    operationSnapshot: isTeamOnly ? null : operationSnapshot,
     contextSnapshot: contextSnapshot && typeof contextSnapshot === 'object' ? contextSnapshot : null,
   }
 }
@@ -1109,6 +1133,19 @@ function buildAssistantSystemPrompt(aiDashboardPrompt: string): string {
   ].join('\n')
 }
 
+function buildAccessGuardPrompt(aiAccessLevel: AssistantAiAccessLevel): string {
+  if (aiAccessLevel === 'master') {
+    return 'Nivel de acesso da IA: IA Master. Voce pode usar todo o contexto interno liberado do workspace.'
+  }
+
+  return [
+    'Nivel de acesso da IA: IA Time.',
+    'Voce so pode responder com base em dados de campanhas e performance de marketing presentes no contexto.',
+    'Nao responda sobre operacao interna, tarefas, Monday, ClickUp, CRM, agenda, grupos, usuarios ou integracoes fora de campanhas.',
+    'Se o usuario pedir algo fora desse escopo, diga claramente que esta IA esta liberada apenas para dados de campanha.',
+  ].join('\n')
+}
+
 function resolveSelectedAgent(
   config: AiSettings,
   contextSnapshot: AssistantContextSnapshot | null
@@ -1121,12 +1158,10 @@ function resolveSelectedAgent(
 }
 
 function buildAssistantPromptWithAgent(aiDashboardPrompt: string, agent: AiAgent | null): string {
-  const basePrompt = buildAssistantSystemPrompt(aiDashboardPrompt)
-  if (!agent) return basePrompt
+  if (!agent) return aiDashboardPrompt
 
   return [
-    basePrompt,
-    '',
+    aiDashboardPrompt,
     `Agente ativo: ${agent.name}`,
     agent.description ? `Descricao do agente: ${agent.description}` : '',
     'Comportamento adicional do agente:',
@@ -1326,6 +1361,7 @@ export async function requestAssistantReply({
   dashboardState,
   accessContext,
   clientId,
+  conversationId,
   contextSnapshot,
   messages,
 }: ChatRequestConfig): Promise<AssistantReplyResult> {
@@ -1348,7 +1384,12 @@ export async function requestAssistantReply({
     messages,
   })
   const selectedAgent = resolveSelectedAgent(normalizedConfig, contextSnapshot)
-  const systemPrompt = buildAssistantPromptWithAgent(normalizedConfig.aiDashboardPrompt, selectedAgent)
+  const basePrompt = buildAssistantSystemPrompt(normalizedConfig.aiDashboardPrompt)
+  const accessGuardPrompt = buildAccessGuardPrompt(businessContext.aiAccessLevel)
+  const systemPrompt = buildAssistantPromptWithAgent(
+    [basePrompt, accessGuardPrompt].filter(Boolean).join('\n\n'),
+    selectedAgent
+  )
   const builtMessages = buildAssistantMessages({
     systemPrompt,
     businessContext,
@@ -1359,8 +1400,30 @@ export async function requestAssistantReply({
     ? await requestAnthropicChat(normalizedConfig, systemPrompt, builtMessages)
     : await requestOpenAiChat(normalizedConfig, builtMessages)
 
+  const latestUserMessage = [...messages]
+    .reverse()
+    .find((message) => message.role === 'user' && String(message.content || '').trim())
+
+  const conversation =
+    accessContext.workspaceId && latestUserMessage
+      ? await appendAssistantConversationTurn(adminSupabase, {
+          workspaceId: accessContext.workspaceId,
+          userId: accessContext.profile?.id || '',
+          aiAccessLevel: businessContext.aiAccessLevel,
+          conversationId,
+          userMessage: latestUserMessage.content,
+          assistantMessage: String(result.content || '').trim(),
+          metadata: {
+            clientId,
+            focusMode: businessContext.focus.mode,
+            agentId: String(contextSnapshot?.agentId || ''),
+          },
+        })
+      : undefined
+
   return {
     reply: String(result.content || '').trim(),
+    conversation,
     provider: normalizedConfig.aiProvider,
     model: normalizedConfig.aiModel,
     usage: result.usage || null,

@@ -5,9 +5,23 @@ export const USER_ROLES = {
   CLIENT: 'cliente',
 }
 
+export const AI_ACCESS_LEVELS = {
+  MASTER: 'master',
+  TEAM: 'team',
+}
+
 function isMissingRelationError(error) {
   const message = String(error?.message || '').toLowerCase()
   return error?.code === 'PGRST205' || message.includes('schema cache') || message.includes('could not find the table')
+}
+
+function resolveAiAccessLevel(profileLike, fallbackRole) {
+  const explicitValue = String(profileLike?.ai_access_level || '').trim().toLowerCase()
+  if (explicitValue === AI_ACCESS_LEVELS.MASTER || explicitValue === AI_ACCESS_LEVELS.TEAM) {
+    return explicitValue
+  }
+
+  return fallbackRole === USER_ROLES.MASTER ? AI_ACCESS_LEVELS.MASTER : AI_ACCESS_LEVELS.TEAM
 }
 
 function buildProfilePayload(user, role, workspaceId) {
@@ -17,6 +31,7 @@ function buildProfilePayload(user, role, workspaceId) {
     full_name: user.user_metadata?.full_name || user.user_metadata?.name || '',
     avatar_url: user.user_metadata?.avatar_url || '',
     role,
+    ai_access_level: role === USER_ROLES.MASTER ? AI_ACCESS_LEVELS.MASTER : AI_ACCESS_LEVELS.TEAM,
     workspace_id: workspaceId,
   }
 }
@@ -103,6 +118,7 @@ export async function ensureUserProfile(adminSupabase, user) {
 export async function getAccessContext(adminSupabase, user) {
   const profile = await ensureUserProfile(adminSupabase, user)
   const role = profile.role || USER_ROLES.VIEWER
+  const aiAccessLevel = resolveAiAccessLevel(profile, role)
   const workspaceId = profile.workspace_id || null
 
   let accessRows = []
@@ -165,11 +181,13 @@ export async function getAccessContext(adminSupabase, user) {
   return {
     profile,
     role,
+    aiAccessLevel,
     workspaceId,
     canManageUsers: role === USER_ROLES.MASTER,
     canManageClients: role === USER_ROLES.MASTER || role === USER_ROLES.OPERATOR,
     canEditIntegrations: role === USER_ROLES.MASTER || role === USER_ROLES.OPERATOR,
     canViewDashboard: role === USER_ROLES.MASTER || viewableClientIds.size > 0,
+    canUseAi: role === USER_ROLES.MASTER || viewableClientIds.size > 0,
     isClientRole: role === USER_ROLES.CLIENT,
     viewableClientIds: Array.from(viewableClientIds),
     editableClientIds: Array.from(editableClientIds),

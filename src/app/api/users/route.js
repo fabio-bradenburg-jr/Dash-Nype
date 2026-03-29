@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/server/supabase-admin'
-import { getAccessContext, USER_ROLES } from '@/lib/server/access-control'
+import { AI_ACCESS_LEVELS, getAccessContext, USER_ROLES } from '@/lib/server/access-control'
 
 function isMissingRelationError(error) {
   const message = String(error?.message || '').toLowerCase()
@@ -93,7 +93,7 @@ export async function GET() {
     ] = await Promise.all([
       adminSupabase
         .from('profiles')
-        .select('id, email, full_name, avatar_url, role, workspace_id, created_at')
+        .select('id, email, full_name, avatar_url, role, ai_access_level, workspace_id, created_at')
         .eq('workspace_id', accessContext.workspaceId)
         .order('created_at', { ascending: true }),
       adminSupabase
@@ -147,6 +147,11 @@ export async function POST(request) {
     const password = String(body.password || '').trim()
     const fullName = String(body.fullName || '').trim()
     const role = Object.values(USER_ROLES).includes(body.role) ? body.role : USER_ROLES.VIEWER
+    const aiAccessLevel = Object.values(AI_ACCESS_LEVELS).includes(body.aiAccessLevel)
+      ? body.aiAccessLevel
+      : role === USER_ROLES.MASTER
+        ? AI_ACCESS_LEVELS.MASTER
+        : AI_ACCESS_LEVELS.TEAM
     const clientIds = Array.isArray(body.clientIds) ? body.clientIds.filter(Boolean) : []
     const clientGroupIds = Array.isArray(body.clientGroupIds) ? body.clientGroupIds.filter(Boolean) : []
 
@@ -175,6 +180,7 @@ export async function POST(request) {
           email,
           full_name: fullName,
           role,
+          ai_access_level: aiAccessLevel,
           workspace_id: accessContext.workspaceId,
         },
         { onConflict: 'id' }

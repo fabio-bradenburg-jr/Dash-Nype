@@ -28,6 +28,8 @@ export async function GET() {
         canManageClients: accessContext.canManageClients,
         canEditIntegrations: accessContext.canEditIntegrations,
         canViewDashboard: accessContext.canViewDashboard,
+        canUseAi: accessContext.canUseAi,
+        aiAccessLevel: accessContext.aiAccessLevel,
         isClientRole: accessContext.isClientRole,
         workspaceId: accessContext.workspaceId,
         viewableClientIds: accessContext.viewableClientIds,

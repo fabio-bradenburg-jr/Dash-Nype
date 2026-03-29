@@ -14,10 +14,15 @@ create table if not exists public.profiles (
   full_name text,
   avatar_url text,
   role text not null default 'visualizador' check (role in ('master', 'operador', 'visualizador', 'cliente')),
+  ai_access_level text not null default 'team' check (ai_access_level in ('master', 'team')),
   workspace_id uuid references public.workspaces(id) on delete set null,
   created_at timestamptz not null default timezone('utc', now()),
   updated_at timestamptz not null default timezone('utc', now())
 );
+
+alter table public.profiles
+  add column if not exists ai_access_level text not null default 'team'
+  check (ai_access_level in ('master', 'team'));
 
 create table if not exists public.workspace_preferences (
   workspace_id uuid primary key references public.workspaces(id) on delete cascade,
@@ -119,8 +124,36 @@ create table if not exists public.workspace_meta_connections (
   updated_at timestamptz not null default timezone('utc', now())
 );
 
+create table if not exists public.assistant_conversations (
+  id uuid primary key default gen_random_uuid(),
+  workspace_id uuid not null references public.workspaces(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  title text not null default 'Nova conversa',
+  ai_access_level text not null default 'team' check (ai_access_level in ('master', 'team')),
+  last_message_at timestamptz not null default timezone('utc', now()),
+  created_at timestamptz not null default timezone('utc', now()),
+  updated_at timestamptz not null default timezone('utc', now())
+);
+
+create table if not exists public.assistant_messages (
+  id uuid primary key default gen_random_uuid(),
+  conversation_id uuid not null references public.assistant_conversations(id) on delete cascade,
+  workspace_id uuid not null references public.workspaces(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  role text not null check (role in ('user', 'assistant')),
+  content text not null,
+  metadata jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default timezone('utc', now())
+);
+
 create index if not exists workspace_client_groups_name_idx
   on public.workspace_client_groups (workspace_id, name);
+
+create index if not exists assistant_conversations_workspace_user_updated_idx
+  on public.assistant_conversations (workspace_id, user_id, updated_at desc);
+
+create index if not exists assistant_messages_conversation_created_idx
+  on public.assistant_messages (conversation_id, created_at asc);
 
 alter table public.workspaces enable row level security;
 alter table public.profiles enable row level security;
@@ -132,6 +165,8 @@ alter table public.workspace_client_group_members enable row level security;
 alter table public.user_client_group_access enable row level security;
 alter table public.workspace_google_calendar_connections enable row level security;
 alter table public.workspace_meta_connections enable row level security;
+alter table public.assistant_conversations enable row level security;
+alter table public.assistant_messages enable row level security;
 
 drop policy if exists "profiles_select_own" on public.profiles;
 create policy "profiles_select_own"
@@ -204,4 +239,9 @@ for each row execute procedure public.set_updated_at();
 drop trigger if exists workspace_meta_connections_set_updated_at on public.workspace_meta_connections;
 create trigger workspace_meta_connections_set_updated_at
 before update on public.workspace_meta_connections
+for each row execute procedure public.set_updated_at();
+
+drop trigger if exists assistant_conversations_set_updated_at on public.assistant_conversations;
+create trigger assistant_conversations_set_updated_at
+before update on public.assistant_conversations
 for each row execute procedure public.set_updated_at();

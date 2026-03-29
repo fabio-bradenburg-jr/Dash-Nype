@@ -30,6 +30,8 @@ export interface AiAgent {
   prompt: string
 }
 
+export type AssistantAiAccessLevel = 'master' | 'team'
+
 export interface AiSettings {
   aiAnalysisEnabled: boolean
   aiProvider: AiProviderValue
@@ -61,8 +63,29 @@ export interface AssistantContextSnapshot {
 
 export interface AssistantChatBody {
   clientId: string
+  conversationId?: string
   messages: AssistantMessage[]
   contextSnapshot: AssistantContextSnapshot | null
+}
+
+export interface AssistantConversationSummary {
+  id: string
+  title: string
+  updatedAt: string
+  lastMessageAt: string
+  preview: string
+}
+
+export interface AssistantConversationMessage {
+  id: string
+  role: 'user' | 'assistant'
+  content: string
+  createdAt: string
+}
+
+export interface AssistantConversationDetail {
+  conversation: AssistantConversationSummary
+  messages: AssistantConversationMessage[]
 }
 
 export interface AssistantReplyContext {
@@ -72,6 +95,7 @@ export interface AssistantReplyContext {
 
 export interface AssistantReplyResult {
   reply: string
+  conversation?: AssistantConversationSummary
   provider: AiProviderValue
   model: string
   usage: unknown
