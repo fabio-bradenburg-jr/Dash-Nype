@@ -113,6 +113,7 @@ const CLIENT_LINK_FIELDS = [
   { name: 'contractUrl', label: 'Contrato', placeholder: 'https://...' },
   { name: 'dashboardUrl', label: 'Dashboard', placeholder: 'https://...' },
   { name: 'driveUrl', label: 'Drive', placeholder: 'https://...' },
+  { name: 'eapUrl', label: 'EAP', placeholder: 'https://...' },
   { name: 'brandManualUrl', label: 'Manual de marca', placeholder: 'https://...' },
   { name: 'moodboardUrl', label: 'Moodboard', placeholder: 'https://...' },
   { name: 'salesNarrativeUrl', label: 'Narrativa de vendas', placeholder: 'https://...' },
@@ -125,6 +126,54 @@ const CLIENT_OWNER_FIELDS = [
   { name: 'designer', label: 'Designer', placeholder: 'Nome do responsável' },
   { name: 'csOwner', label: 'CS / Atendimento', placeholder: 'Nome do responsável' },
   { name: 'copyOwner', label: 'Copy', placeholder: 'Nome do responsável' },
+]
+
+const CLIENT_REGISTRY_VIEWS = [
+  {
+    key: 'geral',
+    label: 'Geral',
+    columns: ['name', 'status', 'product', 'fee', 'mediaInvestment', 'startDate', 'step', 'ltv'],
+  },
+  {
+    key: 'flags',
+    label: 'Flags',
+    columns: ['name', 'healthScore', 'deliverablesFlag', 'financialFlag', 'roiFlag', 'healthScoreFlag'],
+  },
+  {
+    key: 'quality',
+    label: 'Quality Check',
+    columns: ['name', 'crmUsageFlag', 'csAttendanceFlag', 'csatFlag', 'clientParticipationFlag', 'adAccountsFlag', 'npsFlag', 'stakeholderFlag'],
+  },
+  {
+    key: 'dados',
+    label: 'Dados',
+    columns: ['name', 'projectManager', 'trafficManager', 'designer', 'organicDemands', 'trafficDemands', 'totalDemands'],
+  },
+  {
+    key: 'financeiro',
+    label: 'Financeiro',
+    columns: ['name', 'monthlyRevenue', 'contributionMarginPercent', 'profitMarginPercent', 'mmf', 'roiMarketing'],
+  },
+  {
+    key: 'branding',
+    label: 'Branding',
+    columns: ['name', 'driveUrl', 'dashboardUrl', 'contractUrl', 'eapUrl', 'brandManualUrl'],
+  },
+  {
+    key: 'mais',
+    label: 'Mais 1',
+    columns: ['name', 'moodboardUrl', 'salesNarrativeUrl', 'drawflowUrl', 'metaAdAccountId', 'googleAdsAccountId', 'rdStationAccountId'],
+  },
+]
+
+const CLIENT_EDIT_SECTIONS = [
+  { key: 'geral', label: 'Geral' },
+  { key: 'flags', label: 'Flags' },
+  { key: 'quality', label: 'Quality Check' },
+  { key: 'dados', label: 'Dados' },
+  { key: 'financeiro', label: 'Financeiro' },
+  { key: 'branding', label: 'Branding' },
+  { key: 'mais', label: 'Mais 1' },
 ]
 
 function looksLikeJsonBlock(value) {
@@ -351,6 +400,56 @@ function countClientConnectedSources(client) {
     client?.salesforceAccountId,
     client?.agendorAccountId,
   ].filter((value) => String(value || '').trim()).length
+}
+
+function getClientRegistryColumnMeta(columnKey) {
+  const sharedName = { label: 'Cliente', type: 'name' }
+  const map = {
+    name: sharedName,
+    status: { label: 'Status', type: 'status' },
+    product: { label: 'Produto', type: 'text' },
+    fee: { label: 'Fee', type: 'currency' },
+    mediaInvestment: { label: 'Investimento em Mídia', type: 'currency' },
+    startDate: { label: 'Data de Início', type: 'date' },
+    step: { label: 'STEP', type: 'text' },
+    ltv: { label: 'LTV', type: 'number' },
+    healthScore: { label: 'Health', type: 'health' },
+    deliverablesFlag: { label: 'Flag dos Entregáveis', type: 'flag' },
+    financialFlag: { label: 'Flag Financeira', type: 'flag' },
+    roiFlag: { label: 'Flag do ROI', type: 'flag' },
+    healthScoreFlag: { label: 'Flag Health Score', type: 'flag' },
+    crmUsageFlag: { label: 'CRM Em Uso Corretamente?', type: 'flag' },
+    csAttendanceFlag: { label: 'CS Atendimento', type: 'flag' },
+    csatFlag: { label: 'CSAT >= 4?', type: 'flag' },
+    clientParticipationFlag: { label: 'Cliente participou > 90%?', type: 'flag' },
+    adAccountsFlag: { label: 'Contas de Anúncio Ativa?', type: 'flag' },
+    npsFlag: { label: 'NPS >= 7?', type: 'flag' },
+    stakeholderFlag: { label: 'Stakeholder Pagador Consciente?', type: 'flag' },
+    projectManager: { label: 'Gestor de Projetos', type: 'text' },
+    trafficManager: { label: 'Gestor de Tráfego', type: 'text' },
+    designer: { label: 'Designer', type: 'text' },
+    organicDemands: { label: 'Demandas Orgânicas', type: 'number' },
+    trafficDemands: { label: 'Demandas de Tráfego', type: 'number' },
+    totalDemands: { label: 'Total de Demandas', type: 'number' },
+    monthlyRevenue: { label: 'Faturamento', type: 'currency' },
+    contributionMarginPercent: { label: 'Margem de Contribuição (%)', type: 'percent' },
+    profitMarginPercent: { label: 'Margem de Lucro (%)', type: 'percent' },
+    mmf: { label: 'MM/F', type: 'currency' },
+    roiMarketing: { label: 'ROI do Marketing', type: 'number' },
+    driveUrl: { label: 'Drive', type: 'link' },
+    dashboardUrl: { label: 'Dashboard', type: 'link' },
+    contractUrl: { label: 'Contrato', type: 'link' },
+    eapUrl: { label: 'EAP', type: 'link' },
+    brandManualUrl: { label: 'Manual de Marca', type: 'link' },
+    moodboardUrl: { label: 'Moodboard', type: 'link' },
+    salesNarrativeUrl: { label: 'Narrativa de Vendas', type: 'link' },
+    drawflowUrl: { label: 'Draw Flow', type: 'link' },
+    metaAdAccountId: { label: 'Conta Meta', type: 'text' },
+    googleAdsAccountId: { label: 'Google Ads', type: 'text' },
+    rdStationAccountId: { label: 'RD Station', type: 'text' },
+  }
+
+  return map[columnKey] || { label: columnKey, type: 'text' }
 }
 
 function getClientStatusMeta(client) {
@@ -2079,6 +2178,10 @@ export default function DashboardPage() {
   const [activeClientId, setActiveClientId] = useState('')
   const [newClientName, setNewClientName] = useState('')
   const [newClientGroupName, setNewClientGroupName] = useState('')
+  const [clientRegistryView, setClientRegistryView] = useState('geral')
+  const [clientSearch, setClientSearch] = useState('')
+  const [clientStatusFilter, setClientStatusFilter] = useState('all')
+  const [clientEditSection, setClientEditSection] = useState('geral')
   const [adAccounts, setAdAccounts] = useState([])
   const [insights, setInsights] = useState(null)
   const [previousInsights, setPreviousInsights] = useState(null)
@@ -2248,6 +2351,32 @@ export default function DashboardPage() {
     [clientGroups]
   )
   const clientIdsSet = useMemo(() => new Set(clients.map((client) => client.id)), [clients])
+  const activeClientRegistryView = useMemo(
+    () => CLIENT_REGISTRY_VIEWS.find((view) => view.key === clientRegistryView) || CLIENT_REGISTRY_VIEWS[0],
+    [clientRegistryView]
+  )
+  const filteredClients = useMemo(() => {
+    const term = clientSearch.trim().toLowerCase()
+    return clients.filter((client) => {
+      const matchesSearch = !term || [
+        client.name,
+        client.product,
+        client.status,
+        client.projectManager,
+        client.trafficManager,
+        client.designer,
+      ].some((value) => String(value || '').toLowerCase().includes(term))
+
+      const healthScore = calculateClientHealthScore(client)
+      const matchesStatus = clientStatusFilter === 'all'
+        ? true
+        : clientStatusFilter === 'risk'
+          ? healthScore != null && healthScore < 60
+          : String(client.status || '').toLowerCase() === clientStatusFilter
+
+      return matchesSearch && matchesStatus
+    })
+  }, [clients, clientSearch, clientStatusFilter])
   const connectedClientsCount = useMemo(
     () => clients.filter((client) => Boolean(client.metaAdAccountId)).length,
     [clients]
@@ -3940,6 +4069,19 @@ export default function DashboardPage() {
       ...client,
       [fieldName]: value,
     }))
+  }
+
+  const handleClientInlineFieldChange = (clientId, fieldName, value) => {
+    setClients((currentClients) =>
+      currentClients.map((client) =>
+        client.id === clientId
+          ? {
+              ...client,
+              [fieldName]: value,
+            }
+          : client
+      )
+    )
   }
 
   const handleConfirmDashboardEntry = () => {
@@ -8449,83 +8591,163 @@ export default function DashboardPage() {
                   </div>
                 </div>
 
+                <div className="client-registry-controls">
+                  <div className="client-registry-search">
+                    <i className="bx bx-search"></i>
+                    <input
+                      type="text"
+                      value={clientSearch}
+                      onChange={(event) => setClientSearch(event.target.value)}
+                      placeholder="Buscar cliente, produto, responsável..."
+                    />
+                  </div>
+                  <div className="client-registry-filter-group">
+                    <select value={clientStatusFilter} onChange={(event) => setClientStatusFilter(event.target.value)}>
+                      <option value="all">Todos os status</option>
+                      <option value="ativo">Ativo</option>
+                      <option value="onboarding">Onboarding</option>
+                      <option value="pausado">Pausado</option>
+                      <option value="risco">Risco</option>
+                      <option value="risk">Health em risco</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="client-registry-view-tabs">
+                  {CLIENT_REGISTRY_VIEWS.map((view) => (
+                    <button
+                      key={view.key}
+                      type="button"
+                      className={`client-registry-view-tab ${clientRegistryView === view.key ? 'active' : ''}`}
+                      onClick={() => setClientRegistryView(view.key)}
+                    >
+                      {view.label}
+                    </button>
+                  ))}
+                </div>
+
                 <div className="client-registry-table">
-                  <div className="client-registry-header">
-                    <span>Cliente</span>
-                    <span>Status</span>
-                    <span>Fee</span>
-                    <span>Faturamento</span>
-                    <span>Margem contrib.</span>
-                    <span>Margem lucro</span>
-                    <span>Health</span>
-                    <span>Entregáveis</span>
-                    <span>Integrações</span>
+                  <div
+                    className="client-registry-header"
+                    style={{ gridTemplateColumns: `minmax(220px, 1.8fr) repeat(${Math.max(activeClientRegistryView.columns.length - 1, 0)}, minmax(140px, 1fr)) minmax(150px, 1.1fr)` }}
+                  >
+                    {activeClientRegistryView.columns.map((columnKey) => {
+                      const meta = getClientRegistryColumnMeta(columnKey)
+                      return <span key={columnKey}>{meta.label}</span>
+                    })}
                     <span>Ações</span>
                   </div>
                   <div className="client-registry-body">
-                    {clients.map((client) => {
-                      const statusMeta = getClientStatusMeta(client)
-                      const deliverablesMeta = getClientFlagMeta(client.deliverablesFlag)
+                    {filteredClients.map((client) => {
                       const healthScore = calculateClientHealthScore(client)
                       const linkedGroupsCount = clientGroups.filter((group) => normalizeClientGroupClientIds(group.clientIds).includes(client.id)).length
-                      const connectedSources = countClientConnectedSources(client)
 
                       return (
-                        <div key={client.id} className={`client-registry-row glass-item ${client.id === activeClientId ? 'client-registry-row-active' : ''}`}>
-                          <div className="client-registry-client">
-                            <div className="client-avatar-shell">
-                              {client.logoUrl ? (
-                                <img
-                                  src={client.logoUrl}
-                                  alt={`Logo ${client.name}`}
-                                  className="client-avatar-image"
+                        <div
+                          key={client.id}
+                          className={`client-registry-row glass-item ${client.id === activeClientId ? 'client-registry-row-active' : ''}`}
+                          style={{ gridTemplateColumns: `minmax(220px, 1.8fr) repeat(${Math.max(activeClientRegistryView.columns.length - 1, 0)}, minmax(140px, 1fr)) minmax(150px, 1.1fr)` }}
+                        >
+                          {activeClientRegistryView.columns.map((columnKey) => {
+                            const meta = getClientRegistryColumnMeta(columnKey)
+                            const value = client[columnKey]
+
+                            if (meta.type === 'name') {
+                              return (
+                                <div key={columnKey} className="client-registry-client">
+                                  <div className="client-avatar-shell client-avatar-shell-sm">
+                                    {client.logoUrl ? (
+                                      <img
+                                        src={client.logoUrl}
+                                        alt={`Logo ${client.name}`}
+                                        className="client-avatar-image"
+                                      />
+                                    ) : (
+                                      <span>{getNameInitials(client.name)}</span>
+                                    )}
+                                  </div>
+                                  <div className="client-registry-client-copy">
+                                    <input
+                                      type="text"
+                                      value={client.name || ''}
+                                      onChange={(event) => handleClientInlineFieldChange(client.id, 'name', event.target.value)}
+                                      placeholder="Nome do cliente"
+                                    />
+                                    <small>{linkedGroupsCount ? `${linkedGroupsCount} grupo(s)` : 'Sem grupo vinculado'}</small>
+                                  </div>
+                                </div>
+                              )
+                            }
+
+                            if (meta.type === 'status') {
+                              return (
+                                <div key={columnKey} className="client-registry-cell">
+                                  <select value={client.status || 'Ativo'} onChange={(event) => handleClientInlineFieldChange(client.id, columnKey, event.target.value)}>
+                                    {CLIENT_STATUS_OPTIONS.map((option) => (
+                                      <option key={option} value={option}>{option}</option>
+                                    ))}
+                                  </select>
+                                </div>
+                              )
+                            }
+
+                            if (meta.type === 'flag') {
+                              return (
+                                <div key={columnKey} className="client-registry-cell">
+                                  <select value={value || 'na'} onChange={(event) => handleClientInlineFieldChange(client.id, columnKey, event.target.value)}>
+                                    {CLIENT_FLAG_OPTIONS.map((option) => (
+                                      <option key={option.value} value={option.value}>{option.label}</option>
+                                    ))}
+                                  </select>
+                                </div>
+                              )
+                            }
+
+                            if (meta.type === 'health') {
+                              return (
+                                <div key={columnKey} className="client-registry-cell">
+                                  <div className="client-health-inline">
+                                    <strong>{healthScore == null ? '--' : `${healthScore}%`}</strong>
+                                    <small>Calculado pelas flags</small>
+                                  </div>
+                                </div>
+                              )
+                            }
+
+                            if (meta.type === 'date') {
+                              return (
+                                <div key={columnKey} className="client-registry-cell">
+                                  <input type="date" value={value || ''} onChange={(event) => handleClientInlineFieldChange(client.id, columnKey, event.target.value)} />
+                                </div>
+                              )
+                            }
+
+                            if (meta.type === 'link') {
+                              return (
+                                <div key={columnKey} className="client-registry-cell">
+                                  <input type="text" value={value || ''} onChange={(event) => handleClientInlineFieldChange(client.id, columnKey, event.target.value)} placeholder="https://..." />
+                                </div>
+                              )
+                            }
+
+                            return (
+                              <div key={columnKey} className="client-registry-cell">
+                                <input
+                                  type="text"
+                                  value={value || ''}
+                                  onChange={(event) => handleClientInlineFieldChange(client.id, columnKey, event.target.value)}
+                                  placeholder={meta.label}
                                 />
-                              ) : (
-                                <span>{getNameInitials(client.name)}</span>
-                              )}
-                            </div>
-                            <div className="client-registry-client-copy">
-                              <strong>{client.name}</strong>
-                              <span>{client.product || 'Produto nao informado'}</span>
-                              <small>{linkedGroupsCount ? `${linkedGroupsCount} grupo(s)` : 'Sem grupo vinculado'}</small>
-                            </div>
-                          </div>
-                          <div className="client-registry-cell">
-                            <span className={`client-status-badge client-status-${statusMeta.tone}`}>{client.status || statusMeta.label}</span>
-                          </div>
-                          <div className="client-registry-cell">
-                            <strong>{formatClientCurrency(client.fee)}</strong>
-                          </div>
-                          <div className="client-registry-cell">
-                            <strong>{formatClientCurrency(client.monthlyRevenue)}</strong>
-                          </div>
-                          <div className="client-registry-cell">
-                            <strong>{formatClientPercent(client.contributionMarginPercent)}</strong>
-                          </div>
-                          <div className="client-registry-cell">
-                            <strong>{formatClientPercent(client.profitMarginPercent)}</strong>
-                          </div>
-                          <div className="client-registry-cell">
-                            <div className="client-health-inline">
-                              <strong>{healthScore == null ? '--' : `${healthScore}%`}</strong>
-                              <small>{client.healthScoreFlag === 'na' ? 'Calculado pelas flags' : getClientFlagMeta(client.healthScoreFlag).label}</small>
-                            </div>
-                          </div>
-                          <div className="client-registry-cell">
-                            <span className={`client-status-badge client-status-${deliverablesMeta.tone}`}>{deliverablesMeta.label}</span>
-                          </div>
-                          <div className="client-registry-cell">
-                            <div className="client-integration-inline">
-                              <strong>{formatNumber(connectedSources)}</strong>
-                              <small>{client.metaAdAccountId ? 'Meta ativa' : 'Sem Meta'}</small>
-                            </div>
-                          </div>
+                              </div>
+                            )
+                          })}
                           <div className="client-registry-actions">
                             <button
                               type="button"
                               className="btn btn-secondary"
                               onClick={() => {
                                 setActiveClientId(client.id)
+                                setClientEditSection(clientRegistryView)
                                 setIsEditClientModalOpen(true)
                               }}
                             >
@@ -8547,6 +8769,13 @@ export default function DashboardPage() {
                   <div className="empty-panel glass-item users-empty-state compact-empty-state">
                     <h3>Nenhum cliente encontrado</h3>
                     <p>Crie um cliente novo para começar a configurar a operação.</p>
+                  </div>
+                )}
+
+                {!!clients.length && !filteredClients.length && (
+                  <div className="empty-panel glass-item users-empty-state compact-empty-state">
+                    <h3>Nenhum cliente bate com o filtro</h3>
+                    <p>Ajuste a busca ou o status para voltar a ver a base.</p>
                   </div>
                 )}
               </div>
@@ -8776,6 +9005,20 @@ export default function DashboardPage() {
                   </button>
                 </div>
 
+                <div className="client-edit-section-tabs">
+                  {CLIENT_EDIT_SECTIONS.map((section) => (
+                    <button
+                      key={section.key}
+                      type="button"
+                      className={`client-edit-section-tab ${clientEditSection === section.key ? 'active' : ''}`}
+                      onClick={() => setClientEditSection(section.key)}
+                    >
+                      {section.label}
+                    </button>
+                  ))}
+                </div>
+
+                {(clientEditSection === 'geral' || clientEditSection === 'branding') && (
                 <div className="integration-block client-identity-block">
                   <div className="integration-heading">
                     <div className="integration-icon" style={{ color: currentTheme.main, borderColor: `${currentTheme.main}33` }}>
@@ -8880,7 +9123,9 @@ export default function DashboardPage() {
                     </div>
                   </div>
                 </div>
+                )}
 
+                {(clientEditSection === 'geral' || clientEditSection === 'financeiro') && (
                 <div className="client-editor-overview-grid">
                   <div className="integration-block">
                     <div className="integration-heading">
@@ -8914,6 +9159,14 @@ export default function DashboardPage() {
                         <label>Data de início</label>
                         <input type="date" value={activeClient.startDate || ''} onChange={(event) => handleClientFieldChange('startDate', event.target.value)} />
                       </div>
+                      <div className="input-group">
+                        <label>STEP</label>
+                        <input type="text" value={activeClient.step || ''} onChange={(event) => handleClientFieldChange('step', event.target.value)} placeholder="Ex.: Implantação, escala..." />
+                      </div>
+                      <div className="input-group">
+                        <label>LTV</label>
+                        <input type="text" value={activeClient.ltv || ''} onChange={(event) => handleClientFieldChange('ltv', event.target.value)} placeholder="Ex.: 24000" />
+                      </div>
                     </div>
                   </div>
 
@@ -8938,6 +9191,10 @@ export default function DashboardPage() {
                         <input type="text" value={activeClient.monthlyRevenue || ''} onChange={(event) => handleClientFieldChange('monthlyRevenue', event.target.value)} placeholder="Ex.: 120000" />
                       </div>
                       <div className="input-group">
+                        <label>Investimento em mídia</label>
+                        <input type="text" value={activeClient.mediaInvestment || ''} onChange={(event) => handleClientFieldChange('mediaInvestment', event.target.value)} placeholder="Ex.: 30000" />
+                      </div>
+                      <div className="input-group">
                         <label>Margem de contribuição (R$)</label>
                         <input type="text" value={activeClient.contributionMarginAmount || ''} onChange={(event) => handleClientFieldChange('contributionMarginAmount', event.target.value)} placeholder="Ex.: 22000" />
                       </div>
@@ -8953,10 +9210,20 @@ export default function DashboardPage() {
                         <label>Margem de lucro (%)</label>
                         <input type="text" value={activeClient.profitMarginPercent || ''} onChange={(event) => handleClientFieldChange('profitMarginPercent', event.target.value)} placeholder="Ex.: 10,2" />
                       </div>
+                      <div className="input-group">
+                        <label>MM/F</label>
+                        <input type="text" value={activeClient.mmf || ''} onChange={(event) => handleClientFieldChange('mmf', event.target.value)} placeholder="Ex.: 1,8" />
+                      </div>
+                      <div className="input-group">
+                        <label>ROI do Marketing</label>
+                        <input type="text" value={activeClient.roiMarketing || ''} onChange={(event) => handleClientFieldChange('roiMarketing', event.target.value)} placeholder="Ex.: 3,4" />
+                      </div>
                     </div>
                   </div>
                 </div>
+                )}
 
+                {(clientEditSection === 'flags' || clientEditSection === 'quality') && (
                 <div className="integration-block">
                   <div className="integration-heading">
                     <div className="integration-icon" style={{ color: '#8b5cf6', borderColor: '#8b5cf633' }}>
@@ -8987,7 +9254,9 @@ export default function DashboardPage() {
                     })}
                   </div>
                 </div>
+                )}
 
+                {(clientEditSection === 'branding' || clientEditSection === 'dados' || clientEditSection === 'mais') && (
                 <div className="client-editor-overview-grid">
                   <div className="integration-block">
                     <div className="integration-heading">
@@ -9028,10 +9297,24 @@ export default function DashboardPage() {
                           <input type="text" value={activeClient[field.name] || ''} onChange={(event) => handleClientFieldChange(field.name, event.target.value)} placeholder={field.placeholder} />
                         </div>
                       ))}
+                      <div className="input-group">
+                        <label>Demandas orgânicas</label>
+                        <input type="text" value={activeClient.organicDemands || ''} onChange={(event) => handleClientFieldChange('organicDemands', event.target.value)} placeholder="Ex.: 12" />
+                      </div>
+                      <div className="input-group">
+                        <label>Demandas de tráfego</label>
+                        <input type="text" value={activeClient.trafficDemands || ''} onChange={(event) => handleClientFieldChange('trafficDemands', event.target.value)} placeholder="Ex.: 8" />
+                      </div>
+                      <div className="input-group">
+                        <label>Total de demandas</label>
+                        <input type="text" value={activeClient.totalDemands || ''} onChange={(event) => handleClientFieldChange('totalDemands', event.target.value)} placeholder="Ex.: 20" />
+                      </div>
                     </div>
                   </div>
                 </div>
+                )}
 
+                {(clientEditSection === 'mais' || clientEditSection === 'dados') && (
                 <div className="form-grid">
                   <div className="integration-block">
                     <div className="integration-heading">
@@ -9167,6 +9450,7 @@ export default function DashboardPage() {
                     </div>
                   ))}
                 </div>
+                )}
               </form>
             </div>
           </div>
@@ -12242,21 +12526,97 @@ export default function DashboardPage() {
 
         .client-registry-table {
           display: grid;
-          gap: 14px;
+          gap: 10px;
           overflow-x: auto;
+        }
+
+        .client-registry-controls {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          flex-wrap: wrap;
+        }
+
+        .client-registry-search {
+          min-width: min(100%, 360px);
+          flex: 1 1 320px;
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          min-height: 44px;
+          padding: 0 14px;
+          border-radius: 14px;
+          border: 1px solid rgba(143, 144, 149, 0.14);
+          background: rgba(9, 12, 18, 0.7);
+        }
+
+        .client-registry-search i {
+          color: rgba(225, 226, 235, 0.4);
+          font-size: 18px;
+        }
+
+        .client-registry-search input,
+        .client-registry-filter-group select {
+          width: 100%;
+          background: transparent;
+          border: 0;
+          color: #ffffff;
+          outline: none;
+          font-family: inherit;
+        }
+
+        .client-registry-filter-group {
+          min-width: 190px;
+          min-height: 44px;
+          padding: 0 14px;
+          border-radius: 14px;
+          border: 1px solid rgba(143, 144, 149, 0.14);
+          background: rgba(9, 12, 18, 0.7);
+          display: flex;
+          align-items: center;
+        }
+
+        .client-registry-view-tabs,
+        .client-edit-section-tabs {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 10px;
+        }
+
+        .client-registry-view-tab,
+        .client-edit-section-tab {
+          min-height: 42px;
+          padding: 0 16px;
+          border-radius: 999px;
+          border: 1px solid rgba(143, 144, 149, 0.14);
+          background: rgba(255, 255, 255, 0.04);
+          color: rgba(225, 226, 235, 0.74);
+          font-size: 13px;
+          font-weight: 700;
+          font-family: inherit;
+          transition: 0.24s ease;
+        }
+
+        .client-registry-view-tab.active,
+        .client-edit-section-tab.active {
+          color: #ffffff;
+          border-color: color-mix(in srgb, var(--accent-blue) 28%, transparent);
+          background: color-mix(in srgb, var(--accent-blue) 12%, rgba(255, 255, 255, 0.04));
+          box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
         }
 
         .client-registry-header,
         .client-registry-row {
           display: grid;
-          grid-template-columns: minmax(220px, 1.8fr) repeat(8, minmax(110px, 1fr)) minmax(150px, 1.2fr);
-          gap: 14px;
+          grid-template-columns: minmax(220px, 1.8fr) repeat(7, minmax(140px, 1fr)) minmax(150px, 1.1fr);
+          gap: 10px;
           align-items: center;
-          min-width: 1380px;
+          min-width: 1320px;
         }
 
         .client-registry-header {
-          padding: 0 10px;
+          padding: 0 8px;
           color: rgba(225, 226, 235, 0.5);
           font-size: 11px;
           font-weight: 800;
@@ -12266,12 +12626,12 @@ export default function DashboardPage() {
 
         .client-registry-body {
           display: grid;
-          gap: 12px;
+          gap: 10px;
         }
 
         .client-registry-row {
-          padding: 16px;
-          border-radius: 22px;
+          padding: 12px;
+          border-radius: 18px;
           border: 1px solid rgba(143, 144, 149, 0.14);
           background:
             linear-gradient(180deg, rgba(255, 255, 255, 0.024), rgba(255, 255, 255, 0.012)),
@@ -12286,8 +12646,15 @@ export default function DashboardPage() {
         .client-registry-client {
           display: flex;
           align-items: center;
-          gap: 16px;
+          gap: 12px;
           min-width: 0;
+        }
+
+        .client-avatar-shell-sm {
+          width: 44px;
+          height: 44px;
+          border-radius: 14px;
+          font-size: 14px;
         }
 
         .client-registry-client-copy {
@@ -12296,9 +12663,25 @@ export default function DashboardPage() {
           gap: 4px;
         }
 
-        .client-registry-client-copy strong,
-        .client-registry-cell strong {
+        .client-registry-client-copy input,
+        .client-registry-cell input,
+        .client-registry-cell select {
+          width: 100%;
+          min-height: 38px;
+          padding: 8px 10px;
+          border-radius: 12px;
+          border: 1px solid rgba(143, 144, 149, 0.14);
+          background: rgba(255, 255, 255, 0.035);
           color: #ffffff;
+          font-family: inherit;
+          outline: none;
+        }
+
+        .client-registry-client-copy input:focus,
+        .client-registry-cell input:focus,
+        .client-registry-cell select:focus {
+          border-color: color-mix(in srgb, var(--accent-blue) 28%, transparent);
+          box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-blue) 10%, transparent);
         }
 
         .client-registry-client-copy span,
@@ -12322,6 +12705,7 @@ export default function DashboardPage() {
           justify-content: flex-end;
           gap: 10px;
           flex-wrap: wrap;
+          align-items: center;
         }
 
         .client-health-inline,
@@ -17498,6 +17882,22 @@ export default function DashboardPage() {
           .client-form-grid-2,
           .client-flag-grid {
             grid-template-columns: 1fr;
+          }
+
+          .client-registry-controls {
+            align-items: stretch;
+          }
+
+          .client-registry-search,
+          .client-registry-filter-group {
+            width: 100%;
+          }
+
+          .client-registry-view-tabs,
+          .client-edit-section-tabs {
+            overflow-x: auto;
+            flex-wrap: nowrap;
+            padding-bottom: 4px;
           }
 
           .client-registry-header {

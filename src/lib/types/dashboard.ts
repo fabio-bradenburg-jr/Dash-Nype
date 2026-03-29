@@ -49,13 +49,19 @@ export interface ClientRecord {
   contractUrl: string
   startDate: string
   fee: string
+  mediaInvestment: string
   monthlyRevenue: string
+  step: string
+  ltv: string
   contributionMarginAmount: string
   contributionMarginPercent: string
   profitMarginAmount: string
   profitMarginPercent: string
+  mmf: string
+  roiMarketing: string
   dashboardUrl: string
   driveUrl: string
+  eapUrl: string
   brandManualUrl: string
   moodboardUrl: string
   salesNarrativeUrl: string
@@ -65,6 +71,9 @@ export interface ClientRecord {
   designer: string
   csOwner: string
   copyOwner: string
+  organicDemands: string
+  trafficDemands: string
+  totalDemands: string
   financialFlag: string
   roiFlag: string
   healthScoreFlag: string
