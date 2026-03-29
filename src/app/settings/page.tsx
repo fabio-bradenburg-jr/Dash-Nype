@@ -1,7 +1,7 @@
 'use client'
 
 import type { ChangeEvent, CSSProperties } from 'react'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useUser } from '@/lib/contexts/UserContext'
 import { DEFAULT_USER_APPEARANCE } from '@/lib/user-appearance-storage'
@@ -27,6 +27,7 @@ import type { AiAgent, AiProviderConfig, AiProvidersMap, AiSettings } from '@/li
 import type {
   ClientCustomColumnRecord,
   ClientCustomTabRecord,
+  ClientRecord,
   DashboardIntegrations,
 } from '@/lib/types/dashboard'
 import type { UserAppearance } from '@/lib/types/user'
@@ -59,6 +60,7 @@ type GlobalIntegrationsState = DashboardIntegrations & Record<string, unknown>
 
 interface SettingsServerState {
   globalIntegrations?: Partial<GlobalIntegrationsState>
+  clients?: ClientRecord[]
   clientSystemFields?: ClientCustomColumnRecord[]
   clientCustomColumns?: ClientCustomColumnRecord[]
   clientCustomTabs?: ClientCustomTabRecord[]
@@ -314,6 +316,19 @@ function appendDropdownOption(currentValue: string, nextOption: string): string 
   return options.join(', ')
 }
 
+function fieldHasFilledValue(client: ClientRecord, fieldKey: string, source: 'system' | 'custom'): boolean {
+  const rawValue =
+    source === 'custom'
+      ? client?.customFieldValues?.[fieldKey]
+      : client?.[fieldKey as keyof ClientRecord]
+
+  if (Array.isArray(rawValue)) return rawValue.length > 0
+  if (typeof rawValue === 'boolean') return rawValue
+  if (typeof rawValue === 'number') return Number.isFinite(rawValue) && rawValue !== 0
+  if (rawValue && typeof rawValue === 'object') return Object.keys(rawValue).length > 0
+  return String(rawValue || '').trim().length > 0
+}
+
 function clampRgbChannel(value: string | number): number {
   const parsed = Number.parseInt(String(value), 10)
   if (!Number.isFinite(parsed)) return 0
@@ -397,10 +412,101 @@ export default function SettingsPage() {
   const backgroundPreviewStyle: BackgroundPreviewStyle = {
     '--panel-bg-tint': panelDraft.backgroundTint,
   }
-  const clientFieldTabOptions = [
-    ...DEFAULT_CLIENT_FIELD_TABS,
-    ...clientCustomTabs.map((tab) => ({ key: tab.key, label: tab.label })),
-  ]
+  const clientFieldTabOptions = useMemo(
+    () => [
+      ...DEFAULT_CLIENT_FIELD_TABS,
+      ...clientCustomTabs.map((tab) => ({ key: tab.key, label: tab.label })),
+    ],
+    [clientCustomTabs]
+  )
+  const allClientFieldLibrary = useMemo(
+    () => [
+      ...clientSystemFields.map((field) => ({
+        key: field.key,
+        label: field.label,
+        type: field.type,
+        source: 'system',
+      })),
+      ...clientCustomColumns.map((field) => ({
+        key: field.key,
+        label: field.label,
+        type: field.type,
+        source: 'custom',
+      })),
+    ],
+    [clientCustomColumns, clientSystemFields]
+  )
+  const serverClients = useMemo(
+    () => (Array.isArray(serverState?.clients) ? serverState.clients : []),
+    [serverState?.clients]
+  )
+  const clientFieldImpact = useMemo(() => {
+    const allFields = [
+      ...clientSystemFields.map((field) => ({ ...field, source: 'system' as const })),
+      ...clientCustomColumns.map((field) => ({ ...field, source: 'custom' as const })),
+    ]
+
+    return Object.fromEntries(
+      allFields.map((field) => {
+        const filledClientsCount = serverClients.filter((client) =>
+          fieldHasFilledValue(client, field.key, field.source)
+        ).length
+        const linkedTabsCount = [
+          field.tabKey,
+          ...clientCustomTabs
+            .filter((tab) => (tab.columnKeys || []).includes(field.key))
+            .map((tab) => tab.key),
+        ].filter(Boolean).length
+        const dependentFormulaCount = clientCustomColumns.filter((column) =>
+          column.type === 'formula' &&
+          String(column.formulaExpression || '').includes(`{${field.key}}`)
+        ).length
+
+        return [
+          field.key,
+          {
+            filledClientsCount,
+            linkedTabsCount,
+            dependentFormulaCount,
+          },
+        ]
+      })
+    )
+  }, [clientCustomColumns, clientCustomTabs, clientSystemFields, serverClients])
+  const clientTabImpact = useMemo(() => {
+    const allTabs = [...DEFAULT_CLIENT_FIELD_TABS, ...clientCustomTabs]
+
+    return Object.fromEntries(
+      allTabs.map((tab) => {
+        const tabFieldKeys = allClientFieldLibrary
+          .filter((field) => {
+            const matchesPrimaryTab =
+              (clientSystemFields.find((item) => item.key === field.key)?.tabKey ||
+                clientCustomColumns.find((item) => item.key === field.key)?.tabKey) === tab.key
+            const matchesCustomMembership = clientCustomTabs.some(
+              (customTab) => customTab.key === tab.key && (customTab.columnKeys || []).includes(field.key)
+            )
+            return matchesPrimaryTab || matchesCustomMembership
+          })
+          .map((field) => field.key)
+
+        const clientsWithDataCount = serverClients.filter((client) =>
+          tabFieldKeys.some((fieldKey) => {
+            const source = clientCustomColumns.some((field) => field.key === fieldKey) ? 'custom' : 'system'
+            return fieldHasFilledValue(client, fieldKey, source)
+          })
+        ).length
+
+        return [
+          tab.key,
+          {
+            fieldCount: tabFieldKeys.length,
+            clientsWithDataCount,
+          },
+        ]
+      })
+    )
+  }, [allClientFieldLibrary, clientCustomColumns, clientCustomTabs, clientSystemFields, serverClients])
   const selectedAiProvider = getAiProviderOption(globalIntegrations.aiProvider)
   const activeAiProviderConfig: AiProviderConfig =
     (globalIntegrations.aiProviders?.[selectedAiProvider.value] as AiProviderConfig | undefined) ||
@@ -942,6 +1048,17 @@ export default function SettingsPage() {
 
   const handleRemoveClientCustomColumn = (columnKey: string) => {
     if (!canManageClients) return
+    const usageCount = serverClients.filter((client) => fieldHasFilledValue(client, columnKey, 'custom')).length
+    const linkedTabs = clientCustomTabs.filter((tab) => (tab.columnKeys || []).includes(columnKey))
+
+    if (usageCount > 0) {
+      const confirmed = window.confirm(
+        `Esse campo já tem preenchimento em ${usageCount} cliente(s) e está ligado a ${linkedTabs.length} aba(s). Deseja excluir mesmo assim?`
+      )
+
+      if (!confirmed) return
+    }
+
     const nextColumns = clientCustomColumns.filter((column) => column.key !== columnKey)
     const nextTabs = clientCustomTabs.map((tab) => ({
       ...tab,
@@ -980,6 +1097,22 @@ export default function SettingsPage() {
 
   const handleRemoveClientCustomTab = (tabId: string) => {
     if (!canManageClients) return
+    const currentTab = clientCustomTabs.find((tab) => tab.id === tabId)
+    const linkedFieldKeys = currentTab?.columnKeys || []
+    const filledFieldsCount = linkedFieldKeys.reduce((count, fieldKey) => {
+      const fieldSource = clientCustomColumns.some((field) => field.key === fieldKey) ? 'custom' : 'system'
+      const hasFilledValues = serverClients.some((client) => fieldHasFilledValue(client, fieldKey, fieldSource))
+      return hasFilledValues ? count + 1 : count
+    }, 0)
+
+    if ((linkedFieldKeys.length > 0 || filledFieldsCount > 0) && currentTab) {
+      const confirmed = window.confirm(
+        `A aba "${currentTab.label}" tem ${linkedFieldKeys.length} campo(s) vinculado(s) e ${filledFieldsCount} com dados preenchidos na base. Deseja excluir mesmo assim?`
+      )
+
+      if (!confirmed) return
+    }
+
     const nextTabs = clientCustomTabs.filter((tab) => tab.id !== tabId)
     setClientCustomTabs(nextTabs)
     void persistClientStructure(clientSystemFields, clientCustomColumns, nextTabs)
@@ -1123,8 +1256,8 @@ export default function SettingsPage() {
           <div className="settings-shell">
             <aside className="glass-item settings-section-sidebar">
               <div className="settings-sidebar-title">
-                <span>Digital Obsidian</span>
-                <strong>Escolha a camada da experiência que quer ajustar</strong>
+                <span>Configuração</span>
+                <strong>Ajustes da operação</strong>
               </div>
 
               <div className="settings-sidebar-nav">
@@ -2073,6 +2206,19 @@ export default function SettingsPage() {
                                   </div>
                                   <small>{CLIENT_CUSTOM_COLUMN_TYPE_OPTIONS.find((option) => option.value === field.type)?.label || field.type}</small>
                                 </summary>
+                                <div className="settings-option-chips settings-impact-row">
+                                  <span className="stage-chip active">
+                                    <span>{`${clientFieldImpact[field.key]?.filledClientsCount || 0} cliente(s) com dado`}</span>
+                                  </span>
+                                  <span className="stage-chip">
+                                    <span>{`${clientFieldImpact[field.key]?.linkedTabsCount || 0} aba(s)`}</span>
+                                  </span>
+                                  {!!clientFieldImpact[field.key]?.dependentFormulaCount && (
+                                    <span className="stage-chip">
+                                      <span>{`${clientFieldImpact[field.key]?.dependentFormulaCount} fórmula(s)`}</span>
+                                    </span>
+                                  )}
+                                </div>
                                 <div className="settings-form-grid">
                                   <div className="input-group">
                                     <label>Nome</label>
@@ -2153,6 +2299,19 @@ export default function SettingsPage() {
                                   </div>
                                   <small>{CLIENT_CUSTOM_COLUMN_TYPE_OPTIONS.find((option) => option.value === column.type)?.label || column.type}</small>
                                 </summary>
+                                <div className="settings-option-chips settings-impact-row">
+                                  <span className="stage-chip active">
+                                    <span>{`${clientFieldImpact[column.key]?.filledClientsCount || 0} cliente(s) com dado`}</span>
+                                  </span>
+                                  <span className="stage-chip">
+                                    <span>{`${clientFieldImpact[column.key]?.linkedTabsCount || 0} aba(s)`}</span>
+                                  </span>
+                                  {!!clientFieldImpact[column.key]?.dependentFormulaCount && (
+                                    <span className="stage-chip">
+                                      <span>{`${clientFieldImpact[column.key]?.dependentFormulaCount} fórmula(s)`}</span>
+                                    </span>
+                                  )}
+                                </div>
                                 <div className="settings-form-grid">
                                   <div className="input-group">
                                     <label>Nome</label>
@@ -2245,22 +2404,72 @@ export default function SettingsPage() {
 
                           <div className="settings-stack-list">
                             {clientCustomTabs.map((tab) => (
-                              <div key={tab.id} className="glass-item settings-stack-card">
+                              <details key={tab.id} className="glass-item settings-stack-card settings-accordion-card" open>
+                                <summary className="settings-accordion-summary">
+                                  <div>
+                                    <strong>{tab.label}</strong>
+                                    <span>{(tab.columnKeys || []).length} campo(s) vinculados</span>
+                                  </div>
+                                  <small>Aba customizada</small>
+                                </summary>
+                                <div className="settings-option-chips settings-impact-row">
+                                  <span className="stage-chip active">
+                                    <span>{`${clientTabImpact[tab.key]?.clientsWithDataCount || 0} cliente(s) com dados`}</span>
+                                  </span>
+                                  <span className="stage-chip">
+                                    <span>{`${clientTabImpact[tab.key]?.fieldCount || 0} campo(s)`}</span>
+                                  </span>
+                                </div>
+
                                 <div className="input-group">
                                   <label>Nome da aba</label>
                                   <input type="text" value={tab.label} onChange={(event) => handleClientCustomTabFieldChange(tab.id, event.target.value)} />
                                 </div>
 
-                                <div className="stage-selector">
-                                  {clientCustomColumns.map((column) => {
-                                    const checked = (tab.columnKeys || []).includes(column.key)
-                                    return (
-                                      <label key={`${tab.id}-${column.key}`} className={`stage-chip ${checked ? 'active' : ''}`}>
-                                        <input type="checkbox" checked={checked} onChange={() => handleClientCustomTabColumnToggle(tab.id, column.key)} />
-                                        <span>{column.label}</span>
-                                      </label>
-                                    )
-                                  })}
+                                <div className="input-group">
+                                  <label>Campos nesta aba</label>
+                                  <div className="settings-option-chips">
+                                    {(tab.columnKeys || []).length ? (
+                                      (tab.columnKeys || []).map((columnKey) => {
+                                        const field = allClientFieldLibrary.find((item) => item.key === columnKey)
+                                        if (!field) return null
+
+                                        return (
+                                          <button
+                                            key={`${tab.id}-selected-${columnKey}`}
+                                            type="button"
+                                            className="stage-chip active settings-chip-button"
+                                            onClick={() => handleClientCustomTabColumnToggle(tab.id, columnKey)}
+                                          >
+                                            <span>{field.label}</span>
+                                            <i className="bx bx-x"></i>
+                                          </button>
+                                        )
+                                      })
+                                    ) : (
+                                      <p className="settings-empty-note">Nenhum campo vinculado ainda.</p>
+                                    )}
+                                  </div>
+                                </div>
+
+                                <div className="input-group">
+                                  <label>Adicionar ou remover rapidamente</label>
+                                  <div className="settings-option-chips">
+                                    {allClientFieldLibrary.map((field) => {
+                                      const checked = (tab.columnKeys || []).includes(field.key)
+                                      return (
+                                        <button
+                                          key={`${tab.id}-${field.key}`}
+                                          type="button"
+                                          className={`stage-chip ${checked ? 'active' : ''} settings-chip-button`}
+                                          onClick={() => handleClientCustomTabColumnToggle(tab.id, field.key)}
+                                        >
+                                          <span>{field.label}</span>
+                                          <small>{field.source === 'system' ? 'Base' : 'Custom'}</small>
+                                        </button>
+                                      )
+                                    })}
+                                  </div>
                                 </div>
 
                                 <div className="modal-actions">
@@ -2268,7 +2477,7 @@ export default function SettingsPage() {
                                     Excluir aba
                                   </button>
                                 </div>
-                              </div>
+                              </details>
                             ))}
                             {!clientCustomTabs.length && <p className="settings-empty-note">Nenhuma aba customizada criada ainda.</p>}
                           </div>
@@ -2349,28 +2558,28 @@ export default function SettingsPage() {
 
         .settings-shell {
           display: grid;
-          grid-template-columns: minmax(280px, 320px) minmax(0, 1fr);
+          grid-template-columns: minmax(220px, 260px) minmax(0, 1fr);
           gap: 24px;
           align-items: start;
         }
 
         .settings-section-sidebar {
-          padding: 28px;
+          padding: 14px;
           display: grid;
-          gap: 18px;
+          gap: 10px;
           position: sticky;
           top: 24px;
           align-self: start;
-          max-height: calc(100vh - 120px);
-          overflow: auto;
+          max-height: fit-content;
+          overflow: visible;
           background: rgba(25, 28, 34, 0.78);
           border: 1px solid rgba(69, 71, 75, 0.2);
-          border-radius: 24px;
+          border-radius: 20px;
         }
 
         .settings-sidebar-title {
           display: grid;
-          gap: 8px;
+          gap: 4px;
         }
 
         .settings-sidebar-title span {
@@ -2382,9 +2591,9 @@ export default function SettingsPage() {
         }
 
         .settings-sidebar-title strong {
-          max-width: 24ch;
-          font-size: 28px;
-          line-height: 1.2;
+          max-width: 16ch;
+          font-size: 16px;
+          line-height: 1.1;
           font-family: var(--font-family-headline);
           letter-spacing: -0.03em;
         }
@@ -2392,48 +2601,48 @@ export default function SettingsPage() {
         .settings-sidebar-nav {
           display: grid;
           grid-template-columns: 1fr;
-          gap: 12px;
+          gap: 6px;
         }
 
         .settings-sidebar-link {
           width: 100%;
-          min-height: 120px;
-          padding: 18px 20px;
-          border-radius: 20px;
-          border: 1px solid rgba(69, 71, 75, 0.18);
-          background: rgba(29, 32, 38, 0.84);
+          min-height: auto;
+          padding: 11px 12px;
+          border-radius: 14px;
+          border: 1px solid rgba(69, 71, 75, 0.12);
+          background: rgba(29, 32, 38, 0.72);
           color: var(--text-primary);
           font: inherit;
           text-align: left;
           cursor: pointer;
           display: grid;
-          grid-template-rows: auto 1fr;
-          gap: 14px;
-          align-content: start;
+          grid-template-columns: 18px minmax(0, 1fr);
+          gap: 10px;
+          align-items: start;
           transition: border-color 0.2s ease, background 0.2s ease, transform 0.2s ease;
         }
 
         .settings-sidebar-link i {
-          font-size: 20px;
+          font-size: 17px;
           color: var(--accent-blue);
           margin-top: 1px;
         }
 
         .settings-sidebar-link div {
           display: grid;
-          gap: 6px;
+          gap: 2px;
         }
 
         .settings-sidebar-link strong {
-          font-size: 15px;
+          font-size: 13px;
           font-family: var(--font-family-headline);
           font-weight: 700;
         }
 
         .settings-sidebar-link span {
           color: var(--text-secondary);
-          font-size: 12px;
-          line-height: 1.5;
+          font-size: 10px;
+          line-height: 1.25;
         }
 
         .settings-sidebar-link.active {
@@ -3240,6 +3449,8 @@ export default function SettingsPage() {
         }
 
         .settings-category-grid {
+          display: grid;
+          gap: 22px;
           align-items: start;
         }
 
@@ -3317,6 +3528,22 @@ export default function SettingsPage() {
           gap: 8px;
         }
 
+        .settings-impact-row {
+          margin-top: 2px;
+        }
+
+        .settings-chip-button {
+          border: 0;
+          cursor: pointer;
+        }
+
+        .settings-chip-button small {
+          opacity: 0.7;
+          font-size: 10px;
+          letter-spacing: 0.04em;
+          text-transform: uppercase;
+        }
+
         .settings-empty-note {
           margin: 0;
           color: var(--text-secondary);
@@ -3337,13 +3564,15 @@ export default function SettingsPage() {
           border-radius: 18px;
           background: rgba(255, 255, 255, 0.03);
           border: 1px solid rgba(255, 255, 255, 0.05);
+          display: grid;
+          gap: 18px;
         }
 
         .integration-heading {
           display: flex;
           gap: 14px;
           align-items: flex-start;
-          margin-bottom: 18px;
+          margin-bottom: 6px;
         }
 
         .integration-icon {

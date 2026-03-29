@@ -181,6 +181,11 @@ const CLIENT_EDIT_SECTIONS = [
   { key: 'mais', label: 'Mais 1' },
 ]
 
+const CLIENT_DEFAULT_TABS = CLIENT_REGISTRY_VIEWS.map((view) => ({
+  key: view.key,
+  label: view.label,
+}))
+
 const CLIENT_CUSTOM_COLUMN_TYPE_OPTIONS = [
   { value: 'text', label: 'Texto' },
   { value: 'long_text', label: 'Area de texto' },
@@ -205,6 +210,15 @@ const CLIENT_CURRENCY_FIELDS = new Set([
   'monthlyRevenue',
   'contributionMarginAmount',
   'profitMarginAmount',
+])
+
+const CLIENT_COMPLETENESS_EXCLUDED_FIELDS = new Set([
+  'name',
+  'ltv',
+  'mmf',
+  'roiMarketing',
+  'healthScore',
+  'healthScoreFlag',
 ])
 
 function looksLikeJsonBlock(value) {
@@ -423,6 +437,14 @@ function formatClientPercent(value) {
 function normalizeCurrencyInput(value) {
   const parsed = parseClientNumber(value)
   return parsed == null ? '' : formatCurrency(parsed)
+}
+
+function hasClientFieldValue(value) {
+  if (Array.isArray(value)) return value.length > 0
+  if (typeof value === 'boolean') return value
+  if (typeof value === 'number') return Number.isFinite(value) && value !== 0
+  if (value && typeof value === 'object') return Object.keys(value).length > 0
+  return String(value || '').trim().length > 0
 }
 
 function normalizeSelectOptionsInput(value) {
@@ -686,6 +708,31 @@ function getClientRegistryColumnMeta(columnKey) {
   }
 
   return map[columnKey] || { label: columnKey, type: 'text' }
+}
+
+function resolveClientRegistryColumnMeta(columnKey, systemFieldsByKey, customColumnsByKey) {
+  const systemField = systemFieldsByKey?.get?.(columnKey)
+  if (systemField) {
+    return {
+      label: systemField.label || columnKey,
+      type:
+        columnKey === 'name'
+          ? 'name'
+          : columnKey === 'status'
+            ? 'status'
+            : systemField.type || 'text',
+    }
+  }
+
+  const customField = customColumnsByKey?.get?.(columnKey)
+  if (customField) {
+    return {
+      label: customField.label || columnKey,
+      type: customField.type || 'text',
+    }
+  }
+
+  return getClientRegistryColumnMeta(columnKey)
 }
 
 function formatClientCustomFieldValue(columnType, value) {
@@ -2487,6 +2534,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
   const [clients, setClients] = useState([])
   const [clientGroups, setClientGroups] = useState([])
   const [products, setProducts] = useState([])
+  const [clientSystemFields, setClientSystemFields] = useState([])
   const [clientCustomColumns, setClientCustomColumns] = useState([])
   const [clientCustomTabs, setClientCustomTabs] = useState([])
   const [activeClientId, setActiveClientId] = useState('')
@@ -2680,13 +2728,17 @@ export default function DashboardShell({ initialTab = 'home' }) {
     () => new Map(products.map((product) => [product.id, product])),
     [products]
   )
+  const systemFieldsByKey = useMemo(
+    () => new Map(clientSystemFields.map((field) => [field.key, field])),
+    [clientSystemFields]
+  )
   const customColumnsByKey = useMemo(
     () => new Map(clientCustomColumns.map((column) => [column.key, column])),
     [clientCustomColumns]
   )
   const clientFieldTabOptions = useMemo(
     () => [
-      ...CLIENT_REGISTRY_VIEWS.map((view) => ({ key: view.key, label: view.label })),
+      ...CLIENT_DEFAULT_TABS.map((view) => ({ key: view.key, label: view.label })),
       ...clientCustomTabs.map((tab) => ({ key: tab.key, label: tab.label })),
     ],
     [clientCustomTabs]
@@ -2735,10 +2787,13 @@ export default function DashboardShell({ initialTab = 'home' }) {
   }, [customColumnsByKey])
   const allClientRegistryViews = useMemo(
     () => [
-      ...CLIENT_REGISTRY_VIEWS.map((view) => ({
+      ...CLIENT_DEFAULT_TABS.map((view) => ({
         ...view,
         columns: [
-          ...view.columns,
+          'name',
+          ...clientSystemFields
+            .filter((field) => field.tabKey === view.key && field.key !== 'name')
+            .map((field) => field.key),
           ...clientCustomColumns
             .filter((column) => column.tabKey === view.key)
             .map((column) => column.key),
@@ -2761,11 +2816,39 @@ export default function DashboardShell({ initialTab = 'home' }) {
         }))
         .filter((tab) => Array.isArray(tab.columns) && tab.columns.length > 1)
     ],
-    [clientCustomColumns, clientCustomTabs]
+    [clientCustomColumns, clientCustomTabs, clientSystemFields]
+  )
+  const allClientEditSections = useMemo(
+    () => allClientRegistryViews.map((view) => ({ key: view.key, label: view.label })),
+    [allClientRegistryViews]
   )
   const activeClientRegistryView = useMemo(
     () => allClientRegistryViews.find((view) => view.key === clientRegistryView) || allClientRegistryViews[0],
     [clientRegistryView, allClientRegistryViews]
+  )
+  const activeClientEditView = useMemo(
+    () => allClientRegistryViews.find((view) => view.key === clientEditSection) || allClientRegistryViews[0],
+    [clientEditSection, allClientRegistryViews]
+  )
+  const clientCompletenessTrackedKeys = useMemo(
+    () =>
+      clientSystemFields
+        .filter((field) => !CLIENT_COMPLETENESS_EXCLUDED_FIELDS.has(field.key))
+        .map((field) => field.key),
+    [clientSystemFields]
+  )
+  const getClientCompleteness = useCallback((client) => {
+    if (!clientCompletenessTrackedKeys.length) return null
+
+    const filledFields = clientCompletenessTrackedKeys.filter((fieldKey) =>
+      hasClientFieldValue(client?.[fieldKey])
+    ).length
+
+    return Math.round((filledFields / clientCompletenessTrackedKeys.length) * 100)
+  }, [clientCompletenessTrackedKeys])
+  const getResolvedClientColumnMeta = useCallback(
+    (columnKey) => resolveClientRegistryColumnMeta(columnKey, systemFieldsByKey, customColumnsByKey),
+    [systemFieldsByKey, customColumnsByKey]
   )
   const filteredClients = useMemo(() => {
     const term = clientSearch.trim().toLowerCase()
@@ -2781,15 +2864,18 @@ export default function DashboardShell({ initialTab = 'home' }) {
       ].some((value) => String(value || '').toLowerCase().includes(term))
 
       const healthScore = calculateClientHealthScore(client)
+      const completenessScore = getClientCompleteness(client)
       const matchesStatus = clientStatusFilter === 'all'
         ? true
         : clientStatusFilter === 'risk'
           ? healthScore != null && healthScore < 60
+          : clientStatusFilter === 'incomplete'
+            ? completenessScore != null && completenessScore < 60
           : String(client.status || '').toLowerCase() === clientStatusFilter
 
       return matchesSearch && matchesStatus
     })
-  }, [clients, clientSearch, clientStatusFilter, productsById])
+  }, [clients, clientSearch, clientStatusFilter, getClientCompleteness, productsById])
   const connectedClientsCount = useMemo(
     () => clients.filter((client) => Boolean(client.metaAdAccountId)).length,
     [clients]
@@ -2812,6 +2898,22 @@ export default function DashboardShell({ initialTab = 'home' }) {
       return score != null && score < 60
     }).length,
     [clients]
+  )
+  const averageClientCompleteness = useMemo(() => {
+    const scores = clients
+      .map((client) => getClientCompleteness(client))
+      .filter((value) => Number.isFinite(value))
+
+    if (!scores.length) return 0
+    return Math.round(scores.reduce((sum, value) => sum + value, 0) / scores.length)
+  }, [clients, getClientCompleteness])
+  const incompleteClientsCount = useMemo(
+    () =>
+      clients.filter((client) => {
+        const score = getClientCompleteness(client)
+        return score != null && score < 60
+      }).length,
+    [clients, getClientCompleteness]
   )
   const contextDashboardSummary = useMemo(() => {
     if (!clients.length) return null
@@ -3618,6 +3720,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
     setClients(initialClients)
     setClientGroups(Array.isArray(preferences.clientGroups) ? cloneClientGroups(preferences.clientGroups) : [])
     setProducts(Array.isArray(preferences.products) ? preferences.products : [])
+    setClientSystemFields(Array.isArray(preferences.clientSystemFields) ? preferences.clientSystemFields : [])
     setClientCustomColumns(Array.isArray(preferences.clientCustomColumns) ? preferences.clientCustomColumns : [])
     setClientCustomTabs(Array.isArray(preferences.clientCustomTabs) ? preferences.clientCustomTabs : [])
     setActiveClientId(initialActiveClientId)
@@ -3938,6 +4041,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
         setClients(Array.isArray(state.clients) ? state.clients : [])
         setClientGroups(Array.isArray(state.clientGroups) ? cloneClientGroups(state.clientGroups) : [])
         setProducts(Array.isArray(state.products) ? state.products : [])
+        setClientSystemFields(Array.isArray(state.clientSystemFields) ? state.clientSystemFields : [])
         setClientCustomColumns(Array.isArray(state.clientCustomColumns) ? state.clientCustomColumns : [])
         setClientCustomTabs(Array.isArray(state.clientCustomTabs) ? state.clientCustomTabs : [])
         setActiveClientId(state.activeClientId || state.clients?.[0]?.id || '')
@@ -3963,6 +4067,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
       clients,
       clientGroups,
       products,
+      clientSystemFields,
       clientCustomColumns,
       clientCustomTabs,
     }
@@ -3984,7 +4089,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
     }, 300)
 
     return () => window.clearTimeout(timeoutId)
-  }, [hasLoadedPreferences, themeColor, metric1, metric2, activeClientId, globalIntegrations, clients, clientGroups, products, clientCustomColumns, clientCustomTabs, userLoading, user, canManageClients, hasSyncedServerState])
+  }, [hasLoadedPreferences, themeColor, metric1, metric2, activeClientId, globalIntegrations, clients, clientGroups, products, clientSystemFields, clientCustomColumns, clientCustomTabs, userLoading, user, canManageClients, hasSyncedServerState])
 
   useEffect(() => {
     ChartJS.defaults.color = '#94a3b8'
@@ -4954,6 +5059,249 @@ export default function DashboardShell({ initialTab = 'home' }) {
             }
           : client
       )
+    )
+  }
+
+  const renderClientRegistryField = (client, columnKey, mode = 'inline') => {
+    const meta = getResolvedClientColumnMeta(columnKey)
+    const isEditorMode = mode === 'editor'
+    const isReadOnlyCalculatedField = ['ltv', 'mmf', 'roiMarketing', 'healthScore'].includes(columnKey)
+    const value = client?.[columnKey]
+    const customColumn = customColumnsByKey.get(columnKey)
+
+    if (meta.type === 'name' && isEditorMode) {
+      return (
+        <div key={columnKey} className="input-group">
+          <label>{meta.label}</label>
+          <input
+            type="text"
+            value={client?.name || ''}
+            onChange={(event) => handleClientFieldChange('name', event.target.value)}
+            placeholder="Nome do cliente"
+          />
+        </div>
+      )
+    }
+
+    if (meta.type === 'status') {
+      return (
+        <div key={columnKey} className={isEditorMode ? 'input-group' : 'client-registry-cell'}>
+          {isEditorMode && <label>{meta.label}</label>}
+          <select
+            value={value || 'Ativo'}
+            onChange={(event) =>
+              isEditorMode
+                ? handleClientFieldChange(columnKey, event.target.value)
+                : handleClientInlineFieldChange(client.id, columnKey, event.target.value)
+            }
+          >
+            {CLIENT_STATUS_OPTIONS.map((option) => (
+              <option key={option} value={option}>{option}</option>
+            ))}
+          </select>
+        </div>
+      )
+    }
+
+    if (columnKey === 'product') {
+      return (
+        <div key={columnKey} className={isEditorMode ? 'input-group' : 'client-registry-cell'}>
+          {isEditorMode && <label>{meta.label}</label>}
+          <select
+            value={client?.productId || ''}
+            onChange={(event) =>
+              isEditorMode
+                ? handleActiveClientProductChange(event.target.value)
+                : handleClientProductChange(client.id, event.target.value)
+            }
+          >
+            <option value="">Selecione um produto</option>
+            {products.map((product) => (
+              <option key={product.id} value={product.id}>{product.name}</option>
+            ))}
+          </select>
+        </div>
+      )
+    }
+
+    if (customColumn) {
+      const customFieldValue = resolveClientFieldValue(client, columnKey)
+
+      if (customColumn.type === 'flag') {
+        return (
+          <div key={columnKey} className={isEditorMode ? 'input-group' : 'client-registry-cell'}>
+            {isEditorMode && <label>{meta.label}</label>}
+            <select
+              value={client?.customFieldValues?.[columnKey] || 'na'}
+              onChange={(event) => handleClientInlineCustomFieldChange(client.id, columnKey, event.target.value)}
+            >
+              {CLIENT_FLAG_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>{option.label}</option>
+              ))}
+            </select>
+          </div>
+        )
+      }
+
+      if (customColumn.type === 'select') {
+        return (
+          <div key={columnKey} className={isEditorMode ? 'input-group' : 'client-registry-cell'}>
+            {isEditorMode && <label>{meta.label}</label>}
+            <select
+              value={client?.customFieldValues?.[columnKey] || ''}
+              onChange={(event) => handleClientInlineCustomFieldChange(client.id, columnKey, event.target.value)}
+            >
+              <option value="">Selecione</option>
+              {(customColumn.options || []).map((option) => (
+                <option key={`${columnKey}-${option}`} value={option}>{option}</option>
+              ))}
+            </select>
+          </div>
+        )
+      }
+
+      if (customColumn.type === 'checkbox') {
+        return (
+          <div key={columnKey} className={isEditorMode ? 'input-group' : 'client-registry-cell'}>
+            {isEditorMode && <label>{meta.label}</label>}
+            <label className="client-checkbox-inline">
+              <input
+                type="checkbox"
+                checked={String(client?.customFieldValues?.[columnKey] || '').toLowerCase() === 'true'}
+                onChange={(event) => handleClientInlineCustomFieldChange(client.id, columnKey, event.target.checked ? 'true' : 'false')}
+              />
+              <span>{String(client?.customFieldValues?.[columnKey] || '').toLowerCase() === 'true' ? 'Marcado' : 'Livre'}</span>
+            </label>
+          </div>
+        )
+      }
+
+      if (customColumn.type === 'formula') {
+        return (
+          <div key={columnKey} className={isEditorMode ? 'input-group' : 'client-registry-cell'}>
+            {isEditorMode && <label>{meta.label}</label>}
+            <input type="text" value={customFieldValue || ''} readOnly placeholder="Calculado por fórmula" />
+          </div>
+        )
+      }
+
+      return (
+        <div key={columnKey} className={isEditorMode ? 'input-group' : 'client-registry-cell'}>
+          {isEditorMode && <label>{meta.label}</label>}
+          <input
+            type={
+              customColumn.type === 'date'
+                ? 'date'
+                : customColumn.type === 'email'
+                  ? 'email'
+                  : customColumn.type === 'phone'
+                    ? 'tel'
+                    : customColumn.type === 'link'
+                      ? 'url'
+                      : 'text'
+            }
+            value={customFieldValue || ''}
+            onChange={(event) => handleClientInlineCustomFieldChange(client.id, columnKey, event.target.value)}
+            placeholder={customColumn.label}
+          />
+        </div>
+      )
+    }
+
+    if (meta.type === 'flag') {
+      if (DERIVED_CLIENT_FLAG_KEYS.has(columnKey)) {
+        const derivedMeta = getClientFlagMeta(value)
+        return (
+          <div key={columnKey} className={isEditorMode ? 'input-group' : 'client-registry-cell'}>
+            {isEditorMode && <label>{meta.label}</label>}
+            <span className={`client-status-badge client-status-${derivedMeta.tone}`}>{derivedMeta.label}</span>
+          </div>
+        )
+      }
+
+      return (
+        <div key={columnKey} className={isEditorMode ? 'input-group' : 'client-registry-cell'}>
+          {isEditorMode && <label>{meta.label}</label>}
+          <select
+            value={value || 'na'}
+            onChange={(event) =>
+              isEditorMode
+                ? handleClientFieldChange(columnKey, event.target.value)
+                : handleClientInlineFieldChange(client.id, columnKey, event.target.value)
+            }
+          >
+            {CLIENT_FLAG_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>{option.label}</option>
+            ))}
+          </select>
+        </div>
+      )
+    }
+
+    if (meta.type === 'health') {
+      const healthScore = calculateClientHealthScore(client)
+      return (
+        <div key={columnKey} className={isEditorMode ? 'input-group' : 'client-registry-cell'}>
+          {isEditorMode && <label>{meta.label}</label>}
+          <div className="client-health-inline">
+            <strong>{healthScore == null ? '--' : `${healthScore}%`}</strong>
+            <small>Calculado pelas flags</small>
+          </div>
+        </div>
+      )
+    }
+
+    if (meta.type === 'date') {
+      return (
+        <div key={columnKey} className={isEditorMode ? 'input-group' : 'client-registry-cell'}>
+          {isEditorMode && <label>{meta.label}</label>}
+          <input
+            type="date"
+            value={value || ''}
+            readOnly={isReadOnlyCalculatedField}
+            onChange={(event) =>
+              isEditorMode
+                ? handleClientFieldChange(columnKey, event.target.value)
+                : handleClientInlineFieldChange(client.id, columnKey, event.target.value)
+            }
+          />
+        </div>
+      )
+    }
+
+    if (meta.type === 'link') {
+      return (
+        <div key={columnKey} className={isEditorMode ? 'input-group' : 'client-registry-cell'}>
+          {isEditorMode && <label>{meta.label}</label>}
+          <input
+            type="text"
+            value={value || ''}
+            onChange={(event) =>
+              isEditorMode
+                ? handleClientFieldChange(columnKey, event.target.value)
+                : handleClientInlineFieldChange(client.id, columnKey, event.target.value)
+            }
+            placeholder="https://..."
+          />
+        </div>
+      )
+    }
+
+    return (
+      <div key={columnKey} className={isEditorMode ? 'input-group' : 'client-registry-cell'}>
+        {isEditorMode && <label>{meta.label}</label>}
+        <input
+          type="text"
+          value={value || ''}
+          readOnly={isReadOnlyCalculatedField}
+          onChange={(event) =>
+            isEditorMode
+              ? handleClientFieldChange(columnKey, event.target.value)
+              : handleClientInlineFieldChange(client.id, columnKey, event.target.value)
+          }
+          placeholder={meta.label}
+        />
+      </div>
     )
   }
 
@@ -9437,6 +9785,11 @@ export default function DashboardShell({ initialTab = 'home' }) {
                   <strong>{averageClientHealthScore.toFixed(1)}</strong>
                   <span>{averageClientHealthScore >= 80 ? 'Base madura' : 'Melhorar entrega, financeiro e CRM'}</span>
                 </div>
+                <div className="clients-metric-card">
+                  <small>Completude média</small>
+                  <strong>{`${averageClientCompleteness}%`}</strong>
+                  <span>{incompleteClientsCount ? `${formatNumber(incompleteClientsCount)} cliente(s) incompletos` : 'Base bem preenchida'}</span>
+                </div>
               </div>
             </div>
 
@@ -9506,6 +9859,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
                       <option value="pausado">Pausado</option>
                       <option value="risco">Risco</option>
                       <option value="risk">Health em risco</option>
+                      <option value="incomplete">Cadastro incompleto</option>
                     </select>
                   </div>
                 </div>
@@ -9529,15 +9883,15 @@ export default function DashboardShell({ initialTab = 'home' }) {
                     style={{ gridTemplateColumns: `minmax(220px, 1.8fr) repeat(${Math.max(activeClientRegistryView.columns.length - 1, 0)}, minmax(140px, 1fr)) minmax(150px, 1.1fr)` }}
                   >
                     {activeClientRegistryView.columns.map((columnKey) => {
-                      const meta = getClientRegistryColumnMeta(columnKey)
+                      const meta = getResolvedClientColumnMeta(columnKey)
                       return <span key={columnKey}>{meta.label}</span>
                     })}
                     <span>Ações</span>
                   </div>
                   <div className="client-registry-body">
                     {filteredClients.map((client) => {
-                      const healthScore = calculateClientHealthScore(client)
                       const linkedGroupsCount = clientGroups.filter((group) => normalizeClientGroupClientIds(group.clientIds).includes(client.id)).length
+                      const completenessScore = getClientCompleteness(client)
 
                       return (
                         <div
@@ -9546,8 +9900,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
                           style={{ gridTemplateColumns: `minmax(220px, 1.8fr) repeat(${Math.max(activeClientRegistryView.columns.length - 1, 0)}, minmax(140px, 1fr)) minmax(150px, 1.1fr)` }}
                         >
                           {activeClientRegistryView.columns.map((columnKey) => {
-                            const meta = getClientRegistryColumnMeta(columnKey)
-                            const value = client[columnKey]
+                            const meta = getResolvedClientColumnMeta(columnKey)
 
                             if (meta.type === 'name') {
                               return (
@@ -9570,182 +9923,15 @@ export default function DashboardShell({ initialTab = 'home' }) {
                                       onChange={(event) => handleClientInlineFieldChange(client.id, 'name', event.target.value)}
                                       placeholder="Nome do cliente"
                                     />
-                                    <small>{linkedGroupsCount ? `${linkedGroupsCount} grupo(s)` : 'Sem grupo vinculado'}</small>
+                                    <small>
+                                      {linkedGroupsCount ? `${linkedGroupsCount} grupo(s)` : 'Sem grupo vinculado'}
+                                      {completenessScore != null ? ` • ${completenessScore}% completo` : ''}
+                                    </small>
                                   </div>
                                 </div>
                               )
                             }
-
-                            if (meta.type === 'status') {
-                              return (
-                                <div key={columnKey} className="client-registry-cell">
-                                  <select value={client.status || 'Ativo'} onChange={(event) => handleClientInlineFieldChange(client.id, columnKey, event.target.value)}>
-                                    {CLIENT_STATUS_OPTIONS.map((option) => (
-                                      <option key={option} value={option}>{option}</option>
-                                    ))}
-                                  </select>
-                                </div>
-                              )
-                            }
-
-                            if (columnKey === 'product') {
-                              return (
-                                <div key={columnKey} className="client-registry-cell">
-                                  <select value={client.productId || ''} onChange={(event) => handleClientProductChange(client.id, event.target.value)}>
-                                    <option value="">Selecione um produto</option>
-                                    {products.map((product) => (
-                                      <option key={product.id} value={product.id}>{product.name}</option>
-                                    ))}
-                                  </select>
-                                </div>
-                              )
-                            }
-
-                            if (columnKey === 'ltv') {
-                              return (
-                                <div key={columnKey} className="client-registry-cell">
-                                  <input type="text" value={value || ''} readOnly placeholder="LTV" />
-                                </div>
-                              )
-                            }
-
-                            const customColumn = customColumnsByKey.get(columnKey)
-                            if (customColumn) {
-                              const customFieldValue = resolveClientFieldValue(client, columnKey)
-
-                              if (customColumn.type === 'flag') {
-                                return (
-                                  <div key={columnKey} className="client-registry-cell">
-                                    <select
-                                      value={client.customFieldValues?.[columnKey] || 'na'}
-                                      onChange={(event) => handleClientInlineCustomFieldChange(client.id, columnKey, event.target.value)}
-                                    >
-                                      {CLIENT_FLAG_OPTIONS.map((option) => (
-                                        <option key={option.value} value={option.value}>{option.label}</option>
-                                      ))}
-                                    </select>
-                                  </div>
-                                )
-                              }
-
-                              if (customColumn.type === 'select') {
-                                return (
-                                  <div key={columnKey} className="client-registry-cell">
-                                    <select
-                                      value={client.customFieldValues?.[columnKey] || ''}
-                                      onChange={(event) => handleClientInlineCustomFieldChange(client.id, columnKey, event.target.value)}
-                                    >
-                                      <option value="">Selecione</option>
-                                      {(customColumn.options || []).map((option) => (
-                                        <option key={`${columnKey}-${option}`} value={option}>{option}</option>
-                                      ))}
-                                    </select>
-                                  </div>
-                                )
-                              }
-
-                              if (customColumn.type === 'checkbox') {
-                                return (
-                                  <div key={columnKey} className="client-registry-cell">
-                                    <label className="client-checkbox-inline">
-                                      <input
-                                        type="checkbox"
-                                        checked={String(client.customFieldValues?.[columnKey] || '').toLowerCase() === 'true'}
-                                        onChange={(event) => handleClientInlineCustomFieldChange(client.id, columnKey, event.target.checked ? 'true' : 'false')}
-                                      />
-                                      <span>{String(client.customFieldValues?.[columnKey] || '').toLowerCase() === 'true' ? 'Marcado' : 'Livre'}</span>
-                                    </label>
-                                  </div>
-                                )
-                              }
-
-                              if (customColumn.type === 'formula') {
-                                return (
-                                  <div key={columnKey} className="client-registry-cell">
-                                    <input type="text" value={customFieldValue || ''} readOnly placeholder="Calculado por fórmula" />
-                                  </div>
-                                )
-                              }
-
-                              return (
-                                <div key={columnKey} className="client-registry-cell">
-                                  <input
-                                    type={
-                                      customColumn.type === 'date'
-                                        ? 'date'
-                                        : customColumn.type === 'email'
-                                          ? 'email'
-                                          : customColumn.type === 'phone'
-                                            ? 'tel'
-                                            : customColumn.type === 'link'
-                                              ? 'url'
-                                              : 'text'
-                                    }
-                                    value={customFieldValue || ''}
-                                    onChange={(event) => handleClientInlineCustomFieldChange(client.id, columnKey, event.target.value)}
-                                    placeholder={customColumn.label}
-                                  />
-                                </div>
-                              )
-                            }
-
-                            if (meta.type === 'flag') {
-                              if (DERIVED_CLIENT_FLAG_KEYS.has(columnKey)) {
-                                const derivedMeta = getClientFlagMeta(value)
-                                return (
-                                  <div key={columnKey} className="client-registry-cell">
-                                    <span className={`client-status-badge client-status-${derivedMeta.tone}`}>{derivedMeta.label}</span>
-                                  </div>
-                                )
-                              }
-                              return (
-                                <div key={columnKey} className="client-registry-cell">
-                                  <select value={value || 'na'} onChange={(event) => handleClientInlineFieldChange(client.id, columnKey, event.target.value)}>
-                                    {CLIENT_FLAG_OPTIONS.map((option) => (
-                                      <option key={option.value} value={option.value}>{option.label}</option>
-                                    ))}
-                                  </select>
-                                </div>
-                              )
-                            }
-
-                            if (meta.type === 'health') {
-                              return (
-                                <div key={columnKey} className="client-registry-cell">
-                                  <div className="client-health-inline">
-                                    <strong>{healthScore == null ? '--' : `${healthScore}%`}</strong>
-                                    <small>Calculado pelas flags</small>
-                                  </div>
-                                </div>
-                              )
-                            }
-
-                            if (meta.type === 'date') {
-                              return (
-                                <div key={columnKey} className="client-registry-cell">
-                                  <input type="date" value={value || ''} onChange={(event) => handleClientInlineFieldChange(client.id, columnKey, event.target.value)} />
-                                </div>
-                              )
-                            }
-
-                            if (meta.type === 'link') {
-                              return (
-                                <div key={columnKey} className="client-registry-cell">
-                                  <input type="text" value={value || ''} onChange={(event) => handleClientInlineFieldChange(client.id, columnKey, event.target.value)} placeholder="https://..." />
-                                </div>
-                              )
-                            }
-
-                            return (
-                              <div key={columnKey} className="client-registry-cell">
-                                <input
-                                  type="text"
-                                  value={value || ''}
-                                  onChange={(event) => handleClientInlineFieldChange(client.id, columnKey, event.target.value)}
-                                  placeholder={meta.label}
-                                />
-                              </div>
-                            )
+                            return renderClientRegistryField(client, columnKey, 'inline')
                           })}
                           <div className="client-registry-actions">
                             <button
@@ -10228,7 +10414,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
                 </div>
 
                 <div className="client-edit-section-tabs">
-                  {CLIENT_EDIT_SECTIONS.map((section) => (
+                  {allClientEditSections.map((section) => (
                     <button
                       key={section.key}
                       type="button"
@@ -10347,203 +10533,23 @@ export default function DashboardShell({ initialTab = 'home' }) {
                 </div>
                 )}
 
-                {(clientEditSection === 'geral' || clientEditSection === 'financeiro') && (
-                <div className="client-editor-overview-grid">
-                  <div className="integration-block">
-                    <div className="integration-heading">
-                      <div className="integration-icon" style={{ color: '#3b82f6', borderColor: '#3b82f633' }}>
-                        <i className="bx bx-briefcase-alt-2"></i>
-                      </div>
-                      <div>
-                        <h3>Cadastro operacional</h3>
-                        <p>Estruture o cliente como uma base de cadastro real, com status, produto, contrato e data de entrada.</p>
-                      </div>
-                    </div>
-
-                    <div className="client-form-grid client-form-grid-2">
-                      <div className="input-group">
-                        <label>Status</label>
-                        <select value={activeClient.status || 'Ativo'} onChange={(event) => handleClientFieldChange('status', event.target.value)}>
-                          {CLIENT_STATUS_OPTIONS.map((option) => (
-                            <option key={option} value={option}>{option}</option>
-                          ))}
-                        </select>
-                      </div>
-                      <div className="input-group">
-                        <label>Produto</label>
-                        <select value={activeClient.productId || ''} onChange={(event) => handleActiveClientProductChange(event.target.value)}>
-                          <option value="">Selecione um produto</option>
-                          {products.map((product) => (
-                            <option key={product.id} value={product.id}>{product.name}</option>
-                          ))}
-                        </select>
-                      </div>
-                      <div className="input-group">
-                        <label>Data de assinatura do contrato</label>
-                        <input type="date" value={activeClient.contractSignedAt || ''} onChange={(event) => handleClientFieldChange('contractSignedAt', event.target.value)} />
-                      </div>
-                      <div className="input-group">
-                        <label>Data de churn</label>
-                        <input type="date" value={activeClient.churnDate || ''} onChange={(event) => handleClientFieldChange('churnDate', event.target.value)} />
-                      </div>
-                      <div className="input-group">
-                        <label>Data de início</label>
-                        <input type="date" value={activeClient.startDate || ''} onChange={(event) => handleClientFieldChange('startDate', event.target.value)} />
-                      </div>
-                      <div className="input-group">
-                        <label>STEP</label>
-                        <input type="text" value={activeClient.step || ''} onChange={(event) => handleClientFieldChange('step', event.target.value)} placeholder="Ex.: Implantação, escala..." />
-                      </div>
-                      <div className="input-group">
-                        <label>LTV</label>
-                        <input type="text" value={activeClient.ltv || ''} readOnly placeholder="Calculado pelo fee e assinatura" />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="integration-block">
-                    <div className="integration-heading">
-                      <div className="integration-icon" style={{ color: '#10b981', borderColor: '#10b98133' }}>
-                        <i className="bx bx-line-chart"></i>
-                      </div>
-                      <div>
-                        <h3>Resumo financeiro</h3>
-                        <p>Fee, faturamento e margens para cruzar leitura financeira com operação e health score.</p>
-                      </div>
-                    </div>
-
-                    <div className="client-form-grid client-form-grid-2">
-                      <div className="input-group">
-                        <label>Fee</label>
-                        <input type="text" value={activeClient.fee || ''} onChange={(event) => handleClientFieldChange('fee', event.target.value)} placeholder="Ex.: 3500" />
-                      </div>
-                      <div className="input-group">
-                        <label>Faturamento</label>
-                        <input type="text" value={activeClient.monthlyRevenue || ''} onChange={(event) => handleClientFieldChange('monthlyRevenue', event.target.value)} placeholder="Ex.: 120000" />
-                      </div>
-                      <div className="input-group">
-                        <label>Investimento em mídia</label>
-                        <input type="text" value={activeClient.mediaInvestment || ''} onChange={(event) => handleClientFieldChange('mediaInvestment', event.target.value)} placeholder="Ex.: 30000" />
-                      </div>
-                      <div className="input-group">
-                        <label>Margem de contribuição (R$)</label>
-                        <input type="text" value={activeClient.contributionMarginAmount || ''} onChange={(event) => handleClientFieldChange('contributionMarginAmount', event.target.value)} placeholder="Ex.: 22000" />
-                      </div>
-                      <div className="input-group">
-                        <label>Margem de contribuição (%)</label>
-                        <input type="text" value={activeClient.contributionMarginPercent || ''} onChange={(event) => handleClientFieldChange('contributionMarginPercent', event.target.value)} placeholder="Ex.: 18,3" />
-                      </div>
-                      <div className="input-group">
-                        <label>Margem de lucro (R$)</label>
-                        <input type="text" value={activeClient.profitMarginAmount || ''} onChange={(event) => handleClientFieldChange('profitMarginAmount', event.target.value)} placeholder="Ex.: 12000" />
-                      </div>
-                      <div className="input-group">
-                        <label>Margem de lucro (%)</label>
-                        <input type="text" value={activeClient.profitMarginPercent || ''} onChange={(event) => handleClientFieldChange('profitMarginPercent', event.target.value)} placeholder="Ex.: 10,2" />
-                      </div>
-                      <div className="input-group">
-                        <label>MM/F</label>
-                        <input type="text" value={activeClient.mmf || ''} readOnly placeholder="Calculado automaticamente" />
-                      </div>
-                      <div className="input-group">
-                        <label>ROI do Marketing</label>
-                        <input type="text" value={activeClient.roiMarketing || ''} readOnly placeholder="Calculado automaticamente" />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                )}
-
-                {(clientEditSection === 'flags' || clientEditSection === 'quality') && (
                 <div className="integration-block">
                   <div className="integration-heading">
-                    <div className="integration-icon" style={{ color: '#8b5cf6', borderColor: '#8b5cf633' }}>
-                      <i className="bx bx-flag"></i>
+                    <div className="integration-icon" style={{ color: '#3b82f6', borderColor: '#3b82f633' }}>
+                      <i className="bx bx-layout"></i>
                     </div>
                     <div>
-                      <h3>Flags de health score</h3>
-                      <p>Marque o que está saudável, em atenção ou em risco para guiar a leitura da conta e do relacionamento.</p>
+                      <h3>{activeClientEditView?.label || 'Campos da aba'}</h3>
+                      <p>Os campos desta aba seguem a estrutura definida em Configurações e atualizam direto em todos os cards da base.</p>
                     </div>
                   </div>
 
-                  <div className="client-flag-grid">
-                    {CLIENT_HEALTH_FLAG_FIELDS.map((field) => {
-                      const meta = getClientFlagMeta(activeClient[field.name])
-                      return (
-                        <div key={field.name} className="client-flag-card glass-item">
-                          <div className="client-flag-card-head">
-                            <strong>{field.label}</strong>
-                            <span className={`client-status-badge client-status-${meta.tone}`}>{meta.label}</span>
-                          </div>
-                          <select value={activeClient[field.name] || 'na'} disabled>
-                            {CLIENT_FLAG_OPTIONS.map((option) => (
-                              <option key={option.value} value={option.value}>{option.label}</option>
-                            ))}
-                          </select>
-                        </div>
-                      )
-                    })}
+                  <div className="client-form-grid client-form-grid-2">
+                    {activeClientEditView?.columns
+                      ?.filter((columnKey) => columnKey !== 'name')
+                      .map((columnKey) => renderClientRegistryField(activeClient, columnKey, 'editor'))}
                   </div>
                 </div>
-                )}
-
-                {(clientEditSection === 'branding' || clientEditSection === 'dados' || clientEditSection === 'mais') && (
-                <div className="client-editor-overview-grid">
-                  <div className="integration-block">
-                    <div className="integration-heading">
-                      <div className="integration-icon" style={{ color: '#f59e0b', borderColor: '#f59e0b33' }}>
-                        <i className="bx bx-link-alt"></i>
-                      </div>
-                      <div>
-                        <h3>Links e documentos</h3>
-                        <p>Espaço para contrato, dashboard, Drive, manual de marca e materiais que hoje você mantém no Notion.</p>
-                      </div>
-                    </div>
-
-                    <div className="client-form-grid">
-                      {CLIENT_LINK_FIELDS.map((field) => (
-                        <div key={field.name} className="input-group">
-                          <label>{field.label}</label>
-                          <input type="text" value={activeClient[field.name] || ''} onChange={(event) => handleClientFieldChange(field.name, event.target.value)} placeholder={field.placeholder} />
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="integration-block">
-                    <div className="integration-heading">
-                      <div className="integration-icon" style={{ color: '#38bdf8', borderColor: '#38bdf833' }}>
-                        <i className="bx bx-group"></i>
-                      </div>
-                      <div>
-                        <h3>Responsáveis da conta</h3>
-                        <p>Deixe claro quem toca projeto, tráfego, design, atendimento e copy dentro da operação.</p>
-                      </div>
-                    </div>
-
-                    <div className="client-form-grid client-form-grid-2">
-                      {CLIENT_OWNER_FIELDS.map((field) => (
-                        <div key={field.name} className="input-group">
-                          <label>{field.label}</label>
-                          <input type="text" value={activeClient[field.name] || ''} onChange={(event) => handleClientFieldChange(field.name, event.target.value)} placeholder={field.placeholder} />
-                        </div>
-                      ))}
-                      <div className="input-group">
-                        <label>Demandas orgânicas</label>
-                        <input type="text" value={activeClient.organicDemands || ''} onChange={(event) => handleClientFieldChange('organicDemands', event.target.value)} placeholder="Ex.: 12" />
-                      </div>
-                      <div className="input-group">
-                        <label>Demandas de tráfego</label>
-                        <input type="text" value={activeClient.trafficDemands || ''} onChange={(event) => handleClientFieldChange('trafficDemands', event.target.value)} placeholder="Ex.: 8" />
-                      </div>
-                      <div className="input-group">
-                        <label>Total de demandas</label>
-                        <input type="text" value={activeClient.totalDemands || ''} onChange={(event) => handleClientFieldChange('totalDemands', event.target.value)} placeholder="Ex.: 20" />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                )}
 
                 {(clientEditSection === 'mais' || clientEditSection === 'dados') && (
                 <div className="form-grid">
