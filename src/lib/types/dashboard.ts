@@ -54,6 +54,7 @@ export interface ClientCustomColumnRecord {
   options: string[]
   tabKey: string
   formulaExpression: string
+  settings: Record<string, string>
 }
 
 export interface ClientCustomTabRecord {
@@ -156,6 +157,7 @@ export interface DashboardPreferences {
   clients: ClientRecord[]
   clientGroups: ClientGroupRecord[]
   products: ProductRecord[]
+  clientSystemFields: ClientCustomColumnRecord[]
   clientCustomColumns: ClientCustomColumnRecord[]
   clientCustomTabs: ClientCustomTabRecord[]
 }

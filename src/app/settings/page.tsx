@@ -59,6 +59,7 @@ type GlobalIntegrationsState = DashboardIntegrations & Record<string, unknown>
 
 interface SettingsServerState {
   globalIntegrations?: Partial<GlobalIntegrationsState>
+  clientSystemFields?: ClientCustomColumnRecord[]
   clientCustomColumns?: ClientCustomColumnRecord[]
   clientCustomTabs?: ClientCustomTabRecord[]
   [key: string]: unknown
@@ -230,6 +231,71 @@ const DEFAULT_CLIENT_FIELD_TABS = [
   { key: 'mais', label: 'Mais 1' },
 ]
 
+const DEFAULT_CLIENT_SYSTEM_FIELDS: ClientCustomColumnRecord[] = [
+  createClientCustomColumnRecord({ key: 'name', label: 'Cliente', type: 'text', tabKey: 'geral' }),
+  createClientCustomColumnRecord({ key: 'status', label: 'Status', type: 'select', tabKey: 'geral', options: ['Ativo', 'Onboarding', 'Pausado', 'Risco', 'Churn'] }),
+  createClientCustomColumnRecord({ key: 'product', label: 'Produto', type: 'text', tabKey: 'geral' }),
+  createClientCustomColumnRecord({ key: 'fee', label: 'Fee', type: 'currency', tabKey: 'geral', settings: { currencyCode: 'BRL' } }),
+  createClientCustomColumnRecord({ key: 'mediaInvestment', label: 'Investimento em Mídia', type: 'currency', tabKey: 'geral', settings: { currencyCode: 'BRL' } }),
+  createClientCustomColumnRecord({ key: 'contractSignedAt', label: 'Assinatura do Contrato', type: 'date', tabKey: 'geral', settings: { dateFormat: 'dd/MM/yyyy' } }),
+  createClientCustomColumnRecord({ key: 'churnDate', label: 'Data de Churn', type: 'date', tabKey: 'geral', settings: { dateFormat: 'dd/MM/yyyy' } }),
+  createClientCustomColumnRecord({ key: 'startDate', label: 'Data de Início', type: 'date', tabKey: 'geral', settings: { dateFormat: 'dd/MM/yyyy' } }),
+  createClientCustomColumnRecord({ key: 'step', label: 'STEP', type: 'text', tabKey: 'geral' }),
+  createClientCustomColumnRecord({ key: 'ltv', label: 'LTV', type: 'currency', tabKey: 'geral', settings: { currencyCode: 'BRL' } }),
+  createClientCustomColumnRecord({ key: 'monthlyRevenue', label: 'Faturamento', type: 'currency', tabKey: 'financeiro', settings: { currencyCode: 'BRL' } }),
+  createClientCustomColumnRecord({ key: 'contributionMarginPercent', label: 'Margem de Contribuição (%)', type: 'percent', tabKey: 'financeiro', settings: { decimals: '2' } }),
+  createClientCustomColumnRecord({ key: 'profitMarginPercent', label: 'Margem de Lucro (%)', type: 'percent', tabKey: 'financeiro', settings: { decimals: '2' } }),
+  createClientCustomColumnRecord({ key: 'mmf', label: 'MM/F', type: 'number', tabKey: 'financeiro', settings: { decimals: '2' } }),
+  createClientCustomColumnRecord({ key: 'roiMarketing', label: 'ROI do Marketing', type: 'number', tabKey: 'financeiro', settings: { decimals: '2' } }),
+  createClientCustomColumnRecord({ key: 'projectManager', label: 'Gestor de Projetos', type: 'person', tabKey: 'dados' }),
+  createClientCustomColumnRecord({ key: 'trafficManager', label: 'Gestor de Tráfego', type: 'person', tabKey: 'dados' }),
+  createClientCustomColumnRecord({ key: 'designer', label: 'Designer', type: 'person', tabKey: 'dados' }),
+  createClientCustomColumnRecord({ key: 'organicDemands', label: 'Demandas Orgânicas', type: 'number', tabKey: 'dados', settings: { decimals: '0' } }),
+  createClientCustomColumnRecord({ key: 'trafficDemands', label: 'Demandas de Tráfego', type: 'number', tabKey: 'dados', settings: { decimals: '0' } }),
+  createClientCustomColumnRecord({ key: 'totalDemands', label: 'Total de Demandas', type: 'number', tabKey: 'dados', settings: { decimals: '0' } }),
+  createClientCustomColumnRecord({ key: 'contractUrl', label: 'Contrato', type: 'link', tabKey: 'branding' }),
+  createClientCustomColumnRecord({ key: 'dashboardUrl', label: 'Dashboard', type: 'link', tabKey: 'branding' }),
+  createClientCustomColumnRecord({ key: 'driveUrl', label: 'Drive', type: 'link', tabKey: 'branding' }),
+]
+
+function getDynamicFieldSettings(type: ClientCustomColumnRecord['type']) {
+  const sharedTabField = [{ key: 'placeholder', label: 'Placeholder', placeholder: 'Texto de ajuda do campo' }]
+
+  switch (type) {
+    case 'currency':
+      return [
+        { key: 'currencyCode', label: 'Moeda', placeholder: 'BRL, USD, EUR' },
+        { key: 'decimals', label: 'Casas decimais', placeholder: '2' },
+      ]
+    case 'number':
+    case 'percent':
+    case 'progress':
+      return [
+        { key: 'decimals', label: 'Casas decimais', placeholder: '0, 1, 2...' },
+        { key: 'suffix', label: 'Sufixo', placeholder: '%, pts, h...' },
+      ]
+    case 'date':
+      return [{ key: 'dateFormat', label: 'Formato da data', placeholder: 'dd/MM/yyyy' }]
+    case 'select':
+      return [{ key: 'selectAppearance', label: 'Estilo do dropdown', placeholder: 'single, badge...' }]
+    case 'checkbox':
+      return [
+        { key: 'checkedLabel', label: 'Texto marcado', placeholder: 'Sim' },
+        { key: 'uncheckedLabel', label: 'Texto desmarcado', placeholder: 'Nao' },
+      ]
+    case 'phone':
+      return [{ key: 'countryCode', label: 'Codigo do país', placeholder: '+55' }]
+    case 'email':
+      return [{ key: 'domainHint', label: 'Domínio sugerido', placeholder: 'empresa.com' }]
+    case 'person':
+      return [{ key: 'roleHint', label: 'Perfil sugerido', placeholder: 'CS, Design, Mídia...' }]
+    case 'formula':
+      return [{ key: 'formulaFormat', label: 'Formato de saída', placeholder: 'number, currency, percent' }]
+    default:
+      return sharedTabField
+  }
+}
+
 function normalizeSelectOptionsInput(value: string): string[] {
   return Array.from(
     new Set(
@@ -290,6 +356,12 @@ export default function SettingsPage() {
   const [panelDraft, setPanelDraft] = useState<UserAppearance>(appearance)
   const [panelFeedback, setPanelFeedback] = useState('')
   const [settingsSaveFeedback, setSettingsSaveFeedback] = useState('')
+  const [clientSystemFields, setClientSystemFields] = useState<ClientCustomColumnRecord[]>(() => {
+    const preferences = loadDashboardPreferences()
+    return Array.isArray(preferences.clientSystemFields) && preferences.clientSystemFields.length
+      ? preferences.clientSystemFields
+      : DEFAULT_CLIENT_SYSTEM_FIELDS
+  })
   const [clientCustomColumns, setClientCustomColumns] = useState<ClientCustomColumnRecord[]>(() => {
     const preferences = loadDashboardPreferences()
     return Array.isArray(preferences.clientCustomColumns) ? preferences.clientCustomColumns : []
@@ -393,6 +465,11 @@ export default function SettingsPage() {
             ...normalizeAiSettings(nextIntegrations),
           }
         })
+        setClientSystemFields(
+          Array.isArray(state.clientSystemFields) && state.clientSystemFields.length
+            ? state.clientSystemFields
+            : DEFAULT_CLIENT_SYSTEM_FIELDS
+        )
         setClientCustomColumns(Array.isArray(state.clientCustomColumns) ? state.clientCustomColumns : [])
         setClientCustomTabs(Array.isArray(state.clientCustomTabs) ? state.clientCustomTabs : [])
     } catch (error) {
@@ -733,10 +810,15 @@ export default function SettingsPage() {
   }
 
   const persistClientStructure = useCallback(
-    async (nextColumns: ClientCustomColumnRecord[], nextTabs: ClientCustomTabRecord[]) => {
+    async (
+      nextSystemFields: ClientCustomColumnRecord[],
+      nextColumns: ClientCustomColumnRecord[],
+      nextTabs: ClientCustomTabRecord[]
+    ) => {
       const preferences = loadDashboardPreferences()
       saveDashboardPreferences({
         ...preferences,
+        clientSystemFields: nextSystemFields,
         clientCustomColumns: nextColumns,
         clientCustomTabs: nextTabs,
       })
@@ -749,6 +831,7 @@ export default function SettingsPage() {
           },
           body: JSON.stringify({
             ...serverState,
+            clientSystemFields: nextSystemFields,
             clientCustomColumns: nextColumns,
             clientCustomTabs: nextTabs,
           }),
@@ -782,7 +865,7 @@ export default function SettingsPage() {
     ]
 
     setClientCustomColumns(nextColumns)
-    void persistClientStructure(nextColumns, clientCustomTabs)
+    void persistClientStructure(clientSystemFields, nextColumns, clientCustomTabs)
     setNewClientColumnLabel('')
     setNewClientColumnType('text')
     setNewClientColumnTab('geral')
@@ -798,15 +881,16 @@ export default function SettingsPage() {
 
     const nextTabs = [...clientCustomTabs, createClientCustomTabRecord({ label: trimmedLabel })]
     setClientCustomTabs(nextTabs)
-    void persistClientStructure(clientCustomColumns, nextTabs)
+    void persistClientStructure(clientSystemFields, clientCustomColumns, nextTabs)
     setNewClientTabLabel('')
     setSettingsSaveFeedback('Aba salva em Configurações e sincronizada com a base.')
   }
 
   const handleClientCustomColumnFieldChange = (
     columnId: string,
-    fieldName: keyof ClientCustomColumnRecord | 'optionsInput',
-    value: string
+    fieldName: keyof ClientCustomColumnRecord | 'optionsInput' | 'setting',
+    value: string,
+    settingKey?: string
   ) => {
     if (!canManageClients) return
 
@@ -814,8 +898,10 @@ export default function SettingsPage() {
       column.id === columnId
         ? createClientCustomColumnRecord({
             ...column,
-            [fieldName === 'optionsInput' ? 'options' : fieldName]:
-              fieldName === 'optionsInput' ? normalizeSelectOptionsInput(value) : value,
+            [fieldName === 'optionsInput' || fieldName === 'setting' ? 'label' : fieldName]:
+              fieldName === 'optionsInput' || fieldName === 'setting'
+                ? column.label
+                : value,
             options:
               fieldName === 'type' && value !== 'select'
                 ? []
@@ -828,12 +914,19 @@ export default function SettingsPage() {
                 : fieldName === 'formulaExpression'
                   ? value
                   : column.formulaExpression,
+            settings:
+              fieldName === 'setting' && settingKey
+                ? {
+                    ...(column.settings || {}),
+                    [settingKey]: value,
+                  }
+                : column.settings,
           })
         : column
     )
 
     setClientCustomColumns(nextColumns)
-    void persistClientStructure(nextColumns, clientCustomTabs)
+    void persistClientStructure(clientSystemFields, nextColumns, clientCustomTabs)
   }
 
   const handleRemoveClientCustomColumn = (columnKey: string) => {
@@ -845,7 +938,7 @@ export default function SettingsPage() {
     }))
     setClientCustomColumns(nextColumns)
     setClientCustomTabs(nextTabs)
-    void persistClientStructure(nextColumns, nextTabs)
+    void persistClientStructure(clientSystemFields, nextColumns, nextTabs)
     setSettingsSaveFeedback('Campo removido da estrutura de clientes.')
   }
 
@@ -855,7 +948,7 @@ export default function SettingsPage() {
       tab.id === tabId ? createClientCustomTabRecord({ ...tab, label: value }) : tab
     )
     setClientCustomTabs(nextTabs)
-    void persistClientStructure(clientCustomColumns, nextTabs)
+    void persistClientStructure(clientSystemFields, clientCustomColumns, nextTabs)
   }
 
   const handleClientCustomTabColumnToggle = (tabId: string, columnKey: string) => {
@@ -871,15 +964,47 @@ export default function SettingsPage() {
       }
     })
     setClientCustomTabs(nextTabs)
-    void persistClientStructure(clientCustomColumns, nextTabs)
+    void persistClientStructure(clientSystemFields, clientCustomColumns, nextTabs)
   }
 
   const handleRemoveClientCustomTab = (tabId: string) => {
     if (!canManageClients) return
     const nextTabs = clientCustomTabs.filter((tab) => tab.id !== tabId)
     setClientCustomTabs(nextTabs)
-    void persistClientStructure(clientCustomColumns, nextTabs)
+    void persistClientStructure(clientSystemFields, clientCustomColumns, nextTabs)
     setSettingsSaveFeedback('Aba removida da estrutura de clientes.')
+  }
+
+  const handleClientSystemFieldChange = (
+    fieldKey: string,
+    fieldName: keyof ClientCustomColumnRecord | 'optionsInput' | 'setting',
+    value: string,
+    settingKey?: string
+  ) => {
+    if (!canManageClients) return
+
+    const nextSystemFields = clientSystemFields.map((field) =>
+      field.key === fieldKey
+        ? createClientCustomColumnRecord({
+            ...field,
+            [fieldName === 'optionsInput' || fieldName === 'setting' ? 'label' : fieldName]:
+              fieldName === 'optionsInput' || fieldName === 'setting'
+                ? field.label
+                : value,
+            options: fieldName === 'optionsInput' ? normalizeSelectOptionsInput(value) : field.options,
+            settings:
+              fieldName === 'setting' && settingKey
+                ? {
+                    ...(field.settings || {}),
+                    [settingKey]: value,
+                  }
+                : field.settings,
+          })
+        : field
+    )
+
+    setClientSystemFields(nextSystemFields)
+    void persistClientStructure(nextSystemFields, clientCustomColumns, clientCustomTabs)
   }
 
   const handleSaveCurrentSettings = async () => {
@@ -1880,6 +2005,65 @@ export default function SettingsPage() {
                       <div className="settings-category-grid">
                         <div className="integration-block">
                           <div className="integration-heading">
+                            <div className="integration-icon" style={{ color: '#38bdf8', borderColor: '#38bdf833' }}>
+                              <i className="bx bx-layer"></i>
+                            </div>
+                            <div>
+                              <h3>Campos padrão da base</h3>
+                              <p>Veja e ajuste os campos que já existem hoje no cadastro dos clientes.</p>
+                            </div>
+                          </div>
+
+                          <div className="settings-stack-list">
+                            {clientSystemFields.map((field) => (
+                              <div key={field.key} className="glass-item settings-stack-card">
+                                <div className="settings-form-grid">
+                                  <div className="input-group">
+                                    <label>Nome</label>
+                                    <input type="text" value={field.label} onChange={(event) => handleClientSystemFieldChange(field.key, 'label', event.target.value)} />
+                                  </div>
+                                  <div className="input-group">
+                                    <label>Tipo base</label>
+                                    <input type="text" value={CLIENT_CUSTOM_COLUMN_TYPE_OPTIONS.find((option) => option.value === field.type)?.label || field.type} readOnly />
+                                  </div>
+                                  <div className="input-group">
+                                    <label>Aba</label>
+                                    <select value={field.tabKey || 'geral'} onChange={(event) => handleClientSystemFieldChange(field.key, 'tabKey', event.target.value)}>
+                                      {clientFieldTabOptions.map((tab) => (
+                                        <option key={`${field.key}-${tab.key}`} value={tab.key}>{tab.label}</option>
+                                      ))}
+                                    </select>
+                                  </div>
+                                  {field.type === 'select' && (
+                                    <div className="input-group">
+                                      <label>Opções</label>
+                                      <input
+                                        type="text"
+                                        value={(field.options || []).join(', ')}
+                                        onChange={(event) => handleClientSystemFieldChange(field.key, 'optionsInput', event.target.value)}
+                                        placeholder="Ativo, Pausado, Revisão"
+                                      />
+                                    </div>
+                                  )}
+                                  {getDynamicFieldSettings(field.type).map((setting) => (
+                                    <div key={`${field.key}-${setting.key}`} className="input-group">
+                                      <label>{setting.label}</label>
+                                      <input
+                                        type="text"
+                                        value={field.settings?.[setting.key] || ''}
+                                        onChange={(event) => handleClientSystemFieldChange(field.key, 'setting', event.target.value, setting.key)}
+                                        placeholder={setting.placeholder}
+                                      />
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="integration-block">
+                          <div className="integration-heading">
                             <div className="integration-icon" style={{ color: '#10b981', borderColor: '#10b98133' }}>
                               <i className="bx bx-table"></i>
                             </div>
@@ -1933,6 +2117,17 @@ export default function SettingsPage() {
                                       disabled={column.type !== 'formula'}
                                     />
                                   </div>
+                                  {getDynamicFieldSettings(column.type).map((setting) => (
+                                    <div key={`${column.id}-${setting.key}`} className="input-group">
+                                      <label>{setting.label}</label>
+                                      <input
+                                        type="text"
+                                        value={column.settings?.[setting.key] || ''}
+                                        onChange={(event) => handleClientCustomColumnFieldChange(column.id, 'setting', event.target.value, setting.key)}
+                                        placeholder={setting.placeholder}
+                                      />
+                                    </div>
+                                  ))}
                                 </div>
 
                                 <div className="modal-actions">

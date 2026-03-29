@@ -338,6 +338,10 @@ function normalizeClientCustomColumnRecord(
     options: normalizeClientCustomColumnOptions(column?.options),
     tabKey: String(column?.tabKey || 'geral').trim() || 'geral',
     formulaExpression: String(column?.formulaExpression || '').trim(),
+    settings:
+      column?.settings && typeof column.settings === 'object'
+        ? Object.fromEntries(Object.entries(column.settings).map(([entryKey, entryValue]) => [entryKey, String(entryValue ?? '')]))
+        : {},
   }
 }
 
@@ -400,6 +404,7 @@ export async function getDashboardState(
       clients: [],
       clientGroups: [],
       products: [],
+      clientSystemFields: [],
       clientCustomColumns: [],
       clientCustomTabs: [],
     }
@@ -473,6 +478,9 @@ export async function getDashboardState(
     clients: filteredClients,
     clientGroups,
     products: (isMissingRelationError(productsError) ? [] : productRows || []).map(normalizeProductRecord),
+    clientSystemFields: Array.isArray(preferencePayload.clientSystemFields)
+      ? preferencePayload.clientSystemFields.map(normalizeClientCustomColumnRecord)
+      : [],
     clientCustomColumns: Array.isArray(preferencePayload.clientCustomColumns)
       ? preferencePayload.clientCustomColumns.map(normalizeClientCustomColumnRecord)
       : [],
@@ -501,6 +509,9 @@ export async function saveDashboardState(
     : []
   const submittedProducts = Array.isArray(state.products)
     ? state.products.map(normalizeProductRecord)
+    : []
+  const submittedClientSystemFields = Array.isArray(state.clientSystemFields)
+    ? state.clientSystemFields.map(normalizeClientCustomColumnRecord)
     : []
   const submittedClientCustomColumns = Array.isArray(state.clientCustomColumns)
     ? state.clientCustomColumns.map(normalizeClientCustomColumnRecord)
@@ -549,6 +560,7 @@ export async function saveDashboardState(
           metric_1: state.metric1 || 'spend',
           metric_2: state.metric2 || 'roas',
           payload: {
+            clientSystemFields: submittedClientSystemFields,
             clientCustomColumns: submittedClientCustomColumns,
             clientCustomTabs: submittedClientCustomTabs,
           },

@@ -62,6 +62,7 @@ export const DEFAULT_PREFERENCES: DashboardPreferences = {
   clients: [],
   clientGroups: [],
   products: [],
+  clientSystemFields: [],
   clientCustomColumns: [],
   clientCustomTabs: [],
 }
@@ -198,6 +199,10 @@ export function createClientCustomColumnRecord(
     options: normalizeClientCustomColumnOptions(overrides.options),
     tabKey: String(overrides.tabKey || 'geral').trim() || 'geral',
     formulaExpression: String(overrides.formulaExpression || '').trim(),
+    settings:
+      overrides.settings && typeof overrides.settings === 'object'
+        ? Object.fromEntries(Object.entries(overrides.settings).map(([key, value]) => [key, String(value ?? '')]))
+        : {},
   }
 }
 
@@ -384,6 +389,9 @@ export function loadDashboardPreferences(): DashboardPreferences {
         : [],
       products: Array.isArray(parsed.products)
         ? parsed.products.map((product) => createProductRecord(product))
+        : [],
+      clientSystemFields: Array.isArray(parsed.clientSystemFields)
+        ? parsed.clientSystemFields.map((column) => createClientCustomColumnRecord(column))
         : [],
       clientCustomColumns: Array.isArray(parsed.clientCustomColumns)
         ? parsed.clientCustomColumns.map((column) => createClientCustomColumnRecord(column))
