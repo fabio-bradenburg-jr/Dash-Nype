@@ -307,6 +307,13 @@ function normalizeSelectOptionsInput(value: string): string[] {
   )
 }
 
+function appendDropdownOption(currentValue: string, nextOption: string): string {
+  const options = normalizeSelectOptionsInput(
+    [currentValue, nextOption].filter(Boolean).join(',')
+  )
+  return options.join(', ')
+}
+
 function clampRgbChannel(value: string | number): number {
   const parsed = Number.parseInt(String(value), 10)
   if (!Number.isFinite(parsed)) return 0
@@ -374,8 +381,11 @@ export default function SettingsPage() {
   const [newClientColumnType, setNewClientColumnType] = useState<ClientCustomColumnRecord['type']>('text')
   const [newClientColumnTab, setNewClientColumnTab] = useState('geral')
   const [newClientColumnOptions, setNewClientColumnOptions] = useState('')
+  const [newClientColumnOptionDraft, setNewClientColumnOptionDraft] = useState('')
   const [newClientColumnFormula, setNewClientColumnFormula] = useState('')
   const [newClientTabLabel, setNewClientTabLabel] = useState('')
+  const [systemFieldOptionDrafts, setSystemFieldOptionDrafts] = useState<Record<string, string>>({})
+  const [customFieldOptionDrafts, setCustomFieldOptionDrafts] = useState<Record<string, string>>({})
   const metaConnectionMode = globalIntegrations.metaConnectionMode === 'oauth' ? 'oauth' : 'manual'
   const hasMetaManualToken = Boolean(String(globalIntegrations.metaAccessToken || '').trim())
   const hasMetaOauthConnection = Boolean(metaConnection.connected)
@@ -870,6 +880,7 @@ export default function SettingsPage() {
     setNewClientColumnType('text')
     setNewClientColumnTab('geral')
     setNewClientColumnOptions('')
+    setNewClientColumnOptionDraft('')
     setNewClientColumnFormula('')
     setSettingsSaveFeedback('Campo salvo em Configurações e sincronizado com a base.')
   }
@@ -1005,6 +1016,30 @@ export default function SettingsPage() {
 
     setClientSystemFields(nextSystemFields)
     void persistClientStructure(nextSystemFields, clientCustomColumns, clientCustomTabs)
+  }
+
+  const handleAddNewClientColumnOption = () => {
+    if (!newClientColumnOptionDraft.trim()) return
+    setNewClientColumnOptions((current) => appendDropdownOption(current, newClientColumnOptionDraft))
+    setNewClientColumnOptionDraft('')
+  }
+
+  const handleAddSystemFieldOption = (fieldKey: string) => {
+    const nextOption = String(systemFieldOptionDrafts[fieldKey] || '').trim()
+    if (!nextOption) return
+    const currentField = clientSystemFields.find((field) => field.key === fieldKey)
+    if (!currentField) return
+    handleClientSystemFieldChange(fieldKey, 'optionsInput', appendDropdownOption((currentField.options || []).join(', '), nextOption))
+    setSystemFieldOptionDrafts((current) => ({ ...current, [fieldKey]: '' }))
+  }
+
+  const handleAddCustomFieldOption = (fieldId: string) => {
+    const nextOption = String(customFieldOptionDrafts[fieldId] || '').trim()
+    if (!nextOption) return
+    const currentField = clientCustomColumns.find((field) => field.id === fieldId)
+    if (!currentField) return
+    handleClientCustomColumnFieldChange(fieldId, 'optionsInput', appendDropdownOption((currentField.options || []).join(', '), nextOption))
+    setCustomFieldOptionDrafts((current) => ({ ...current, [fieldId]: '' }))
   }
 
   const handleSaveCurrentSettings = async () => {
@@ -1941,13 +1976,27 @@ export default function SettingsPage() {
                             </div>
                             <div className="input-group">
                               <label>Opções do dropdown</label>
-                              <input
-                                type="text"
-                                value={newClientColumnOptions}
-                                onChange={(event) => setNewClientColumnOptions(event.target.value)}
-                                placeholder="Ativo, Pausado, Revisão"
-                                disabled={newClientColumnType !== 'select'}
-                              />
+                              <div className="settings-inline-action">
+                                <input
+                                  type="text"
+                                  value={newClientColumnOptionDraft}
+                                  onChange={(event) => setNewClientColumnOptionDraft(event.target.value)}
+                                  placeholder="Adicionar opção"
+                                  disabled={newClientColumnType !== 'select'}
+                                />
+                                <button type="button" className="settings-inline-confirm" onClick={handleAddNewClientColumnOption} disabled={newClientColumnType !== 'select'}>
+                                  <i className="bx bx-check"></i>
+                                </button>
+                              </div>
+                              {Boolean(normalizeSelectOptionsInput(newClientColumnOptions).length) && (
+                                <div className="settings-option-chips">
+                                  {normalizeSelectOptionsInput(newClientColumnOptions).map((option) => (
+                                    <span key={`new-option-${option}`} className="stage-chip active">
+                                      <span>{option}</span>
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
                             </div>
                             <div className="input-group settings-field-span-2">
                               <label>Fórmula</label>
@@ -2016,7 +2065,14 @@ export default function SettingsPage() {
 
                           <div className="settings-stack-list">
                             {clientSystemFields.map((field) => (
-                              <div key={field.key} className="glass-item settings-stack-card">
+                              <details key={field.key} className="glass-item settings-stack-card settings-accordion-card">
+                                <summary className="settings-accordion-summary">
+                                  <div>
+                                    <strong>{field.label}</strong>
+                                    <span>{DEFAULT_CLIENT_FIELD_TABS.find((tab) => tab.key === field.tabKey)?.label || field.tabKey}</span>
+                                  </div>
+                                  <small>{CLIENT_CUSTOM_COLUMN_TYPE_OPTIONS.find((option) => option.value === field.type)?.label || field.type}</small>
+                                </summary>
                                 <div className="settings-form-grid">
                                   <div className="input-group">
                                     <label>Nome</label>
@@ -2037,12 +2093,26 @@ export default function SettingsPage() {
                                   {field.type === 'select' && (
                                     <div className="input-group">
                                       <label>Opções</label>
-                                      <input
-                                        type="text"
-                                        value={(field.options || []).join(', ')}
-                                        onChange={(event) => handleClientSystemFieldChange(field.key, 'optionsInput', event.target.value)}
-                                        placeholder="Ativo, Pausado, Revisão"
-                                      />
+                                      <div className="settings-inline-action">
+                                        <input
+                                          type="text"
+                                          value={systemFieldOptionDrafts[field.key] || ''}
+                                          onChange={(event) => setSystemFieldOptionDrafts((current) => ({ ...current, [field.key]: event.target.value }))}
+                                          placeholder="Adicionar opção"
+                                        />
+                                        <button type="button" className="settings-inline-confirm" onClick={() => handleAddSystemFieldOption(field.key)}>
+                                          <i className="bx bx-check"></i>
+                                        </button>
+                                      </div>
+                                      {Boolean((field.options || []).length) && (
+                                        <div className="settings-option-chips">
+                                          {(field.options || []).map((option) => (
+                                            <span key={`${field.key}-${option}`} className="stage-chip active">
+                                              <span>{option}</span>
+                                            </span>
+                                          ))}
+                                        </div>
+                                      )}
                                     </div>
                                   )}
                                   {getDynamicFieldSettings(field.type).map((setting) => (
@@ -2057,7 +2127,7 @@ export default function SettingsPage() {
                                     </div>
                                   ))}
                                 </div>
-                              </div>
+                              </details>
                             ))}
                           </div>
                         </div>
@@ -2075,7 +2145,14 @@ export default function SettingsPage() {
 
                           <div className="settings-stack-list">
                             {clientCustomColumns.map((column) => (
-                              <div key={column.id} className="glass-item settings-stack-card">
+                              <details key={column.id} className="glass-item settings-stack-card settings-accordion-card">
+                                <summary className="settings-accordion-summary">
+                                  <div>
+                                    <strong>{column.label}</strong>
+                                    <span>{clientFieldTabOptions.find((tab) => tab.key === column.tabKey)?.label || column.tabKey}</span>
+                                  </div>
+                                  <small>{CLIENT_CUSTOM_COLUMN_TYPE_OPTIONS.find((option) => option.value === column.type)?.label || column.type}</small>
+                                </summary>
                                 <div className="settings-form-grid">
                                   <div className="input-group">
                                     <label>Nome</label>
@@ -2099,13 +2176,27 @@ export default function SettingsPage() {
                                   </div>
                                   <div className="input-group">
                                     <label>Opções</label>
-                                    <input
-                                      type="text"
-                                      value={(column.options || []).join(', ')}
-                                      onChange={(event) => handleClientCustomColumnFieldChange(column.id, 'optionsInput', event.target.value)}
-                                      placeholder="Ativo, Pausado, Revisão"
-                                      disabled={column.type !== 'select'}
-                                    />
+                                    <div className="settings-inline-action">
+                                      <input
+                                        type="text"
+                                        value={customFieldOptionDrafts[column.id] || ''}
+                                        onChange={(event) => setCustomFieldOptionDrafts((current) => ({ ...current, [column.id]: event.target.value }))}
+                                        placeholder="Adicionar opção"
+                                        disabled={column.type !== 'select'}
+                                      />
+                                      <button type="button" className="settings-inline-confirm" onClick={() => handleAddCustomFieldOption(column.id)} disabled={column.type !== 'select'}>
+                                        <i className="bx bx-check"></i>
+                                      </button>
+                                    </div>
+                                    {Boolean((column.options || []).length) && (
+                                      <div className="settings-option-chips">
+                                        {(column.options || []).map((option) => (
+                                          <span key={`${column.id}-${option}`} className="stage-chip active">
+                                            <span>{option}</span>
+                                          </span>
+                                        ))}
+                                      </div>
+                                    )}
                                   </div>
                                   <div className="input-group settings-field-span-2">
                                     <label>Fórmula</label>
@@ -2135,7 +2226,7 @@ export default function SettingsPage() {
                                     Excluir campo
                                   </button>
                                 </div>
-                              </div>
+                              </details>
                             ))}
                             {!clientCustomColumns.length && <p className="settings-empty-note">Nenhum campo customizado criado ainda.</p>}
                           </div>
@@ -3172,6 +3263,58 @@ export default function SettingsPage() {
           border-radius: 18px;
           display: grid;
           gap: 14px;
+        }
+
+        .settings-accordion-card summary {
+          list-style: none;
+          cursor: pointer;
+        }
+
+        .settings-accordion-card summary::-webkit-details-marker {
+          display: none;
+        }
+
+        .settings-accordion-summary {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 14px;
+        }
+
+        .settings-accordion-summary div {
+          display: grid;
+          gap: 4px;
+        }
+
+        .settings-accordion-summary strong {
+          color: var(--text-primary);
+        }
+
+        .settings-accordion-summary span,
+        .settings-accordion-summary small {
+          color: var(--text-secondary);
+        }
+
+        .settings-inline-action {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) 40px;
+          gap: 8px;
+          align-items: center;
+        }
+
+        .settings-inline-confirm {
+          width: 40px;
+          height: 40px;
+          border-radius: 12px;
+          border: 1px solid rgba(59, 130, 246, 0.2);
+          background: color-mix(in srgb, var(--accent-blue) 12%, transparent);
+          color: #93c5fd;
+        }
+
+        .settings-option-chips {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px;
         }
 
         .settings-empty-note {
