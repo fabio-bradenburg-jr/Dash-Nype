@@ -159,6 +159,7 @@ function normalizeClientRecord(client: LooseRecord): ClientRecord {
     product: payload.product || '',
     customFieldValues: payload.customFieldValues && typeof payload.customFieldValues === 'object' ? payload.customFieldValues : {},
     contractSignedAt: payload.contractSignedAt || '',
+    churnDate: payload.churnDate || '',
     contractUrl: payload.contractUrl || '',
     startDate: payload.startDate || '',
     fee: payload.fee || '',

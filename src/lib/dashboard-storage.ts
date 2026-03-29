@@ -278,6 +278,7 @@ export function createClientRecord(overrides: ClientRecordOverrides = {}): Clien
     product: '',
     customFieldValues: {},
     contractSignedAt: '',
+    churnDate: '',
     contractUrl: '',
     startDate: '',
     fee: '',

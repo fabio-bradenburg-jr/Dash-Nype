@@ -89,7 +89,7 @@ const AI_CAMPAIGN_STATUS_LABELS = {
   urgent: 'Urgência',
 }
 
-const CLIENT_STATUS_OPTIONS = ['Ativo', 'Onboarding', 'Pausado', 'Risco']
+const CLIENT_STATUS_OPTIONS = ['Ativo', 'Onboarding', 'Pausado', 'Risco', 'Churn']
 
 const CLIENT_FLAG_OPTIONS = [
   { value: 'ok', label: 'Ok' },
@@ -190,6 +190,14 @@ const CLIENT_CUSTOM_COLUMN_TYPE_OPTIONS = [
   { value: 'link', label: 'Link' },
   { value: 'flag', label: 'Flag' },
 ]
+
+const CLIENT_CURRENCY_FIELDS = new Set([
+  'fee',
+  'mediaInvestment',
+  'monthlyRevenue',
+  'contributionMarginAmount',
+  'profitMarginAmount',
+])
 
 function looksLikeJsonBlock(value) {
   const normalized = String(value || '').trim()
@@ -404,9 +412,68 @@ function formatClientPercent(value) {
   return parsed == null ? 'Nao informado' : formatPercent(parsed)
 }
 
+function normalizeCurrencyInput(value) {
+  const parsed = parseClientNumber(value)
+  return parsed == null ? '' : formatCurrency(parsed)
+}
+
 function formatDerivedClientNumber(value, decimals = 2) {
   if (!Number.isFinite(value)) return ''
   return value.toFixed(decimals).replace('.', ',')
+}
+
+function getContractLifetimeMonths(contractSignedAt) {
+  if (!contractSignedAt) return null
+  const signedAt = new Date(`${contractSignedAt}T00:00:00`)
+  if (Number.isNaN(signedAt.getTime())) return null
+
+  const now = new Date()
+  if (signedAt.getTime() > now.getTime()) return null
+
+  let months = (now.getFullYear() - signedAt.getFullYear()) * 12 + (now.getMonth() - signedAt.getMonth())
+  if (now.getDate() >= signedAt.getDate()) {
+    months += 1
+  }
+
+  return Math.max(months, 1)
+}
+
+function formatClientDate(value) {
+  if (!value) return 'Nao informada'
+  const parsed = new Date(`${value}T00:00:00`)
+  if (Number.isNaN(parsed.getTime())) return 'Nao informada'
+  return new Intl.DateTimeFormat('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  }).format(parsed)
+}
+
+function getMonthBucketKey(value) {
+  if (!value) return ''
+  const parsed = new Date(`${value}T00:00:00`)
+  if (Number.isNaN(parsed.getTime())) return ''
+  const month = String(parsed.getMonth() + 1).padStart(2, '0')
+  return `${parsed.getFullYear()}-${month}`
+}
+
+function formatMonthBucketLabel(bucketKey) {
+  if (!bucketKey) return 'Nao informado'
+  const [year, month] = String(bucketKey).split('-')
+  const parsed = new Date(`${year}-${month || '01'}-01T00:00:00`)
+  if (Number.isNaN(parsed.getTime())) return 'Nao informado'
+  return new Intl.DateTimeFormat('pt-BR', {
+    month: 'long',
+    year: 'numeric',
+  }).format(parsed)
+}
+
+function getTodayDateInputValue() {
+  const today = new Date()
+  const year = today.getFullYear()
+  const month = String(today.getMonth() + 1).padStart(2, '0')
+  const day = String(today.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
 }
 
 function deriveScoreFlag(score) {
@@ -438,6 +505,7 @@ function deriveClientComputedFields(client) {
   const organicDemands = parseClientNumber(client?.organicDemands)
   const trafficDemands = parseClientNumber(client?.trafficDemands)
   const totalDemands = parseClientNumber(client?.totalDemands)
+  const contractLifetimeMonths = getContractLifetimeMonths(client?.contractSignedAt)
   const adAccountsCount = [
     client?.metaAdAccountId,
     client?.googleAdsAccountId,
@@ -450,6 +518,9 @@ function deriveClientComputedFields(client) {
     : null
   const mmf = mediaInvestment != null && fee != null && fee > 0
     ? mediaInvestment / fee
+    : null
+  const ltv = fee != null && contractLifetimeMonths != null
+    ? fee * contractLifetimeMonths
     : null
 
   const financialFlag = (() => {
@@ -520,6 +591,7 @@ function deriveClientComputedFields(client) {
   return {
     roiMarketing: roiMarketing == null ? '' : formatDerivedClientNumber(roiMarketing, 2),
     mmf: mmf == null ? '' : formatDerivedClientNumber(mmf, 2),
+    ltv: ltv == null ? '' : formatCurrency(ltv),
     financialFlag,
     roiFlag,
     deliverablesFlag,
@@ -555,9 +627,11 @@ function getClientRegistryColumnMeta(columnKey) {
     product: { label: 'Produto', type: 'text' },
     fee: { label: 'Fee', type: 'currency' },
     mediaInvestment: { label: 'Investimento em Mídia', type: 'currency' },
+    contractSignedAt: { label: 'Assinatura do Contrato', type: 'date' },
+    churnDate: { label: 'Data de Churn', type: 'date' },
     startDate: { label: 'Data de Início', type: 'date' },
     step: { label: 'STEP', type: 'text' },
-    ltv: { label: 'LTV', type: 'number' },
+    ltv: { label: 'LTV', type: 'currency' },
     healthScore: { label: 'Health', type: 'health' },
     deliverablesFlag: { label: 'Flag dos Entregáveis', type: 'flag' },
     financialFlag: { label: 'Flag Financeira', type: 'flag' },
@@ -608,6 +682,48 @@ function buildContextInsight(tone, title, description) {
 }
 
 function getClientStatusMeta(client) {
+  const normalizedStatus = String(client?.status || '').trim().toLowerCase()
+
+  if (normalizedStatus === 'churn') {
+    return {
+      label: 'Churn',
+      tone: 'danger',
+      description: 'Cliente encerrado na carteira',
+    }
+  }
+
+  if (normalizedStatus === 'risco') {
+    return {
+      label: 'Risco',
+      tone: 'warning',
+      description: 'Conta ativa com atenção operacional',
+    }
+  }
+
+  if (normalizedStatus === 'pausado') {
+    return {
+      label: 'Pausado',
+      tone: 'neutral',
+      description: 'Conta temporariamente pausada',
+    }
+  }
+
+  if (normalizedStatus === 'onboarding') {
+    return {
+      label: 'Onboarding',
+      tone: 'info',
+      description: 'Configuração inicial em andamento',
+    }
+  }
+
+  if (normalizedStatus === 'ativo') {
+    return {
+      label: 'Ativo',
+      tone: 'success',
+      description: 'Conta ativa na operação',
+    }
+  }
+
   const healthScore = calculateClientHealthScore(client)
 
   if (healthScore != null && healthScore < 45) {
@@ -2590,55 +2706,183 @@ export default function DashboardShell({ initialTab = 'home' }) {
     [clients]
   )
   const contextDashboardSummary = useMemo(() => {
-    const targetClient = activeClient || filteredClients[0] || clients[0] || null
-    if (!targetClient) return null
+    if (!clients.length) return null
 
-    const healthScore = calculateClientHealthScore(targetClient)
-    const connectedSources = countClientConnectedSources(targetClient)
-    const revenue = parseClientNumber(targetClient.monthlyRevenue)
-    const fee = parseClientNumber(targetClient.fee)
-    const mediaInvestment = parseClientNumber(targetClient.mediaInvestment)
-    const roi = parseClientNumber(targetClient.roiMarketing)
-    const mmf = parseClientNumber(targetClient.mmf)
-    const margin = parseClientNumber(targetClient.profitMarginPercent)
-    const contribution = parseClientNumber(targetClient.contributionMarginPercent)
+    const normalizedStatus = (client) => String(client?.status || '').trim().toLowerCase()
+    const currentPortfolioClients = clients.filter((client) => normalizedStatus(client) !== 'churn')
+    const activeClients = clients.filter((client) => normalizedStatus(client) === 'ativo')
+    const onboardingClients = clients.filter((client) => normalizedStatus(client) === 'onboarding')
+    const pausedClients = clients.filter((client) => normalizedStatus(client) === 'pausado')
+    const riskClients = clients.filter((client) => normalizedStatus(client) === 'risco')
+    const churnedClients = clients.filter((client) => normalizedStatus(client) === 'churn')
+
+    const sumNumbers = (list, resolver) =>
+      list.reduce((sum, item) => {
+        const value = resolver(item)
+        return sum + (Number.isFinite(value) ? value : 0)
+      }, 0)
+
+    const getAverage = (values) => {
+      const validValues = values.filter((value) => Number.isFinite(value))
+      if (!validValues.length) return null
+      return validValues.reduce((sum, value) => sum + value, 0) / validValues.length
+    }
+
+    const totalFee = sumNumbers(currentPortfolioClients, (client) => parseClientNumber(client.fee))
+    const totalMediaInvestment = sumNumbers(currentPortfolioClients, (client) => parseClientNumber(client.mediaInvestment))
+    const averageLtv = getAverage(currentPortfolioClients.map((client) => parseClientNumber(client.ltv)))
+    const averageRoi = getAverage(currentPortfolioClients.map((client) => parseClientNumber(client.roiMarketing)))
+    const averageMmf = getAverage(currentPortfolioClients.map((client) => parseClientNumber(client.mmf)))
+    const averageHealth = getAverage(currentPortfolioClients.map((client) => calculateClientHealthScore(client)))
+    const averageFee = getAverage(currentPortfolioClients.map((client) => parseClientNumber(client.fee)))
+    const retentionRate = clients.length ? ((clients.length - churnedClients.length) / clients.length) * 100 : null
+
+    const healthRanking = currentPortfolioClients
+      .map((client) => {
+        const healthScore = calculateClientHealthScore(client)
+        const flaggedItems = CLIENT_HEALTH_FLAG_FIELDS.map((field) => ({
+          label: field.label,
+          meta: getClientFlagMeta(client?.[field.name]),
+        }))
+        const riskFlags = flaggedItems.filter((item) => item.meta.tone === 'danger')
+        const attentionFlags = flaggedItems.filter((item) => item.meta.tone === 'warning')
+
+        return {
+          client,
+          healthScore,
+          riskCount: riskFlags.length,
+          attentionCount: attentionFlags.length,
+          topFlags: [...riskFlags, ...attentionFlags].slice(0, 3),
+        }
+      })
+      .sort((left, right) => {
+        if (right.riskCount !== left.riskCount) return right.riskCount - left.riskCount
+        if (right.attentionCount !== left.attentionCount) return right.attentionCount - left.attentionCount
+        if ((left.healthScore ?? -1) !== (right.healthScore ?? -1)) return (left.healthScore ?? -1) - (right.healthScore ?? -1)
+        return left.client.name.localeCompare(right.client.name)
+      })
+
+    const portfolioRiskCount = healthRanking.filter((item) => item.riskCount > 0 || (item.healthScore != null && item.healthScore < 60)).length
+
+    const churnByMonth = Object.entries(
+      churnedClients.reduce((accumulator, client) => {
+        const bucketKey = getMonthBucketKey(client.churnDate)
+        if (!bucketKey) return accumulator
+        if (!accumulator[bucketKey]) {
+          accumulator[bucketKey] = []
+        }
+        accumulator[bucketKey].push(client)
+        return accumulator
+      }, {})
+    )
+      .sort((left, right) => right[0].localeCompare(left[0]))
+      .map(([bucketKey, bucketClients]) => ({
+        key: bucketKey,
+        label: formatMonthBucketLabel(bucketKey),
+        count: bucketClients.length,
+        clients: bucketClients,
+      }))
+
+    const churnByCohort = Object.entries(
+      churnedClients.reduce((accumulator, client) => {
+        const bucketKey = getMonthBucketKey(client.contractSignedAt)
+        if (!bucketKey) return accumulator
+        if (!accumulator[bucketKey]) {
+          accumulator[bucketKey] = []
+        }
+        accumulator[bucketKey].push(client)
+        return accumulator
+      }, {})
+    )
+      .sort((left, right) => right[0].localeCompare(left[0]))
+      .map(([bucketKey, bucketClients]) => ({
+        key: bucketKey,
+        label: formatMonthBucketLabel(bucketKey),
+        count: bucketClients.length,
+        clients: bucketClients,
+      }))
+
+    const currentMonthKey = getMonthBucketKey(getTodayDateInputValue())
+    const churnThisMonth = churnByMonth.find((item) => item.key === currentMonthKey)?.count || 0
+
+    const flagSummary = CLIENT_HEALTH_FLAG_FIELDS
+      .map((field) => {
+        const riskCount = currentPortfolioClients.filter((client) => getClientFlagMeta(client?.[field.name]).tone === 'danger').length
+        const attentionCount = currentPortfolioClients.filter((client) => getClientFlagMeta(client?.[field.name]).tone === 'warning').length
+        const okCount = currentPortfolioClients.filter((client) => getClientFlagMeta(client?.[field.name]).tone === 'success').length
+
+        return {
+          label: field.label,
+          riskCount,
+          attentionCount,
+          okCount,
+        }
+      })
+      .sort((left, right) => {
+        if (right.riskCount !== left.riskCount) return right.riskCount - left.riskCount
+        if (right.attentionCount !== left.attentionCount) return right.attentionCount - left.attentionCount
+        return left.label.localeCompare(right.label)
+      })
 
     const insights = [
-      connectedSources >= 3
-        ? buildContextInsight('success', 'Operação bem conectada', `${targetClient.name} já cruza ${formatNumber(connectedSources)} fontes e tem boa base para leitura executiva.`)
-        : buildContextInsight('warning', 'Integrações incompletas', `${targetClient.name} ainda tem poucas fontes conectadas. Vale reforçar integrações para enriquecer a análise.`),
-      roi != null && roi >= 3
-        ? buildContextInsight('success', 'ROI saudável', `O ROI do marketing está em ${formatDecimal(roi, 2)}, sinalizando boa eficiência sobre o investimento em mídia.`)
-        : roi != null && roi > 0
-          ? buildContextInsight('warning', 'ROI em atenção', `O ROI do marketing está em ${formatDecimal(roi, 2)}. Há espaço para melhorar eficiência de mídia e conversão.`)
-          : buildContextInsight('neutral', 'ROI ainda não calculado', 'Preencha faturamento e investimento em mídia para liberar a leitura de ROI automaticamente.'),
-      healthScore != null && healthScore >= 80
-        ? buildContextInsight('success', 'Health score forte', `O health score atual está em ${healthScore}%, com leitura mais madura para acompanhamento.`)
-        : healthScore != null
-          ? buildContextInsight('warning', 'Health score pede ação', `O health score atual está em ${healthScore}%. Vale revisar entregáveis, CRM e relação com o cliente.`)
-          : buildContextInsight('neutral', 'Health score insuficiente', 'Ainda faltam dados estruturais para consolidar uma leitura de saúde mais confiável.'),
+      buildContextInsight(
+        churnThisMonth > 0 ? 'warning' : 'success',
+        churnThisMonth > 0 ? 'Houve churn no mês' : 'Sem churn neste mês',
+        churnThisMonth > 0
+          ? `${formatNumber(churnThisMonth)} cliente(s) foram marcados como churn no mês atual. Vale revisar a causa e a safra de origem.`
+          : 'A carteira passou o mês sem churn registrado até aqui.'
+      ),
+      buildContextInsight(
+        portfolioRiskCount > 0 ? 'warning' : 'success',
+        portfolioRiskCount > 0 ? 'Carteira com contas em atenção' : 'Carteira com risco sob controle',
+        portfolioRiskCount > 0
+          ? `${formatNumber(portfolioRiskCount)} cliente(s) aparecem com health score baixo ou flags críticas e pedem plano de ação.`
+          : 'Nenhum cliente atual apareceu com combinação crítica de flags no recorte atual.'
+      ),
+      buildContextInsight(
+        averageRoi != null && averageRoi >= 3 ? 'success' : averageRoi != null ? 'warning' : 'neutral',
+        averageRoi != null ? 'Eficiência média da carteira' : 'ROI médio ainda incompleto',
+        averageRoi != null
+          ? `O ROI médio da carteira está em ${formatDecimal(averageRoi, 2)} e ajuda a comparar eficiência entre contas ativas.`
+          : 'Preencha faturamento e investimento em mídia dos clientes para liberar a leitura média de ROI.'
+      ),
+      buildContextInsight(
+        averageHealth != null && averageHealth >= 75 ? 'success' : averageHealth != null ? 'warning' : 'neutral',
+        averageHealth != null ? 'Saúde operacional consolidada' : 'Health score médio ainda parcial',
+        averageHealth != null
+          ? `O health score médio da carteira está em ${Math.round(averageHealth)}%, refletindo o estado operacional geral da base.`
+          : 'Ainda faltam flags suficientes para consolidar a leitura média de saúde da carteira.'
+      ),
     ]
 
     return {
-      client: targetClient,
-      healthScore,
-      connectedSources,
-      revenue,
-      fee,
-      mediaInvestment,
-      roi,
-      mmf,
-      margin,
-      contribution,
+      portfolioClients: currentPortfolioClients,
+      totalClients: clients.length,
+      totalFee,
+      totalMediaInvestment,
+      averageLtv,
+      averageRoi,
+      averageMmf,
+      averageHealth,
+      averageFee,
+      retentionRate,
+      activeClientsCount: activeClients.length,
+      onboardingClientsCount: onboardingClients.length,
+      pausedClientsCount: pausedClients.length,
+      riskClientsCount: riskClients.length,
+      churnClientsCount: churnedClients.length,
+      churnThisMonth,
+      portfolioRiskCount,
       insights,
-      topRisks: CLIENT_HEALTH_FLAG_FIELDS
-        .map((field) => ({
-          label: field.label,
-          meta: getClientFlagMeta(targetClient[field.name]),
-        }))
-        .filter((item) => item.meta.tone === 'danger' || item.meta.tone === 'warning'),
+      churnByMonth,
+      churnByCohort,
+      healthRanking,
+      flagSummary,
+      churnedClients: churnedClients
+        .slice()
+        .sort((left, right) => String(right.churnDate || '').localeCompare(String(left.churnDate || ''))),
     }
-  }, [activeClient, filteredClients, clients])
+  }, [clients])
   const mondayBoardsConfigured = useMemo(
     () =>
       Array.from(new Set(
@@ -4492,10 +4736,34 @@ export default function DashboardShell({ initialTab = 'home' }) {
     }
   }, [isEditUserModalOpen])
 
-  const handleClientFieldChange = (fieldName, value) => {
-    updateActiveClient((client) => ({
+  const applyClientFieldUpdate = useCallback((client, fieldName, value) => {
+    const normalizedValue = CLIENT_CURRENCY_FIELDS.has(fieldName)
+      ? normalizeCurrencyInput(value)
+      : value
+
+    const nextClient = {
       ...client,
-      [fieldName]: value,
+      [fieldName]: normalizedValue,
+    }
+
+    if (fieldName === 'status' && normalizedValue === 'Churn' && !nextClient.churnDate) {
+      nextClient.churnDate = getTodayDateInputValue()
+    }
+
+    if (fieldName === 'churnDate' && normalizedValue && nextClient.status !== 'Churn') {
+      nextClient.status = 'Churn'
+    }
+
+    return nextClient
+  }, [])
+
+  const handleClientFieldChange = (fieldName, value) => {
+    if (fieldName === 'ltv' || fieldName === 'mmf' || fieldName === 'roiMarketing') {
+      return
+    }
+
+    updateActiveClient((client) => ({
+      ...applyClientFieldUpdate(client, fieldName, value),
     }))
   }
 
@@ -4524,13 +4792,14 @@ export default function DashboardShell({ initialTab = 'home' }) {
   }
 
   const handleClientInlineFieldChange = (clientId, fieldName, value) => {
+    if (fieldName === 'ltv' || fieldName === 'mmf' || fieldName === 'roiMarketing') {
+      return
+    }
+
     setClients((currentClients) =>
       currentClients.map((client) =>
         client.id === clientId
-          ? {
-              ...client,
-              [fieldName]: value,
-            }
+          ? applyClientFieldUpdate(client, fieldName, value)
           : client
       )
     )
@@ -8793,7 +9062,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
               {activeTab === 'clientes' && 'Base de clientes'}
               {activeTab === 'produtos' && 'Base de produtos'}
               {activeTab === 'apresentacao' && `Dashboard ${activeClient?.name || 'do cliente'}`}
-              {activeTab === 'contexto' && 'Dashboard contextual'}
+              {activeTab === 'contexto' && 'Painel de operação'}
               {activeTab === 'assistant' && assistantGreeting}
               {activeTab === 'calendar' && 'Agenda da operação'}
               {activeTab === 'clickup' && 'Operação ClickUp'}
@@ -8806,7 +9075,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
                 {activeTab === 'clientes' && 'Cadastre seus clientes e mantenha cada operação separada dentro do dashboard.'}
                 {activeTab === 'produtos' && 'Cadastre os produtos da operação e vincule cada cliente a uma oferta padronizada.'}
                 {activeTab === 'apresentacao' && 'Uma visão executiva consolidada dos principais resultados do cliente, organizada por fonte de dados.'}
-                {activeTab === 'contexto' && 'Uma leitura contextual dos dados do cliente para acelerar análise, decisão e próximos passos.'}
+                {activeTab === 'contexto' && 'Uma leitura consolidada da carteira para acompanhar churn, fee, health score e prioridades operacionais.'}
                 {activeTab === 'calendar' && 'Acompanhe a agenda da operação dentro da mesma Home, sem trocar de área.'}
                 {activeTab === 'clickup' && 'Acompanhe tarefas, responsáveis e status operacionais do ClickUp a partir da configuração global da operação.'}
                 {activeTab === 'monday' && 'Acompanhe boards, itens, status e responsáveis do Monday a partir da configuração global da operação.'}
@@ -9192,6 +9461,14 @@ export default function DashboardShell({ initialTab = 'home' }) {
                                       <option key={product.id} value={product.id}>{product.name}</option>
                                     ))}
                                   </select>
+                                </div>
+                              )
+                            }
+
+                            if (columnKey === 'ltv') {
+                              return (
+                                <div key={columnKey} className="client-registry-cell">
+                                  <input type="text" value={value || ''} readOnly placeholder="LTV" />
                                 </div>
                               )
                             }
@@ -9808,6 +10085,10 @@ export default function DashboardShell({ initialTab = 'home' }) {
                         <input type="date" value={activeClient.contractSignedAt || ''} onChange={(event) => handleClientFieldChange('contractSignedAt', event.target.value)} />
                       </div>
                       <div className="input-group">
+                        <label>Data de churn</label>
+                        <input type="date" value={activeClient.churnDate || ''} onChange={(event) => handleClientFieldChange('churnDate', event.target.value)} />
+                      </div>
+                      <div className="input-group">
                         <label>Data de início</label>
                         <input type="date" value={activeClient.startDate || ''} onChange={(event) => handleClientFieldChange('startDate', event.target.value)} />
                       </div>
@@ -9817,7 +10098,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
                       </div>
                       <div className="input-group">
                         <label>LTV</label>
-                        <input type="text" value={activeClient.ltv || ''} onChange={(event) => handleClientFieldChange('ltv', event.target.value)} placeholder="Ex.: 24000" />
+                        <input type="text" value={activeClient.ltv || ''} readOnly placeholder="Calculado pelo fee e assinatura" />
                       </div>
                     </div>
                   </div>
@@ -10190,34 +10471,42 @@ export default function DashboardShell({ initialTab = 'home' }) {
             {!contextDashboardSummary ? (
               <div className="empty-panel glass-panel">
                 <h3>Nenhum cliente disponível</h3>
-                <p>Cadastre um cliente e preencha a base para liberar a leitura contextual.</p>
+                <p>Cadastre um cliente e preencha a base para liberar o painel de operação.</p>
               </div>
             ) : (
               <>
                 <div className="context-dashboard-hero glass-panel">
                   <div>
-                    <span className="management-card-kicker">Contexto analítico</span>
-                    <h2>{contextDashboardSummary.client.name}</h2>
+                    <span className="management-card-kicker">Painel de operação</span>
+                    <h2>Carteira, churn e saúde da base</h2>
                     <p>
-                      Painel de leitura rápida para entender saúde da conta, estrutura operacional, eficiência financeira e onde agir primeiro.
+                      Visão executiva da operação para acompanhar receita recorrente da carteira, investimento, churn, health score e onde a equipe precisa agir primeiro.
                     </p>
                   </div>
                   <div className="context-dashboard-stats">
                     <div className="context-stat-card">
-                      <small>Health score</small>
-                      <strong>{contextDashboardSummary.healthScore == null ? '--' : `${contextDashboardSummary.healthScore}%`}</strong>
+                      <small>Fee total</small>
+                      <strong>{formatCurrency(contextDashboardSummary.totalFee || 0)}</strong>
                     </div>
                     <div className="context-stat-card">
-                      <small>ROI</small>
-                      <strong>{contextDashboardSummary.roi == null ? '--' : formatDecimal(contextDashboardSummary.roi, 2)}</strong>
+                      <small>Investimento total</small>
+                      <strong>{formatCurrency(contextDashboardSummary.totalMediaInvestment || 0)}</strong>
                     </div>
                     <div className="context-stat-card">
-                      <small>MM/F</small>
-                      <strong>{contextDashboardSummary.mmf == null ? '--' : formatDecimal(contextDashboardSummary.mmf, 2)}</strong>
+                      <small>LTV médio</small>
+                      <strong>{contextDashboardSummary.averageLtv == null ? '--' : formatCurrency(contextDashboardSummary.averageLtv)}</strong>
                     </div>
                     <div className="context-stat-card">
-                      <small>Fontes conectadas</small>
-                      <strong>{formatNumber(contextDashboardSummary.connectedSources)}</strong>
+                      <small>Clientes ativos</small>
+                      <strong>{formatNumber(contextDashboardSummary.activeClientsCount)}</strong>
+                    </div>
+                    <div className="context-stat-card">
+                      <small>Onboarding</small>
+                      <strong>{formatNumber(contextDashboardSummary.onboardingClientsCount)}</strong>
+                    </div>
+                    <div className="context-stat-card">
+                      <small>Churn no mês</small>
+                      <strong>{formatNumber(contextDashboardSummary.churnThisMonth)}</strong>
                     </div>
                   </div>
                 </div>
@@ -10225,7 +10514,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
                 <div className="context-insights-grid">
                   {contextDashboardSummary.insights.map((insight) => (
                     <article key={insight.title} className={`glass-panel context-insight-card context-insight-${insight.tone}`}>
-                      <small>{insight.tone === 'success' ? 'Sinal positivo' : insight.tone === 'warning' ? 'Atenção' : 'Leitura inicial'}</small>
+                      <small>{insight.tone === 'success' ? 'Sinal positivo' : insight.tone === 'warning' ? 'Atenção' : 'Leitura operacional'}</small>
                       <h3>{insight.title}</h3>
                       <p>{insight.description}</p>
                     </article>
@@ -10234,41 +10523,132 @@ export default function DashboardShell({ initialTab = 'home' }) {
 
                 <div className="context-grid">
                   <div className="glass-panel context-panel">
-                    <span className="management-card-kicker">Financeiro</span>
-                    <h3>Estrutura econômica</h3>
+                    <span className="management-card-kicker">Base atual</span>
+                    <h3>Status da carteira</h3>
                     <div className="context-metric-list">
-                      <div><span>Fee</span><strong>{formatClientCurrency(contextDashboardSummary.fee)}</strong></div>
-                      <div><span>Faturamento</span><strong>{formatClientCurrency(contextDashboardSummary.revenue)}</strong></div>
-                      <div><span>Investimento em mídia</span><strong>{formatClientCurrency(contextDashboardSummary.mediaInvestment)}</strong></div>
-                      <div><span>Margem de contribuição</span><strong>{formatClientPercent(contextDashboardSummary.contribution)}</strong></div>
-                      <div><span>Margem de lucro</span><strong>{formatClientPercent(contextDashboardSummary.margin)}</strong></div>
+                      <div><span>Clientes na base</span><strong>{formatNumber(contextDashboardSummary.totalClients)}</strong></div>
+                      <div><span>Ativos</span><strong>{formatNumber(contextDashboardSummary.activeClientsCount)}</strong></div>
+                      <div><span>Onboarding</span><strong>{formatNumber(contextDashboardSummary.onboardingClientsCount)}</strong></div>
+                      <div><span>Pausados</span><strong>{formatNumber(contextDashboardSummary.pausedClientsCount)}</strong></div>
+                      <div><span>Em risco</span><strong>{formatNumber(contextDashboardSummary.riskClientsCount)}</strong></div>
+                      <div><span>Churn acumulado</span><strong>{formatNumber(contextDashboardSummary.churnClientsCount)}</strong></div>
                     </div>
                   </div>
 
                   <div className="glass-panel context-panel">
-                    <span className="management-card-kicker">Riscos</span>
-                    <h3>Pontos que pedem revisão</h3>
+                    <span className="management-card-kicker">Mercado</span>
+                    <h3>Métricas de acompanhamento</h3>
+                    <div className="context-metric-list">
+                      <div><span>Ticket médio</span><strong>{contextDashboardSummary.averageFee == null ? '--' : formatCurrency(contextDashboardSummary.averageFee)}</strong></div>
+                      <div><span>ROI médio</span><strong>{contextDashboardSummary.averageRoi == null ? '--' : formatDecimal(contextDashboardSummary.averageRoi, 2)}</strong></div>
+                      <div><span>MM/F médio</span><strong>{contextDashboardSummary.averageMmf == null ? '--' : formatDecimal(contextDashboardSummary.averageMmf, 2)}</strong></div>
+                      <div><span>Health score médio</span><strong>{contextDashboardSummary.averageHealth == null ? '--' : `${Math.round(contextDashboardSummary.averageHealth)}%`}</strong></div>
+                      <div><span>Retenção da carteira</span><strong>{contextDashboardSummary.retentionRate == null ? '--' : `${Math.round(contextDashboardSummary.retentionRate)}%`}</strong></div>
+                      <div><span>Clientes em alerta</span><strong>{formatNumber(contextDashboardSummary.portfolioRiskCount)}</strong></div>
+                    </div>
+                  </div>
+
+                  <div className="glass-panel context-panel">
+                    <span className="management-card-kicker">Churn mensal</span>
+                    <h3>Quem churnou por mês</h3>
                     <div className="context-risk-list">
-                      {contextDashboardSummary.topRisks.length ? contextDashboardSummary.topRisks.map((item) => (
-                        <div key={item.label} className={`context-risk-chip context-risk-${item.meta.tone}`}>
-                          <strong>{item.label}</strong>
-                          <span>{item.meta.label}</span>
+                      {contextDashboardSummary.churnByMonth.length ? contextDashboardSummary.churnByMonth.map((item) => (
+                        <div key={item.key} className="context-stack-card">
+                          <div className="context-stack-head">
+                            <strong>{item.label}</strong>
+                            <span>{formatNumber(item.count)} churn(s)</span>
+                          </div>
+                          <p>{item.clients.map((client) => client.name).join(', ')}</p>
                         </div>
                       )) : (
-                        <p className="field-helper">Nenhum risco importante apareceu no recorte atual.</p>
+                        <p className="field-helper">Nenhum churn mensal registrado ainda.</p>
                       )}
                     </div>
                   </div>
 
                   <div className="glass-panel context-panel">
-                    <span className="management-card-kicker">Estrutura</span>
-                    <h3>Contexto operacional</h3>
-                    <div className="context-metric-list">
-                      <div><span>Produto</span><strong>{contextDashboardSummary.client.product || 'Nao informado'}</strong></div>
-                      <div><span>Gestor de projetos</span><strong>{contextDashboardSummary.client.projectManager || 'Nao informado'}</strong></div>
-                      <div><span>Gestor de tráfego</span><strong>{contextDashboardSummary.client.trafficManager || 'Nao informado'}</strong></div>
-                      <div><span>Designer</span><strong>{contextDashboardSummary.client.designer || 'Nao informado'}</strong></div>
-                      <div><span>Data de início</span><strong>{contextDashboardSummary.client.startDate || 'Nao informada'}</strong></div>
+                    <span className="management-card-kicker">Safras</span>
+                    <h3>Churn por safra de entrada</h3>
+                    <div className="context-risk-list">
+                      {contextDashboardSummary.churnByCohort.length ? contextDashboardSummary.churnByCohort.map((item) => (
+                        <div key={item.key} className="context-stack-card">
+                          <div className="context-stack-head">
+                            <strong>{item.label}</strong>
+                            <span>{formatNumber(item.count)} churn(s)</span>
+                          </div>
+                          <p>{item.clients.map((client) => client.name).join(', ')}</p>
+                        </div>
+                      )) : (
+                        <p className="field-helper">As safras de churn aparecem aqui conforme os clientes forem marcados como churn.</p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="glass-panel context-panel">
+                    <span className="management-card-kicker">Flags</span>
+                    <h3>Pior para melhor na carteira</h3>
+                    <div className="context-risk-list">
+                      {contextDashboardSummary.healthRanking.length ? contextDashboardSummary.healthRanking.slice(0, 8).map((item) => (
+                        <div key={item.client.id} className="context-stack-card">
+                          <div className="context-stack-head">
+                            <strong>{item.client.name}</strong>
+                            <span>{item.healthScore == null ? '--' : `${item.healthScore}%`}</span>
+                          </div>
+                          <p>
+                            {item.riskCount} flag(s) em risco, {item.attentionCount} em atenção
+                          </p>
+                          <div className="context-chip-row">
+                            {item.topFlags.length ? item.topFlags.map((flag) => (
+                              <span key={`${item.client.id}-${flag.label}`} className={`context-risk-chip context-risk-${flag.meta.tone}`}>
+                                <strong>{flag.label}</strong>
+                                <span>{flag.meta.label}</span>
+                              </span>
+                            )) : (
+                              <span className="client-status-badge client-status-success">Base saudável</span>
+                            )}
+                          </div>
+                        </div>
+                      )) : (
+                        <p className="field-helper">Nenhuma flag disponível para ranquear ainda.</p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="glass-panel context-panel">
+                    <span className="management-card-kicker">Resumo das flags</span>
+                    <h3>Quais frentes mais pedem ação</h3>
+                    <div className="context-risk-list">
+                      {contextDashboardSummary.flagSummary.length ? contextDashboardSummary.flagSummary.map((item) => (
+                        <div key={item.label} className="context-stack-card">
+                          <div className="context-stack-head">
+                            <strong>{item.label}</strong>
+                            <span>{formatNumber(item.riskCount)} risco</span>
+                          </div>
+                          <p>{formatNumber(item.attentionCount)} em atenção e {formatNumber(item.okCount)} saudáveis na carteira atual.</p>
+                        </div>
+                      )) : (
+                        <p className="field-helper">Preencha as flags dos clientes para liberar este resumo.</p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="glass-panel context-panel">
+                    <span className="management-card-kicker">Histórico</span>
+                    <h3>Clientes que churnaram</h3>
+                    <div className="context-risk-list">
+                      {contextDashboardSummary.churnedClients.length ? contextDashboardSummary.churnedClients.map((client) => (
+                        <div key={client.id} className="context-stack-card">
+                          <div className="context-stack-head">
+                            <strong>{client.name}</strong>
+                            <span>{formatClientDate(client.churnDate)}</span>
+                          </div>
+                          <p>
+                            Produto: {client.product || 'Nao informado'} · Entrada: {formatClientDate(client.contractSignedAt)}
+                          </p>
+                        </div>
+                      )) : (
+                        <p className="field-helper">Nenhum cliente marcado como churn até agora.</p>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -13594,7 +13974,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
         }
 
         .context-dashboard-stats {
-          grid-template-columns: repeat(2, minmax(0, 1fr));
+          grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
         }
 
         .context-stat-card,
@@ -13624,7 +14004,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
         }
 
         .context-insights-grid {
-          grid-template-columns: repeat(3, minmax(0, 1fr));
+          grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
         }
 
         .context-insight-card h3,
@@ -13648,7 +14028,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
         }
 
         .context-grid {
-          grid-template-columns: repeat(3, minmax(0, 1fr));
+          grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
         }
 
         .context-metric-list,
@@ -13671,6 +14051,47 @@ export default function DashboardShell({ initialTab = 'home' }) {
         .context-metric-list strong,
         .context-risk-chip strong {
           color: #ffffff;
+        }
+
+        .context-stack-card {
+          display: grid;
+          gap: 8px;
+          padding: 14px 16px;
+          border-radius: 18px;
+          background: rgba(255, 255, 255, 0.03);
+          border: 1px solid rgba(143, 144, 149, 0.14);
+        }
+
+        .context-stack-card p {
+          margin: 0;
+          color: rgba(225, 226, 235, 0.64);
+          line-height: 1.5;
+        }
+
+        .context-stack-head {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+        }
+
+        .context-stack-head span {
+          color: rgba(225, 226, 235, 0.56);
+          font-size: 12px;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.08em;
+        }
+
+        .context-chip-row {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px;
+        }
+
+        .context-chip-row .context-risk-chip,
+        .context-chip-row .client-status-badge {
+          width: fit-content;
         }
 
         .context-risk-warning {
@@ -15988,6 +16409,34 @@ export default function DashboardShell({ initialTab = 'home' }) {
 
         :root[data-ui-mode='light'] .client-create-inline input::placeholder {
           color: rgba(71, 85, 105, 0.62);
+        }
+
+        :root[data-ui-mode='light'] .context-stat-card,
+        :root[data-ui-mode='light'] .context-panel,
+        :root[data-ui-mode='light'] .context-insight-card,
+        :root[data-ui-mode='light'] .context-stack-card {
+          background:
+            linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(248, 250, 252, 0.96)),
+            rgba(255, 255, 255, 0.94);
+          border-color: rgba(15, 23, 42, 0.08);
+        }
+
+        :root[data-ui-mode='light'] .context-stat-card strong,
+        :root[data-ui-mode='light'] .context-panel h3,
+        :root[data-ui-mode='light'] .context-metric-list strong,
+        :root[data-ui-mode='light'] .context-risk-chip strong,
+        :root[data-ui-mode='light'] .context-stack-head strong {
+          color: var(--text-primary);
+        }
+
+        :root[data-ui-mode='light'] .context-stat-card small,
+        :root[data-ui-mode='light'] .context-insight-card small,
+        :root[data-ui-mode='light'] .context-insight-card p,
+        :root[data-ui-mode='light'] .context-metric-list span,
+        :root[data-ui-mode='light'] .context-risk-chip span,
+        :root[data-ui-mode='light'] .context-stack-card p,
+        :root[data-ui-mode='light'] .context-stack-head span {
+          color: var(--text-secondary);
         }
 
         :root[data-ui-mode='light'] .page-title h1,

@@ -69,6 +69,7 @@ export interface ClientRecord {
   product: string
   customFieldValues: Record<string, string>
   contractSignedAt: string
+  churnDate: string
   contractUrl: string
   startDate: string
   fee: string
