@@ -1135,7 +1135,18 @@ export default function SettingsPage() {
               fieldName === 'optionsInput' || fieldName === 'setting'
                 ? field.label
                 : value,
-            options: fieldName === 'optionsInput' ? normalizeSelectOptionsInput(value) : field.options,
+            options:
+              fieldName === 'type' && value !== 'select'
+                ? []
+                : fieldName === 'optionsInput'
+                  ? normalizeSelectOptionsInput(value)
+                  : field.options,
+            formulaExpression:
+              fieldName === 'type' && value !== 'formula'
+                ? ''
+                : fieldName === 'formulaExpression'
+                  ? value
+                  : field.formulaExpression,
             settings:
               fieldName === 'setting' && settingKey
                 ? {
@@ -2225,8 +2236,12 @@ export default function SettingsPage() {
                                     <input type="text" value={field.label} onChange={(event) => handleClientSystemFieldChange(field.key, 'label', event.target.value)} />
                                   </div>
                                   <div className="input-group">
-                                    <label>Tipo base</label>
-                                    <input type="text" value={CLIENT_CUSTOM_COLUMN_TYPE_OPTIONS.find((option) => option.value === field.type)?.label || field.type} readOnly />
+                                    <label>Tipo</label>
+                                    <select value={field.type} onChange={(event) => handleClientSystemFieldChange(field.key, 'type', event.target.value)}>
+                                      {CLIENT_CUSTOM_COLUMN_TYPE_OPTIONS.map((option) => (
+                                        <option key={`${field.key}-${option.value}`} value={option.value}>{option.label}</option>
+                                      ))}
+                                    </select>
                                   </div>
                                   <div className="input-group">
                                     <label>Aba</label>
@@ -2261,6 +2276,16 @@ export default function SettingsPage() {
                                       )}
                                     </div>
                                   )}
+                                  <div className="input-group settings-field-span-2">
+                                    <label>Fórmula</label>
+                                    <input
+                                      type="text"
+                                      value={field.formulaExpression || ''}
+                                      onChange={(event) => handleClientSystemFieldChange(field.key, 'formulaExpression', event.target.value)}
+                                      placeholder="Ex.: ({fee} + {monthlyRevenue}) / 2"
+                                      disabled={field.type !== 'formula'}
+                                    />
+                                  </div>
                                   {getDynamicFieldSettings(field.type).map((setting) => (
                                     <div key={`${field.key}-${setting.key}`} className="input-group">
                                       <label>{setting.label}</label>
