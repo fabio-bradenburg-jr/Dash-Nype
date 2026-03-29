@@ -312,6 +312,11 @@ function normalizeProductRecord(product: Partial<ProductRecord> | null | undefin
   }
 }
 
+function normalizeClientCustomColumnOptions(options: unknown): string[] {
+  if (!Array.isArray(options)) return []
+  return Array.from(new Set(options.map((option) => String(option || '').trim()).filter(Boolean)))
+}
+
 function normalizeClientCustomColumnRecord(
   column: Partial<ClientCustomColumnRecord> | null | undefined
 ): ClientCustomColumnRecord {
@@ -327,9 +332,10 @@ function normalizeClientCustomColumnRecord(
     id: column?.id || createRecordId('client-column'),
     key: key || createRecordId('client_column'),
     label,
-    type: ['text', 'number', 'currency', 'percent', 'date', 'link', 'flag'].includes(String(column?.type || 'text'))
+    type: ['text', 'number', 'currency', 'percent', 'date', 'link', 'flag', 'select'].includes(String(column?.type || 'text'))
       ? column?.type || 'text'
       : 'text',
+    options: normalizeClientCustomColumnOptions(column?.options),
   }
 }
 

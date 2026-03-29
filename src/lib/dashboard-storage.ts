@@ -19,6 +19,11 @@ type ProductRecordOverrides = Partial<ProductRecord>
 type ClientCustomColumnOverrides = Partial<ClientCustomColumnRecord>
 type ClientCustomTabOverrides = Partial<ClientCustomTabRecord>
 
+function normalizeClientCustomColumnOptions(options: unknown): string[] {
+  if (!Array.isArray(options)) return []
+  return Array.from(new Set(options.map((option) => String(option || '').trim()).filter(Boolean)))
+}
+
 export const DEFAULT_INTEGRATIONS: DashboardIntegrations = {
   metaAccessToken: '',
   metaConnectionMode: 'manual',
@@ -187,9 +192,10 @@ export function createClientCustomColumnRecord(
     id: overrides.id || createRecordId('client-column'),
     key: keySource || createRecordId('client_column'),
     label,
-    type: ['text', 'number', 'currency', 'percent', 'date', 'link', 'flag'].includes(String(overrides.type || 'text'))
+    type: ['text', 'number', 'currency', 'percent', 'date', 'link', 'flag', 'select'].includes(String(overrides.type || 'text'))
       ? overrides.type
       : 'text',
+    options: normalizeClientCustomColumnOptions(overrides.options),
   }
 }
 

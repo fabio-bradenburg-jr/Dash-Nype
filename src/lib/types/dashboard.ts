@@ -35,7 +35,8 @@ export interface ClientCustomColumnRecord {
   id: string
   key: string
   label: string
-  type: 'text' | 'number' | 'currency' | 'percent' | 'date' | 'link' | 'flag'
+  type: 'text' | 'number' | 'currency' | 'percent' | 'date' | 'link' | 'flag' | 'select'
+  options: string[]
 }
 
 export interface ClientCustomTabRecord {

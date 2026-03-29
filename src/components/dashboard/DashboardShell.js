@@ -188,6 +188,7 @@ const CLIENT_CUSTOM_COLUMN_TYPE_OPTIONS = [
   { value: 'percent', label: 'Percentual' },
   { value: 'date', label: 'Data' },
   { value: 'link', label: 'Link' },
+  { value: 'select', label: 'Dropdown' },
   { value: 'flag', label: 'Flag' },
 ]
 
@@ -415,6 +416,15 @@ function formatClientPercent(value) {
 function normalizeCurrencyInput(value) {
   const parsed = parseClientNumber(value)
   return parsed == null ? '' : formatCurrency(parsed)
+}
+
+function normalizeSelectOptionsInput(value) {
+  return Array.from(new Set(
+    String(value || '')
+      .split(',')
+      .map((item) => item.trim())
+      .filter(Boolean)
+  ))
 }
 
 function formatDerivedClientNumber(value, decimals = 2) {
@@ -2455,6 +2465,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
   const [newProductName, setNewProductName] = useState('')
   const [newClientColumnLabel, setNewClientColumnLabel] = useState('')
   const [newClientColumnType, setNewClientColumnType] = useState('text')
+  const [newClientColumnOptions, setNewClientColumnOptions] = useState('')
   const [newClientTabLabel, setNewClientTabLabel] = useState('')
   const [clientRegistryView, setClientRegistryView] = useState('geral')
   const [clientSearch, setClientSearch] = useState('')
@@ -4142,11 +4153,13 @@ export default function DashboardShell({ initialTab = 'home' }) {
     const newColumn = createClientCustomColumnRecord({
       label: trimmedLabel,
       type: newClientColumnType,
+      options: newClientColumnType === 'select' ? normalizeSelectOptionsInput(newClientColumnOptions) : [],
     })
 
     setClientCustomColumns((current) => [...current, newColumn])
     setNewClientColumnLabel('')
     setNewClientColumnType('text')
+    setNewClientColumnOptions('')
   }
 
   const handleCreateClientCustomTab = (event) => {
@@ -4197,7 +4210,13 @@ export default function DashboardShell({ initialTab = 'home' }) {
         column.id === columnId
           ? createClientCustomColumnRecord({
               ...column,
-              [fieldName]: value,
+              [fieldName]: fieldName === 'options' ? normalizeSelectOptionsInput(value) : value,
+              options:
+                fieldName === 'type' && value !== 'select'
+                  ? []
+                  : fieldName === 'options'
+                    ? normalizeSelectOptionsInput(value)
+                    : column.options,
               key: fieldName === 'label' ? undefined : column.key,
             })
           : column
@@ -4806,6 +4825,11 @@ export default function DashboardShell({ initialTab = 'home' }) {
   }
 
   const handleClientInlineCustomFieldChange = (clientId, fieldKey, value) => {
+    const column = customColumnsByKey.get(fieldKey)
+    const normalizedValue = column?.type === 'currency'
+      ? normalizeCurrencyInput(value)
+      : value
+
     setClients((currentClients) =>
       currentClients.map((client) =>
         client.id === clientId
@@ -4813,7 +4837,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
               ...client,
               customFieldValues: {
                 ...(client.customFieldValues || {}),
-                [fieldKey]: value,
+                [fieldKey]: normalizedValue,
               },
             }
           : client
@@ -9490,6 +9514,22 @@ export default function DashboardShell({ initialTab = 'home' }) {
                                 )
                               }
 
+                              if (customColumn.type === 'select') {
+                                return (
+                                  <div key={columnKey} className="client-registry-cell">
+                                    <select
+                                      value={client.customFieldValues?.[columnKey] || ''}
+                                      onChange={(event) => handleClientInlineCustomFieldChange(client.id, columnKey, event.target.value)}
+                                    >
+                                      <option value="">Selecione</option>
+                                      {(customColumn.options || []).map((option) => (
+                                        <option key={`${columnKey}-${option}`} value={option}>{option}</option>
+                                      ))}
+                                    </select>
+                                  </div>
+                                )
+                              }
+
                               return (
                                 <div key={columnKey} className="client-registry-cell">
                                   <input
@@ -9709,6 +9749,13 @@ export default function DashboardShell({ initialTab = 'home' }) {
                           <option key={option.value} value={option.value}>{option.label}</option>
                         ))}
                       </select>
+                      <input
+                        type="text"
+                        value={newClientColumnOptions}
+                        onChange={(event) => setNewClientColumnOptions(event.target.value)}
+                        placeholder={newClientColumnType === 'select' ? 'Opções separadas por vírgula' : 'Use para dropdown'}
+                        disabled={!isMaster || newClientColumnType !== 'select'}
+                      />
                       <button type="submit" className="btn btn-primary" disabled={!isMaster}>Criar coluna</button>
                     </div>
                   </form>
@@ -9744,6 +9791,13 @@ export default function DashboardShell({ initialTab = 'home' }) {
                               <option key={option.value} value={option.value}>{option.label}</option>
                             ))}
                           </select>
+                          <input
+                            type="text"
+                            value={(column.options || []).join(', ')}
+                            onChange={(event) => handleClientCustomColumnFieldChange(column.id, 'options', event.target.value)}
+                            placeholder={column.type === 'select' ? 'Ex.: Ativo, Pausado, Revisão' : 'Use para colunas dropdown'}
+                            disabled={column.type !== 'select'}
+                          />
                           <button type="button" className="btn btn-secondary" onClick={() => handleRemoveClientCustomColumn(column.key)}>Excluir</button>
                         </div>
                       ))}
@@ -14104,7 +14158,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
 
         .client-structure-form {
           display: grid;
-          grid-template-columns: minmax(0, 1fr) 180px auto;
+          grid-template-columns: minmax(0, 1fr) 180px minmax(0, 1fr) auto;
           gap: 10px;
         }
 
@@ -14139,7 +14193,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
         }
 
         .client-structure-item {
-          grid-template-columns: minmax(0, 1fr) 150px auto;
+          grid-template-columns: minmax(0, 1fr) 150px minmax(0, 1fr) auto;
           align-items: center;
         }
 
