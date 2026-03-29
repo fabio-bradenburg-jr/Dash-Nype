@@ -35,8 +35,25 @@ export interface ClientCustomColumnRecord {
   id: string
   key: string
   label: string
-  type: 'text' | 'number' | 'currency' | 'percent' | 'date' | 'link' | 'flag' | 'select'
+  type:
+    | 'text'
+    | 'long_text'
+    | 'number'
+    | 'currency'
+    | 'percent'
+    | 'date'
+    | 'link'
+    | 'email'
+    | 'phone'
+    | 'person'
+    | 'progress'
+    | 'checkbox'
+    | 'flag'
+    | 'select'
+    | 'formula'
   options: string[]
+  tabKey: string
+  formulaExpression: string
 }
 
 export interface ClientCustomTabRecord {

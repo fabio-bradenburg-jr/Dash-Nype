@@ -192,10 +192,12 @@ export function createClientCustomColumnRecord(
     id: overrides.id || createRecordId('client-column'),
     key: keySource || createRecordId('client_column'),
     label,
-    type: ['text', 'number', 'currency', 'percent', 'date', 'link', 'flag', 'select'].includes(String(overrides.type || 'text'))
+    type: ['text', 'long_text', 'number', 'currency', 'percent', 'date', 'link', 'email', 'phone', 'person', 'progress', 'checkbox', 'flag', 'select', 'formula'].includes(String(overrides.type || 'text'))
       ? overrides.type
       : 'text',
     options: normalizeClientCustomColumnOptions(overrides.options),
+    tabKey: String(overrides.tabKey || 'geral').trim() || 'geral',
+    formulaExpression: String(overrides.formulaExpression || '').trim(),
   }
 }
 

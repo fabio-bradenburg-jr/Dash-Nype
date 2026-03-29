@@ -332,10 +332,12 @@ function normalizeClientCustomColumnRecord(
     id: column?.id || createRecordId('client-column'),
     key: key || createRecordId('client_column'),
     label,
-    type: ['text', 'number', 'currency', 'percent', 'date', 'link', 'flag', 'select'].includes(String(column?.type || 'text'))
+    type: ['text', 'long_text', 'number', 'currency', 'percent', 'date', 'link', 'email', 'phone', 'person', 'progress', 'checkbox', 'flag', 'select', 'formula'].includes(String(column?.type || 'text'))
       ? column?.type || 'text'
       : 'text',
     options: normalizeClientCustomColumnOptions(column?.options),
+    tabKey: String(column?.tabKey || 'geral').trim() || 'geral',
+    formulaExpression: String(column?.formulaExpression || '').trim(),
   }
 }
 

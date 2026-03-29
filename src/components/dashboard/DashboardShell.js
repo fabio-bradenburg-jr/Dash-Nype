@@ -183,12 +183,19 @@ const CLIENT_EDIT_SECTIONS = [
 
 const CLIENT_CUSTOM_COLUMN_TYPE_OPTIONS = [
   { value: 'text', label: 'Texto' },
+  { value: 'long_text', label: 'Area de texto' },
   { value: 'number', label: 'Numero' },
   { value: 'currency', label: 'Moeda' },
   { value: 'percent', label: 'Percentual' },
   { value: 'date', label: 'Data' },
   { value: 'link', label: 'Link' },
+  { value: 'email', label: 'E-mail' },
+  { value: 'phone', label: 'Telefone' },
+  { value: 'person', label: 'Pessoas' },
+  { value: 'progress', label: 'Progresso' },
+  { value: 'checkbox', label: 'Caixa de selecao' },
   { value: 'select', label: 'Dropdown' },
+  { value: 'formula', label: 'Formula' },
   { value: 'flag', label: 'Flag' },
 ]
 
@@ -685,6 +692,29 @@ function formatClientCustomFieldValue(columnType, value) {
   if (columnType === 'currency') return formatClientCurrency(value)
   if (columnType === 'percent') return formatClientPercent(value)
   return String(value || '')
+}
+
+function evaluateFormulaExpression(expression, resolveFieldValue) {
+  const normalized = String(expression || '').trim()
+  if (!normalized) return null
+
+  const replacedExpression = normalized.replace(/\{([a-zA-Z0-9_]+)\}/g, (_, fieldKey) => {
+    const resolvedValue = resolveFieldValue(fieldKey)
+    const numericValue = parseClientNumber(resolvedValue)
+    return Number.isFinite(numericValue) ? String(numericValue) : '0'
+  })
+
+  if (!/^[\d+\-*/().,\s]+$/.test(replacedExpression)) {
+    return null
+  }
+
+  try {
+    const safeExpression = replacedExpression.replace(/,/g, '.')
+    const result = Function(`"use strict"; return (${safeExpression})`)()
+    return Number.isFinite(result) ? result : null
+  } catch (error) {
+    return null
+  }
 }
 
 function buildContextInsight(tone, title, description) {
@@ -2466,6 +2496,8 @@ export default function DashboardShell({ initialTab = 'home' }) {
   const [newClientColumnLabel, setNewClientColumnLabel] = useState('')
   const [newClientColumnType, setNewClientColumnType] = useState('text')
   const [newClientColumnOptions, setNewClientColumnOptions] = useState('')
+  const [newClientColumnTab, setNewClientColumnTab] = useState('geral')
+  const [newClientColumnFormula, setNewClientColumnFormula] = useState('')
   const [newClientTabLabel, setNewClientTabLabel] = useState('')
   const [clientRegistryView, setClientRegistryView] = useState('geral')
   const [clientSearch, setClientSearch] = useState('')
@@ -2652,19 +2684,84 @@ export default function DashboardShell({ initialTab = 'home' }) {
     () => new Map(clientCustomColumns.map((column) => [column.key, column])),
     [clientCustomColumns]
   )
+  const clientFieldTabOptions = useMemo(
+    () => [
+      ...CLIENT_REGISTRY_VIEWS.map((view) => ({ key: view.key, label: view.label })),
+      ...clientCustomTabs.map((tab) => ({ key: tab.key, label: tab.label })),
+    ],
+    [clientCustomTabs]
+  )
+  const clientFormulaReferenceOptions = useMemo(() => {
+    const builtInFields = [
+      { key: 'fee', label: 'Fee' },
+      { key: 'mediaInvestment', label: 'Investimento em mídia' },
+      { key: 'monthlyRevenue', label: 'Faturamento' },
+      { key: 'step', label: 'STEP' },
+      { key: 'ltv', label: 'LTV' },
+      { key: 'mmf', label: 'MM/F' },
+      { key: 'roiMarketing', label: 'ROI do Marketing' },
+      { key: 'organicDemands', label: 'Demandas Orgânicas' },
+      { key: 'trafficDemands', label: 'Demandas de Tráfego' },
+      { key: 'totalDemands', label: 'Total de Demandas' },
+      { key: 'contributionMarginPercent', label: 'Margem de Contribuição (%)' },
+      { key: 'profitMarginPercent', label: 'Margem de Lucro (%)' },
+    ]
+    const customFieldOptions = clientCustomColumns
+      .filter((column) => ['number', 'currency', 'percent', 'progress', 'formula'].includes(column.type))
+      .map((column) => ({ key: column.key, label: column.label }))
+
+    return [...builtInFields, ...customFieldOptions]
+  }, [clientCustomColumns])
+  const resolveClientFieldValue = useCallback((client, fieldKey, visitedKeys = new Set()) => {
+    if (!client || !fieldKey) return ''
+    if (visitedKeys.has(fieldKey)) return ''
+
+    const customColumn = customColumnsByKey.get(fieldKey)
+    if (!customColumn) {
+      return client?.[fieldKey] ?? ''
+    }
+
+    if (customColumn.type === 'formula') {
+      const nextVisitedKeys = new Set(visitedKeys)
+      nextVisitedKeys.add(fieldKey)
+      const formulaResult = evaluateFormulaExpression(
+        customColumn.formulaExpression,
+        (referencedFieldKey) => resolveClientFieldValue(client, referencedFieldKey, nextVisitedKeys)
+      )
+      return formulaResult == null ? '' : formatDerivedClientNumber(formulaResult, 2)
+    }
+
+    return client?.customFieldValues?.[fieldKey] ?? ''
+  }, [customColumnsByKey])
   const allClientRegistryViews = useMemo(
     () => [
-      ...CLIENT_REGISTRY_VIEWS,
+      ...CLIENT_REGISTRY_VIEWS.map((view) => ({
+        ...view,
+        columns: [
+          ...view.columns,
+          ...clientCustomColumns
+            .filter((column) => column.tabKey === view.key)
+            .map((column) => column.key),
+        ],
+      })),
       ...clientCustomTabs
-        .filter((tab) => Array.isArray(tab.columnKeys) && tab.columnKeys.length > 0)
         .map((tab) => ({
           key: tab.key,
           label: tab.label,
-          columns: ['name', ...tab.columnKeys.filter((columnKey) => columnKey !== 'name')],
+          columns: [
+            'name',
+            ...Array.from(new Set([
+              ...(Array.isArray(tab.columnKeys) ? tab.columnKeys : []),
+              ...clientCustomColumns
+                .filter((column) => column.tabKey === tab.key)
+                .map((column) => column.key),
+            ])).filter((columnKey) => columnKey !== 'name'),
+          ],
           isCustom: true,
-        })),
+        }))
+        .filter((tab) => Array.isArray(tab.columns) && tab.columns.length > 1)
     ],
-    [clientCustomTabs]
+    [clientCustomColumns, clientCustomTabs]
   )
   const activeClientRegistryView = useMemo(
     () => allClientRegistryViews.find((view) => view.key === clientRegistryView) || allClientRegistryViews[0],
@@ -4154,12 +4251,16 @@ export default function DashboardShell({ initialTab = 'home' }) {
       label: trimmedLabel,
       type: newClientColumnType,
       options: newClientColumnType === 'select' ? normalizeSelectOptionsInput(newClientColumnOptions) : [],
+      tabKey: newClientColumnTab,
+      formulaExpression: newClientColumnType === 'formula' ? newClientColumnFormula : '',
     })
 
     setClientCustomColumns((current) => [...current, newColumn])
     setNewClientColumnLabel('')
     setNewClientColumnType('text')
     setNewClientColumnOptions('')
+    setNewClientColumnTab('geral')
+    setNewClientColumnFormula('')
   }
 
   const handleCreateClientCustomTab = (event) => {
@@ -4217,6 +4318,12 @@ export default function DashboardShell({ initialTab = 'home' }) {
                   : fieldName === 'options'
                     ? normalizeSelectOptionsInput(value)
                     : column.options,
+              formulaExpression:
+                fieldName === 'type' && value !== 'formula'
+                  ? ''
+                  : fieldName === 'formulaExpression'
+                    ? String(value || '')
+                    : column.formulaExpression,
               key: fieldName === 'label' ? undefined : column.key,
             })
           : column
@@ -4826,6 +4933,8 @@ export default function DashboardShell({ initialTab = 'home' }) {
 
   const handleClientInlineCustomFieldChange = (clientId, fieldKey, value) => {
     const column = customColumnsByKey.get(fieldKey)
+    if (column?.type === 'formula') return
+
     const normalizedValue = column?.type === 'currency'
       ? normalizeCurrencyInput(value)
       : value
@@ -9499,6 +9608,8 @@ export default function DashboardShell({ initialTab = 'home' }) {
 
                             const customColumn = customColumnsByKey.get(columnKey)
                             if (customColumn) {
+                              const customFieldValue = resolveClientFieldValue(client, columnKey)
+
                               if (customColumn.type === 'flag') {
                                 return (
                                   <div key={columnKey} className="client-registry-cell">
@@ -9530,11 +9641,44 @@ export default function DashboardShell({ initialTab = 'home' }) {
                                 )
                               }
 
+                              if (customColumn.type === 'checkbox') {
+                                return (
+                                  <div key={columnKey} className="client-registry-cell">
+                                    <label className="client-checkbox-inline">
+                                      <input
+                                        type="checkbox"
+                                        checked={String(client.customFieldValues?.[columnKey] || '').toLowerCase() === 'true'}
+                                        onChange={(event) => handleClientInlineCustomFieldChange(client.id, columnKey, event.target.checked ? 'true' : 'false')}
+                                      />
+                                      <span>{String(client.customFieldValues?.[columnKey] || '').toLowerCase() === 'true' ? 'Marcado' : 'Livre'}</span>
+                                    </label>
+                                  </div>
+                                )
+                              }
+
+                              if (customColumn.type === 'formula') {
+                                return (
+                                  <div key={columnKey} className="client-registry-cell">
+                                    <input type="text" value={customFieldValue || ''} readOnly placeholder="Calculado por fórmula" />
+                                  </div>
+                                )
+                              }
+
                               return (
                                 <div key={columnKey} className="client-registry-cell">
                                   <input
-                                    type={customColumn.type === 'date' ? 'date' : 'text'}
-                                    value={client.customFieldValues?.[columnKey] || ''}
+                                    type={
+                                      customColumn.type === 'date'
+                                        ? 'date'
+                                        : customColumn.type === 'email'
+                                          ? 'email'
+                                          : customColumn.type === 'phone'
+                                            ? 'tel'
+                                            : customColumn.type === 'link'
+                                              ? 'url'
+                                              : 'text'
+                                    }
+                                    value={customFieldValue || ''}
                                     onChange={(event) => handleClientInlineCustomFieldChange(client.id, columnKey, event.target.value)}
                                     placeholder={customColumn.label}
                                   />
@@ -9732,9 +9876,9 @@ export default function DashboardShell({ initialTab = 'home' }) {
                 <div className="client-create-grid">
                   <form className="glass-panel client-create-bar management-action-card" onSubmit={handleCreateClientCustomColumn}>
                     <div>
-                      <span className="management-card-kicker">New column</span>
-                      <h3>Nova coluna</h3>
-                      <p>Crie um campo extra para guardar qualquer informação específica da sua operação.</p>
+                      <span className="management-card-kicker">New field</span>
+                      <h3>Novo campo</h3>
+                      <p>Crie um campo no estilo ClickUp e escolha o tipo e a aba onde ele vai aparecer.</p>
                     </div>
                     <div className="client-structure-form">
                       <input
@@ -9749,6 +9893,11 @@ export default function DashboardShell({ initialTab = 'home' }) {
                           <option key={option.value} value={option.value}>{option.label}</option>
                         ))}
                       </select>
+                      <select value={newClientColumnTab} onChange={(event) => setNewClientColumnTab(event.target.value)} disabled={!isMaster}>
+                        {clientFieldTabOptions.map((tab) => (
+                          <option key={tab.key} value={tab.key}>{tab.label}</option>
+                        ))}
+                      </select>
                       <input
                         type="text"
                         value={newClientColumnOptions}
@@ -9756,8 +9905,39 @@ export default function DashboardShell({ initialTab = 'home' }) {
                         placeholder={newClientColumnType === 'select' ? 'Opções separadas por vírgula' : 'Use para dropdown'}
                         disabled={!isMaster || newClientColumnType !== 'select'}
                       />
+                      <input
+                        type="text"
+                        value={newClientColumnFormula}
+                        onChange={(event) => setNewClientColumnFormula(event.target.value)}
+                        placeholder={newClientColumnType === 'formula' ? 'Ex.: ({fee} * 12) / {mediaInvestment}' : 'Use para fórmulas'}
+                        disabled={!isMaster || newClientColumnType !== 'formula'}
+                      />
                       <button type="submit" className="btn btn-primary" disabled={!isMaster}>Criar coluna</button>
                     </div>
+                    {newClientColumnType === 'formula' && (
+                      <div className="stage-selector">
+                        {['(', ')', '+', '-', '*', '/'].map((token) => (
+                          <button
+                            key={`formula-token-${token}`}
+                            type="button"
+                            className="stage-chip"
+                            onClick={() => setNewClientColumnFormula((current) => `${current}${token}`)}
+                          >
+                            <span>{token}</span>
+                          </button>
+                        ))}
+                        {clientFormulaReferenceOptions.map((field) => (
+                          <button
+                            key={`formula-field-${field.key}`}
+                            type="button"
+                            className="stage-chip"
+                            onClick={() => setNewClientColumnFormula((current) => `${current}{${field.key}}`)}
+                          >
+                            <span>{field.label}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </form>
 
                   <form className="glass-panel client-create-bar management-action-card" onSubmit={handleCreateClientCustomTab}>
@@ -9781,7 +9961,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
 
                 <div className="client-structure-grid">
                   <div className="glass-item client-structure-card">
-                    <h3>Colunas extras</h3>
+                    <h3>Campos customizados</h3>
                     <div className="client-structure-list">
                       {clientCustomColumns.map((column) => (
                         <div key={column.id} className="client-structure-item">
@@ -9791,6 +9971,11 @@ export default function DashboardShell({ initialTab = 'home' }) {
                               <option key={option.value} value={option.value}>{option.label}</option>
                             ))}
                           </select>
+                          <select value={column.tabKey || 'geral'} onChange={(event) => handleClientCustomColumnFieldChange(column.id, 'tabKey', event.target.value)}>
+                            {clientFieldTabOptions.map((tab) => (
+                              <option key={`${column.id}-${tab.key}`} value={tab.key}>{tab.label}</option>
+                            ))}
+                          </select>
                           <input
                             type="text"
                             value={(column.options || []).join(', ')}
@@ -9798,10 +9983,41 @@ export default function DashboardShell({ initialTab = 'home' }) {
                             placeholder={column.type === 'select' ? 'Ex.: Ativo, Pausado, Revisão' : 'Use para colunas dropdown'}
                             disabled={column.type !== 'select'}
                           />
+                          <input
+                            type="text"
+                            value={column.formulaExpression || ''}
+                            onChange={(event) => handleClientCustomColumnFieldChange(column.id, 'formulaExpression', event.target.value)}
+                            placeholder={column.type === 'formula' ? 'Ex.: ({fee} + {monthlyRevenue}) / 2' : 'Use para campos fórmula'}
+                            disabled={column.type !== 'formula'}
+                          />
+                          {column.type === 'formula' && (
+                            <div className="stage-selector">
+                              {['(', ')', '+', '-', '*', '/'].map((token) => (
+                                <button
+                                  key={`${column.id}-${token}`}
+                                  type="button"
+                                  className="stage-chip"
+                                  onClick={() => handleClientCustomColumnFieldChange(column.id, 'formulaExpression', `${column.formulaExpression || ''}${token}`)}
+                                >
+                                  <span>{token}</span>
+                                </button>
+                              ))}
+                              {clientFormulaReferenceOptions.map((field) => (
+                                <button
+                                  key={`${column.id}-${field.key}`}
+                                  type="button"
+                                  className="stage-chip"
+                                  onClick={() => handleClientCustomColumnFieldChange(column.id, 'formulaExpression', `${column.formulaExpression || ''}{${field.key}}`)}
+                                >
+                                  <span>{field.label}</span>
+                                </button>
+                              ))}
+                            </div>
+                          )}
                           <button type="button" className="btn btn-secondary" onClick={() => handleRemoveClientCustomColumn(column.key)}>Excluir</button>
                         </div>
                       ))}
-                      {!clientCustomColumns.length && <p className="field-helper">Nenhuma coluna extra criada ainda.</p>}
+                      {!clientCustomColumns.length && <p className="field-helper">Nenhum campo customizado criado ainda.</p>}
                     </div>
                   </div>
 
@@ -14158,7 +14374,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
 
         .client-structure-form {
           display: grid;
-          grid-template-columns: minmax(0, 1fr) 180px minmax(0, 1fr) auto;
+          grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
           gap: 10px;
         }
 
@@ -14193,7 +14409,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
         }
 
         .client-structure-item {
-          grid-template-columns: minmax(0, 1fr) 150px minmax(0, 1fr) auto;
+          grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
           align-items: center;
         }
 
