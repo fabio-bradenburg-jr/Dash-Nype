@@ -112,6 +112,8 @@ const CLIENT_HEALTH_FLAG_FIELDS = [
   { name: 'stakeholderFlag', label: 'Stakeholder pagador consciente?' },
 ]
 
+const DERIVED_CLIENT_FLAG_KEYS = new Set(CLIENT_HEALTH_FLAG_FIELDS.map((field) => field.name))
+
 const CLIENT_LINK_FIELDS = [
   { name: 'contractUrl', label: 'Contrato', placeholder: 'https://...' },
   { name: 'dashboardUrl', label: 'Dashboard', placeholder: 'https://...' },
@@ -402,6 +404,136 @@ function formatClientPercent(value) {
   return parsed == null ? 'Nao informado' : formatPercent(parsed)
 }
 
+function formatDerivedClientNumber(value, decimals = 2) {
+  if (!Number.isFinite(value)) return ''
+  return value.toFixed(decimals).replace('.', ',')
+}
+
+function deriveScoreFlag(score) {
+  if (!Number.isFinite(score)) return 'na'
+  if (score >= 80) return 'ok'
+  if (score >= 50) return 'attention'
+  return 'risk'
+}
+
+function deriveCoverageFlag(values = []) {
+  const total = values.length
+  const present = values.filter((value) => {
+    if (Array.isArray(value)) return value.length > 0
+    return String(value || '').trim().length > 0
+  }).length
+
+  if (!total || present === 0) return 'na'
+  if (present === total) return 'ok'
+  if (present >= Math.ceil(total / 2)) return 'attention'
+  return 'risk'
+}
+
+function deriveClientComputedFields(client) {
+  const revenue = parseClientNumber(client?.monthlyRevenue)
+  const mediaInvestment = parseClientNumber(client?.mediaInvestment)
+  const fee = parseClientNumber(client?.fee)
+  const contributionMarginPercent = parseClientNumber(client?.contributionMarginPercent)
+  const profitMarginPercent = parseClientNumber(client?.profitMarginPercent)
+  const organicDemands = parseClientNumber(client?.organicDemands)
+  const trafficDemands = parseClientNumber(client?.trafficDemands)
+  const totalDemands = parseClientNumber(client?.totalDemands)
+  const adAccountsCount = [
+    client?.metaAdAccountId,
+    client?.googleAdsAccountId,
+    client?.tiktokAdsAccountId,
+    client?.linkedInAdsAccountId,
+  ].filter((value) => String(value || '').trim()).length
+
+  const roiMarketing = revenue != null && mediaInvestment != null && mediaInvestment > 0
+    ? revenue / mediaInvestment
+    : null
+  const mmf = mediaInvestment != null && fee != null && fee > 0
+    ? mediaInvestment / fee
+    : null
+
+  const financialFlag = (() => {
+    if (revenue == null && fee == null && contributionMarginPercent == null && profitMarginPercent == null) return 'na'
+    if (
+      revenue != null &&
+      fee != null &&
+      revenue > fee &&
+      (profitMarginPercent == null || profitMarginPercent > 0) &&
+      (contributionMarginPercent == null || contributionMarginPercent > 0)
+    ) {
+      return 'ok'
+    }
+    if (
+      (revenue != null && fee != null) ||
+      contributionMarginPercent != null ||
+      profitMarginPercent != null
+    ) {
+      return 'attention'
+    }
+    return 'risk'
+  })()
+
+  const roiFlag = roiMarketing == null ? 'na' : deriveScoreFlag(roiMarketing * 100)
+  const deliverablesFlag = (() => {
+    if (organicDemands == null && trafficDemands == null && totalDemands == null) return 'na'
+    if (
+      organicDemands != null &&
+      trafficDemands != null &&
+      totalDemands != null &&
+      totalDemands === organicDemands + trafficDemands
+    ) {
+      return 'ok'
+    }
+    return 'attention'
+  })()
+  const crmUsageFlag = deriveCoverageFlag([
+    client?.rdStationAccountId,
+    client?.rdPipelineId,
+    Array.isArray(client?.rdQualifiedStages) ? client.rdQualifiedStages : [],
+  ])
+  const csAttendanceFlag = deriveCoverageFlag([client?.csOwner])
+  const csatFlag = deriveCoverageFlag([client?.csOwner, client?.dashboardUrl])
+  const clientParticipationFlag = deriveCoverageFlag([client?.dashboardUrl, client?.driveUrl, client?.contractUrl])
+  const adAccountsFlag = adAccountsCount === 0 ? 'risk' : adAccountsCount >= 2 ? 'ok' : 'attention'
+  const stakeholderFlag = deriveCoverageFlag([client?.contractUrl, client?.projectManager])
+  const npsFlag = deriveCoverageFlag([client?.csOwner, client?.projectManager, client?.contractUrl])
+
+  const aggregateScore = [
+    deliverablesFlag,
+    financialFlag,
+    roiFlag,
+    crmUsageFlag,
+    csAttendanceFlag,
+    csatFlag,
+    clientParticipationFlag,
+    adAccountsFlag,
+    npsFlag,
+    stakeholderFlag,
+  ]
+    .map((flag) => getClientFlagMeta(flag).score)
+    .filter((value) => Number.isFinite(value))
+
+  const healthScoreFlag = aggregateScore.length
+    ? deriveScoreFlag(aggregateScore.reduce((sum, value) => sum + value, 0) / aggregateScore.length)
+    : 'na'
+
+  return {
+    roiMarketing: roiMarketing == null ? '' : formatDerivedClientNumber(roiMarketing, 2),
+    mmf: mmf == null ? '' : formatDerivedClientNumber(mmf, 2),
+    financialFlag,
+    roiFlag,
+    deliverablesFlag,
+    crmUsageFlag,
+    csAttendanceFlag,
+    csatFlag,
+    clientParticipationFlag,
+    adAccountsFlag,
+    npsFlag,
+    stakeholderFlag,
+    healthScoreFlag,
+  }
+}
+
 function countClientConnectedSources(client) {
   return [
     client?.metaAdAccountId,
@@ -469,6 +601,10 @@ function formatClientCustomFieldValue(columnType, value) {
   if (columnType === 'currency') return formatClientCurrency(value)
   if (columnType === 'percent') return formatClientPercent(value)
   return String(value || '')
+}
+
+function buildContextInsight(tone, title, description) {
+  return { tone, title, description }
 }
 
 function getClientStatusMeta(client) {
@@ -2453,6 +2589,56 @@ export default function DashboardShell({ initialTab = 'home' }) {
     }).length,
     [clients]
   )
+  const contextDashboardSummary = useMemo(() => {
+    const targetClient = activeClient || filteredClients[0] || clients[0] || null
+    if (!targetClient) return null
+
+    const healthScore = calculateClientHealthScore(targetClient)
+    const connectedSources = countClientConnectedSources(targetClient)
+    const revenue = parseClientNumber(targetClient.monthlyRevenue)
+    const fee = parseClientNumber(targetClient.fee)
+    const mediaInvestment = parseClientNumber(targetClient.mediaInvestment)
+    const roi = parseClientNumber(targetClient.roiMarketing)
+    const mmf = parseClientNumber(targetClient.mmf)
+    const margin = parseClientNumber(targetClient.profitMarginPercent)
+    const contribution = parseClientNumber(targetClient.contributionMarginPercent)
+
+    const insights = [
+      connectedSources >= 3
+        ? buildContextInsight('success', 'Operação bem conectada', `${targetClient.name} já cruza ${formatNumber(connectedSources)} fontes e tem boa base para leitura executiva.`)
+        : buildContextInsight('warning', 'Integrações incompletas', `${targetClient.name} ainda tem poucas fontes conectadas. Vale reforçar integrações para enriquecer a análise.`),
+      roi != null && roi >= 3
+        ? buildContextInsight('success', 'ROI saudável', `O ROI do marketing está em ${formatDecimal(roi, 2)}, sinalizando boa eficiência sobre o investimento em mídia.`)
+        : roi != null && roi > 0
+          ? buildContextInsight('warning', 'ROI em atenção', `O ROI do marketing está em ${formatDecimal(roi, 2)}. Há espaço para melhorar eficiência de mídia e conversão.`)
+          : buildContextInsight('neutral', 'ROI ainda não calculado', 'Preencha faturamento e investimento em mídia para liberar a leitura de ROI automaticamente.'),
+      healthScore != null && healthScore >= 80
+        ? buildContextInsight('success', 'Health score forte', `O health score atual está em ${healthScore}%, com leitura mais madura para acompanhamento.`)
+        : healthScore != null
+          ? buildContextInsight('warning', 'Health score pede ação', `O health score atual está em ${healthScore}%. Vale revisar entregáveis, CRM e relação com o cliente.`)
+          : buildContextInsight('neutral', 'Health score insuficiente', 'Ainda faltam dados estruturais para consolidar uma leitura de saúde mais confiável.'),
+    ]
+
+    return {
+      client: targetClient,
+      healthScore,
+      connectedSources,
+      revenue,
+      fee,
+      mediaInvestment,
+      roi,
+      mmf,
+      margin,
+      contribution,
+      insights,
+      topRisks: CLIENT_HEALTH_FLAG_FIELDS
+        .map((field) => ({
+          label: field.label,
+          meta: getClientFlagMeta(targetClient[field.name]),
+        }))
+        .filter((item) => item.meta.tone === 'danger' || item.meta.tone === 'warning'),
+    }
+  }, [activeClient, filteredClients, clients])
   const mondayBoardsConfigured = useMemo(
     () =>
       Array.from(new Set(
@@ -2477,6 +2663,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
     const items = [
       { key: 'assistant', label: 'AI Search', helper: 'Copiloto da operação', onClick: () => setActiveTab('assistant') },
       { key: 'apresentacao', label: 'Pitch Deck', helper: activeClient ? activeClient.name : 'Leitura executiva', onClick: () => setActiveTab('apresentacao') },
+      { key: 'contexto', label: 'Contexto', helper: activeClient ? `Analise de ${activeClient.name}` : 'Leitura contextual', onClick: () => setActiveTab('contexto') },
       { key: 'clickup', label: 'ClickUp', helper: clickUpListsConfigured ? `${formatNumber(clickUpListsConfigured)} listas` : 'Configuração pendente', onClick: () => setActiveTab('clickup') },
       { key: 'monday', label: 'Monday', helper: mondayBoardsConfigured ? `${formatNumber(mondayBoardsConfigured)} boards` : 'Configuração pendente', onClick: () => setActiveTab('monday') },
       { key: 'calendar', label: 'Agenda', helper: 'Rotina operacional', onClick: () => setActiveTab('calendar') },
@@ -3151,6 +3338,30 @@ export default function DashboardShell({ initialTab = 'home' }) {
   }, [products, productsById])
 
   useEffect(() => {
+    setClients((currentClients) => {
+      let hasChanges = false
+
+      const nextClients = currentClients.map((client) => {
+        const computed = deriveClientComputedFields(client)
+        const nextClient = {
+          ...client,
+          ...computed,
+        }
+
+        const changed = Object.entries(computed).some(([key, value]) => nextClient[key] !== client[key])
+        if (changed) {
+          hasChanges = true
+          return nextClient
+        }
+
+        return client
+      })
+
+      return hasChanges ? nextClients : currentClients
+    })
+  }, [clients])
+
+  useEffect(() => {
     campaignsRef.current = campaigns
   }, [campaigns])
 
@@ -3250,7 +3461,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
   }, [activeTab, activeClientId, clients])
 
   useEffect(() => {
-    if (activeTab === 'clientes' && !canManageClients) {
+    if ((activeTab === 'clientes' || activeTab === 'produtos') && !canManageClients) {
       setActiveTab('home')
     }
 
@@ -8513,8 +8724,16 @@ export default function DashboardShell({ initialTab = 'home' }) {
               <i className="bx bxs-buildings"></i> Clientes
             </button>
           )}
+          {canManageClients && (
+            <button type="button" data-tooltip="Produtos" className={`nav-item nav-button ${activeTab === 'produtos' ? 'active' : ''}`} onClick={() => setActiveTab('produtos')}>
+              <i className="bx bx-package"></i> Produtos
+            </button>
+          )}
           <button type="button" data-tooltip="Apresentação" className={`nav-item nav-button ${activeTab === 'apresentacao' ? 'active' : ''}`} onClick={() => setActiveTab('apresentacao')}>
             <i className="bx bxs-dashboard"></i> Apresentação
+          </button>
+          <button type="button" data-tooltip="Contexto" className={`nav-item nav-button ${activeTab === 'contexto' ? 'active' : ''}`} onClick={() => setActiveTab('contexto')}>
+            <i className="bx bx-pulse"></i> Contexto
           </button>
           <button type="button" data-tooltip="ClickUp" className={`nav-item nav-button ${activeTab === 'clickup' ? 'active' : ''}`} onClick={() => setActiveTab('clickup')}>
             <i className="bx bx-task"></i> ClickUp
@@ -8572,7 +8791,9 @@ export default function DashboardShell({ initialTab = 'home' }) {
             <h1>
               {activeTab === 'home' && 'Home'}
               {activeTab === 'clientes' && 'Base de clientes'}
+              {activeTab === 'produtos' && 'Base de produtos'}
               {activeTab === 'apresentacao' && `Dashboard ${activeClient?.name || 'do cliente'}`}
+              {activeTab === 'contexto' && 'Dashboard contextual'}
               {activeTab === 'assistant' && assistantGreeting}
               {activeTab === 'calendar' && 'Agenda da operação'}
               {activeTab === 'clickup' && 'Operação ClickUp'}
@@ -8583,7 +8804,9 @@ export default function DashboardShell({ initialTab = 'home' }) {
               <p>
                 {activeTab === 'home' && 'Entre por aqui sempre que abrir o app e escolha rapidamente qual área da operação você quer acessar.'}
                 {activeTab === 'clientes' && 'Cadastre seus clientes e mantenha cada operação separada dentro do dashboard.'}
+                {activeTab === 'produtos' && 'Cadastre os produtos da operação e vincule cada cliente a uma oferta padronizada.'}
                 {activeTab === 'apresentacao' && 'Uma visão executiva consolidada dos principais resultados do cliente, organizada por fonte de dados.'}
+                {activeTab === 'contexto' && 'Uma leitura contextual dos dados do cliente para acelerar análise, decisão e próximos passos.'}
                 {activeTab === 'calendar' && 'Acompanhe a agenda da operação dentro da mesma Home, sem trocar de área.'}
                 {activeTab === 'clickup' && 'Acompanhe tarefas, responsáveis e status operacionais do ClickUp a partir da configuração global da operação.'}
                 {activeTab === 'monday' && 'Acompanhe boards, itens, status e responsáveis do Monday a partir da configuração global da operação.'}
@@ -9003,6 +9226,14 @@ export default function DashboardShell({ initialTab = 'home' }) {
                             }
 
                             if (meta.type === 'flag') {
+                              if (DERIVED_CLIENT_FLAG_KEYS.has(columnKey)) {
+                                const derivedMeta = getClientFlagMeta(value)
+                                return (
+                                  <div key={columnKey} className="client-registry-cell">
+                                    <span className={`client-status-badge client-status-${derivedMeta.tone}`}>{derivedMeta.label}</span>
+                                  </div>
+                                )
+                              }
                               return (
                                 <div key={columnKey} className="client-registry-cell">
                                   <select value={value || 'na'} onChange={(event) => handleClientInlineFieldChange(client.id, columnKey, event.target.value)}>
@@ -9170,57 +9401,6 @@ export default function DashboardShell({ initialTab = 'home' }) {
                 </div>
               </div>
             </section>
-
-            <div className="clients-grid clients-grid-single">
-              <div className="glass-panel users-toolbar-card management-directory-card">
-                <div className="user-picker-head">
-                  <div>
-                    <span className="management-card-kicker">Product registry</span>
-                    <h3>Produtos cadastrados</h3>
-                    <p>Use essa base para padronizar o preenchimento dos clientes e evitar produto digitado diferente em cada conta.</p>
-                  </div>
-                </div>
-
-                <div className="client-products-grid">
-                  {products.map((product) => (
-                    <div key={product.id} className="glass-item client-product-card">
-                      <div className="client-form-grid">
-                        <div className="input-group">
-                          <label>Nome</label>
-                          <input type="text" value={product.name || ''} onChange={(event) => handleProductFieldChange(product.id, 'name', event.target.value)} placeholder="Nome do produto" />
-                        </div>
-                        <div className="input-group">
-                          <label>Status</label>
-                          <select value={product.status || 'Ativo'} onChange={(event) => handleProductFieldChange(product.id, 'status', event.target.value)}>
-                            {CLIENT_STATUS_OPTIONS.map((option) => (
-                              <option key={option} value={option}>{option}</option>
-                            ))}
-                          </select>
-                        </div>
-                        <div className="input-group">
-                          <label>Descrição</label>
-                          <input type="text" value={product.description || ''} onChange={(event) => handleProductFieldChange(product.id, 'description', event.target.value)} placeholder="Resumo rápido do produto" />
-                        </div>
-                      </div>
-                      {isMaster && (
-                        <div className="client-registry-actions">
-                          <button type="button" className="btn btn-secondary" onClick={() => handleRemoveProduct(product.id)}>
-                            Excluir
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-
-                {!products.length && (
-                  <div className="empty-panel glass-item users-empty-state compact-empty-state">
-                    <h3>Nenhum produto cadastrado</h3>
-                    <p>Crie o primeiro produto para começar a vincular os clientes por oferta.</p>
-                  </div>
-                )}
-              </div>
-            </div>
 
             <div className="clients-grid clients-grid-single">
               <div className="glass-panel users-toolbar-card management-directory-card">
@@ -9684,11 +9864,11 @@ export default function DashboardShell({ initialTab = 'home' }) {
                       </div>
                       <div className="input-group">
                         <label>MM/F</label>
-                        <input type="text" value={activeClient.mmf || ''} onChange={(event) => handleClientFieldChange('mmf', event.target.value)} placeholder="Ex.: 1,8" />
+                        <input type="text" value={activeClient.mmf || ''} readOnly placeholder="Calculado automaticamente" />
                       </div>
                       <div className="input-group">
                         <label>ROI do Marketing</label>
-                        <input type="text" value={activeClient.roiMarketing || ''} onChange={(event) => handleClientFieldChange('roiMarketing', event.target.value)} placeholder="Ex.: 3,4" />
+                        <input type="text" value={activeClient.roiMarketing || ''} readOnly placeholder="Calculado automaticamente" />
                       </div>
                     </div>
                   </div>
@@ -9716,7 +9896,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
                             <strong>{field.label}</strong>
                             <span className={`client-status-badge client-status-${meta.tone}`}>{meta.label}</span>
                           </div>
-                          <select value={activeClient[field.name] || 'na'} onChange={(event) => handleClientFieldChange(field.name, event.target.value)}>
+                          <select value={activeClient[field.name] || 'na'} disabled>
                             {CLIENT_FLAG_OPTIONS.map((option) => (
                               <option key={option.value} value={option.value}>{option.label}</option>
                             ))}
@@ -9928,6 +10108,174 @@ export default function DashboardShell({ initialTab = 'home' }) {
           </div>
         )}
 
+
+        {activeTab === 'produtos' && canManageClients && (
+          <section className="clients-layout">
+            <div className="management-header-row">
+              <div className="management-header-copy">
+                <h2>Gestão de Produtos</h2>
+                <p>Cadastre os produtos da operação em uma base própria e vincule cada cliente a uma oferta padronizada.</p>
+              </div>
+            </div>
+
+            <div className="client-create-grid">
+              <form className="glass-panel client-create-bar management-action-card" onSubmit={handleCreateProduct}>
+                <div>
+                  <span className="management-card-kicker">New product</span>
+                  <h3>Novo produto</h3>
+                  <p>Crie um produto que poderá ser usado em toda a base de clientes.</p>
+                </div>
+                <div className="client-create-inline">
+                  <input type="text" value={newProductName} onChange={(event) => setNewProductName(event.target.value)} placeholder="Ex.: Assessoria, Tráfego, Full service..." disabled={!isMaster} />
+                  <button type="submit" className="btn btn-primary" disabled={!isMaster}>Adicionar produto</button>
+                </div>
+              </form>
+            </div>
+
+            <div className="clients-grid clients-grid-single">
+              <div className="glass-panel users-toolbar-card management-directory-card">
+                <div className="user-picker-head">
+                  <div>
+                    <span className="management-card-kicker">Product registry</span>
+                    <h3>Produtos cadastrados</h3>
+                    <p>Use essa base para padronizar o preenchimento dos clientes e evitar produto digitado diferente em cada conta.</p>
+                  </div>
+                </div>
+
+                <div className="client-products-grid">
+                  {products.map((product) => (
+                    <div key={product.id} className="glass-item client-product-card">
+                      <div className="client-form-grid">
+                        <div className="input-group">
+                          <label>Nome</label>
+                          <input type="text" value={product.name || ''} onChange={(event) => handleProductFieldChange(product.id, 'name', event.target.value)} placeholder="Nome do produto" />
+                        </div>
+                        <div className="input-group">
+                          <label>Status</label>
+                          <select value={product.status || 'Ativo'} onChange={(event) => handleProductFieldChange(product.id, 'status', event.target.value)}>
+                            {CLIENT_STATUS_OPTIONS.map((option) => (
+                              <option key={option} value={option}>{option}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="input-group">
+                          <label>Descrição</label>
+                          <input type="text" value={product.description || ''} onChange={(event) => handleProductFieldChange(product.id, 'description', event.target.value)} placeholder="Resumo rápido do produto" />
+                        </div>
+                      </div>
+                      {isMaster && (
+                        <div className="client-registry-actions">
+                          <button type="button" className="btn btn-secondary" onClick={() => handleRemoveProduct(product.id)}>
+                            Excluir
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                {!products.length && (
+                  <div className="empty-panel glass-item users-empty-state compact-empty-state">
+                    <h3>Nenhum produto cadastrado</h3>
+                    <p>Crie o primeiro produto para começar a vincular os clientes por oferta.</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </section>
+        )}
+
+        {activeTab === 'contexto' && (
+          <section className="clients-layout">
+            {!contextDashboardSummary ? (
+              <div className="empty-panel glass-panel">
+                <h3>Nenhum cliente disponível</h3>
+                <p>Cadastre um cliente e preencha a base para liberar a leitura contextual.</p>
+              </div>
+            ) : (
+              <>
+                <div className="context-dashboard-hero glass-panel">
+                  <div>
+                    <span className="management-card-kicker">Contexto analítico</span>
+                    <h2>{contextDashboardSummary.client.name}</h2>
+                    <p>
+                      Painel de leitura rápida para entender saúde da conta, estrutura operacional, eficiência financeira e onde agir primeiro.
+                    </p>
+                  </div>
+                  <div className="context-dashboard-stats">
+                    <div className="context-stat-card">
+                      <small>Health score</small>
+                      <strong>{contextDashboardSummary.healthScore == null ? '--' : `${contextDashboardSummary.healthScore}%`}</strong>
+                    </div>
+                    <div className="context-stat-card">
+                      <small>ROI</small>
+                      <strong>{contextDashboardSummary.roi == null ? '--' : formatDecimal(contextDashboardSummary.roi, 2)}</strong>
+                    </div>
+                    <div className="context-stat-card">
+                      <small>MM/F</small>
+                      <strong>{contextDashboardSummary.mmf == null ? '--' : formatDecimal(contextDashboardSummary.mmf, 2)}</strong>
+                    </div>
+                    <div className="context-stat-card">
+                      <small>Fontes conectadas</small>
+                      <strong>{formatNumber(contextDashboardSummary.connectedSources)}</strong>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="context-insights-grid">
+                  {contextDashboardSummary.insights.map((insight) => (
+                    <article key={insight.title} className={`glass-panel context-insight-card context-insight-${insight.tone}`}>
+                      <small>{insight.tone === 'success' ? 'Sinal positivo' : insight.tone === 'warning' ? 'Atenção' : 'Leitura inicial'}</small>
+                      <h3>{insight.title}</h3>
+                      <p>{insight.description}</p>
+                    </article>
+                  ))}
+                </div>
+
+                <div className="context-grid">
+                  <div className="glass-panel context-panel">
+                    <span className="management-card-kicker">Financeiro</span>
+                    <h3>Estrutura econômica</h3>
+                    <div className="context-metric-list">
+                      <div><span>Fee</span><strong>{formatClientCurrency(contextDashboardSummary.fee)}</strong></div>
+                      <div><span>Faturamento</span><strong>{formatClientCurrency(contextDashboardSummary.revenue)}</strong></div>
+                      <div><span>Investimento em mídia</span><strong>{formatClientCurrency(contextDashboardSummary.mediaInvestment)}</strong></div>
+                      <div><span>Margem de contribuição</span><strong>{formatClientPercent(contextDashboardSummary.contribution)}</strong></div>
+                      <div><span>Margem de lucro</span><strong>{formatClientPercent(contextDashboardSummary.margin)}</strong></div>
+                    </div>
+                  </div>
+
+                  <div className="glass-panel context-panel">
+                    <span className="management-card-kicker">Riscos</span>
+                    <h3>Pontos que pedem revisão</h3>
+                    <div className="context-risk-list">
+                      {contextDashboardSummary.topRisks.length ? contextDashboardSummary.topRisks.map((item) => (
+                        <div key={item.label} className={`context-risk-chip context-risk-${item.meta.tone}`}>
+                          <strong>{item.label}</strong>
+                          <span>{item.meta.label}</span>
+                        </div>
+                      )) : (
+                        <p className="field-helper">Nenhum risco importante apareceu no recorte atual.</p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="glass-panel context-panel">
+                    <span className="management-card-kicker">Estrutura</span>
+                    <h3>Contexto operacional</h3>
+                    <div className="context-metric-list">
+                      <div><span>Produto</span><strong>{contextDashboardSummary.client.product || 'Nao informado'}</strong></div>
+                      <div><span>Gestor de projetos</span><strong>{contextDashboardSummary.client.projectManager || 'Nao informado'}</strong></div>
+                      <div><span>Gestor de tráfego</span><strong>{contextDashboardSummary.client.trafficManager || 'Nao informado'}</strong></div>
+                      <div><span>Designer</span><strong>{contextDashboardSummary.client.designer || 'Nao informado'}</strong></div>
+                      <div><span>Data de início</span><strong>{contextDashboardSummary.client.startDate || 'Nao informada'}</strong></div>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+          </section>
+        )}
 
         {activeTab === 'usuarios' && canManageUsers && (
           <section className="clients-layout users-management-layout">
@@ -13228,6 +13576,109 @@ export default function DashboardShell({ initialTab = 'home' }) {
           display: grid;
           grid-template-columns: repeat(2, minmax(0, 1fr));
           gap: 14px;
+        }
+
+        .context-dashboard-hero {
+          display: grid;
+          grid-template-columns: minmax(0, 1.4fr) minmax(320px, 1fr);
+          gap: 18px;
+          padding: 28px;
+          border-radius: 28px;
+        }
+
+        .context-dashboard-stats,
+        .context-insights-grid,
+        .context-grid {
+          display: grid;
+          gap: 16px;
+        }
+
+        .context-dashboard-stats {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .context-stat-card,
+        .context-panel,
+        .context-insight-card {
+          padding: 18px;
+          border-radius: 22px;
+          border: 1px solid rgba(143, 144, 149, 0.14);
+          background: rgba(255, 255, 255, 0.03);
+        }
+
+        .context-stat-card small,
+        .context-insight-card small {
+          color: rgba(225, 226, 235, 0.52);
+          text-transform: uppercase;
+          letter-spacing: 0.12em;
+          font-size: 10px;
+          font-weight: 800;
+        }
+
+        .context-stat-card strong {
+          display: block;
+          margin-top: 8px;
+          color: #ffffff;
+          font-size: 28px;
+          letter-spacing: -0.04em;
+        }
+
+        .context-insights-grid {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+
+        .context-insight-card h3,
+        .context-panel h3 {
+          margin-top: 10px;
+          margin-bottom: 10px;
+        }
+
+        .context-insight-card p,
+        .context-metric-list span,
+        .context-risk-chip span {
+          color: rgba(225, 226, 235, 0.64);
+        }
+
+        .context-insight-success {
+          border-color: color-mix(in srgb, var(--accent-emerald) 24%, transparent);
+        }
+
+        .context-insight-warning {
+          border-color: color-mix(in srgb, #f59e0b 24%, transparent);
+        }
+
+        .context-grid {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+
+        .context-metric-list,
+        .context-risk-list {
+          display: grid;
+          gap: 12px;
+        }
+
+        .context-metric-list div,
+        .context-risk-chip {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          padding: 12px 14px;
+          border-radius: 16px;
+          background: rgba(255, 255, 255, 0.03);
+        }
+
+        .context-metric-list strong,
+        .context-risk-chip strong {
+          color: #ffffff;
+        }
+
+        .context-risk-warning {
+          border: 1px solid color-mix(in srgb, #f59e0b 24%, transparent);
+        }
+
+        .context-risk-danger {
+          border: 1px solid color-mix(in srgb, #fb7185 24%, transparent);
         }
 
         .client-structure-form {
@@ -18417,7 +18868,10 @@ export default function DashboardShell({ initialTab = 'home' }) {
           .client-form-grid-2,
           .client-flag-grid,
           .client-products-grid,
-          .client-structure-grid {
+          .client-structure-grid,
+          .context-dashboard-hero,
+          .context-insights-grid,
+          .context-grid {
             grid-template-columns: 1fr;
           }
 
