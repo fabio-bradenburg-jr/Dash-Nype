@@ -1,5 +1,71 @@
 create extension if not exists pgcrypto;
 
+create or replace function public.set_updated_at()
+returns trigger
+language plpgsql
+as $$
+begin
+  new.updated_at = timezone('utc', now());
+  return new;
+end;
+$$;
+
+create or replace function public.current_profile_workspace_id()
+returns uuid
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select workspace_id
+  from public.profiles
+  where id = auth.uid()
+  limit 1
+$$;
+
+create or replace function public.current_profile_role()
+returns text
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select role
+  from public.profiles
+  where id = auth.uid()
+  limit 1
+$$;
+
+create or replace function public.is_master_user()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select coalesce(public.current_profile_role() = 'master', false)
+$$;
+
+create or replace function public.is_client_manager()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select coalesce(public.current_profile_role() in ('master', 'operador'), false)
+$$;
+
+create or replace function public.is_workspace_member(target_workspace_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select coalesce(public.current_profile_workspace_id() = target_workspace_id, false)
+$$;
+
 create table if not exists public.workspaces (
   id uuid primary key default gen_random_uuid(),
   name text not null,
@@ -21,8 +87,7 @@ create table if not exists public.profiles (
 );
 
 alter table public.profiles
-  add column if not exists ai_access_level text not null default 'team'
-  check (ai_access_level in ('master', 'team'));
+  add column if not exists ai_access_level text not null default 'team';
 
 create table if not exists public.workspace_preferences (
   workspace_id uuid primary key references public.workspaces(id) on delete cascade,
@@ -42,9 +107,6 @@ create table if not exists public.workspace_clients (
   updated_at timestamptz not null default timezone('utc', now()),
   primary key (workspace_id, id)
 );
-
-create index if not exists workspace_clients_name_idx
-  on public.workspace_clients (workspace_id, name);
 
 create table if not exists public.user_client_access (
   workspace_id uuid not null references public.workspaces(id) on delete cascade,
@@ -146,6 +208,9 @@ create table if not exists public.assistant_messages (
   created_at timestamptz not null default timezone('utc', now())
 );
 
+create index if not exists workspace_clients_name_idx
+  on public.workspace_clients (workspace_id, name);
+
 create index if not exists workspace_client_groups_name_idx
   on public.workspace_client_groups (workspace_id, name);
 
@@ -154,6 +219,9 @@ create index if not exists assistant_conversations_workspace_user_updated_idx
 
 create index if not exists assistant_messages_conversation_created_idx
   on public.assistant_messages (conversation_id, created_at asc);
+
+create index if not exists assistant_messages_workspace_user_created_idx
+  on public.assistant_messages (workspace_id, user_id, created_at desc);
 
 alter table public.workspaces enable row level security;
 alter table public.profiles enable row level security;
@@ -172,24 +240,201 @@ drop policy if exists "profiles_select_own" on public.profiles;
 create policy "profiles_select_own"
   on public.profiles
   for select
-  using (auth.uid() = id);
+  using (auth.uid() = id or public.is_master_user());
 
 drop policy if exists "profiles_update_own" on public.profiles;
 create policy "profiles_update_own"
   on public.profiles
   for update
-  using (auth.uid() = id)
-  with check (auth.uid() = id);
+  using (auth.uid() = id or public.is_master_user())
+  with check (auth.uid() = id or public.is_master_user());
 
-create or replace function public.set_updated_at()
-returns trigger
-language plpgsql
-as $$
-begin
-  new.updated_at = timezone('utc', now());
-  return new;
-end;
-$$;
+drop policy if exists "profiles_insert_master" on public.profiles;
+create policy "profiles_insert_master"
+  on public.profiles
+  for insert
+  with check (auth.uid() = id or public.is_master_user());
+
+drop policy if exists "workspaces_select_member" on public.workspaces;
+create policy "workspaces_select_member"
+  on public.workspaces
+  for select
+  using (public.is_workspace_member(id));
+
+drop policy if exists "workspaces_update_master" on public.workspaces;
+create policy "workspaces_update_master"
+  on public.workspaces
+  for update
+  using (public.is_master_user())
+  with check (public.is_master_user());
+
+drop policy if exists "workspace_preferences_select_member" on public.workspace_preferences;
+create policy "workspace_preferences_select_member"
+  on public.workspace_preferences
+  for select
+  using (public.is_workspace_member(workspace_id));
+
+drop policy if exists "workspace_preferences_mutate_manager" on public.workspace_preferences;
+create policy "workspace_preferences_mutate_manager"
+  on public.workspace_preferences
+  for all
+  using (public.is_workspace_member(workspace_id) and public.is_client_manager())
+  with check (public.is_workspace_member(workspace_id) and public.is_client_manager());
+
+drop policy if exists "workspace_clients_select_member" on public.workspace_clients;
+create policy "workspace_clients_select_member"
+  on public.workspace_clients
+  for select
+  using (public.is_workspace_member(workspace_id));
+
+drop policy if exists "workspace_clients_mutate_manager" on public.workspace_clients;
+create policy "workspace_clients_mutate_manager"
+  on public.workspace_clients
+  for all
+  using (public.is_workspace_member(workspace_id) and public.is_client_manager())
+  with check (public.is_workspace_member(workspace_id) and public.is_client_manager());
+
+drop policy if exists "user_client_access_select_self_or_master" on public.user_client_access;
+create policy "user_client_access_select_self_or_master"
+  on public.user_client_access
+  for select
+  using (
+    public.is_workspace_member(workspace_id)
+    and (auth.uid() = user_id or public.is_master_user())
+  );
+
+drop policy if exists "user_client_access_mutate_master" on public.user_client_access;
+create policy "user_client_access_mutate_master"
+  on public.user_client_access
+  for all
+  using (public.is_workspace_member(workspace_id) and public.is_master_user())
+  with check (public.is_workspace_member(workspace_id) and public.is_master_user());
+
+drop policy if exists "workspace_client_groups_select_member" on public.workspace_client_groups;
+create policy "workspace_client_groups_select_member"
+  on public.workspace_client_groups
+  for select
+  using (public.is_workspace_member(workspace_id));
+
+drop policy if exists "workspace_client_groups_mutate_manager" on public.workspace_client_groups;
+create policy "workspace_client_groups_mutate_manager"
+  on public.workspace_client_groups
+  for all
+  using (public.is_workspace_member(workspace_id) and public.is_client_manager())
+  with check (public.is_workspace_member(workspace_id) and public.is_client_manager());
+
+drop policy if exists "workspace_client_group_members_select_member" on public.workspace_client_group_members;
+create policy "workspace_client_group_members_select_member"
+  on public.workspace_client_group_members
+  for select
+  using (public.is_workspace_member(workspace_id));
+
+drop policy if exists "workspace_client_group_members_mutate_manager" on public.workspace_client_group_members;
+create policy "workspace_client_group_members_mutate_manager"
+  on public.workspace_client_group_members
+  for all
+  using (public.is_workspace_member(workspace_id) and public.is_client_manager())
+  with check (public.is_workspace_member(workspace_id) and public.is_client_manager());
+
+drop policy if exists "user_client_group_access_select_self_or_master" on public.user_client_group_access;
+create policy "user_client_group_access_select_self_or_master"
+  on public.user_client_group_access
+  for select
+  using (
+    public.is_workspace_member(workspace_id)
+    and (auth.uid() = user_id or public.is_master_user())
+  );
+
+drop policy if exists "user_client_group_access_mutate_master" on public.user_client_group_access;
+create policy "user_client_group_access_mutate_master"
+  on public.user_client_group_access
+  for all
+  using (public.is_workspace_member(workspace_id) and public.is_master_user())
+  with check (public.is_workspace_member(workspace_id) and public.is_master_user());
+
+drop policy if exists "workspace_google_calendar_connections_select_member" on public.workspace_google_calendar_connections;
+create policy "workspace_google_calendar_connections_select_member"
+  on public.workspace_google_calendar_connections
+  for select
+  using (public.is_workspace_member(workspace_id));
+
+drop policy if exists "workspace_google_calendar_connections_mutate_manager" on public.workspace_google_calendar_connections;
+create policy "workspace_google_calendar_connections_mutate_manager"
+  on public.workspace_google_calendar_connections
+  for all
+  using (public.is_workspace_member(workspace_id) and public.is_client_manager())
+  with check (public.is_workspace_member(workspace_id) and public.is_client_manager());
+
+drop policy if exists "workspace_meta_connections_select_member" on public.workspace_meta_connections;
+create policy "workspace_meta_connections_select_member"
+  on public.workspace_meta_connections
+  for select
+  using (public.is_workspace_member(workspace_id));
+
+drop policy if exists "workspace_meta_connections_mutate_manager" on public.workspace_meta_connections;
+create policy "workspace_meta_connections_mutate_manager"
+  on public.workspace_meta_connections
+  for all
+  using (public.is_workspace_member(workspace_id) and public.is_client_manager())
+  with check (public.is_workspace_member(workspace_id) and public.is_client_manager());
+
+drop policy if exists "assistant_conversations_select_own" on public.assistant_conversations;
+create policy "assistant_conversations_select_own"
+  on public.assistant_conversations
+  for select
+  using (
+    auth.uid() = user_id
+    and public.is_workspace_member(workspace_id)
+  );
+
+drop policy if exists "assistant_conversations_insert_own" on public.assistant_conversations;
+create policy "assistant_conversations_insert_own"
+  on public.assistant_conversations
+  for insert
+  with check (
+    auth.uid() = user_id
+    and public.is_workspace_member(workspace_id)
+  );
+
+drop policy if exists "assistant_conversations_update_own" on public.assistant_conversations;
+create policy "assistant_conversations_update_own"
+  on public.assistant_conversations
+  for update
+  using (
+    auth.uid() = user_id
+    and public.is_workspace_member(workspace_id)
+  )
+  with check (
+    auth.uid() = user_id
+    and public.is_workspace_member(workspace_id)
+  );
+
+drop policy if exists "assistant_conversations_delete_own" on public.assistant_conversations;
+create policy "assistant_conversations_delete_own"
+  on public.assistant_conversations
+  for delete
+  using (
+    auth.uid() = user_id
+    and public.is_workspace_member(workspace_id)
+  );
+
+drop policy if exists "assistant_messages_select_own" on public.assistant_messages;
+create policy "assistant_messages_select_own"
+  on public.assistant_messages
+  for select
+  using (
+    auth.uid() = user_id
+    and public.is_workspace_member(workspace_id)
+  );
+
+drop policy if exists "assistant_messages_insert_own" on public.assistant_messages;
+create policy "assistant_messages_insert_own"
+  on public.assistant_messages
+  for insert
+  with check (
+    auth.uid() = user_id
+    and public.is_workspace_member(workspace_id)
+  );
 
 drop trigger if exists workspaces_set_updated_at on public.workspaces;
 create trigger workspaces_set_updated_at

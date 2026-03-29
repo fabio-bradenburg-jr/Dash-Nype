@@ -86,6 +86,47 @@ const AI_CAMPAIGN_STATUS_LABELS = {
   urgent: 'Urgência',
 }
 
+const CLIENT_STATUS_OPTIONS = ['Ativo', 'Onboarding', 'Pausado', 'Risco']
+
+const CLIENT_FLAG_OPTIONS = [
+  { value: 'ok', label: 'Ok' },
+  { value: 'attention', label: 'Atenção' },
+  { value: 'risk', label: 'Risco' },
+  { value: 'na', label: 'N/A' },
+]
+
+const CLIENT_HEALTH_FLAG_FIELDS = [
+  { name: 'deliverablesFlag', label: 'Entregáveis' },
+  { name: 'financialFlag', label: 'Financeiro' },
+  { name: 'roiFlag', label: 'ROI' },
+  { name: 'healthScoreFlag', label: 'Health score manual' },
+  { name: 'crmUsageFlag', label: 'CRM em uso corretamente?' },
+  { name: 'csAttendanceFlag', label: 'CS atendimento' },
+  { name: 'csatFlag', label: 'CSAT >= 4?' },
+  { name: 'clientParticipationFlag', label: 'Cliente participou > 90%?' },
+  { name: 'adAccountsFlag', label: 'Contas de anúncio ativas?' },
+  { name: 'npsFlag', label: 'NPS >= 7?' },
+  { name: 'stakeholderFlag', label: 'Stakeholder pagador consciente?' },
+]
+
+const CLIENT_LINK_FIELDS = [
+  { name: 'contractUrl', label: 'Contrato', placeholder: 'https://...' },
+  { name: 'dashboardUrl', label: 'Dashboard', placeholder: 'https://...' },
+  { name: 'driveUrl', label: 'Drive', placeholder: 'https://...' },
+  { name: 'brandManualUrl', label: 'Manual de marca', placeholder: 'https://...' },
+  { name: 'moodboardUrl', label: 'Moodboard', placeholder: 'https://...' },
+  { name: 'salesNarrativeUrl', label: 'Narrativa de vendas', placeholder: 'https://...' },
+  { name: 'drawflowUrl', label: 'Draw Flow', placeholder: 'https://...' },
+]
+
+const CLIENT_OWNER_FIELDS = [
+  { name: 'projectManager', label: 'Gestor de projetos', placeholder: 'Nome do responsável' },
+  { name: 'trafficManager', label: 'Gestor de tráfego', placeholder: 'Nome do responsável' },
+  { name: 'designer', label: 'Designer', placeholder: 'Nome do responsável' },
+  { name: 'csOwner', label: 'CS / Atendimento', placeholder: 'Nome do responsável' },
+  { name: 'copyOwner', label: 'Copy', placeholder: 'Nome do responsável' },
+]
+
 function looksLikeJsonBlock(value) {
   const normalized = String(value || '').trim()
   return normalized.startsWith('{') || normalized.startsWith('[')
@@ -257,7 +298,72 @@ function getNameInitials(value) {
     .join('')
 }
 
+function getClientFlagMeta(value) {
+  const normalized = String(value || 'na').trim().toLowerCase()
+  if (normalized === 'ok') {
+    return { label: 'Ok', tone: 'success', score: 100 }
+  }
+  if (normalized === 'attention') {
+    return { label: 'Atenção', tone: 'warning', score: 55 }
+  }
+  if (normalized === 'risk') {
+    return { label: 'Risco', tone: 'danger', score: 20 }
+  }
+  return { label: 'N/A', tone: 'neutral', score: null }
+}
+
+function calculateClientHealthScore(client) {
+  const scores = CLIENT_HEALTH_FLAG_FIELDS
+    .map((field) => getClientFlagMeta(client?.[field.name]).score)
+    .filter((value) => Number.isFinite(value))
+
+  if (!scores.length) return null
+  return Math.round(scores.reduce((sum, value) => sum + value, 0) / scores.length)
+}
+
+function parseClientNumber(value) {
+  const normalized = String(value ?? '')
+    .replace(/\./g, '')
+    .replace(',', '.')
+    .replace(/[^\d.-]/g, '')
+  const parsed = Number(normalized)
+  return Number.isFinite(parsed) ? parsed : null
+}
+
+function formatClientCurrency(value) {
+  const parsed = parseClientNumber(value)
+  return parsed == null ? 'Nao informado' : formatCurrency(parsed)
+}
+
+function formatClientPercent(value) {
+  const parsed = parseClientNumber(value)
+  return parsed == null ? 'Nao informado' : formatPercent(parsed)
+}
+
+function countClientConnectedSources(client) {
+  return [
+    client?.metaAdAccountId,
+    client?.googleAdsAccountId,
+    client?.tiktokAdsAccountId,
+    client?.linkedInAdsAccountId,
+    client?.googleSheetsUrl,
+    client?.rdStationAccountId,
+    client?.salesforceAccountId,
+    client?.agendorAccountId,
+  ].filter((value) => String(value || '').trim()).length
+}
+
 function getClientStatusMeta(client) {
+  const healthScore = calculateClientHealthScore(client)
+
+  if (healthScore != null && healthScore < 45) {
+    return {
+      label: 'Risco',
+      tone: 'danger',
+      description: 'Health score baixo e revisao recomendada',
+    }
+  }
+
   if (client?.metaAdAccountId) {
     return {
       label: 'Ativo',
@@ -2150,15 +2256,21 @@ export default function DashboardPage() {
     () => clients.filter((client) => Boolean(client.logoUrl)).length,
     [clients]
   )
-  const pendingClientsCount = useMemo(
-    () => clients.filter((client) => !client.metaAdAccountId || !client.logoUrl).length,
+  const averageClientHealthScore = useMemo(() => {
+    const scores = clients
+      .map((client) => calculateClientHealthScore(client))
+      .filter((value) => Number.isFinite(value))
+
+    if (!scores.length) return 0
+    return Math.round((scores.reduce((sum, value) => sum + value, 0) / scores.length) * 10) / 10
+  }, [clients])
+  const healthRiskClientsCount = useMemo(
+    () => clients.filter((client) => {
+      const score = calculateClientHealthScore(client)
+      return score != null && score < 60
+    }).length,
     [clients]
   )
-  const clientSecurityScore = useMemo(() => {
-    if (!clients.length) return 0
-    const score = ((connectedClientsCount + brandedClientsCount) / (clients.length * 2)) * 100
-    return Math.round(score * 10) / 10
-  }, [clients.length, connectedClientsCount, brandedClientsCount])
   const mondayBoardsConfigured = useMemo(
     () =>
       Array.from(new Set(
@@ -8289,14 +8401,14 @@ export default function DashboardPage() {
                   <span>{connectedClientsCount ? 'Prontos para leitura' : 'Sem contas conectadas'}</span>
                 </div>
                 <div className="clients-metric-card">
-                  <small>Pendências</small>
-                  <strong>{formatNumber(pendingClientsCount)}</strong>
-                  <span>{pendingClientsCount ? 'Revisão necessária' : 'Sem gaps críticos'}</span>
+                  <small>Clientes em risco</small>
+                  <strong>{formatNumber(healthRiskClientsCount)}</strong>
+                  <span>{healthRiskClientsCount ? 'Flags exigem revisão' : 'Sem alertas críticos'}</span>
                 </div>
                 <div className="clients-metric-card clients-metric-card-score">
-                  <small>Score estrutural</small>
-                  <strong>{clientSecurityScore.toFixed(1)}</strong>
-                  <span>{clientSecurityScore >= 90 ? 'Base madura' : 'Melhorar conexões e identidade'}</span>
+                  <small>Health médio</small>
+                  <strong>{averageClientHealthScore.toFixed(1)}</strong>
+                  <span>{averageClientHealthScore >= 80 ? 'Base madura' : 'Melhorar entrega, financeiro e CRM'}</span>
                 </div>
               </div>
             </div>
@@ -8333,74 +8445,102 @@ export default function DashboardPage() {
                   <div>
                     <span className="management-card-kicker">Client registry</span>
                     <h3>Clientes cadastrados</h3>
-                    <p>Abra a edição de um cliente quando precisar ajustar conta Meta, identidade visual ou integração da operação.</p>
+                    <p>Cadastre contratos, financeiro, links, responsáveis, flags de entregáveis e integrações da operação em uma única base.</p>
                   </div>
                 </div>
 
-                <div className="user-directory-grid client-directory-grid">
-                  {clients.map((client) => {
-                    const statusMeta = getClientStatusMeta(client)
-                    const linkedGroupsCount = clientGroups.filter((group) => normalizeClientGroupClientIds(group.clientIds).includes(client.id)).length
+                <div className="client-registry-table">
+                  <div className="client-registry-header">
+                    <span>Cliente</span>
+                    <span>Status</span>
+                    <span>Fee</span>
+                    <span>Faturamento</span>
+                    <span>Margem contrib.</span>
+                    <span>Margem lucro</span>
+                    <span>Health</span>
+                    <span>Entregáveis</span>
+                    <span>Integrações</span>
+                    <span>Ações</span>
+                  </div>
+                  <div className="client-registry-body">
+                    {clients.map((client) => {
+                      const statusMeta = getClientStatusMeta(client)
+                      const deliverablesMeta = getClientFlagMeta(client.deliverablesFlag)
+                      const healthScore = calculateClientHealthScore(client)
+                      const linkedGroupsCount = clientGroups.filter((group) => normalizeClientGroupClientIds(group.clientIds).includes(client.id)).length
+                      const connectedSources = countClientConnectedSources(client)
 
-                    return (
-                    <div key={client.id} className={`user-directory-card glass-item client-spotlight-card ${client.id === activeClientId ? 'client-directory-card-active' : ''}`}>
-                      <div className="client-spotlight-badge-wrap">
-                        <span className={`client-status-badge client-status-${statusMeta.tone}`}>{statusMeta.label}</span>
-                      </div>
-
-                      <div className="client-spotlight-head">
-                        <div className="client-avatar-shell">
-                          {client.logoUrl ? (
-                            <img
-                              src={client.logoUrl}
-                              alt={`Logo ${client.name}`}
-                              className="client-avatar-image"
-                            />
-                          ) : (
-                            <span>{getNameInitials(client.name)}</span>
-                          )}
+                      return (
+                        <div key={client.id} className={`client-registry-row glass-item ${client.id === activeClientId ? 'client-registry-row-active' : ''}`}>
+                          <div className="client-registry-client">
+                            <div className="client-avatar-shell">
+                              {client.logoUrl ? (
+                                <img
+                                  src={client.logoUrl}
+                                  alt={`Logo ${client.name}`}
+                                  className="client-avatar-image"
+                                />
+                              ) : (
+                                <span>{getNameInitials(client.name)}</span>
+                              )}
+                            </div>
+                            <div className="client-registry-client-copy">
+                              <strong>{client.name}</strong>
+                              <span>{client.product || 'Produto nao informado'}</span>
+                              <small>{linkedGroupsCount ? `${linkedGroupsCount} grupo(s)` : 'Sem grupo vinculado'}</small>
+                            </div>
+                          </div>
+                          <div className="client-registry-cell">
+                            <span className={`client-status-badge client-status-${statusMeta.tone}`}>{client.status || statusMeta.label}</span>
+                          </div>
+                          <div className="client-registry-cell">
+                            <strong>{formatClientCurrency(client.fee)}</strong>
+                          </div>
+                          <div className="client-registry-cell">
+                            <strong>{formatClientCurrency(client.monthlyRevenue)}</strong>
+                          </div>
+                          <div className="client-registry-cell">
+                            <strong>{formatClientPercent(client.contributionMarginPercent)}</strong>
+                          </div>
+                          <div className="client-registry-cell">
+                            <strong>{formatClientPercent(client.profitMarginPercent)}</strong>
+                          </div>
+                          <div className="client-registry-cell">
+                            <div className="client-health-inline">
+                              <strong>{healthScore == null ? '--' : `${healthScore}%`}</strong>
+                              <small>{client.healthScoreFlag === 'na' ? 'Calculado pelas flags' : getClientFlagMeta(client.healthScoreFlag).label}</small>
+                            </div>
+                          </div>
+                          <div className="client-registry-cell">
+                            <span className={`client-status-badge client-status-${deliverablesMeta.tone}`}>{deliverablesMeta.label}</span>
+                          </div>
+                          <div className="client-registry-cell">
+                            <div className="client-integration-inline">
+                              <strong>{formatNumber(connectedSources)}</strong>
+                              <small>{client.metaAdAccountId ? 'Meta ativa' : 'Sem Meta'}</small>
+                            </div>
+                          </div>
+                          <div className="client-registry-actions">
+                            <button
+                              type="button"
+                              className="btn btn-secondary"
+                              onClick={() => {
+                                setActiveClientId(client.id)
+                                setIsEditClientModalOpen(true)
+                              }}
+                            >
+                              Editar
+                            </button>
+                            {isMaster && clients.length > 1 && (
+                              <button type="button" className="btn btn-secondary" onClick={() => handleRemoveClient(client.id)}>
+                                Excluir
+                              </button>
+                            )}
+                          </div>
                         </div>
-                        <div className="client-spotlight-copy">
-                          <strong>{client.name}</strong>
-                          <span>{`ID: ${String(client.id || '').slice(0, 8).toUpperCase()}`}</span>
-                        </div>
-                      </div>
-
-                      <div className="client-spotlight-grid">
-                        <div>
-                          <small>Conta Meta</small>
-                          <p>{client.metaAdAccountId || 'Não conectada'}</p>
-                        </div>
-                        <div>
-                          <small>Grupo / identidade</small>
-                          <p>{linkedGroupsCount ? `${linkedGroupsCount} grupo(s)` : client.logoUrl ? 'Logo pronta' : 'Pendente'}</p>
-                        </div>
-                      </div>
-
-                      <div className="user-directory-meta">
-                        <span className="user-role-badge">{getDashboardColorLabel(client.dashboardColor || 'blue')}</span>
-                        <small>{statusMeta.description}</small>
-                      </div>
-
-                      <div className="user-directory-actions client-directory-actions">
-                        <button
-                          type="button"
-                          className="btn btn-secondary"
-                          onClick={() => {
-                            setActiveClientId(client.id)
-                            setIsEditClientModalOpen(true)
-                          }}
-                        >
-                          Editar
-                        </button>
-                        {isMaster && clients.length > 1 && (
-                          <button type="button" className="btn btn-secondary" onClick={() => handleRemoveClient(client.id)}>
-                            Excluir
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  )})}
+                      )
+                    })}
+                  </div>
                 </div>
 
                 {!clients.length && (
@@ -8445,7 +8585,7 @@ export default function DashboardPage() {
                       <i className="bx bx-shield-quarter"></i>
                     </span>
                     <div>
-                      <strong>{pendingClientsCount ? `${formatNumber(pendingClientsCount)} cliente(s) exigem revisão de identidade ou conta Meta.` : 'Nenhuma pendência estrutural relevante nesta base.'}</strong>
+                      <strong>{healthRiskClientsCount ? `${formatNumber(healthRiskClientsCount)} cliente(s) estão com health score em atenção ou risco.` : 'Nenhum cliente em health score crítico no momento.'}</strong>
                       <small>Fila de revisão</small>
                     </div>
                   </div>
@@ -8461,10 +8601,10 @@ export default function DashboardPage() {
                   <div className="client-security-meter">
                     <div>
                       <span>Integridade da base</span>
-                      <strong>{`${Math.max(72, Math.round(clientSecurityScore))}%`}</strong>
+                      <strong>{`${Math.max(0, Math.round(averageClientHealthScore))}%`}</strong>
                     </div>
                     <div className="client-security-track">
-                      <div className="client-security-fill client-security-fill-primary" style={{ width: `${Math.max(72, Math.round(clientSecurityScore))}%` }}></div>
+                      <div className="client-security-fill client-security-fill-primary" style={{ width: `${Math.max(0, Math.round(averageClientHealthScore))}%` }}></div>
                     </div>
                   </div>
                   <div className="client-security-meter">
@@ -8737,6 +8877,157 @@ export default function DashboardPage() {
                           </div>
                         </div>
                       </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="client-editor-overview-grid">
+                  <div className="integration-block">
+                    <div className="integration-heading">
+                      <div className="integration-icon" style={{ color: '#3b82f6', borderColor: '#3b82f633' }}>
+                        <i className="bx bx-briefcase-alt-2"></i>
+                      </div>
+                      <div>
+                        <h3>Cadastro operacional</h3>
+                        <p>Estruture o cliente como uma base de cadastro real, com status, produto, contrato e data de entrada.</p>
+                      </div>
+                    </div>
+
+                    <div className="client-form-grid client-form-grid-2">
+                      <div className="input-group">
+                        <label>Status</label>
+                        <select value={activeClient.status || 'Ativo'} onChange={(event) => handleClientFieldChange('status', event.target.value)}>
+                          {CLIENT_STATUS_OPTIONS.map((option) => (
+                            <option key={option} value={option}>{option}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="input-group">
+                        <label>Produto</label>
+                        <input type="text" value={activeClient.product || ''} onChange={(event) => handleClientFieldChange('product', event.target.value)} placeholder="Ex.: Tráfego pago, Full service..." />
+                      </div>
+                      <div className="input-group">
+                        <label>Data de assinatura do contrato</label>
+                        <input type="date" value={activeClient.contractSignedAt || ''} onChange={(event) => handleClientFieldChange('contractSignedAt', event.target.value)} />
+                      </div>
+                      <div className="input-group">
+                        <label>Data de início</label>
+                        <input type="date" value={activeClient.startDate || ''} onChange={(event) => handleClientFieldChange('startDate', event.target.value)} />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="integration-block">
+                    <div className="integration-heading">
+                      <div className="integration-icon" style={{ color: '#10b981', borderColor: '#10b98133' }}>
+                        <i className="bx bx-line-chart"></i>
+                      </div>
+                      <div>
+                        <h3>Resumo financeiro</h3>
+                        <p>Fee, faturamento e margens para cruzar leitura financeira com operação e health score.</p>
+                      </div>
+                    </div>
+
+                    <div className="client-form-grid client-form-grid-2">
+                      <div className="input-group">
+                        <label>Fee</label>
+                        <input type="text" value={activeClient.fee || ''} onChange={(event) => handleClientFieldChange('fee', event.target.value)} placeholder="Ex.: 3500" />
+                      </div>
+                      <div className="input-group">
+                        <label>Faturamento</label>
+                        <input type="text" value={activeClient.monthlyRevenue || ''} onChange={(event) => handleClientFieldChange('monthlyRevenue', event.target.value)} placeholder="Ex.: 120000" />
+                      </div>
+                      <div className="input-group">
+                        <label>Margem de contribuição (R$)</label>
+                        <input type="text" value={activeClient.contributionMarginAmount || ''} onChange={(event) => handleClientFieldChange('contributionMarginAmount', event.target.value)} placeholder="Ex.: 22000" />
+                      </div>
+                      <div className="input-group">
+                        <label>Margem de contribuição (%)</label>
+                        <input type="text" value={activeClient.contributionMarginPercent || ''} onChange={(event) => handleClientFieldChange('contributionMarginPercent', event.target.value)} placeholder="Ex.: 18,3" />
+                      </div>
+                      <div className="input-group">
+                        <label>Margem de lucro (R$)</label>
+                        <input type="text" value={activeClient.profitMarginAmount || ''} onChange={(event) => handleClientFieldChange('profitMarginAmount', event.target.value)} placeholder="Ex.: 12000" />
+                      </div>
+                      <div className="input-group">
+                        <label>Margem de lucro (%)</label>
+                        <input type="text" value={activeClient.profitMarginPercent || ''} onChange={(event) => handleClientFieldChange('profitMarginPercent', event.target.value)} placeholder="Ex.: 10,2" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="integration-block">
+                  <div className="integration-heading">
+                    <div className="integration-icon" style={{ color: '#8b5cf6', borderColor: '#8b5cf633' }}>
+                      <i className="bx bx-flag"></i>
+                    </div>
+                    <div>
+                      <h3>Flags de health score</h3>
+                      <p>Marque o que está saudável, em atenção ou em risco para guiar a leitura da conta e do relacionamento.</p>
+                    </div>
+                  </div>
+
+                  <div className="client-flag-grid">
+                    {CLIENT_HEALTH_FLAG_FIELDS.map((field) => {
+                      const meta = getClientFlagMeta(activeClient[field.name])
+                      return (
+                        <div key={field.name} className="client-flag-card glass-item">
+                          <div className="client-flag-card-head">
+                            <strong>{field.label}</strong>
+                            <span className={`client-status-badge client-status-${meta.tone}`}>{meta.label}</span>
+                          </div>
+                          <select value={activeClient[field.name] || 'na'} onChange={(event) => handleClientFieldChange(field.name, event.target.value)}>
+                            {CLIENT_FLAG_OPTIONS.map((option) => (
+                              <option key={option.value} value={option.value}>{option.label}</option>
+                            ))}
+                          </select>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                <div className="client-editor-overview-grid">
+                  <div className="integration-block">
+                    <div className="integration-heading">
+                      <div className="integration-icon" style={{ color: '#f59e0b', borderColor: '#f59e0b33' }}>
+                        <i className="bx bx-link-alt"></i>
+                      </div>
+                      <div>
+                        <h3>Links e documentos</h3>
+                        <p>Espaço para contrato, dashboard, Drive, manual de marca e materiais que hoje você mantém no Notion.</p>
+                      </div>
+                    </div>
+
+                    <div className="client-form-grid">
+                      {CLIENT_LINK_FIELDS.map((field) => (
+                        <div key={field.name} className="input-group">
+                          <label>{field.label}</label>
+                          <input type="text" value={activeClient[field.name] || ''} onChange={(event) => handleClientFieldChange(field.name, event.target.value)} placeholder={field.placeholder} />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="integration-block">
+                    <div className="integration-heading">
+                      <div className="integration-icon" style={{ color: '#38bdf8', borderColor: '#38bdf833' }}>
+                        <i className="bx bx-group"></i>
+                      </div>
+                      <div>
+                        <h3>Responsáveis da conta</h3>
+                        <p>Deixe claro quem toca projeto, tráfego, design, atendimento e copy dentro da operação.</p>
+                      </div>
+                    </div>
+
+                    <div className="client-form-grid client-form-grid-2">
+                      {CLIENT_OWNER_FIELDS.map((field) => (
+                        <div key={field.name} className="input-group">
+                          <label>{field.label}</label>
+                          <input type="text" value={activeClient[field.name] || ''} onChange={(event) => handleClientFieldChange(field.name, event.target.value)} placeholder={field.placeholder} />
+                        </div>
+                      ))}
                     </div>
                   </div>
                 </div>
@@ -11949,6 +12240,134 @@ export default function DashboardPage() {
           grid-template-columns: repeat(3, minmax(0, 1fr));
         }
 
+        .client-registry-table {
+          display: grid;
+          gap: 14px;
+          overflow-x: auto;
+        }
+
+        .client-registry-header,
+        .client-registry-row {
+          display: grid;
+          grid-template-columns: minmax(220px, 1.8fr) repeat(8, minmax(110px, 1fr)) minmax(150px, 1.2fr);
+          gap: 14px;
+          align-items: center;
+          min-width: 1380px;
+        }
+
+        .client-registry-header {
+          padding: 0 10px;
+          color: rgba(225, 226, 235, 0.5);
+          font-size: 11px;
+          font-weight: 800;
+          letter-spacing: 0.14em;
+          text-transform: uppercase;
+        }
+
+        .client-registry-body {
+          display: grid;
+          gap: 12px;
+        }
+
+        .client-registry-row {
+          padding: 16px;
+          border-radius: 22px;
+          border: 1px solid rgba(143, 144, 149, 0.14);
+          background:
+            linear-gradient(180deg, rgba(255, 255, 255, 0.024), rgba(255, 255, 255, 0.012)),
+            rgba(11, 14, 20, 0.7);
+        }
+
+        .client-registry-row-active {
+          border-color: color-mix(in srgb, var(--accent-blue) 28%, transparent);
+          box-shadow: 0 16px 34px rgba(0, 0, 0, 0.18);
+        }
+
+        .client-registry-client {
+          display: flex;
+          align-items: center;
+          gap: 16px;
+          min-width: 0;
+        }
+
+        .client-registry-client-copy {
+          min-width: 0;
+          display: grid;
+          gap: 4px;
+        }
+
+        .client-registry-client-copy strong,
+        .client-registry-cell strong {
+          color: #ffffff;
+        }
+
+        .client-registry-client-copy span,
+        .client-registry-cell small,
+        .client-registry-client-copy small {
+          color: rgba(225, 226, 235, 0.58);
+        }
+
+        .client-registry-client-copy span,
+        .client-registry-client-copy small {
+          overflow-wrap: anywhere;
+        }
+
+        .client-registry-cell {
+          display: grid;
+          gap: 4px;
+        }
+
+        .client-registry-actions {
+          display: flex;
+          justify-content: flex-end;
+          gap: 10px;
+          flex-wrap: wrap;
+        }
+
+        .client-health-inline,
+        .client-integration-inline {
+          display: grid;
+          gap: 3px;
+        }
+
+        .client-editor-overview-grid {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 16px;
+        }
+
+        .client-form-grid {
+          display: grid;
+          grid-template-columns: 1fr;
+          gap: 14px;
+        }
+
+        .client-form-grid-2 {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .client-flag-grid {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 14px;
+        }
+
+        .client-flag-card {
+          padding: 16px;
+          border-radius: 18px;
+          border: 1px solid rgba(143, 144, 149, 0.12);
+          display: grid;
+          gap: 12px;
+          background: rgba(255, 255, 255, 0.02);
+        }
+
+        .client-flag-card-head {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+        }
+
         .user-directory-card {
           padding: 20px;
           border-radius: 24px;
@@ -12119,6 +12538,18 @@ export default function DashboardPage() {
         .client-status-neutral {
           color: rgba(225, 226, 235, 0.68);
           background: rgba(255, 255, 255, 0.04);
+        }
+
+        .client-status-warning {
+          color: #f59e0b;
+          background: color-mix(in srgb, #f59e0b 10%, transparent);
+          border-color: color-mix(in srgb, #f59e0b 18%, transparent);
+        }
+
+        .client-status-danger {
+          color: #fb7185;
+          background: color-mix(in srgb, #fb7185 10%, transparent);
+          border-color: color-mix(in srgb, #fb7185 18%, transparent);
         }
 
         .client-spotlight-head {
@@ -17061,6 +17492,26 @@ export default function DashboardPage() {
 
           .client-directory-grid {
             grid-template-columns: 1fr;
+          }
+
+          .client-editor-overview-grid,
+          .client-form-grid-2,
+          .client-flag-grid {
+            grid-template-columns: 1fr;
+          }
+
+          .client-registry-header {
+            display: none;
+          }
+
+          .client-registry-row {
+            grid-template-columns: 1fr;
+            justify-items: flex-start;
+            min-width: 0;
+          }
+
+          .client-registry-actions {
+            justify-content: flex-start;
           }
 
           .client-groups-grid {

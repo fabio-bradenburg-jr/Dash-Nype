@@ -43,6 +43,39 @@ export type DashboardIntegrations = AiSettings & {
 export interface ClientRecord {
   id: string
   name: string
+  status: string
+  product: string
+  contractSignedAt: string
+  contractUrl: string
+  startDate: string
+  fee: string
+  monthlyRevenue: string
+  contributionMarginAmount: string
+  contributionMarginPercent: string
+  profitMarginAmount: string
+  profitMarginPercent: string
+  dashboardUrl: string
+  driveUrl: string
+  brandManualUrl: string
+  moodboardUrl: string
+  salesNarrativeUrl: string
+  drawflowUrl: string
+  projectManager: string
+  trafficManager: string
+  designer: string
+  csOwner: string
+  copyOwner: string
+  financialFlag: string
+  roiFlag: string
+  healthScoreFlag: string
+  deliverablesFlag: string
+  crmUsageFlag: string
+  csAttendanceFlag: string
+  csatFlag: string
+  clientParticipationFlag: string
+  adAccountsFlag: string
+  npsFlag: string
+  stakeholderFlag: string
   dashboardColor: string
   logoUrl: string
   metaAdAccountId: string
