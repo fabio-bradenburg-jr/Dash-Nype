@@ -94,15 +94,30 @@ create table if not exists public.workspace_preferences (
   theme_color text not null default 'blue',
   metric_1 text not null default 'spend',
   metric_2 text not null default 'roas',
+  payload jsonb not null default '{}'::jsonb,
   created_at timestamptz not null default timezone('utc', now()),
   updated_at timestamptz not null default timezone('utc', now())
 );
+
+alter table public.workspace_preferences
+  add column if not exists payload jsonb not null default '{}'::jsonb;
 
 create table if not exists public.workspace_clients (
   workspace_id uuid not null references public.workspaces(id) on delete cascade,
   id text not null,
   name text not null,
   payload jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default timezone('utc', now()),
+  updated_at timestamptz not null default timezone('utc', now()),
+  primary key (workspace_id, id)
+);
+
+create table if not exists public.workspace_products (
+  workspace_id uuid not null references public.workspaces(id) on delete cascade,
+  id text not null,
+  name text not null,
+  description text not null default '',
+  status text not null default 'Ativo',
   created_at timestamptz not null default timezone('utc', now()),
   updated_at timestamptz not null default timezone('utc', now()),
   primary key (workspace_id, id)
@@ -211,6 +226,9 @@ create table if not exists public.assistant_messages (
 create index if not exists workspace_clients_name_idx
   on public.workspace_clients (workspace_id, name);
 
+create index if not exists workspace_products_name_idx
+  on public.workspace_products (workspace_id, name);
+
 create index if not exists workspace_client_groups_name_idx
   on public.workspace_client_groups (workspace_id, name);
 
@@ -227,6 +245,7 @@ alter table public.workspaces enable row level security;
 alter table public.profiles enable row level security;
 alter table public.workspace_preferences enable row level security;
 alter table public.workspace_clients enable row level security;
+alter table public.workspace_products enable row level security;
 alter table public.user_client_access enable row level security;
 alter table public.workspace_client_groups enable row level security;
 alter table public.workspace_client_group_members enable row level security;
@@ -290,6 +309,19 @@ create policy "workspace_clients_select_member"
 drop policy if exists "workspace_clients_mutate_manager" on public.workspace_clients;
 create policy "workspace_clients_mutate_manager"
   on public.workspace_clients
+  for all
+  using (public.is_workspace_member(workspace_id) and public.is_client_manager())
+  with check (public.is_workspace_member(workspace_id) and public.is_client_manager());
+
+drop policy if exists "workspace_products_select_member" on public.workspace_products;
+create policy "workspace_products_select_member"
+  on public.workspace_products
+  for select
+  using (public.is_workspace_member(workspace_id));
+
+drop policy if exists "workspace_products_mutate_manager" on public.workspace_products;
+create policy "workspace_products_mutate_manager"
+  on public.workspace_products
   for all
   using (public.is_workspace_member(workspace_id) and public.is_client_manager())
   with check (public.is_workspace_member(workspace_id) and public.is_client_manager());
@@ -454,6 +486,11 @@ for each row execute procedure public.set_updated_at();
 drop trigger if exists workspace_clients_set_updated_at on public.workspace_clients;
 create trigger workspace_clients_set_updated_at
 before update on public.workspace_clients
+for each row execute procedure public.set_updated_at();
+
+drop trigger if exists workspace_products_set_updated_at on public.workspace_products;
+create trigger workspace_products_set_updated_at
+before update on public.workspace_products
 for each row execute procedure public.set_updated_at();
 
 drop trigger if exists user_client_access_set_updated_at on public.user_client_access;

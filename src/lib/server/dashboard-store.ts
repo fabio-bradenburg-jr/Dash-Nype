@@ -2,12 +2,15 @@ import { USER_ROLES } from '@/lib/server/access-control'
 import { DEFAULT_AI_SETTINGS, normalizeAiSettings } from '@/lib/ai-config'
 import type {
   AccessContextLike,
+  ClientCustomColumnRecord,
+  ClientCustomTabRecord,
   ClientGroupRecord,
   ClientRecord,
   DashboardIntegrations,
   DashboardMetricLayout,
   DashboardPreferences,
   DashboardTemplate,
+  ProductRecord,
 } from '@/lib/types/dashboard'
 
 const DEFAULT_FUNNEL_STEPS = ['impressions', 'clicks', 'leads', 'purchases']
@@ -152,7 +155,9 @@ function normalizeClientRecord(client: LooseRecord): ClientRecord {
     id: client?.id || payload.id || '',
     name: client?.name || payload.name || 'Novo cliente',
     status: payload.status || 'Ativo',
+    productId: payload.productId || '',
     product: payload.product || '',
+    customFieldValues: payload.customFieldValues && typeof payload.customFieldValues === 'object' ? payload.customFieldValues : {},
     contractSignedAt: payload.contractSignedAt || '',
     contractUrl: payload.contractUrl || '',
     startDate: payload.startDate || '',
@@ -297,6 +302,55 @@ function normalizeClientGroupRecord(group: Partial<ClientGroupRecord> | null | u
   }
 }
 
+function normalizeProductRecord(product: Partial<ProductRecord> | null | undefined): ProductRecord {
+  return {
+    id: product?.id || createRecordId('product'),
+    name: String(product?.name || 'Novo produto').trim() || 'Novo produto',
+    description: String(product?.description || '').trim(),
+    status: String(product?.status || 'Ativo').trim() || 'Ativo',
+  }
+}
+
+function normalizeClientCustomColumnRecord(
+  column: Partial<ClientCustomColumnRecord> | null | undefined
+): ClientCustomColumnRecord {
+  const label = String(column?.label || 'Nova coluna').trim() || 'Nova coluna'
+  const key = String(column?.key || label || 'nova_coluna')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+
+  return {
+    id: column?.id || createRecordId('client-column'),
+    key: key || createRecordId('client_column'),
+    label,
+    type: ['text', 'number', 'currency', 'percent', 'date', 'link', 'flag'].includes(String(column?.type || 'text'))
+      ? column?.type || 'text'
+      : 'text',
+  }
+}
+
+function normalizeClientCustomTabRecord(
+  tab: Partial<ClientCustomTabRecord> | null | undefined
+): ClientCustomTabRecord {
+  const label = String(tab?.label || 'Nova aba').trim() || 'Nova aba'
+  const key = String(tab?.key || label || 'nova_aba')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+
+  return {
+    id: tab?.id || createRecordId('client-tab'),
+    key: key || createRecordId('client_tab'),
+    label,
+    columnKeys: Array.isArray(tab?.columnKeys) ? tab.columnKeys.filter(Boolean) : [],
+  }
+}
+
 function filterClientsByAccess(
   clients: ClientRecord[],
   accessContext: AccessContextLike
@@ -336,6 +390,9 @@ export async function getDashboardState(
       globalIntegrations: { ...DEFAULT_GLOBAL_INTEGRATIONS },
       clients: [],
       clientGroups: [],
+      products: [],
+      clientCustomColumns: [],
+      clientCustomTabs: [],
     }
   }
 
@@ -344,10 +401,11 @@ export async function getDashboardState(
     { data: clientRows, error: clientsError },
     { data: groupRows, error: groupsError },
     { data: groupMemberRows, error: groupMembersError },
+    { data: productRows, error: productsError },
   ] = await Promise.all([
     adminSupabase
       .from('workspace_preferences')
-      .select('theme_color, metric_1, metric_2')
+      .select('theme_color, metric_1, metric_2, payload')
       .eq('workspace_id', accessContext.workspaceId)
       .maybeSingle(),
     adminSupabase
@@ -364,12 +422,18 @@ export async function getDashboardState(
       .from('workspace_client_group_members')
       .select('group_id, client_id')
       .eq('workspace_id', accessContext.workspaceId),
+    adminSupabase
+      .from('workspace_products')
+      .select('id, name, description, status')
+      .eq('workspace_id', accessContext.workspaceId)
+      .order('name', { ascending: true }),
   ])
 
   if (preferenceError) throw preferenceError
   if (clientsError) throw clientsError
   if (groupsError && !isMissingRelationError(groupsError)) throw groupsError
   if (groupMembersError && !isMissingRelationError(groupMembersError)) throw groupMembersError
+  if (productsError && !isMissingRelationError(productsError)) throw productsError
 
   const filteredClients = filterClientsByAccess((clientRows || []).map(normalizeClientRecord), accessContext)
   const groupMembersByGroupId = new Map()
@@ -389,6 +453,7 @@ export async function getDashboardState(
     ),
     accessContext
   )
+  const preferencePayload = preferenceRow?.payload && typeof preferenceRow.payload === 'object' ? preferenceRow.payload : {}
 
   return {
     themeColor: preferenceRow?.theme_color || 'blue',
@@ -398,6 +463,13 @@ export async function getDashboardState(
     globalIntegrations: extractGlobalIntegrations(filteredClients),
     clients: filteredClients,
     clientGroups,
+    products: (isMissingRelationError(productsError) ? [] : productRows || []).map(normalizeProductRecord),
+    clientCustomColumns: Array.isArray(preferencePayload.clientCustomColumns)
+      ? preferencePayload.clientCustomColumns.map(normalizeClientCustomColumnRecord)
+      : [],
+    clientCustomTabs: Array.isArray(preferencePayload.clientCustomTabs)
+      ? preferencePayload.clientCustomTabs.map(normalizeClientCustomTabRecord)
+      : [],
   }
 }
 
@@ -418,12 +490,22 @@ export async function saveDashboardState(
   const submittedClientGroups = Array.isArray(state.clientGroups)
     ? state.clientGroups.map(normalizeClientGroupRecord)
     : []
+  const submittedProducts = Array.isArray(state.products)
+    ? state.products.map(normalizeProductRecord)
+    : []
+  const submittedClientCustomColumns = Array.isArray(state.clientCustomColumns)
+    ? state.clientCustomColumns.map(normalizeClientCustomColumnRecord)
+    : []
+  const submittedClientCustomTabs = Array.isArray(state.clientCustomTabs)
+    ? state.clientCustomTabs.map(normalizeClientCustomTabRecord)
+    : []
   const submittedGlobalIntegrations = normalizeGlobalIntegrations(state.globalIntegrations)
 
   if (accessContext.role === USER_ROLES.MASTER) {
     const [
       { data: existingClientRows, error: existingClientsError },
       { data: existingGroupRows, error: existingGroupsError },
+      { data: existingProductRows, error: existingProductsError },
     ] = await Promise.all([
       adminSupabase
         .from('workspace_clients')
@@ -433,12 +515,20 @@ export async function saveDashboardState(
         .from('workspace_client_groups')
         .select('id')
         .eq('workspace_id', accessContext.workspaceId),
+      adminSupabase
+        .from('workspace_products')
+        .select('id')
+        .eq('workspace_id', accessContext.workspaceId),
     ])
 
     if (existingClientsError) throw existingClientsError
     if (existingGroupsError && !isMissingRelationError(existingGroupsError)) throw existingGroupsError
+    if (existingProductsError && !isMissingRelationError(existingProductsError)) throw existingProductsError
     if (existingGroupsError && isMissingRelationError(existingGroupsError) && submittedClientGroups.length > 0) {
       throw new Error('As tabelas de grupos de clientes ainda nao foram criadas no Supabase. Rode a migration antes de salvar grupos.')
+    }
+    if (existingProductsError && isMissingRelationError(existingProductsError) && submittedProducts.length > 0) {
+      throw new Error('A tabela de produtos ainda nao foi criada no Supabase. Rode a migration antes de salvar produtos.')
     }
 
     const { error: preferenceError } = await adminSupabase
@@ -449,6 +539,10 @@ export async function saveDashboardState(
           theme_color: state.themeColor || 'blue',
           metric_1: state.metric1 || 'spend',
           metric_2: state.metric2 || 'roas',
+          payload: {
+            clientCustomColumns: submittedClientCustomColumns,
+            clientCustomTabs: submittedClientCustomTabs,
+          },
         },
         { onConflict: 'workspace_id' }
       )
@@ -494,6 +588,47 @@ export async function saveDashboardState(
 
     const submittedGroupIds = new Set(submittedClientGroups.map((group) => group.id))
     const existingGroupIds = (isMissingRelationError(existingGroupsError) ? [] : existingGroupRows || []).map((row) => row.id)
+    const submittedProductIds = new Set(submittedProducts.map((product) => product.id))
+    const existingProductIds = (isMissingRelationError(existingProductsError) ? [] : existingProductRows || []).map((row) => row.id)
+
+    if (submittedProducts.length > 0) {
+      const { error: upsertProductsError } = await adminSupabase
+        .from('workspace_products')
+        .upsert(
+          submittedProducts.map((product) => ({
+            workspace_id: accessContext.workspaceId,
+            id: product.id,
+            name: product.name,
+            description: product.description,
+            status: product.status,
+          })),
+          { onConflict: 'workspace_id,id' }
+        )
+
+      if (upsertProductsError) {
+        if (isMissingRelationError(upsertProductsError)) {
+          throw new Error('A tabela de produtos ainda nao foi criada no Supabase. Rode a migration antes de salvar produtos.')
+        }
+        throw upsertProductsError
+      }
+    }
+
+    const removedProductIds = existingProductIds.filter((productId) => !submittedProductIds.has(productId))
+
+    if (removedProductIds.length > 0) {
+      const { error: deleteRemovedProductsError } = await adminSupabase
+        .from('workspace_products')
+        .delete()
+        .eq('workspace_id', accessContext.workspaceId)
+        .in('id', removedProductIds)
+
+      if (deleteRemovedProductsError) {
+        if (isMissingRelationError(deleteRemovedProductsError)) {
+          throw new Error('A tabela de produtos ainda nao foi criada no Supabase. Rode a migration antes de salvar produtos.')
+        }
+        throw deleteRemovedProductsError
+      }
+    }
 
     if (submittedClientGroups.length > 0) {
       const { error: upsertGroupError } = await adminSupabase

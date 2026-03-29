@@ -24,6 +24,27 @@ export interface ClientGroupRecord {
   clientIds: string[]
 }
 
+export interface ProductRecord {
+  id: string
+  name: string
+  description: string
+  status: string
+}
+
+export interface ClientCustomColumnRecord {
+  id: string
+  key: string
+  label: string
+  type: 'text' | 'number' | 'currency' | 'percent' | 'date' | 'link' | 'flag'
+}
+
+export interface ClientCustomTabRecord {
+  id: string
+  key: string
+  label: string
+  columnKeys: string[]
+}
+
 export type DashboardIntegrations = AiSettings & {
   metaAccessToken: string
   metaConnectionMode: string
@@ -44,7 +65,9 @@ export interface ClientRecord {
   id: string
   name: string
   status: string
+  productId: string
   product: string
+  customFieldValues: Record<string, string>
   contractSignedAt: string
   contractUrl: string
   startDate: string
@@ -113,6 +136,9 @@ export interface DashboardPreferences {
   globalIntegrations: DashboardIntegrations
   clients: ClientRecord[]
   clientGroups: ClientGroupRecord[]
+  products: ProductRecord[]
+  clientCustomColumns: ClientCustomColumnRecord[]
+  clientCustomTabs: ClientCustomTabRecord[]
 }
 
 export interface AccessContextLike {

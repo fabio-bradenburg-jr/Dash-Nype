@@ -1,17 +1,23 @@
 import { DEFAULT_AI_SETTINGS, normalizeAiSettings } from '@/lib/ai-config'
 import type {
+  ClientCustomColumnRecord,
+  ClientCustomTabRecord,
   ClientGroupRecord,
   ClientRecord,
   DashboardIntegrations,
   DashboardMetricLayout,
   DashboardPreferences,
   DashboardTemplate,
+  ProductRecord,
 } from '@/lib/types/dashboard'
 
 export const DASHBOARD_STORAGE_KEY = 'nype-dashboard-preferences'
 
 type DashboardTemplateOverrides = Partial<DashboardTemplate>
 type ClientRecordOverrides = Partial<ClientRecord> & { integrations?: Partial<DashboardIntegrations> }
+type ProductRecordOverrides = Partial<ProductRecord>
+type ClientCustomColumnOverrides = Partial<ClientCustomColumnRecord>
+type ClientCustomTabOverrides = Partial<ClientCustomTabRecord>
 
 export const DEFAULT_INTEGRATIONS: DashboardIntegrations = {
   metaAccessToken: '',
@@ -50,6 +56,9 @@ export const DEFAULT_PREFERENCES: DashboardPreferences = {
   },
   clients: [],
   clientGroups: [],
+  products: [],
+  clientCustomColumns: [],
+  clientCustomTabs: [],
 }
 
 export const DEFAULT_DASHBOARD_TEMPLATE_NAME = 'Principal'
@@ -154,6 +163,53 @@ export function createClientGroupRecord(overrides: Partial<ClientGroupRecord> = 
   }
 }
 
+export function createProductRecord(overrides: ProductRecordOverrides = {}): ProductRecord {
+  return {
+    id: overrides.id || createRecordId('product'),
+    name: String(overrides.name || 'Novo produto').trim() || 'Novo produto',
+    description: String(overrides.description || '').trim(),
+    status: String(overrides.status || 'Ativo').trim() || 'Ativo',
+  }
+}
+
+export function createClientCustomColumnRecord(
+  overrides: ClientCustomColumnOverrides = {}
+): ClientCustomColumnRecord {
+  const label = String(overrides.label || 'Nova coluna').trim() || 'Nova coluna'
+  const keySource = String(overrides.key || label || 'nova_coluna')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+
+  return {
+    id: overrides.id || createRecordId('client-column'),
+    key: keySource || createRecordId('client_column'),
+    label,
+    type: ['text', 'number', 'currency', 'percent', 'date', 'link', 'flag'].includes(String(overrides.type || 'text'))
+      ? overrides.type
+      : 'text',
+  }
+}
+
+export function createClientCustomTabRecord(overrides: ClientCustomTabOverrides = {}): ClientCustomTabRecord {
+  const label = String(overrides.label || 'Nova aba').trim() || 'Nova aba'
+  const keySource = String(overrides.key || label || 'nova_aba')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+
+  return {
+    id: overrides.id || createRecordId('client-tab'),
+    key: keySource || createRecordId('client_tab'),
+    label,
+    columnKeys: Array.isArray(overrides.columnKeys) ? overrides.columnKeys.filter(Boolean) : [],
+  }
+}
+
 export function normalizeClientGroupRecord(group: Partial<ClientGroupRecord> | null | undefined): ClientGroupRecord {
   return {
     id: group?.id || createRecordId('client-group'),
@@ -218,7 +274,9 @@ export function createClientRecord(overrides: ClientRecordOverrides = {}): Clien
     id: overrides.id || createRecordId('client'),
     name: 'Novo cliente',
     status: 'Ativo',
+    productId: '',
     product: '',
+    customFieldValues: {},
     contractSignedAt: '',
     contractUrl: '',
     startDate: '',
@@ -314,6 +372,15 @@ export function loadDashboardPreferences(): DashboardPreferences {
         : [],
       clientGroups: Array.isArray(parsed.clientGroups)
         ? parsed.clientGroups.map((group) => normalizeClientGroupRecord(group))
+        : [],
+      products: Array.isArray(parsed.products)
+        ? parsed.products.map((product) => createProductRecord(product))
+        : [],
+      clientCustomColumns: Array.isArray(parsed.clientCustomColumns)
+        ? parsed.clientCustomColumns.map((column) => createClientCustomColumnRecord(column))
+        : [],
+      clientCustomTabs: Array.isArray(parsed.clientCustomTabs)
+        ? parsed.clientCustomTabs.map((tab) => createClientCustomTabRecord(tab))
         : [],
     }
   } catch (error) {
