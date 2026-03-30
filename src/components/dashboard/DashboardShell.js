@@ -20970,17 +20970,25 @@ export default function DashboardShell({ initialTab = 'home' }) {
         }
 
         :root[data-ui-mode='light'] .sidebar-toggle {
-          background: rgba(255, 255, 255, 0.88) !important;
+          background: linear-gradient(180deg, rgba(255, 255, 255, 0.99), rgba(248, 250, 252, 0.98)) !important;
           border-color: rgba(15, 23, 42, 0.08) !important;
           color: #0f172a !important;
-          box-shadow: 0 16px 30px rgba(15, 23, 42, 0.08) !important;
+          box-shadow: 0 14px 30px rgba(15, 23, 42, 0.08) !important;
         }
 
         :root[data-ui-mode='light'] .sidebar-toggle:hover {
-          background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(241, 245, 249, 0.98)) !important;
+          background: linear-gradient(180deg, rgba(255, 255, 255, 1), rgba(241, 245, 249, 0.99)) !important;
           border-color: color-mix(in srgb, var(--accent-blue) 22%, rgba(15, 23, 42, 0.08)) !important;
           color: #0f172a !important;
           box-shadow: 0 18px 34px rgba(15, 23, 42, 0.1) !important;
+        }
+
+        :root[data-ui-mode='light'] .header {
+          background:
+            radial-gradient(circle at top right, color-mix(in srgb, var(--accent-blue) 6%, transparent), transparent 22%),
+            linear-gradient(180deg, rgba(255, 255, 255, 0.99), rgba(248, 250, 252, 0.98)) !important;
+          border-color: rgba(15, 23, 42, 0.08) !important;
+          box-shadow: 0 18px 38px rgba(15, 23, 42, 0.045) !important;
         }
 
         :root[data-ui-mode='light'] .home-tools-link strong,
