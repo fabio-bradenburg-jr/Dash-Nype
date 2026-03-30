@@ -20991,6 +20991,76 @@ export default function DashboardShell({ initialTab = 'home' }) {
           box-shadow: 0 18px 38px rgba(15, 23, 42, 0.045) !important;
         }
 
+        :root[data-ui-mode='light'] .operation-stellar-hero-copy h2,
+        :root[data-ui-mode='light'] .operation-stellar-board .operation-lane-head strong,
+        :root[data-ui-mode='light'] .operation-card-title-button,
+        :root[data-ui-mode='light'] .operation-card-item-head strong {
+          color: #0f172a;
+        }
+
+        :root[data-ui-mode='light'] .operation-stellar-tab {
+          color: rgba(71, 85, 105, 0.82);
+        }
+
+        :root[data-ui-mode='light'] .operation-stellar-tab.active {
+          color: var(--accent-blue);
+          border-bottom-color: var(--accent-blue);
+        }
+
+        :root[data-ui-mode='light'] .operation-stellar-filter span {
+          color: rgba(71, 85, 105, 0.78);
+        }
+
+        :root[data-ui-mode='light'] .operation-stellar-filter select,
+        :root[data-ui-mode='light'] .operation-stellar-filter-button {
+          border-color: rgba(15, 23, 42, 0.08);
+          background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(241, 245, 249, 0.98));
+          color: #334155;
+          box-shadow: 0 10px 22px rgba(15, 23, 42, 0.05);
+        }
+
+        :root[data-ui-mode='light'] .operation-stellar-board .operation-lane-head span:last-child {
+          background: rgba(59, 130, 246, 0.08);
+          color: #47637e;
+        }
+
+        :root[data-ui-mode='light'] .operation-stellar-board .operation-card-item {
+          border-color: rgba(15, 23, 42, 0.08);
+          background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(241, 245, 249, 0.98));
+          box-shadow: 0 14px 30px rgba(15, 23, 42, 0.06);
+        }
+
+        :root[data-ui-mode='light'] .operation-card-title-block small,
+        :root[data-ui-mode='light'] .operation-stellar-progress-copy small,
+        :root[data-ui-mode='light'] .operation-stellar-card-meta-text,
+        :root[data-ui-mode='light'] .operation-stellar-card-stats span,
+        :root[data-ui-mode='light'] .operation-stellar-empty {
+          color: #64748b;
+        }
+
+        :root[data-ui-mode='light'] .operation-stellar-card-code small {
+          color: #5b7aa7;
+        }
+
+        :root[data-ui-mode='light'] .operation-stellar-progress-bar {
+          background: rgba(148, 163, 184, 0.18);
+        }
+
+        :root[data-ui-mode='light'] .operation-stellar-avatar {
+          border-color: rgba(255, 255, 255, 0.96);
+          color: #0f172a;
+          background: linear-gradient(180deg, rgba(191, 219, 254, 0.92), rgba(219, 234, 254, 0.94));
+        }
+
+        :root[data-ui-mode='light'] .operation-stellar-empty {
+          border-color: rgba(148, 163, 184, 0.22);
+          background: rgba(255, 255, 255, 0.34);
+        }
+
+        :root[data-ui-mode='light'] .operation-stellar-empty i {
+          color: rgba(96, 165, 250, 0.52);
+        }
+
         :root[data-ui-mode='light'] .home-tools-link strong,
         :root[data-ui-mode='light'] .management-hero h2,
         :root[data-ui-mode='light'] .hero-panel h2,
