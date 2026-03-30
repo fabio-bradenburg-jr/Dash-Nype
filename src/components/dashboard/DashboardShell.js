@@ -10711,6 +10711,16 @@ export default function DashboardShell({ initialTab = 'home' }) {
           onClick={() => setIsSidebarCollapsed((current) => !current)}
           aria-label={isSidebarCollapsed ? 'Expandir barra lateral' : 'Ocultar barra lateral'}
           title={isSidebarCollapsed ? 'Expandir barra lateral' : 'Ocultar barra lateral'}
+          style={
+            isLightAppMode
+              ? {
+                  background: 'linear-gradient(180deg, rgba(255, 255, 255, 0.99), rgba(248, 250, 252, 0.98))',
+                  border: '1px solid rgba(15, 23, 42, 0.08)',
+                  color: '#0f172a',
+                  boxShadow: '0 14px 30px rgba(15, 23, 42, 0.08)',
+                }
+              : undefined
+          }
         >
           <i className={`bx ${isSidebarCollapsed ? 'bx-chevron-right' : 'bx-chevron-left'}`}></i>
         </button>
@@ -10793,32 +10803,112 @@ export default function DashboardShell({ initialTab = 'home' }) {
       <main className={`main-content ${isSidebarCollapsed ? 'main-content-expanded' : ''}`}>
         {shouldShowGlobalAppBar && (
           <div className="operation-stellar-topbar app-shell-topbar">
-            <div className="operation-stellar-search">
-              <i className="bx bx-search-alt"></i>
+            <div
+              className="operation-stellar-search"
+              style={
+                isLightAppMode
+                  ? {
+                      border: '1px solid rgba(15, 23, 42, 0.08)',
+                      background: 'linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(241, 245, 249, 0.99))',
+                      boxShadow: '0 14px 30px rgba(15, 23, 42, 0.05)',
+                    }
+                  : undefined
+              }
+            >
+              <i className="bx bx-search-alt" style={isLightAppMode ? { color: '#64748b' } : undefined}></i>
               <input
                 type="text"
                 value={appBarSearchValue}
                 onChange={(event) => handleAppBarSearchChange(event.target.value)}
                 placeholder={appBarPlaceholder}
+                style={isLightAppMode ? { color: '#0f172a' } : undefined}
               />
             </div>
             <div className="operation-stellar-actions">
-              <button type="button" className="operation-stellar-icon-button" aria-label="Notificações">
+              <button
+                type="button"
+                className="operation-stellar-icon-button"
+                aria-label="Notificações"
+                style={
+                  isLightAppMode
+                    ? {
+                        border: '1px solid rgba(15, 23, 42, 0.08)',
+                        background: 'rgba(255, 255, 255, 0.84)',
+                        color: '#475569',
+                        boxShadow: '0 10px 24px rgba(15, 23, 42, 0.04)',
+                      }
+                    : undefined
+                }
+              >
                 <i className="bx bx-bell"></i>
               </button>
-              <a href="/settings" className="operation-stellar-icon-button" aria-label="Configurações">
+              <a
+                href="/settings"
+                className="operation-stellar-icon-button"
+                aria-label="Configurações"
+                style={
+                  isLightAppMode
+                    ? {
+                        border: '1px solid rgba(15, 23, 42, 0.08)',
+                        background: 'rgba(255, 255, 255, 0.84)',
+                        color: '#475569',
+                        boxShadow: '0 10px 24px rgba(15, 23, 42, 0.04)',
+                      }
+                    : undefined
+                }
+              >
                 <i className="bx bx-cog"></i>
               </a>
-              <button type="button" className="operation-stellar-icon-button" aria-label="Ajuda">
+              <button
+                type="button"
+                className="operation-stellar-icon-button"
+                aria-label="Ajuda"
+                style={
+                  isLightAppMode
+                    ? {
+                        border: '1px solid rgba(15, 23, 42, 0.08)',
+                        background: 'rgba(255, 255, 255, 0.84)',
+                        color: '#475569',
+                        boxShadow: '0 10px 24px rgba(15, 23, 42, 0.04)',
+                      }
+                    : undefined
+                }
+              >
                 <i className="bx bx-help-circle"></i>
               </button>
-              <div className="operation-stellar-theme-toggle" role="group" aria-label="Alternar tema">
+              <div
+                className="operation-stellar-theme-toggle"
+                role="group"
+                aria-label="Alternar tema"
+                style={
+                  isLightAppMode
+                    ? {
+                        border: '1px solid rgba(15, 23, 42, 0.08)',
+                        background: 'linear-gradient(180deg, rgba(255, 255, 255, 0.88), rgba(248, 250, 252, 0.96))',
+                        boxShadow: '0 10px 24px rgba(15, 23, 42, 0.04)',
+                      }
+                    : undefined
+                }
+              >
                 <button
                   type="button"
                   className={`operation-stellar-theme-option ${currentAppMode === 'dark' ? 'active' : ''}`}
                   onClick={() => handleToggleAppMode('dark')}
                   aria-pressed={currentAppMode === 'dark'}
                   aria-label="Ativar modo escuro"
+                  style={
+                    isLightAppMode
+                      ? currentAppMode === 'dark'
+                        ? {
+                            background: 'rgba(15, 23, 42, 0.9)',
+                            color: '#f8fafc',
+                            boxShadow: '0 8px 18px rgba(15, 23, 42, 0.16)',
+                          }
+                        : {
+                            color: '#64748b',
+                          }
+                      : undefined
+                  }
                 >
                   <i className="bx bx-moon"></i>
                 </button>
@@ -10828,6 +10918,19 @@ export default function DashboardShell({ initialTab = 'home' }) {
                   onClick={() => handleToggleAppMode('light')}
                   aria-pressed={currentAppMode === 'light'}
                   aria-label="Ativar modo claro"
+                  style={
+                    isLightAppMode
+                      ? currentAppMode === 'light'
+                        ? {
+                            background: 'rgba(255, 255, 255, 0.98)',
+                            color: '#0f172a',
+                            boxShadow: '0 8px 18px rgba(15, 23, 42, 0.12)',
+                          }
+                        : {
+                            color: '#64748b',
+                          }
+                      : undefined
+                  }
                 >
                   <i className="bx bx-sun"></i>
                 </button>
@@ -11154,18 +11257,37 @@ export default function DashboardShell({ initialTab = 'home' }) {
 
         {activeTab === 'operacao' && expandedOperationCard && (
           <div className="modal-overlay" onClick={() => setExpandedOperationCardId('')}>
-            <div className="modal-card glass-panel operation-card-modal" onClick={(event) => event.stopPropagation()}>
+            <div
+              className="modal-card glass-panel operation-card-modal"
+              onClick={(event) => event.stopPropagation()}
+              style={
+                isLightAppMode
+                  ? {
+                      background:
+                        'linear-gradient(180deg, rgba(255, 255, 255, 0.995), rgba(248, 250, 252, 0.985))',
+                      border: '1px solid rgba(15, 23, 42, 0.08)',
+                      boxShadow: '0 28px 70px rgba(15, 23, 42, 0.18)',
+                    }
+                  : undefined
+              }
+            >
               {(() => {
                 const card = expandedOperationCard
                 const linkedClient = clientsById.get(card.clientId)
                 const canEditCard = canEditClientRecord(card.clientId)
                 return (
                   <>
-                    <div className="modal-header operation-modal-header">
-                      <div className="operation-modal-breadcrumbs">
-                        <span>{linkedClient?.name || 'Cliente não encontrado'}</span>
+                    <div
+                      className="modal-header operation-modal-header"
+                      style={isLightAppMode ? { borderBottom: '1px solid rgba(15, 23, 42, 0.08)' } : undefined}
+                    >
+                      <div
+                        className="operation-modal-breadcrumbs"
+                        style={isLightAppMode ? { color: '#64748b' } : undefined}
+                      >
+                        <span style={isLightAppMode ? { color: '#64748b' } : undefined}>{linkedClient?.name || 'Cliente não encontrado'}</span>
                         <span>/</span>
-                        <strong>{operationLanesByKey.get(card.lane)?.label || 'Card operacional'}</strong>
+                        <strong style={isLightAppMode ? { color: '#0f172a' } : undefined}>{operationLanesByKey.get(card.lane)?.label || 'Card operacional'}</strong>
                       </div>
                       <button type="button" className="modal-close" onClick={() => setExpandedOperationCardId('')} aria-label="Fechar card operacional">
                         <i className="bx bx-x"></i>
@@ -11173,16 +11295,41 @@ export default function DashboardShell({ initialTab = 'home' }) {
                     </div>
 
                     <div className="operation-clickup-layout">
-                      <aside className="operation-clickup-sidebar">
-                        <div className="operation-clickup-sidebar-head">
-                          <strong>Subtasks</strong>
-                          <span>{formatNumber((card.subtasks || []).length)}</span>
+                      <aside
+                        className="operation-clickup-sidebar"
+                        style={
+                          isLightAppMode
+                            ? {
+                                background: 'rgba(248, 250, 252, 0.92)',
+                                borderRight: '1px solid rgba(15, 23, 42, 0.08)',
+                              }
+                            : undefined
+                        }
+                      >
+                        <div
+                          className="operation-clickup-sidebar-head"
+                          style={isLightAppMode ? { borderBottom: '1px solid rgba(15, 23, 42, 0.08)' } : undefined}
+                        >
+                          <strong style={isLightAppMode ? { color: '#0f172a' } : undefined}>Subtasks</strong>
+                          <span style={isLightAppMode ? { color: '#475569' } : undefined}>{formatNumber((card.subtasks || []).length)}</span>
                         </div>
                         <div className="operation-subtask-list">
                           {(card.subtasks || []).map((subtask) => (
-                            <div key={subtask.id} className="glass-item operation-subtask-card">
+                            <div
+                              key={subtask.id}
+                              className="glass-item operation-subtask-card"
+                              style={
+                                isLightAppMode
+                                  ? {
+                                      background: 'rgba(255, 255, 255, 0.98)',
+                                      border: '1px solid rgba(15, 23, 42, 0.08)',
+                                      boxShadow: '0 12px 24px rgba(15, 23, 42, 0.05)',
+                                    }
+                                  : undefined
+                              }
+                            >
                               <div className="operation-subtask-compact-head">
-                                <strong>{subtask.title || 'Subtarefa'}</strong>
+                                <strong style={isLightAppMode ? { color: '#0f172a' } : undefined}>{subtask.title || 'Subtarefa'}</strong>
                                 <label className={`stage-chip ${subtask.completed ? 'active' : ''}`}>
                                   <input
                                     type="checkbox"
@@ -11282,25 +11429,82 @@ export default function DashboardShell({ initialTab = 'home' }) {
                         </div>
                       </aside>
 
-                      <main className="operation-clickup-main">
+                      <main
+                        className="operation-clickup-main"
+                        style={isLightAppMode ? { background: 'rgba(255, 255, 255, 0.98)' } : undefined}
+                      >
                         <div className="operation-clickup-title-wrap">
                           <div className="operation-clickup-title-meta">
-                            <select className="operation-clickup-type-select" value={card.taskType || operationTaskTypeOptions[0] || 'Tarefa'} disabled={!canEditCard} onChange={(event) => handleOperationCardFieldChange(card.id, 'taskType', event.target.value)}>
+                            <select
+                              className="operation-clickup-type-select"
+                              value={card.taskType || operationTaskTypeOptions[0] || 'Tarefa'}
+                              disabled={!canEditCard}
+                              onChange={(event) => handleOperationCardFieldChange(card.id, 'taskType', event.target.value)}
+                              style={
+                                isLightAppMode
+                                  ? {
+                                      border: '1px solid rgba(15, 23, 42, 0.08)',
+                                      background: 'rgba(255, 255, 255, 0.98)',
+                                      color: '#334155',
+                                    }
+                                  : undefined
+                              }
+                            >
                               {operationTaskTypeOptions.map((taskType) => (
                                 <option key={`${card.id}-task-type-${taskType}`} value={taskType}>{taskType}</option>
                               ))}
                             </select>
-                            <span className="operation-clickup-id">{card.taskCode || card.id}</span>
+                            <span
+                              className="operation-clickup-id"
+                              style={
+                                isLightAppMode
+                                  ? {
+                                      borderColor: 'color-mix(in srgb, var(--accent-blue) 24%, transparent)',
+                                      background: 'color-mix(in srgb, var(--accent-blue) 10%, white 90%)',
+                                      color: 'var(--accent-blue)',
+                                    }
+                                  : undefined
+                              }
+                            >
+                              {card.taskCode || card.id}
+                            </span>
                           </div>
-                          <input className="operation-clickup-title-input" type="text" value={card.title || ''} disabled={!canEditCard} onChange={(event) => handleOperationCardFieldChange(card.id, 'title', event.target.value)} />
+                          <input
+                            className="operation-clickup-title-input"
+                            type="text"
+                            value={card.title || ''}
+                            disabled={!canEditCard}
+                            onChange={(event) => handleOperationCardFieldChange(card.id, 'title', event.target.value)}
+                            style={isLightAppMode ? { color: '#0f172a' } : undefined}
+                          />
                         </div>
 
-                        <div className="operation-clickup-description">
-                          <label>Descrição</label>
+                        <div
+                          className="operation-clickup-description"
+                          style={
+                            isLightAppMode
+                              ? {
+                                  background: 'rgba(248, 250, 252, 0.95)',
+                                  border: '1px solid rgba(15, 23, 42, 0.08)',
+                                }
+                              : undefined
+                          }
+                        >
+                          <label style={isLightAppMode ? { color: '#475569' } : undefined}>Descrição</label>
                           <textarea value={card.content || ''} rows={5} disabled={!canEditCard} onChange={(event) => handleOperationCardFieldChange(card.id, 'content', event.target.value)} placeholder="Adicione uma descrição para o card" />
                         </div>
 
-                        <div className="operation-clickup-fields">
+                        <div
+                          className="operation-clickup-fields"
+                          style={
+                            isLightAppMode
+                              ? {
+                                  background: 'rgba(248, 250, 252, 0.95)',
+                                  border: '1px solid rgba(15, 23, 42, 0.08)',
+                                }
+                              : undefined
+                          }
+                        >
                           <div className="operation-clickup-field-row">
                             <span>Status</span>
                             <select value={card.status} disabled={!canEditCard} onChange={(event) => handleOperationCardFieldChange(card.id, 'status', event.target.value)}>
@@ -11454,37 +11658,72 @@ export default function DashboardShell({ initialTab = 'home' }) {
                         </div>
                       </main>
 
-                      <aside className="operation-clickup-activity">
-                        <div className="operation-clickup-activity-head">
-                          <strong>Activity</strong>
-                          <span>{formatNumber((card.comments || []).length)}</span>
+                      <aside
+                        className="operation-clickup-activity"
+                        style={
+                          isLightAppMode
+                            ? {
+                                background: 'rgba(248, 250, 252, 0.92)',
+                                borderLeft: '1px solid rgba(15, 23, 42, 0.08)',
+                              }
+                            : undefined
+                        }
+                      >
+                        <div
+                          className="operation-clickup-activity-head"
+                          style={isLightAppMode ? { borderBottom: '1px solid rgba(15, 23, 42, 0.08)' } : undefined}
+                        >
+                          <strong style={isLightAppMode ? { color: '#0f172a' } : undefined}>Activity</strong>
+                          <span style={isLightAppMode ? { color: '#475569' } : undefined}>{formatNumber((card.comments || []).length)}</span>
                         </div>
                         <div className="operation-comment-list">
                           {(card.comments || []).length ? (
                             card.comments.map((comment) => (
-                              <div key={comment.id} className={`glass-item operation-comment-card ${comment.kind === 'activity' ? 'operation-comment-card-activity' : 'operation-comment-card-manual'}`}>
+                              <div
+                                key={comment.id}
+                                className={`glass-item operation-comment-card ${comment.kind === 'activity' ? 'operation-comment-card-activity' : 'operation-comment-card-manual'}`}
+                                style={
+                                  isLightAppMode
+                                    ? {
+                                        background: 'rgba(255, 255, 255, 0.98)',
+                                        border: '1px solid rgba(15, 23, 42, 0.08)',
+                                        boxShadow: '0 12px 24px rgba(15, 23, 42, 0.05)',
+                                      }
+                                    : undefined
+                                }
+                              >
                                 <div className="operation-comment-head">
                                   <div className="operation-comment-head-main">
                                     <span className={`operation-comment-icon ${comment.kind === 'activity' ? 'activity' : 'comment'}`}>
                                       <i className={`bx ${OPERATION_ACTIVITY_ICON_BY_TYPE[comment.kind === 'activity' ? (comment.activityType || 'update') : 'comment'] || 'bx-message-rounded-detail'}`}></i>
                                     </span>
                                     <div className="operation-comment-head-copy">
-                                      <strong>{comment.authorName || 'Equipe'}</strong>
-                                      <small>{formatClientDateTime(comment.createdAt)}</small>
+                                      <strong style={isLightAppMode ? { color: '#0f172a' } : undefined}>{comment.authorName || 'Equipe'}</strong>
+                                      <small style={isLightAppMode ? { color: '#475569' } : undefined}>{formatClientDateTime(comment.createdAt)}</small>
                                     </div>
                                   </div>
                                   <span className={`operation-comment-badge ${comment.kind === 'activity' ? 'activity' : 'comment'}`}>
                                     {comment.kind === 'activity' ? 'Atividade' : 'Comentário'}
                                   </span>
                                 </div>
-                                <p>{comment.body}</p>
+                                <p style={isLightAppMode ? { color: '#0f172a' } : undefined}>{comment.body}</p>
                               </div>
                             ))
                           ) : (
                             <div className="ranking-empty">Nenhum comentário ainda.</div>
                           )}
                         </div>
-                        <div className="operation-inline-create operation-inline-create-stack">
+                        <div
+                          className="operation-inline-create operation-inline-create-stack"
+                          style={
+                            isLightAppMode
+                              ? {
+                                  background: 'rgba(255, 255, 255, 0.98)',
+                                  border: '1px solid rgba(15, 23, 42, 0.08)',
+                                }
+                              : undefined
+                          }
+                        >
                           <textarea
                             value={newOperationCommentByCard[card.id] || ''}
                             onChange={(event) => setNewOperationCommentByCard((current) => ({ ...current, [card.id]: event.target.value }))}
@@ -17425,6 +17664,65 @@ export default function DashboardShell({ initialTab = 'home' }) {
           color: #bfdbfe;
           background: rgba(78, 137, 255, 0.12);
           border-color: rgba(78, 137, 255, 0.18);
+        }
+
+        :root[data-ui-mode='light'] .operation-card-modal .operation-clickup-title-wrap {
+          border-bottom-color: rgba(15, 23, 42, 0.08);
+        }
+
+        :root[data-ui-mode='light'] .operation-card-modal .operation-clickup-field-row {
+          border-bottom-color: rgba(15, 23, 42, 0.08);
+        }
+
+        :root[data-ui-mode='light'] .operation-card-modal label,
+        :root[data-ui-mode='light'] .operation-card-modal .input-group label,
+        :root[data-ui-mode='light'] .operation-card-modal .operation-clickup-field-row > span,
+        :root[data-ui-mode='light'] .operation-card-modal .operation-time-readout span {
+          color: #475569;
+        }
+
+        :root[data-ui-mode='light'] .operation-card-modal input:not([type='checkbox']):not(.operation-clickup-title-input),
+        :root[data-ui-mode='light'] .operation-card-modal select,
+        :root[data-ui-mode='light'] .operation-card-modal textarea,
+        :root[data-ui-mode='light'] .operation-card-modal .operation-assignee-trigger,
+        :root[data-ui-mode='light'] .operation-card-modal .operation-time-readout,
+        :root[data-ui-mode='light'] .operation-card-modal .operation-assignee-dropdown,
+        :root[data-ui-mode='light'] .operation-card-modal .operation-assignee-option {
+          border-color: rgba(15, 23, 42, 0.08);
+          background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.98));
+          color: #0f172a;
+          box-shadow: none;
+        }
+
+        :root[data-ui-mode='light'] .operation-card-modal input:not([type='checkbox']):not(.operation-clickup-title-input)::placeholder,
+        :root[data-ui-mode='light'] .operation-card-modal textarea::placeholder,
+        :root[data-ui-mode='light'] .operation-card-modal .operation-assignee-empty {
+          color: #64748b;
+        }
+
+        :root[data-ui-mode='light'] .operation-card-modal .stage-chip {
+          background: rgba(255, 255, 255, 0.98);
+          border-color: rgba(15, 23, 42, 0.08);
+          color: #334155;
+        }
+
+        :root[data-ui-mode='light'] .operation-card-modal .stage-chip.active,
+        :root[data-ui-mode='light'] .operation-card-modal .operation-assignee-option.active {
+          background: color-mix(in srgb, var(--accent-blue) 10%, white 90%);
+          border-color: color-mix(in srgb, var(--accent-blue) 26%, transparent);
+          color: #0f172a;
+        }
+
+        :root[data-ui-mode='light'] .operation-card-modal .operation-comment-icon.comment {
+          color: #64748b;
+          border-color: rgba(15, 23, 42, 0.08);
+          background: rgba(241, 245, 249, 0.98);
+        }
+
+        :root[data-ui-mode='light'] .operation-card-modal .operation-comment-badge.comment {
+          color: #64748b;
+          border-color: rgba(15, 23, 42, 0.08);
+          background: rgba(241, 245, 249, 0.98);
         }
 
         .operation-table-card {
