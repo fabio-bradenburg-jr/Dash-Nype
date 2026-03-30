@@ -10549,7 +10549,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
   }
 
   return (
-    <div className="dashboard-container">
+    <div className="dashboard-container dashboard-shell-stellar">
       <aside className={`sidebar glass-panel ${isSidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
         <button
           type="button"
@@ -15760,7 +15760,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
         }
 
         .main-content-expanded {
-          margin-left: 92px;
+          margin-left: 120px;
         }
 
         .sidebar-client {

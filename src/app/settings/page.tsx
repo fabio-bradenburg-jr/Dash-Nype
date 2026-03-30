@@ -1616,11 +1616,14 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="dashboard-container settings-page-shell">
+    <div className="dashboard-container settings-page-shell dashboard-shell-stellar">
       <aside className="sidebar glass-panel">
         <div className="logo">
           <i className="bx bx-bar-chart-alt-2"></i>
-          <span>Dash</span>
+          <div className="logo-copy">
+            <span>Nype OS</span>
+            <small>Control center</small>
+          </div>
         </div>
 
         <nav className="nav-menu">
@@ -3338,38 +3341,41 @@ export default function SettingsPage() {
         .settings-main {
           width: 100%;
           padding-left: 0 !important;
-          margin-left: 0 !important;
+          margin-left: calc(var(--sidebar-width) + 28px) !important;
+          padding-top: 14px;
         }
 
         .settings-workspace {
           width: 100%;
           display: grid;
           grid-template-columns: minmax(210px, 236px) minmax(0, 1fr);
-          gap: 14px;
+          gap: 18px;
           align-items: start;
         }
 
         .settings-panel {
-          padding: 40px;
+          padding: 30px;
           display: grid;
           gap: 28px;
           background:
-            radial-gradient(circle at 100% 0%, rgba(78, 137, 255, 0.08), transparent 28%),
-            radial-gradient(circle at 0% 100%, rgba(78, 222, 99, 0.06), transparent 24%),
-            rgba(16, 19, 26, 0.78);
-          border: 1px solid rgba(69, 71, 75, 0.22);
-          border-radius: 24px;
+            radial-gradient(circle at 100% 0%, rgba(78, 137, 255, 0.1), transparent 26%),
+            radial-gradient(circle at 0% 100%, rgba(84, 121, 255, 0.08), transparent 24%),
+            rgba(8, 15, 30, 0.74);
+          border: 1px solid rgba(123, 148, 199, 0.14);
+          border-radius: 28px;
         }
 
         .settings-head {
           display: flex;
           justify-content: space-between;
-          align-items: flex-start;
+          align-items: center;
           gap: 16px;
+          padding: 10px 4px 2px;
+          border-bottom: 1px solid rgba(123, 148, 199, 0.1);
         }
 
         .settings-head h1 {
-          font-size: 42px;
+          font-size: 48px;
           margin-bottom: 8px;
           font-family: var(--font-family-headline);
           font-weight: 800;
@@ -3383,9 +3389,9 @@ export default function SettingsPage() {
         }
 
         .settings-section-sidebar {
-          padding: 14px;
+          padding: 16px;
           display: grid;
-          gap: 10px;
+          gap: 12px;
           position: sticky;
           top: 24px;
           align-self: start;
@@ -3393,9 +3399,12 @@ export default function SettingsPage() {
           width: 100%;
           max-height: fit-content;
           overflow: visible;
-          background: rgba(25, 28, 34, 0.78);
-          border: 1px solid rgba(69, 71, 75, 0.2);
-          border-radius: 20px;
+          background:
+            radial-gradient(circle at top left, rgba(78, 137, 255, 0.08), transparent 32%),
+            rgba(10, 18, 33, 0.72);
+          border: 1px solid rgba(123, 148, 199, 0.12);
+          border-radius: 24px;
+          box-shadow: 0 20px 44px rgba(0, 0, 0, 0.2);
         }
 
         .settings-sidebar-title {
@@ -3430,9 +3439,9 @@ export default function SettingsPage() {
           padding: 18px;
           display: grid;
           gap: 12px;
-          border-radius: 18px;
-          background: rgba(19, 23, 31, 0.78);
-          border: 1px solid rgba(69, 71, 75, 0.16);
+          border-radius: 20px;
+          background: rgba(13, 21, 39, 0.78);
+          border: 1px solid rgba(123, 148, 199, 0.12);
         }
 
         .settings-sidebar-summary-kicker {
@@ -3481,10 +3490,10 @@ export default function SettingsPage() {
         .settings-sidebar-link {
           width: 100%;
           min-height: auto;
-          padding: 11px 12px;
-          border-radius: 14px;
-          border: 1px solid rgba(69, 71, 75, 0.12);
-          background: rgba(29, 32, 38, 0.72);
+          padding: 12px 13px;
+          border-radius: 18px;
+          border: 1px solid rgba(123, 148, 199, 0.1);
+          background: rgba(16, 24, 42, 0.72);
           color: var(--text-primary);
           font: inherit;
           text-align: left;
@@ -3520,10 +3529,14 @@ export default function SettingsPage() {
         }
 
         .settings-sidebar-link.active {
-          border-color: color-mix(in srgb, var(--accent-blue) 28%, transparent);
-          background: linear-gradient(180deg, color-mix(in srgb, var(--accent-blue) 10%, transparent), transparent);
+          border-color: color-mix(in srgb, var(--accent-blue) 30%, transparent);
+          background:
+            linear-gradient(180deg, color-mix(in srgb, var(--accent-blue) 18%, transparent), color-mix(in srgb, var(--accent-blue) 8%, transparent)),
+            rgba(13, 21, 39, 0.9);
           transform: translateY(-2px);
-          box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent-blue) 10%, transparent);
+          box-shadow:
+            inset 0 1px 0 rgba(255, 255, 255, 0.05),
+            0 16px 30px rgba(15, 23, 42, 0.16);
         }
 
         .settings-section-content,
