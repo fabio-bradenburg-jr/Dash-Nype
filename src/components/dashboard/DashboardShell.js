@@ -10668,17 +10668,6 @@ export default function DashboardShell({ initialTab = 'home' }) {
                 </div>
               </form>
 
-              <form className="glass-panel client-create-bar management-action-card" onSubmit={handleCreateProduct}>
-                <div>
-                  <span className="management-card-kicker">New product</span>
-                  <h3>Novo produto</h3>
-                  <p>Cadastre os produtos da operação para depois vincular cada cliente a uma oferta real.</p>
-                </div>
-                <div className="client-create-inline">
-                  <input type="text" value={newProductName} onChange={(event) => setNewProductName(event.target.value)} placeholder="Ex.: Assessoria, Tráfego, Full service..." disabled={!isMaster} />
-                  <button type="submit" className="btn btn-primary" disabled={!isMaster}>Adicionar produto</button>
-                </div>
-              </form>
             </div>
 
             <div className="clients-grid clients-grid-single">
