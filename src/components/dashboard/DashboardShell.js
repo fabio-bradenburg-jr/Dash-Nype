@@ -3216,6 +3216,10 @@ export default function DashboardShell({ initialTab = 'home' }) {
       }, {}),
     [filteredOperationCards, operationLanes]
   )
+  const expandedOperationCard = useMemo(
+    () => operationCards.find((card) => card.id === expandedOperationCardId) || null,
+    [operationCards, expandedOperationCardId]
+  )
   const connectedClientsCount = useMemo(
     () => clients.filter((client) => Boolean(client.metaAdAccountId)).length,
     [clients]
@@ -4811,7 +4815,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
   }
 
   const handleToggleOperationCardExpansion = (cardId) => {
-    setExpandedOperationCardId((current) => current === cardId ? '' : cardId)
+    setExpandedOperationCardId(cardId || '')
   }
 
   const handleToggleOperationCardAssignee = (cardId, userId) => {
@@ -10661,6 +10665,210 @@ export default function DashboardShell({ initialTab = 'home' }) {
           </div>
         )}
 
+        {activeTab === 'operacao' && expandedOperationCard && (
+          <div className="modal-overlay" onClick={() => setExpandedOperationCardId('')}>
+            <div className="modal-card glass-panel operation-card-modal" onClick={(event) => event.stopPropagation()}>
+              {(() => {
+                const card = expandedOperationCard
+                const linkedClient = clientsById.get(card.clientId)
+                const canEditCard = canEditClientRecord(card.clientId)
+                return (
+                  <>
+                    <div className="modal-header">
+                      <div>
+                        <h3>{card.title}</h3>
+                        <p>{linkedClient?.name || 'Cliente não encontrado'}</p>
+                      </div>
+                      <button type="button" className="modal-close" onClick={() => setExpandedOperationCardId('')} aria-label="Fechar card operacional">
+                        <i className="bx bx-x"></i>
+                      </button>
+                    </div>
+
+                    <div className="operation-card-expanded">
+                      <div className="form-grid operation-card-expanded-grid">
+                        <div className="input-group">
+                          <label>Título</label>
+                          <input type="text" value={card.title || ''} disabled={!canEditCard} onChange={(event) => handleOperationCardFieldChange(card.id, 'title', event.target.value)} />
+                        </div>
+                        <div className="input-group">
+                          <label>Cliente</label>
+                          <input type="text" value={linkedClient?.name || ''} disabled />
+                        </div>
+                        <div className="input-group">
+                          <label>Status</label>
+                          <select value={card.status} disabled={!canEditCard} onChange={(event) => handleOperationCardFieldChange(card.id, 'status', event.target.value)}>
+                            {operationStatuses.map((status) => (
+                              <option key={`${card.id}-modal-status-${status.key}`} value={status.key}>{status.label}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="input-group">
+                          <label>Coluna</label>
+                          <select value={card.lane} disabled={!canEditCard} onChange={(event) => handleMoveOperationCard(card.id, event.target.value)}>
+                            {operationLanes.map((lane) => (
+                              <option key={`${card.id}-modal-lane-${lane.key}`} value={lane.key}>{lane.label}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="input-group client-long-text-field" style={{ gridColumn: '1 / -1' }}>
+                          <label>Descrição</label>
+                          <textarea value={card.content || ''} rows={4} disabled={!canEditCard} onChange={(event) => handleOperationCardFieldChange(card.id, 'content', event.target.value)} />
+                        </div>
+                        <div className="input-group" style={{ gridColumn: '1 / -1' }}>
+                          <label>Responsáveis</label>
+                          <div className="stage-selector">
+                            {operationAssignableUsers.map((managedUser) => {
+                              const checked = (card.assigneeIds || []).includes(managedUser.id)
+                              return (
+                                <label key={`${card.id}-assignee-${managedUser.id}`} className={`stage-chip ${checked ? 'active' : ''}`}>
+                                  <input
+                                    type="checkbox"
+                                    checked={checked}
+                                    disabled={!canEditCard}
+                                    onChange={() => handleToggleOperationCardAssignee(card.id, managedUser.id)}
+                                  />
+                                  <span>{managedUser.full_name || managedUser.email}</span>
+                                </label>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="operation-expanded-section">
+                        <div className="operation-expanded-section-head">
+                          <strong>Subtarefas</strong>
+                          <span>{formatNumber((card.subtasks || []).length)} item(ns)</span>
+                        </div>
+                        <div className="operation-subtask-list">
+                          {(card.subtasks || []).map((subtask) => (
+                            <div key={subtask.id} className="glass-item operation-subtask-card">
+                              <div className="form-grid operation-subtask-grid">
+                                <div className="input-group">
+                                  <label>Título</label>
+                                  <input type="text" value={subtask.title || ''} disabled={!canEditCard} onChange={(event) => handleOperationSubtaskFieldChange(card.id, subtask.id, 'title', event.target.value)} />
+                                </div>
+                                <div className="input-group">
+                                  <label>Status</label>
+                                  <select value={subtask.status || operationStatuses[0]?.key || 'aberto'} disabled={!canEditCard} onChange={(event) => handleOperationSubtaskFieldChange(card.id, subtask.id, 'status', event.target.value)}>
+                                    {operationStatuses.map((status) => (
+                                      <option key={`${subtask.id}-${status.key}`} value={status.key}>{status.label}</option>
+                                    ))}
+                                  </select>
+                                </div>
+                                <div className="input-group client-long-text-field" style={{ gridColumn: '1 / -1' }}>
+                                  <label>Descrição</label>
+                                  <textarea value={subtask.description || ''} rows={3} disabled={!canEditCard} onChange={(event) => handleOperationSubtaskFieldChange(card.id, subtask.id, 'description', event.target.value)} />
+                                </div>
+                                <div className="input-group" style={{ gridColumn: '1 / -1' }}>
+                                  <label>Responsáveis da subtarefa</label>
+                                  <div className="stage-selector">
+                                    {operationAssignableUsers.map((managedUser) => {
+                                      const checked = (subtask.assigneeIds || []).includes(managedUser.id)
+                                      return (
+                                        <label key={`${subtask.id}-assignee-${managedUser.id}`} className={`stage-chip ${checked ? 'active' : ''}`}>
+                                          <input
+                                            type="checkbox"
+                                            checked={checked}
+                                            disabled={!canEditCard}
+                                            onChange={() => handleToggleOperationSubtaskAssignee(card.id, subtask.id, managedUser.id)}
+                                          />
+                                          <span>{managedUser.full_name || managedUser.email}</span>
+                                        </label>
+                                      )
+                                    })}
+                                  </div>
+                                </div>
+                                <div className="operation-subtask-actions">
+                                  <label className={`stage-chip ${subtask.completed ? 'active' : ''}`}>
+                                    <input
+                                      type="checkbox"
+                                      checked={Boolean(subtask.completed)}
+                                      disabled={!canEditCard}
+                                      onChange={(event) => handleOperationSubtaskFieldChange(card.id, subtask.id, 'completed', event.target.checked)}
+                                    />
+                                    <span>Concluída</span>
+                                  </label>
+                                  <button type="button" className="btn btn-secondary" disabled={!canEditCard} onClick={() => handleRemoveOperationSubtask(card.id, subtask.id)}>
+                                    Remover
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="operation-inline-create">
+                          <input
+                            type="text"
+                            value={newOperationSubtaskByCard[card.id] || ''}
+                            onChange={(event) => setNewOperationSubtaskByCard((current) => ({ ...current, [card.id]: event.target.value }))}
+                            placeholder="Nova subtarefa"
+                            disabled={!canEditCard}
+                          />
+                          <button type="button" className="btn btn-primary" disabled={!canEditCard} onClick={() => handleAddOperationSubtask(card.id)}>
+                            Adicionar subtarefa
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="operation-expanded-section">
+                        <div className="operation-expanded-section-head">
+                          <strong>Comentários</strong>
+                          <span>Use `@Nome` para marcar alguém</span>
+                        </div>
+                        <div className="operation-comment-list">
+                          {(card.comments || []).length ? (
+                            card.comments.map((comment) => (
+                              <div key={comment.id} className="glass-item operation-comment-card">
+                                <div className="operation-comment-head">
+                                  <strong>{comment.authorName || 'Equipe'}</strong>
+                                  <small>{formatClientDateTime(comment.createdAt)}</small>
+                                </div>
+                                <p>{comment.body}</p>
+                              </div>
+                            ))
+                          ) : (
+                            <div className="ranking-empty">Nenhum comentário ainda.</div>
+                          )}
+                        </div>
+                        <div className="operation-inline-create operation-inline-create-stack">
+                          <div className="operation-mention-helper">
+                            {operationAssignableUsers.map((managedUser) => (
+                              <button
+                                key={`${card.id}-mention-${managedUser.id}`}
+                                type="button"
+                                className="stage-chip settings-chip-button"
+                                onClick={() =>
+                                  setNewOperationCommentByCard((current) => ({
+                                    ...current,
+                                    [card.id]: `${String(current[card.id] || '').trim()} @${managedUser.full_name || managedUser.email}`.trim(),
+                                  }))
+                                }
+                              >
+                                <span>@{managedUser.full_name || managedUser.email}</span>
+                              </button>
+                            ))}
+                          </div>
+                          <textarea
+                            value={newOperationCommentByCard[card.id] || ''}
+                            onChange={(event) => setNewOperationCommentByCard((current) => ({ ...current, [card.id]: event.target.value }))}
+                            placeholder="Escreva um comentário do card"
+                            rows={3}
+                            disabled={!canEditCard}
+                          />
+                          <button type="button" className="btn btn-primary" disabled={!canEditCard} onClick={() => handleAddOperationComment(card.id)}>
+                            Comentar
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )
+              })()}
+            </div>
+          </div>
+        )}
+
         {activeTab === 'operacao' && (
           <section className="clients-layout operations-module">
             <div className="management-header-row">
@@ -10764,7 +10972,6 @@ export default function DashboardShell({ initialTab = 'home' }) {
                         operationCardsByLane[lane.key].map((card) => {
                           const linkedClient = clientsById.get(card.clientId)
                           const canEditCard = canEditClientRecord(card.clientId)
-                          const isExpanded = expandedOperationCardId === card.id
                           const assigneeNames = (card.assigneeIds || [])
                             .map((assigneeId) => operationUsersById.get(assigneeId)?.full_name || operationUsersById.get(assigneeId)?.email || '')
                             .filter(Boolean)
@@ -10772,19 +10979,18 @@ export default function DashboardShell({ initialTab = 'home' }) {
                           return (
                             <article
                               key={card.id}
-                              className={`operation-card-item ${isExpanded ? 'operation-card-item-expanded' : ''}`}
+                              className="operation-card-item"
                               draggable={canEditCard}
                               onDragStart={() => handleOperationCardDragStart(card.id)}
                               onDragEnd={() => setOperationDragCardId('')}
                             >
                               <div className="operation-card-item-head">
                                 <div>
-                                  <strong>{card.title}</strong>
+                                  <button type="button" className="operation-card-title-button" onClick={() => handleToggleOperationCardExpansion(card.id)}>
+                                    <strong>{card.title}</strong>
+                                  </button>
                                   <small>{linkedClient?.name || 'Cliente não encontrado'}</small>
                                 </div>
-                                <button type="button" className="btn btn-secondary operation-card-expand" onClick={() => handleToggleOperationCardExpansion(card.id)}>
-                                  {isExpanded ? 'Fechar' : 'Abrir'}
-                                </button>
                               </div>
                               <p>{card.content || 'Sem descrição adicional.'}</p>
                               <div className="operation-card-meta">
@@ -10817,171 +11023,6 @@ export default function DashboardShell({ initialTab = 'home' }) {
                                   ))}
                                 </select>
                               </div>
-
-                              {isExpanded && (
-                                <div className="operation-card-expanded">
-                                  <div className="form-grid operation-card-expanded-grid">
-                                    <div className="input-group">
-                                      <label>Título</label>
-                                      <input type="text" value={card.title || ''} disabled={!canEditCard} onChange={(event) => handleOperationCardFieldChange(card.id, 'title', event.target.value)} />
-                                    </div>
-                                    <div className="input-group">
-                                      <label>Cliente</label>
-                                      <input type="text" value={linkedClient?.name || ''} disabled />
-                                    </div>
-                                    <div className="input-group client-long-text-field" style={{ gridColumn: '1 / -1' }}>
-                                      <label>Descrição</label>
-                                      <textarea value={card.content || ''} rows={4} disabled={!canEditCard} onChange={(event) => handleOperationCardFieldChange(card.id, 'content', event.target.value)} />
-                                    </div>
-                                    <div className="input-group" style={{ gridColumn: '1 / -1' }}>
-                                      <label>Responsáveis</label>
-                                      <div className="stage-selector">
-                                        {operationAssignableUsers.map((managedUser) => {
-                                          const checked = (card.assigneeIds || []).includes(managedUser.id)
-                                          return (
-                                            <label key={`${card.id}-assignee-${managedUser.id}`} className={`stage-chip ${checked ? 'active' : ''}`}>
-                                              <input
-                                                type="checkbox"
-                                                checked={checked}
-                                                disabled={!canEditCard}
-                                                onChange={() => handleToggleOperationCardAssignee(card.id, managedUser.id)}
-                                              />
-                                              <span>{managedUser.full_name || managedUser.email}</span>
-                                            </label>
-                                          )
-                                        })}
-                                      </div>
-                                    </div>
-                                  </div>
-
-                                  <div className="operation-expanded-section">
-                                    <div className="operation-expanded-section-head">
-                                      <strong>Subtarefas</strong>
-                                      <span>{formatNumber((card.subtasks || []).length)} item(ns)</span>
-                                    </div>
-                                    <div className="operation-subtask-list">
-                                      {(card.subtasks || []).map((subtask) => (
-                                        <div key={subtask.id} className="glass-item operation-subtask-card">
-                                          <div className="form-grid operation-subtask-grid">
-                                            <div className="input-group">
-                                              <label>Título</label>
-                                              <input type="text" value={subtask.title || ''} disabled={!canEditCard} onChange={(event) => handleOperationSubtaskFieldChange(card.id, subtask.id, 'title', event.target.value)} />
-                                            </div>
-                                            <div className="input-group">
-                                              <label>Status</label>
-                                              <select value={subtask.status || operationStatuses[0]?.key || 'aberto'} disabled={!canEditCard} onChange={(event) => handleOperationSubtaskFieldChange(card.id, subtask.id, 'status', event.target.value)}>
-                                                {operationStatuses.map((status) => (
-                                                  <option key={`${subtask.id}-${status.key}`} value={status.key}>{status.label}</option>
-                                                ))}
-                                              </select>
-                                            </div>
-                                            <div className="input-group client-long-text-field" style={{ gridColumn: '1 / -1' }}>
-                                              <label>Descrição</label>
-                                              <textarea value={subtask.description || ''} rows={3} disabled={!canEditCard} onChange={(event) => handleOperationSubtaskFieldChange(card.id, subtask.id, 'description', event.target.value)} />
-                                            </div>
-                                            <div className="input-group" style={{ gridColumn: '1 / -1' }}>
-                                              <label>Responsáveis da subtarefa</label>
-                                              <div className="stage-selector">
-                                                {operationAssignableUsers.map((managedUser) => {
-                                                  const checked = (subtask.assigneeIds || []).includes(managedUser.id)
-                                                  return (
-                                                    <label key={`${subtask.id}-assignee-${managedUser.id}`} className={`stage-chip ${checked ? 'active' : ''}`}>
-                                                      <input
-                                                        type="checkbox"
-                                                        checked={checked}
-                                                        disabled={!canEditCard}
-                                                        onChange={() => handleToggleOperationSubtaskAssignee(card.id, subtask.id, managedUser.id)}
-                                                      />
-                                                      <span>{managedUser.full_name || managedUser.email}</span>
-                                                    </label>
-                                                  )
-                                                })}
-                                              </div>
-                                            </div>
-                                            <div className="operation-subtask-actions">
-                                              <label className={`stage-chip ${subtask.completed ? 'active' : ''}`}>
-                                                <input
-                                                  type="checkbox"
-                                                  checked={Boolean(subtask.completed)}
-                                                  disabled={!canEditCard}
-                                                  onChange={(event) => handleOperationSubtaskFieldChange(card.id, subtask.id, 'completed', event.target.checked)}
-                                                />
-                                                <span>Concluída</span>
-                                              </label>
-                                              <button type="button" className="btn btn-secondary" disabled={!canEditCard} onClick={() => handleRemoveOperationSubtask(card.id, subtask.id)}>
-                                                Remover
-                                              </button>
-                                            </div>
-                                          </div>
-                                        </div>
-                                      ))}
-                                    </div>
-                                    <div className="operation-inline-create">
-                                      <input
-                                        type="text"
-                                        value={newOperationSubtaskByCard[card.id] || ''}
-                                        onChange={(event) => setNewOperationSubtaskByCard((current) => ({ ...current, [card.id]: event.target.value }))}
-                                        placeholder="Nova subtarefa"
-                                        disabled={!canEditCard}
-                                      />
-                                      <button type="button" className="btn btn-primary" disabled={!canEditCard} onClick={() => handleAddOperationSubtask(card.id)}>
-                                        Adicionar subtarefa
-                                      </button>
-                                    </div>
-                                  </div>
-
-                                  <div className="operation-expanded-section">
-                                    <div className="operation-expanded-section-head">
-                                      <strong>Comentários</strong>
-                                      <span>Use `@Nome` para marcar alguém</span>
-                                    </div>
-                                    <div className="operation-comment-list">
-                                      {(card.comments || []).length ? (
-                                        card.comments.map((comment) => (
-                                          <div key={comment.id} className="glass-item operation-comment-card">
-                                            <div className="operation-comment-head">
-                                              <strong>{comment.authorName || 'Equipe'}</strong>
-                                              <small>{formatClientDateTime(comment.createdAt)}</small>
-                                            </div>
-                                            <p>{comment.body}</p>
-                                          </div>
-                                        ))
-                                      ) : (
-                                        <div className="ranking-empty">Nenhum comentário ainda.</div>
-                                      )}
-                                    </div>
-                                    <div className="operation-inline-create operation-inline-create-stack">
-                                      <div className="operation-mention-helper">
-                                        {operationAssignableUsers.map((managedUser) => (
-                                          <button
-                                            key={`${card.id}-mention-${managedUser.id}`}
-                                            type="button"
-                                            className="stage-chip settings-chip-button"
-                                            onClick={() =>
-                                              setNewOperationCommentByCard((current) => ({
-                                                ...current,
-                                                [card.id]: `${String(current[card.id] || '').trim()} @${managedUser.full_name || managedUser.email}`.trim(),
-                                              }))
-                                            }
-                                          >
-                                            <span>@{managedUser.full_name || managedUser.email}</span>
-                                          </button>
-                                        ))}
-                                      </div>
-                                      <textarea
-                                        value={newOperationCommentByCard[card.id] || ''}
-                                        onChange={(event) => setNewOperationCommentByCard((current) => ({ ...current, [card.id]: event.target.value }))}
-                                        placeholder="Escreva um comentário do card"
-                                        rows={3}
-                                        disabled={!canEditCard}
-                                      />
-                                      <button type="button" className="btn btn-primary" disabled={!canEditCard} onClick={() => handleAddOperationComment(card.id)}>
-                                        Comentar
-                                      </button>
-                                    </div>
-                                  </div>
-                                </div>
-                              )}
                             </article>
                           )
                         })
@@ -15569,14 +15610,14 @@ export default function DashboardShell({ initialTab = 'home' }) {
           cursor: grab;
         }
 
-        .operation-card-item-expanded {
-          border-color: rgba(78, 137, 255, 0.28);
-          box-shadow: 0 18px 40px rgba(0, 0, 0, 0.22);
-        }
-
-        .operation-card-expand {
-          min-height: 36px;
-          padding: 0 12px;
+        .operation-card-title-button {
+          border: none;
+          background: transparent;
+          padding: 0;
+          color: inherit;
+          font: inherit;
+          cursor: pointer;
+          text-align: left;
         }
 
         .operation-card-tags,
@@ -15637,6 +15678,12 @@ export default function DashboardShell({ initialTab = 'home' }) {
         .operation-inline-create input,
         .operation-inline-create textarea {
           width: 100%;
+        }
+
+        .operation-card-modal {
+          width: min(980px, calc(100vw - 32px));
+          max-height: calc(100vh - 48px);
+          overflow-y: auto;
         }
 
         .operation-table-card {
