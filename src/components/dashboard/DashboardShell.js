@@ -11351,87 +11351,109 @@ export default function DashboardShell({ initialTab = 'home' }) {
 
         {activeTab === 'operacao' && (
           <section className="clients-layout operations-module">
-            <div className="management-header-row">
-              <div className="management-header-copy">
-                <h2>Gestão Operacional</h2>
-                <p>Organize cards por fase, acompanhe responsáveis e filtre a execução da operação por recorte estratégico.</p>
-              </div>
-              {canPersistClientChanges && (
-                <button type="button" className="btn btn-primary management-header-button" onClick={() => setIsOperationCreateModalOpen(true)}>
-                  <i className="bx bx-plus-circle"></i>
-                  Adicionar card
-                </button>
-              )}
-            </div>
-
-            <div className="glass-panel operation-toolbar-card">
-              <div className="operation-toolbar-top">
-                {canPersistClientChanges && (
-                  <button type="button" className="btn btn-primary" onClick={() => setIsOperationCreateModalOpen(true)}>
-                    <i className="bx bx-plus-circle"></i>
-                    Adicionar Card
-                  </button>
-                )}
-
-                <div className="operation-view-switch">
-                  <i className="bx bx-layout"></i>
-                  <select value={operationViewMode} onChange={(event) => setOperationViewMode(event.target.value)}>
-                    {OPERATION_VIEW_OPTIONS.map((option) => (
-                      <option key={option.value} value={option.value}>{option.label}</option>
-                    ))}
-                  </select>
+            <div className="operation-stellar-shell">
+              <div className="operation-stellar-topbar">
+                <div className="operation-stellar-brand">
+                  <span>Stellar Ops</span>
                 </div>
-
-                <div className="date-picker glass-item">
-                  <i className="bx bx-calendar"></i>
-                  <select value={operationPeriodFilter} onChange={(event) => setOperationPeriodFilter(event.target.value)}>
-                    {OPERATION_PERIOD_OPTIONS.map((option) => (
-                      <option key={option.value} value={option.value}>{option.label}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="operation-search-box">
+                <div className="operation-stellar-search">
                   <i className="bx bx-search-alt"></i>
                   <input
                     type="text"
                     value={operationSearch}
                     onChange={(event) => setOperationSearch(event.target.value)}
-                    placeholder="Pesquise por título, conteúdo, tags, etc..."
+                    placeholder="Search operations..."
                   />
+                </div>
+                <div className="operation-stellar-actions">
+                  <button type="button" className="operation-stellar-icon-button" aria-label="Notificações">
+                    <i className="bx bx-bell"></i>
+                  </button>
+                  <button type="button" className="operation-stellar-icon-button" aria-label="Configurações">
+                    <i className="bx bx-cog"></i>
+                  </button>
+                  <button type="button" className="operation-stellar-icon-button" aria-label="Ajuda">
+                    <i className="bx bx-help-circle"></i>
+                  </button>
+                  <div className="operation-stellar-user">
+                    <div>
+                      <strong>{profile?.full_name || 'Commander Echo'}</strong>
+                      <span>{role === 'master' ? 'Fleet Lead' : 'Operations'}</span>
+                    </div>
+                    <span className="operation-stellar-user-avatar">
+                      {(profile?.full_name || user?.email || 'U').trim().slice(0, 1).toUpperCase()}
+                    </span>
+                  </div>
                 </div>
               </div>
 
-              <div className="operation-filter-row">
-                <select value={operationSegmentFilter} onChange={(event) => setOperationSegmentFilter(event.target.value)}>
-                  <option value="all">Filtrar por Segmento</option>
-                  {operationSegmentOptions.map((option) => (
-                    <option key={`segment-${option}`} value={option}>{option}</option>
-                  ))}
-                </select>
-                <select value={operationTierFilter} onChange={(event) => setOperationTierFilter(event.target.value)}>
-                  <option value="all">Filtrar por Tier</option>
-                  {operationTierOptions.map((option) => (
-                    <option key={`tier-${option}`} value={option}>{option}</option>
-                  ))}
-                </select>
-                <select value={operationSquadFilter} onChange={(event) => setOperationSquadFilter(event.target.value)}>
-                  <option value="all">Filtrar por squad</option>
-                  {operationSquadOptions.map((option) => (
-                    <option key={`squad-${option}`} value={option}>{option}</option>
-                  ))}
-                </select>
-                <select value={operationResponsibleFilter} onChange={(event) => setOperationResponsibleFilter(event.target.value)}>
-                  <option value="all">Escolher Responsável</option>
-                  {operationResponsibleOptions.map((option) => (
-                    <option key={`responsible-${option}`} value={option}>{option}</option>
-                  ))}
-                </select>
+              <div className="operation-stellar-hero">
+                <div className="operation-stellar-hero-copy">
+                  <h2>Operations Board</h2>
+                  <div className="operation-stellar-tabs">
+                    <button type="button" className={`operation-stellar-tab ${operationViewMode === 'kanban' ? 'active' : ''}`} onClick={() => setOperationViewMode('kanban')}>
+                      Active Missions
+                    </button>
+                    <button type="button" className={`operation-stellar-tab ${operationViewMode === 'table' ? 'active' : ''}`} onClick={() => setOperationViewMode('table')}>
+                      Completed
+                    </button>
+                    <button type="button" className={`operation-stellar-tab ${operationViewMode === 'tickets' ? 'active' : ''}`} onClick={() => setOperationViewMode('tickets')}>
+                      Strategic View
+                    </button>
+                  </div>
+                </div>
+                <div className="operation-stellar-filters">
+                  <label className="operation-stellar-filter">
+                    <span>Segmento</span>
+                    <select value={operationSegmentFilter} onChange={(event) => setOperationSegmentFilter(event.target.value)}>
+                      <option value="all">All Segments</option>
+                      {operationSegmentOptions.map((option) => (
+                        <option key={`segment-${option}`} value={option}>{option}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="operation-stellar-filter">
+                    <span>Tier</span>
+                    <select value={operationTierFilter} onChange={(event) => setOperationTierFilter(event.target.value)}>
+                      <option value="all">All Tiers</option>
+                      {operationTierOptions.map((option) => (
+                        <option key={`tier-${option}`} value={option}>{option}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="operation-stellar-filter">
+                    <span>Squad</span>
+                    <select value={operationSquadFilter} onChange={(event) => setOperationSquadFilter(event.target.value)}>
+                      <option value="all">All Squads</option>
+                      {operationSquadOptions.map((option) => (
+                        <option key={`squad-${option}`} value={option}>{option}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="operation-stellar-filter">
+                    <span>Responsável</span>
+                    <select value={operationResponsibleFilter} onChange={(event) => setOperationResponsibleFilter(event.target.value)}>
+                      <option value="all">All Owners</option>
+                      {operationResponsibleOptions.map((option) => (
+                        <option key={`responsible-${option}`} value={option}>{option}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <button type="button" className="operation-stellar-filter-button" aria-label="Filtros adicionais">
+                    <i className="bx bx-slider-alt"></i>
+                  </button>
+                  {canPersistClientChanges && (
+                    <button type="button" className="btn btn-primary operation-stellar-create" onClick={() => setIsOperationCreateModalOpen(true)}>
+                      <i className="bx bx-plus-circle"></i>
+                      Novo card
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
 
             {operationViewMode === 'kanban' && (
-              <div className="operation-kanban-board">
+              <div className="operation-kanban-board operation-stellar-board">
                 {operationLanes.map((lane) => (
                   <div
                     key={lane.key}
@@ -11444,7 +11466,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
                         <span className="operation-lane-color" style={{ backgroundColor: lane.color }}></span>
                         {lane.label}
                       </strong>
-                      <span>{formatNumber((operationCardsByLane[lane.key] || []).length)} cards</span>
+                      <span>{formatNumber((operationCardsByLane[lane.key] || []).length)}</span>
                     </div>
 
                     <div className="operation-lane-list">
@@ -11456,6 +11478,9 @@ export default function DashboardShell({ initialTab = 'home' }) {
                             .map((assigneeId) => operationUsersById.get(assigneeId)?.full_name || operationUsersById.get(assigneeId)?.email || '')
                             .filter(Boolean)
                           const cardStatus = operationStatusesByKey.get(card.status)
+                          const trackedProgress = card.subtasks?.length
+                            ? Math.round(((card.subtasks.filter((item) => item.completed).length) / card.subtasks.length) * 100)
+                            : 0
                           return (
                             <article
                               key={card.id}
@@ -11465,50 +11490,59 @@ export default function DashboardShell({ initialTab = 'home' }) {
                               onDragEnd={() => setOperationDragCardId('')}
                             >
                               <div className="operation-card-item-head">
-                                <div>
+                                <div className="operation-stellar-card-code">
                                   <small>{card.taskCode || card.id}</small>
+                                  <span
+                                    className="stage-chip active operation-status-chip"
+                                    style={{ borderColor: `${cardStatus?.color || '#3b82f6'}55`, color: cardStatus?.color || '#3b82f6' }}
+                                  >
+                                    <span>{cardStatus?.label || card.status}</span>
+                                  </span>
+                                </div>
+                                <div>
                                   <button type="button" className="operation-card-title-button" onClick={() => handleToggleOperationCardExpansion(card.id)}>
                                     <strong>{card.title}</strong>
                                   </button>
                                   <small>{linkedClient?.name || 'Cliente não encontrado'}</small>
                                 </div>
                               </div>
-                              <p>{card.content || 'Sem descrição adicional.'}</p>
-                              <div className="operation-card-meta">
-                                <span>{card.segment || linkedClient?.segment || 'Sem segmento'}</span>
-                                <span>{card.tier || linkedClient?.tier || 'Sem tier'}</span>
-                                <span>{assigneeNames.join(', ') || card.responsible || 'Sem responsável'}</span>
-                              </div>
-                              <div className="operation-card-tags">
-                                <span
-                                  className="stage-chip active operation-status-chip"
-                                  style={{ borderColor: `${cardStatus?.color || '#3b82f6'}55`, color: cardStatus?.color || '#3b82f6' }}
-                                >
-                                  <span>{cardStatus?.label || card.status}</span>
-                                </span>
-                                {(card.tags || []).map((tag) => (
-                                  <span key={`${card.id}-tag-${tag}`} className="stage-chip">
-                                    <span>{tag}</span>
-                                  </span>
-                                ))}
-                              </div>
-                              <div className="operation-card-actions">
-                                <select value={card.status} disabled={!canEditCard} onChange={(event) => handleOperationCardFieldChange(card.id, 'status', event.target.value)}>
-                                  {operationStatuses.map((option) => (
-                                    <option key={`${card.id}-${option.key}`} value={option.key}>{option.label}</option>
-                                  ))}
-                                </select>
-                                <select value={card.lane} disabled={!canEditCard} onChange={(event) => handleMoveOperationCard(card.id, event.target.value)}>
-                                  {operationLanes.map((option) => (
-                                    <option key={`${card.id}-lane-${option.key}`} value={option.key}>{option.label}</option>
-                                  ))}
-                                </select>
+                              {card.content ? <p>{card.content}</p> : null}
+                              {(card.subtasks || []).length ? (
+                                <div className="operation-stellar-progress">
+                                  <div className="operation-stellar-progress-bar">
+                                    <span style={{ width: `${trackedProgress}%` }}></span>
+                                  </div>
+                                  <div className="operation-stellar-progress-copy">
+                                    <small>{trackedProgress}% Complete</small>
+                                    <small>{card.dueDate ? formatClientDate(card.dueDate) : `${formatNumber(card.subtasks.filter((item) => item.completed).length)}/${formatNumber(card.subtasks.length)} Tasks`}</small>
+                                  </div>
+                                </div>
+                              ) : null}
+                              <div className="operation-stellar-card-footer">
+                                <div className="operation-stellar-avatar-stack">
+                                  {(card.assigneeIds || []).length ? (
+                                    card.assigneeIds.slice(0, 3).map((userId) => (
+                                      <span key={`${card.id}-avatar-${userId}`} className="operation-stellar-avatar" title={getOperationAssigneeLabel(userId)}>
+                                        {getOperationAssigneeInitials(userId)}
+                                      </span>
+                                    ))
+                                  ) : (
+                                    <span className="operation-stellar-card-meta-text">{assigneeNames.join(', ') || card.responsible || 'Sem responsável'}</span>
+                                  )}
+                                </div>
+                                <div className="operation-stellar-card-stats">
+                                  <span><i className="bx bx-message-square-dots"></i>{formatNumber((card.comments || []).length)}</span>
+                                  <span><i className="bx bx-check-circle"></i>{`${formatNumber(card.subtasks?.filter((item) => item.completed).length || 0)}/${formatNumber(card.subtasks?.length || 0)}`}</span>
+                                </div>
                               </div>
                             </article>
                           )
                         })
                       ) : (
-                        <div className="ranking-empty">Nenhum card neste estágio.</div>
+                        <div className="operation-stellar-empty">
+                          <i className="bx bx-collection"></i>
+                          <span>Nenhuma operação ativa nessa etapa</span>
+                        </div>
                       )}
                     </div>
                   </div>
@@ -15951,6 +15985,201 @@ export default function DashboardShell({ initialTab = 'home' }) {
           box-shadow: 0 16px 40px rgba(0, 0, 0, 0.2);
         }
 
+        .operation-stellar-shell {
+          display: grid;
+          gap: 28px;
+        }
+
+        .operation-stellar-topbar {
+          display: grid;
+          grid-template-columns: auto minmax(280px, 340px) 1fr;
+          align-items: center;
+          gap: 24px;
+        }
+
+        .operation-stellar-brand span {
+          color: #7da2ff;
+          font-size: 22px;
+          font-weight: 800;
+          letter-spacing: -0.03em;
+        }
+
+        .operation-stellar-search {
+          min-height: 52px;
+          border-radius: 18px;
+          border: 1px solid rgba(255, 255, 255, 0.06);
+          background: rgba(20, 27, 48, 0.78);
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          padding: 0 18px;
+        }
+
+        .operation-stellar-search i {
+          color: rgba(191, 219, 254, 0.72);
+          font-size: 18px;
+        }
+
+        .operation-stellar-search input {
+          width: 100%;
+          min-height: 48px;
+          border: none;
+          background: transparent;
+          color: #eef2ff;
+          font: inherit;
+          outline: none;
+        }
+
+        .operation-stellar-actions {
+          display: flex;
+          align-items: center;
+          justify-content: flex-end;
+          gap: 14px;
+        }
+
+        .operation-stellar-icon-button {
+          width: 42px;
+          height: 42px;
+          border-radius: 14px;
+          border: 1px solid rgba(255, 255, 255, 0.06);
+          background: transparent;
+          color: rgba(226, 232, 240, 0.82);
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+        }
+
+        .operation-stellar-icon-button i {
+          font-size: 21px;
+        }
+
+        .operation-stellar-user {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          margin-left: 8px;
+          padding-left: 18px;
+          border-left: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .operation-stellar-user strong {
+          display: block;
+          color: #eef2ff;
+          font-size: 15px;
+        }
+
+        .operation-stellar-user span {
+          color: #7da2ff;
+          font-size: 13px;
+        }
+
+        .operation-stellar-user-avatar {
+          width: 42px;
+          height: 42px;
+          border-radius: 14px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          background: linear-gradient(180deg, rgba(34, 197, 94, 0.28), rgba(59, 130, 246, 0.18));
+          border: 1px solid rgba(125, 162, 255, 0.22);
+          color: #fff;
+          font-weight: 800;
+        }
+
+        .operation-stellar-hero {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) auto;
+          gap: 24px;
+          align-items: end;
+        }
+
+        .operation-stellar-hero-copy h2 {
+          margin: 0 0 16px;
+          color: #eef2ff;
+          font-size: clamp(42px, 4vw, 58px);
+          line-height: 0.98;
+          letter-spacing: -0.05em;
+        }
+
+        .operation-stellar-tabs {
+          display: flex;
+          align-items: center;
+          gap: 26px;
+          flex-wrap: wrap;
+        }
+
+        .operation-stellar-tab {
+          border: none;
+          background: transparent;
+          color: rgba(226, 232, 240, 0.68);
+          font: inherit;
+          font-size: 17px;
+          font-weight: 600;
+          padding: 0 0 14px;
+          cursor: pointer;
+          border-bottom: 3px solid transparent;
+        }
+
+        .operation-stellar-tab.active {
+          color: #7da2ff;
+          border-bottom-color: #7da2ff;
+        }
+
+        .operation-stellar-filters {
+          display: flex;
+          align-items: end;
+          gap: 14px;
+          flex-wrap: wrap;
+          justify-content: flex-end;
+        }
+
+        .operation-stellar-filter {
+          display: grid;
+          gap: 8px;
+          min-width: 156px;
+        }
+
+        .operation-stellar-filter span {
+          color: rgba(226, 232, 240, 0.56);
+          font-size: 11px;
+          font-weight: 800;
+          letter-spacing: 0.16em;
+          text-transform: uppercase;
+        }
+
+        .operation-stellar-filter select {
+          min-height: 52px;
+          border-radius: 14px;
+          border: 1px solid rgba(255, 255, 255, 0.06);
+          background: rgba(28, 36, 64, 0.86);
+          color: #eef2ff;
+          padding: 0 14px;
+        }
+
+        .operation-stellar-filter-button {
+          width: 54px;
+          height: 54px;
+          border-radius: 14px;
+          border: 1px solid rgba(255, 255, 255, 0.06);
+          background: rgba(28, 36, 64, 0.86);
+          color: #cbd5e1;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+        }
+
+        .operation-stellar-filter-button i {
+          font-size: 22px;
+        }
+
+        .operation-stellar-create {
+          min-height: 54px;
+          border-radius: 16px;
+          padding: 0 18px;
+        }
+
         .operation-toolbar-card {
           padding: 22px;
           display: grid;
@@ -16020,6 +16249,14 @@ export default function DashboardShell({ initialTab = 'home' }) {
           align-items: start;
         }
 
+        .operation-stellar-board {
+          grid-template-columns: repeat(5, minmax(320px, 1fr));
+          gap: 28px;
+          overflow-x: auto;
+          align-items: start;
+          padding-bottom: 10px;
+        }
+
         .operation-lane-card {
           padding: 18px;
           display: grid;
@@ -16050,10 +16287,45 @@ export default function DashboardShell({ initialTab = 'home' }) {
           font-size: 12px;
         }
 
+        .operation-stellar-board .operation-lane-card {
+          padding: 0;
+          min-height: 0;
+          border: none;
+          background: transparent;
+          box-shadow: none;
+        }
+
+        .operation-stellar-board .operation-lane-head {
+          padding: 0 0 16px;
+        }
+
+        .operation-stellar-board .operation-lane-head strong {
+          color: #eef2ff;
+          font-size: 18px;
+          font-weight: 700;
+        }
+
+        .operation-stellar-board .operation-lane-head span:last-child {
+          min-width: 28px;
+          height: 28px;
+          border-radius: 999px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          background: rgba(123, 145, 207, 0.14);
+          color: #b9c4e5;
+          font-size: 12px;
+          font-weight: 700;
+        }
+
         .operation-lane-list,
         .operation-tickets-grid {
           display: grid;
           gap: 14px;
+        }
+
+        .operation-stellar-board .operation-lane-list {
+          gap: 20px;
         }
 
         .operation-card-item,
@@ -16066,11 +16338,127 @@ export default function DashboardShell({ initialTab = 'home' }) {
           gap: 12px;
         }
 
+        .operation-stellar-board .operation-card-item {
+          padding: 22px;
+          border-radius: 20px;
+          border: 1px solid rgba(101, 119, 174, 0.14);
+          background: rgba(29, 40, 73, 0.72);
+          box-shadow: none;
+          gap: 18px;
+        }
+
         .operation-card-item p,
         .operation-ticket-card p {
           margin: 0;
           color: var(--text-secondary);
           line-height: 1.5;
+        }
+
+        .operation-stellar-card-code {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+        }
+
+        .operation-stellar-card-code small {
+          color: #7f9ddb;
+          font-size: 11px;
+          font-weight: 600;
+        }
+
+        .operation-stellar-progress {
+          display: grid;
+          gap: 10px;
+        }
+
+        .operation-stellar-progress-bar {
+          width: 100%;
+          height: 8px;
+          border-radius: 999px;
+          background: rgba(11, 19, 39, 0.74);
+          overflow: hidden;
+        }
+
+        .operation-stellar-progress-bar span {
+          display: block;
+          height: 100%;
+          border-radius: inherit;
+          background: linear-gradient(90deg, #7da2ff, #8ab4ff);
+        }
+
+        .operation-stellar-progress-copy {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+        }
+
+        .operation-stellar-progress-copy small,
+        .operation-stellar-card-meta-text,
+        .operation-stellar-card-stats span {
+          color: rgba(226, 232, 240, 0.7);
+          font-size: 13px;
+        }
+
+        .operation-stellar-card-footer {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 14px;
+        }
+
+        .operation-stellar-avatar-stack {
+          display: flex;
+          align-items: center;
+        }
+
+        .operation-stellar-avatar {
+          width: 34px;
+          height: 34px;
+          border-radius: 999px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          margin-left: -8px;
+          background: linear-gradient(180deg, rgba(34, 211, 238, 0.28), rgba(59, 130, 246, 0.2));
+          border: 2px solid rgba(9, 15, 32, 0.92);
+          color: #eef2ff;
+          font-size: 11px;
+          font-weight: 800;
+        }
+
+        .operation-stellar-avatar:first-child {
+          margin-left: 0;
+        }
+
+        .operation-stellar-card-stats {
+          display: flex;
+          align-items: center;
+          gap: 14px;
+        }
+
+        .operation-stellar-card-stats span {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+        }
+
+        .operation-stellar-empty {
+          min-height: 340px;
+          border-radius: 26px;
+          border: 1px dashed rgba(96, 113, 168, 0.18);
+          display: grid;
+          place-items: center;
+          gap: 10px;
+          color: rgba(185, 196, 229, 0.7);
+          text-align: center;
+          padding: 26px;
+        }
+
+        .operation-stellar-empty i {
+          font-size: 34px;
+          color: rgba(125, 162, 255, 0.42);
         }
 
         .operation-card-actions {
@@ -22561,6 +22949,16 @@ export default function DashboardShell({ initialTab = 'home' }) {
         }
 
         @media (max-width: 1380px) {
+          .operation-stellar-topbar,
+          .operation-stellar-hero {
+            grid-template-columns: 1fr;
+          }
+
+          .operation-stellar-actions,
+          .operation-stellar-filters {
+            justify-content: flex-start;
+          }
+
           .operation-card-modal {
             width: min(94vw, 1600px) !important;
             max-width: 94vw !important;
@@ -22621,6 +23019,27 @@ export default function DashboardShell({ initialTab = 'home' }) {
           .operation-inline-duo,
           .operation-time-grid {
             grid-template-columns: 1fr;
+          }
+
+          .operation-stellar-topbar {
+            gap: 18px;
+          }
+
+          .operation-stellar-search {
+            min-width: 0;
+          }
+
+          .operation-stellar-actions {
+            flex-wrap: wrap;
+          }
+
+          .operation-stellar-tabs,
+          .operation-stellar-filters {
+            gap: 12px;
+          }
+
+          .operation-stellar-filter {
+            min-width: min(220px, 100%);
           }
 
           .operation-card-modal {
