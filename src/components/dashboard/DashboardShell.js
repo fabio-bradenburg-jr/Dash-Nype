@@ -13,6 +13,7 @@ import {
   createClientCustomTabRecord,
   createClientGroupRecord,
   createDashboardTemplate,
+  createOperationCardRecord,
   createProductRecord,
   DEFAULT_META_CAMPAIGN_TABLE_COLUMN_KEYS,
   DEFAULT_INTEGRATIONS,
@@ -90,6 +91,72 @@ const AI_CAMPAIGN_STATUS_LABELS = {
 }
 
 const CLIENT_STATUS_OPTIONS = ['Ativo', 'Onboarding', 'Pausado', 'Risco', 'Churn']
+const CLIENT_SALES_MODEL_OPTIONS = [
+  { value: 'INSIDE_SALES', label: 'Inside Sales' },
+  { value: 'ECOM', label: 'Ecom' },
+  { value: 'PDV', label: 'PDV' },
+]
+const IMPLEMENTATION_PHASE_BY_SALES_MODEL = {
+  INSIDE_SALES: 'Implementação (Inside Sales)',
+  ECOM: 'Implementação (Ecom)',
+  PDV: 'Implementação (PDV)',
+}
+const OPERATION_VIEW_OPTIONS = [
+  { value: 'kanban', label: 'Kanban' },
+  { value: 'table', label: 'Tabela' },
+  { value: 'tickets', label: 'Tickets' },
+]
+const OPERATION_PERIOD_OPTIONS = [
+  { value: 'all', label: 'Todo o período' },
+  { value: '7d', label: 'Últimos 7 dias' },
+  { value: '15d', label: 'Últimos 15 dias' },
+  { value: '30d', label: 'Últimos 30 dias' },
+  { value: '90d', label: 'Últimos 90 dias' },
+]
+const OPERATION_LANES = [
+  { key: 'setup', label: 'Setup de implementação' },
+  { key: 'inside_sales', label: 'Implementação (Inside Sales)' },
+  { key: 'ecom', label: 'Implementação (Ecom)' },
+  { key: 'pdv', label: 'Implementação (PDV)' },
+  { key: 'ongoing', label: 'Ongoing' },
+]
+const OPERATION_STATUS_OPTIONS = [
+  { value: 'aberto', label: 'Aberto' },
+  { value: 'em_andamento', label: 'Em andamento' },
+  { value: 'bloqueado', label: 'Bloqueado' },
+  { value: 'concluido', label: 'Concluído' },
+]
+const CLIENT_OKR_CADENCE_OPTIONS = [
+  { value: 'semanal', label: 'Semanal' },
+  { value: 'quinzenal', label: 'Quinzenal' },
+  { value: 'mensal', label: 'Mensal' },
+  { value: 'trimestral', label: 'Trimestral' },
+  { value: 'quadrimestral', label: 'Quadrimestral' },
+  { value: 'anual', label: 'Anual' },
+  { value: 'ciclo', label: 'Ciclo' },
+]
+const FWO_IMPLEMENTATION_CHECKLISTS = {
+  INSIDE_SALES: [
+    'Configuração do CRM',
+    'Treinamento da equipe de Inside Sales',
+    'Fluxo de comunicação e processos',
+    'Acompanhamento de métricas',
+  ],
+  ECOM: [
+    'Integração com a plataforma de e-commerce',
+    'Configuração de tracking',
+    'Teste de checkout e simulações de compra',
+    'Desempenho do site',
+  ],
+  PDV: [
+    'Integração do PDV com ERP/CRM',
+    'Tracking no PDV',
+    'Simulações de atendimento ao cliente',
+    'Sistema de gift card (se aplicável)',
+    'Acesso restrito a relatórios de faturamento',
+    'Conversões offline implementadas',
+  ],
+}
 
 const CLIENT_FLAG_OPTIONS = [
   { value: 'ok', label: 'Ok' },
@@ -392,6 +459,44 @@ function getNameInitials(value) {
     .join('')
 }
 
+function normalizeCnpjInput(value) {
+  const digits = String(value || '').replace(/\D/g, '').slice(0, 14)
+  const parts = []
+  if (digits.slice(0, 2)) parts.push(digits.slice(0, 2))
+  if (digits.slice(2, 5)) parts.push(digits.slice(2, 5))
+  if (digits.slice(5, 8)) parts.push(digits.slice(5, 8))
+
+  let formatted = parts.join('.')
+  if (digits.slice(8, 12)) {
+    formatted += `${formatted ? '/' : ''}${digits.slice(8, 12)}`
+  }
+  if (digits.slice(12, 14)) {
+    formatted += `${digits.slice(8, 12) ? '-' : ''}${digits.slice(12, 14)}`
+  }
+
+  return formatted
+}
+
+function createImplementationChecklistForSalesModel(salesModel, currentItems = []) {
+  const templateItems = FWO_IMPLEMENTATION_CHECKLISTS[salesModel] || []
+  const currentMap = new Map(
+    (Array.isArray(currentItems) ? currentItems : []).map((item) => [String(item.label || '').trim(), Boolean(item.completed)])
+  )
+
+  return templateItems.map((label, index) => ({
+    id: globalThis.crypto?.randomUUID?.() || `implementation-item-${salesModel}-${index + 1}-${Date.now()}`,
+    label,
+    completed: currentMap.get(label) || false,
+  }))
+}
+
+function resolveOperationLaneFromSalesModel(salesModel) {
+  if (salesModel === 'INSIDE_SALES') return 'inside_sales'
+  if (salesModel === 'ECOM') return 'ecom'
+  if (salesModel === 'PDV') return 'pdv'
+  return 'setup'
+}
+
 function getClientFlagMeta(value) {
   const normalized = String(value || 'na').trim().toLowerCase()
   if (normalized === 'ok') {
@@ -485,6 +590,20 @@ function formatClientDate(value) {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
+  }).format(parsed)
+}
+
+function formatClientDateTime(value) {
+  if (!value) return 'Agora'
+  const parsed = new Date(value)
+  if (Number.isNaN(parsed.getTime())) return 'Agora'
+
+  return new Intl.DateTimeFormat('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
   }).format(parsed)
 }
 
@@ -662,6 +781,14 @@ function getClientRegistryColumnMeta(columnKey) {
   const sharedName = { label: 'Cliente', type: 'name' }
   const map = {
     name: sharedName,
+    cnpj: { label: 'CNPJ', type: 'text' },
+    segment: { label: 'Segmento', type: 'text' },
+    subsegment: { label: 'Subsegmento', type: 'text' },
+    tier: { label: 'Tier', type: 'text' },
+    squad: { label: 'Squad', type: 'text' },
+    salesModel: { label: 'Modelo de Vendas', type: 'status' },
+    implementationPhase: { label: 'Fase FWO', type: 'status' },
+    implementationObservation: { label: 'Observação da Implementação', type: 'long_text' },
     status: { label: 'Status', type: 'status' },
     product: { label: 'Produto', type: 'text' },
     fee: { label: 'Fee', type: 'currency' },
@@ -2534,19 +2661,41 @@ export default function DashboardShell({ initialTab = 'home' }) {
   const [clients, setClients] = useState([])
   const [clientGroups, setClientGroups] = useState([])
   const [products, setProducts] = useState([])
+  const [operationCards, setOperationCards] = useState([])
   const [clientSystemFields, setClientSystemFields] = useState([])
   const [clientCustomColumns, setClientCustomColumns] = useState([])
   const [clientCustomTabs, setClientCustomTabs] = useState([])
   const [activeClientId, setActiveClientId] = useState('')
   const [newClientName, setNewClientName] = useState('')
+  const [newClientCnpj, setNewClientCnpj] = useState('')
+  const [newClientSalesModel, setNewClientSalesModel] = useState('INSIDE_SALES')
+  const [newClientStartDate, setNewClientStartDate] = useState(getTodayDateInputValue())
+  const [newClientImplementationObservation, setNewClientImplementationObservation] = useState('')
   const [newClientGroupName, setNewClientGroupName] = useState('')
   const [newProductName, setNewProductName] = useState('')
+  const [operationViewMode, setOperationViewMode] = useState('kanban')
+  const [operationPeriodFilter, setOperationPeriodFilter] = useState('all')
+  const [operationSearch, setOperationSearch] = useState('')
+  const [operationSegmentFilter, setOperationSegmentFilter] = useState('all')
+  const [operationTierFilter, setOperationTierFilter] = useState('all')
+  const [operationSquadFilter, setOperationSquadFilter] = useState('all')
+  const [operationResponsibleFilter, setOperationResponsibleFilter] = useState('all')
+  const [isOperationCreateModalOpen, setIsOperationCreateModalOpen] = useState(false)
+  const [newOperationClientId, setNewOperationClientId] = useState('')
+  const [newOperationTitle, setNewOperationTitle] = useState('')
+  const [newOperationContent, setNewOperationContent] = useState('')
+  const [newOperationResponsible, setNewOperationResponsible] = useState('')
+  const [newOperationTags, setNewOperationTags] = useState('')
   const [newClientColumnLabel, setNewClientColumnLabel] = useState('')
   const [newClientColumnType, setNewClientColumnType] = useState('text')
   const [newClientColumnOptions, setNewClientColumnOptions] = useState('')
   const [newClientColumnTab, setNewClientColumnTab] = useState('geral')
   const [newClientColumnFormula, setNewClientColumnFormula] = useState('')
   const [newClientTabLabel, setNewClientTabLabel] = useState('')
+  const [newClientOkrTitle, setNewClientOkrTitle] = useState('')
+  const [newClientOkrCadence, setNewClientOkrCadence] = useState('mensal')
+  const [newClientOkrCycleDays, setNewClientOkrCycleDays] = useState('')
+  const [newClientNoteBody, setNewClientNoteBody] = useState('')
   const [clientRegistryView, setClientRegistryView] = useState('geral')
   const [clientSearch, setClientSearch] = useState('')
   const [clientStatusFilter, setClientStatusFilter] = useState('all')
@@ -2646,7 +2795,24 @@ export default function DashboardShell({ initialTab = 'home' }) {
   const canManageClients = Boolean(access?.canManageClients)
   const canEditIntegrations = Boolean(access?.canEditIntegrations)
   const canViewDashboard = access?.canViewDashboard !== false
+  const viewableClientIds = useMemo(
+    () => (Array.isArray(access?.viewableClientIds) ? access.viewableClientIds : []),
+    [access?.viewableClientIds]
+  )
+  const editableClientIds = useMemo(
+    () => (Array.isArray(access?.editableClientIds) ? access.editableClientIds : []),
+    [access?.editableClientIds]
+  )
+  const editableClientIdsSet = useMemo(() => new Set(editableClientIds), [editableClientIds])
+  const canAccessClientsTab = canManageClients || viewableClientIds.length > 0
+  const canPersistClientChanges = canManageClients || editableClientIds.length > 0
   const isMaster = role === 'master'
+
+  const canEditClientRecord = useCallback(
+    (clientId) => canManageClients || editableClientIdsSet.has(clientId),
+    [canManageClients, editableClientIdsSet]
+  )
+  const canEditActiveClient = activeClientId ? canEditClientRecord(activeClientId) : canManageClients
 
   useEffect(() => {
     setActiveTab(initialTab)
@@ -2663,6 +2829,28 @@ export default function DashboardShell({ initialTab = 'home' }) {
   useEffect(() => {
     setMetaRankingDrilldown(null)
   }, [breakdowns, activeClientId])
+
+  useEffect(() => {
+    setNewClientOkrTitle('')
+    setNewClientOkrCadence('mensal')
+    setNewClientOkrCycleDays('')
+    setNewClientNoteBody('')
+  }, [activeClientId])
+
+  useEffect(() => {
+    if (!isOperationCreateModalOpen) return
+    if (!newOperationClientId && clients.length) {
+      setNewOperationClientId(activeClientId || clients[0]?.id || '')
+    }
+  }, [isOperationCreateModalOpen, newOperationClientId, clients, activeClientId])
+
+  useEffect(() => {
+    const linkedClient = clientsById.get(newOperationClientId)
+    if (!linkedClient) return
+    if (!newOperationResponsible.trim()) {
+      setNewOperationResponsible(linkedClient.projectManager || '')
+    }
+  }, [newOperationClientId, clientsById, newOperationResponsible])
 
   useEffect(() => {
     if (activeTab !== 'home') {
@@ -2724,10 +2912,23 @@ export default function DashboardShell({ initialTab = 'home' }) {
     [clientGroups]
   )
   const clientIdsSet = useMemo(() => new Set(clients.map((client) => client.id)), [clients])
+  const clientsById = useMemo(
+    () => new Map(clients.map((client) => [client.id, client])),
+    [clients]
+  )
   const productsById = useMemo(
     () => new Map(products.map((product) => [product.id, product])),
     [products]
   )
+  const operationCardsByClientId = useMemo(() => {
+    const nextMap = new Map()
+    operationCards.forEach((card) => {
+      const current = nextMap.get(card.clientId) || []
+      current.push(card)
+      nextMap.set(card.clientId, current)
+    })
+    return nextMap
+  }, [operationCards])
   const systemFieldsByKey = useMemo(
     () => new Map(clientSystemFields.map((field) => [field.key, field])),
     [clientSystemFields]
@@ -2830,6 +3031,26 @@ export default function DashboardShell({ initialTab = 'home' }) {
     () => allClientRegistryViews.find((view) => view.key === clientEditSection) || allClientRegistryViews[0],
     [clientEditSection, allClientRegistryViews]
   )
+  const operationSegmentOptions = useMemo(
+    () => Array.from(new Set(clients.map((client) => String(client.segment || '').trim()).filter(Boolean))).sort((left, right) => left.localeCompare(right, 'pt-BR')),
+    [clients]
+  )
+  const operationTierOptions = useMemo(
+    () => Array.from(new Set(clients.map((client) => String(client.tier || '').trim()).filter(Boolean))).sort((left, right) => left.localeCompare(right, 'pt-BR')),
+    [clients]
+  )
+  const operationSquadOptions = useMemo(
+    () => Array.from(new Set(clients.map((client) => String(client.squad || '').trim()).filter(Boolean))).sort((left, right) => left.localeCompare(right, 'pt-BR')),
+    [clients]
+  )
+  const operationResponsibleOptions = useMemo(
+    () => Array.from(new Set(operationCards.map((card) => String(card.responsible || '').trim()).filter(Boolean))).sort((left, right) => left.localeCompare(right, 'pt-BR')),
+    [operationCards]
+  )
+  const operationEditableClients = useMemo(
+    () => (canManageClients ? clients : clients.filter((client) => canEditClientRecord(client.id))),
+    [canManageClients, clients, canEditClientRecord]
+  )
   const clientCompletenessTrackedKeys = useMemo(
     () =>
       clientSystemFields
@@ -2855,6 +3076,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
     return clients.filter((client) => {
       const matchesSearch = !term || [
         client.name,
+        client.cnpj,
         client.product,
         productsById.get(client.productId)?.name,
         client.status,
@@ -2876,6 +3098,54 @@ export default function DashboardShell({ initialTab = 'home' }) {
       return matchesSearch && matchesStatus
     })
   }, [clients, clientSearch, clientStatusFilter, getClientCompleteness, productsById])
+  const filteredOperationCards = useMemo(() => {
+    const now = Date.now()
+    const periodThresholds = {
+      '7d': now - 7 * 24 * 60 * 60 * 1000,
+      '15d': now - 15 * 24 * 60 * 60 * 1000,
+      '30d': now - 30 * 24 * 60 * 60 * 1000,
+      '90d': now - 90 * 24 * 60 * 60 * 1000,
+    }
+    const threshold = operationPeriodFilter === 'all' ? null : periodThresholds[operationPeriodFilter]
+    const term = operationSearch.trim().toLowerCase()
+
+    return operationCards.filter((card) => {
+      const linkedClient = clientsById.get(card.clientId)
+      const matchesPeriod = threshold == null
+        ? true
+        : new Date(card.updatedAt || card.createdAt || 0).getTime() >= threshold
+
+      const matchesSearch = !term || [
+        card.title,
+        card.content,
+        linkedClient?.name,
+        ...(Array.isArray(card.tags) ? card.tags : []),
+      ].some((value) => String(value || '').toLowerCase().includes(term))
+
+      const matchesSegment = operationSegmentFilter === 'all'
+        ? true
+        : String(card.segment || linkedClient?.segment || '').trim() === operationSegmentFilter
+      const matchesTier = operationTierFilter === 'all'
+        ? true
+        : String(card.tier || linkedClient?.tier || '').trim() === operationTierFilter
+      const matchesSquad = operationSquadFilter === 'all'
+        ? true
+        : String(card.squad || linkedClient?.squad || '').trim() === operationSquadFilter
+      const matchesResponsible = operationResponsibleFilter === 'all'
+        ? true
+        : String(card.responsible || '').trim() === operationResponsibleFilter
+
+      return matchesPeriod && matchesSearch && matchesSegment && matchesTier && matchesSquad && matchesResponsible
+    })
+  }, [operationCards, clientsById, operationPeriodFilter, operationSearch, operationSegmentFilter, operationTierFilter, operationSquadFilter, operationResponsibleFilter])
+  const operationCardsByLane = useMemo(
+    () =>
+      OPERATION_LANES.reduce((accumulator, lane) => {
+        accumulator[lane.key] = filteredOperationCards.filter((card) => card.lane === lane.key)
+        return accumulator
+      }, {}),
+    [filteredOperationCards]
+  )
   const connectedClientsCount = useMemo(
     () => clients.filter((client) => Boolean(client.metaAdAccountId)).length,
     [clients]
@@ -3720,6 +3990,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
     setClients(initialClients)
     setClientGroups(Array.isArray(preferences.clientGroups) ? cloneClientGroups(preferences.clientGroups) : [])
     setProducts(Array.isArray(preferences.products) ? preferences.products : [])
+    setOperationCards(Array.isArray(preferences.operationCards) ? preferences.operationCards : [])
     setClientSystemFields(Array.isArray(preferences.clientSystemFields) ? preferences.clientSystemFields : [])
     setClientCustomColumns(Array.isArray(preferences.clientCustomColumns) ? preferences.clientCustomColumns : [])
     setClientCustomTabs(Array.isArray(preferences.clientCustomTabs) ? preferences.clientCustomTabs : [])
@@ -3916,7 +4187,11 @@ export default function DashboardShell({ initialTab = 'home' }) {
   }, [activeTab, activeClientId, clients])
 
   useEffect(() => {
-    if ((activeTab === 'clientes' || activeTab === 'produtos') && !canManageClients) {
+    if ((activeTab === 'clientes' || activeTab === 'operacao') && !canAccessClientsTab) {
+      setActiveTab('home')
+    }
+
+    if (activeTab === 'produtos' && !canManageClients) {
       setActiveTab('home')
     }
 
@@ -3927,7 +4202,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
     if (activeTab === 'integracoes') {
       setActiveTab('home')
     }
-  }, [activeTab, canManageClients, canManageUsers])
+  }, [activeTab, canAccessClientsTab, canManageClients, canManageUsers])
 
   useEffect(() => {
     const sellers = rdSummary?.sellers || []
@@ -4041,6 +4316,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
         setClients(Array.isArray(state.clients) ? state.clients : [])
         setClientGroups(Array.isArray(state.clientGroups) ? cloneClientGroups(state.clientGroups) : [])
         setProducts(Array.isArray(state.products) ? state.products : [])
+        setOperationCards(Array.isArray(state.operationCards) ? state.operationCards : [])
         setClientSystemFields(Array.isArray(state.clientSystemFields) ? state.clientSystemFields : [])
         setClientCustomColumns(Array.isArray(state.clientCustomColumns) ? state.clientCustomColumns : [])
         setClientCustomTabs(Array.isArray(state.clientCustomTabs) ? state.clientCustomTabs : [])
@@ -4067,6 +4343,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
       clients,
       clientGroups,
       products,
+      operationCards,
       clientSystemFields,
       clientCustomColumns,
       clientCustomTabs,
@@ -4074,7 +4351,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
 
     saveDashboardPreferences(state)
 
-    if (userLoading || !user || !canManageClients || !hasSyncedServerState) return
+    if (userLoading || !user || !canPersistClientChanges || !hasSyncedServerState) return
 
     const timeoutId = window.setTimeout(() => {
       fetch('/api/dashboard/state', {
@@ -4089,7 +4366,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
     }, 300)
 
     return () => window.clearTimeout(timeoutId)
-  }, [hasLoadedPreferences, themeColor, metric1, metric2, activeClientId, globalIntegrations, clients, clientGroups, products, clientSystemFields, clientCustomColumns, clientCustomTabs, userLoading, user, canManageClients, hasSyncedServerState])
+  }, [hasLoadedPreferences, themeColor, metric1, metric2, activeClientId, globalIntegrations, clients, clientGroups, products, operationCards, clientSystemFields, clientCustomColumns, clientCustomTabs, userLoading, user, canPersistClientChanges, hasSyncedServerState])
 
   useEffect(() => {
     ChartJS.defaults.color = '#94a3b8'
@@ -4300,13 +4577,29 @@ export default function DashboardShell({ initialTab = 'home' }) {
     event.preventDefault()
     if (!isMaster) return
     const trimmedName = newClientName.trim()
-    if (!trimmedName) return
+    if (!trimmedName || !newClientSalesModel || !newClientStartDate) return
 
-    const newClient = createClientRecord({ name: trimmedName })
+    const implementationPhase = IMPLEMENTATION_PHASE_BY_SALES_MODEL[newClientSalesModel] || ''
+    const newClient = createClientRecord({
+      name: trimmedName,
+      cnpj: normalizeCnpjInput(newClientCnpj),
+      salesModel: newClientSalesModel,
+      implementationPhase,
+      implementationObservation: newClientImplementationObservation.trim(),
+      implementationChecklist: createImplementationChecklistForSalesModel(newClientSalesModel),
+      startDate: newClientStartDate,
+      status: 'Onboarding',
+    })
     setClients((currentClients) => [...currentClients, newClient])
     setActiveClientId(newClient.id)
     setActiveTab('clientes')
     setNewClientName('')
+    setNewClientCnpj('')
+    setNewClientSalesModel('INSIDE_SALES')
+    setNewClientStartDate(getTodayDateInputValue())
+    setNewClientImplementationObservation('')
+    setClientEditSection('geral')
+    setIsEditClientModalOpen(true)
   }
 
   const handleRemoveClient = (clientId) => {
@@ -4344,6 +4637,59 @@ export default function DashboardShell({ initialTab = 'home' }) {
 
     setProducts((currentProducts) => [...currentProducts, createProductRecord({ name: trimmedName })])
     setNewProductName('')
+  }
+
+  const handleCreateOperationCard = (event) => {
+    event.preventDefault()
+    if (!canPersistClientChanges) return
+    if (!newOperationClientId || !newOperationTitle.trim()) return
+
+    const linkedClient = clientsById.get(newOperationClientId)
+    const now = new Date().toISOString()
+    const nextCard = createOperationCardRecord({
+      clientId: newOperationClientId,
+      title: newOperationTitle.trim(),
+      content: newOperationContent.trim(),
+      lane: resolveOperationLaneFromSalesModel(linkedClient?.salesModel),
+      status: 'aberto',
+      responsible: newOperationResponsible.trim() || linkedClient?.projectManager || '',
+      segment: linkedClient?.segment || '',
+      tier: linkedClient?.tier || '',
+      squad: linkedClient?.squad || '',
+      tags: normalizeSelectOptionsInput(newOperationTags),
+      createdAt: now,
+      updatedAt: now,
+    })
+
+    setOperationCards((current) => [nextCard, ...current])
+    setIsOperationCreateModalOpen(false)
+    setNewOperationClientId('')
+    setNewOperationTitle('')
+    setNewOperationContent('')
+    setNewOperationResponsible('')
+    setNewOperationTags('')
+    setActiveTab('operacao')
+  }
+
+  const handleOperationCardFieldChange = (cardId, fieldName, value) => {
+    const currentCard = operationCards.find((card) => card.id === cardId)
+    if (!currentCard || !canEditClientRecord(currentCard.clientId)) return
+
+    setOperationCards((current) =>
+      current.map((card) =>
+        card.id === cardId
+          ? {
+              ...card,
+              [fieldName]: value,
+              updatedAt: new Date().toISOString(),
+            }
+          : card
+      )
+    )
+  }
+
+  const handleMoveOperationCard = (cardId, lane) => {
+    handleOperationCardFieldChange(cardId, 'lane', lane)
   }
 
   const handleCreateClientCustomColumn = (event) => {
@@ -4823,6 +5169,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
       clients,
       clientGroups,
       products,
+      operationCards,
       clientCustomColumns,
       clientCustomTabs,
     }
@@ -4973,6 +5320,8 @@ export default function DashboardShell({ initialTab = 'home' }) {
   const applyClientFieldUpdate = useCallback((client, fieldName, value) => {
     const normalizedValue = CLIENT_CURRENCY_FIELDS.has(fieldName)
       ? normalizeCurrencyInput(value)
+      : fieldName === 'cnpj'
+        ? normalizeCnpjInput(value)
       : value
 
     const nextClient = {
@@ -4988,6 +5337,14 @@ export default function DashboardShell({ initialTab = 'home' }) {
       nextClient.status = 'Churn'
     }
 
+    if (fieldName === 'salesModel') {
+      nextClient.implementationPhase = IMPLEMENTATION_PHASE_BY_SALES_MODEL[normalizedValue] || ''
+      nextClient.implementationChecklist = createImplementationChecklistForSalesModel(
+        normalizedValue,
+        nextClient.implementationChecklist
+      )
+    }
+
     return nextClient
   }, [])
 
@@ -4995,6 +5352,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
     if (fieldName === 'ltv' || fieldName === 'mmf' || fieldName === 'roiMarketing') {
       return
     }
+    if (!canEditActiveClient) return
 
     updateActiveClient((client) => ({
       ...applyClientFieldUpdate(client, fieldName, value),
@@ -5002,6 +5360,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
   }
 
   const handleClientProductChange = (clientId, productId) => {
+    if (!canEditClientRecord(clientId)) return
     const selectedProduct = productsById.get(productId)
     setClients((currentClients) =>
       currentClients.map((client) =>
@@ -5017,6 +5376,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
   }
 
   const handleActiveClientProductChange = (productId) => {
+    if (!canEditActiveClient) return
     const selectedProduct = productsById.get(productId)
     updateActiveClient((client) => ({
       ...client,
@@ -5029,6 +5389,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
     if (fieldName === 'ltv' || fieldName === 'mmf' || fieldName === 'roiMarketing') {
       return
     }
+    if (!canEditClientRecord(clientId)) return
 
     setClients((currentClients) =>
       currentClients.map((client) =>
@@ -5042,6 +5403,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
   const handleClientInlineCustomFieldChange = (clientId, fieldKey, value) => {
     const column = customColumnsByKey.get(fieldKey)
     if (column?.type === 'formula') return
+    if (!canEditClientRecord(clientId)) return
 
     const normalizedValue = column?.type === 'currency'
       ? normalizeCurrencyInput(value)
@@ -5062,9 +5424,121 @@ export default function DashboardShell({ initialTab = 'home' }) {
     )
   }
 
+  const handleAddClientOkr = () => {
+    if (!canEditActiveClient) return
+
+    const trimmedTitle = newClientOkrTitle.trim()
+    if (!trimmedTitle) return
+
+    updateActiveClient((client) => ({
+      ...client,
+      okrs: [
+        ...(Array.isArray(client.okrs) ? client.okrs : []),
+        {
+          id: globalThis.crypto?.randomUUID?.() || `okr-${Date.now()}`,
+          title: trimmedTitle,
+          cadence: newClientOkrCadence,
+          cycleDays: newClientOkrCadence === 'ciclo' ? String(newClientOkrCycleDays || '').trim() : '',
+          completed: false,
+        },
+      ],
+    }))
+
+    setNewClientOkrTitle('')
+    setNewClientOkrCadence('mensal')
+    setNewClientOkrCycleDays('')
+  }
+
+  const handleClientOkrToggle = (okrId) => {
+    if (!canEditActiveClient) return
+
+    updateActiveClient((client) => ({
+      ...client,
+      okrs: (Array.isArray(client.okrs) ? client.okrs : []).map((okr) =>
+        okr.id === okrId
+          ? {
+              ...okr,
+              completed: !okr.completed,
+            }
+          : okr
+      ),
+    }))
+  }
+
+  const handleClientOkrFieldChange = (okrId, fieldName, value) => {
+    if (!canEditActiveClient) return
+
+    updateActiveClient((client) => ({
+      ...client,
+      okrs: (Array.isArray(client.okrs) ? client.okrs : []).map((okr) =>
+        okr.id === okrId
+          ? {
+              ...okr,
+              [fieldName]: value,
+              cycleDays:
+                fieldName === 'cadence' && value !== 'ciclo'
+                  ? ''
+                  : fieldName === 'cycleDays'
+                    ? String(value || '').replace(/\D/g, '').slice(0, 3)
+                    : okr.cycleDays,
+            }
+          : okr
+      ),
+    }))
+  }
+
+  const handleRemoveClientOkr = (okrId) => {
+    if (!canEditActiveClient) return
+
+    updateActiveClient((client) => ({
+      ...client,
+      okrs: (Array.isArray(client.okrs) ? client.okrs : []).filter((okr) => okr.id !== okrId),
+    }))
+  }
+
+  const handleAddClientNote = () => {
+    if (!canEditActiveClient) return
+
+    const trimmedBody = newClientNoteBody.trim()
+    if (!trimmedBody) return
+
+    updateActiveClient((client) => ({
+      ...client,
+      notes: [
+        {
+          id: globalThis.crypto?.randomUUID?.() || `note-${Date.now()}`,
+          body: trimmedBody,
+          authorName: profile?.full_name || user?.email || 'Equipe',
+          authorId: user?.id || '',
+          createdAt: new Date().toISOString(),
+        },
+        ...(Array.isArray(client.notes) ? client.notes : []),
+      ],
+    }))
+
+    setNewClientNoteBody('')
+  }
+
+  const handleImplementationChecklistToggle = (itemId) => {
+    if (!canEditActiveClient) return
+
+    updateActiveClient((client) => ({
+      ...client,
+      implementationChecklist: (Array.isArray(client.implementationChecklist) ? client.implementationChecklist : []).map((item) =>
+        item.id === itemId
+          ? {
+              ...item,
+              completed: !item.completed,
+            }
+          : item
+      ),
+    }))
+  }
+
   const renderClientRegistryField = (client, columnKey, mode = 'inline') => {
     const meta = getResolvedClientColumnMeta(columnKey)
     const isEditorMode = mode === 'editor'
+    const isEditable = isEditorMode ? canEditActiveClient : canEditClientRecord(client.id)
     const isReadOnlyCalculatedField = ['ltv', 'mmf', 'roiMarketing', 'healthScore'].includes(columnKey)
     const value = client?.[columnKey]
     const customColumn = customColumnsByKey.get(columnKey)
@@ -5076,6 +5550,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
           <input
             type="text"
             value={client?.name || ''}
+            disabled={!isEditable}
             onChange={(event) => handleClientFieldChange('name', event.target.value)}
             placeholder="Nome do cliente"
           />
@@ -5084,11 +5559,42 @@ export default function DashboardShell({ initialTab = 'home' }) {
     }
 
     if (meta.type === 'status') {
+      if (columnKey === 'salesModel') {
+        return (
+          <div key={columnKey} className={isEditorMode ? 'input-group' : 'client-registry-cell'}>
+            {isEditorMode && <label>{meta.label}</label>}
+            <select
+              value={value || 'INSIDE_SALES'}
+              disabled={!isEditable}
+              onChange={(event) =>
+                isEditorMode
+                  ? handleClientFieldChange(columnKey, event.target.value)
+                  : handleClientInlineFieldChange(client.id, columnKey, event.target.value)
+              }
+            >
+              {CLIENT_SALES_MODEL_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>{option.label}</option>
+              ))}
+            </select>
+          </div>
+        )
+      }
+
+      if (columnKey === 'implementationPhase') {
+        return (
+          <div key={columnKey} className={isEditorMode ? 'input-group' : 'client-registry-cell'}>
+            {isEditorMode && <label>{meta.label}</label>}
+            <input type="text" value={value || ''} readOnly placeholder="Definido pelo modelo de vendas" />
+          </div>
+        )
+      }
+
       return (
         <div key={columnKey} className={isEditorMode ? 'input-group' : 'client-registry-cell'}>
           {isEditorMode && <label>{meta.label}</label>}
           <select
             value={value || 'Ativo'}
+            disabled={!isEditable}
             onChange={(event) =>
               isEditorMode
                 ? handleClientFieldChange(columnKey, event.target.value)
@@ -5109,6 +5615,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
           {isEditorMode && <label>{meta.label}</label>}
           <select
             value={client?.productId || ''}
+            disabled={!isEditable}
             onChange={(event) =>
               isEditorMode
                 ? handleActiveClientProductChange(event.target.value)
@@ -5133,6 +5640,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
             {isEditorMode && <label>{meta.label}</label>}
             <select
               value={client?.customFieldValues?.[columnKey] || 'na'}
+              disabled={!isEditable}
               onChange={(event) => handleClientInlineCustomFieldChange(client.id, columnKey, event.target.value)}
             >
               {CLIENT_FLAG_OPTIONS.map((option) => (
@@ -5149,6 +5657,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
             {isEditorMode && <label>{meta.label}</label>}
             <select
               value={client?.customFieldValues?.[columnKey] || ''}
+              disabled={!isEditable}
               onChange={(event) => handleClientInlineCustomFieldChange(client.id, columnKey, event.target.value)}
             >
               <option value="">Selecione</option>
@@ -5168,6 +5677,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
               <input
                 type="checkbox"
                 checked={String(client?.customFieldValues?.[columnKey] || '').toLowerCase() === 'true'}
+                disabled={!isEditable}
                 onChange={(event) => handleClientInlineCustomFieldChange(client.id, columnKey, event.target.checked ? 'true' : 'false')}
               />
               <span>{String(client?.customFieldValues?.[columnKey] || '').toLowerCase() === 'true' ? 'Marcado' : 'Livre'}</span>
@@ -5201,6 +5711,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
                       : 'text'
             }
             value={customFieldValue || ''}
+            disabled={!isEditable}
             onChange={(event) => handleClientInlineCustomFieldChange(client.id, columnKey, event.target.value)}
             placeholder={customColumn.label}
           />
@@ -5224,6 +5735,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
           {isEditorMode && <label>{meta.label}</label>}
           <select
             value={value || 'na'}
+            disabled={!isEditable}
             onChange={(event) =>
               isEditorMode
                 ? handleClientFieldChange(columnKey, event.target.value)
@@ -5259,6 +5771,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
             type="date"
             value={value || ''}
             readOnly={isReadOnlyCalculatedField}
+            disabled={!isEditable}
             onChange={(event) =>
               isEditorMode
                 ? handleClientFieldChange(columnKey, event.target.value)
@@ -5276,6 +5789,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
           <input
             type="text"
             value={value || ''}
+            disabled={!isEditable}
             onChange={(event) =>
               isEditorMode
                 ? handleClientFieldChange(columnKey, event.target.value)
@@ -5287,6 +5801,35 @@ export default function DashboardShell({ initialTab = 'home' }) {
       )
     }
 
+    if (meta.type === 'long_text') {
+      return (
+        <div key={columnKey} className={isEditorMode ? 'input-group client-long-text-field' : 'client-registry-cell'}>
+          {isEditorMode && <label>{meta.label}</label>}
+          {isEditorMode ? (
+            <textarea
+              value={value || ''}
+              disabled={!isEditable}
+              onChange={(event) =>
+                isEditorMode
+                  ? handleClientFieldChange(columnKey, event.target.value)
+                  : handleClientInlineFieldChange(client.id, columnKey, event.target.value)
+              }
+              placeholder={meta.label}
+              rows={4}
+            />
+          ) : (
+            <input
+              type="text"
+              value={value || ''}
+              disabled={!isEditable}
+              onChange={(event) => handleClientInlineFieldChange(client.id, columnKey, event.target.value)}
+              placeholder={meta.label}
+            />
+          )}
+        </div>
+      )
+    }
+
     return (
       <div key={columnKey} className={isEditorMode ? 'input-group' : 'client-registry-cell'}>
         {isEditorMode && <label>{meta.label}</label>}
@@ -5294,6 +5837,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
           type="text"
           value={value || ''}
           readOnly={isReadOnlyCalculatedField}
+          disabled={!isEditable && !isReadOnlyCalculatedField}
           onChange={(event) =>
             isEditorMode
               ? handleClientFieldChange(columnKey, event.target.value)
@@ -5339,6 +5883,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
   }
 
   const handleQualifiedStageToggle = (stageName) => {
+    if (!canEditActiveClient) return
     updateActiveClient((client) => {
       const currentStages = Array.isArray(client.rdQualifiedStages) ? client.rdQualifiedStages : []
       const nextStages = currentStages.includes(stageName)
@@ -5353,6 +5898,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
   }
 
   const handleIntegrationChange = (fieldName, value, storage) => {
+    if (!canEditActiveClient) return
     if (storage === 'client') {
       handleClientFieldChange(fieldName, value)
       return
@@ -5368,6 +5914,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
   }
 
   const handleClientLogoUpload = (event) => {
+    if (!canEditActiveClient) return
     const file = event.target.files?.[0]
     if (!file) return
 
@@ -9472,9 +10019,14 @@ export default function DashboardShell({ initialTab = 'home' }) {
               </div>
             )}
           </div>
-          {canManageClients && (
+          {canAccessClientsTab && (
             <button type="button" data-tooltip="Clientes" className={`nav-item nav-button ${activeTab === 'clientes' ? 'active' : ''}`} onClick={() => setActiveTab('clientes')}>
               <i className="bx bxs-buildings"></i> Clientes
+            </button>
+          )}
+          {canAccessClientsTab && (
+            <button type="button" data-tooltip="Operação" className={`nav-item nav-button ${activeTab === 'operacao' ? 'active' : ''}`} onClick={() => setActiveTab('operacao')}>
+              <i className="bx bx-grid-alt"></i> Operação
             </button>
           )}
           {canManageClients && (
@@ -9544,6 +10096,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
             <h1>
               {activeTab === 'home' && 'Home'}
               {activeTab === 'clientes' && 'Base de clientes'}
+              {activeTab === 'operacao' && 'Operação'}
               {activeTab === 'produtos' && 'Base de produtos'}
               {activeTab === 'apresentacao' && `Dashboard ${activeClient?.name || 'do cliente'}`}
               {activeTab === 'contexto' && 'Painel de operação'}
@@ -9557,6 +10110,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
               <p>
                 {activeTab === 'home' && 'Entre por aqui sempre que abrir o app e escolha rapidamente qual área da operação você quer acessar.'}
                 {activeTab === 'clientes' && 'Cadastre seus clientes e mantenha cada operação separada dentro do dashboard.'}
+                {activeTab === 'operacao' && 'Gerencie cards, responsáveis, fases e filtros operacionais em visões de Kanban, Tabela e Tickets.'}
                 {activeTab === 'produtos' && 'Cadastre os produtos da operação e vincule cada cliente a uma oferta padronizada.'}
                 {activeTab === 'apresentacao' && 'Uma visão executiva consolidada dos principais resultados do cliente, organizada por fonte de dados.'}
                 {activeTab === 'contexto' && 'Uma leitura consolidada da carteira para acompanhar churn, fee, health score e prioridades operacionais.'}
@@ -9728,6 +10282,261 @@ export default function DashboardShell({ initialTab = 'home' }) {
           </section>
         )}
 
+        {activeTab === 'operacao' && isOperationCreateModalOpen && canPersistClientChanges && (
+          <div className="modal-overlay" onClick={() => setIsOperationCreateModalOpen(false)}>
+            <div className="modal-card glass-panel" onClick={(event) => event.stopPropagation()}>
+              <div className="modal-header">
+                <div>
+                  <h3>Novo card operacional</h3>
+                  <p>Crie um card vinculado a um cliente para acompanhar setup, fase e execução da conta.</p>
+                </div>
+                <button type="button" className="modal-close" onClick={() => setIsOperationCreateModalOpen(false)} aria-label="Fechar criação de card">
+                  <i className="bx bx-x"></i>
+                </button>
+              </div>
+
+              <form className="form-grid" onSubmit={handleCreateOperationCard}>
+                <div className="input-group">
+                  <label>Cliente</label>
+                  <select value={newOperationClientId} onChange={(event) => setNewOperationClientId(event.target.value)}>
+                    <option value="">Selecione um cliente</option>
+                    {operationEditableClients.map((client) => (
+                      <option key={`operation-client-${client.id}`} value={client.id}>{client.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="input-group">
+                  <label>Título do card</label>
+                  <input type="text" value={newOperationTitle} onChange={(event) => setNewOperationTitle(event.target.value)} placeholder="Ex.: Configuração do CRM e tracking" />
+                </div>
+                <div className="input-group">
+                  <label>Responsável</label>
+                  <input type="text" value={newOperationResponsible} onChange={(event) => setNewOperationResponsible(event.target.value)} placeholder="Nome do responsável" />
+                </div>
+                <div className="input-group">
+                  <label>Tags</label>
+                  <input type="text" value={newOperationTags} onChange={(event) => setNewOperationTags(event.target.value)} placeholder="Separadas por vírgula" />
+                </div>
+                <div className="input-group client-long-text-field" style={{ gridColumn: '1 / -1' }}>
+                  <label>Contexto do card</label>
+                  <textarea value={newOperationContent} onChange={(event) => setNewOperationContent(event.target.value)} placeholder="Descreva o contexto, objetivo ou detalhe importante deste card..." rows={5} />
+                </div>
+                <div className="modal-actions" style={{ gridColumn: '1 / -1' }}>
+                  <button type="button" className="btn btn-secondary" onClick={() => setIsOperationCreateModalOpen(false)}>
+                    Cancelar
+                  </button>
+                  <button type="submit" className="btn btn-primary" disabled={!newOperationClientId || !newOperationTitle.trim()}>
+                    Criar card
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'operacao' && (
+          <section className="clients-layout operations-module">
+            <div className="management-header-row">
+              <div className="management-header-copy">
+                <h2>Gestão Operacional</h2>
+                <p>Organize cards por fase, acompanhe responsáveis e filtre a execução da operação por recorte estratégico.</p>
+              </div>
+              {canPersistClientChanges && (
+                <button type="button" className="btn btn-primary management-header-button" onClick={() => setIsOperationCreateModalOpen(true)}>
+                  <i className="bx bx-plus-circle"></i>
+                  Adicionar card
+                </button>
+              )}
+            </div>
+
+            <div className="glass-panel operation-toolbar-card">
+              <div className="operation-toolbar-top">
+                {canPersistClientChanges && (
+                  <button type="button" className="btn btn-primary" onClick={() => setIsOperationCreateModalOpen(true)}>
+                    <i className="bx bx-plus-circle"></i>
+                    Adicionar Card
+                  </button>
+                )}
+
+                <div className="operation-view-switch">
+                  <i className="bx bx-layout"></i>
+                  <select value={operationViewMode} onChange={(event) => setOperationViewMode(event.target.value)}>
+                    {OPERATION_VIEW_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>{option.label}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="date-picker glass-item">
+                  <i className="bx bx-calendar"></i>
+                  <select value={operationPeriodFilter} onChange={(event) => setOperationPeriodFilter(event.target.value)}>
+                    {OPERATION_PERIOD_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>{option.label}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="operation-search-box">
+                  <i className="bx bx-search-alt"></i>
+                  <input
+                    type="text"
+                    value={operationSearch}
+                    onChange={(event) => setOperationSearch(event.target.value)}
+                    placeholder="Pesquise por título, conteúdo, tags, etc..."
+                  />
+                </div>
+              </div>
+
+              <div className="operation-filter-row">
+                <select value={operationSegmentFilter} onChange={(event) => setOperationSegmentFilter(event.target.value)}>
+                  <option value="all">Filtrar por Segmento</option>
+                  {operationSegmentOptions.map((option) => (
+                    <option key={`segment-${option}`} value={option}>{option}</option>
+                  ))}
+                </select>
+                <select value={operationTierFilter} onChange={(event) => setOperationTierFilter(event.target.value)}>
+                  <option value="all">Filtrar por Tier</option>
+                  {operationTierOptions.map((option) => (
+                    <option key={`tier-${option}`} value={option}>{option}</option>
+                  ))}
+                </select>
+                <select value={operationSquadFilter} onChange={(event) => setOperationSquadFilter(event.target.value)}>
+                  <option value="all">Filtrar por squad</option>
+                  {operationSquadOptions.map((option) => (
+                    <option key={`squad-${option}`} value={option}>{option}</option>
+                  ))}
+                </select>
+                <select value={operationResponsibleFilter} onChange={(event) => setOperationResponsibleFilter(event.target.value)}>
+                  <option value="all">Escolher Responsável</option>
+                  {operationResponsibleOptions.map((option) => (
+                    <option key={`responsible-${option}`} value={option}>{option}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {operationViewMode === 'kanban' && (
+              <div className="operation-kanban-board">
+                {OPERATION_LANES.map((lane) => (
+                  <div key={lane.key} className="glass-panel operation-lane-card">
+                    <div className="operation-lane-head">
+                      <strong>{lane.label}</strong>
+                      <span>{formatNumber((operationCardsByLane[lane.key] || []).length)} cards</span>
+                    </div>
+
+                    <div className="operation-lane-list">
+                      {(operationCardsByLane[lane.key] || []).length ? (
+                        operationCardsByLane[lane.key].map((card) => {
+                          const linkedClient = clientsById.get(card.clientId)
+                          return (
+                            <article key={card.id} className="operation-card-item">
+                              <div className="operation-card-item-head">
+                                <strong>{card.title}</strong>
+                                <small>{linkedClient?.name || 'Cliente não encontrado'}</small>
+                              </div>
+                              <p>{card.content || 'Sem descrição adicional.'}</p>
+                              <div className="operation-card-meta">
+                                <span>{card.segment || linkedClient?.segment || 'Sem segmento'}</span>
+                                <span>{card.tier || linkedClient?.tier || 'Sem tier'}</span>
+                                <span>{card.responsible || 'Sem responsável'}</span>
+                              </div>
+                              <div className="operation-card-actions">
+                                <select value={card.status} disabled={!canEditClientRecord(card.clientId)} onChange={(event) => handleOperationCardFieldChange(card.id, 'status', event.target.value)}>
+                                  {OPERATION_STATUS_OPTIONS.map((option) => (
+                                    <option key={`${card.id}-${option.value}`} value={option.value}>{option.label}</option>
+                                  ))}
+                                </select>
+                                <select value={card.lane} disabled={!canEditClientRecord(card.clientId)} onChange={(event) => handleMoveOperationCard(card.id, event.target.value)}>
+                                  {OPERATION_LANES.map((option) => (
+                                    <option key={`${card.id}-lane-${option.key}`} value={option.key}>{option.label}</option>
+                                  ))}
+                                </select>
+                              </div>
+                            </article>
+                          )
+                        })
+                      ) : (
+                        <div className="ranking-empty">Nenhum card neste estágio.</div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {operationViewMode === 'table' && (
+              <div className="glass-panel operation-table-card">
+                {filteredOperationCards.length ? (
+                  <div className="table-container">
+                    <table className="data-table">
+                      <thead>
+                        <tr>
+                          <th>Card</th>
+                          <th>Cliente</th>
+                          <th>Fase</th>
+                          <th>Status</th>
+                          <th>Segmento</th>
+                          <th>Tier</th>
+                          <th>Responsável</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredOperationCards.map((card) => {
+                          const linkedClient = clientsById.get(card.clientId)
+                          return (
+                            <tr key={`table-${card.id}`}>
+                              <td className="campaign-name">{card.title}</td>
+                              <td>{linkedClient?.name || '-'}</td>
+                              <td>{OPERATION_LANES.find((lane) => lane.key === card.lane)?.label || '-'}</td>
+                              <td>{OPERATION_STATUS_OPTIONS.find((status) => status.value === card.status)?.label || '-'}</td>
+                              <td>{card.segment || linkedClient?.segment || '-'}</td>
+                              <td>{card.tier || linkedClient?.tier || '-'}</td>
+                              <td>{card.responsible || '-'}</td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="ranking-empty">Nenhum card encontrado para os filtros aplicados.</div>
+                )}
+              </div>
+            )}
+
+            {operationViewMode === 'tickets' && (
+              <div className="operation-tickets-grid">
+                {filteredOperationCards.length ? (
+                  filteredOperationCards.map((card) => {
+                    const linkedClient = clientsById.get(card.clientId)
+                    return (
+                      <article key={`ticket-${card.id}`} className="glass-panel operation-ticket-card">
+                        <div className="operation-ticket-head">
+                          <div>
+                            <strong>{card.title}</strong>
+                            <span>{linkedClient?.name || 'Cliente não encontrado'}</span>
+                          </div>
+                          <small>{OPERATION_LANES.find((lane) => lane.key === card.lane)?.label || '-'}</small>
+                        </div>
+                        <p>{card.content || 'Sem descrição adicional.'}</p>
+                        <div className="operation-ticket-tags">
+                          {(card.tags || []).length ? card.tags.map((tag) => <span key={`${card.id}-${tag}`} className="stage-chip">{tag}</span>) : <span className="stage-chip">Sem tags</span>}
+                        </div>
+                        <div className="operation-ticket-foot">
+                          <span>{card.responsible || 'Sem responsável'}</span>
+                          <span>{formatClientDateTime(card.updatedAt)}</span>
+                        </div>
+                      </article>
+                    )
+                  })
+                ) : (
+                  <div className="ranking-empty">Nenhum ticket operacional encontrado.</div>
+                )}
+              </div>
+            )}
+          </section>
+        )}
+
         {activeTab === 'clickup' && renderClickUpOperationalPanel()}
 
         {activeTab === 'monday' && renderMondayOperationalPanel()}
@@ -9796,13 +10605,56 @@ export default function DashboardShell({ initialTab = 'home' }) {
             <div className="client-create-grid">
               <form className="glass-panel client-create-bar management-action-card" onSubmit={handleCreateClient}>
                 <div>
-                  <span className="management-card-kicker">New client</span>
+                  <span className="management-card-kicker">FWO setup</span>
                   <h3>Novo cliente</h3>
-                  <p>Crie um cliente e depois ajuste a configuração dele logo abaixo.</p>
+                  <p>O cliente já nasce com o setup de implementação preenchido, fase FWO definida e checklist obrigatório por trilha.</p>
                 </div>
-                <div className="client-create-inline">
-                  <input type="text" value={newClientName} onChange={(event) => setNewClientName(event.target.value)} placeholder="Ex.: Clínica X, E-commerce Y..." disabled={!isMaster} />
-                  <button type="submit" className="btn btn-primary" disabled={!isMaster}>Adicionar cliente</button>
+                <div className="client-create-stack">
+                  <div className="client-create-inline">
+                    <input type="text" value={newClientName} onChange={(event) => setNewClientName(event.target.value)} placeholder="Ex.: Clínica X, E-commerce Y..." disabled={!isMaster} />
+                    <input type="text" value={newClientCnpj} onChange={(event) => setNewClientCnpj(normalizeCnpjInput(event.target.value))} placeholder="CNPJ (opcional)" disabled={!isMaster} />
+                  </div>
+                  <div className="client-create-grid-fields">
+                    <div className="input-group">
+                      <label>Modelo de vendas</label>
+                      <select value={newClientSalesModel} onChange={(event) => setNewClientSalesModel(event.target.value)} disabled={!isMaster}>
+                        {CLIENT_SALES_MODEL_OPTIONS.map((option) => (
+                          <option key={`new-client-${option.value}`} value={option.value}>{option.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="input-group">
+                      <label>Fase FWO</label>
+                      <input type="text" value={IMPLEMENTATION_PHASE_BY_SALES_MODEL[newClientSalesModel] || ''} readOnly placeholder="Definida pelo modelo de vendas" />
+                    </div>
+                    <div className="input-group">
+                      <label>Data de início da implementação</label>
+                      <input type="date" value={newClientStartDate} onChange={(event) => setNewClientStartDate(event.target.value)} disabled={!isMaster} />
+                    </div>
+                  </div>
+                  <div className="input-group">
+                    <label>Observação da implementação</label>
+                    <textarea
+                      value={newClientImplementationObservation}
+                      onChange={(event) => setNewClientImplementationObservation(event.target.value)}
+                      placeholder="Contexto inicial, mapeamento de oportunidades, particularidades do setup..."
+                      rows={3}
+                      disabled={!isMaster}
+                    />
+                  </div>
+                  <div className="client-create-checklist-preview">
+                    {(FWO_IMPLEMENTATION_CHECKLISTS[newClientSalesModel] || []).map((item) => (
+                      <span key={`preview-${newClientSalesModel}-${item}`} className="stage-chip">
+                        <i className="bx bx-check-circle"></i>
+                        <span>{item}</span>
+                      </span>
+                    ))}
+                  </div>
+                  <div className="client-create-actions">
+                    <button type="submit" className="btn btn-primary" disabled={!isMaster || !newClientName.trim() || !newClientSalesModel || !newClientStartDate}>
+                      Criar cliente com setup FWO
+                    </button>
+                  </div>
                 </div>
               </form>
 
@@ -9924,6 +10776,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
                                       placeholder="Nome do cliente"
                                     />
                                     <small>
+                                      {client.cnpj ? `CNPJ ${client.cnpj} • ` : ''}
                                       {linkedGroupsCount ? `${linkedGroupsCount} grupo(s)` : 'Sem grupo vinculado'}
                                       {completenessScore != null ? ` • ${completenessScore}% completo` : ''}
                                     </small>
@@ -10408,7 +11261,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
                     <h3>Editando: {activeClient.name}</h3>
                     <p>Qualquer ajuste aqui já define como a dash desse cliente vai abrir.</p>
                   </div>
-                  <button type="submit" className="btn btn-primary" disabled={isSavingIntegrations || !canManageClients}>
+                  <button type="submit" className="btn btn-primary" disabled={isSavingIntegrations || !canEditActiveClient}>
                     {isSavingIntegrations ? 'Salvando...' : 'Salvar cliente'}
                   </button>
                 </div>
@@ -10442,18 +11295,36 @@ export default function DashboardShell({ initialTab = 'home' }) {
                     <div className="client-identity-main">
                       <div className="input-group">
                         <label>Nome do cliente</label>
-                        <input type="text" value={activeClient.name} onChange={(event) => handleClientFieldChange('name', event.target.value)} placeholder="Nome do cliente" />
+                        <input type="text" value={activeClient.name} onChange={(event) => handleClientFieldChange('name', event.target.value)} placeholder="Nome do cliente" disabled={!canEditActiveClient} />
+                      </div>
+
+                      <div className="client-form-grid client-form-grid-2">
+                        <div className="input-group">
+                          <label>ID interno do cliente</label>
+                          <input type="text" value={activeClient.id || ''} readOnly placeholder="Gerado automaticamente" />
+                        </div>
+                        <div className="input-group">
+                          <label>CNPJ</label>
+                          <input
+                            type="text"
+                            value={activeClient.cnpj || ''}
+                            onChange={(event) => handleClientFieldChange('cnpj', event.target.value)}
+                            placeholder="00.000.000/0000-00"
+                            disabled={!canEditActiveClient}
+                          />
+                          <span className="field-helper">Use o CNPJ como vínculo operacional da conta, mantendo também o ID interno do cliente.</span>
+                        </div>
                       </div>
 
                       <div className="branding-grid">
                         <div className="input-group">
                           <label>Logo do cliente</label>
-                          <input type="file" accept="image/*" onChange={handleClientLogoUpload} />
+                          <input type="file" accept="image/*" onChange={handleClientLogoUpload} disabled={!canEditActiveClient} />
                         </div>
 
                         <div className="input-group">
                           <label>Ou cole a URL da logo</label>
-                          <input type="text" value={activeClient.logoUrl || ''} onChange={(event) => handleClientFieldChange('logoUrl', event.target.value)} placeholder="https://..." />
+                          <input type="text" value={activeClient.logoUrl || ''} onChange={(event) => handleClientFieldChange('logoUrl', event.target.value)} placeholder="https://..." disabled={!canEditActiveClient} />
                         </div>
                       </div>
 
@@ -10472,6 +11343,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
                               value={activeClientDashboardHex}
                               onChange={(event) => handleClientDashboardHexChange(event.target.value)}
                               aria-label="Selecionar cor da dashboard"
+                              disabled={!canEditActiveClient}
                             />
                             <div className="dashboard-color-code">
                               <strong>{activeClientDashboardHex.toUpperCase()}</strong>
@@ -10487,6 +11359,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
                                 max="255"
                                 value={activeClientDashboardRgb.r}
                                 onChange={(event) => handleClientDashboardRgbChange('r', event.target.value)}
+                                disabled={!canEditActiveClient}
                               />
                             </label>
                             <label className="dashboard-rgb-field">
@@ -10497,6 +11370,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
                                 max="255"
                                 value={activeClientDashboardRgb.g}
                                 onChange={(event) => handleClientDashboardRgbChange('g', event.target.value)}
+                                disabled={!canEditActiveClient}
                               />
                             </label>
                             <label className="dashboard-rgb-field">
@@ -10507,6 +11381,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
                                 max="255"
                                 value={activeClientDashboardRgb.b}
                                 onChange={(event) => handleClientDashboardRgbChange('b', event.target.value)}
+                                disabled={!canEditActiveClient}
                               />
                             </label>
                           </div>
@@ -10520,6 +11395,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
                                   handleClientFieldChange('dashboardColor', themeKey)
                                   setThemeColor(themeKey)
                                 }}
+                                disabled={!canEditActiveClient}
                               >
                                 <span className="dashboard-theme-swatch" style={{ background: theme.main }}></span>
                                 <small>{themeKey}</small>
@@ -10546,8 +11422,186 @@ export default function DashboardShell({ initialTab = 'home' }) {
 
                   <div className="client-form-grid client-form-grid-2">
                     {activeClientEditView?.columns
-                      ?.filter((columnKey) => columnKey !== 'name')
+                      ?.filter((columnKey) => !['name', 'cnpj', 'salesModel', 'implementationPhase', 'implementationObservation', 'startDate'].includes(columnKey))
                       .map((columnKey) => renderClientRegistryField(activeClient, columnKey, 'editor'))}
+                  </div>
+                </div>
+
+                <div className="integration-block">
+                  <div className="integration-heading">
+                    <div className="integration-icon" style={{ color: '#ef4444', borderColor: '#ef444433' }}>
+                      <i className="bx bx-git-branch"></i>
+                    </div>
+                    <div>
+                      <h3>Setup FWO</h3>
+                      <p>Direcione o cliente para a trilha certa de implementação, registre o contexto inicial e acompanhe os itens obrigatórios até o Go Live.</p>
+                    </div>
+                  </div>
+
+                  <div className="client-form-grid client-form-grid-2">
+                    {renderClientRegistryField(activeClient, 'salesModel', 'editor')}
+                    {renderClientRegistryField(activeClient, 'implementationPhase', 'editor')}
+                    {renderClientRegistryField(activeClient, 'startDate', 'editor')}
+                    {renderClientRegistryField(activeClient, 'implementationObservation', 'editor')}
+                  </div>
+
+                  <div className="client-fwo-checklist">
+                    <div className="client-fwo-checklist-head">
+                      <strong>Checklist obrigatório da fase</strong>
+                      <span>{activeClient.salesModel ? `Trilha ${activeClient.salesModel}` : 'Escolha um modelo de vendas para liberar os itens'}</span>
+                    </div>
+
+                    {(activeClient.implementationChecklist || []).length ? (
+                      <div className="client-fwo-checklist-grid">
+                        {activeClient.implementationChecklist.map((item) => (
+                          <button
+                            key={item.id}
+                            type="button"
+                            className={`stage-chip client-fwo-chip ${item.completed ? 'active' : ''}`}
+                            onClick={() => handleImplementationChecklistToggle(item.id)}
+                            disabled={!canEditActiveClient}
+                          >
+                            <i className={`bx ${item.completed ? 'bx-check-circle' : 'bx-circle'}`}></i>
+                            <span>{item.label}</span>
+                          </button>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="client-notes-empty">Selecione o modelo de vendas para gerar automaticamente os campos obrigatórios da fase.</div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="form-grid">
+                  <div className="integration-block">
+                    <div className="integration-heading">
+                      <div className="integration-icon" style={{ color: '#22c55e', borderColor: '#22c55e33' }}>
+                        <i className="bx bx-target-lock"></i>
+                      </div>
+                      <div>
+                        <h3>OKRs da conta</h3>
+                        <p>Registre objetivos recorrentes do cliente com período, ciclo e acompanhamento rápido por check.</p>
+                      </div>
+                    </div>
+
+                    <div className="client-okr-create">
+                      <div className="input-group client-okr-title-field">
+                        <label>Novo objetivo</label>
+                        <input
+                          type="text"
+                          value={newClientOkrTitle}
+                          onChange={(event) => setNewClientOkrTitle(event.target.value)}
+                          placeholder="Ex.: Atingir 40 leads qualificados por mês"
+                        />
+                      </div>
+                      <div className="input-group">
+                        <label>Periodicidade</label>
+                        <select value={newClientOkrCadence} onChange={(event) => setNewClientOkrCadence(event.target.value)}>
+                          {CLIENT_OKR_CADENCE_OPTIONS.map((option) => (
+                            <option key={option.value} value={option.value}>{option.label}</option>
+                          ))}
+                        </select>
+                      </div>
+                      {newClientOkrCadence === 'ciclo' && (
+                        <div className="input-group client-okr-cycle-field">
+                          <label>X dias</label>
+                          <input
+                            type="number"
+                            min="1"
+                            value={newClientOkrCycleDays}
+                            onChange={(event) => setNewClientOkrCycleDays(String(event.target.value || '').replace(/\D/g, '').slice(0, 3))}
+                            placeholder="30"
+                          />
+                        </div>
+                      )}
+                      <button type="button" className="btn btn-primary" onClick={handleAddClientOkr} disabled={!canEditActiveClient}>
+                        Adicionar OKR
+                      </button>
+                    </div>
+
+                    <div className="client-okr-list">
+                      {(activeClient.okrs || []).length ? (
+                        activeClient.okrs.map((okr) => (
+                          <div key={okr.id} className={`client-okr-item ${okr.completed ? 'completed' : ''}`}>
+                            <button type="button" className="client-okr-action ok" onClick={() => handleClientOkrToggle(okr.id)} aria-label="Concluir OKR">
+                              <i className={`bx ${okr.completed ? 'bx-check-square' : 'bx-check'}`}></i>
+                            </button>
+                            <div className="client-okr-fields">
+                              <input
+                                type="text"
+                                value={okr.title || ''}
+                                onChange={(event) => handleClientOkrFieldChange(okr.id, 'title', event.target.value)}
+                                placeholder="Nome do objetivo"
+                              />
+                              <div className="client-okr-meta">
+                                <select value={okr.cadence || 'mensal'} onChange={(event) => handleClientOkrFieldChange(okr.id, 'cadence', event.target.value)}>
+                                  {CLIENT_OKR_CADENCE_OPTIONS.map((option) => (
+                                    <option key={`${okr.id}-${option.value}`} value={option.value}>{option.label}</option>
+                                  ))}
+                                </select>
+                                {okr.cadence === 'ciclo' && (
+                                  <input
+                                    type="number"
+                                    min="1"
+                                    value={okr.cycleDays || ''}
+                                    onChange={(event) => handleClientOkrFieldChange(okr.id, 'cycleDays', event.target.value)}
+                                    placeholder="X dias"
+                                  />
+                                )}
+                              </div>
+                            </div>
+                            <button type="button" className="client-okr-action remove" onClick={() => handleRemoveClientOkr(okr.id)} aria-label="Remover OKR">
+                              <i className="bx bx-x"></i>
+                            </button>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="client-notes-empty">Nenhum OKR cadastrado para este cliente ainda.</div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="integration-block">
+                    <div className="integration-heading">
+                      <div className="integration-icon" style={{ color: '#a855f7', borderColor: '#a855f733' }}>
+                        <i className="bx bx-note"></i>
+                      </div>
+                      <div>
+                        <h3>Notas compartilhadas</h3>
+                        <p>Use este espaço para registrar atualizações, aprendizados de reunião e qualquer contexto importante da conta.</p>
+                      </div>
+                    </div>
+
+                    <div className="input-group">
+                      <label>Nova nota</label>
+                      <textarea
+                        value={newClientNoteBody}
+                        onChange={(event) => setNewClientNoteBody(event.target.value)}
+                        placeholder="Escreva uma atualização importante para a equipe..."
+                        rows={4}
+                      />
+                    </div>
+                    <div className="client-notes-actions">
+                      <button type="button" className="btn btn-primary" onClick={handleAddClientNote} disabled={!canEditActiveClient || !newClientNoteBody.trim()}>
+                        Adicionar nota
+                      </button>
+                    </div>
+
+                    <div className="client-notes-list">
+                      {(activeClient.notes || []).length ? (
+                        activeClient.notes.map((note) => (
+                          <article key={note.id} className="client-note-card">
+                            <div className="client-note-header">
+                              <strong>{note.authorName || 'Equipe'}</strong>
+                              <span>{formatClientDateTime(note.createdAt)}</span>
+                            </div>
+                            <p>{note.body}</p>
+                          </article>
+                        ))
+                      ) : (
+                        <div className="client-notes-empty">Nenhuma nota registrada ainda para este cliente.</div>
+                      )}
+                    </div>
                   </div>
                 </div>
 
@@ -13824,6 +14878,159 @@ export default function DashboardShell({ initialTab = 'home' }) {
           line-height: 1.5;
         }
 
+        .operation-toolbar-card,
+        .operation-table-card,
+        .operation-ticket-card,
+        .operation-lane-card {
+          border-radius: 24px;
+          border: 1px solid rgba(143, 144, 149, 0.14);
+          background:
+            linear-gradient(180deg, rgba(255, 255, 255, 0.028), rgba(255, 255, 255, 0.012)),
+            rgba(16, 19, 26, 0.92);
+          box-shadow: 0 16px 40px rgba(0, 0, 0, 0.2);
+        }
+
+        .operation-toolbar-card {
+          padding: 22px;
+          display: grid;
+          gap: 16px;
+        }
+
+        .operation-toolbar-top,
+        .operation-filter-row {
+          display: grid;
+          gap: 12px;
+        }
+
+        .operation-toolbar-top {
+          grid-template-columns: auto minmax(180px, 220px) minmax(220px, 280px) minmax(280px, 1fr);
+          align-items: center;
+        }
+
+        .operation-filter-row {
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+        }
+
+        .operation-view-switch,
+        .operation-search-box,
+        .operation-filter-row select {
+          min-height: 48px;
+          border-radius: 12px;
+          border: 1px solid var(--border-color);
+          background: rgba(255, 255, 255, 0.03);
+          color: var(--text-primary);
+        }
+
+        .operation-view-switch,
+        .operation-search-box {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 0 14px;
+        }
+
+        .operation-view-switch select,
+        .operation-filter-row select,
+        .operation-card-actions select,
+        .modal-card select {
+          width: 100%;
+          min-height: 48px;
+          border: none;
+          background: transparent;
+          color: inherit;
+          font: inherit;
+          outline: none;
+        }
+
+        .operation-search-box input {
+          width: 100%;
+          min-height: 46px;
+          border: none;
+          background: transparent;
+          color: inherit;
+          font: inherit;
+          outline: none;
+        }
+
+        .operation-kanban-board {
+          display: grid;
+          grid-template-columns: repeat(5, minmax(0, 1fr));
+          gap: 18px;
+          align-items: start;
+        }
+
+        .operation-lane-card {
+          padding: 18px;
+          display: grid;
+          gap: 16px;
+          min-height: 320px;
+        }
+
+        .operation-lane-head,
+        .operation-ticket-head,
+        .operation-card-item-head,
+        .operation-ticket-foot,
+        .operation-card-meta,
+        .operation-card-actions {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 10px;
+          flex-wrap: wrap;
+        }
+
+        .operation-lane-head span,
+        .operation-ticket-head span,
+        .operation-ticket-head small,
+        .operation-ticket-foot span,
+        .operation-card-item-head small,
+        .operation-card-meta span {
+          color: var(--text-muted);
+          font-size: 12px;
+        }
+
+        .operation-lane-list,
+        .operation-tickets-grid {
+          display: grid;
+          gap: 14px;
+        }
+
+        .operation-card-item,
+        .operation-ticket-card {
+          padding: 16px;
+          border-radius: 18px;
+          border: 1px solid rgba(255, 255, 255, 0.06);
+          background: rgba(255, 255, 255, 0.025);
+          display: grid;
+          gap: 12px;
+        }
+
+        .operation-card-item p,
+        .operation-ticket-card p {
+          margin: 0;
+          color: var(--text-secondary);
+          line-height: 1.5;
+        }
+
+        .operation-card-actions {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .operation-table-card {
+          padding: 20px;
+        }
+
+        .operation-tickets-grid {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+
+        .operation-ticket-tags {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px;
+        }
+
         .clients-metric-card-live {
           border-color: rgba(78, 222, 163, 0.18);
           background:
@@ -13893,6 +15100,28 @@ export default function DashboardShell({ initialTab = 'home' }) {
           align-items: center;
           gap: 10px;
           width: 100%;
+        }
+
+        .client-create-stack {
+          display: grid;
+          gap: 14px;
+        }
+
+        .client-create-grid-fields {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 12px;
+        }
+
+        .client-create-actions {
+          display: flex;
+          justify-content: flex-end;
+        }
+
+        .client-create-checklist-preview {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 10px;
         }
 
         .client-create-bar h3 {
@@ -15765,6 +16994,153 @@ export default function DashboardShell({ initialTab = 'home' }) {
           display: grid;
           gap: 18px;
           min-width: 0;
+        }
+
+        .client-fwo-checklist {
+          display: grid;
+          gap: 14px;
+          margin-top: 8px;
+        }
+
+        .client-fwo-checklist-head {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          gap: 12px;
+          flex-wrap: wrap;
+        }
+
+        .client-fwo-checklist-head strong {
+          font-size: 15px;
+        }
+
+        .client-fwo-checklist-head span {
+          color: var(--text-muted);
+          font-size: 12px;
+          letter-spacing: 0.04em;
+          text-transform: uppercase;
+        }
+
+        .client-fwo-checklist-grid {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 10px;
+        }
+
+        .client-fwo-chip {
+          cursor: pointer;
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          background: rgba(255, 255, 255, 0.025);
+        }
+
+        .client-fwo-chip.active {
+          border-color: rgba(34, 197, 94, 0.28);
+          background: rgba(34, 197, 94, 0.1);
+          color: #dcfce7;
+        }
+
+        .client-okr-create,
+        .client-okr-list,
+        .client-notes-list {
+          display: grid;
+          gap: 14px;
+        }
+
+        .client-okr-create {
+          grid-template-columns: minmax(0, 1.4fr) repeat(2, minmax(0, 0.7fr)) auto;
+          align-items: end;
+        }
+
+        .client-okr-title-field {
+          min-width: 0;
+        }
+
+        .client-okr-cycle-field {
+          max-width: 160px;
+        }
+
+        .client-okr-item {
+          display: grid;
+          grid-template-columns: auto minmax(0, 1fr) auto;
+          gap: 12px;
+          align-items: center;
+          padding: 14px;
+          border-radius: 18px;
+          border: 1px solid rgba(255, 255, 255, 0.06);
+          background: rgba(255, 255, 255, 0.025);
+        }
+
+        .client-okr-item.completed {
+          border-color: rgba(34, 197, 94, 0.28);
+          background: rgba(34, 197, 94, 0.08);
+        }
+
+        .client-okr-fields,
+        .client-okr-meta {
+          display: grid;
+          gap: 10px;
+          min-width: 0;
+        }
+
+        .client-okr-meta {
+          grid-template-columns: minmax(0, 200px) minmax(0, 140px);
+        }
+
+        .client-okr-action {
+          width: 42px;
+          height: 42px;
+          border-radius: 12px;
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          background: rgba(255, 255, 255, 0.03);
+          color: var(--text-primary);
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+        }
+
+        .client-okr-action.ok {
+          color: #22c55e;
+        }
+
+        .client-okr-action.remove {
+          color: #f87171;
+        }
+
+        .client-notes-actions {
+          display: flex;
+          justify-content: flex-end;
+        }
+
+        .client-note-card,
+        .client-notes-empty {
+          padding: 16px 18px;
+          border-radius: 18px;
+          border: 1px solid rgba(255, 255, 255, 0.06);
+          background: rgba(255, 255, 255, 0.025);
+        }
+
+        .client-note-card {
+          display: grid;
+          gap: 10px;
+        }
+
+        .client-note-card p,
+        .client-notes-empty {
+          color: var(--text-secondary);
+          white-space: pre-wrap;
+          margin: 0;
+        }
+
+        .client-note-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          color: var(--text-muted);
+          font-size: 12px;
+          letter-spacing: 0.04em;
+          text-transform: uppercase;
         }
 
         .dashboard-color-editor {
@@ -19375,6 +20751,20 @@ export default function DashboardShell({ initialTab = 'home' }) {
           box-sizing: border-box;
         }
 
+        .input-group textarea {
+          width: 100%;
+          min-height: 120px;
+          padding: 14px;
+          border-radius: 10px;
+          background: rgba(0, 0, 0, 0.2);
+          border: 1px solid var(--border-color);
+          color: white;
+          font-family: inherit;
+          font-size: 14px;
+          box-sizing: border-box;
+          resize: vertical;
+        }
+
         .client-select-input {
           width: 100%;
           min-height: 48px;
@@ -19404,6 +20794,11 @@ export default function DashboardShell({ initialTab = 'home' }) {
         }
 
         .input-group input:not([type="checkbox"]):focus {
+          outline: none;
+          border-color: var(--accent-blue);
+        }
+
+        .input-group textarea:focus {
           outline: none;
           border-color: var(--accent-blue);
         }
@@ -19555,10 +20950,21 @@ export default function DashboardShell({ initialTab = 'home' }) {
             flex-direction: column;
           }
 
+          .operation-toolbar-top,
+          .operation-filter-row,
+          .operation-kanban-board,
+          .operation-tickets-grid {
+            grid-template-columns: 1fr;
+          }
+
           .client-create-bar,
           .client-create-inline {
             flex-direction: column;
             align-items: stretch;
+          }
+
+          .client-create-grid-fields {
+            grid-template-columns: 1fr;
           }
 
           .source-section-header {
@@ -19620,6 +21026,8 @@ export default function DashboardShell({ initialTab = 'home' }) {
           .client-editor-overview-grid,
           .client-form-grid-2,
           .client-flag-grid,
+          .client-okr-create,
+          .client-okr-meta,
           .client-products-grid,
           .client-structure-grid,
           .context-dashboard-hero,

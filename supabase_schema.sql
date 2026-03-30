@@ -106,11 +106,15 @@ create table if not exists public.workspace_clients (
   workspace_id uuid not null references public.workspaces(id) on delete cascade,
   id text not null,
   name text not null,
+  cnpj text not null default '',
   payload jsonb not null default '{}'::jsonb,
   created_at timestamptz not null default timezone('utc', now()),
   updated_at timestamptz not null default timezone('utc', now()),
   primary key (workspace_id, id)
 );
+
+alter table public.workspace_clients
+  add column if not exists cnpj text not null default '';
 
 create table if not exists public.workspace_products (
   workspace_id uuid not null references public.workspaces(id) on delete cascade,
@@ -225,6 +229,10 @@ create table if not exists public.assistant_messages (
 
 create index if not exists workspace_clients_name_idx
   on public.workspace_clients (workspace_id, name);
+
+create unique index if not exists workspace_clients_cnpj_unique_idx
+  on public.workspace_clients (workspace_id, cnpj)
+  where cnpj <> '';
 
 create index if not exists workspace_products_name_idx
   on public.workspace_products (workspace_id, name);

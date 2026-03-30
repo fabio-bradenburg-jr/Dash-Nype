@@ -2,6 +2,9 @@ import { USER_ROLES } from '@/lib/server/access-control'
 import { DEFAULT_AI_SETTINGS, normalizeAiSettings } from '@/lib/ai-config'
 import type {
   AccessContextLike,
+  ClientChecklistItemRecord,
+  ClientNoteRecord,
+  ClientOkrRecord,
   ClientCustomColumnRecord,
   ClientCustomTabRecord,
   ClientGroupRecord,
@@ -10,6 +13,7 @@ import type {
   DashboardMetricLayout,
   DashboardPreferences,
   DashboardTemplate,
+  OperationCardRecord,
   ProductRecord,
 } from '@/lib/types/dashboard'
 
@@ -48,6 +52,130 @@ function isMissingRelationError(error: LooseRecord | null | undefined): boolean 
 
 function createRecordId(prefix: string): string {
   return globalThis.crypto?.randomUUID?.() || `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2, 10)}`
+}
+
+function normalizeClientOkrs(okrs: unknown): ClientOkrRecord[] {
+  if (!Array.isArray(okrs)) return []
+
+  return okrs.map((okr, index) => ({
+    id:
+      typeof okr?.id === 'string' && okr.id.trim()
+        ? okr.id
+        : createRecordId(`okr-${index + 1}`),
+    title: String(okr?.title || '').trim(),
+    cadence:
+      okr?.cadence === 'semanal' ||
+      okr?.cadence === 'quinzenal' ||
+      okr?.cadence === 'mensal' ||
+      okr?.cadence === 'trimestral' ||
+      okr?.cadence === 'quadrimestral' ||
+      okr?.cadence === 'anual' ||
+      okr?.cadence === 'ciclo'
+        ? okr.cadence
+        : 'mensal',
+    cycleDays: String(okr?.cycleDays || '').trim(),
+    completed: Boolean(okr?.completed),
+  }))
+}
+
+function normalizeClientNotes(notes: unknown): ClientNoteRecord[] {
+  if (!Array.isArray(notes)) return []
+
+  return notes
+    .map((note, index) => ({
+      id:
+        typeof note?.id === 'string' && note.id.trim()
+          ? note.id
+          : createRecordId(`note-${index + 1}`),
+      body: String(note?.body || '').trim(),
+      authorName: String(note?.authorName || '').trim(),
+      authorId: String(note?.authorId || '').trim(),
+      createdAt: String(note?.createdAt || '').trim(),
+    }))
+    .filter((note) => note.body)
+}
+
+function normalizeImplementationChecklist(items: unknown): ClientChecklistItemRecord[] {
+  if (!Array.isArray(items)) return []
+
+  return items
+    .map((item, index) => ({
+      id:
+        typeof item?.id === 'string' && item.id.trim()
+          ? item.id
+          : createRecordId(`implementation-item-${index + 1}`),
+      label: String(item?.label || '').trim(),
+      completed: Boolean(item?.completed),
+    }))
+    .filter((item) => item.label)
+}
+
+function getDefaultImplementationChecklist(salesModel: string): ClientChecklistItemRecord[] {
+  const templates: Record<string, string[]> = {
+    INSIDE_SALES: [
+      'Configuração do CRM',
+      'Treinamento da equipe de Inside Sales',
+      'Fluxo de comunicação e processos',
+      'Acompanhamento de métricas',
+    ],
+    ECOM: [
+      'Integração com a plataforma de e-commerce',
+      'Configuração de tracking',
+      'Teste de checkout e simulações de compra',
+      'Desempenho do site',
+    ],
+    PDV: [
+      'Integração do PDV com ERP/CRM',
+      'Tracking no PDV',
+      'Simulações de atendimento ao cliente',
+      'Sistema de gift card (se aplicável)',
+      'Acesso restrito a relatórios de faturamento',
+      'Conversões offline implementadas',
+    ],
+  }
+
+  return (templates[salesModel] || []).map((label, index) => ({
+    id: createRecordId(`implementation-item-${salesModel}-${index + 1}`),
+    label,
+    completed: false,
+  }))
+}
+
+function normalizeOperationCardTags(tags: unknown): string[] {
+  if (!Array.isArray(tags)) return []
+  return Array.from(new Set(tags.map((tag) => String(tag || '').trim()).filter(Boolean)))
+}
+
+function normalizeOperationCardRecord(card: LooseRecord): OperationCardRecord {
+  const now = new Date().toISOString()
+  return {
+    id: String(card?.id || createRecordId('operation-card')).trim(),
+    clientId: String(card?.clientId || '').trim(),
+    title: String(card?.title || 'Novo card').trim() || 'Novo card',
+    content: String(card?.content || '').trim(),
+    lane:
+      card?.lane === 'setup' ||
+      card?.lane === 'inside_sales' ||
+      card?.lane === 'ecom' ||
+      card?.lane === 'pdv' ||
+      card?.lane === 'ongoing'
+        ? card.lane
+        : 'setup',
+    status:
+      card?.status === 'aberto' ||
+      card?.status === 'em_andamento' ||
+      card?.status === 'bloqueado' ||
+      card?.status === 'concluido'
+        ? card.status
+        : 'aberto',
+    responsible: String(card?.responsible || '').trim(),
+    segment: String(card?.segment || '').trim(),
+    tier: String(card?.tier || '').trim(),
+    squad: String(card?.squad || '').trim(),
+    tags: normalizeOperationCardTags(card?.tags),
+    createdAt: String(card?.createdAt || now).trim() || now,
+    updatedAt: String(card?.updatedAt || now).trim() || now,
+  }
 }
 
 function normalizeTemplateMetricKeys(metricKeys: unknown): string[] {
@@ -154,9 +282,25 @@ function normalizeClientRecord(client: LooseRecord): ClientRecord {
   return {
     id: client?.id || payload.id || '',
     name: client?.name || payload.name || 'Novo cliente',
+    cnpj: client?.cnpj || payload.cnpj || '',
+    segment: payload.segment || '',
+    subsegment: payload.subsegment || '',
+    tier: payload.tier || '',
+    squad: payload.squad || '',
+    salesModel: payload.salesModel || '',
+    implementationPhase: payload.implementationPhase || '',
+    implementationObservation: payload.implementationObservation || '',
+    implementationChecklist: (() => {
+      const normalizedChecklist = normalizeImplementationChecklist(payload.implementationChecklist)
+      if (normalizedChecklist.length > 0) return normalizedChecklist
+      const salesModel = String(payload.salesModel || '').trim()
+      return salesModel ? getDefaultImplementationChecklist(salesModel) : []
+    })(),
     status: payload.status || 'Ativo',
     productId: payload.productId || '',
     product: payload.product || '',
+    okrs: normalizeClientOkrs(payload.okrs),
+    notes: normalizeClientNotes(payload.notes),
     customFieldValues: payload.customFieldValues && typeof payload.customFieldValues === 'object' ? payload.customFieldValues : {},
     contractSignedAt: payload.contractSignedAt || '',
     churnDate: payload.churnDate || '',
@@ -404,6 +548,7 @@ export async function getDashboardState(
       clients: [],
       clientGroups: [],
       products: [],
+      operationCards: [],
       clientSystemFields: [],
       clientCustomColumns: [],
       clientCustomTabs: [],
@@ -478,6 +623,11 @@ export async function getDashboardState(
     clients: filteredClients,
     clientGroups,
     products: (isMissingRelationError(productsError) ? [] : productRows || []).map(normalizeProductRecord),
+    operationCards: Array.isArray(preferencePayload.operationCards)
+      ? preferencePayload.operationCards.map(normalizeOperationCardRecord).filter((card) =>
+          accessContext.role === USER_ROLES.MASTER ? true : filteredClients.some((client) => client.id === card.clientId)
+        )
+      : [],
     clientSystemFields: Array.isArray(preferencePayload.clientSystemFields)
       ? preferencePayload.clientSystemFields.map(normalizeClientCustomColumnRecord)
       : [],
@@ -499,7 +649,7 @@ export async function saveDashboardState(
     throw new Error('Usuario sem workspace vinculado.')
   }
 
-  if (!accessContext.canManageClients) {
+  if (!accessContext.canManageClients && !(Array.isArray(accessContext.editableClientIds) && accessContext.editableClientIds.length > 0)) {
     throw new Error('Seu usuario nao tem permissao para editar os clientes.')
   }
 
@@ -509,6 +659,9 @@ export async function saveDashboardState(
     : []
   const submittedProducts = Array.isArray(state.products)
     ? state.products.map(normalizeProductRecord)
+    : []
+  const submittedOperationCards = Array.isArray(state.operationCards)
+    ? state.operationCards.map(normalizeOperationCardRecord)
     : []
   const submittedClientSystemFields = Array.isArray(state.clientSystemFields)
     ? state.clientSystemFields.map(normalizeClientCustomColumnRecord)
@@ -560,6 +713,7 @@ export async function saveDashboardState(
           metric_1: state.metric1 || 'spend',
           metric_2: state.metric2 || 'roas',
           payload: {
+            operationCards: submittedOperationCards,
             clientSystemFields: submittedClientSystemFields,
             clientCustomColumns: submittedClientCustomColumns,
             clientCustomTabs: submittedClientCustomTabs,
@@ -727,6 +881,7 @@ export async function saveDashboardState(
 
   const editableIds = new Set(accessContext.editableClientIds)
   const editableClients = submittedClients.filter((client) => editableIds.has(client.id))
+  const editableOperationCards = submittedOperationCards.filter((card) => editableIds.has(card.clientId))
 
   if (editableClients.length > 0) {
     const { error: upsertError } = await adminSupabase
@@ -748,6 +903,31 @@ export async function saveDashboardState(
       )
 
     if (upsertError) throw upsertError
+  }
+
+  if (editableOperationCards.length > 0) {
+    const currentState = await getDashboardState(adminSupabase, accessContext)
+    const preservedOperationCards = (currentState.operationCards || []).filter((card) => !editableIds.has(card.clientId))
+
+    const { error: preferenceError } = await adminSupabase
+      .from('workspace_preferences')
+      .upsert(
+        {
+          workspace_id: accessContext.workspaceId,
+          theme_color: state.themeColor || currentState.themeColor || 'blue',
+          metric_1: state.metric1 || currentState.metric1 || 'spend',
+          metric_2: state.metric2 || currentState.metric2 || 'roas',
+          payload: {
+            operationCards: [...preservedOperationCards, ...editableOperationCards],
+            clientSystemFields: submittedClientSystemFields.length ? submittedClientSystemFields : currentState.clientSystemFields,
+            clientCustomColumns: submittedClientCustomColumns.length ? submittedClientCustomColumns : currentState.clientCustomColumns,
+            clientCustomTabs: submittedClientCustomTabs.length ? submittedClientCustomTabs : currentState.clientCustomTabs,
+          },
+        },
+        { onConflict: 'workspace_id' }
+      )
+
+    if (preferenceError) throw preferenceError
   }
 
   return getDashboardState(adminSupabase, accessContext)

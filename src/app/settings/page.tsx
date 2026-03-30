@@ -235,6 +235,13 @@ const DEFAULT_CLIENT_FIELD_TABS = [
 
 const DEFAULT_CLIENT_SYSTEM_FIELDS: ClientCustomColumnRecord[] = [
   createClientCustomColumnRecord({ key: 'name', label: 'Cliente', type: 'text', tabKey: 'geral' }),
+  createClientCustomColumnRecord({ key: 'cnpj', label: 'CNPJ', type: 'text', tabKey: 'geral', settings: { placeholder: '00.000.000/0000-00' } }),
+  createClientCustomColumnRecord({ key: 'segment', label: 'Segmento', type: 'text', tabKey: 'geral' }),
+  createClientCustomColumnRecord({ key: 'subsegment', label: 'Subsegmento', type: 'text', tabKey: 'geral' }),
+  createClientCustomColumnRecord({ key: 'tier', label: 'Tier', type: 'text', tabKey: 'geral' }),
+  createClientCustomColumnRecord({ key: 'squad', label: 'Squad', type: 'text', tabKey: 'dados' }),
+  createClientCustomColumnRecord({ key: 'salesModel', label: 'Modelo de Vendas', type: 'select', tabKey: 'geral', options: ['INSIDE_SALES', 'ECOM', 'PDV'] }),
+  createClientCustomColumnRecord({ key: 'implementationPhase', label: 'Fase FWO', type: 'select', tabKey: 'geral', options: ['Implementação (Inside Sales)', 'Implementação (Ecom)', 'Implementação (PDV)'] }),
   createClientCustomColumnRecord({ key: 'status', label: 'Status', type: 'select', tabKey: 'geral', options: ['Ativo', 'Onboarding', 'Pausado', 'Risco', 'Churn'] }),
   createClientCustomColumnRecord({ key: 'product', label: 'Produto', type: 'text', tabKey: 'geral' }),
   createClientCustomColumnRecord({ key: 'fee', label: 'Fee', type: 'currency', tabKey: 'geral', settings: { currencyCode: 'BRL' } }),
@@ -242,6 +249,7 @@ const DEFAULT_CLIENT_SYSTEM_FIELDS: ClientCustomColumnRecord[] = [
   createClientCustomColumnRecord({ key: 'contractSignedAt', label: 'Assinatura do Contrato', type: 'date', tabKey: 'geral', settings: { dateFormat: 'dd/MM/yyyy' } }),
   createClientCustomColumnRecord({ key: 'churnDate', label: 'Data de Churn', type: 'date', tabKey: 'geral', settings: { dateFormat: 'dd/MM/yyyy' } }),
   createClientCustomColumnRecord({ key: 'startDate', label: 'Data de Início', type: 'date', tabKey: 'geral', settings: { dateFormat: 'dd/MM/yyyy' } }),
+  createClientCustomColumnRecord({ key: 'implementationObservation', label: 'Observação da Implementação', type: 'long_text', tabKey: 'dados' }),
   createClientCustomColumnRecord({ key: 'step', label: 'STEP', type: 'text', tabKey: 'geral' }),
   createClientCustomColumnRecord({ key: 'ltv', label: 'LTV', type: 'currency', tabKey: 'geral', settings: { currencyCode: 'BRL' } }),
   createClientCustomColumnRecord({ key: 'monthlyRevenue', label: 'Faturamento', type: 'currency', tabKey: 'financeiro', settings: { currencyCode: 'BRL' } }),
@@ -2613,14 +2621,12 @@ export default function SettingsPage() {
       <style jsx>{`
         .settings-main {
           width: 100%;
-        }
-
-        .settings-main {
-          width: 100%;
           display: grid;
-          grid-template-columns: minmax(220px, 260px) minmax(0, 1fr);
-          gap: 24px;
+          grid-template-columns: minmax(210px, 236px) minmax(0, 1fr);
+          gap: 14px;
           align-items: start;
+          padding-left: 0 !important;
+          margin-left: 0 !important;
         }
 
         .settings-panel {
@@ -2663,6 +2669,8 @@ export default function SettingsPage() {
           position: sticky;
           top: 24px;
           align-self: start;
+          justify-self: start;
+          width: 100%;
           max-height: fit-content;
           overflow: visible;
           background: rgba(25, 28, 34, 0.78);

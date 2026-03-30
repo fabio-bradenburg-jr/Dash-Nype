@@ -31,6 +31,44 @@ export interface ProductRecord {
   status: string
 }
 
+export interface ClientOkrRecord {
+  id: string
+  title: string
+  cadence: 'semanal' | 'quinzenal' | 'mensal' | 'trimestral' | 'quadrimestral' | 'anual' | 'ciclo'
+  cycleDays: string
+  completed: boolean
+}
+
+export interface ClientNoteRecord {
+  id: string
+  body: string
+  authorName: string
+  authorId: string
+  createdAt: string
+}
+
+export interface ClientChecklistItemRecord {
+  id: string
+  label: string
+  completed: boolean
+}
+
+export interface OperationCardRecord {
+  id: string
+  clientId: string
+  title: string
+  content: string
+  lane: 'setup' | 'inside_sales' | 'ecom' | 'pdv' | 'ongoing'
+  status: 'aberto' | 'em_andamento' | 'bloqueado' | 'concluido'
+  responsible: string
+  segment: string
+  tier: string
+  squad: string
+  tags: string[]
+  createdAt: string
+  updatedAt: string
+}
+
 export interface ClientCustomColumnRecord {
   id: string
   key: string
@@ -83,9 +121,20 @@ export type DashboardIntegrations = AiSettings & {
 export interface ClientRecord {
   id: string
   name: string
+  cnpj: string
+  segment: string
+  subsegment: string
+  tier: string
+  squad: string
+  salesModel: string
+  implementationPhase: string
+  implementationObservation: string
+  implementationChecklist: ClientChecklistItemRecord[]
   status: string
   productId: string
   product: string
+  okrs: ClientOkrRecord[]
+  notes: ClientNoteRecord[]
   customFieldValues: Record<string, string>
   contractSignedAt: string
   churnDate: string
@@ -157,6 +206,7 @@ export interface DashboardPreferences {
   clients: ClientRecord[]
   clientGroups: ClientGroupRecord[]
   products: ProductRecord[]
+  operationCards: OperationCardRecord[]
   clientSystemFields: ClientCustomColumnRecord[]
   clientCustomColumns: ClientCustomColumnRecord[]
   clientCustomTabs: ClientCustomTabRecord[]

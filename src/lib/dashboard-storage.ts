@@ -1,5 +1,8 @@
 import { DEFAULT_AI_SETTINGS, normalizeAiSettings } from '@/lib/ai-config'
 import type {
+  ClientChecklistItemRecord,
+  ClientNoteRecord,
+  ClientOkrRecord,
   ClientCustomColumnRecord,
   ClientCustomTabRecord,
   ClientGroupRecord,
@@ -8,6 +11,7 @@ import type {
   DashboardMetricLayout,
   DashboardPreferences,
   DashboardTemplate,
+  OperationCardRecord,
   ProductRecord,
 } from '@/lib/types/dashboard'
 
@@ -22,6 +26,128 @@ type ClientCustomTabOverrides = Partial<ClientCustomTabRecord>
 function normalizeClientCustomColumnOptions(options: unknown): string[] {
   if (!Array.isArray(options)) return []
   return Array.from(new Set(options.map((option) => String(option || '').trim()).filter(Boolean)))
+}
+
+function normalizeClientOkrs(okrs: unknown): ClientOkrRecord[] {
+  if (!Array.isArray(okrs)) return []
+
+  return okrs.map((okr, index) => ({
+    id:
+      typeof okr?.id === 'string' && okr.id.trim()
+        ? okr.id
+        : createRecordId(`okr-${index + 1}`),
+    title: String(okr?.title || '').trim(),
+    cadence:
+      okr?.cadence === 'semanal' ||
+      okr?.cadence === 'quinzenal' ||
+      okr?.cadence === 'mensal' ||
+      okr?.cadence === 'trimestral' ||
+      okr?.cadence === 'quadrimestral' ||
+      okr?.cadence === 'anual' ||
+      okr?.cadence === 'ciclo'
+        ? okr.cadence
+        : 'mensal',
+    cycleDays: String(okr?.cycleDays || '').trim(),
+    completed: Boolean(okr?.completed),
+  }))
+}
+
+function normalizeClientNotes(notes: unknown): ClientNoteRecord[] {
+  if (!Array.isArray(notes)) return []
+
+  return notes
+    .map((note, index) => ({
+      id:
+        typeof note?.id === 'string' && note.id.trim()
+          ? note.id
+          : createRecordId(`note-${index + 1}`),
+      body: String(note?.body || '').trim(),
+      authorName: String(note?.authorName || '').trim(),
+      authorId: String(note?.authorId || '').trim(),
+      createdAt: String(note?.createdAt || '').trim(),
+    }))
+    .filter((note) => note.body)
+}
+
+function normalizeImplementationChecklist(items: unknown): ClientChecklistItemRecord[] {
+  if (!Array.isArray(items)) return []
+
+  return items.map((item, index) => ({
+    id:
+      typeof item?.id === 'string' && item.id.trim()
+        ? item.id
+        : createRecordId(`implementation-item-${index + 1}`),
+    label: String(item?.label || '').trim(),
+    completed: Boolean(item?.completed),
+  })).filter((item) => item.label)
+}
+
+function getDefaultImplementationChecklist(salesModel: string): ClientChecklistItemRecord[] {
+  const templates: Record<string, string[]> = {
+    INSIDE_SALES: [
+      'Configuração do CRM',
+      'Treinamento da equipe de Inside Sales',
+      'Fluxo de comunicação e processos',
+      'Acompanhamento de métricas',
+    ],
+    ECOM: [
+      'Integração com a plataforma de e-commerce',
+      'Configuração de tracking',
+      'Teste de checkout e simulações de compra',
+      'Desempenho do site',
+    ],
+    PDV: [
+      'Integração do PDV com ERP/CRM',
+      'Tracking no PDV',
+      'Simulações de atendimento ao cliente',
+      'Sistema de gift card (se aplicável)',
+      'Acesso restrito a relatórios de faturamento',
+      'Conversões offline implementadas',
+    ],
+  }
+
+  return (templates[salesModel] || []).map((label, index) => ({
+    id: createRecordId(`implementation-item-${salesModel}-${index + 1}`),
+    label,
+    completed: false,
+  }))
+}
+
+function normalizeOperationCardTags(tags: unknown): string[] {
+  if (!Array.isArray(tags)) return []
+  return Array.from(new Set(tags.map((tag) => String(tag || '').trim()).filter(Boolean)))
+}
+
+export function createOperationCardRecord(overrides: Partial<OperationCardRecord> = {}): OperationCardRecord {
+  const now = new Date().toISOString()
+  return {
+    id: overrides.id || createRecordId('operation-card'),
+    clientId: String(overrides.clientId || '').trim(),
+    title: String(overrides.title || 'Novo card').trim() || 'Novo card',
+    content: String(overrides.content || '').trim(),
+    lane:
+      overrides.lane === 'setup' ||
+      overrides.lane === 'inside_sales' ||
+      overrides.lane === 'ecom' ||
+      overrides.lane === 'pdv' ||
+      overrides.lane === 'ongoing'
+        ? overrides.lane
+        : 'setup',
+    status:
+      overrides.status === 'aberto' ||
+      overrides.status === 'em_andamento' ||
+      overrides.status === 'bloqueado' ||
+      overrides.status === 'concluido'
+        ? overrides.status
+        : 'aberto',
+    responsible: String(overrides.responsible || '').trim(),
+    segment: String(overrides.segment || '').trim(),
+    tier: String(overrides.tier || '').trim(),
+    squad: String(overrides.squad || '').trim(),
+    tags: normalizeOperationCardTags(overrides.tags),
+    createdAt: String(overrides.createdAt || now).trim() || now,
+    updatedAt: String(overrides.updatedAt || now).trim() || now,
+  }
 }
 
 export const DEFAULT_INTEGRATIONS: DashboardIntegrations = {
@@ -62,6 +188,7 @@ export const DEFAULT_PREFERENCES: DashboardPreferences = {
   clients: [],
   clientGroups: [],
   products: [],
+  operationCards: [],
   clientSystemFields: [],
   clientCustomColumns: [],
   clientCustomTabs: [],
@@ -345,6 +472,22 @@ export function createClientRecord(overrides: ClientRecordOverrides = {}): Clien
     rdQualifiedStages: [],
     funnelSteps: ['impressions', 'clicks', 'leads', 'purchases'],
     ...overrides,
+    cnpj: String(overrides.cnpj || '').trim(),
+    segment: String(overrides.segment || '').trim(),
+    subsegment: String(overrides.subsegment || '').trim(),
+    tier: String(overrides.tier || '').trim(),
+    squad: String(overrides.squad || '').trim(),
+    salesModel: String(overrides.salesModel || '').trim(),
+    implementationPhase: String(overrides.implementationPhase || '').trim(),
+    implementationObservation: String(overrides.implementationObservation || '').trim(),
+    implementationChecklist: (() => {
+      const normalizedChecklist = normalizeImplementationChecklist(overrides.implementationChecklist)
+      if (normalizedChecklist.length > 0) return normalizedChecklist
+      const salesModel = String(overrides.salesModel || '').trim()
+      return salesModel ? getDefaultImplementationChecklist(salesModel) : []
+    })(),
+    okrs: normalizeClientOkrs(overrides.okrs),
+    notes: normalizeClientNotes(overrides.notes),
     googleSheetsHeaderRow: Number.isFinite(Number(overrides.googleSheetsHeaderRow)) && Number(overrides.googleSheetsHeaderRow) > 0
       ? Number(overrides.googleSheetsHeaderRow)
       : 1,
@@ -389,6 +532,9 @@ export function loadDashboardPreferences(): DashboardPreferences {
         : [],
       products: Array.isArray(parsed.products)
         ? parsed.products.map((product) => createProductRecord(product))
+        : [],
+      operationCards: Array.isArray(parsed.operationCards)
+        ? parsed.operationCards.map((card) => createOperationCardRecord(card))
         : [],
       clientSystemFields: Array.isArray(parsed.clientSystemFields)
         ? parsed.clientSystemFields.map((column) => createClientCustomColumnRecord(column))
