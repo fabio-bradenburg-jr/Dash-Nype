@@ -2714,6 +2714,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
   const [operationViewMode, setOperationViewMode] = useState('kanban')
   const [operationPeriodFilter, setOperationPeriodFilter] = useState('all')
   const [operationSearch, setOperationSearch] = useState('')
+  const [shellSearch, setShellSearch] = useState('')
   const [operationSegmentFilter, setOperationSegmentFilter] = useState('all')
   const [operationTierFilter, setOperationTierFilter] = useState('all')
   const [operationSquadFilter, setOperationSquadFilter] = useState('all')
@@ -10548,6 +10549,44 @@ export default function DashboardShell({ initialTab = 'home' }) {
     setIsHomeToolsExpanded((current) => !current)
   }
 
+  const shouldShowGlobalAppBar = activeTab !== 'home'
+  const appBarPlaceholder = (() => {
+    if (activeTab === 'operacao') return 'Search operations...'
+    if (activeTab === 'clientes') return 'Buscar clientes...'
+    if (activeTab === 'usuarios') return 'Buscar usuários...'
+    if (activeTab === 'produtos') return 'Buscar produtos...'
+    if (activeTab === 'apresentacao') return 'Buscar dashboards e campanhas...'
+    if (activeTab === 'assistant') return 'Buscar conversas e prompts...'
+    if (activeTab === 'calendar') return 'Buscar eventos e agendas...'
+    if (activeTab === 'contexto') return 'Buscar indicadores e contexto...'
+    if (activeTab === 'clickup') return 'Buscar tarefas do ClickUp...'
+    if (activeTab === 'monday') return 'Buscar itens do Monday...'
+    return 'Buscar no app...'
+  })()
+  const appBarSearchValue =
+    activeTab === 'operacao'
+      ? operationSearch
+      : activeTab === 'clientes'
+        ? clientSearch
+        : activeTab === 'usuarios'
+          ? userSearch
+          : shellSearch
+  const handleAppBarSearchChange = (value) => {
+    if (activeTab === 'operacao') {
+      setOperationSearch(value)
+      return
+    }
+    if (activeTab === 'clientes') {
+      setClientSearch(value)
+      return
+    }
+    if (activeTab === 'usuarios') {
+      setUserSearch(value)
+      return
+    }
+    setShellSearch(value)
+  }
+
   return (
     <div className="dashboard-container dashboard-shell-stellar">
       <aside className={`sidebar glass-panel ${isSidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
@@ -10821,6 +10860,43 @@ export default function DashboardShell({ initialTab = 'home' }) {
             )}
           </div>
         </header>
+
+        {shouldShowGlobalAppBar && (
+          <div className="operation-stellar-topbar app-shell-topbar">
+            <div className="operation-stellar-brand">
+              <span>Stellar Ops</span>
+            </div>
+            <div className="operation-stellar-search">
+              <i className="bx bx-search-alt"></i>
+              <input
+                type="text"
+                value={appBarSearchValue}
+                onChange={(event) => handleAppBarSearchChange(event.target.value)}
+                placeholder={appBarPlaceholder}
+              />
+            </div>
+            <div className="operation-stellar-actions">
+              <button type="button" className="operation-stellar-icon-button" aria-label="Notificações">
+                <i className="bx bx-bell"></i>
+              </button>
+              <a href="/settings" className="operation-stellar-icon-button" aria-label="Configurações">
+                <i className="bx bx-cog"></i>
+              </a>
+              <button type="button" className="operation-stellar-icon-button" aria-label="Ajuda">
+                <i className="bx bx-help-circle"></i>
+              </button>
+              <div className="operation-stellar-user">
+                <div>
+                  <strong>{profile?.full_name || 'Commander Echo'}</strong>
+                  <span>{role === 'master' ? 'Fleet Lead' : 'Operations'}</span>
+                </div>
+                <span className="operation-stellar-user-avatar">
+                  {(profile?.full_name || user?.email || 'U').trim().slice(0, 1).toUpperCase()}
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
 
         {activeTab === 'apresentacao' && isDashboardEntryModalOpen && clients.length > 1 && (
           <div className="modal-overlay" onClick={() => setIsDashboardEntryModalOpen(false)}>
@@ -11352,41 +11428,6 @@ export default function DashboardShell({ initialTab = 'home' }) {
         {activeTab === 'operacao' && (
           <section className="clients-layout operations-module">
             <div className="operation-stellar-shell">
-              <div className="operation-stellar-topbar">
-                <div className="operation-stellar-brand">
-                  <span>Stellar Ops</span>
-                </div>
-                <div className="operation-stellar-search">
-                  <i className="bx bx-search-alt"></i>
-                  <input
-                    type="text"
-                    value={operationSearch}
-                    onChange={(event) => setOperationSearch(event.target.value)}
-                    placeholder="Search operations..."
-                  />
-                </div>
-                <div className="operation-stellar-actions">
-                  <button type="button" className="operation-stellar-icon-button" aria-label="Notificações">
-                    <i className="bx bx-bell"></i>
-                  </button>
-                  <button type="button" className="operation-stellar-icon-button" aria-label="Configurações">
-                    <i className="bx bx-cog"></i>
-                  </button>
-                  <button type="button" className="operation-stellar-icon-button" aria-label="Ajuda">
-                    <i className="bx bx-help-circle"></i>
-                  </button>
-                  <div className="operation-stellar-user">
-                    <div>
-                      <strong>{profile?.full_name || 'Commander Echo'}</strong>
-                      <span>{role === 'master' ? 'Fleet Lead' : 'Operations'}</span>
-                    </div>
-                    <span className="operation-stellar-user-avatar">
-                      {(profile?.full_name || user?.email || 'U').trim().slice(0, 1).toUpperCase()}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
               <div className="operation-stellar-hero">
                 <div className="operation-stellar-hero-copy">
                   <h2>Operations Board</h2>
@@ -15997,6 +16038,10 @@ export default function DashboardShell({ initialTab = 'home' }) {
           gap: 24px;
         }
 
+        .app-shell-topbar {
+          margin-bottom: 28px;
+        }
+
         .operation-stellar-brand span {
           color: #7da2ff;
           font-size: 22px;
@@ -16048,6 +16093,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
           align-items: center;
           justify-content: center;
           cursor: pointer;
+          text-decoration: none;
         }
 
         .operation-stellar-icon-button i {
@@ -16296,16 +16342,30 @@ export default function DashboardShell({ initialTab = 'home' }) {
         }
 
         .operation-stellar-board .operation-lane-head {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) auto;
+          align-items: center;
+          gap: 12px;
           padding: 0 0 16px;
+          min-height: 44px;
         }
 
         .operation-stellar-board .operation-lane-head strong {
+          min-width: 0;
+          display: inline-flex;
+          align-items: center;
+          gap: 12px;
           color: #eef2ff;
-          font-size: 18px;
+          font-size: 15px;
           font-weight: 700;
+          line-height: 1.2;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
         }
 
         .operation-stellar-board .operation-lane-head span:last-child {
+          flex-shrink: 0;
           min-width: 28px;
           height: 28px;
           border-radius: 999px;
