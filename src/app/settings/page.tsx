@@ -9,6 +9,9 @@ import { USER_APPEARANCE_PRESETS } from '@/lib/user-appearance-storage'
 import {
   createClientCustomColumnRecord,
   createClientCustomTabRecord,
+  createOperationLaneRecord,
+  createOperationSettingsRecord,
+  createOperationStatusRecord,
   DEFAULT_PREFERENCES,
   loadDashboardPreferences,
   saveDashboardPreferences,
@@ -29,6 +32,7 @@ import type {
   ClientCustomTabRecord,
   ClientRecord,
   DashboardIntegrations,
+  OperationSettingsRecord,
 } from '@/lib/types/dashboard'
 import type { UserAppearance } from '@/lib/types/user'
 
@@ -63,6 +67,7 @@ type GlobalIntegrationsState = DashboardIntegrations & Record<string, unknown>
 interface SettingsServerState {
   globalIntegrations?: Partial<GlobalIntegrationsState>
   clients?: ClientRecord[]
+  operationSettings?: OperationSettingsRecord
   clientSystemFields?: ClientCustomColumnRecord[]
   clientCustomColumns?: ClientCustomColumnRecord[]
   clientCustomTabs?: ClientCustomTabRecord[]
@@ -394,6 +399,10 @@ export default function SettingsPage() {
       ? preferences.clientSystemFields
       : DEFAULT_CLIENT_SYSTEM_FIELDS
   })
+  const [operationSettings, setOperationSettings] = useState<OperationSettingsRecord>(() => {
+    const preferences = loadDashboardPreferences()
+    return createOperationSettingsRecord(preferences.operationSettings)
+  })
   const [clientCustomColumns, setClientCustomColumns] = useState<ClientCustomColumnRecord[]>(() => {
     const preferences = loadDashboardPreferences()
     return Array.isArray(preferences.clientCustomColumns) ? preferences.clientCustomColumns : []
@@ -409,6 +418,8 @@ export default function SettingsPage() {
   const [newClientColumnOptionDraft, setNewClientColumnOptionDraft] = useState('')
   const [newClientColumnFormula, setNewClientColumnFormula] = useState('')
   const [newClientTabLabel, setNewClientTabLabel] = useState('')
+  const [newOperationLaneLabel, setNewOperationLaneLabel] = useState('')
+  const [newOperationStatusLabel, setNewOperationStatusLabel] = useState('')
   const [systemFieldOptionDrafts, setSystemFieldOptionDrafts] = useState<Record<string, string>>({})
   const [customFieldOptionDrafts, setCustomFieldOptionDrafts] = useState<Record<string, string>>({})
   const metaConnectionMode = globalIntegrations.metaConnectionMode === 'oauth' ? 'oauth' : 'manual'
@@ -596,6 +607,7 @@ export default function SettingsPage() {
             ? state.clientSystemFields
             : DEFAULT_CLIENT_SYSTEM_FIELDS
         )
+        setOperationSettings(createOperationSettingsRecord(state.operationSettings))
         setClientCustomColumns(Array.isArray(state.clientCustomColumns) ? state.clientCustomColumns : [])
         setClientCustomTabs(Array.isArray(state.clientCustomTabs) ? state.clientCustomTabs : [])
     } catch (error) {
@@ -990,6 +1002,37 @@ export default function SettingsPage() {
     [canManageClients, serverState]
   )
 
+  const persistOperationSettings = useCallback(
+    async (nextOperationSettings: OperationSettingsRecord) => {
+      const preferences = loadDashboardPreferences()
+      saveDashboardPreferences({
+        ...preferences,
+        operationSettings: nextOperationSettings,
+      })
+
+      if (canManageClients && serverState) {
+        const response = await fetch('/api/dashboard/state', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            ...serverState,
+            operationSettings: nextOperationSettings,
+          }),
+        })
+
+        const data = await response.json().catch(() => null)
+        if (!response.ok) {
+          throw new Error(data?.error || 'Não foi possível salvar a configuração da operação.')
+        }
+
+        setServerState(data)
+      }
+    },
+    [canManageClients, serverState]
+  )
+
   const handleCreateClientCustomColumn = () => {
     if (!canManageClients) return
     const trimmedLabel = newClientColumnLabel.trim()
@@ -1015,6 +1058,107 @@ export default function SettingsPage() {
     setNewClientColumnOptionDraft('')
     setNewClientColumnFormula('')
     setSettingsSaveFeedback('Campo salvo em Configurações e sincronizado com a base.')
+  }
+
+  const handleOperationLaneFieldChange = (laneId: string, fieldName: 'label' | 'color' | 'defaultSubtasks', value: string) => {
+    const nextSettings = {
+      ...operationSettings,
+      lanes: operationSettings.lanes.map((lane) =>
+        lane.id === laneId
+          ? {
+              ...lane,
+              [fieldName]: fieldName === 'defaultSubtasks'
+                ? normalizeSelectOptionsInput(value)
+                : value,
+            }
+          : lane
+      ),
+    }
+
+    setOperationSettings(nextSettings)
+    void persistOperationSettings(nextSettings)
+  }
+
+  const handleCreateOperationLane = () => {
+    if (!newOperationLaneLabel.trim()) return
+
+    const nextSettings = {
+      ...operationSettings,
+      lanes: [
+        ...operationSettings.lanes,
+        createOperationLaneRecord({
+          label: newOperationLaneLabel.trim(),
+          color: '#3b82f6',
+          defaultSubtasks: [],
+        }),
+      ],
+    }
+
+    setOperationSettings(nextSettings)
+    setNewOperationLaneLabel('')
+    void persistOperationSettings(nextSettings)
+  }
+
+  const handleRemoveOperationLane = (laneId: string) => {
+    const nextLanes = operationSettings.lanes.filter((lane) => lane.id !== laneId)
+    if (!nextLanes.length) return
+
+    const nextSettings = {
+      ...operationSettings,
+      lanes: nextLanes,
+    }
+
+    setOperationSettings(nextSettings)
+    void persistOperationSettings(nextSettings)
+  }
+
+  const handleOperationStatusFieldChange = (statusId: string, fieldName: 'label' | 'color', value: string) => {
+    const nextSettings = {
+      ...operationSettings,
+      statuses: operationSettings.statuses.map((status) =>
+        status.id === statusId
+          ? {
+              ...status,
+              [fieldName]: value,
+            }
+          : status
+      ),
+    }
+
+    setOperationSettings(nextSettings)
+    void persistOperationSettings(nextSettings)
+  }
+
+  const handleCreateOperationStatus = () => {
+    if (!newOperationStatusLabel.trim()) return
+
+    const nextSettings = {
+      ...operationSettings,
+      statuses: [
+        ...operationSettings.statuses,
+        createOperationStatusRecord({
+          label: newOperationStatusLabel.trim(),
+          color: '#3b82f6',
+        }),
+      ],
+    }
+
+    setOperationSettings(nextSettings)
+    setNewOperationStatusLabel('')
+    void persistOperationSettings(nextSettings)
+  }
+
+  const handleRemoveOperationStatus = (statusId: string) => {
+    const nextStatuses = operationSettings.statuses.filter((status) => status.id !== statusId)
+    if (!nextStatuses.length) return
+
+    const nextSettings = {
+      ...operationSettings,
+      statuses: nextStatuses,
+    }
+
+    setOperationSettings(nextSettings)
+    void persistOperationSettings(nextSettings)
   }
 
   const handleCreateClientCustomTab = () => {
@@ -1253,6 +1397,7 @@ export default function SettingsPage() {
     if (canManageClients) {
       try {
         await persistGlobalIntegrations(globalIntegrations)
+        await persistOperationSettings(operationSettings)
         feedbackMessages.push('Configurações da operação sincronizadas com sucesso.')
       } catch (error) {
         setSettingsSaveFeedback(
@@ -1307,80 +1452,81 @@ export default function SettingsPage() {
       </aside>
 
       <main className="main-content settings-main">
-        <aside className="glass-item settings-section-sidebar">
-          <div className="settings-sidebar-title">
-            <span>Configuração</span>
-            <strong>Ajustes da operação</strong>
-          </div>
+        <div className="settings-workspace">
+          <aside className="glass-item settings-section-sidebar">
+            <div className="settings-sidebar-title">
+              <span>Configuração</span>
+              <strong>Ajustes da operação</strong>
+            </div>
 
-          <div className="settings-sidebar-nav">
-            <button
-              type="button"
-              className={`settings-sidebar-link ${activeSettingsTab === 'panel' ? 'active' : ''}`}
-              onClick={() => handleSettingsTabChange('panel')}
-            >
-              <i className="bx bx-layout"></i>
-              <div>
-                <strong>Interface</strong>
-                <span>Modo, destaque e atmosfera do sistema.</span>
-              </div>
-            </button>
+            <div className="settings-sidebar-nav">
+              <button
+                type="button"
+                className={`settings-sidebar-link ${activeSettingsTab === 'panel' ? 'active' : ''}`}
+                onClick={() => handleSettingsTabChange('panel')}
+              >
+                <i className="bx bx-layout"></i>
+                <div>
+                  <strong>Interface</strong>
+                  <span>Modo, destaque e atmosfera do sistema.</span>
+                </div>
+              </button>
 
-            {canManageClients && (
-              <>
-                <button
-                  type="button"
-                  className={`settings-sidebar-link ${activeSettingsTab === 'general' ? 'active' : ''}`}
-                  onClick={() => handleSettingsTabChange('general')}
-                >
-                  <i className="bx bx-link-alt"></i>
-                  <div>
-                    <strong>Integrações gerais</strong>
-                    <span>Credenciais de mídia, CRM e IA.</span>
-                  </div>
-                </button>
+              {canManageClients && (
+                <>
+                  <button
+                    type="button"
+                    className={`settings-sidebar-link ${activeSettingsTab === 'general' ? 'active' : ''}`}
+                    onClick={() => handleSettingsTabChange('general')}
+                  >
+                    <i className="bx bx-link-alt"></i>
+                    <div>
+                      <strong>Integrações gerais</strong>
+                      <span>Credenciais de mídia, CRM e IA.</span>
+                    </div>
+                  </button>
 
-                <button
-                  type="button"
-                  className={`settings-sidebar-link ${activeSettingsTab === 'operation' ? 'active' : ''}`}
-                  onClick={() => handleSettingsTabChange('operation')}
-                >
-                  <i className="bx bx-cog"></i>
-                  <div>
-                    <strong>Operação</strong>
-                    <span>Boards, ferramentas e IDs globais.</span>
-                  </div>
-                </button>
+                  <button
+                    type="button"
+                    className={`settings-sidebar-link ${activeSettingsTab === 'operation' ? 'active' : ''}`}
+                    onClick={() => handleSettingsTabChange('operation')}
+                  >
+                    <i className="bx bx-cog"></i>
+                    <div>
+                      <strong>Operação</strong>
+                      <span>Boards, ferramentas e IDs globais.</span>
+                    </div>
+                  </button>
 
-                <button
-                  type="button"
-                  className={`settings-sidebar-link ${activeSettingsTab === 'calendar' ? 'active' : ''}`}
-                  onClick={() => handleSettingsTabChange('calendar')}
-                >
-                  <i className="bx bx-calendar-event"></i>
-                  <div>
-                    <strong>Agenda</strong>
-                    <span>Google Calendar e rotina operacional.</span>
-                  </div>
-                </button>
+                  <button
+                    type="button"
+                    className={`settings-sidebar-link ${activeSettingsTab === 'calendar' ? 'active' : ''}`}
+                    onClick={() => handleSettingsTabChange('calendar')}
+                  >
+                    <i className="bx bx-calendar-event"></i>
+                    <div>
+                      <strong>Agenda</strong>
+                      <span>Google Calendar e rotina operacional.</span>
+                    </div>
+                  </button>
 
-                <button
-                  type="button"
-                  className={`settings-sidebar-link ${activeSettingsTab === 'clients' ? 'active' : ''}`}
-                  onClick={() => handleSettingsTabChange('clients')}
-                >
-                  <i className="bx bx-data"></i>
-                  <div>
-                    <strong>Clientes</strong>
-                    <span>Campos e abas da base de clientes.</span>
-                  </div>
-                </button>
-              </>
-            )}
-          </div>
-        </aside>
+                  <button
+                    type="button"
+                    className={`settings-sidebar-link ${activeSettingsTab === 'clients' ? 'active' : ''}`}
+                    onClick={() => handleSettingsTabChange('clients')}
+                  >
+                    <i className="bx bx-data"></i>
+                    <div>
+                      <strong>Clientes</strong>
+                      <span>Campos e abas da base de clientes.</span>
+                    </div>
+                  </button>
+                </>
+              )}
+            </div>
+          </aside>
 
-        <section className="glass-panel settings-panel">
+          <section className="glass-panel settings-panel">
           <div className="settings-head">
             <div>
               <h1>Configurações</h1>
@@ -2032,43 +2178,207 @@ export default function SettingsPage() {
                   <div className="settings-section-head">
                     <div>
                       <h2>Operação</h2>
-                      <p>Essas credenciais ficam no nível da operação para abastecer as dashboards internas do time.</p>
+                      <p>Defina aqui as credenciais, colunas do kanban, status e templates de subtarefas da operação.</p>
                     </div>
                   </div>
 
-                  <div className="settings-integrations-grid settings-integrations-grid-operation">
-                    <div className="settings-callout info settings-operation-callout">
-                      Essa aba centraliza as credenciais globais do ClickUp e Monday usadas nas dashboards operacionais. Os IDs ficam aqui no nível da operação, não dentro dos clientes.
-                    </div>
+                  <div className="settings-general-layout">
+                    <section className="settings-category-shell">
+                      <div className="settings-category-head">
+                        <span className="settings-category-kicker">Kanban</span>
+                        <h3>Colunas, status e automações de criação</h3>
+                        <p>Controle quais etapas existem no board, as cores visuais e quais subtarefas padrão entram quando um card nasce em cada coluna.</p>
+                      </div>
 
-                    {operationIntegrationGroups.map((group) => (
-                      <div key={group.title} className="integration-block">
-                        <div className="integration-heading">
-                          <div className="integration-icon" style={{ color: group.accent, borderColor: `${group.accent}33` }}>
-                            <i className={`bx ${group.icon}`}></i>
+                      <div className="settings-category-grid">
+                        <div className="integration-block">
+                          <div className="integration-heading">
+                            <div className="integration-icon" style={{ color: '#3b82f6', borderColor: '#3b82f633' }}>
+                              <i className="bx bx-columns"></i>
+                            </div>
+                            <div>
+                              <h3>Colunas do kanban</h3>
+                              <p>Ao criar um card em uma etapa, as subtarefas abaixo entram automaticamente.</p>
+                            </div>
                           </div>
-                          <div>
-                            <h3>{group.title}</h3>
-                            <p>{group.description}</p>
+
+                          <div className="settings-stack-list">
+                            {operationSettings.lanes.map((lane) => (
+                              <details key={lane.id} className="glass-item settings-stack-card settings-accordion-card" open>
+                                <summary className="settings-accordion-summary">
+                                  <div>
+                                    <strong>{lane.label}</strong>
+                                    <span>{(lane.defaultSubtasks || []).length} subtarefa(s) padrão</span>
+                                  </div>
+                                  <small>{lane.key}</small>
+                                </summary>
+                                <div className="settings-form-grid">
+                                  <div className="input-group">
+                                    <label>Nome da coluna</label>
+                                    <input type="text" value={lane.label} onChange={(event) => handleOperationLaneFieldChange(lane.id, 'label', event.target.value)} />
+                                  </div>
+                                  <div className="input-group">
+                                    <label>Cor</label>
+                                    <input type="color" value={lane.color || '#3b82f6'} onChange={(event) => handleOperationLaneFieldChange(lane.id, 'color', event.target.value)} />
+                                  </div>
+                                  <div className="input-group settings-field-span-2">
+                                    <label>Subtarefas padrão</label>
+                                    <input
+                                      type="text"
+                                      value={(lane.defaultSubtasks || []).join(', ')}
+                                      onChange={(event) => handleOperationLaneFieldChange(lane.id, 'defaultSubtasks', event.target.value)}
+                                      placeholder="Separe por vírgula"
+                                    />
+                                    <small>Essas subtarefas entram ao criar um card nessa coluna, inclusive a partir do cadastro de cliente.</small>
+                                  </div>
+                                </div>
+                                <div className="modal-actions">
+                                  <button type="button" className="btn btn-secondary" onClick={() => handleRemoveOperationLane(lane.id)}>
+                                    Remover coluna
+                                  </button>
+                                </div>
+                              </details>
+                            ))}
+                          </div>
+
+                          <div className="settings-form-grid">
+                            <div className="input-group">
+                              <label>Nova coluna</label>
+                              <input type="text" value={newOperationLaneLabel} onChange={(event) => setNewOperationLaneLabel(event.target.value)} placeholder="Ex.: Produção, Aprovação, QA" />
+                            </div>
+                          </div>
+                          <div className="modal-actions">
+                            <button type="button" className="btn btn-primary" onClick={handleCreateOperationLane}>
+                              Adicionar coluna
+                            </button>
                           </div>
                         </div>
 
-                        {group.fields.map((field) => (
-                          <div key={field.name} className="input-group">
-                            <label>{field.label}</label>
+                        <div className="integration-block">
+                          <div className="integration-heading">
+                            <div className="integration-icon" style={{ color: '#10b981', borderColor: '#10b98133' }}>
+                              <i className="bx bx-palette"></i>
+                            </div>
+                            <div>
+                              <h3>Status dos cards</h3>
+                              <p>Edite os rótulos e as cores dos status que aparecem nos cards e subtarefas.</p>
+                            </div>
+                          </div>
+
+                          <div className="settings-stack-list">
+                            {operationSettings.statuses.map((status) => (
+                              <details key={status.id} className="glass-item settings-stack-card settings-accordion-card" open>
+                                <summary className="settings-accordion-summary">
+                                  <div>
+                                    <strong>{status.label}</strong>
+                                    <span>{status.key}</span>
+                                  </div>
+                                  <small>{status.color}</small>
+                                </summary>
+                                <div className="settings-form-grid">
+                                  <div className="input-group">
+                                    <label>Nome do status</label>
+                                    <input type="text" value={status.label} onChange={(event) => handleOperationStatusFieldChange(status.id, 'label', event.target.value)} />
+                                  </div>
+                                  <div className="input-group">
+                                    <label>Cor</label>
+                                    <input type="color" value={status.color || '#3b82f6'} onChange={(event) => handleOperationStatusFieldChange(status.id, 'color', event.target.value)} />
+                                  </div>
+                                </div>
+                                <div className="modal-actions">
+                                  <button type="button" className="btn btn-secondary" onClick={() => handleRemoveOperationStatus(status.id)}>
+                                    Remover status
+                                  </button>
+                                </div>
+                              </details>
+                            ))}
+                          </div>
+
+                          <div className="settings-form-grid">
+                            <div className="input-group">
+                              <label>Novo status</label>
+                              <input type="text" value={newOperationStatusLabel} onChange={(event) => setNewOperationStatusLabel(event.target.value)} placeholder="Ex.: Em revisão, Aguardando cliente" />
+                            </div>
+                          </div>
+                          <div className="modal-actions">
+                            <button type="button" className="btn btn-primary" onClick={handleCreateOperationStatus}>
+                              Adicionar status
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="integration-block">
+                          <div className="integration-heading">
+                            <div className="integration-icon" style={{ color: '#f59e0b', borderColor: '#f59e0b33' }}>
+                              <i className="bx bx-bolt-circle"></i>
+                            </div>
+                            <div>
+                              <h3>Criação automática</h3>
+                              <p>Defina o comportamento padrão ao cadastrar um novo cliente.</p>
+                            </div>
+                          </div>
+
+                          <label className={`stage-chip ${operationSettings.autoCreateCardForNewClient ? 'active' : ''}`}>
                             <input
-                              type={field.name.toLowerCase().includes('token') ? 'password' : 'text'}
-                              value={String(globalIntegrations[field.name] || '')}
-                              onChange={(event) => handleGlobalIntegrationChange(field.name, event.target.value)}
-                              placeholder={field.placeholder}
+                              type="checkbox"
+                              checked={operationSettings.autoCreateCardForNewClient}
+                              onChange={(event) => {
+                                const nextSettings = {
+                                  ...operationSettings,
+                                  autoCreateCardForNewClient: event.target.checked,
+                                }
+                                setOperationSettings(nextSettings)
+                                void persistOperationSettings(nextSettings)
+                              }}
                             />
-                            {field.name === 'clickUpListIds' || field.name === 'mondayBoardIds' ? (
-                              <small className="settings-help-text">Separe múltiplos IDs por vírgula. Esses IDs ficam globais na operação.</small>
-                            ) : null}
+                            <span>Criar card na operação por padrão ao cadastrar cliente</span>
+                          </label>
+                        </div>
+                      </div>
+                    </section>
+
+                    <section className="settings-category-shell">
+                      <div className="settings-category-head">
+                        <span className="settings-category-kicker">Integrações</span>
+                        <h3>Credenciais operacionais globais</h3>
+                        <p>Essa área continua centralizando ClickUp e Monday no nível da operação.</p>
+                      </div>
+
+                      <div className="settings-integrations-grid settings-integrations-grid-operation">
+                        <div className="settings-callout info settings-operation-callout">
+                          Essa aba centraliza as credenciais globais do ClickUp e Monday usadas nas dashboards operacionais. Os IDs ficam aqui no nível da operação, não dentro dos clientes.
+                        </div>
+
+                        {operationIntegrationGroups.map((group) => (
+                          <div key={group.title} className="integration-block">
+                            <div className="integration-heading">
+                              <div className="integration-icon" style={{ color: group.accent, borderColor: `${group.accent}33` }}>
+                                <i className={`bx ${group.icon}`}></i>
+                              </div>
+                              <div>
+                                <h3>{group.title}</h3>
+                                <p>{group.description}</p>
+                              </div>
+                            </div>
+
+                            {group.fields.map((field) => (
+                              <div key={field.name} className="input-group">
+                                <label>{field.label}</label>
+                                <input
+                                  type={field.name.toLowerCase().includes('token') ? 'password' : 'text'}
+                                  value={String(globalIntegrations[field.name] || '')}
+                                  onChange={(event) => handleGlobalIntegrationChange(field.name, event.target.value)}
+                                  placeholder={field.placeholder}
+                                />
+                                {field.name === 'clickUpListIds' || field.name === 'mondayBoardIds' ? (
+                                  <small className="settings-help-text">Separe múltiplos IDs por vírgula. Esses IDs ficam globais na operação.</small>
+                                ) : null}
+                              </div>
+                            ))}
                           </div>
                         ))}
                       </div>
-                    ))}
+                    </section>
                   </div>
                 </div>
               )}
@@ -2633,18 +2943,23 @@ export default function SettingsPage() {
                 </div>
               </div>
           </div>
-        </section>
+          </section>
+        </div>
       </main>
 
       <style jsx>{`
         .settings-main {
           width: 100%;
+          padding-left: 0 !important;
+          margin-left: 0 !important;
+        }
+
+        .settings-workspace {
+          width: 100%;
           display: grid;
           grid-template-columns: minmax(210px, 236px) minmax(0, 1fr);
           gap: 14px;
           align-items: start;
-          padding-left: 0 !important;
-          margin-left: 0 !important;
         }
 
         .settings-panel {
@@ -3930,7 +4245,7 @@ export default function SettingsPage() {
         }
 
         @media (max-width: 980px) {
-          .settings-main {
+          .settings-workspace {
             grid-template-columns: 1fr;
           }
 

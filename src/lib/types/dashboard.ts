@@ -53,18 +53,62 @@ export interface ClientChecklistItemRecord {
   completed: boolean
 }
 
+export interface OperationCommentRecord {
+  id: string
+  body: string
+  authorName: string
+  authorId: string
+  mentionUserIds: string[]
+  createdAt: string
+}
+
+export interface OperationSubtaskRecord {
+  id: string
+  title: string
+  description: string
+  status: string
+  completed: boolean
+  assigneeIds: string[]
+  createdAt: string
+  updatedAt: string
+}
+
+export interface OperationLaneRecord {
+  id: string
+  key: string
+  label: string
+  color: string
+  defaultSubtasks: string[]
+}
+
+export interface OperationStatusRecord {
+  id: string
+  key: string
+  label: string
+  color: string
+}
+
+export interface OperationSettingsRecord {
+  lanes: OperationLaneRecord[]
+  statuses: OperationStatusRecord[]
+  autoCreateCardForNewClient: boolean
+}
+
 export interface OperationCardRecord {
   id: string
   clientId: string
   title: string
   content: string
-  lane: 'setup' | 'inside_sales' | 'ecom' | 'pdv' | 'ongoing'
-  status: 'aberto' | 'em_andamento' | 'bloqueado' | 'concluido'
+  lane: string
+  status: string
   responsible: string
+  assigneeIds: string[]
   segment: string
   tier: string
   squad: string
   tags: string[]
+  comments: OperationCommentRecord[]
+  subtasks: OperationSubtaskRecord[]
   createdAt: string
   updatedAt: string
 }
@@ -207,6 +251,7 @@ export interface DashboardPreferences {
   clientGroups: ClientGroupRecord[]
   products: ProductRecord[]
   operationCards: OperationCardRecord[]
+  operationSettings: OperationSettingsRecord
   clientSystemFields: ClientCustomColumnRecord[]
   clientCustomColumns: ClientCustomColumnRecord[]
   clientCustomTabs: ClientCustomTabRecord[]

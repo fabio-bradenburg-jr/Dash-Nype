@@ -14,6 +14,11 @@ import type {
   DashboardPreferences,
   DashboardTemplate,
   OperationCardRecord,
+  OperationCommentRecord,
+  OperationLaneRecord,
+  OperationSettingsRecord,
+  OperationStatusRecord,
+  OperationSubtaskRecord,
   ProductRecord,
 } from '@/lib/types/dashboard'
 
@@ -26,6 +31,44 @@ const DEFAULT_RD_DASHBOARD_METRIC_KEYS: string[] = []
 const DEFAULT_RD_DASHBOARD_METRIC_LAYOUTS: DashboardMetricLayout[] = []
 const DEFAULT_SHEETS_DASHBOARD_METRIC_KEYS: string[] = []
 const DEFAULT_SHEETS_DASHBOARD_METRIC_LAYOUTS: DashboardMetricLayout[] = []
+const DEFAULT_OPERATION_LANES: Array<Pick<OperationLaneRecord, 'key' | 'label' | 'color' | 'defaultSubtasks'>> = [
+  {
+    key: 'setup',
+    label: 'Setup de implementação',
+    color: '#3b82f6',
+    defaultSubtasks: ['Kickoff com o cliente', 'Confirmar acessos e credenciais', 'Definir escopo inicial'],
+  },
+  {
+    key: 'inside_sales',
+    label: 'Implementação (Inside Sales)',
+    color: '#8b5cf6',
+    defaultSubtasks: ['Configurar CRM', 'Treinar time comercial', 'Validar fluxo de comunicação'],
+  },
+  {
+    key: 'ecom',
+    label: 'Implementação (Ecom)',
+    color: '#10b981',
+    defaultSubtasks: ['Validar tracking', 'Revisar checkout', 'Conferir integrações da loja'],
+  },
+  {
+    key: 'pdv',
+    label: 'Implementação (PDV)',
+    color: '#f59e0b',
+    defaultSubtasks: ['Mapear processo de loja', 'Confirmar integrações', 'Planejar captação offline'],
+  },
+  {
+    key: 'ongoing',
+    label: 'Ongoing',
+    color: '#64748b',
+    defaultSubtasks: ['Revisar próximos passos', 'Atualizar responsável', 'Checar pendências da semana'],
+  },
+]
+const DEFAULT_OPERATION_STATUSES: Array<Pick<OperationStatusRecord, 'key' | 'label' | 'color'>> = [
+  { key: 'aberto', label: 'Aberto', color: '#3b82f6' },
+  { key: 'em_andamento', label: 'Em andamento', color: '#f59e0b' },
+  { key: 'bloqueado', label: 'Bloqueado', color: '#ef4444' },
+  { key: 'concluido', label: 'Concluído', color: '#10b981' },
+]
 const DEFAULT_GLOBAL_INTEGRATIONS: DashboardIntegrations = {
   metaAccessToken: '',
   metaConnectionMode: 'manual',
@@ -146,6 +189,89 @@ function normalizeOperationCardTags(tags: unknown): string[] {
   return Array.from(new Set(tags.map((tag) => String(tag || '').trim()).filter(Boolean)))
 }
 
+function normalizeOperationUserIds(userIds: unknown): string[] {
+  if (!Array.isArray(userIds)) return []
+  return Array.from(new Set(userIds.map((userId) => String(userId || '').trim()).filter(Boolean)))
+}
+
+function normalizeSubtaskTemplateList(items: unknown): string[] {
+  if (!Array.isArray(items)) return []
+  return Array.from(new Set(items.map((item) => String(item || '').trim()).filter(Boolean)))
+}
+
+function normalizeOperationCommentRecord(comment: LooseRecord): OperationCommentRecord {
+  const now = new Date().toISOString()
+  return {
+    id: String(comment?.id || createRecordId('operation-comment')).trim(),
+    body: String(comment?.body || '').trim(),
+    authorName: String(comment?.authorName || '').trim(),
+    authorId: String(comment?.authorId || '').trim(),
+    mentionUserIds: normalizeOperationUserIds(comment?.mentionUserIds),
+    createdAt: String(comment?.createdAt || now).trim() || now,
+  }
+}
+
+function normalizeOperationSubtaskRecord(subtask: LooseRecord): OperationSubtaskRecord {
+  const now = new Date().toISOString()
+  return {
+    id: String(subtask?.id || createRecordId('operation-subtask')).trim(),
+    title: String(subtask?.title || 'Nova subtarefa').trim() || 'Nova subtarefa',
+    description: String(subtask?.description || '').trim(),
+    status: String(subtask?.status || 'aberto').trim() || 'aberto',
+    completed: Boolean(subtask?.completed),
+    assigneeIds: normalizeOperationUserIds(subtask?.assigneeIds),
+    createdAt: String(subtask?.createdAt || now).trim() || now,
+    updatedAt: String(subtask?.updatedAt || now).trim() || now,
+  }
+}
+
+function normalizeOperationLaneRecord(lane: LooseRecord): OperationLaneRecord {
+  const label = String(lane?.label || 'Nova coluna').trim() || 'Nova coluna'
+  const key = String(lane?.key || label || 'nova_coluna')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+
+  return {
+    id: String(lane?.id || createRecordId('operation-lane')).trim(),
+    key: key || createRecordId('operation_lane'),
+    label,
+    color: String(lane?.color || '#3b82f6').trim() || '#3b82f6',
+    defaultSubtasks: normalizeSubtaskTemplateList(lane?.defaultSubtasks),
+  }
+}
+
+function normalizeOperationStatusRecord(status: LooseRecord): OperationStatusRecord {
+  const label = String(status?.label || 'Novo status').trim() || 'Novo status'
+  const key = String(status?.key || label || 'novo_status')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+
+  return {
+    id: String(status?.id || createRecordId('operation-status')).trim(),
+    key: key || createRecordId('operation_status'),
+    label,
+    color: String(status?.color || '#3b82f6').trim() || '#3b82f6',
+  }
+}
+
+function normalizeOperationSettingsRecord(settings: LooseRecord | null | undefined): OperationSettingsRecord {
+  return {
+    lanes: Array.isArray(settings?.lanes) && settings.lanes.length
+      ? settings.lanes.map(normalizeOperationLaneRecord)
+      : DEFAULT_OPERATION_LANES.map((lane) => normalizeOperationLaneRecord(lane)),
+    statuses: Array.isArray(settings?.statuses) && settings.statuses.length
+      ? settings.statuses.map(normalizeOperationStatusRecord)
+      : DEFAULT_OPERATION_STATUSES.map((status) => normalizeOperationStatusRecord(status)),
+    autoCreateCardForNewClient: settings?.autoCreateCardForNewClient !== false,
+  }
+}
+
 function normalizeOperationCardRecord(card: LooseRecord): OperationCardRecord {
   const now = new Date().toISOString()
   return {
@@ -153,26 +279,20 @@ function normalizeOperationCardRecord(card: LooseRecord): OperationCardRecord {
     clientId: String(card?.clientId || '').trim(),
     title: String(card?.title || 'Novo card').trim() || 'Novo card',
     content: String(card?.content || '').trim(),
-    lane:
-      card?.lane === 'setup' ||
-      card?.lane === 'inside_sales' ||
-      card?.lane === 'ecom' ||
-      card?.lane === 'pdv' ||
-      card?.lane === 'ongoing'
-        ? card.lane
-        : 'setup',
-    status:
-      card?.status === 'aberto' ||
-      card?.status === 'em_andamento' ||
-      card?.status === 'bloqueado' ||
-      card?.status === 'concluido'
-        ? card.status
-        : 'aberto',
+    lane: String(card?.lane || 'setup').trim() || 'setup',
+    status: String(card?.status || 'aberto').trim() || 'aberto',
     responsible: String(card?.responsible || '').trim(),
+    assigneeIds: normalizeOperationUserIds(card?.assigneeIds),
     segment: String(card?.segment || '').trim(),
     tier: String(card?.tier || '').trim(),
     squad: String(card?.squad || '').trim(),
     tags: normalizeOperationCardTags(card?.tags),
+    comments: Array.isArray(card?.comments)
+      ? card.comments.map(normalizeOperationCommentRecord).filter((comment) => comment.body)
+      : [],
+    subtasks: Array.isArray(card?.subtasks)
+      ? card.subtasks.map(normalizeOperationSubtaskRecord)
+      : [],
     createdAt: String(card?.createdAt || now).trim() || now,
     updatedAt: String(card?.updatedAt || now).trim() || now,
   }
@@ -549,6 +669,7 @@ export async function getDashboardState(
       clientGroups: [],
       products: [],
       operationCards: [],
+      operationSettings: normalizeOperationSettingsRecord(null),
       clientSystemFields: [],
       clientCustomColumns: [],
       clientCustomTabs: [],
@@ -628,6 +749,7 @@ export async function getDashboardState(
           accessContext.role === USER_ROLES.MASTER ? true : filteredClients.some((client) => client.id === card.clientId)
         )
       : [],
+    operationSettings: normalizeOperationSettingsRecord(preferencePayload.operationSettings),
     clientSystemFields: Array.isArray(preferencePayload.clientSystemFields)
       ? preferencePayload.clientSystemFields.map(normalizeClientCustomColumnRecord)
       : [],
@@ -663,6 +785,7 @@ export async function saveDashboardState(
   const submittedOperationCards = Array.isArray(state.operationCards)
     ? state.operationCards.map(normalizeOperationCardRecord)
     : []
+  const submittedOperationSettings = normalizeOperationSettingsRecord(state.operationSettings)
   const submittedClientSystemFields = Array.isArray(state.clientSystemFields)
     ? state.clientSystemFields.map(normalizeClientCustomColumnRecord)
     : []
@@ -714,6 +837,7 @@ export async function saveDashboardState(
           metric_2: state.metric2 || 'roas',
           payload: {
             operationCards: submittedOperationCards,
+            operationSettings: submittedOperationSettings,
             clientSystemFields: submittedClientSystemFields,
             clientCustomColumns: submittedClientCustomColumns,
             clientCustomTabs: submittedClientCustomTabs,
@@ -919,6 +1043,7 @@ export async function saveDashboardState(
           metric_2: state.metric2 || currentState.metric2 || 'roas',
           payload: {
             operationCards: [...preservedOperationCards, ...editableOperationCards],
+            operationSettings: currentState.operationSettings,
             clientSystemFields: submittedClientSystemFields.length ? submittedClientSystemFields : currentState.clientSystemFields,
             clientCustomColumns: submittedClientCustomColumns.length ? submittedClientCustomColumns : currentState.clientCustomColumns,
             clientCustomTabs: submittedClientCustomTabs.length ? submittedClientCustomTabs : currentState.clientCustomTabs,

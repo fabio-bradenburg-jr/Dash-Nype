@@ -57,7 +57,8 @@ async function validateClientGroups(adminSupabase, workspaceId, clientGroupIds) 
   }
 }
 
-async function getAuthorizedContext() {
+async function getAuthorizedContext(options = {}) {
+  const requireManageUsers = options.requireManageUsers !== false
   const supabase = await createClient()
   const {
     data: { user },
@@ -72,8 +73,15 @@ async function getAuthorizedContext() {
   const adminSupabase = createAdminClient()
   const accessContext = await getAccessContext(adminSupabase, user)
 
-  if (!accessContext.canManageUsers || !accessContext.workspaceId) {
-    return { errorResponse: NextResponse.json({ error: 'Sem permissão para gerenciar usuários.' }, { status: 403 }) }
+  const hasPermission = requireManageUsers ? accessContext.canManageUsers : (accessContext.canManageUsers || accessContext.canManageClients)
+
+  if (!hasPermission || !accessContext.workspaceId) {
+    return {
+      errorResponse: NextResponse.json(
+        { error: requireManageUsers ? 'Sem permissão para gerenciar usuários.' : 'Sem permissão para listar usuários.' },
+        { status: 403 }
+      ),
+    }
   }
 
   return { adminSupabase, accessContext, user }
@@ -81,7 +89,7 @@ async function getAuthorizedContext() {
 
 export async function GET() {
   try {
-    const authorized = await getAuthorizedContext()
+    const authorized = await getAuthorizedContext({ requireManageUsers: false })
     if (authorized.errorResponse) return authorized.errorResponse
 
     const { adminSupabase, accessContext } = authorized

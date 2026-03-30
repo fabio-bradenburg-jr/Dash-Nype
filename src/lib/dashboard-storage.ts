@@ -12,6 +12,11 @@ import type {
   DashboardPreferences,
   DashboardTemplate,
   OperationCardRecord,
+  OperationCommentRecord,
+  OperationLaneRecord,
+  OperationSettingsRecord,
+  OperationStatusRecord,
+  OperationSubtaskRecord,
   ProductRecord,
 } from '@/lib/types/dashboard'
 
@@ -22,6 +27,51 @@ type ClientRecordOverrides = Partial<ClientRecord> & { integrations?: Partial<Da
 type ProductRecordOverrides = Partial<ProductRecord>
 type ClientCustomColumnOverrides = Partial<ClientCustomColumnRecord>
 type ClientCustomTabOverrides = Partial<ClientCustomTabRecord>
+type OperationCommentOverrides = Partial<OperationCommentRecord>
+type OperationSubtaskOverrides = Partial<OperationSubtaskRecord>
+type OperationLaneOverrides = Partial<OperationLaneRecord>
+type OperationStatusOverrides = Partial<OperationStatusRecord>
+type OperationSettingsOverrides = Partial<OperationSettingsRecord>
+
+export const DEFAULT_OPERATION_LANES: Array<Pick<OperationLaneRecord, 'key' | 'label' | 'color' | 'defaultSubtasks'>> = [
+  {
+    key: 'setup',
+    label: 'Setup de implementação',
+    color: '#3b82f6',
+    defaultSubtasks: ['Kickoff com o cliente', 'Confirmar acessos e credenciais', 'Definir escopo inicial'],
+  },
+  {
+    key: 'inside_sales',
+    label: 'Implementação (Inside Sales)',
+    color: '#8b5cf6',
+    defaultSubtasks: ['Configurar CRM', 'Treinar time comercial', 'Validar fluxo de comunicação'],
+  },
+  {
+    key: 'ecom',
+    label: 'Implementação (Ecom)',
+    color: '#10b981',
+    defaultSubtasks: ['Validar tracking', 'Revisar checkout', 'Conferir integrações da loja'],
+  },
+  {
+    key: 'pdv',
+    label: 'Implementação (PDV)',
+    color: '#f59e0b',
+    defaultSubtasks: ['Mapear processo de loja', 'Confirmar integrações', 'Planejar captação offline'],
+  },
+  {
+    key: 'ongoing',
+    label: 'Ongoing',
+    color: '#64748b',
+    defaultSubtasks: ['Revisar próximos passos', 'Atualizar responsável', 'Checar pendências da semana'],
+  },
+]
+
+export const DEFAULT_OPERATION_STATUSES: Array<Pick<OperationStatusRecord, 'key' | 'label' | 'color'>> = [
+  { key: 'aberto', label: 'Aberto', color: '#3b82f6' },
+  { key: 'em_andamento', label: 'Em andamento', color: '#f59e0b' },
+  { key: 'bloqueado', label: 'Bloqueado', color: '#ef4444' },
+  { key: 'concluido', label: 'Concluído', color: '#10b981' },
+]
 
 function normalizeClientCustomColumnOptions(options: unknown): string[] {
   if (!Array.isArray(options)) return []
@@ -118,6 +168,102 @@ function normalizeOperationCardTags(tags: unknown): string[] {
   return Array.from(new Set(tags.map((tag) => String(tag || '').trim()).filter(Boolean)))
 }
 
+function normalizeOperationUserIds(userIds: unknown): string[] {
+  if (!Array.isArray(userIds)) return []
+  return Array.from(new Set(userIds.map((userId) => String(userId || '').trim()).filter(Boolean)))
+}
+
+function normalizeSubtaskTemplateList(items: unknown): string[] {
+  if (!Array.isArray(items)) return []
+  return Array.from(new Set(items.map((item) => String(item || '').trim()).filter(Boolean)))
+}
+
+export function createOperationCommentRecord(
+  overrides: OperationCommentOverrides = {}
+): OperationCommentRecord {
+  const now = new Date().toISOString()
+  return {
+    id: overrides.id || createRecordId('operation-comment'),
+    body: String(overrides.body || '').trim(),
+    authorName: String(overrides.authorName || '').trim(),
+    authorId: String(overrides.authorId || '').trim(),
+    mentionUserIds: normalizeOperationUserIds(overrides.mentionUserIds),
+    createdAt: String(overrides.createdAt || now).trim() || now,
+  }
+}
+
+export function createOperationSubtaskRecord(
+  overrides: OperationSubtaskOverrides = {}
+): OperationSubtaskRecord {
+  const now = new Date().toISOString()
+  return {
+    id: overrides.id || createRecordId('operation-subtask'),
+    title: String(overrides.title || 'Nova subtarefa').trim() || 'Nova subtarefa',
+    description: String(overrides.description || '').trim(),
+    status: String(overrides.status || 'aberto').trim() || 'aberto',
+    completed: Boolean(overrides.completed),
+    assigneeIds: normalizeOperationUserIds(overrides.assigneeIds),
+    createdAt: String(overrides.createdAt || now).trim() || now,
+    updatedAt: String(overrides.updatedAt || now).trim() || now,
+  }
+}
+
+export function createOperationLaneRecord(
+  overrides: OperationLaneOverrides = {}
+): OperationLaneRecord {
+  const label = String(overrides.label || 'Nova coluna').trim() || 'Nova coluna'
+  const keySource = String(overrides.key || label || 'nova_coluna')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+
+  return {
+    id: overrides.id || createRecordId('operation-lane'),
+    key: keySource || createRecordId('operation_lane'),
+    label,
+    color: String(overrides.color || '#3b82f6').trim() || '#3b82f6',
+    defaultSubtasks: normalizeSubtaskTemplateList(overrides.defaultSubtasks),
+  }
+}
+
+export function createOperationStatusRecord(
+  overrides: OperationStatusOverrides = {}
+): OperationStatusRecord {
+  const label = String(overrides.label || 'Novo status').trim() || 'Novo status'
+  const keySource = String(overrides.key || label || 'novo_status')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+
+  return {
+    id: overrides.id || createRecordId('operation-status'),
+    key: keySource || createRecordId('operation_status'),
+    label,
+    color: String(overrides.color || '#3b82f6').trim() || '#3b82f6',
+  }
+}
+
+export function createOperationSettingsRecord(
+  overrides: OperationSettingsOverrides = {}
+): OperationSettingsRecord {
+  const lanes = Array.isArray(overrides.lanes) && overrides.lanes.length
+    ? overrides.lanes.map((lane) => createOperationLaneRecord(lane))
+    : DEFAULT_OPERATION_LANES.map((lane) => createOperationLaneRecord(lane))
+  const statuses = Array.isArray(overrides.statuses) && overrides.statuses.length
+    ? overrides.statuses.map((status) => createOperationStatusRecord(status))
+    : DEFAULT_OPERATION_STATUSES.map((status) => createOperationStatusRecord(status))
+
+  return {
+    lanes,
+    statuses,
+    autoCreateCardForNewClient: overrides.autoCreateCardForNewClient !== false,
+  }
+}
+
 export function createOperationCardRecord(overrides: Partial<OperationCardRecord> = {}): OperationCardRecord {
   const now = new Date().toISOString()
   return {
@@ -125,26 +271,20 @@ export function createOperationCardRecord(overrides: Partial<OperationCardRecord
     clientId: String(overrides.clientId || '').trim(),
     title: String(overrides.title || 'Novo card').trim() || 'Novo card',
     content: String(overrides.content || '').trim(),
-    lane:
-      overrides.lane === 'setup' ||
-      overrides.lane === 'inside_sales' ||
-      overrides.lane === 'ecom' ||
-      overrides.lane === 'pdv' ||
-      overrides.lane === 'ongoing'
-        ? overrides.lane
-        : 'setup',
-    status:
-      overrides.status === 'aberto' ||
-      overrides.status === 'em_andamento' ||
-      overrides.status === 'bloqueado' ||
-      overrides.status === 'concluido'
-        ? overrides.status
-        : 'aberto',
+    lane: String(overrides.lane || 'setup').trim() || 'setup',
+    status: String(overrides.status || 'aberto').trim() || 'aberto',
     responsible: String(overrides.responsible || '').trim(),
+    assigneeIds: normalizeOperationUserIds(overrides.assigneeIds),
     segment: String(overrides.segment || '').trim(),
     tier: String(overrides.tier || '').trim(),
     squad: String(overrides.squad || '').trim(),
     tags: normalizeOperationCardTags(overrides.tags),
+    comments: Array.isArray(overrides.comments)
+      ? overrides.comments.map((comment) => createOperationCommentRecord(comment)).filter((comment) => comment.body)
+      : [],
+    subtasks: Array.isArray(overrides.subtasks)
+      ? overrides.subtasks.map((subtask) => createOperationSubtaskRecord(subtask))
+      : [],
     createdAt: String(overrides.createdAt || now).trim() || now,
     updatedAt: String(overrides.updatedAt || now).trim() || now,
   }
@@ -189,6 +329,7 @@ export const DEFAULT_PREFERENCES: DashboardPreferences = {
   clientGroups: [],
   products: [],
   operationCards: [],
+  operationSettings: createOperationSettingsRecord(),
   clientSystemFields: [],
   clientCustomColumns: [],
   clientCustomTabs: [],
@@ -536,6 +677,7 @@ export function loadDashboardPreferences(): DashboardPreferences {
       operationCards: Array.isArray(parsed.operationCards)
         ? parsed.operationCards.map((card) => createOperationCardRecord(card))
         : [],
+      operationSettings: createOperationSettingsRecord(parsed.operationSettings),
       clientSystemFields: Array.isArray(parsed.clientSystemFields)
         ? parsed.clientSystemFields.map((column) => createClientCustomColumnRecord(column))
         : [],

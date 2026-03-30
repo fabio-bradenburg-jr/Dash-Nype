@@ -14,9 +14,12 @@ import {
   createClientGroupRecord,
   createDashboardTemplate,
   createOperationCardRecord,
+  createOperationCommentRecord,
+  createOperationSettingsRecord,
+  createOperationSubtaskRecord,
   createProductRecord,
-  DEFAULT_META_CAMPAIGN_TABLE_COLUMN_KEYS,
   DEFAULT_INTEGRATIONS,
+  DEFAULT_META_CAMPAIGN_TABLE_COLUMN_KEYS,
   DEFAULT_PREFERENCES,
   loadDashboardPreferences,
   saveDashboardPreferences,
@@ -2662,6 +2665,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
   const [clientGroups, setClientGroups] = useState([])
   const [products, setProducts] = useState([])
   const [operationCards, setOperationCards] = useState([])
+  const [operationSettings, setOperationSettings] = useState(() => createOperationSettingsRecord())
   const [clientSystemFields, setClientSystemFields] = useState([])
   const [clientCustomColumns, setClientCustomColumns] = useState([])
   const [clientCustomTabs, setClientCustomTabs] = useState([])
@@ -2671,6 +2675,8 @@ export default function DashboardShell({ initialTab = 'home' }) {
   const [newClientSalesModel, setNewClientSalesModel] = useState('INSIDE_SALES')
   const [newClientStartDate, setNewClientStartDate] = useState(getTodayDateInputValue())
   const [newClientImplementationObservation, setNewClientImplementationObservation] = useState('')
+  const [newClientCreateOperationCard, setNewClientCreateOperationCard] = useState(true)
+  const [newClientOperationLane, setNewClientOperationLane] = useState(resolveOperationLaneFromSalesModel('INSIDE_SALES'))
   const [newClientGroupName, setNewClientGroupName] = useState('')
   const [newProductName, setNewProductName] = useState('')
   const [operationViewMode, setOperationViewMode] = useState('kanban')
@@ -2684,8 +2690,14 @@ export default function DashboardShell({ initialTab = 'home' }) {
   const [newOperationClientId, setNewOperationClientId] = useState('')
   const [newOperationTitle, setNewOperationTitle] = useState('')
   const [newOperationContent, setNewOperationContent] = useState('')
-  const [newOperationResponsible, setNewOperationResponsible] = useState('')
+  const [newOperationAssigneeIds, setNewOperationAssigneeIds] = useState([])
   const [newOperationTags, setNewOperationTags] = useState('')
+  const [newOperationLane, setNewOperationLane] = useState('setup')
+  const [newOperationStatus, setNewOperationStatus] = useState('aberto')
+  const [expandedOperationCardId, setExpandedOperationCardId] = useState('')
+  const [newOperationCommentByCard, setNewOperationCommentByCard] = useState({})
+  const [newOperationSubtaskByCard, setNewOperationSubtaskByCard] = useState({})
+  const [operationDragCardId, setOperationDragCardId] = useState('')
   const [newClientColumnLabel, setNewClientColumnLabel] = useState('')
   const [newClientColumnType, setNewClientColumnType] = useState('text')
   const [newClientColumnOptions, setNewClientColumnOptions] = useState('')
@@ -2845,6 +2857,21 @@ export default function DashboardShell({ initialTab = 'home' }) {
   }, [isOperationCreateModalOpen, newOperationClientId, clients, activeClientId])
 
   useEffect(() => {
+    setNewClientOperationLane(resolveOperationLaneFromSalesModel(newClientSalesModel))
+  }, [newClientSalesModel])
+
+  useEffect(() => {
+    setNewClientCreateOperationCard(operationSettings?.autoCreateCardForNewClient !== false)
+  }, [operationSettings?.autoCreateCardForNewClient])
+
+  useEffect(() => {
+    if (!isOperationCreateModalOpen) return
+    const linkedClient = clientsById.get(newOperationClientId)
+    setNewOperationLane(resolveOperationLaneFromSalesModel(linkedClient?.salesModel))
+    setNewOperationStatus(operationStatuses[0]?.key || 'aberto')
+  }, [isOperationCreateModalOpen, newOperationClientId, clientsById, operationStatuses])
+
+  useEffect(() => {
     if (activeTab !== 'home') {
       setIsHomeToolsExpanded(false)
     }
@@ -2908,13 +2935,6 @@ export default function DashboardShell({ initialTab = 'home' }) {
     () => new Map(clients.map((client) => [client.id, client])),
     [clients]
   )
-  useEffect(() => {
-    const linkedClient = clientsById.get(newOperationClientId)
-    if (!linkedClient) return
-    if (!newOperationResponsible.trim()) {
-      setNewOperationResponsible(linkedClient.projectManager || '')
-    }
-  }, [newOperationClientId, clientsById, newOperationResponsible])
   const productsById = useMemo(
     () => new Map(products.map((product) => [product.id, product])),
     [products]
@@ -3030,6 +3050,48 @@ export default function DashboardShell({ initialTab = 'home' }) {
     () => allClientRegistryViews.find((view) => view.key === clientEditSection) || allClientRegistryViews[0],
     [clientEditSection, allClientRegistryViews]
   )
+  const operationLanes = useMemo(
+    () => (Array.isArray(operationSettings?.lanes) && operationSettings.lanes.length ? operationSettings.lanes : createOperationSettingsRecord().lanes),
+    [operationSettings]
+  )
+  const operationStatuses = useMemo(
+    () => (Array.isArray(operationSettings?.statuses) && operationSettings.statuses.length ? operationSettings.statuses : createOperationSettingsRecord().statuses),
+    [operationSettings]
+  )
+  const operationLanesByKey = useMemo(
+    () => new Map(operationLanes.map((lane) => [lane.key, lane])),
+    [operationLanes]
+  )
+  const operationStatusesByKey = useMemo(
+    () => new Map(operationStatuses.map((status) => [status.key, status])),
+    [operationStatuses]
+  )
+  const operationAssignableUsers = useMemo(() => {
+    const currentUserOption = user
+      ? [{
+          id: user.id,
+          full_name: user?.user_metadata?.full_name || profile?.full_name || user.email || 'Usuário',
+          email: user.email || '',
+          role,
+        }]
+      : []
+
+    const uniqueUsers = [...usersList, ...currentUserOption].reduce((accumulator, item) => {
+      if (!item?.id || accumulator.some((current) => current.id === item.id)) return accumulator
+      accumulator.push(item)
+      return accumulator
+    }, [])
+
+    return uniqueUsers
+      .filter((item) => item.role !== 'cliente')
+      .sort((left, right) =>
+        String(left.full_name || left.email || '').localeCompare(String(right.full_name || right.email || ''), 'pt-BR')
+      )
+  }, [usersList, user, profile?.full_name, role])
+  const operationUsersById = useMemo(
+    () => new Map(operationAssignableUsers.map((item) => [item.id, item])),
+    [operationAssignableUsers]
+  )
   const operationSegmentOptions = useMemo(
     () => Array.from(new Set(clients.map((client) => String(client.segment || '').trim()).filter(Boolean))).sort((left, right) => left.localeCompare(right, 'pt-BR')),
     [clients]
@@ -3043,8 +3105,15 @@ export default function DashboardShell({ initialTab = 'home' }) {
     [clients]
   )
   const operationResponsibleOptions = useMemo(
-    () => Array.from(new Set(operationCards.map((card) => String(card.responsible || '').trim()).filter(Boolean))).sort((left, right) => left.localeCompare(right, 'pt-BR')),
-    [operationCards]
+    () => Array.from(new Set(
+      operationCards.flatMap((card) => {
+        const names = Array.isArray(card.assigneeIds) && card.assigneeIds.length
+          ? card.assigneeIds.map((assigneeId) => operationUsersById.get(assigneeId)?.full_name || operationUsersById.get(assigneeId)?.email || '')
+          : [String(card.responsible || '').trim()]
+        return names.filter(Boolean)
+      })
+    )).sort((left, right) => left.localeCompare(right, 'pt-BR')),
+    [operationCards, operationUsersById]
   )
   const operationEditableClients = useMemo(
     () => (canManageClients ? clients : clients.filter((client) => canEditClientRecord(client.id))),
@@ -3130,20 +3199,23 @@ export default function DashboardShell({ initialTab = 'home' }) {
       const matchesSquad = operationSquadFilter === 'all'
         ? true
         : String(card.squad || linkedClient?.squad || '').trim() === operationSquadFilter
+      const responsibleNames = Array.isArray(card.assigneeIds) && card.assigneeIds.length
+        ? card.assigneeIds.map((assigneeId) => operationUsersById.get(assigneeId)?.full_name || operationUsersById.get(assigneeId)?.email || '').filter(Boolean)
+        : [String(card.responsible || '').trim()].filter(Boolean)
       const matchesResponsible = operationResponsibleFilter === 'all'
         ? true
-        : String(card.responsible || '').trim() === operationResponsibleFilter
+        : responsibleNames.includes(operationResponsibleFilter)
 
       return matchesPeriod && matchesSearch && matchesSegment && matchesTier && matchesSquad && matchesResponsible
     })
-  }, [operationCards, clientsById, operationPeriodFilter, operationSearch, operationSegmentFilter, operationTierFilter, operationSquadFilter, operationResponsibleFilter])
+  }, [operationCards, clientsById, operationPeriodFilter, operationSearch, operationSegmentFilter, operationTierFilter, operationSquadFilter, operationResponsibleFilter, operationUsersById])
   const operationCardsByLane = useMemo(
     () =>
-      OPERATION_LANES.reduce((accumulator, lane) => {
+      operationLanes.reduce((accumulator, lane) => {
         accumulator[lane.key] = filteredOperationCards.filter((card) => card.lane === lane.key)
         return accumulator
       }, {}),
-    [filteredOperationCards]
+    [filteredOperationCards, operationLanes]
   )
   const connectedClientsCount = useMemo(
     () => clients.filter((client) => Boolean(client.metaAdAccountId)).length,
@@ -3990,6 +4062,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
     setClientGroups(Array.isArray(preferences.clientGroups) ? cloneClientGroups(preferences.clientGroups) : [])
     setProducts(Array.isArray(preferences.products) ? preferences.products : [])
     setOperationCards(Array.isArray(preferences.operationCards) ? preferences.operationCards : [])
+    setOperationSettings(createOperationSettingsRecord(preferences.operationSettings))
     setClientSystemFields(Array.isArray(preferences.clientSystemFields) ? preferences.clientSystemFields : [])
     setClientCustomColumns(Array.isArray(preferences.clientCustomColumns) ? preferences.clientCustomColumns : [])
     setClientCustomTabs(Array.isArray(preferences.clientCustomTabs) ? preferences.clientCustomTabs : [])
@@ -4316,6 +4389,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
         setClientGroups(Array.isArray(state.clientGroups) ? cloneClientGroups(state.clientGroups) : [])
         setProducts(Array.isArray(state.products) ? state.products : [])
         setOperationCards(Array.isArray(state.operationCards) ? state.operationCards : [])
+        setOperationSettings(createOperationSettingsRecord(state.operationSettings))
         setClientSystemFields(Array.isArray(state.clientSystemFields) ? state.clientSystemFields : [])
         setClientCustomColumns(Array.isArray(state.clientCustomColumns) ? state.clientCustomColumns : [])
         setClientCustomTabs(Array.isArray(state.clientCustomTabs) ? state.clientCustomTabs : [])
@@ -4343,6 +4417,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
       clientGroups,
       products,
       operationCards,
+      operationSettings,
       clientSystemFields,
       clientCustomColumns,
       clientCustomTabs,
@@ -4365,7 +4440,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
     }, 300)
 
     return () => window.clearTimeout(timeoutId)
-  }, [hasLoadedPreferences, themeColor, metric1, metric2, activeClientId, globalIntegrations, clients, clientGroups, products, operationCards, clientSystemFields, clientCustomColumns, clientCustomTabs, userLoading, user, canPersistClientChanges, hasSyncedServerState])
+  }, [hasLoadedPreferences, themeColor, metric1, metric2, activeClientId, globalIntegrations, clients, clientGroups, products, operationCards, operationSettings, clientSystemFields, clientCustomColumns, clientCustomTabs, userLoading, user, canPersistClientChanges, hasSyncedServerState])
 
   useEffect(() => {
     ChartJS.defaults.color = '#94a3b8'
@@ -4590,6 +4665,28 @@ export default function DashboardShell({ initialTab = 'home' }) {
       status: 'Onboarding',
     })
     setClients((currentClients) => [...currentClients, newClient])
+    if (newClientCreateOperationCard) {
+      const selectedLane = operationLanesByKey.get(newClientOperationLane)
+        ? newClientOperationLane
+        : resolveOperationLaneFromSalesModel(newClientSalesModel)
+      const defaultStatus = operationStatuses[0]?.key || 'aberto'
+      setOperationCards((current) => [
+        createOperationCardRecord({
+          clientId: newClient.id,
+          title: `Onboarding ${newClient.name}`,
+          content: newClientImplementationObservation.trim(),
+          lane: selectedLane,
+          status: defaultStatus,
+          segment: newClient.segment || '',
+          tier: newClient.tier || '',
+          squad: newClient.squad || '',
+          subtasks: (operationLanesByKey.get(selectedLane)?.defaultSubtasks || []).map((title) =>
+            createOperationSubtaskRecord({ title, status: defaultStatus })
+          ),
+        }),
+        ...current,
+      ])
+    }
     setActiveClientId(newClient.id)
     setActiveTab('clientes')
     setNewClientName('')
@@ -4597,6 +4694,8 @@ export default function DashboardShell({ initialTab = 'home' }) {
     setNewClientSalesModel('INSIDE_SALES')
     setNewClientStartDate(getTodayDateInputValue())
     setNewClientImplementationObservation('')
+    setNewClientCreateOperationCard(operationSettings?.autoCreateCardForNewClient !== false)
+    setNewClientOperationLane(resolveOperationLaneFromSalesModel('INSIDE_SALES'))
     setClientEditSection('geral')
     setIsEditClientModalOpen(true)
   }
@@ -4638,6 +4737,13 @@ export default function DashboardShell({ initialTab = 'home' }) {
     setNewProductName('')
   }
 
+  const buildOperationSubtasksFromLane = useCallback((laneKey, fallbackStatus) => {
+    const defaultStatus = fallbackStatus || operationStatuses[0]?.key || 'aberto'
+    return (operationLanesByKey.get(laneKey)?.defaultSubtasks || []).map((title) =>
+      createOperationSubtaskRecord({ title, status: defaultStatus })
+    )
+  }, [operationLanesByKey, operationStatuses])
+
   const handleCreateOperationCard = (event) => {
     event.preventDefault()
     if (!canPersistClientChanges) return
@@ -4645,17 +4751,28 @@ export default function DashboardShell({ initialTab = 'home' }) {
 
     const linkedClient = clientsById.get(newOperationClientId)
     const now = new Date().toISOString()
+    const lane = operationLanesByKey.get(newOperationLane)
+      ? newOperationLane
+      : resolveOperationLaneFromSalesModel(linkedClient?.salesModel)
+    const status = operationStatusesByKey.get(newOperationStatus)
+      ? newOperationStatus
+      : operationStatuses[0]?.key || 'aberto'
+    const responsibleNames = newOperationAssigneeIds
+      .map((assigneeId) => operationUsersById.get(assigneeId)?.full_name || operationUsersById.get(assigneeId)?.email || '')
+      .filter(Boolean)
     const nextCard = createOperationCardRecord({
       clientId: newOperationClientId,
       title: newOperationTitle.trim(),
       content: newOperationContent.trim(),
-      lane: resolveOperationLaneFromSalesModel(linkedClient?.salesModel),
-      status: 'aberto',
-      responsible: newOperationResponsible.trim() || linkedClient?.projectManager || '',
+      lane,
+      status,
+      responsible: responsibleNames.join(', ') || linkedClient?.projectManager || '',
+      assigneeIds: newOperationAssigneeIds,
       segment: linkedClient?.segment || '',
       tier: linkedClient?.tier || '',
       squad: linkedClient?.squad || '',
       tags: normalizeSelectOptionsInput(newOperationTags),
+      subtasks: buildOperationSubtasksFromLane(lane, status),
       createdAt: now,
       updatedAt: now,
     })
@@ -4665,8 +4782,11 @@ export default function DashboardShell({ initialTab = 'home' }) {
     setNewOperationClientId('')
     setNewOperationTitle('')
     setNewOperationContent('')
-    setNewOperationResponsible('')
+    setNewOperationAssigneeIds([])
     setNewOperationTags('')
+    setNewOperationLane('setup')
+    setNewOperationStatus(operationStatuses[0]?.key || 'aberto')
+    setExpandedOperationCardId(nextCard.id)
     setActiveTab('operacao')
   }
 
@@ -4689,6 +4809,179 @@ export default function DashboardShell({ initialTab = 'home' }) {
 
   const handleMoveOperationCard = (cardId, lane) => {
     handleOperationCardFieldChange(cardId, 'lane', lane)
+  }
+
+  const handleToggleOperationCardExpansion = (cardId) => {
+    setExpandedOperationCardId((current) => current === cardId ? '' : cardId)
+  }
+
+  const handleToggleOperationCardAssignee = (cardId, userId) => {
+    const currentCard = operationCards.find((card) => card.id === cardId)
+    if (!currentCard || !canEditClientRecord(currentCard.clientId)) return
+
+    const nextAssigneeIds = currentCard.assigneeIds.includes(userId)
+      ? currentCard.assigneeIds.filter((item) => item !== userId)
+      : [...currentCard.assigneeIds, userId]
+    const responsible = nextAssigneeIds
+      .map((assigneeId) => operationUsersById.get(assigneeId)?.full_name || operationUsersById.get(assigneeId)?.email || '')
+      .filter(Boolean)
+      .join(', ')
+
+    setOperationCards((current) =>
+      current.map((card) =>
+        card.id === cardId
+          ? {
+              ...card,
+              assigneeIds: nextAssigneeIds,
+              responsible,
+              updatedAt: new Date().toISOString(),
+            }
+          : card
+      )
+    )
+  }
+
+  const handleAddOperationComment = (cardId) => {
+    const currentCard = operationCards.find((card) => card.id === cardId)
+    if (!currentCard || !canEditClientRecord(currentCard.clientId)) return
+
+    const body = String(newOperationCommentByCard[cardId] || '').trim()
+    if (!body) return
+
+    const mentionUserIds = operationAssignableUsers
+      .filter((item) => {
+        const mentionTag = `@${String(item.full_name || item.email || '').trim()}`
+        return mentionTag.length > 1 && body.includes(mentionTag)
+      })
+      .map((item) => item.id)
+
+    setOperationCards((current) =>
+      current.map((card) =>
+        card.id === cardId
+          ? {
+              ...card,
+              comments: [
+                ...(card.comments || []),
+                createOperationCommentRecord({
+                  body,
+                  authorId: user?.id || '',
+                  authorName: profile?.full_name || user?.email || 'Equipe',
+                  mentionUserIds,
+                }),
+              ],
+              updatedAt: new Date().toISOString(),
+            }
+          : card
+      )
+    )
+    setNewOperationCommentByCard((current) => ({ ...current, [cardId]: '' }))
+  }
+
+  const handleAddOperationSubtask = (cardId) => {
+    const currentCard = operationCards.find((card) => card.id === cardId)
+    if (!currentCard || !canEditClientRecord(currentCard.clientId)) return
+
+    const draftTitle = String(newOperationSubtaskByCard[cardId] || '').trim()
+    if (!draftTitle) return
+
+    setOperationCards((current) =>
+      current.map((card) =>
+        card.id === cardId
+          ? {
+              ...card,
+              subtasks: [
+                ...(card.subtasks || []),
+                createOperationSubtaskRecord({
+                  title: draftTitle,
+                  status: card.status || operationStatuses[0]?.key || 'aberto',
+                }),
+              ],
+              updatedAt: new Date().toISOString(),
+            }
+          : card
+      )
+    )
+    setNewOperationSubtaskByCard((current) => ({ ...current, [cardId]: '' }))
+  }
+
+  const handleOperationSubtaskFieldChange = (cardId, subtaskId, fieldName, value) => {
+    const currentCard = operationCards.find((card) => card.id === cardId)
+    if (!currentCard || !canEditClientRecord(currentCard.clientId)) return
+
+    setOperationCards((current) =>
+      current.map((card) =>
+        card.id === cardId
+          ? {
+              ...card,
+              subtasks: (card.subtasks || []).map((subtask) =>
+                subtask.id === subtaskId
+                  ? {
+                      ...subtask,
+                      [fieldName]: value,
+                      completed: fieldName === 'completed' ? Boolean(value) : subtask.completed,
+                      updatedAt: new Date().toISOString(),
+                    }
+                  : subtask
+              ),
+              updatedAt: new Date().toISOString(),
+            }
+          : card
+      )
+    )
+  }
+
+  const handleToggleOperationSubtaskAssignee = (cardId, subtaskId, userId) => {
+    const currentCard = operationCards.find((card) => card.id === cardId)
+    if (!currentCard || !canEditClientRecord(currentCard.clientId)) return
+
+    setOperationCards((current) =>
+      current.map((card) =>
+        card.id === cardId
+          ? {
+              ...card,
+              subtasks: (card.subtasks || []).map((subtask) =>
+                subtask.id === subtaskId
+                  ? {
+                      ...subtask,
+                      assigneeIds: subtask.assigneeIds.includes(userId)
+                        ? subtask.assigneeIds.filter((item) => item !== userId)
+                        : [...subtask.assigneeIds, userId],
+                      updatedAt: new Date().toISOString(),
+                    }
+                  : subtask
+              ),
+              updatedAt: new Date().toISOString(),
+            }
+          : card
+      )
+    )
+  }
+
+  const handleRemoveOperationSubtask = (cardId, subtaskId) => {
+    const currentCard = operationCards.find((card) => card.id === cardId)
+    if (!currentCard || !canEditClientRecord(currentCard.clientId)) return
+
+    setOperationCards((current) =>
+      current.map((card) =>
+        card.id === cardId
+          ? {
+              ...card,
+              subtasks: (card.subtasks || []).filter((subtask) => subtask.id !== subtaskId),
+              updatedAt: new Date().toISOString(),
+            }
+          : card
+      )
+    )
+  }
+
+  const handleOperationCardDragStart = (cardId) => {
+    setOperationDragCardId(cardId)
+  }
+
+  const handleOperationCardDrop = (laneKey) => {
+    if (!operationDragCardId) return
+    handleMoveOperationCard(operationDragCardId, laneKey)
+    setOperationDragCardId('')
   }
 
   const handleCreateClientCustomColumn = (event) => {
@@ -4882,7 +5175,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
   }
 
   const loadUsers = useCallback(async () => {
-    if (!canManageUsers) return
+    if (!canPersistClientChanges) return
 
     try {
       setUsersLoading(true)
@@ -4901,7 +5194,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
     } finally {
       setUsersLoading(false)
     }
-  }, [canManageUsers])
+  }, [canPersistClientChanges])
 
   const filteredUsers = useMemo(() => {
     const term = userSearch.trim().toLowerCase()
@@ -5169,6 +5462,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
       clientGroups,
       products,
       operationCards,
+      operationSettings,
       clientCustomColumns,
       clientCustomTabs,
     }
@@ -5287,9 +5581,9 @@ export default function DashboardShell({ initialTab = 'home' }) {
   }
 
   useEffect(() => {
-    if (!canManageUsers || activeTab !== 'usuarios') return
+    if (!(canManageUsers || canPersistClientChanges) || !['usuarios', 'operacao', 'clientes'].includes(activeTab)) return
     loadUsers()
-  }, [canManageUsers, activeTab, loadUsers])
+  }, [canManageUsers, canPersistClientChanges, activeTab, loadUsers])
 
   useEffect(() => {
     if (!usersList.length) {
@@ -10308,12 +10602,48 @@ export default function DashboardShell({ initialTab = 'home' }) {
                   <input type="text" value={newOperationTitle} onChange={(event) => setNewOperationTitle(event.target.value)} placeholder="Ex.: Configuração do CRM e tracking" />
                 </div>
                 <div className="input-group">
-                  <label>Responsável</label>
-                  <input type="text" value={newOperationResponsible} onChange={(event) => setNewOperationResponsible(event.target.value)} placeholder="Nome do responsável" />
+                  <label>Coluna</label>
+                  <select value={newOperationLane} onChange={(event) => setNewOperationLane(event.target.value)}>
+                    {operationLanes.map((lane) => (
+                      <option key={`new-operation-lane-${lane.key}`} value={lane.key}>{lane.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="input-group">
+                  <label>Status</label>
+                  <select value={newOperationStatus} onChange={(event) => setNewOperationStatus(event.target.value)}>
+                    {operationStatuses.map((status) => (
+                      <option key={`new-operation-status-${status.key}`} value={status.key}>{status.label}</option>
+                    ))}
+                  </select>
                 </div>
                 <div className="input-group">
                   <label>Tags</label>
                   <input type="text" value={newOperationTags} onChange={(event) => setNewOperationTags(event.target.value)} placeholder="Separadas por vírgula" />
+                </div>
+                <div className="input-group" style={{ gridColumn: '1 / -1' }}>
+                  <label>Responsáveis</label>
+                  <div className="stage-selector">
+                    {operationAssignableUsers.map((managedUser) => {
+                      const checked = newOperationAssigneeIds.includes(managedUser.id)
+                      return (
+                        <label key={`new-operation-assignee-${managedUser.id}`} className={`stage-chip ${checked ? 'active' : ''}`}>
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() =>
+                              setNewOperationAssigneeIds((current) =>
+                                current.includes(managedUser.id)
+                                  ? current.filter((item) => item !== managedUser.id)
+                                  : [...current, managedUser.id]
+                              )
+                            }
+                          />
+                          <span>{managedUser.full_name || managedUser.email}</span>
+                        </label>
+                      )
+                    })}
+                  </div>
                 </div>
                 <div className="input-group client-long-text-field" style={{ gridColumn: '1 / -1' }}>
                   <label>Contexto do card</label>
@@ -10415,10 +10745,18 @@ export default function DashboardShell({ initialTab = 'home' }) {
 
             {operationViewMode === 'kanban' && (
               <div className="operation-kanban-board">
-                {OPERATION_LANES.map((lane) => (
-                  <div key={lane.key} className="glass-panel operation-lane-card">
+                {operationLanes.map((lane) => (
+                  <div
+                    key={lane.key}
+                    className="glass-panel operation-lane-card"
+                    onDragOver={(event) => event.preventDefault()}
+                    onDrop={() => handleOperationCardDrop(lane.key)}
+                  >
                     <div className="operation-lane-head">
-                      <strong>{lane.label}</strong>
+                      <strong>
+                        <span className="operation-lane-color" style={{ backgroundColor: lane.color }}></span>
+                        {lane.label}
+                      </strong>
                       <span>{formatNumber((operationCardsByLane[lane.key] || []).length)} cards</span>
                     </div>
 
@@ -10426,30 +10764,225 @@ export default function DashboardShell({ initialTab = 'home' }) {
                       {(operationCardsByLane[lane.key] || []).length ? (
                         operationCardsByLane[lane.key].map((card) => {
                           const linkedClient = clientsById.get(card.clientId)
+                          const canEditCard = canEditClientRecord(card.clientId)
+                          const isExpanded = expandedOperationCardId === card.id
+                          const assigneeNames = (card.assigneeIds || [])
+                            .map((assigneeId) => operationUsersById.get(assigneeId)?.full_name || operationUsersById.get(assigneeId)?.email || '')
+                            .filter(Boolean)
+                          const cardStatus = operationStatusesByKey.get(card.status)
                           return (
-                            <article key={card.id} className="operation-card-item">
+                            <article
+                              key={card.id}
+                              className={`operation-card-item ${isExpanded ? 'operation-card-item-expanded' : ''}`}
+                              draggable={canEditCard}
+                              onDragStart={() => handleOperationCardDragStart(card.id)}
+                              onDragEnd={() => setOperationDragCardId('')}
+                            >
                               <div className="operation-card-item-head">
-                                <strong>{card.title}</strong>
-                                <small>{linkedClient?.name || 'Cliente não encontrado'}</small>
+                                <div>
+                                  <strong>{card.title}</strong>
+                                  <small>{linkedClient?.name || 'Cliente não encontrado'}</small>
+                                </div>
+                                <button type="button" className="btn btn-secondary operation-card-expand" onClick={() => handleToggleOperationCardExpansion(card.id)}>
+                                  {isExpanded ? 'Fechar' : 'Abrir'}
+                                </button>
                               </div>
                               <p>{card.content || 'Sem descrição adicional.'}</p>
                               <div className="operation-card-meta">
                                 <span>{card.segment || linkedClient?.segment || 'Sem segmento'}</span>
                                 <span>{card.tier || linkedClient?.tier || 'Sem tier'}</span>
-                                <span>{card.responsible || 'Sem responsável'}</span>
+                                <span>{assigneeNames.join(', ') || card.responsible || 'Sem responsável'}</span>
+                              </div>
+                              <div className="operation-card-tags">
+                                <span
+                                  className="stage-chip active operation-status-chip"
+                                  style={{ borderColor: `${cardStatus?.color || '#3b82f6'}55`, color: cardStatus?.color || '#3b82f6' }}
+                                >
+                                  <span>{cardStatus?.label || card.status}</span>
+                                </span>
+                                {(card.tags || []).map((tag) => (
+                                  <span key={`${card.id}-tag-${tag}`} className="stage-chip">
+                                    <span>{tag}</span>
+                                  </span>
+                                ))}
                               </div>
                               <div className="operation-card-actions">
-                                <select value={card.status} disabled={!canEditClientRecord(card.clientId)} onChange={(event) => handleOperationCardFieldChange(card.id, 'status', event.target.value)}>
-                                  {OPERATION_STATUS_OPTIONS.map((option) => (
-                                    <option key={`${card.id}-${option.value}`} value={option.value}>{option.label}</option>
+                                <select value={card.status} disabled={!canEditCard} onChange={(event) => handleOperationCardFieldChange(card.id, 'status', event.target.value)}>
+                                  {operationStatuses.map((option) => (
+                                    <option key={`${card.id}-${option.key}`} value={option.key}>{option.label}</option>
                                   ))}
                                 </select>
-                                <select value={card.lane} disabled={!canEditClientRecord(card.clientId)} onChange={(event) => handleMoveOperationCard(card.id, event.target.value)}>
-                                  {OPERATION_LANES.map((option) => (
+                                <select value={card.lane} disabled={!canEditCard} onChange={(event) => handleMoveOperationCard(card.id, event.target.value)}>
+                                  {operationLanes.map((option) => (
                                     <option key={`${card.id}-lane-${option.key}`} value={option.key}>{option.label}</option>
                                   ))}
                                 </select>
                               </div>
+
+                              {isExpanded && (
+                                <div className="operation-card-expanded">
+                                  <div className="form-grid operation-card-expanded-grid">
+                                    <div className="input-group">
+                                      <label>Título</label>
+                                      <input type="text" value={card.title || ''} disabled={!canEditCard} onChange={(event) => handleOperationCardFieldChange(card.id, 'title', event.target.value)} />
+                                    </div>
+                                    <div className="input-group">
+                                      <label>Cliente</label>
+                                      <input type="text" value={linkedClient?.name || ''} disabled />
+                                    </div>
+                                    <div className="input-group client-long-text-field" style={{ gridColumn: '1 / -1' }}>
+                                      <label>Descrição</label>
+                                      <textarea value={card.content || ''} rows={4} disabled={!canEditCard} onChange={(event) => handleOperationCardFieldChange(card.id, 'content', event.target.value)} />
+                                    </div>
+                                    <div className="input-group" style={{ gridColumn: '1 / -1' }}>
+                                      <label>Responsáveis</label>
+                                      <div className="stage-selector">
+                                        {operationAssignableUsers.map((managedUser) => {
+                                          const checked = (card.assigneeIds || []).includes(managedUser.id)
+                                          return (
+                                            <label key={`${card.id}-assignee-${managedUser.id}`} className={`stage-chip ${checked ? 'active' : ''}`}>
+                                              <input
+                                                type="checkbox"
+                                                checked={checked}
+                                                disabled={!canEditCard}
+                                                onChange={() => handleToggleOperationCardAssignee(card.id, managedUser.id)}
+                                              />
+                                              <span>{managedUser.full_name || managedUser.email}</span>
+                                            </label>
+                                          )
+                                        })}
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  <div className="operation-expanded-section">
+                                    <div className="operation-expanded-section-head">
+                                      <strong>Subtarefas</strong>
+                                      <span>{formatNumber((card.subtasks || []).length)} item(ns)</span>
+                                    </div>
+                                    <div className="operation-subtask-list">
+                                      {(card.subtasks || []).map((subtask) => (
+                                        <div key={subtask.id} className="glass-item operation-subtask-card">
+                                          <div className="form-grid operation-subtask-grid">
+                                            <div className="input-group">
+                                              <label>Título</label>
+                                              <input type="text" value={subtask.title || ''} disabled={!canEditCard} onChange={(event) => handleOperationSubtaskFieldChange(card.id, subtask.id, 'title', event.target.value)} />
+                                            </div>
+                                            <div className="input-group">
+                                              <label>Status</label>
+                                              <select value={subtask.status || operationStatuses[0]?.key || 'aberto'} disabled={!canEditCard} onChange={(event) => handleOperationSubtaskFieldChange(card.id, subtask.id, 'status', event.target.value)}>
+                                                {operationStatuses.map((status) => (
+                                                  <option key={`${subtask.id}-${status.key}`} value={status.key}>{status.label}</option>
+                                                ))}
+                                              </select>
+                                            </div>
+                                            <div className="input-group client-long-text-field" style={{ gridColumn: '1 / -1' }}>
+                                              <label>Descrição</label>
+                                              <textarea value={subtask.description || ''} rows={3} disabled={!canEditCard} onChange={(event) => handleOperationSubtaskFieldChange(card.id, subtask.id, 'description', event.target.value)} />
+                                            </div>
+                                            <div className="input-group" style={{ gridColumn: '1 / -1' }}>
+                                              <label>Responsáveis da subtarefa</label>
+                                              <div className="stage-selector">
+                                                {operationAssignableUsers.map((managedUser) => {
+                                                  const checked = (subtask.assigneeIds || []).includes(managedUser.id)
+                                                  return (
+                                                    <label key={`${subtask.id}-assignee-${managedUser.id}`} className={`stage-chip ${checked ? 'active' : ''}`}>
+                                                      <input
+                                                        type="checkbox"
+                                                        checked={checked}
+                                                        disabled={!canEditCard}
+                                                        onChange={() => handleToggleOperationSubtaskAssignee(card.id, subtask.id, managedUser.id)}
+                                                      />
+                                                      <span>{managedUser.full_name || managedUser.email}</span>
+                                                    </label>
+                                                  )
+                                                })}
+                                              </div>
+                                            </div>
+                                            <div className="operation-subtask-actions">
+                                              <label className={`stage-chip ${subtask.completed ? 'active' : ''}`}>
+                                                <input
+                                                  type="checkbox"
+                                                  checked={Boolean(subtask.completed)}
+                                                  disabled={!canEditCard}
+                                                  onChange={(event) => handleOperationSubtaskFieldChange(card.id, subtask.id, 'completed', event.target.checked)}
+                                                />
+                                                <span>Concluída</span>
+                                              </label>
+                                              <button type="button" className="btn btn-secondary" disabled={!canEditCard} onClick={() => handleRemoveOperationSubtask(card.id, subtask.id)}>
+                                                Remover
+                                              </button>
+                                            </div>
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                    <div className="operation-inline-create">
+                                      <input
+                                        type="text"
+                                        value={newOperationSubtaskByCard[card.id] || ''}
+                                        onChange={(event) => setNewOperationSubtaskByCard((current) => ({ ...current, [card.id]: event.target.value }))}
+                                        placeholder="Nova subtarefa"
+                                        disabled={!canEditCard}
+                                      />
+                                      <button type="button" className="btn btn-primary" disabled={!canEditCard} onClick={() => handleAddOperationSubtask(card.id)}>
+                                        Adicionar subtarefa
+                                      </button>
+                                    </div>
+                                  </div>
+
+                                  <div className="operation-expanded-section">
+                                    <div className="operation-expanded-section-head">
+                                      <strong>Comentários</strong>
+                                      <span>Use `@Nome` para marcar alguém</span>
+                                    </div>
+                                    <div className="operation-comment-list">
+                                      {(card.comments || []).length ? (
+                                        card.comments.map((comment) => (
+                                          <div key={comment.id} className="glass-item operation-comment-card">
+                                            <div className="operation-comment-head">
+                                              <strong>{comment.authorName || 'Equipe'}</strong>
+                                              <small>{formatClientDateTime(comment.createdAt)}</small>
+                                            </div>
+                                            <p>{comment.body}</p>
+                                          </div>
+                                        ))
+                                      ) : (
+                                        <div className="ranking-empty">Nenhum comentário ainda.</div>
+                                      )}
+                                    </div>
+                                    <div className="operation-inline-create operation-inline-create-stack">
+                                      <div className="operation-mention-helper">
+                                        {operationAssignableUsers.map((managedUser) => (
+                                          <button
+                                            key={`${card.id}-mention-${managedUser.id}`}
+                                            type="button"
+                                            className="stage-chip settings-chip-button"
+                                            onClick={() =>
+                                              setNewOperationCommentByCard((current) => ({
+                                                ...current,
+                                                [card.id]: `${String(current[card.id] || '').trim()} @${managedUser.full_name || managedUser.email}`.trim(),
+                                              }))
+                                            }
+                                          >
+                                            <span>@{managedUser.full_name || managedUser.email}</span>
+                                          </button>
+                                        ))}
+                                      </div>
+                                      <textarea
+                                        value={newOperationCommentByCard[card.id] || ''}
+                                        onChange={(event) => setNewOperationCommentByCard((current) => ({ ...current, [card.id]: event.target.value }))}
+                                        placeholder="Escreva um comentário do card"
+                                        rows={3}
+                                        disabled={!canEditCard}
+                                      />
+                                      <button type="button" className="btn btn-primary" disabled={!canEditCard} onClick={() => handleAddOperationComment(card.id)}>
+                                        Comentar
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
                             </article>
                           )
                         })
@@ -10485,11 +11018,11 @@ export default function DashboardShell({ initialTab = 'home' }) {
                             <tr key={`table-${card.id}`}>
                               <td className="campaign-name">{card.title}</td>
                               <td>{linkedClient?.name || '-'}</td>
-                              <td>{OPERATION_LANES.find((lane) => lane.key === card.lane)?.label || '-'}</td>
-                              <td>{OPERATION_STATUS_OPTIONS.find((status) => status.value === card.status)?.label || '-'}</td>
+                              <td>{operationLanesByKey.get(card.lane)?.label || '-'}</td>
+                              <td>{operationStatusesByKey.get(card.status)?.label || '-'}</td>
                               <td>{card.segment || linkedClient?.segment || '-'}</td>
                               <td>{card.tier || linkedClient?.tier || '-'}</td>
-                              <td>{card.responsible || '-'}</td>
+                              <td>{(card.assigneeIds || []).map((assigneeId) => operationUsersById.get(assigneeId)?.full_name || operationUsersById.get(assigneeId)?.email || '').filter(Boolean).join(', ') || card.responsible || '-'}</td>
                             </tr>
                           )
                         })}
@@ -10514,14 +11047,14 @@ export default function DashboardShell({ initialTab = 'home' }) {
                             <strong>{card.title}</strong>
                             <span>{linkedClient?.name || 'Cliente não encontrado'}</span>
                           </div>
-                          <small>{OPERATION_LANES.find((lane) => lane.key === card.lane)?.label || '-'}</small>
+                          <small>{operationLanesByKey.get(card.lane)?.label || '-'}</small>
                         </div>
                         <p>{card.content || 'Sem descrição adicional.'}</p>
                         <div className="operation-ticket-tags">
                           {(card.tags || []).length ? card.tags.map((tag) => <span key={`${card.id}-${tag}`} className="stage-chip">{tag}</span>) : <span className="stage-chip">Sem tags</span>}
                         </div>
                         <div className="operation-ticket-foot">
-                          <span>{card.responsible || 'Sem responsável'}</span>
+                          <span>{(card.assigneeIds || []).map((assigneeId) => operationUsersById.get(assigneeId)?.full_name || operationUsersById.get(assigneeId)?.email || '').filter(Boolean).join(', ') || card.responsible || 'Sem responsável'}</span>
                           <span>{formatClientDateTime(card.updatedAt)}</span>
                         </div>
                       </article>
@@ -10647,6 +11180,26 @@ export default function DashboardShell({ initialTab = 'home' }) {
                         <span>{item}</span>
                       </span>
                     ))}
+                  </div>
+                  <div className="client-create-operation-link">
+                    <label className={`stage-chip ${newClientCreateOperationCard ? 'active' : ''}`}>
+                      <input
+                        type="checkbox"
+                        checked={newClientCreateOperationCard}
+                        onChange={(event) => setNewClientCreateOperationCard(event.target.checked)}
+                        disabled={!isMaster}
+                      />
+                      <span>Criar card na operação</span>
+                    </label>
+                    <select
+                      value={newClientOperationLane}
+                      onChange={(event) => setNewClientOperationLane(event.target.value)}
+                      disabled={!isMaster || !newClientCreateOperationCard}
+                    >
+                      {operationLanes.map((lane) => (
+                        <option key={`new-client-lane-${lane.key}`} value={lane.key}>{lane.label}</option>
+                      ))}
+                    </select>
                   </div>
                   <div className="client-create-actions">
                     <button type="submit" className="btn btn-primary" disabled={!isMaster || !newClientName.trim() || !newClientSalesModel || !newClientStartDate}>
@@ -15004,6 +15557,89 @@ export default function DashboardShell({ initialTab = 'home' }) {
           grid-template-columns: repeat(2, minmax(0, 1fr));
         }
 
+        .operation-lane-color {
+          width: 10px;
+          height: 10px;
+          border-radius: 999px;
+          display: inline-flex;
+          margin-right: 8px;
+          vertical-align: middle;
+        }
+
+        .operation-card-item {
+          cursor: grab;
+        }
+
+        .operation-card-item-expanded {
+          border-color: rgba(78, 137, 255, 0.28);
+          box-shadow: 0 18px 40px rgba(0, 0, 0, 0.22);
+        }
+
+        .operation-card-expand {
+          min-height: 36px;
+          padding: 0 12px;
+        }
+
+        .operation-card-tags,
+        .operation-mention-helper {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px;
+        }
+
+        .operation-card-expanded,
+        .operation-expanded-section,
+        .operation-comment-list,
+        .operation-subtask-list {
+          display: grid;
+          gap: 12px;
+        }
+
+        .operation-card-expanded {
+          padding-top: 4px;
+          border-top: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .operation-expanded-section-head,
+        .operation-comment-head,
+        .operation-subtask-actions {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 10px;
+          flex-wrap: wrap;
+        }
+
+        .operation-comment-card,
+        .operation-subtask-card {
+          padding: 14px;
+          border-radius: 16px;
+          border: 1px solid rgba(255, 255, 255, 0.06);
+          background: rgba(255, 255, 255, 0.02);
+        }
+
+        .operation-subtask-grid,
+        .operation-card-expanded-grid {
+          display: grid;
+          gap: 12px;
+        }
+
+        .operation-inline-create {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) auto;
+          gap: 10px;
+          align-items: start;
+        }
+
+        .operation-inline-create-stack {
+          grid-template-columns: 1fr;
+        }
+
+        .operation-inline-create input,
+        .operation-inline-create textarea {
+          width: 100%;
+        }
+
         .operation-table-card {
           padding: 20px;
         }
@@ -15016,6 +15652,13 @@ export default function DashboardShell({ initialTab = 'home' }) {
           display: flex;
           flex-wrap: wrap;
           gap: 8px;
+        }
+
+        .client-create-operation-link {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) minmax(240px, 320px);
+          gap: 12px;
+          align-items: center;
         }
 
         .clients-metric-card-live {
@@ -20940,7 +21583,9 @@ export default function DashboardShell({ initialTab = 'home' }) {
           .operation-toolbar-top,
           .operation-filter-row,
           .operation-kanban-board,
-          .operation-tickets-grid {
+          .operation-tickets-grid,
+          .client-create-operation-link,
+          .operation-inline-create {
             grid-template-columns: 1fr;
           }
 
