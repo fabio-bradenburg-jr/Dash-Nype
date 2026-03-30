@@ -96,6 +96,7 @@ export interface OperationSettingsRecord {
 
 export interface OperationCardRecord {
   id: string
+  taskCode: string
   clientId: string
   title: string
   content: string

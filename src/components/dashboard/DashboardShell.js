@@ -10782,7 +10782,10 @@ export default function DashboardShell({ initialTab = 'home' }) {
 
                       <main className="operation-clickup-main">
                         <div className="operation-clickup-title-wrap">
-                          <span className="operation-clickup-type">Tarefa</span>
+                          <div className="operation-clickup-title-meta">
+                            <span className="operation-clickup-type">Tarefa</span>
+                            <span className="operation-clickup-id">{card.taskCode || card.id}</span>
+                          </div>
                           <input className="operation-clickup-title-input" type="text" value={card.title || ''} disabled={!canEditCard} onChange={(event) => handleOperationCardFieldChange(card.id, 'title', event.target.value)} />
                         </div>
 
@@ -11019,6 +11022,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
                             >
                               <div className="operation-card-item-head">
                                 <div>
+                                  <small>{card.taskCode || card.id}</small>
                                   <button type="button" className="operation-card-title-button" onClick={() => handleToggleOperationCardExpansion(card.id)}>
                                     <strong>{card.title}</strong>
                                   </button>
@@ -15716,11 +15720,11 @@ export default function DashboardShell({ initialTab = 'home' }) {
         .operation-card-modal {
           display: grid;
           grid-template-rows: auto minmax(0, 1fr);
-          width: min(80vw, 1680px);
-          max-width: 80vw;
-          height: 80vh;
-          max-height: 80vh;
-          overflow: hidden;
+          width: min(96vw, 1920px) !important;
+          max-width: 96vw !important;
+          height: 90vh;
+          max-height: 90vh !important;
+          overflow: hidden !important;
           padding: 0;
           border-radius: 28px;
           background:
@@ -15743,7 +15747,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
 
         .operation-clickup-layout {
           display: grid;
-          grid-template-columns: minmax(260px, 320px) minmax(0, 1.35fr) minmax(320px, 380px);
+          grid-template-columns: minmax(220px, 280px) minmax(760px, 1.85fr) minmax(280px, 340px);
           height: 100%;
           min-height: 0;
           align-items: stretch;
@@ -15795,6 +15799,13 @@ export default function DashboardShell({ initialTab = 'home' }) {
           border-bottom: 1px solid rgba(255, 255, 255, 0.06);
         }
 
+        .operation-clickup-title-meta {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          flex-wrap: wrap;
+        }
+
         .operation-clickup-type {
           width: fit-content;
           padding: 6px 12px;
@@ -15802,6 +15813,19 @@ export default function DashboardShell({ initialTab = 'home' }) {
           border: 1px solid rgba(255, 255, 255, 0.08);
           color: var(--text-muted);
           font-size: 13px;
+        }
+
+        .operation-clickup-id {
+          display: inline-flex;
+          align-items: center;
+          padding: 6px 12px;
+          border-radius: 999px;
+          border: 1px solid rgba(78, 137, 255, 0.22);
+          background: rgba(78, 137, 255, 0.08);
+          color: rgba(191, 219, 254, 0.96);
+          font-size: 12px;
+          font-weight: 700;
+          letter-spacing: 0.08em;
         }
 
         .operation-clickup-title-input {
@@ -15841,8 +15865,8 @@ export default function DashboardShell({ initialTab = 'home' }) {
 
         .operation-clickup-field-row {
           display: grid;
-          grid-template-columns: 180px minmax(0, 1fr);
-          gap: 16px;
+          grid-template-columns: 1fr;
+          gap: 10px;
           align-items: start;
           padding: 12px 0;
           border-bottom: 1px solid rgba(255, 255, 255, 0.05);
@@ -21872,12 +21896,12 @@ export default function DashboardShell({ initialTab = 'home' }) {
 
         @media (max-width: 1380px) {
           .operation-card-modal {
-            width: min(88vw, 1480px);
-            max-width: 88vw;
+            width: min(94vw, 1600px) !important;
+            max-width: 94vw !important;
           }
 
           .operation-clickup-layout {
-            grid-template-columns: minmax(240px, 280px) minmax(0, 1fr);
+            grid-template-columns: minmax(220px, 260px) minmax(0, 1fr);
           }
 
           .operation-clickup-activity {
@@ -21929,10 +21953,10 @@ export default function DashboardShell({ initialTab = 'home' }) {
           }
 
           .operation-card-modal {
-            width: calc(100vw - 24px);
-            max-width: calc(100vw - 24px);
+            width: calc(100vw - 24px) !important;
+            max-width: calc(100vw - 24px) !important;
             height: calc(100vh - 24px);
-            max-height: calc(100vh - 24px);
+            max-height: calc(100vh - 24px) !important;
           }
 
           .operation-clickup-sidebar,

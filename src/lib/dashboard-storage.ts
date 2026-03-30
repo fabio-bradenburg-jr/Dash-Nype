@@ -73,6 +73,12 @@ export const DEFAULT_OPERATION_STATUSES: Array<Pick<OperationStatusRecord, 'key'
   { key: 'concluido', label: 'Concluído', color: '#10b981' },
 ]
 
+function createOperationTaskCode(): string {
+  const timestamp = Date.now().toString(36).toUpperCase()
+  const randomPart = Math.random().toString(36).slice(2, 6).toUpperCase()
+  return `OP-${timestamp}-${randomPart}`
+}
+
 function normalizeClientCustomColumnOptions(options: unknown): string[] {
   if (!Array.isArray(options)) return []
   return Array.from(new Set(options.map((option) => String(option || '').trim()).filter(Boolean)))
@@ -268,6 +274,7 @@ export function createOperationCardRecord(overrides: Partial<OperationCardRecord
   const now = new Date().toISOString()
   return {
     id: overrides.id || createRecordId('operation-card'),
+    taskCode: String(overrides.taskCode || createOperationTaskCode()).trim() || createOperationTaskCode(),
     clientId: String(overrides.clientId || '').trim(),
     title: String(overrides.title || 'Novo card').trim() || 'Novo card',
     content: String(overrides.content || '').trim(),

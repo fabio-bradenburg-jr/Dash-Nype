@@ -97,6 +97,12 @@ function createRecordId(prefix: string): string {
   return globalThis.crypto?.randomUUID?.() || `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2, 10)}`
 }
 
+function createOperationTaskCode(): string {
+  const timestamp = Date.now().toString(36).toUpperCase()
+  const randomPart = Math.random().toString(36).slice(2, 6).toUpperCase()
+  return `OP-${timestamp}-${randomPart}`
+}
+
 function normalizeClientOkrs(okrs: unknown): ClientOkrRecord[] {
   if (!Array.isArray(okrs)) return []
 
@@ -276,6 +282,7 @@ function normalizeOperationCardRecord(card: LooseRecord): OperationCardRecord {
   const now = new Date().toISOString()
   return {
     id: String(card?.id || createRecordId('operation-card')).trim(),
+    taskCode: String(card?.taskCode || createOperationTaskCode()).trim() || createOperationTaskCode(),
     clientId: String(card?.clientId || '').trim(),
     title: String(card?.title || 'Novo card').trim() || 'Novo card',
     content: String(card?.content || '').trim(),
