@@ -2723,6 +2723,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
   const [isRdDiagnosticsOpen, setIsRdDiagnosticsOpen] = useState(false)
   const [isRdSourceFilterOpen, setIsRdSourceFilterOpen] = useState(false)
   const currentAppMode = appearance?.mode === 'light' ? 'light' : 'dark'
+  const isLightAppMode = currentAppMode === 'light'
   const handleToggleAppMode = (mode) => {
     if (mode === currentAppMode) return
     updateAppearance((current) => ({
@@ -11509,23 +11510,38 @@ export default function DashboardShell({ initialTab = 'home' }) {
             <div className="operation-stellar-shell">
               <div className="operation-stellar-hero">
                 <div className="operation-stellar-hero-copy">
-                  <h2>Operations Board</h2>
+                  <h2 style={isLightAppMode ? { color: '#0f172a' } : undefined}>Operations Board</h2>
                   <div className="operation-stellar-tabs">
-                    <button type="button" className={`operation-stellar-tab ${operationViewMode === 'kanban' ? 'active' : ''}`} onClick={() => setOperationViewMode('kanban')}>
+                    <button
+                      type="button"
+                      className={`operation-stellar-tab ${operationViewMode === 'kanban' ? 'active' : ''}`}
+                      onClick={() => setOperationViewMode('kanban')}
+                      style={isLightAppMode ? { color: operationViewMode === 'kanban' ? 'var(--accent-blue)' : '#64748b', borderBottomColor: operationViewMode === 'kanban' ? 'var(--accent-blue)' : 'transparent' } : undefined}
+                    >
                       Active Missions
                     </button>
-                    <button type="button" className={`operation-stellar-tab ${operationViewMode === 'table' ? 'active' : ''}`} onClick={() => setOperationViewMode('table')}>
+                    <button
+                      type="button"
+                      className={`operation-stellar-tab ${operationViewMode === 'table' ? 'active' : ''}`}
+                      onClick={() => setOperationViewMode('table')}
+                      style={isLightAppMode ? { color: operationViewMode === 'table' ? 'var(--accent-blue)' : '#64748b', borderBottomColor: operationViewMode === 'table' ? 'var(--accent-blue)' : 'transparent' } : undefined}
+                    >
                       Completed
                     </button>
-                    <button type="button" className={`operation-stellar-tab ${operationViewMode === 'tickets' ? 'active' : ''}`} onClick={() => setOperationViewMode('tickets')}>
+                    <button
+                      type="button"
+                      className={`operation-stellar-tab ${operationViewMode === 'tickets' ? 'active' : ''}`}
+                      onClick={() => setOperationViewMode('tickets')}
+                      style={isLightAppMode ? { color: operationViewMode === 'tickets' ? 'var(--accent-blue)' : '#64748b', borderBottomColor: operationViewMode === 'tickets' ? 'var(--accent-blue)' : 'transparent' } : undefined}
+                    >
                       Strategic View
                     </button>
                   </div>
                 </div>
                 <div className="operation-stellar-filters">
                   <label className="operation-stellar-filter">
-                    <span>Segmento</span>
-                    <select value={operationSegmentFilter} onChange={(event) => setOperationSegmentFilter(event.target.value)}>
+                    <span style={isLightAppMode ? { color: '#64748b' } : undefined}>Segmento</span>
+                    <select value={operationSegmentFilter} onChange={(event) => setOperationSegmentFilter(event.target.value)} style={isLightAppMode ? { background: 'linear-gradient(180deg, rgba(255,255,255,0.98), rgba(241,245,249,0.99))', border: '1px solid rgba(15, 23, 42, 0.08)', color: '#334155', boxShadow: '0 10px 22px rgba(15, 23, 42, 0.05)' } : undefined}>
                       <option value="all">All Segments</option>
                       {operationSegmentOptions.map((option) => (
                         <option key={`segment-${option}`} value={option}>{option}</option>
@@ -11533,8 +11549,8 @@ export default function DashboardShell({ initialTab = 'home' }) {
                     </select>
                   </label>
                   <label className="operation-stellar-filter">
-                    <span>Tier</span>
-                    <select value={operationTierFilter} onChange={(event) => setOperationTierFilter(event.target.value)}>
+                    <span style={isLightAppMode ? { color: '#64748b' } : undefined}>Tier</span>
+                    <select value={operationTierFilter} onChange={(event) => setOperationTierFilter(event.target.value)} style={isLightAppMode ? { background: 'linear-gradient(180deg, rgba(255,255,255,0.98), rgba(241,245,249,0.99))', border: '1px solid rgba(15, 23, 42, 0.08)', color: '#334155', boxShadow: '0 10px 22px rgba(15, 23, 42, 0.05)' } : undefined}>
                       <option value="all">All Tiers</option>
                       {operationTierOptions.map((option) => (
                         <option key={`tier-${option}`} value={option}>{option}</option>
@@ -11542,8 +11558,8 @@ export default function DashboardShell({ initialTab = 'home' }) {
                     </select>
                   </label>
                   <label className="operation-stellar-filter">
-                    <span>Squad</span>
-                    <select value={operationSquadFilter} onChange={(event) => setOperationSquadFilter(event.target.value)}>
+                    <span style={isLightAppMode ? { color: '#64748b' } : undefined}>Squad</span>
+                    <select value={operationSquadFilter} onChange={(event) => setOperationSquadFilter(event.target.value)} style={isLightAppMode ? { background: 'linear-gradient(180deg, rgba(255,255,255,0.98), rgba(241,245,249,0.99))', border: '1px solid rgba(15, 23, 42, 0.08)', color: '#334155', boxShadow: '0 10px 22px rgba(15, 23, 42, 0.05)' } : undefined}>
                       <option value="all">All Squads</option>
                       {operationSquadOptions.map((option) => (
                         <option key={`squad-${option}`} value={option}>{option}</option>
@@ -11551,15 +11567,15 @@ export default function DashboardShell({ initialTab = 'home' }) {
                     </select>
                   </label>
                   <label className="operation-stellar-filter">
-                    <span>Responsável</span>
-                    <select value={operationResponsibleFilter} onChange={(event) => setOperationResponsibleFilter(event.target.value)}>
+                    <span style={isLightAppMode ? { color: '#64748b' } : undefined}>Responsável</span>
+                    <select value={operationResponsibleFilter} onChange={(event) => setOperationResponsibleFilter(event.target.value)} style={isLightAppMode ? { background: 'linear-gradient(180deg, rgba(255,255,255,0.98), rgba(241,245,249,0.99))', border: '1px solid rgba(15, 23, 42, 0.08)', color: '#334155', boxShadow: '0 10px 22px rgba(15, 23, 42, 0.05)' } : undefined}>
                       <option value="all">All Owners</option>
                       {operationResponsibleOptions.map((option) => (
                         <option key={`responsible-${option}`} value={option}>{option}</option>
                       ))}
                     </select>
                   </label>
-                  <button type="button" className="operation-stellar-filter-button" aria-label="Filtros adicionais">
+                  <button type="button" className="operation-stellar-filter-button" aria-label="Filtros adicionais" style={isLightAppMode ? { background: 'linear-gradient(180deg, rgba(255,255,255,0.98), rgba(241,245,249,0.99))', border: '1px solid rgba(15, 23, 42, 0.08)', color: '#334155', boxShadow: '0 10px 22px rgba(15, 23, 42, 0.05)' } : undefined}>
                     <i className="bx bx-slider-alt"></i>
                   </button>
                   {canPersistClientChanges && (
@@ -11582,11 +11598,11 @@ export default function DashboardShell({ initialTab = 'home' }) {
                     onDrop={() => handleOperationCardDrop(lane.key)}
                   >
                     <div className="operation-lane-head">
-                      <strong>
+                      <strong style={isLightAppMode ? { color: '#0f172a' } : undefined}>
                         <span className="operation-lane-color" style={{ backgroundColor: lane.color }}></span>
                         {lane.label}
                       </strong>
-                      <span>{formatNumber((operationCardsByLane[lane.key] || []).length)}</span>
+                      <span style={isLightAppMode ? { background: 'rgba(59, 130, 246, 0.08)', color: '#47637e' } : undefined}>{formatNumber((operationCardsByLane[lane.key] || []).length)}</span>
                     </div>
 
                     <div className="operation-lane-list">
@@ -11608,10 +11624,11 @@ export default function DashboardShell({ initialTab = 'home' }) {
                               draggable={canEditCard}
                               onDragStart={() => handleOperationCardDragStart(card.id)}
                               onDragEnd={() => setOperationDragCardId('')}
+                              style={isLightAppMode ? { borderColor: 'rgba(15, 23, 42, 0.08)', background: 'linear-gradient(180deg, rgba(255,255,255,0.98), rgba(241,245,249,0.99))', boxShadow: '0 14px 30px rgba(15, 23, 42, 0.06)' } : undefined}
                             >
                               <div className="operation-card-item-head">
                                 <div className="operation-stellar-card-code">
-                                  <small>{card.taskCode || card.id}</small>
+                                  <small style={isLightAppMode ? { color: '#5b7aa7' } : undefined}>{card.taskCode || card.id}</small>
                                   <span
                                     className="stage-chip active operation-status-chip"
                                     style={{ borderColor: `${cardStatus?.color || '#3b82f6'}55`, color: cardStatus?.color || '#3b82f6' }}
@@ -11620,21 +11637,21 @@ export default function DashboardShell({ initialTab = 'home' }) {
                                   </span>
                                 </div>
                                 <div className="operation-card-title-block">
-                                  <button type="button" className="operation-card-title-button" onClick={() => handleToggleOperationCardExpansion(card.id)}>
+                                  <button type="button" className="operation-card-title-button" onClick={() => handleToggleOperationCardExpansion(card.id)} style={isLightAppMode ? { color: '#0f172a' } : undefined}>
                                     <strong>{card.title}</strong>
                                   </button>
-                                  <small>{linkedClient?.name || 'Cliente não encontrado'}</small>
+                                  <small style={isLightAppMode ? { color: '#64748b' } : undefined}>{linkedClient?.name || 'Cliente não encontrado'}</small>
                                 </div>
                               </div>
-                              {card.content ? <p>{card.content}</p> : null}
+                              {card.content ? <p style={isLightAppMode ? { color: '#64748b' } : undefined}>{card.content}</p> : null}
                               {(card.subtasks || []).length ? (
                                 <div className="operation-stellar-progress">
-                                  <div className="operation-stellar-progress-bar">
+                                  <div className="operation-stellar-progress-bar" style={isLightAppMode ? { background: 'rgba(148, 163, 184, 0.18)' } : undefined}>
                                     <span style={{ width: `${trackedProgress}%` }}></span>
                                   </div>
                                   <div className="operation-stellar-progress-copy">
-                                    <small>{trackedProgress}% Complete</small>
-                                    <small>{card.dueDate ? formatClientDate(card.dueDate) : `${formatNumber(card.subtasks.filter((item) => item.completed).length)}/${formatNumber(card.subtasks.length)} Tasks`}</small>
+                                    <small style={isLightAppMode ? { color: '#64748b' } : undefined}>{trackedProgress}% Complete</small>
+                                    <small style={isLightAppMode ? { color: '#64748b' } : undefined}>{card.dueDate ? formatClientDate(card.dueDate) : `${formatNumber(card.subtasks.filter((item) => item.completed).length)}/${formatNumber(card.subtasks.length)} Tasks`}</small>
                                   </div>
                                 </div>
                               ) : null}
@@ -11642,25 +11659,25 @@ export default function DashboardShell({ initialTab = 'home' }) {
                                 <div className="operation-stellar-avatar-stack">
                                   {(card.assigneeIds || []).length ? (
                                     card.assigneeIds.slice(0, 3).map((userId) => (
-                                      <span key={`${card.id}-avatar-${userId}`} className="operation-stellar-avatar" title={getOperationAssigneeLabel(userId)}>
+                                      <span key={`${card.id}-avatar-${userId}`} className="operation-stellar-avatar" title={getOperationAssigneeLabel(userId)} style={isLightAppMode ? { borderColor: 'rgba(255,255,255,0.96)', color: '#0f172a', background: 'linear-gradient(180deg, rgba(191,219,254,0.92), rgba(219,234,254,0.94))' } : undefined}>
                                         {getOperationAssigneeInitials(userId)}
                                       </span>
                                     ))
                                   ) : (
-                                    <span className="operation-stellar-card-meta-text">{assigneeNames.join(', ') || card.responsible || 'Sem responsável'}</span>
+                                    <span className="operation-stellar-card-meta-text" style={isLightAppMode ? { color: '#64748b' } : undefined}>{assigneeNames.join(', ') || card.responsible || 'Sem responsável'}</span>
                                   )}
                                 </div>
                                 <div className="operation-stellar-card-stats">
-                                  <span><i className="bx bx-message-square-dots"></i>{formatNumber((card.comments || []).length)}</span>
-                                  <span><i className="bx bx-check-circle"></i>{`${formatNumber(card.subtasks?.filter((item) => item.completed).length || 0)}/${formatNumber(card.subtasks?.length || 0)}`}</span>
+                                  <span style={isLightAppMode ? { color: '#64748b' } : undefined}><i className="bx bx-message-square-dots"></i>{formatNumber((card.comments || []).length)}</span>
+                                  <span style={isLightAppMode ? { color: '#64748b' } : undefined}><i className="bx bx-check-circle"></i>{`${formatNumber(card.subtasks?.filter((item) => item.completed).length || 0)}/${formatNumber(card.subtasks?.length || 0)}`}</span>
                                 </div>
                               </div>
                             </article>
                           )
                         })
                       ) : (
-                        <div className="operation-stellar-empty">
-                          <i className="bx bx-collection"></i>
+                        <div className="operation-stellar-empty" style={isLightAppMode ? { color: '#64748b', borderColor: 'rgba(148, 163, 184, 0.22)', background: 'rgba(255,255,255,0.34)' } : undefined}>
+                          <i className="bx bx-collection" style={isLightAppMode ? { color: 'rgba(96, 165, 250, 0.52)' } : undefined}></i>
                           <span>Nenhuma operação ativa nessa etapa</span>
                         </div>
                       )}
