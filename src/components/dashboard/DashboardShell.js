@@ -2845,14 +2845,6 @@ export default function DashboardShell({ initialTab = 'home' }) {
   }, [isOperationCreateModalOpen, newOperationClientId, clients, activeClientId])
 
   useEffect(() => {
-    const linkedClient = clientsById.get(newOperationClientId)
-    if (!linkedClient) return
-    if (!newOperationResponsible.trim()) {
-      setNewOperationResponsible(linkedClient.projectManager || '')
-    }
-  }, [newOperationClientId, clientsById, newOperationResponsible])
-
-  useEffect(() => {
     if (activeTab !== 'home') {
       setIsHomeToolsExpanded(false)
     }
@@ -2916,6 +2908,13 @@ export default function DashboardShell({ initialTab = 'home' }) {
     () => new Map(clients.map((client) => [client.id, client])),
     [clients]
   )
+  useEffect(() => {
+    const linkedClient = clientsById.get(newOperationClientId)
+    if (!linkedClient) return
+    if (!newOperationResponsible.trim()) {
+      setNewOperationResponsible(linkedClient.projectManager || '')
+    }
+  }, [newOperationClientId, clientsById, newOperationResponsible])
   const productsById = useMemo(
     () => new Map(products.map((product) => [product.id, product])),
     [products]
@@ -6720,42 +6719,6 @@ export default function DashboardShell({ initialTab = 'home' }) {
     }
   }
 
-  const handleGenerateAiInsights = async () => {
-    if (!isAiInsightsConfigured) {
-      setAiInsightsError('Configure provider, chave, endpoint e modelo na aba IA antes de gerar insights.')
-      setAiInsightsResult(null)
-      setIsAiInsightsModalOpen(true)
-      return
-    }
-
-    try {
-      setIsAiInsightsModalOpen(true)
-      setIsAiInsightsLoading(true)
-      setAiInsightsError('')
-      setAiInsightsResult(null)
-
-      const response = await fetch('/api/ai/dashboard-insights', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(dashboardAiInsightsPayload),
-      })
-
-      const data = await response.json().catch(() => ({}))
-
-      if (!response.ok) {
-        throw new Error(data?.error || 'Não foi possível gerar os insights da dashboard agora.')
-      }
-
-      setAiInsightsResult(data)
-    } catch (error) {
-      setAiInsightsError(error.message || 'Não foi possível gerar os insights da dashboard agora.')
-    } finally {
-      setIsAiInsightsLoading(false)
-    }
-  }
-
   const replaceDraftFunnelSteps = (steps) => {
     setDraftFunnelSteps(steps)
   }
@@ -7597,6 +7560,41 @@ export default function DashboardShell({ initialTab = 'home' }) {
     previousInsights,
     previousCustomMetrics,
   ])
+  const handleGenerateAiInsights = async () => {
+    if (!isAiInsightsConfigured) {
+      setAiInsightsError('Configure provider, chave, endpoint e modelo na aba IA antes de gerar insights.')
+      setAiInsightsResult(null)
+      setIsAiInsightsModalOpen(true)
+      return
+    }
+
+    try {
+      setIsAiInsightsModalOpen(true)
+      setIsAiInsightsLoading(true)
+      setAiInsightsError('')
+      setAiInsightsResult(null)
+
+      const response = await fetch('/api/ai/dashboard-insights', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(dashboardAiInsightsPayload),
+      })
+
+      const data = await response.json().catch(() => ({}))
+
+      if (!response.ok) {
+        throw new Error(data?.error || 'Não foi possível gerar os insights da dashboard agora.')
+      }
+
+      setAiInsightsResult(data)
+    } catch (error) {
+      setAiInsightsError(error.message || 'Não foi possível gerar os insights da dashboard agora.')
+    } finally {
+      setIsAiInsightsLoading(false)
+    }
+  }
   const aiInsightsDateLabel = `${dashboardAiInsightsPayload.period?.since || '--'} ate ${dashboardAiInsightsPayload.period?.until || '--'}`
   const aiInsightsFilterLabel = (dashboardAiInsightsPayload.filters?.resultLabels || []).join(', ') || 'Todos os resultados'
   const aiHighlights = useMemo(
