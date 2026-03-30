@@ -56,6 +56,8 @@ interface MetaConnectionState {
 
 type SettingsTab = 'panel' | 'general' | 'operation' | 'calendar' | 'clients'
 
+const SETTINGS_TAB_STORAGE_KEY = 'dash_settings_active_tab'
+
 type GlobalIntegrationsState = DashboardIntegrations & Record<string, unknown>
 
 interface SettingsServerState {
@@ -677,6 +679,11 @@ export default function SettingsPage() {
     const connected = params.get('meta_connected')
     const error = params.get('meta_error')
 
+    const storedTab = window.localStorage.getItem(SETTINGS_TAB_STORAGE_KEY)
+    const resolvedStoredTab = storedTab === 'panel' || storedTab === 'general' || storedTab === 'operation' || storedTab === 'calendar' || storedTab === 'clients'
+      ? storedTab
+      : null
+
     if (tab === 'operation') {
       setActiveSettingsTab('operation')
     } else if (tab === 'calendar') {
@@ -688,6 +695,12 @@ export default function SettingsPage() {
     } else if (tab === 'general') {
       setActiveSettingsTab('general')
     } else if (tab === 'panel') {
+      setActiveSettingsTab('panel')
+    } else if (canManageClients && resolvedStoredTab) {
+      setActiveSettingsTab(resolvedStoredTab)
+    } else if (canManageClients) {
+      setActiveSettingsTab('clients')
+    } else if (resolvedStoredTab === 'panel') {
       setActiveSettingsTab('panel')
     }
 
@@ -708,13 +721,18 @@ export default function SettingsPage() {
       setMetaConnectionError(error)
       setMetaConnectionNotice('')
     }
-  }, [globalIntegrations, globalIntegrations.metaConnectionMode, persistGlobalIntegrations])
+  }, [canManageClients, globalIntegrations, globalIntegrations.metaConnectionMode, persistGlobalIntegrations])
 
   useEffect(() => {
     if (!canManageClients && activeSettingsTab !== 'panel') {
       setActiveSettingsTab('panel')
     }
   }, [activeSettingsTab, canManageClients])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    window.localStorage.setItem(SETTINGS_TAB_STORAGE_KEY, activeSettingsTab)
+  }, [activeSettingsTab])
 
   useEffect(() => {
     if (!availableAiAgents.some((agent) => agent.id === selectedAiAgentId)) {
