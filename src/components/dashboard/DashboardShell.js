@@ -2696,6 +2696,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
   const [newOperationStatus, setNewOperationStatus] = useState('aberto')
   const [expandedOperationCardId, setExpandedOperationCardId] = useState('')
   const [newOperationCommentByCard, setNewOperationCommentByCard] = useState({})
+  const [newOperationCommentMentionsByCard, setNewOperationCommentMentionsByCard] = useState({})
   const [newOperationSubtaskByCard, setNewOperationSubtaskByCard] = useState({})
   const [operationDragCardId, setOperationDragCardId] = useState('')
   const [newClientColumnLabel, setNewClientColumnLabel] = useState('')
@@ -4851,12 +4852,9 @@ export default function DashboardShell({ initialTab = 'home' }) {
     const body = String(newOperationCommentByCard[cardId] || '').trim()
     if (!body) return
 
-    const mentionUserIds = operationAssignableUsers
-      .filter((item) => {
-        const mentionTag = `@${String(item.full_name || item.email || '').trim()}`
-        return mentionTag.length > 1 && body.includes(mentionTag)
-      })
-      .map((item) => item.id)
+    const mentionUserIds = Array.isArray(newOperationCommentMentionsByCard[cardId])
+      ? newOperationCommentMentionsByCard[cardId].filter(Boolean)
+      : []
 
     setOperationCards((current) =>
       current.map((card) =>
@@ -4878,6 +4876,23 @@ export default function DashboardShell({ initialTab = 'home' }) {
       )
     )
     setNewOperationCommentByCard((current) => ({ ...current, [cardId]: '' }))
+    setNewOperationCommentMentionsByCard((current) => ({ ...current, [cardId]: [] }))
+  }
+
+  const toggleOperationCommentMentionUser = (cardId, userId) => {
+    if (!userId) return
+
+    setNewOperationCommentMentionsByCard((current) => {
+      const currentIds = Array.isArray(current[cardId]) ? current[cardId] : []
+      const nextIds = currentIds.includes(userId)
+        ? currentIds.filter((item) => item !== userId)
+        : [...currentIds, userId]
+
+      return {
+        ...current,
+        [cardId]: nextIds,
+      }
+    })
   }
 
   const handleAddOperationSubtask = (cardId) => {
@@ -10851,21 +10866,21 @@ export default function DashboardShell({ initialTab = 'home' }) {
                         </div>
                         <div className="operation-inline-create operation-inline-create-stack">
                           <div className="operation-mention-helper">
-                            {operationAssignableUsers.map((managedUser) => (
-                              <button
-                                key={`${card.id}-mention-${managedUser.id}`}
-                                type="button"
-                                className="stage-chip settings-chip-button"
-                                onClick={() =>
-                                  setNewOperationCommentByCard((current) => ({
-                                    ...current,
-                                    [card.id]: `${String(current[card.id] || '').trim()} @${managedUser.full_name || managedUser.email}`.trim(),
-                                  }))
-                                }
-                              >
-                                <span>@{managedUser.full_name || managedUser.email}</span>
-                              </button>
-                            ))}
+                            {operationAssignableUsers.map((managedUser) => {
+                              const isSelected = Array.isArray(newOperationCommentMentionsByCard[card.id]) && newOperationCommentMentionsByCard[card.id].includes(managedUser.id)
+
+                              return (
+                                <button
+                                  key={`${card.id}-mention-${managedUser.id}`}
+                                  type="button"
+                                  className={`stage-chip settings-chip-button ${isSelected ? 'active' : ''}`}
+                                  aria-pressed={isSelected}
+                                  onClick={() => toggleOperationCommentMentionUser(card.id, managedUser.id)}
+                                >
+                                  <span>{managedUser.full_name || managedUser.email}</span>
+                                </button>
+                              )
+                            })}
                           </div>
                           <textarea
                             value={newOperationCommentByCard[card.id] || ''}
@@ -15699,9 +15714,13 @@ export default function DashboardShell({ initialTab = 'home' }) {
         }
 
         .operation-card-modal {
-          width: min(1520px, calc(100vw - 32px));
-          max-height: calc(100vh - 48px);
-          overflow-y: auto;
+          display: grid;
+          grid-template-rows: auto minmax(0, 1fr);
+          width: min(80vw, 1680px);
+          max-width: 80vw;
+          height: 80vh;
+          max-height: 80vh;
+          overflow: hidden;
           padding: 0;
           border-radius: 28px;
           background:
@@ -15724,9 +15743,10 @@ export default function DashboardShell({ initialTab = 'home' }) {
 
         .operation-clickup-layout {
           display: grid;
-          grid-template-columns: minmax(240px, 280px) minmax(420px, 1fr) minmax(280px, 320px);
-          min-height: 72vh;
-          align-items: start;
+          grid-template-columns: minmax(260px, 320px) minmax(0, 1.35fr) minmax(320px, 380px);
+          height: 100%;
+          min-height: 0;
+          align-items: stretch;
         }
 
         .operation-clickup-sidebar,
@@ -15737,6 +15757,8 @@ export default function DashboardShell({ initialTab = 'home' }) {
           align-content: start;
           gap: 18px;
           min-width: 0;
+          min-height: 0;
+          overflow-y: auto;
         }
 
         .operation-clickup-sidebar,
@@ -15799,6 +15821,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
         .operation-clickup-fields {
           display: grid;
           gap: 14px;
+          min-width: 0;
         }
 
         .operation-clickup-description,
@@ -15832,6 +15855,33 @@ export default function DashboardShell({ initialTab = 'home' }) {
 
         .operation-clickup-field-row-stack {
           grid-template-columns: 1fr;
+        }
+
+        .operation-clickup-field-row select,
+        .operation-clickup-field-row .stage-selector,
+        .operation-clickup-field-row .operation-card-tags {
+          min-width: 0;
+        }
+
+        .operation-clickup-main .stage-selector,
+        .operation-clickup-activity .operation-mention-helper,
+        .operation-clickup-sidebar .stage-selector {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 10px;
+        }
+
+        .operation-clickup-main .stage-chip,
+        .operation-clickup-activity .stage-chip,
+        .operation-clickup-sidebar .stage-chip {
+          max-width: 100%;
+        }
+
+        .operation-clickup-main .stage-chip span,
+        .operation-clickup-activity .stage-chip span,
+        .operation-clickup-sidebar .stage-chip span {
+          white-space: normal;
+          word-break: break-word;
         }
 
         .operation-subtask-compact-head {
@@ -15898,6 +15948,13 @@ export default function DashboardShell({ initialTab = 'home' }) {
         .operation-subtask-list .ranking-empty {
           background: rgba(255, 255, 255, 0.02);
           border: 1px dashed rgba(255, 255, 255, 0.08);
+        }
+
+        .operation-comment-list,
+        .operation-subtask-list {
+          align-content: start;
+          min-height: 0;
+          overflow-y: auto;
         }
 
         .operation-table-card {
@@ -21814,6 +21871,11 @@ export default function DashboardShell({ initialTab = 'home' }) {
         }
 
         @media (max-width: 1380px) {
+          .operation-card-modal {
+            width: min(88vw, 1480px);
+            max-width: 88vw;
+          }
+
           .operation-clickup-layout {
             grid-template-columns: minmax(240px, 280px) minmax(0, 1fr);
           }
@@ -21822,6 +21884,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
             grid-column: 1 / -1;
             border-left: none;
             border-top: 1px solid rgba(255, 255, 255, 0.06);
+            max-height: 280px;
           }
         }
 
@@ -21863,6 +21926,19 @@ export default function DashboardShell({ initialTab = 'home' }) {
 
           .operation-clickup-layout {
             grid-template-columns: 1fr;
+          }
+
+          .operation-card-modal {
+            width: calc(100vw - 24px);
+            max-width: calc(100vw - 24px);
+            height: calc(100vh - 24px);
+            max-height: calc(100vh - 24px);
+          }
+
+          .operation-clickup-sidebar,
+          .operation-clickup-main,
+          .operation-clickup-activity {
+            max-height: none;
           }
 
           .client-create-bar,
