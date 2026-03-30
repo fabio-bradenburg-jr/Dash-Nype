@@ -235,6 +235,8 @@ function normalizeOperationCommentRecord(comment: LooseRecord): OperationComment
     body: String(comment?.body || '').trim(),
     authorName: String(comment?.authorName || '').trim(),
     authorId: String(comment?.authorId || '').trim(),
+    kind: comment?.kind === 'activity' ? 'activity' : 'comment',
+    activityType: String(comment?.activityType || '').trim(),
     mentionUserIds: normalizeOperationUserIds(comment?.mentionUserIds),
     createdAt: String(comment?.createdAt || now).trim() || now,
   }

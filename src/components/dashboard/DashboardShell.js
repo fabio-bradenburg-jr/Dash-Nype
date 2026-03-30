@@ -124,6 +124,20 @@ const OPERATION_PRIORITY_OPTIONS = [
   { value: 'urgente', label: 'Urgente' },
 ]
 const OPERATION_PRIORITY_LABELS = Object.fromEntries(OPERATION_PRIORITY_OPTIONS.map((item) => [item.value, item.label]))
+const OPERATION_ACTIVITY_ICON_BY_TYPE = {
+  update: 'bx-edit-alt',
+  status: 'bx-loader-circle',
+  lane: 'bx-columns',
+  assignee: 'bx-user-check',
+  priority: 'bx-flag',
+  date: 'bx-calendar',
+  tags: 'bx-purchase-tag-alt',
+  task_type: 'bx-category-alt',
+  subtask: 'bx-subdirectory-left',
+  timer: 'bx-timer',
+  custom_field: 'bx-list-plus',
+  comment: 'bx-message-rounded-detail',
+}
 const OPERATION_LANES = [
   { key: 'setup', label: 'Setup de implementação' },
   { key: 'inside_sales', label: 'Implementação (Inside Sales)' },
@@ -4854,7 +4868,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
     if (!currentCard || !canEditClientRecord(currentCard.clientId)) return
     if (JSON.stringify(currentCard[fieldName]) === JSON.stringify(value)) return
 
-    const activityMessage = buildOperationCardFieldActivityMessage(currentCard, fieldName, value)
+    const activity = buildOperationCardFieldActivityMessage(currentCard, fieldName, value)
 
     setOperationCards((current) =>
       current.map((card) =>
@@ -4862,7 +4876,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
           ? {
               ...card,
               [fieldName]: value,
-              comments: activityMessage ? appendOperationActivityComment(card.comments, activityMessage) : card.comments,
+              comments: activity ? appendOperationActivityComment(card.comments, activity.body, activity.type) : card.comments,
               updatedAt: new Date().toISOString(),
             }
           : card
@@ -4934,6 +4948,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
                   body,
                   authorId: user?.id || '',
                   authorName: profile?.full_name || user?.email || 'Equipe',
+                  kind: 'comment',
                   mentionUserIds,
                 }),
               ],
@@ -5072,7 +5087,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
           ? {
               ...card,
               subtasks: (card.subtasks || []).filter((subtask) => subtask.id !== subtaskId),
-              comments: removedSubtask ? appendOperationActivityComment(card.comments, `removeu a subtarefa "${removedSubtask.title || 'Subtarefa'}".`) : card.comments,
+              comments: removedSubtask ? appendOperationActivityComment(card.comments, `removeu a subtarefa "${removedSubtask.title || 'Subtarefa'}".`, 'subtask') : card.comments,
               updatedAt: new Date().toISOString(),
             }
           : card
@@ -5095,7 +5110,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
 
   const getOperationActorName = () => profile?.full_name || user?.email || 'Equipe'
 
-  const appendOperationActivityComment = (comments, body) => {
+  const appendOperationActivityComment = (comments, body, activityType = 'update') => {
     if (!String(body || '').trim()) return comments || []
 
     return [
@@ -5104,6 +5119,8 @@ export default function DashboardShell({ initialTab = 'home' }) {
         body,
         authorId: user?.id || '',
         authorName: getOperationActorName(),
+        kind: 'activity',
+        activityType,
       }),
     ]
   }
@@ -5112,44 +5129,47 @@ export default function DashboardShell({ initialTab = 'home' }) {
     if (fieldName === 'status') {
       const previousLabel = operationStatusesByKey.get(card.status)?.label || card.status
       const nextLabel = operationStatusesByKey.get(value)?.label || value
-      return previousLabel === nextLabel ? '' : `alterou o status de ${previousLabel} para ${nextLabel}.`
+      return previousLabel === nextLabel ? null : { body: `alterou o status de ${previousLabel} para ${nextLabel}.`, type: 'status' }
     }
 
     if (fieldName === 'lane') {
       const previousLabel = operationLanesByKey.get(card.lane)?.label || card.lane
       const nextLabel = operationLanesByKey.get(value)?.label || value
-      return previousLabel === nextLabel ? '' : `moveu o card de ${previousLabel} para ${nextLabel}.`
+      return previousLabel === nextLabel ? null : { body: `moveu o card de ${previousLabel} para ${nextLabel}.`, type: 'lane' }
     }
 
     if (fieldName === 'priority') {
       const previousLabel = OPERATION_PRIORITY_LABELS[card.priority || 'sem_prioridade'] || 'Sem prioridade'
       const nextLabel = OPERATION_PRIORITY_LABELS[value || 'sem_prioridade'] || 'Sem prioridade'
-      return previousLabel === nextLabel ? '' : `alterou a prioridade de ${previousLabel} para ${nextLabel}.`
+      return previousLabel === nextLabel ? null : { body: `alterou a prioridade de ${previousLabel} para ${nextLabel}.`, type: 'priority' }
     }
 
     if (fieldName === 'taskType') {
       const previousLabel = card.taskType || 'Tarefa'
       const nextLabel = value || 'Tarefa'
-      return previousLabel === nextLabel ? '' : `alterou o tipo de tarefa de ${previousLabel} para ${nextLabel}.`
+      return previousLabel === nextLabel ? null : { body: `alterou o tipo de tarefa de ${previousLabel} para ${nextLabel}.`, type: 'task_type' }
     }
 
     if (fieldName === 'startDate' || fieldName === 'dueDate') {
       const fieldLabel = fieldName === 'startDate' ? 'data de início' : 'data de entrega'
       const previousLabel = card[fieldName] ? formatClientDate(card[fieldName]) : 'não definida'
       const nextLabel = value ? formatClientDate(value) : 'não definida'
-      return previousLabel === nextLabel ? '' : `alterou a ${fieldLabel} de ${previousLabel} para ${nextLabel}.`
+      return previousLabel === nextLabel ? null : { body: `alterou a ${fieldLabel} de ${previousLabel} para ${nextLabel}.`, type: 'date' }
     }
 
     if (fieldName === 'tags') {
       const previousTags = Array.isArray(card.tags) ? card.tags : []
       const nextTags = Array.isArray(value) ? value : []
-      if (JSON.stringify(previousTags) === JSON.stringify(nextTags)) return ''
-      return nextTags.length
-        ? `atualizou as tags do card para ${nextTags.join(', ')}.`
-        : 'removeu todas as tags do card.'
+      if (JSON.stringify(previousTags) === JSON.stringify(nextTags)) return null
+      return {
+        body: nextTags.length
+          ? `atualizou as tags do card para ${nextTags.join(', ')}.`
+          : 'removeu todas as tags do card.',
+        type: 'tags',
+      }
     }
 
-    return ''
+    return null
   }
 
   const handleToggleOperationCardTag = (cardId, tagLabel) => {
@@ -5202,7 +5222,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
                 ...card,
                 timeTrackedMinutes: (card.timeTrackedMinutes || 0) + additionalMinutes,
                 timeTrackerStartedAt: '',
-                comments: appendOperationActivityComment(card.comments, `pausou o rastreio de tempo em ${formatMinutesToDuration((card.timeTrackedMinutes || 0) + additionalMinutes)}.`),
+                comments: appendOperationActivityComment(card.comments, `pausou o rastreio de tempo em ${formatMinutesToDuration((card.timeTrackedMinutes || 0) + additionalMinutes)}.`, 'timer'),
                 updatedAt: new Date().toISOString(),
               }
             : card
@@ -5217,7 +5237,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
           ? {
               ...card,
               timeTrackerStartedAt: now.toISOString(),
-              comments: appendOperationActivityComment(card.comments, 'iniciou o rastreio de tempo.'),
+              comments: appendOperationActivityComment(card.comments, 'iniciou o rastreio de tempo.', 'timer'),
               updatedAt: new Date().toISOString(),
             }
           : card
@@ -5244,7 +5264,8 @@ export default function DashboardShell({ initialTab = 'home' }) {
               },
               comments: appendOperationActivityComment(
                 card.comments,
-                `atualizou o campo "${fieldLabel}" de ${previousValue || 'vazio'} para ${nextValue || 'vazio'}.`
+                `atualizou o campo "${fieldLabel}" de ${previousValue || 'vazio'} para ${nextValue || 'vazio'}.`,
+                'custom_field'
               ),
               updatedAt: new Date().toISOString(),
             }
@@ -11285,10 +11306,20 @@ export default function DashboardShell({ initialTab = 'home' }) {
                         <div className="operation-comment-list">
                           {(card.comments || []).length ? (
                             card.comments.map((comment) => (
-                              <div key={comment.id} className="glass-item operation-comment-card">
+                              <div key={comment.id} className={`glass-item operation-comment-card ${comment.kind === 'activity' ? 'operation-comment-card-activity' : 'operation-comment-card-manual'}`}>
                                 <div className="operation-comment-head">
-                                  <strong>{comment.authorName || 'Equipe'}</strong>
-                                  <small>{formatClientDateTime(comment.createdAt)}</small>
+                                  <div className="operation-comment-head-main">
+                                    <span className={`operation-comment-icon ${comment.kind === 'activity' ? 'activity' : 'comment'}`}>
+                                      <i className={`bx ${OPERATION_ACTIVITY_ICON_BY_TYPE[comment.kind === 'activity' ? (comment.activityType || 'update') : 'comment'] || 'bx-message-rounded-detail'}`}></i>
+                                    </span>
+                                    <div className="operation-comment-head-copy">
+                                      <strong>{comment.authorName || 'Equipe'}</strong>
+                                      <small>{formatClientDateTime(comment.createdAt)}</small>
+                                    </div>
+                                  </div>
+                                  <span className={`operation-comment-badge ${comment.kind === 'activity' ? 'activity' : 'comment'}`}>
+                                    {comment.kind === 'activity' ? 'Atividade' : 'Comentário'}
+                                  </span>
                                 </div>
                                 <p>{comment.body}</p>
                               </div>
@@ -16540,6 +16571,80 @@ export default function DashboardShell({ initialTab = 'home' }) {
           align-content: start;
           min-height: 0;
           overflow-y: auto;
+        }
+
+        .operation-comment-card {
+          gap: 10px;
+        }
+
+        .operation-comment-card-manual {
+          background: rgba(255, 255, 255, 0.03);
+        }
+
+        .operation-comment-card-activity {
+          background: linear-gradient(180deg, rgba(78, 137, 255, 0.08), rgba(255, 255, 255, 0.02));
+          border-color: rgba(78, 137, 255, 0.12);
+        }
+
+        .operation-comment-head {
+          align-items: flex-start;
+        }
+
+        .operation-comment-head-main {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          min-width: 0;
+        }
+
+        .operation-comment-head-copy {
+          display: grid;
+          gap: 2px;
+        }
+
+        .operation-comment-icon {
+          width: 34px;
+          height: 34px;
+          border-radius: 12px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          flex: 0 0 34px;
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          background: rgba(255, 255, 255, 0.03);
+        }
+
+        .operation-comment-icon.comment {
+          color: #cbd5e1;
+        }
+
+        .operation-comment-icon.activity {
+          color: #93c5fd;
+          background: rgba(78, 137, 255, 0.12);
+          border-color: rgba(78, 137, 255, 0.18);
+        }
+
+        .operation-comment-badge {
+          display: inline-flex;
+          align-items: center;
+          padding: 5px 10px;
+          border-radius: 999px;
+          font-size: 11px;
+          font-weight: 700;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+          border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .operation-comment-badge.comment {
+          color: rgba(226, 232, 240, 0.72);
+          background: rgba(255, 255, 255, 0.03);
+        }
+
+        .operation-comment-badge.activity {
+          color: #bfdbfe;
+          background: rgba(78, 137, 255, 0.12);
+          border-color: rgba(78, 137, 255, 0.18);
         }
 
         .operation-table-card {

@@ -217,6 +217,8 @@ export function createOperationCommentRecord(
     body: String(overrides.body || '').trim(),
     authorName: String(overrides.authorName || '').trim(),
     authorId: String(overrides.authorId || '').trim(),
+    kind: overrides.kind === 'activity' ? 'activity' : 'comment',
+    activityType: String(overrides.activityType || '').trim(),
     mentionUserIds: normalizeOperationUserIds(overrides.mentionUserIds),
     createdAt: String(overrides.createdAt || now).trim() || now,
   }

@@ -58,6 +58,8 @@ export interface OperationCommentRecord {
   body: string
   authorName: string
   authorId: string
+  kind: 'comment' | 'activity'
+  activityType: string
   mentionUserIds: string[]
   createdAt: string
 }
