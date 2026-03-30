@@ -73,6 +73,16 @@ const DEFAULT_OPERATION_STATUSES: Array<Pick<OperationStatusRecord, 'key' | 'lab
 
 const DEFAULT_OPERATION_TASK_TYPES = ['Tarefa']
 const DEFAULT_OPERATION_CUSTOM_FIELDS: OperationCustomFieldRecord[] = []
+const DEFAULT_CLIENT_DASHBOARD_INTEGRATION_KEYS = [
+  'meta_ads',
+  'google_ads',
+  'tiktok_ads',
+  'linkedin_ads',
+  'google_sheets',
+  'rd_station',
+  'salesforce',
+  'agendor',
+]
 const DEFAULT_GLOBAL_INTEGRATIONS: DashboardIntegrations = {
   metaAccessToken: '',
   metaConnectionMode: 'manual',
@@ -465,6 +475,17 @@ function normalizeClientDashboardTemplates(payload: LooseRecord) {
   }
 }
 
+function normalizeClientDashboardIntegrationKeys(items: unknown): string[] {
+  if (!Array.isArray(items)) return [...DEFAULT_CLIENT_DASHBOARD_INTEGRATION_KEYS]
+
+  const allowedKeys = new Set(DEFAULT_CLIENT_DASHBOARD_INTEGRATION_KEYS)
+  const normalized = Array.from(
+    new Set(items.map((item) => String(item || '').trim()).filter((item) => allowedKeys.has(item)))
+  )
+
+  return normalized.length ? normalized : [...DEFAULT_CLIENT_DASHBOARD_INTEGRATION_KEYS]
+}
+
 function normalizeClientRecord(client: LooseRecord): ClientRecord {
   const payload = client?.payload && typeof client.payload === 'object' ? client.payload : client || {}
   const { dashboardTemplates, activeDashboardTemplateId } = normalizeClientDashboardTemplates(payload)
@@ -474,6 +495,9 @@ function normalizeClientRecord(client: LooseRecord): ClientRecord {
     id: client?.id || payload.id || '',
     name: client?.name || payload.name || 'Novo cliente',
     cnpj: client?.cnpj || payload.cnpj || '',
+    operationEnabled: payload.operationEnabled !== false,
+    dashboardEnabled: payload.dashboardEnabled !== false,
+    dashboardVisibleIntegrationKeys: normalizeClientDashboardIntegrationKeys(payload.dashboardVisibleIntegrationKeys),
     segment: payload.segment || '',
     subsegment: payload.subsegment || '',
     tier: payload.tier || '',

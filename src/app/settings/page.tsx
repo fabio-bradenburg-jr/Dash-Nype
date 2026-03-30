@@ -468,9 +468,9 @@ export default function SettingsPage() {
     if (activeSettingsTab === 'panel') {
       return {
         title: 'Aparência ativa',
-        description: 'Controle o visual do app e a atmosfera geral da interface.',
+        description: 'Controle a assinatura visual do app e a atmosfera geral da interface.',
         items: [
-          `${panelDraft.mode === 'dark' ? 'Modo escuro' : 'Modo claro'} selecionado`,
+          'Tema claro/escuro no topo do app',
           `Cor de destaque ${panelDraft.accent.toUpperCase()}`,
           `Fundo base ${panelDraft.backgroundTint.toUpperCase()}`,
         ],
@@ -1659,7 +1659,7 @@ export default function SettingsPage() {
                 <i className="bx bx-layout"></i>
                 <div>
                   <strong>Interface</strong>
-                  <span>Modo, destaque e atmosfera do sistema.</span>
+                  <span>Destaque, fundo e assinatura visual do sistema.</span>
                 </div>
               </button>
 
@@ -1750,57 +1750,8 @@ export default function SettingsPage() {
                         <span className="settings-hero-kicker">Configuração visual</span>
                         <h2>Interface do sistema</h2>
                         <p>Personalize o app dentro da linguagem Digital Obsidian, com foco em contraste, profundidade e leitura executiva.</p>
+                        <small>A troca entre modo claro e escuro agora fica no topo do app.</small>
                       </div>
-                    </div>
-
-                    <div className="settings-mode-grid">
-                      <button
-                        type="button"
-                        className={`settings-mode-card ${panelDraft.mode === 'dark' ? 'active' : ''}`}
-                        onClick={() => updatePanelDraft((current) => ({ ...current, mode: 'dark' }))}
-                      >
-                        <div className="settings-mode-preview settings-mode-preview-dark">
-                          <span></span>
-                          <span></span>
-                          <div>
-                            <i className="bx bx-circle"></i>
-                            <strong></strong>
-                          </div>
-                        </div>
-                        <div className="settings-mode-copy">
-                          <strong>Escuro</strong>
-                          <p>Otimizado para foco, profundidade e menor fadiga visual.</p>
-                        </div>
-                        {panelDraft.mode === 'dark' ? (
-                          <span className="settings-mode-check">
-                            <i className="bx bx-check"></i>
-                          </span>
-                        ) : null}
-                      </button>
-
-                      <button
-                        type="button"
-                        className={`settings-mode-card ${panelDraft.mode === 'light' ? 'active' : ''}`}
-                        onClick={() => updatePanelDraft((current) => ({ ...current, mode: 'light' }))}
-                      >
-                        <div className="settings-mode-preview settings-mode-preview-light">
-                          <span></span>
-                          <span></span>
-                          <div>
-                            <i className="bx bx-circle"></i>
-                            <strong></strong>
-                          </div>
-                        </div>
-                        <div className="settings-mode-copy">
-                          <strong>Claro</strong>
-                          <p>Alta legibilidade para ambientes iluminados e leitura aberta.</p>
-                        </div>
-                        {panelDraft.mode === 'light' ? (
-                          <span className="settings-mode-check">
-                            <i className="bx bx-check"></i>
-                          </span>
-                        ) : null}
-                      </button>
                     </div>
 
                     <div className="settings-grid settings-grid-obsidian">
@@ -3386,6 +3337,14 @@ export default function SettingsPage() {
         .settings-block p {
           color: var(--text-secondary);
           line-height: 1.6;
+        }
+
+        .settings-section-head small {
+          display: inline-flex;
+          margin-top: 8px;
+          color: var(--text-muted);
+          font-size: 12px;
+          line-height: 1.5;
         }
 
         .settings-section-sidebar {

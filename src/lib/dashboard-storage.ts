@@ -77,6 +77,16 @@ export const DEFAULT_OPERATION_STATUSES: Array<Pick<OperationStatusRecord, 'key'
 
 export const DEFAULT_OPERATION_TASK_TYPES = ['Tarefa']
 export const DEFAULT_OPERATION_CUSTOM_FIELDS: OperationCustomFieldRecord[] = []
+export const DEFAULT_CLIENT_DASHBOARD_INTEGRATION_KEYS = [
+  'meta_ads',
+  'google_ads',
+  'tiktok_ads',
+  'linkedin_ads',
+  'google_sheets',
+  'rd_station',
+  'salesforce',
+  'agendor',
+]
 
 function createOperationTaskCode(): string {
   const timestamp = Date.now().toString(36).toUpperCase()
@@ -206,6 +216,15 @@ function normalizeOperationCustomFieldValues(values: unknown): Record<string, st
       .map(([key, value]) => [String(key || '').trim(), String(value || '').trim()])
       .filter(([key]) => Boolean(key))
   )
+}
+
+function normalizeClientDashboardIntegrationKeys(items: unknown): string[] {
+  if (!Array.isArray(items)) return [...DEFAULT_CLIENT_DASHBOARD_INTEGRATION_KEYS]
+  const allowedKeys = new Set(DEFAULT_CLIENT_DASHBOARD_INTEGRATION_KEYS)
+  const normalized = Array.from(
+    new Set(items.map((item) => String(item || '').trim()).filter((item) => allowedKeys.has(item)))
+  )
+  return normalized.length ? normalized : [...DEFAULT_CLIENT_DASHBOARD_INTEGRATION_KEYS]
 }
 
 export function createOperationCommentRecord(
@@ -628,6 +647,9 @@ export function createClientRecord(overrides: ClientRecordOverrides = {}): Clien
   return {
     id: overrides.id || createRecordId('client'),
     name: 'Novo cliente',
+    operationEnabled: overrides.operationEnabled !== false,
+    dashboardEnabled: overrides.dashboardEnabled !== false,
+    dashboardVisibleIntegrationKeys: normalizeClientDashboardIntegrationKeys(overrides.dashboardVisibleIntegrationKeys),
     status: 'Ativo',
     productId: '',
     product: '',

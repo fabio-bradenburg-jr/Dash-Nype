@@ -1,7 +1,7 @@
 export const USER_APPEARANCE_KEY_PREFIX = 'nype-user-appearance'
 
 export const DEFAULT_USER_APPEARANCE = {
-  mode: 'dark',
+  mode: 'light',
   accent: '#3b82f6',
   backgroundTint: '#3b82f6',
 }
@@ -24,7 +24,7 @@ function normalizeHexColor(value) {
 
 export function normalizeUserAppearance(appearance) {
   return {
-    mode: appearance?.mode === 'light' ? 'light' : 'dark',
+    mode: appearance?.mode === 'dark' ? 'dark' : 'light',
     accent: normalizeHexColor(appearance?.accent),
     backgroundTint: normalizeHexColor(appearance?.backgroundTint),
   }

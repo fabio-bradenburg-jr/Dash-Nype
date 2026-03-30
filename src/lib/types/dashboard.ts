@@ -188,6 +188,9 @@ export interface ClientRecord {
   id: string
   name: string
   cnpj: string
+  operationEnabled: boolean
+  dashboardEnabled: boolean
+  dashboardVisibleIntegrationKeys: string[]
   segment: string
   subsegment: string
   tier: string

@@ -141,6 +141,47 @@ export async function createAssistantConversation(
   })
 }
 
+export async function deleteAssistantConversation(
+  adminSupabase: any,
+  workspaceId: string,
+  userId: string,
+  conversationId: string
+): Promise<boolean> {
+  const normalizedConversationId = String(conversationId || '').trim()
+  if (!normalizedConversationId) return false
+
+  const { data: conversation, error: conversationError } = await adminSupabase
+    .from('assistant_conversations')
+    .select('id')
+    .eq('workspace_id', workspaceId)
+    .eq('user_id', userId)
+    .eq('id', normalizedConversationId)
+    .maybeSingle()
+
+  if (conversationError) throw conversationError
+  if (!conversation) return false
+
+  const { error: messagesDeleteError } = await adminSupabase
+    .from('assistant_messages')
+    .delete()
+    .eq('workspace_id', workspaceId)
+    .eq('user_id', userId)
+    .eq('conversation_id', normalizedConversationId)
+
+  if (messagesDeleteError) throw messagesDeleteError
+
+  const { error: conversationDeleteError } = await adminSupabase
+    .from('assistant_conversations')
+    .delete()
+    .eq('workspace_id', workspaceId)
+    .eq('user_id', userId)
+    .eq('id', normalizedConversationId)
+
+  if (conversationDeleteError) throw conversationDeleteError
+
+  return true
+}
+
 export async function appendAssistantConversationTurn(
   adminSupabase: any,
   params: {

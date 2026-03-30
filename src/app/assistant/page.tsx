@@ -525,6 +525,45 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
     }
   }
 
+  const handleCloseConversation = useCallback(() => {
+    setSelectedConversationId('')
+    applyWelcomeConversation()
+    setChatError('')
+  }, [applyWelcomeConversation])
+
+  const handleDeleteConversation = useCallback(
+    async (conversationId: string) => {
+      const normalizedConversationId = String(conversationId || '').trim()
+      if (!normalizedConversationId) return
+
+      const targetConversation = conversations.find((conversation) => conversation.id === normalizedConversationId)
+      const shouldDelete = window.confirm(`Excluir a conversa "${targetConversation?.title || 'Nova conversa'}"?`)
+      if (!shouldDelete) return
+
+      try {
+        setChatError('')
+        const response = await fetch(`/api/ai/conversations/${normalizedConversationId}`, {
+          method: 'DELETE',
+        })
+        const data = (await response.json().catch(() => null)) as { error?: string } | null
+
+        if (!response.ok) {
+          throw new Error(data?.error || 'Não foi possível excluir a conversa.')
+        }
+
+        setConversations((current) => current.filter((conversation) => conversation.id !== normalizedConversationId))
+
+        if (selectedConversationId === normalizedConversationId) {
+          setSelectedConversationId('')
+          applyWelcomeConversation()
+        }
+      } catch (error) {
+        setChatError(error instanceof Error ? error.message : 'Não foi possível excluir a conversa.')
+      }
+    },
+    [applyWelcomeConversation, conversations, selectedConversationId]
+  )
+
   const handleToggleListening = () => {
     if (!isVoiceSupported || !recognitionRef.current) {
       setChatError('O ditado por voz não é suportado neste navegador.')
@@ -672,15 +711,45 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
                 <div className="assistant-history-list">
                   {conversations.length ? (
                     conversations.map((conversation) => (
-                      <button
+                      <div
                         key={conversation.id}
-                        type="button"
                         className={`assistant-history-item ${selectedConversationId === conversation.id ? 'active' : ''}`}
-                        onClick={() => loadConversationDetail(conversation.id)}
                       >
-                        <strong>{conversation.title}</strong>
-                        <span>{conversation.preview || 'Sem mensagens ainda.'}</span>
-                      </button>
+                        <button
+                          type="button"
+                          className="assistant-history-item-main"
+                          onClick={() => loadConversationDetail(conversation.id)}
+                        >
+                          <strong>{conversation.title}</strong>
+                          <span>{conversation.preview || 'Sem mensagens ainda.'}</span>
+                        </button>
+                        <div className="assistant-history-item-actions">
+                          <button
+                            type="button"
+                            className="assistant-history-item-action"
+                            aria-label="Fechar conversa"
+                            title="Fechar conversa"
+                            onClick={(event) => {
+                              event.stopPropagation()
+                              handleCloseConversation()
+                            }}
+                          >
+                            <i className="bx bx-x"></i>
+                          </button>
+                          <button
+                            type="button"
+                            className="assistant-history-item-action assistant-history-item-action-danger"
+                            aria-label="Excluir conversa"
+                            title="Excluir conversa"
+                            onClick={(event) => {
+                              event.stopPropagation()
+                              handleDeleteConversation(conversation.id)
+                            }}
+                          >
+                            <i className="bx bx-trash"></i>
+                          </button>
+                        </div>
+                      </div>
                     ))
                   ) : (
                     <div className="assistant-history-empty">
@@ -1073,11 +1142,64 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
           border: 1px solid rgba(255, 255, 255, 0.06);
           background: rgba(255, 255, 255, 0.025);
           color: inherit;
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) auto;
+          gap: 10px;
+          align-items: start;
+          transition: border-color 160ms ease, background 160ms ease, box-shadow 160ms ease;
+        }
+
+        .assistant-history-item-main {
+          border: none;
+          background: transparent;
+          padding: 0;
+          color: inherit;
           text-align: left;
           display: grid;
           gap: 6px;
           cursor: pointer;
           font: inherit;
+        }
+
+        .assistant-history-item-actions {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          opacity: 0;
+          pointer-events: none;
+          transition: opacity 160ms ease;
+        }
+
+        .assistant-history-item:hover .assistant-history-item-actions,
+        .assistant-history-item.active .assistant-history-item-actions {
+          opacity: 1;
+          pointer-events: auto;
+        }
+
+        .assistant-history-item-action {
+          width: 30px;
+          height: 30px;
+          border-radius: 10px;
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          background: rgba(255, 255, 255, 0.04);
+          color: var(--text-muted);
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          transition: 160ms ease;
+        }
+
+        .assistant-history-item-action:hover {
+          color: var(--text-primary);
+          border-color: color-mix(in srgb, var(--accent-blue) 26%, transparent);
+          background: color-mix(in srgb, var(--accent-blue) 10%, transparent);
+        }
+
+        .assistant-history-item-action-danger:hover {
+          color: #fecaca;
+          border-color: rgba(248, 113, 113, 0.28);
+          background: rgba(248, 113, 113, 0.12);
         }
 
         .assistant-history-item strong {
@@ -1660,6 +1782,24 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
           background: color-mix(in srgb, var(--accent-blue) 8%, white);
           border-color: color-mix(in srgb, var(--accent-blue) 22%, rgba(15, 23, 42, 0.08));
           color: var(--text-primary);
+        }
+
+        :root[data-ui-mode='light'] .assistant-history-item-action {
+          border-color: rgba(15, 23, 42, 0.08);
+          background: rgba(255, 255, 255, 0.72);
+          color: var(--text-muted);
+        }
+
+        :root[data-ui-mode='light'] .assistant-history-item-action:hover {
+          color: var(--accent-blue);
+          border-color: color-mix(in srgb, var(--accent-blue) 22%, rgba(15, 23, 42, 0.08));
+          background: color-mix(in srgb, var(--accent-blue) 8%, white);
+        }
+
+        :root[data-ui-mode='light'] .assistant-history-item-action-danger:hover {
+          color: #dc2626;
+          border-color: rgba(239, 68, 68, 0.18);
+          background: rgba(254, 226, 226, 0.92);
         }
 
         :root[data-ui-mode='light'] .assistant-chat-panel {

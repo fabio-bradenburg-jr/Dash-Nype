@@ -1185,6 +1185,35 @@ const CLIENT_INTEGRATION_GROUPS = [
   },
 ]
 
+const CLIENT_DASHBOARD_INTEGRATION_OPTIONS = [
+  { key: 'meta_ads', label: 'Meta Ads', description: 'Conta de mídia principal e leitura de campanhas.' },
+  { key: 'google_ads', label: 'Google Ads', description: 'Contas Google Ads e dados complementares.' },
+  { key: 'tiktok_ads', label: 'TikTok Ads', description: 'Operação de mídia e contas do TikTok Ads.' },
+  { key: 'linkedin_ads', label: 'LinkedIn Ads', description: 'Campanhas e contas do LinkedIn Ads.' },
+  { key: 'google_sheets', label: 'Google Sheets', description: 'Planilhas, pipelines e métricas customizadas.' },
+  { key: 'rd_station', label: 'RD Station', description: 'CRM, pipeline e leitura comercial.' },
+  { key: 'salesforce', label: 'Salesforce', description: 'Conta e estrutura de CRM no Salesforce.' },
+  { key: 'agendor', label: 'Agendor', description: 'Conta comercial e pipeline no Agendor.' },
+]
+
+const DEFAULT_CLIENT_DASHBOARD_INTEGRATION_KEYS = CLIENT_DASHBOARD_INTEGRATION_OPTIONS.map((item) => item.key)
+
+function normalizeClientDashboardIntegrationKeys(items = []) {
+  if (!Array.isArray(items)) return [...DEFAULT_CLIENT_DASHBOARD_INTEGRATION_KEYS]
+
+  const allowedKeys = new Set(DEFAULT_CLIENT_DASHBOARD_INTEGRATION_KEYS)
+  const normalized = Array.from(
+    new Set(items.map((item) => String(item || '').trim()).filter((item) => allowedKeys.has(item)))
+  )
+
+  return normalized.length ? normalized : [...DEFAULT_CLIENT_DASHBOARD_INTEGRATION_KEYS]
+}
+
+function isClientDashboardIntegrationVisible(client, integrationKey) {
+  if (!client || client.dashboardEnabled === false) return false
+  return normalizeClientDashboardIntegrationKeys(client.dashboardVisibleIntegrationKeys).includes(integrationKey)
+}
+
 const GLOBAL_INTEGRATION_GROUPS = [
   {
     title: 'Meta Ads',
@@ -2641,7 +2670,7 @@ function getSummaryMetricValue(metricKey, summary, customMetrics) {
 }
 
 export default function DashboardShell({ initialTab = 'home' }) {
-  const { user, profile, access, loading: userLoading } = useUser()
+  const { user, profile, access, appearance, updateAppearance, loading: userLoading } = useUser()
   const supabase = createClient()
   const dashboardRef = useRef(null)
   const campaignsRef = useRef([])
@@ -2693,6 +2722,14 @@ export default function DashboardShell({ initialTab = 'home' }) {
   const [isMetaAdFilterOpen, setIsMetaAdFilterOpen] = useState(false)
   const [isRdDiagnosticsOpen, setIsRdDiagnosticsOpen] = useState(false)
   const [isRdSourceFilterOpen, setIsRdSourceFilterOpen] = useState(false)
+  const currentAppMode = appearance?.mode === 'light' ? 'light' : 'dark'
+  const handleToggleAppMode = (mode) => {
+    if (mode === currentAppMode) return
+    updateAppearance((current) => ({
+      ...current,
+      mode,
+    }))
+  }
   const [clients, setClients] = useState([])
   const [clientGroups, setClientGroups] = useState([])
   const [products, setProducts] = useState([])
@@ -2707,7 +2744,9 @@ export default function DashboardShell({ initialTab = 'home' }) {
   const [newClientSalesModel, setNewClientSalesModel] = useState('INSIDE_SALES')
   const [newClientStartDate, setNewClientStartDate] = useState(getTodayDateInputValue())
   const [newClientImplementationObservation, setNewClientImplementationObservation] = useState('')
-  const [newClientCreateOperationCard, setNewClientCreateOperationCard] = useState(true)
+  const [newClientOperationEnabled, setNewClientOperationEnabled] = useState(true)
+  const [newClientDashboardEnabled, setNewClientDashboardEnabled] = useState(true)
+  const [newClientDashboardIntegrationKeys, setNewClientDashboardIntegrationKeys] = useState(DEFAULT_CLIENT_DASHBOARD_INTEGRATION_KEYS)
   const [newClientOperationLane, setNewClientOperationLane] = useState(resolveOperationLaneFromSalesModel('INSIDE_SALES'))
   const [newClientGroupName, setNewClientGroupName] = useState('')
   const [newProductName, setNewProductName] = useState('')
@@ -2889,18 +2928,11 @@ export default function DashboardShell({ initialTab = 'home' }) {
   }, [activeClientId])
 
   useEffect(() => {
-    if (!isOperationCreateModalOpen) return
-    if (!newOperationClientId && clients.length) {
-      setNewOperationClientId(activeClientId || clients[0]?.id || '')
-    }
-  }, [isOperationCreateModalOpen, newOperationClientId, clients, activeClientId])
-
-  useEffect(() => {
     setNewClientOperationLane(resolveOperationLaneFromSalesModel(newClientSalesModel))
   }, [newClientSalesModel])
 
   useEffect(() => {
-    setNewClientCreateOperationCard(operationSettings?.autoCreateCardForNewClient !== false)
+    setNewClientOperationEnabled(operationSettings?.autoCreateCardForNewClient !== false)
   }, [operationSettings?.autoCreateCardForNewClient])
 
   useEffect(() => {
@@ -2923,6 +2955,29 @@ export default function DashboardShell({ initialTab = 'home' }) {
     () => clients.find((client) => client.id === activeClientId) || null,
     [clients, activeClientId]
   )
+  const dashboardEligibleClients = useMemo(
+    () => clients.filter((client) => client.dashboardEnabled !== false),
+    [clients]
+  )
+  const operationEligibleClients = useMemo(
+    () => clients.filter((client) => client.operationEnabled !== false),
+    [clients]
+  )
+  useEffect(() => {
+    if (activeTab !== 'apresentacao') return
+    if (!dashboardEligibleClients.length) return
+    if (dashboardEligibleClients.some((client) => client.id === activeClientId)) return
+    setActiveClientId(dashboardEligibleClients[0].id)
+  }, [activeTab, dashboardEligibleClients, activeClientId])
+  useEffect(() => {
+    if (!isOperationCreateModalOpen) return
+    if (!newOperationClientId && operationEligibleClients.length) {
+      const fallbackClientId = operationEligibleClients.some((client) => client.id === activeClientId)
+        ? activeClientId
+        : operationEligibleClients[0]?.id || ''
+      setNewOperationClientId(fallbackClientId)
+    }
+  }, [isOperationCreateModalOpen, newOperationClientId, operationEligibleClients, activeClientId])
   const activeDashboardTemplates = useMemo(
     () => (Array.isArray(activeClient?.dashboardTemplates) ? activeClient.dashboardTemplates : []),
     [activeClient]
@@ -3153,16 +3208,16 @@ export default function DashboardShell({ initialTab = 'home' }) {
     return () => window.clearInterval(intervalId)
   }, [])
   const operationSegmentOptions = useMemo(
-    () => Array.from(new Set(clients.map((client) => String(client.segment || '').trim()).filter(Boolean))).sort((left, right) => left.localeCompare(right, 'pt-BR')),
-    [clients]
+    () => Array.from(new Set(operationEligibleClients.map((client) => String(client.segment || '').trim()).filter(Boolean))).sort((left, right) => left.localeCompare(right, 'pt-BR')),
+    [operationEligibleClients]
   )
   const operationTierOptions = useMemo(
-    () => Array.from(new Set(clients.map((client) => String(client.tier || '').trim()).filter(Boolean))).sort((left, right) => left.localeCompare(right, 'pt-BR')),
-    [clients]
+    () => Array.from(new Set(operationEligibleClients.map((client) => String(client.tier || '').trim()).filter(Boolean))).sort((left, right) => left.localeCompare(right, 'pt-BR')),
+    [operationEligibleClients]
   )
   const operationSquadOptions = useMemo(
-    () => Array.from(new Set(clients.map((client) => String(client.squad || '').trim()).filter(Boolean))).sort((left, right) => left.localeCompare(right, 'pt-BR')),
-    [clients]
+    () => Array.from(new Set(operationEligibleClients.map((client) => String(client.squad || '').trim()).filter(Boolean))).sort((left, right) => left.localeCompare(right, 'pt-BR')),
+    [operationEligibleClients]
   )
   const operationResponsibleOptions = useMemo(
     () => Array.from(new Set(
@@ -3176,8 +3231,9 @@ export default function DashboardShell({ initialTab = 'home' }) {
     [operationCards, operationUsersById]
   )
   const operationEditableClients = useMemo(
-    () => (canManageClients ? clients : clients.filter((client) => canEditClientRecord(client.id))),
-    [canManageClients, clients, canEditClientRecord]
+    () =>
+      (canManageClients ? operationEligibleClients : operationEligibleClients.filter((client) => canEditClientRecord(client.id))),
+    [canManageClients, operationEligibleClients, canEditClientRecord]
   )
   const clientCompletenessTrackedKeys = useMemo(
     () =>
@@ -3239,6 +3295,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
 
     return operationCards.filter((card) => {
       const linkedClient = clientsById.get(card.clientId)
+      if (!linkedClient || linkedClient.operationEnabled === false) return false
       const matchesPeriod = threshold == null
         ? true
         : new Date(card.updatedAt || card.createdAt || 0).getTime() >= threshold
@@ -3287,8 +3344,8 @@ export default function DashboardShell({ initialTab = 'home' }) {
     setOpenOperationSubtaskAssigneePickerId('')
   }, [expandedOperationCardId])
   const connectedClientsCount = useMemo(
-    () => clients.filter((client) => Boolean(client.metaAdAccountId)).length,
-    [clients]
+    () => dashboardEligibleClients.filter((client) => Boolean(client.metaAdAccountId)).length,
+    [dashboardEligibleClients]
   )
   const brandedClientsCount = useMemo(
     () => clients.filter((client) => Boolean(client.logoUrl)).length,
@@ -3544,6 +3601,15 @@ export default function DashboardShell({ initialTab = 'home' }) {
     return items
   }, [activeClient, clickUpListsConfigured, mondayBoardsConfigured, canManageClients, canManageUsers, clients.length, usersList.length])
   const activeIntegrations = activeClient?.integrations || DEFAULT_INTEGRATIONS
+  const activeClientVisibleIntegrations = useMemo(
+    () => normalizeClientDashboardIntegrationKeys(activeClient?.dashboardVisibleIntegrationKeys),
+    [activeClient?.dashboardVisibleIntegrationKeys]
+  )
+  const activeClientVisibleIntegrationsSet = useMemo(
+    () => new Set(activeClientVisibleIntegrations),
+    [activeClientVisibleIntegrations]
+  )
+  const isActiveClientDashboardEnabled = activeClient?.dashboardEnabled !== false
   const selectedAdAccount = activeClient?.metaAdAccountId || ''
   const normalizedAiIntegrations = useMemo(
     () => normalizeAiSettings(globalIntegrations),
@@ -3690,9 +3756,22 @@ export default function DashboardShell({ initialTab = 'home' }) {
       metaConnection.expiresAt,
     ]
   )
-  const hasMetaConfigured = Boolean(selectedAdAccount && (hasMetaManualToken || hasMetaOauthConnection))
-  const hasRdConfigured = Boolean(activeIntegrations.rdStationToken)
-  const hasSheetsConfigured = Boolean(String(activeClient?.googleSheetsUrl || '').trim())
+  const hasMetaConfigured = Boolean(
+    isActiveClientDashboardEnabled &&
+    activeClientVisibleIntegrationsSet.has('meta_ads') &&
+    selectedAdAccount &&
+    (hasMetaManualToken || hasMetaOauthConnection)
+  )
+  const hasRdConfigured = Boolean(
+    isActiveClientDashboardEnabled &&
+    activeClientVisibleIntegrationsSet.has('rd_station') &&
+    activeIntegrations.rdStationToken
+  )
+  const hasSheetsConfigured = Boolean(
+    isActiveClientDashboardEnabled &&
+    activeClientVisibleIntegrationsSet.has('google_sheets') &&
+    String(activeClient?.googleSheetsUrl || '').trim()
+  )
   const hasClickUpConfigured = Boolean(
     String(globalIntegrations.clickUpToken || '').trim() && String(globalIntegrations.clickUpListIds || '').trim()
   )
@@ -3700,7 +3779,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
     String(globalIntegrations.mondayToken || '').trim() && String(globalIntegrations.mondayBoardIds || '').trim()
   )
   const hasAnyPresentationData =
-    hasMetaConfigured || hasRdConfigured || hasSheetsConfigured
+    isActiveClientDashboardEnabled && (hasMetaConfigured || hasRdConfigured || hasSheetsConfigured)
   const rdPipelineOptions = useMemo(
     () => (rdPipelines.length ? rdPipelines : rdSummary?.availablePipelines || []),
     [rdPipelines, rdSummary]
@@ -4313,7 +4392,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
       return
     }
 
-    if (clients.length <= 1) {
+    if (dashboardEligibleClients.length <= 1) {
       setIsDashboardEntryModalOpen(false)
       return
     }
@@ -4323,9 +4402,13 @@ export default function DashboardShell({ initialTab = 'home' }) {
     }
 
     hasOpenedDashboardEntryRef.current = true
-    setDashboardEntryClientId(activeClientId || clients[0]?.id || '')
+    setDashboardEntryClientId(
+      dashboardEligibleClients.some((client) => client.id === activeClientId)
+        ? activeClientId
+        : dashboardEligibleClients[0]?.id || ''
+    )
     setIsDashboardEntryModalOpen(true)
-  }, [activeTab, activeClientId, clients])
+  }, [activeTab, activeClientId, dashboardEligibleClients])
 
   useEffect(() => {
     if ((activeTab === 'clientes' || activeTab === 'operacao') && !canAccessClientsTab) {
@@ -4716,6 +4799,34 @@ export default function DashboardShell({ initialTab = 'home' }) {
     setDashboardMetricDragState(null)
   }
 
+  const handleToggleNewClientDashboardIntegration = (integrationKey) => {
+    setNewClientDashboardIntegrationKeys((current) => {
+      const normalizedCurrent = normalizeClientDashboardIntegrationKeys(current)
+      if (normalizedCurrent.includes(integrationKey)) {
+        const nextKeys = normalizedCurrent.filter((item) => item !== integrationKey)
+        return nextKeys.length ? nextKeys : normalizedCurrent
+      }
+
+      return [...normalizedCurrent, integrationKey]
+    })
+  }
+
+  const handleToggleActiveClientDashboardIntegration = (integrationKey) => {
+    if (!canEditActiveClient) return
+
+    updateActiveClient((client) => {
+      const normalizedCurrent = normalizeClientDashboardIntegrationKeys(client.dashboardVisibleIntegrationKeys)
+      const nextKeys = normalizedCurrent.includes(integrationKey)
+        ? normalizedCurrent.filter((item) => item !== integrationKey)
+        : [...normalizedCurrent, integrationKey]
+
+      return {
+        ...client,
+        dashboardVisibleIntegrationKeys: nextKeys.length ? nextKeys : normalizedCurrent,
+      }
+    })
+  }
+
   const handleCreateClient = (event) => {
     event.preventDefault()
     if (!isMaster) return
@@ -4726,6 +4837,9 @@ export default function DashboardShell({ initialTab = 'home' }) {
     const newClient = createClientRecord({
       name: trimmedName,
       cnpj: normalizeCnpjInput(newClientCnpj),
+      operationEnabled: newClientOperationEnabled,
+      dashboardEnabled: newClientDashboardEnabled,
+      dashboardVisibleIntegrationKeys: newClientDashboardIntegrationKeys,
       salesModel: newClientSalesModel,
       implementationPhase,
       implementationObservation: newClientImplementationObservation.trim(),
@@ -4734,7 +4848,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
       status: 'Onboarding',
     })
     setClients((currentClients) => [...currentClients, newClient])
-    if (newClientCreateOperationCard) {
+    if (newClientOperationEnabled) {
       const selectedLane = operationLanesByKey.get(newClientOperationLane)
         ? newClientOperationLane
         : resolveOperationLaneFromSalesModel(newClientSalesModel)
@@ -4764,7 +4878,9 @@ export default function DashboardShell({ initialTab = 'home' }) {
     setNewClientSalesModel('INSIDE_SALES')
     setNewClientStartDate(getTodayDateInputValue())
     setNewClientImplementationObservation('')
-    setNewClientCreateOperationCard(operationSettings?.autoCreateCardForNewClient !== false)
+    setNewClientOperationEnabled(operationSettings?.autoCreateCardForNewClient !== false)
+    setNewClientDashboardEnabled(true)
+    setNewClientDashboardIntegrationKeys(DEFAULT_CLIENT_DASHBOARD_INTEGRATION_KEYS)
     setNewClientOperationLane(resolveOperationLaneFromSalesModel('INSIDE_SALES'))
     setClientEditSection('geral')
     setIsEditClientModalOpen(true)
@@ -9240,8 +9356,6 @@ export default function DashboardShell({ initialTab = 'home' }) {
     ...metric,
     trend: buildMetricTrend(metric.key, metric.rawValue, previousRdDashboardMetricValues[metric.key], metric.type),
   }))
-  const userAvatarFallback = `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.user_metadata?.full_name || user?.email || 'Usuario')}&background=0D8ABC&color=fff`
-  const userAvatarSrc = user?.user_metadata?.avatar_url || userAvatarFallback
   const userFirstName = (user?.user_metadata?.full_name || user?.email || 'por aí').split(' ')[0]
   const currentHour = new Date().getHours()
   const assistantGreeting =
@@ -10616,40 +10730,6 @@ export default function DashboardShell({ initialTab = 'home' }) {
           <button type="button" data-tooltip="Assistente" className={`nav-item nav-button ${activeTab === 'assistant' ? 'active' : ''}`} onClick={() => setActiveTab('assistant')}>
             <i className="bx bx-bot"></i> Assistente
           </button>
-          <div className={`nav-tools-group ${isHomeToolsExpanded && !isSidebarCollapsed ? 'open' : ''}`}>
-            <button
-              type="button"
-              data-tooltip="Ferramentas"
-              className={`nav-item nav-button nav-tools-trigger ${activeTab === 'home' || isHomeToolsExpanded ? 'active' : ''}`}
-              onClick={handleHomeToolsLauncher}
-            >
-              <i className="bx bx-grid-alt"></i>
-              {!isSidebarCollapsed && (
-                <>
-                  Ferramentas
-                  <span className="nav-tools-chevron">
-                    <i className={`bx ${isHomeToolsExpanded ? 'bx-chevron-up' : 'bx-chevron-down'}`}></i>
-                  </span>
-                </>
-              )}
-            </button>
-
-            {!isSidebarCollapsed && isHomeToolsExpanded && (
-              <div className="home-tools-menu">
-                {homeToolsMenuItems.map((item) => (
-                  <button
-                    key={item.key}
-                    type="button"
-                    className={`home-tools-link ${activeTab === item.key ? 'active' : ''}`}
-                    onClick={item.onClick}
-                  >
-                    <strong>{item.label}</strong>
-                    <span>{item.helper}</span>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
           {canAccessClientsTab && (
             <button type="button" data-tooltip="Clientes" className={`nav-item nav-button ${activeTab === 'clientes' ? 'active' : ''}`} onClick={() => setActiveTab('clientes')}>
               <i className="bx bxs-buildings"></i> Clientes
@@ -10677,9 +10757,6 @@ export default function DashboardShell({ initialTab = 'home' }) {
           <button type="button" data-tooltip="Monday" className={`nav-item nav-button ${activeTab === 'monday' ? 'active' : ''}`} onClick={() => setActiveTab('monday')}>
             <i className="bx bx-columns"></i> Monday
           </button>
-          <button type="button" data-tooltip="Agenda" className={`nav-item nav-button ${activeTab === 'calendar' ? 'active' : ''}`} onClick={() => setActiveTab('calendar')}>
-            <i className="bx bx-calendar-event"></i> Agenda
-          </button>
           {canManageUsers && (
             <button type="button" data-tooltip="Usuários" className={`nav-item nav-button ${activeTab === 'usuarios' ? 'active' : ''}`} onClick={() => setActiveTab('usuarios')}>
               <i className="bx bxs-user-detail"></i> Usuários
@@ -10700,28 +10777,67 @@ export default function DashboardShell({ initialTab = 'home' }) {
           </div>
         )}
 
-        <div className="user-profile">
-          <img
-            src={userAvatarSrc}
-            alt="Usuário"
-            onError={(event) => {
-              event.currentTarget.onerror = null
-              event.currentTarget.src = userAvatarFallback
-            }}
-          />
-          {!isSidebarCollapsed && (
-            <div className="user-info">
-              <p className="name">{user?.user_metadata?.full_name || user?.email || 'Usuário'}</p>
-              <p className="role">{role}</p>
-              <button onClick={handleLogout} style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', fontSize: '11px', cursor: 'pointer', padding: 0, textAlign: 'left', marginTop: '2px' }}>
-                Sair da plataforma
-              </button>
-            </div>
-          )}
-        </div>
+        <button
+          type="button"
+          data-tooltip="Sair"
+          className="nav-item nav-button sidebar-logout-button"
+          onClick={handleLogout}
+          aria-label="Sair da plataforma"
+        >
+          <i className="bx bx-log-out"></i>
+          {!isSidebarCollapsed && 'Sair'}
+        </button>
       </aside>
 
       <main className={`main-content ${isSidebarCollapsed ? 'main-content-expanded' : ''}`}>
+        {shouldShowGlobalAppBar && (
+          <div className="operation-stellar-topbar app-shell-topbar">
+            <div className="operation-stellar-search">
+              <i className="bx bx-search-alt"></i>
+              <input
+                type="text"
+                value={appBarSearchValue}
+                onChange={(event) => handleAppBarSearchChange(event.target.value)}
+                placeholder={appBarPlaceholder}
+              />
+            </div>
+            <div className="operation-stellar-actions">
+              <button type="button" className="operation-stellar-icon-button" aria-label="Notificações">
+                <i className="bx bx-bell"></i>
+              </button>
+              <a href="/settings" className="operation-stellar-icon-button" aria-label="Configurações">
+                <i className="bx bx-cog"></i>
+              </a>
+              <button type="button" className="operation-stellar-icon-button" aria-label="Ajuda">
+                <i className="bx bx-help-circle"></i>
+              </button>
+              <div className="operation-stellar-theme-toggle" role="group" aria-label="Alternar tema">
+                <button
+                  type="button"
+                  className={`operation-stellar-theme-option ${currentAppMode === 'dark' ? 'active' : ''}`}
+                  onClick={() => handleToggleAppMode('dark')}
+                  aria-pressed={currentAppMode === 'dark'}
+                  aria-label="Ativar modo escuro"
+                >
+                  <i className="bx bx-moon"></i>
+                </button>
+                <button
+                  type="button"
+                  className={`operation-stellar-theme-option ${currentAppMode === 'light' ? 'active' : ''}`}
+                  onClick={() => handleToggleAppMode('light')}
+                  aria-pressed={currentAppMode === 'light'}
+                  aria-label="Ativar modo claro"
+                >
+                  <i className="bx bx-sun"></i>
+                </button>
+              </div>
+              <span className="operation-stellar-user-avatar" aria-label={profile?.full_name || user?.email || 'Usuário'}>
+                {(profile?.full_name || user?.email || 'U').trim().slice(0, 1).toUpperCase()}
+              </span>
+            </div>
+          </div>
+        )}
+
         <header className="header" style={{ alignItems: 'flex-start' }}>
           <div className="page-title">
             <h1>
@@ -10861,44 +10977,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
           </div>
         </header>
 
-        {shouldShowGlobalAppBar && (
-          <div className="operation-stellar-topbar app-shell-topbar">
-            <div className="operation-stellar-brand">
-              <span>Stellar Ops</span>
-            </div>
-            <div className="operation-stellar-search">
-              <i className="bx bx-search-alt"></i>
-              <input
-                type="text"
-                value={appBarSearchValue}
-                onChange={(event) => handleAppBarSearchChange(event.target.value)}
-                placeholder={appBarPlaceholder}
-              />
-            </div>
-            <div className="operation-stellar-actions">
-              <button type="button" className="operation-stellar-icon-button" aria-label="Notificações">
-                <i className="bx bx-bell"></i>
-              </button>
-              <a href="/settings" className="operation-stellar-icon-button" aria-label="Configurações">
-                <i className="bx bx-cog"></i>
-              </a>
-              <button type="button" className="operation-stellar-icon-button" aria-label="Ajuda">
-                <i className="bx bx-help-circle"></i>
-              </button>
-              <div className="operation-stellar-user">
-                <div>
-                  <strong>{profile?.full_name || 'Commander Echo'}</strong>
-                  <span>{role === 'master' ? 'Fleet Lead' : 'Operations'}</span>
-                </div>
-                <span className="operation-stellar-user-avatar">
-                  {(profile?.full_name || user?.email || 'U').trim().slice(0, 1).toUpperCase()}
-                </span>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'apresentacao' && isDashboardEntryModalOpen && clients.length > 1 && (
+        {activeTab === 'apresentacao' && isDashboardEntryModalOpen && dashboardEligibleClients.length > 1 && (
           <div className="modal-overlay" onClick={() => setIsDashboardEntryModalOpen(false)}>
             <div className="modal-card glass-panel dashboard-entry-modal" onClick={(event) => event.stopPropagation()}>
               <div className="modal-header">
@@ -10915,7 +10994,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
                 <div className="date-picker glass-item dashboard-entry-picker">
                   <i className="bx bx-user-pin"></i>
                   <select value={dashboardEntryClientId} onChange={(event) => setDashboardEntryClientId(event.target.value)}>
-                    {clients.map((client) => (
+                    {dashboardEligibleClients.map((client) => (
                       <option key={`entry-${client.id}`} value={client.id}>
                         {client.name}
                       </option>
@@ -11540,7 +11619,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
                                     <span>{cardStatus?.label || card.status}</span>
                                   </span>
                                 </div>
-                                <div>
+                                <div className="operation-card-title-block">
                                   <button type="button" className="operation-card-title-button" onClick={() => handleToggleOperationCardExpansion(card.id)}>
                                     <strong>{card.title}</strong>
                                   </button>
@@ -11777,25 +11856,80 @@ export default function DashboardShell({ initialTab = 'home' }) {
                       </span>
                     ))}
                   </div>
-                  <div className="client-create-operation-link">
-                    <label className={`stage-chip ${newClientCreateOperationCard ? 'active' : ''}`}>
-                      <input
-                        type="checkbox"
-                        checked={newClientCreateOperationCard}
-                        onChange={(event) => setNewClientCreateOperationCard(event.target.checked)}
+                  <div className="client-governance-card">
+                    <div className="client-governance-head">
+                      <div>
+                        <strong>Governança do cliente</strong>
+                        <span>Defina aqui se esse cliente entra na operação e no dashboard.</span>
+                      </div>
+                    </div>
+                    <div className="client-governance-switches">
+                      <button
+                        type="button"
+                        className={`ios-toggle-row ${newClientOperationEnabled ? 'active' : ''}`}
+                        onClick={() => isMaster && setNewClientOperationEnabled((current) => !current)}
                         disabled={!isMaster}
-                      />
-                      <span>Criar card na operação</span>
-                    </label>
-                    <select
-                      value={newClientOperationLane}
-                      onChange={(event) => setNewClientOperationLane(event.target.value)}
-                      disabled={!isMaster || !newClientCreateOperationCard}
-                    >
-                      {operationLanes.map((lane) => (
-                        <option key={`new-client-lane-${lane.key}`} value={lane.key}>{lane.label}</option>
-                      ))}
-                    </select>
+                        aria-pressed={newClientOperationEnabled}
+                      >
+                        <div className="ios-toggle-copy">
+                          <strong>Operação</strong>
+                          <span>Cria e libera o cliente no board operacional.</span>
+                        </div>
+                        <span className="ios-toggle-switch" aria-hidden="true">
+                          <span className="ios-toggle-knob"></span>
+                        </span>
+                      </button>
+
+                      <button
+                        type="button"
+                        className={`ios-toggle-row ${newClientDashboardEnabled ? 'active' : ''}`}
+                        onClick={() => isMaster && setNewClientDashboardEnabled((current) => !current)}
+                        disabled={!isMaster}
+                        aria-pressed={newClientDashboardEnabled}
+                      >
+                        <div className="ios-toggle-copy">
+                          <strong>Dashboard</strong>
+                          <span>Libera a apresentação executiva e as fontes visíveis do cliente.</span>
+                        </div>
+                        <span className="ios-toggle-switch" aria-hidden="true">
+                          <span className="ios-toggle-knob"></span>
+                        </span>
+                      </button>
+                    </div>
+
+                    <div className="client-create-operation-link">
+                      <select
+                        value={newClientOperationLane}
+                        onChange={(event) => setNewClientOperationLane(event.target.value)}
+                        disabled={!isMaster || !newClientOperationEnabled}
+                      >
+                        {operationLanes.map((lane) => (
+                          <option key={`new-client-lane-${lane.key}`} value={lane.key}>{lane.label}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {newClientDashboardEnabled && (
+                      <div className="input-group">
+                        <label>Integrações visíveis no dashboard</label>
+                        <div className="stage-selector">
+                          {CLIENT_DASHBOARD_INTEGRATION_OPTIONS.map((integration) => {
+                            const checked = newClientDashboardIntegrationKeys.includes(integration.key)
+                            return (
+                              <button
+                                key={`new-client-dashboard-integration-${integration.key}`}
+                                type="button"
+                                className={`stage-chip ${checked ? 'active' : ''}`}
+                                onClick={() => handleToggleNewClientDashboardIntegration(integration.key)}
+                                disabled={!isMaster}
+                              >
+                                <span>{integration.label}</span>
+                              </button>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )}
                   </div>
                   <div className="client-create-actions">
                     <button type="submit" className="btn btn-primary" disabled={!isMaster || !newClientName.trim() || !newClientSalesModel || !newClientStartDate}>
@@ -12743,6 +12877,75 @@ export default function DashboardShell({ initialTab = 'home' }) {
 
                 {(clientEditSection === 'mais' || clientEditSection === 'dados') && (
                 <div className="form-grid">
+                  <div className="integration-block integration-block-governance">
+                    <div className="integration-heading">
+                      <div className="integration-icon" style={{ color: 'var(--accent-blue)', borderColor: 'color-mix(in srgb, var(--accent-blue) 22%, transparent)' }}>
+                        <i className="bx bx-toggle-left"></i>
+                      </div>
+                      <div>
+                        <h3>Governança do cliente</h3>
+                        <p>O cliente passa a ser o controle-mestre da operação e do dashboard.</p>
+                      </div>
+                    </div>
+
+                    <div className="client-governance-switches">
+                      <button
+                        type="button"
+                        className={`ios-toggle-row ${activeClient.operationEnabled !== false ? 'active' : ''}`}
+                        onClick={() => canEditActiveClient && handleClientFieldChange('operationEnabled', !(activeClient.operationEnabled !== false))}
+                        disabled={!canEditActiveClient}
+                        aria-pressed={activeClient.operationEnabled !== false}
+                      >
+                        <div className="ios-toggle-copy">
+                          <strong>Operação</strong>
+                          <span>Mostra esse cliente no board operacional e libera cards vinculados.</span>
+                        </div>
+                        <span className="ios-toggle-switch" aria-hidden="true">
+                          <span className="ios-toggle-knob"></span>
+                        </span>
+                      </button>
+
+                      <button
+                        type="button"
+                        className={`ios-toggle-row ${activeClient.dashboardEnabled !== false ? 'active' : ''}`}
+                        onClick={() => canEditActiveClient && handleClientFieldChange('dashboardEnabled', !(activeClient.dashboardEnabled !== false))}
+                        disabled={!canEditActiveClient}
+                        aria-pressed={activeClient.dashboardEnabled !== false}
+                      >
+                        <div className="ios-toggle-copy">
+                          <strong>Dashboard</strong>
+                          <span>Libera a apresentação executiva e as integrações visíveis para este cliente.</span>
+                        </div>
+                        <span className="ios-toggle-switch" aria-hidden="true">
+                          <span className="ios-toggle-knob"></span>
+                        </span>
+                      </button>
+                    </div>
+
+                    {activeClient.dashboardEnabled !== false && (
+                      <div className="input-group">
+                        <label>Integrações visíveis</label>
+                        <div className="stage-selector">
+                          {CLIENT_DASHBOARD_INTEGRATION_OPTIONS.map((integration) => {
+                            const checked = activeClientVisibleIntegrations.includes(integration.key)
+                            return (
+                              <button
+                                key={`${activeClient.id}-dashboard-integration-${integration.key}`}
+                                type="button"
+                                className={`stage-chip ${checked ? 'active' : ''}`}
+                                disabled={!canEditActiveClient}
+                                onClick={() => handleToggleActiveClientDashboardIntegration(integration.key)}
+                              >
+                                <span>{integration.label}</span>
+                              </button>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {isClientDashboardIntegrationVisible(activeClient, 'meta_ads') && (
                   <div className="integration-block">
                     <div className="integration-heading">
                       <div className="integration-icon" style={{ color: '#0668E1', borderColor: '#0668E133' }}>
@@ -12774,8 +12977,20 @@ export default function DashboardShell({ initialTab = 'home' }) {
                       </select>
                     </div>
                   </div>
+                  )}
 
-                  {CLIENT_INTEGRATION_GROUPS.map((group) => (
+                  {CLIENT_INTEGRATION_GROUPS.filter((group) => {
+                    const integrationKeyByTitle = {
+                      'Google Ads': 'google_ads',
+                      'TikTok Ads': 'tiktok_ads',
+                      'LinkedIn Ads': 'linkedin_ads',
+                      'Google Sheets': 'google_sheets',
+                      'RD Station': 'rd_station',
+                      Salesforce: 'salesforce',
+                      Agendor: 'agendor',
+                    }
+                    return isClientDashboardIntegrationVisible(activeClient, integrationKeyByTitle[group.title])
+                  }).map((group) => (
                     <div key={group.title} className="integration-block">
                       <div className="integration-heading">
                         <div className="integration-icon" style={{ color: group.accent, borderColor: `${group.accent}33` }}>
@@ -13313,7 +13528,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
                         <div className="input-group">
                           <label>Dashboards liberados</label>
                           <div className="stage-selector">
-                            {clients.map((client) => (
+                            {dashboardEligibleClients.map((client) => (
                               <label key={`new-user-${client.id}`} className={`stage-chip ${userForm.clientIds.includes(client.id) ? 'active' : ''}`}>
                                 <input
                                   type="checkbox"
@@ -13441,7 +13656,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
                       <div className="input-group">
                         <label>Dashboards liberados</label>
                         <div className="stage-selector">
-                          {clients.map((client) => {
+                          {dashboardEligibleClients.map((client) => {
                             const currentAccess = selectedManagedUser.clientAccess || []
                             const hasClient = currentAccess.some((item) => item.client_id === client.id)
 
@@ -13583,16 +13798,16 @@ export default function DashboardShell({ initialTab = 'home' }) {
                       </div>
                     )}
                     {Boolean([
-                      activeClient?.googleAdsAccountId,
-                      activeClient?.tiktokAdsAccountId,
-                      activeClient?.linkedInAdsAccountId,
+                      activeClientVisibleIntegrationsSet.has('google_ads') ? activeClient?.googleAdsAccountId : '',
+                      activeClientVisibleIntegrationsSet.has('tiktok_ads') ? activeClient?.tiktokAdsAccountId : '',
+                      activeClientVisibleIntegrationsSet.has('linkedin_ads') ? activeClient?.linkedInAdsAccountId : '',
                     ].filter(Boolean).length) && (
                       <div className="hero-stat">
                         <span>Outras contas de anúncio</span>
                         <strong>{[
-                          activeClient?.googleAdsAccountId,
-                          activeClient?.tiktokAdsAccountId,
-                          activeClient?.linkedInAdsAccountId,
+                          activeClientVisibleIntegrationsSet.has('google_ads') ? activeClient?.googleAdsAccountId : '',
+                          activeClientVisibleIntegrationsSet.has('tiktok_ads') ? activeClient?.tiktokAdsAccountId : '',
+                          activeClientVisibleIntegrationsSet.has('linkedin_ads') ? activeClient?.linkedInAdsAccountId : '',
                         ].filter(Boolean).length} conta(s) vinculada(s)</strong>
                       </div>
                     )}
@@ -13659,6 +13874,14 @@ export default function DashboardShell({ initialTab = 'home' }) {
               <div className="empty-panel glass-panel">
                 <h3>Sincronizando com as APIs</h3>
                 <p>Estamos puxando os dados configurados para {activeClient.name}.</p>
+              </div>
+            ) : activeClient.dashboardEnabled === false ? (
+              <div className="empty-panel glass-panel">
+                <h3>Dashboard desativado para este cliente</h3>
+                <p>Ative o dashboard no cadastro do cliente para liberar a apresentação executiva e as integrações visíveis.</p>
+                <button type="button" className="btn btn-primary" onClick={() => setActiveTab('clientes')}>
+                  Abrir clientes
+                </button>
               </div>
             ) : !hasAnyPresentationData ? (
               <div className="empty-panel glass-panel">
@@ -15767,12 +15990,6 @@ export default function DashboardShell({ initialTab = 'home' }) {
           gap: 14px;
         }
 
-        .sidebar-collapsed :global(.user-profile) {
-          justify-content: center;
-          padding-left: 0;
-          padding-right: 0;
-        }
-
         .sidebar-collapsed :global(.nav-item)::after {
           content: attr(data-tooltip);
           position: absolute;
@@ -15817,6 +16034,11 @@ export default function DashboardShell({ initialTab = 'home' }) {
           margin-bottom: 6px;
           text-transform: uppercase;
           letter-spacing: 0.08em;
+        }
+
+        .sidebar-logout-button {
+          margin-top: auto;
+          justify-content: center;
         }
 
         .header-actions-wrap {
@@ -16019,10 +16241,10 @@ export default function DashboardShell({ initialTab = 'home' }) {
         .operation-ticket-card,
         .operation-lane-card {
           border-radius: 24px;
-          border: 1px solid rgba(143, 144, 149, 0.14);
+          border: 1px solid rgba(255, 255, 255, 0.08);
           background:
             linear-gradient(180deg, rgba(255, 255, 255, 0.028), rgba(255, 255, 255, 0.012)),
-            rgba(16, 19, 26, 0.92);
+            rgba(14, 14, 16, 0.94);
           box-shadow: 0 16px 40px rgba(0, 0, 0, 0.2);
         }
 
@@ -16033,27 +16255,20 @@ export default function DashboardShell({ initialTab = 'home' }) {
 
         .operation-stellar-topbar {
           display: grid;
-          grid-template-columns: auto minmax(280px, 340px) 1fr;
+          grid-template-columns: minmax(320px, 420px) 1fr;
           align-items: center;
           gap: 24px;
         }
 
         .app-shell-topbar {
-          margin-bottom: 28px;
-        }
-
-        .operation-stellar-brand span {
-          color: #7da2ff;
-          font-size: 22px;
-          font-weight: 800;
-          letter-spacing: -0.03em;
+          margin-bottom: 18px;
         }
 
         .operation-stellar-search {
           min-height: 52px;
           border-radius: 18px;
-          border: 1px solid rgba(255, 255, 255, 0.06);
-          background: rgba(20, 27, 48, 0.78);
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          background: rgba(16, 16, 18, 0.86);
           display: flex;
           align-items: center;
           gap: 12px;
@@ -16061,7 +16276,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
         }
 
         .operation-stellar-search i {
-          color: rgba(191, 219, 254, 0.72);
+          color: rgba(212, 212, 216, 0.72);
           font-size: 18px;
         }
 
@@ -16079,16 +16294,57 @@ export default function DashboardShell({ initialTab = 'home' }) {
           display: flex;
           align-items: center;
           justify-content: flex-end;
-          gap: 14px;
+          gap: 10px;
+        }
+
+        .operation-stellar-theme-toggle {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          min-height: 42px;
+          padding: 4px;
+          border-radius: 16px;
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          background: rgba(16, 16, 18, 0.78);
+          box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+        }
+
+        .operation-stellar-theme-option {
+          width: 34px;
+          height: 34px;
+          border: none;
+          border-radius: 12px;
+          background: transparent;
+          color: rgba(212, 212, 216, 0.72);
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
+        }
+
+        .operation-stellar-theme-option i {
+          font-size: 18px;
+        }
+
+        .operation-stellar-theme-option:hover {
+          color: #eef2ff;
+          transform: translateY(-1px);
+        }
+
+        .operation-stellar-theme-option.active {
+          background: color-mix(in srgb, var(--accent-blue) 16%, rgba(255, 255, 255, 0.04));
+          color: #eef2ff;
+          box-shadow: 0 8px 18px color-mix(in srgb, var(--accent-blue) 14%, transparent);
         }
 
         .operation-stellar-icon-button {
           width: 42px;
           height: 42px;
           border-radius: 14px;
-          border: 1px solid rgba(255, 255, 255, 0.06);
+          border: 1px solid rgba(255, 255, 255, 0.08);
           background: transparent;
-          color: rgba(226, 232, 240, 0.82);
+          color: rgba(228, 228, 231, 0.78);
           display: inline-flex;
           align-items: center;
           justify-content: center;
@@ -16100,26 +16356,6 @@ export default function DashboardShell({ initialTab = 'home' }) {
           font-size: 21px;
         }
 
-        .operation-stellar-user {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-          margin-left: 8px;
-          padding-left: 18px;
-          border-left: 1px solid rgba(255, 255, 255, 0.08);
-        }
-
-        .operation-stellar-user strong {
-          display: block;
-          color: #eef2ff;
-          font-size: 15px;
-        }
-
-        .operation-stellar-user span {
-          color: #7da2ff;
-          font-size: 13px;
-        }
-
         .operation-stellar-user-avatar {
           width: 42px;
           height: 42px;
@@ -16127,10 +16363,71 @@ export default function DashboardShell({ initialTab = 'home' }) {
           display: inline-flex;
           align-items: center;
           justify-content: center;
-          background: linear-gradient(180deg, rgba(34, 197, 94, 0.28), rgba(59, 130, 246, 0.18));
-          border: 1px solid rgba(125, 162, 255, 0.22);
+          background: linear-gradient(180deg, rgba(38, 38, 38, 0.92), rgba(24, 24, 27, 0.96));
+          border: 1px solid rgba(255, 255, 255, 0.08);
           color: #fff;
           font-weight: 800;
+          flex-shrink: 0;
+        }
+
+        :root[data-ui-mode='light'] .app-shell-topbar,
+        :root[data-ui-mode='light'] .operation-stellar-topbar {
+          background: transparent;
+        }
+
+        :root[data-ui-mode='light'] .operation-stellar-search {
+          border-color: rgba(15, 23, 42, 0.08);
+          background:
+            linear-gradient(180deg, rgba(255, 255, 255, 0.88), rgba(248, 250, 252, 0.96)),
+            rgba(255, 255, 255, 0.94);
+          box-shadow: 0 14px 30px rgba(15, 23, 42, 0.05);
+        }
+
+        :root[data-ui-mode='light'] .operation-stellar-search i {
+          color: rgba(71, 85, 105, 0.74);
+        }
+
+        :root[data-ui-mode='light'] .operation-stellar-search input {
+          color: #0f172a;
+        }
+
+        :root[data-ui-mode='light'] .operation-stellar-search input::placeholder {
+          color: rgba(71, 85, 105, 0.64);
+        }
+
+        :root[data-ui-mode='light'] .operation-stellar-icon-button {
+          border-color: rgba(15, 23, 42, 0.08);
+          background: rgba(255, 255, 255, 0.84);
+          color: #475569;
+          box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
+        }
+
+        :root[data-ui-mode='light'] .operation-stellar-theme-toggle {
+          border-color: rgba(15, 23, 42, 0.08);
+          background:
+            linear-gradient(180deg, rgba(255, 255, 255, 0.88), rgba(248, 250, 252, 0.96)),
+            rgba(255, 255, 255, 0.94);
+          box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
+        }
+
+        :root[data-ui-mode='light'] .operation-stellar-theme-option {
+          color: #64748b;
+        }
+
+        :root[data-ui-mode='light'] .operation-stellar-theme-option:hover {
+          color: #0f172a;
+        }
+
+        :root[data-ui-mode='light'] .operation-stellar-theme-option.active {
+          color: #0f172a;
+          background: color-mix(in srgb, var(--accent-blue) 12%, white);
+          box-shadow: 0 8px 18px color-mix(in srgb, var(--accent-blue) 12%, transparent);
+        }
+
+        :root[data-ui-mode='light'] .operation-stellar-user-avatar {
+          border-color: rgba(59, 130, 246, 0.16);
+          color: #2563eb;
+          box-shadow: 0 12px 22px rgba(59, 130, 246, 0.08);
         }
 
         .operation-stellar-hero {
@@ -16547,6 +16844,24 @@ export default function DashboardShell({ initialTab = 'home' }) {
           font: inherit;
           cursor: pointer;
           text-align: left;
+        }
+
+        .operation-card-title-block {
+          min-width: 0;
+          display: grid;
+          gap: 4px;
+          justify-items: start;
+        }
+
+        .operation-card-title-block small {
+          display: block;
+          max-width: 100%;
+          color: rgba(225, 226, 235, 0.56);
+          font-size: 13px;
+          line-height: 1.35;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
         }
 
         .operation-card-tags,
@@ -17207,6 +17522,127 @@ export default function DashboardShell({ initialTab = 'home' }) {
           display: flex;
           flex-wrap: wrap;
           gap: 10px;
+        }
+
+        .client-governance-card {
+          display: grid;
+          gap: 16px;
+          padding: 18px 20px;
+          border-radius: 20px;
+          border: 1px solid rgba(255, 255, 255, 0.06);
+          background:
+            linear-gradient(180deg, rgba(255, 255, 255, 0.028), rgba(255, 255, 255, 0.014)),
+            rgba(10, 14, 22, 0.74);
+        }
+
+        .client-governance-head {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          gap: 12px;
+        }
+
+        .client-governance-head strong {
+          display: block;
+          font-size: 15px;
+          margin-bottom: 4px;
+        }
+
+        .client-governance-head span {
+          display: block;
+          color: var(--text-secondary);
+          font-size: 13px;
+          line-height: 1.5;
+        }
+
+        .client-governance-switches {
+          display: grid;
+          gap: 12px;
+        }
+
+        .ios-toggle-row {
+          width: 100%;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 18px;
+          padding: 16px 18px;
+          border-radius: 18px;
+          border: 1px solid rgba(255, 255, 255, 0.06);
+          background: rgba(255, 255, 255, 0.025);
+          color: var(--text-primary);
+          text-align: left;
+          cursor: pointer;
+          transition: border-color 0.2s ease, background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .ios-toggle-row:hover:not(:disabled) {
+          border-color: rgba(255, 255, 255, 0.11);
+          background: rgba(255, 255, 255, 0.04);
+          transform: translateY(-1px);
+        }
+
+        .ios-toggle-row:disabled {
+          opacity: 0.58;
+          cursor: not-allowed;
+          transform: none;
+        }
+
+        .ios-toggle-row.active {
+          border-color: color-mix(in srgb, var(--accent-blue) 30%, transparent);
+          background:
+            linear-gradient(180deg, color-mix(in srgb, var(--accent-blue) 10%, transparent), transparent),
+            rgba(255, 255, 255, 0.03);
+          box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-blue) 10%, transparent);
+        }
+
+        .ios-toggle-copy {
+          display: grid;
+          gap: 4px;
+          min-width: 0;
+        }
+
+        .ios-toggle-copy strong {
+          font-size: 14px;
+          line-height: 1.2;
+        }
+
+        .ios-toggle-copy span {
+          color: var(--text-secondary);
+          font-size: 12px;
+          line-height: 1.45;
+        }
+
+        .ios-toggle-switch {
+          position: relative;
+          flex: 0 0 54px;
+          width: 54px;
+          height: 32px;
+          border-radius: 999px;
+          background: rgba(148, 163, 184, 0.26);
+          box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+          transition: background 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .ios-toggle-row.active .ios-toggle-switch {
+          background: var(--accent-blue);
+          box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-blue) 70%, white 10%);
+        }
+
+        .ios-toggle-knob {
+          position: absolute;
+          top: 3px;
+          left: 3px;
+          width: 26px;
+          height: 26px;
+          border-radius: 999px;
+          background: #ffffff;
+          box-shadow: 0 4px 10px rgba(15, 23, 42, 0.28);
+          transition: transform 0.2s ease;
+        }
+
+        .ios-toggle-row.active .ios-toggle-knob {
+          transform: translateX(22px);
         }
 
         .client-create-bar h3 {
