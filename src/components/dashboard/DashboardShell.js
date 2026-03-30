@@ -123,6 +123,7 @@ const OPERATION_PRIORITY_OPTIONS = [
   { value: 'alta', label: 'Alta' },
   { value: 'urgente', label: 'Urgente' },
 ]
+const OPERATION_PRIORITY_LABELS = Object.fromEntries(OPERATION_PRIORITY_OPTIONS.map((item) => [item.value, item.label]))
 const OPERATION_LANES = [
   { key: 'setup', label: 'Setup de implementação' },
   { key: 'inside_sales', label: 'Implementação (Inside Sales)' },
@@ -4851,6 +4852,9 @@ export default function DashboardShell({ initialTab = 'home' }) {
   const handleOperationCardFieldChange = (cardId, fieldName, value) => {
     const currentCard = operationCards.find((card) => card.id === cardId)
     if (!currentCard || !canEditClientRecord(currentCard.clientId)) return
+    if (JSON.stringify(currentCard[fieldName]) === JSON.stringify(value)) return
+
+    const activityMessage = buildOperationCardFieldActivityMessage(currentCard, fieldName, value)
 
     setOperationCards((current) =>
       current.map((card) =>
@@ -4858,6 +4862,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
           ? {
               ...card,
               [fieldName]: value,
+              comments: activityMessage ? appendOperationActivityComment(card.comments, activityMessage) : card.comments,
               updatedAt: new Date().toISOString(),
             }
           : card
@@ -4884,6 +4889,13 @@ export default function DashboardShell({ initialTab = 'home' }) {
       .map((assigneeId) => operationUsersById.get(assigneeId)?.full_name || operationUsersById.get(assigneeId)?.email || '')
       .filter(Boolean)
       .join(', ')
+    const previousResponsible = (currentCard.assigneeIds || []).map((assigneeId) => getOperationAssigneeLabel(assigneeId)).filter(Boolean)
+    const nextResponsible = nextAssigneeIds.map((assigneeId) => getOperationAssigneeLabel(assigneeId)).filter(Boolean)
+    const activityMessage = JSON.stringify(previousResponsible) === JSON.stringify(nextResponsible)
+      ? ''
+      : nextResponsible.length
+        ? `atualizou os responsáveis para ${nextResponsible.join(', ')}.`
+        : 'removeu todos os responsáveis do card.'
 
     setOperationCards((current) =>
       current.map((card) =>
@@ -4892,6 +4904,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
               ...card,
               assigneeIds: nextAssigneeIds,
               responsible,
+              comments: activityMessage ? appendOperationActivityComment(card.comments, activityMessage) : card.comments,
               updatedAt: new Date().toISOString(),
             }
           : card
@@ -4968,6 +4981,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
                   status: card.status || operationStatuses[0]?.key || 'aberto',
                 }),
               ],
+              comments: appendOperationActivityComment(card.comments, `adicionou a subtarefa "${draftTitle}".`),
               updatedAt: new Date().toISOString(),
             }
           : card
@@ -4979,6 +4993,22 @@ export default function DashboardShell({ initialTab = 'home' }) {
   const handleOperationSubtaskFieldChange = (cardId, subtaskId, fieldName, value) => {
     const currentCard = operationCards.find((card) => card.id === cardId)
     if (!currentCard || !canEditClientRecord(currentCard.clientId)) return
+
+    const currentSubtask = (currentCard.subtasks || []).find((subtask) => subtask.id === subtaskId)
+    const activityMessage = (() => {
+      if (!currentSubtask) return ''
+      if (fieldName === 'completed' && Boolean(currentSubtask.completed) !== Boolean(value)) {
+        return Boolean(value)
+          ? `concluiu a subtarefa "${currentSubtask.title || 'Subtarefa'}".`
+          : `reabriu a subtarefa "${currentSubtask.title || 'Subtarefa'}".`
+      }
+      if (fieldName === 'status' && String(currentSubtask.status || '') !== String(value || '')) {
+        const previousLabel = operationStatusesByKey.get(currentSubtask.status)?.label || currentSubtask.status
+        const nextLabel = operationStatusesByKey.get(value)?.label || value
+        return `alterou o status da subtarefa "${currentSubtask.title || 'Subtarefa'}" de ${previousLabel} para ${nextLabel}.`
+      }
+      return ''
+    })()
 
     setOperationCards((current) =>
       current.map((card) =>
@@ -4995,6 +5025,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
                     }
                   : subtask
               ),
+              comments: activityMessage ? appendOperationActivityComment(card.comments, activityMessage) : card.comments,
               updatedAt: new Date().toISOString(),
             }
           : card
@@ -5033,12 +5064,15 @@ export default function DashboardShell({ initialTab = 'home' }) {
     const currentCard = operationCards.find((card) => card.id === cardId)
     if (!currentCard || !canEditClientRecord(currentCard.clientId)) return
 
+    const removedSubtask = (currentCard.subtasks || []).find((subtask) => subtask.id === subtaskId)
+
     setOperationCards((current) =>
       current.map((card) =>
         card.id === cardId
           ? {
               ...card,
               subtasks: (card.subtasks || []).filter((subtask) => subtask.id !== subtaskId),
+              comments: removedSubtask ? appendOperationActivityComment(card.comments, `removeu a subtarefa "${removedSubtask.title || 'Subtarefa'}".`) : card.comments,
               updatedAt: new Date().toISOString(),
             }
           : card
@@ -5057,6 +5091,65 @@ export default function DashboardShell({ initialTab = 'home' }) {
 
     const parts = label.split(/\s+/).filter(Boolean)
     return parts.slice(0, 2).map((part) => part.charAt(0).toUpperCase()).join('') || label.slice(0, 2).toUpperCase()
+  }
+
+  const getOperationActorName = () => profile?.full_name || user?.email || 'Equipe'
+
+  const appendOperationActivityComment = (comments, body) => {
+    if (!String(body || '').trim()) return comments || []
+
+    return [
+      ...(comments || []),
+      createOperationCommentRecord({
+        body,
+        authorId: user?.id || '',
+        authorName: getOperationActorName(),
+      }),
+    ]
+  }
+
+  const buildOperationCardFieldActivityMessage = (card, fieldName, value) => {
+    if (fieldName === 'status') {
+      const previousLabel = operationStatusesByKey.get(card.status)?.label || card.status
+      const nextLabel = operationStatusesByKey.get(value)?.label || value
+      return previousLabel === nextLabel ? '' : `alterou o status de ${previousLabel} para ${nextLabel}.`
+    }
+
+    if (fieldName === 'lane') {
+      const previousLabel = operationLanesByKey.get(card.lane)?.label || card.lane
+      const nextLabel = operationLanesByKey.get(value)?.label || value
+      return previousLabel === nextLabel ? '' : `moveu o card de ${previousLabel} para ${nextLabel}.`
+    }
+
+    if (fieldName === 'priority') {
+      const previousLabel = OPERATION_PRIORITY_LABELS[card.priority || 'sem_prioridade'] || 'Sem prioridade'
+      const nextLabel = OPERATION_PRIORITY_LABELS[value || 'sem_prioridade'] || 'Sem prioridade'
+      return previousLabel === nextLabel ? '' : `alterou a prioridade de ${previousLabel} para ${nextLabel}.`
+    }
+
+    if (fieldName === 'taskType') {
+      const previousLabel = card.taskType || 'Tarefa'
+      const nextLabel = value || 'Tarefa'
+      return previousLabel === nextLabel ? '' : `alterou o tipo de tarefa de ${previousLabel} para ${nextLabel}.`
+    }
+
+    if (fieldName === 'startDate' || fieldName === 'dueDate') {
+      const fieldLabel = fieldName === 'startDate' ? 'data de início' : 'data de entrega'
+      const previousLabel = card[fieldName] ? formatClientDate(card[fieldName]) : 'não definida'
+      const nextLabel = value ? formatClientDate(value) : 'não definida'
+      return previousLabel === nextLabel ? '' : `alterou a ${fieldLabel} de ${previousLabel} para ${nextLabel}.`
+    }
+
+    if (fieldName === 'tags') {
+      const previousTags = Array.isArray(card.tags) ? card.tags : []
+      const nextTags = Array.isArray(value) ? value : []
+      if (JSON.stringify(previousTags) === JSON.stringify(nextTags)) return ''
+      return nextTags.length
+        ? `atualizou as tags do card para ${nextTags.join(', ')}.`
+        : 'removeu todas as tags do card.'
+    }
+
+    return ''
   }
 
   const handleToggleOperationCardTag = (cardId, tagLabel) => {
@@ -5102,22 +5195,62 @@ export default function DashboardShell({ initialTab = 'home' }) {
 
     if (currentCard.timeTrackerStartedAt && !Number.isNaN(startedAt)) {
       const additionalMinutes = Math.max(0, Math.floor((now.getTime() - startedAt) / 60000))
-      handleOperationCardFieldChange(cardId, 'timeTrackedMinutes', (currentCard.timeTrackedMinutes || 0) + additionalMinutes)
-      handleOperationCardFieldChange(cardId, 'timeTrackerStartedAt', '')
+      setOperationCards((current) =>
+        current.map((card) =>
+          card.id === cardId
+            ? {
+                ...card,
+                timeTrackedMinutes: (card.timeTrackedMinutes || 0) + additionalMinutes,
+                timeTrackerStartedAt: '',
+                comments: appendOperationActivityComment(card.comments, `pausou o rastreio de tempo em ${formatMinutesToDuration((card.timeTrackedMinutes || 0) + additionalMinutes)}.`),
+                updatedAt: new Date().toISOString(),
+              }
+            : card
+        )
+      )
       return
     }
 
-    handleOperationCardFieldChange(cardId, 'timeTrackerStartedAt', now.toISOString())
+    setOperationCards((current) =>
+      current.map((card) =>
+        card.id === cardId
+          ? {
+              ...card,
+              timeTrackerStartedAt: now.toISOString(),
+              comments: appendOperationActivityComment(card.comments, 'iniciou o rastreio de tempo.'),
+              updatedAt: new Date().toISOString(),
+            }
+          : card
+      )
+    )
   }
 
   const handleOperationCustomFieldValueChange = (cardId, fieldKey, value) => {
     const currentCard = operationCards.find((card) => card.id === cardId)
     if (!currentCard || !canEditClientRecord(currentCard.clientId) || !fieldKey) return
+    const previousValue = String(currentCard.customFieldValues?.[fieldKey] || '')
+    const nextValue = String(value || '')
+    if (previousValue === nextValue) return
+    const fieldLabel = operationCustomFields.find((field) => field.key === fieldKey)?.label || fieldKey
 
-    handleOperationCardFieldChange(cardId, 'customFieldValues', {
-      ...(currentCard.customFieldValues || {}),
-      [fieldKey]: String(value || ''),
-    })
+    setOperationCards((current) =>
+      current.map((card) =>
+        card.id === cardId
+          ? {
+              ...card,
+              customFieldValues: {
+                ...(card.customFieldValues || {}),
+                [fieldKey]: nextValue,
+              },
+              comments: appendOperationActivityComment(
+                card.comments,
+                `atualizou o campo "${fieldLabel}" de ${previousValue || 'vazio'} para ${nextValue || 'vazio'}.`
+              ),
+              updatedAt: new Date().toISOString(),
+            }
+          : card
+      )
+    )
   }
 
   const handleOperationCardDragStart = (cardId) => {
