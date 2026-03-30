@@ -2865,13 +2865,6 @@ export default function DashboardShell({ initialTab = 'home' }) {
   }, [operationSettings?.autoCreateCardForNewClient])
 
   useEffect(() => {
-    if (!isOperationCreateModalOpen) return
-    const linkedClient = clientsById.get(newOperationClientId)
-    setNewOperationLane(resolveOperationLaneFromSalesModel(linkedClient?.salesModel))
-    setNewOperationStatus(operationStatuses[0]?.key || 'aberto')
-  }, [isOperationCreateModalOpen, newOperationClientId, clientsById, operationStatuses])
-
-  useEffect(() => {
     if (activeTab !== 'home') {
       setIsHomeToolsExpanded(false)
     }
@@ -3092,6 +3085,12 @@ export default function DashboardShell({ initialTab = 'home' }) {
     () => new Map(operationAssignableUsers.map((item) => [item.id, item])),
     [operationAssignableUsers]
   )
+  useEffect(() => {
+    if (!isOperationCreateModalOpen) return
+    const linkedClient = clientsById.get(newOperationClientId)
+    setNewOperationLane(resolveOperationLaneFromSalesModel(linkedClient?.salesModel))
+    setNewOperationStatus(operationStatuses[0]?.key || 'aberto')
+  }, [isOperationCreateModalOpen, newOperationClientId, clientsById, operationStatuses])
   const operationSegmentOptions = useMemo(
     () => Array.from(new Set(clients.map((client) => String(client.segment || '').trim()).filter(Boolean))).sort((left, right) => left.localeCompare(right, 'pt-BR')),
     [clients]
