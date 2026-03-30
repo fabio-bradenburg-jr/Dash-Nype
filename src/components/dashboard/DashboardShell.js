@@ -15703,6 +15703,10 @@ export default function DashboardShell({ initialTab = 'home' }) {
           max-height: calc(100vh - 48px);
           overflow-y: auto;
           padding: 0;
+          border-radius: 28px;
+          background:
+            radial-gradient(circle at top left, rgba(78, 137, 255, 0.08), transparent 18%),
+            linear-gradient(180deg, rgba(18, 22, 30, 0.98), rgba(10, 13, 20, 0.98));
         }
 
         .operation-modal-header {
@@ -15720,8 +15724,9 @@ export default function DashboardShell({ initialTab = 'home' }) {
 
         .operation-clickup-layout {
           display: grid;
-          grid-template-columns: 320px minmax(0, 1fr) 360px;
+          grid-template-columns: minmax(240px, 280px) minmax(420px, 1fr) minmax(280px, 320px);
           min-height: 72vh;
+          align-items: start;
         }
 
         .operation-clickup-sidebar,
@@ -15731,15 +15736,20 @@ export default function DashboardShell({ initialTab = 'home' }) {
           display: grid;
           align-content: start;
           gap: 18px;
+          min-width: 0;
         }
 
         .operation-clickup-sidebar,
         .operation-clickup-activity {
-          background: rgba(8, 9, 14, 0.42);
+          background: rgba(8, 11, 18, 0.78);
         }
 
         .operation-clickup-sidebar {
           border-right: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .operation-clickup-main {
+          background: rgba(14, 18, 26, 0.88);
         }
 
         .operation-clickup-activity {
@@ -15752,11 +15762,15 @@ export default function DashboardShell({ initialTab = 'home' }) {
           align-items: center;
           justify-content: space-between;
           gap: 12px;
+          padding-bottom: 8px;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.06);
         }
 
         .operation-clickup-title-wrap {
           display: grid;
           gap: 10px;
+          padding-bottom: 18px;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.06);
         }
 
         .operation-clickup-type {
@@ -15773,17 +15787,29 @@ export default function DashboardShell({ initialTab = 'home' }) {
           border: none;
           background: transparent;
           color: #fff;
-          font-size: clamp(34px, 4vw, 48px);
+          font-size: clamp(28px, 3vw, 42px);
           font-weight: 700;
           letter-spacing: -0.05em;
           outline: none;
           padding: 0;
+          line-height: 1.05;
         }
 
         .operation-clickup-description,
         .operation-clickup-fields {
           display: grid;
           gap: 14px;
+        }
+
+        .operation-clickup-description,
+        .operation-clickup-fields,
+        .operation-inline-create,
+        .operation-comment-list,
+        .operation-subtask-list {
+          background: rgba(255, 255, 255, 0.02);
+          border: 1px solid rgba(255, 255, 255, 0.06);
+          border-radius: 18px;
+          padding: 18px;
         }
 
         .operation-clickup-description textarea {
@@ -15814,6 +15840,64 @@ export default function DashboardShell({ initialTab = 'home' }) {
           justify-content: space-between;
           gap: 10px;
           margin-bottom: 12px;
+        }
+
+        .operation-card-modal label,
+        .operation-card-modal .input-group label {
+          color: rgba(226, 232, 240, 0.78);
+          font-size: 13px;
+          font-weight: 600;
+          letter-spacing: 0.01em;
+        }
+
+        .operation-card-modal input:not([type='checkbox']):not(.operation-clickup-title-input),
+        .operation-card-modal select,
+        .operation-card-modal textarea {
+          width: 100%;
+          min-height: 48px;
+          border-radius: 14px;
+          border: 1px solid rgba(255, 255, 255, 0.09);
+          background: linear-gradient(180deg, rgba(21, 27, 38, 0.98), rgba(12, 16, 24, 0.98));
+          color: #f8fafc;
+          padding: 12px 14px;
+          outline: none;
+          box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+        }
+
+        .operation-card-modal textarea {
+          min-height: 110px;
+          resize: vertical;
+          line-height: 1.5;
+        }
+
+        .operation-card-modal input:not([type='checkbox']):not(.operation-clickup-title-input)::placeholder,
+        .operation-card-modal textarea::placeholder {
+          color: rgba(148, 163, 184, 0.7);
+        }
+
+        .operation-card-modal input:not([type='checkbox']):not(.operation-clickup-title-input):focus,
+        .operation-card-modal select:focus,
+        .operation-card-modal textarea:focus {
+          border-color: rgba(78, 137, 255, 0.52);
+          box-shadow: 0 0 0 3px rgba(78, 137, 255, 0.14);
+        }
+
+        .operation-card-modal .stage-chip {
+          background: rgba(255, 255, 255, 0.03);
+          border-color: rgba(255, 255, 255, 0.08);
+          color: rgba(226, 232, 240, 0.86);
+        }
+
+        .operation-card-modal .stage-chip.active {
+          background: linear-gradient(180deg, rgba(78, 137, 255, 0.26), rgba(78, 137, 255, 0.18));
+          border-color: rgba(78, 137, 255, 0.46);
+          color: #fff;
+        }
+
+        .operation-comment-list .ranking-empty,
+        .operation-subtask-list .ranking-empty {
+          background: rgba(255, 255, 255, 0.02);
+          border: 1px dashed rgba(255, 255, 255, 0.08);
         }
 
         .operation-table-card {
@@ -21727,6 +21811,18 @@ export default function DashboardShell({ initialTab = 'home' }) {
           color: var(--text-muted);
           font-size: 13px;
           line-height: 1.5;
+        }
+
+        @media (max-width: 1380px) {
+          .operation-clickup-layout {
+            grid-template-columns: minmax(240px, 280px) minmax(0, 1fr);
+          }
+
+          .operation-clickup-activity {
+            grid-column: 1 / -1;
+            border-left: none;
+            border-top: 1px solid rgba(255, 255, 255, 0.06);
+          }
         }
 
         @media (max-width: 1100px) {
