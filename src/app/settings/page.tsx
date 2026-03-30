@@ -8,6 +8,7 @@ import { DEFAULT_USER_APPEARANCE } from '@/lib/user-appearance-storage'
 import { USER_APPEARANCE_PRESETS } from '@/lib/user-appearance-storage'
 import {
   createClientCustomColumnRecord,
+  createOperationCustomFieldRecord,
   createClientCustomTabRecord,
   createOperationLaneRecord,
   createOperationSettingsRecord,
@@ -32,6 +33,7 @@ import type {
   ClientCustomTabRecord,
   ClientRecord,
   DashboardIntegrations,
+  OperationCustomFieldRecord,
   OperationSettingsRecord,
 } from '@/lib/types/dashboard'
 import type { UserAppearance } from '@/lib/types/user'
@@ -420,6 +422,11 @@ export default function SettingsPage() {
   const [newClientTabLabel, setNewClientTabLabel] = useState('')
   const [newOperationLaneLabel, setNewOperationLaneLabel] = useState('')
   const [newOperationStatusLabel, setNewOperationStatusLabel] = useState('')
+  const [newOperationTagLabel, setNewOperationTagLabel] = useState('')
+  const [newOperationTaskTypeLabel, setNewOperationTaskTypeLabel] = useState('')
+  const [newOperationCustomFieldLabel, setNewOperationCustomFieldLabel] = useState('')
+  const [newOperationCustomFieldType, setNewOperationCustomFieldType] = useState<OperationCustomFieldRecord['type']>('text')
+  const [newOperationCustomFieldOptions, setNewOperationCustomFieldOptions] = useState('')
   const [systemFieldOptionDrafts, setSystemFieldOptionDrafts] = useState<Record<string, string>>({})
   const [customFieldOptionDrafts, setCustomFieldOptionDrafts] = useState<Record<string, string>>({})
   const metaConnectionMode = globalIntegrations.metaConnectionMode === 'oauth' ? 'oauth' : 'manual'
@@ -457,6 +464,76 @@ export default function SettingsPage() {
     ],
     [clientCustomColumns, clientSystemFields]
   )
+  const settingsSidebarHighlights = useMemo(() => {
+    if (activeSettingsTab === 'panel') {
+      return {
+        title: 'Aparência ativa',
+        description: 'Controle o visual do app e a atmosfera geral da interface.',
+        items: [
+          `${panelDraft.mode === 'dark' ? 'Modo escuro' : 'Modo claro'} selecionado`,
+          `Cor de destaque ${panelDraft.accent.toUpperCase()}`,
+          `Fundo base ${panelDraft.backgroundTint.toUpperCase()}`,
+        ],
+      }
+    }
+
+    if (activeSettingsTab === 'general') {
+      return {
+        title: 'Integrações gerais',
+        description: 'Credenciais e base de leitura executiva centralizadas por aqui.',
+        items: [
+          `${advertisingIntegrationGroups.length} integrações de mídia`,
+          `${crmIntegrationGroups.length} integrações de CRM`,
+          'Providers e prompt de IA centralizados',
+        ],
+      }
+    }
+
+    if (activeSettingsTab === 'operation') {
+      return {
+        title: 'Estrutura da operação',
+        description: 'Tudo que alimenta o modal e o board operacional fica aqui.',
+        items: [
+          `${operationSettings.lanes.length} coluna(s) do kanban`,
+          `${operationSettings.statuses.length} status de card`,
+          `${(operationSettings.tags || []).length} tag(s) disponíveis`,
+          `${(operationSettings.taskTypes || []).length} tipo(s) de tarefa`,
+          `${(operationSettings.customFields || []).length} campo(s) customizado(s)`,
+        ],
+      }
+    }
+
+    if (activeSettingsTab === 'calendar') {
+      return {
+        title: 'Agenda operacional',
+        description: 'Conexão, leitura e governança do calendário do time.',
+        items: [
+          'Conexão com Google Calendar',
+          'Rotina operacional da agenda',
+          'Controle centralizado da operação',
+        ],
+      }
+    }
+
+    return {
+      title: 'Base de clientes',
+      description: 'Ajustes estruturais da base que alimenta clientes e operação.',
+      items: [
+        `${clientSystemFields.length} campo(s) de sistema`,
+        `${clientCustomColumns.length} campo(s) customizado(s)`,
+        `${clientCustomTabs.length} aba(s) customizada(s)`,
+      ],
+    }
+  }, [
+    activeSettingsTab,
+    advertisingIntegrationGroups.length,
+    clientCustomColumns.length,
+    clientCustomTabs.length,
+    clientSystemFields.length,
+    crmIntegrationGroups.length,
+    operationSettings,
+    panelDraft,
+  ])
   const serverClients = useMemo(
     () => (Array.isArray(serverState?.clients) ? serverState.clients : []),
     [serverState?.clients]
@@ -1161,6 +1238,117 @@ export default function SettingsPage() {
     void persistOperationSettings(nextSettings)
   }
 
+  const handleCreateOperationTag = () => {
+    const trimmedLabel = newOperationTagLabel.trim()
+    if (!trimmedLabel) return
+
+    const nextSettings = {
+      ...operationSettings,
+      tags: Array.from(new Set([...(operationSettings.tags || []), trimmedLabel])),
+    }
+
+    setOperationSettings(nextSettings)
+    setNewOperationTagLabel('')
+    void persistOperationSettings(nextSettings)
+  }
+
+  const handleRemoveOperationTag = (tagLabel: string) => {
+    const nextSettings = {
+      ...operationSettings,
+      tags: (operationSettings.tags || []).filter((tag) => tag !== tagLabel),
+    }
+
+    setOperationSettings(nextSettings)
+    void persistOperationSettings(nextSettings)
+  }
+
+  const handleCreateOperationTaskType = () => {
+    const trimmedLabel = newOperationTaskTypeLabel.trim()
+    if (!trimmedLabel) return
+
+    const nextSettings = {
+      ...operationSettings,
+      taskTypes: Array.from(new Set([...(operationSettings.taskTypes || []), trimmedLabel])),
+    }
+
+    setOperationSettings(nextSettings)
+    setNewOperationTaskTypeLabel('')
+    void persistOperationSettings(nextSettings)
+  }
+
+  const handleRemoveOperationTaskType = (taskTypeLabel: string) => {
+    const nextTaskTypes = (operationSettings.taskTypes || []).filter((item) => item !== taskTypeLabel)
+    if (!nextTaskTypes.length) return
+
+    const nextSettings = {
+      ...operationSettings,
+      taskTypes: nextTaskTypes,
+    }
+
+    setOperationSettings(nextSettings)
+    void persistOperationSettings(nextSettings)
+  }
+
+  const handleCreateOperationCustomField = () => {
+    const trimmedLabel = newOperationCustomFieldLabel.trim()
+    if (!trimmedLabel) return
+
+    const nextSettings = {
+      ...operationSettings,
+      customFields: [
+        ...(operationSettings.customFields || []),
+        createOperationCustomFieldRecord({
+          label: trimmedLabel,
+          type: newOperationCustomFieldType,
+          options: newOperationCustomFieldType === 'select' ? normalizeSelectOptionsInput(newOperationCustomFieldOptions) : [],
+        }),
+      ],
+    }
+
+    setOperationSettings(nextSettings)
+    setNewOperationCustomFieldLabel('')
+    setNewOperationCustomFieldType('text')
+    setNewOperationCustomFieldOptions('')
+    void persistOperationSettings(nextSettings)
+  }
+
+  const handleOperationCustomFieldChange = (
+    fieldId: string,
+    fieldName: 'label' | 'type' | 'options',
+    value: string
+  ) => {
+    const nextSettings = {
+      ...operationSettings,
+      customFields: (operationSettings.customFields || []).map((field) =>
+        field.id === fieldId
+          ? createOperationCustomFieldRecord({
+              ...field,
+              [fieldName]: fieldName === 'options' ? normalizeSelectOptionsInput(value) : value,
+              options:
+                fieldName === 'type'
+                  ? (value === 'select' ? field.options : [])
+                  : fieldName === 'options'
+                    ? normalizeSelectOptionsInput(value)
+                    : field.options,
+            })
+          : field
+      ),
+    }
+
+    setOperationSettings(nextSettings)
+    void persistOperationSettings(nextSettings)
+  }
+
+  const handleRemoveOperationCustomField = (fieldId: string) => {
+    const nextSettings = {
+      ...operationSettings,
+      customFields: (operationSettings.customFields || []).filter((field) => field.id !== fieldId),
+    }
+
+    setOperationSettings(nextSettings)
+    void persistOperationSettings(nextSettings)
+  }
+
   const handleCreateClientCustomTab = () => {
     if (!canManageClients) return
     const trimmedLabel = newClientTabLabel.trim()
@@ -1523,6 +1711,20 @@ export default function SettingsPage() {
                   </button>
                 </>
               )}
+            </div>
+
+            <div className="settings-sidebar-summary glass-item">
+              <span className="settings-sidebar-summary-kicker">Nesta aba</span>
+              <strong>{settingsSidebarHighlights.title}</strong>
+              <p>{settingsSidebarHighlights.description}</p>
+              <div className="settings-sidebar-summary-list">
+                {settingsSidebarHighlights.items.map((item) => (
+                  <span key={`${activeSettingsTab}-${item}`} className="settings-sidebar-summary-item">
+                    <i className="bx bx-check-circle"></i>
+                    {item}
+                  </span>
+                ))}
+              </div>
             </div>
           </aside>
 
@@ -2310,6 +2512,191 @@ export default function SettingsPage() {
                         <div className="integration-block">
                           <div className="integration-heading">
                             <div className="integration-icon" style={{ color: '#f59e0b', borderColor: '#f59e0b33' }}>
+                              <i className="bx bx-purchase-tag-alt"></i>
+                            </div>
+                            <div>
+                              <h3>Tags dos cards</h3>
+                              <p>Cadastre as tags disponíveis para seleção nos cards operacionais.</p>
+                            </div>
+                          </div>
+
+                          <div className="settings-stack-list">
+                            {(operationSettings.tags || []).length ? (
+                              operationSettings.tags.map((tag) => (
+                                <div key={`operation-tag-${tag}`} className="glass-item settings-stack-card">
+                                  <div className="settings-accordion-summary">
+                                    <div>
+                                      <strong>{tag}</strong>
+                                      <span>Tag disponível no seletor</span>
+                                    </div>
+                                  </div>
+                                  <div className="modal-actions">
+                                    <button type="button" className="btn btn-secondary" onClick={() => handleRemoveOperationTag(tag)}>
+                                      Remover tag
+                                    </button>
+                                  </div>
+                                </div>
+                              ))
+                            ) : (
+                              <div className="glass-item settings-stack-card">
+                                <span>Nenhuma tag cadastrada ainda.</span>
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="settings-form-grid">
+                            <div className="input-group">
+                              <label>Nova tag</label>
+                              <input type="text" value={newOperationTagLabel} onChange={(event) => setNewOperationTagLabel(event.target.value)} placeholder="Ex.: Urgente, Cliente, Aprovação" />
+                            </div>
+                          </div>
+                          <div className="modal-actions">
+                            <button type="button" className="btn btn-primary" onClick={handleCreateOperationTag}>
+                              Adicionar tag
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="integration-block">
+                          <div className="integration-heading">
+                            <div className="integration-icon" style={{ color: '#8b5cf6', borderColor: '#8b5cf633' }}>
+                              <i className="bx bx-category-alt"></i>
+                            </div>
+                            <div>
+                              <h3>Tipos de tarefa</h3>
+                              <p>Cadastre os tipos que vão aparecer no topo e no seletor dos cards operacionais.</p>
+                            </div>
+                          </div>
+
+                          <div className="settings-stack-list">
+                            {(operationSettings.taskTypes || []).length ? (
+                              operationSettings.taskTypes.map((taskType) => (
+                                <div key={`operation-task-type-${taskType}`} className="glass-item settings-stack-card">
+                                  <div className="settings-accordion-summary">
+                                    <div>
+                                      <strong>{taskType}</strong>
+                                      <span>Tipo disponível no card</span>
+                                    </div>
+                                  </div>
+                                  <div className="modal-actions">
+                                    <button type="button" className="btn btn-secondary" onClick={() => handleRemoveOperationTaskType(taskType)}>
+                                      Remover tipo
+                                    </button>
+                                  </div>
+                                </div>
+                              ))
+                            ) : null}
+                          </div>
+
+                          <div className="settings-form-grid">
+                            <div className="input-group">
+                              <label>Novo tipo</label>
+                              <input type="text" value={newOperationTaskTypeLabel} onChange={(event) => setNewOperationTaskTypeLabel(event.target.value)} placeholder="Ex.: Bug, Ajuste, Entrega, Aprovação" />
+                            </div>
+                          </div>
+                          <div className="modal-actions">
+                            <button type="button" className="btn btn-primary" onClick={handleCreateOperationTaskType}>
+                              Adicionar tipo
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="integration-block">
+                          <div className="integration-heading">
+                            <div className="integration-icon" style={{ color: '#38bdf8', borderColor: '#38bdf833' }}>
+                              <i className="bx bx-list-plus"></i>
+                            </div>
+                            <div>
+                              <h3>Campos customizados do card</h3>
+                              <p>Crie campos extras para aparecer dentro do card operacional, no estilo ClickUp.</p>
+                            </div>
+                          </div>
+
+                          <div className="settings-stack-list">
+                            {(operationSettings.customFields || []).length ? (
+                              operationSettings.customFields.map((field) => (
+                                <details key={field.id} className="glass-item settings-stack-card settings-accordion-card" open>
+                                  <summary className="settings-accordion-summary">
+                                    <div>
+                                      <strong>{field.label}</strong>
+                                      <span>{field.type}</span>
+                                    </div>
+                                    <small>{field.key}</small>
+                                  </summary>
+                                  <div className="settings-form-grid">
+                                    <div className="input-group">
+                                      <label>Nome do campo</label>
+                                      <input type="text" value={field.label} onChange={(event) => handleOperationCustomFieldChange(field.id, 'label', event.target.value)} />
+                                    </div>
+                                    <div className="input-group">
+                                      <label>Tipo</label>
+                                      <select value={field.type} onChange={(event) => handleOperationCustomFieldChange(field.id, 'type', event.target.value)}>
+                                        <option value="text">Texto</option>
+                                        <option value="select">Dropdown</option>
+                                        <option value="date">Data</option>
+                                        <option value="number">Número</option>
+                                      </select>
+                                    </div>
+                                    <div className="input-group settings-field-span-2">
+                                      <label>Opções</label>
+                                      <input
+                                        type="text"
+                                        value={(field.options || []).join(', ')}
+                                        onChange={(event) => handleOperationCustomFieldChange(field.id, 'options', event.target.value)}
+                                        placeholder="Separe por vírgula"
+                                        disabled={field.type !== 'select'}
+                                      />
+                                    </div>
+                                  </div>
+                                  <div className="modal-actions">
+                                    <button type="button" className="btn btn-secondary" onClick={() => handleRemoveOperationCustomField(field.id)}>
+                                      Remover campo
+                                    </button>
+                                  </div>
+                                </details>
+                              ))
+                            ) : (
+                              <div className="glass-item settings-stack-card">
+                                <span>Nenhum campo customizado criado ainda.</span>
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="settings-form-grid">
+                            <div className="input-group">
+                              <label>Novo campo</label>
+                              <input type="text" value={newOperationCustomFieldLabel} onChange={(event) => setNewOperationCustomFieldLabel(event.target.value)} placeholder="Ex.: Data da reunião, Canal, Story points" />
+                            </div>
+                            <div className="input-group">
+                              <label>Tipo</label>
+                              <select value={newOperationCustomFieldType} onChange={(event) => setNewOperationCustomFieldType(event.target.value as OperationCustomFieldRecord['type'])}>
+                                <option value="text">Texto</option>
+                                <option value="select">Dropdown</option>
+                                <option value="date">Data</option>
+                                <option value="number">Número</option>
+                              </select>
+                            </div>
+                            <div className="input-group settings-field-span-2">
+                              <label>Opções</label>
+                              <input
+                                type="text"
+                                value={newOperationCustomFieldOptions}
+                                onChange={(event) => setNewOperationCustomFieldOptions(event.target.value)}
+                                placeholder="Separe por vírgula"
+                                disabled={newOperationCustomFieldType !== 'select'}
+                              />
+                            </div>
+                          </div>
+                          <div className="modal-actions">
+                            <button type="button" className="btn btn-primary" onClick={handleCreateOperationCustomField}>
+                              Adicionar campo
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="integration-block">
+                          <div className="integration-heading">
+                            <div className="integration-icon" style={{ color: '#f59e0b', borderColor: '#f59e0b33' }}>
                               <i className="bx bx-bolt-circle"></i>
                             </div>
                             <div>
@@ -3036,6 +3423,59 @@ export default function SettingsPage() {
           display: grid;
           grid-template-columns: 1fr;
           gap: 6px;
+        }
+
+        .settings-sidebar-summary {
+          margin-top: 18px;
+          padding: 18px;
+          display: grid;
+          gap: 12px;
+          border-radius: 18px;
+          background: rgba(19, 23, 31, 0.78);
+          border: 1px solid rgba(69, 71, 75, 0.16);
+        }
+
+        .settings-sidebar-summary-kicker {
+          color: var(--accent-blue);
+          font-size: 11px;
+          font-weight: 800;
+          letter-spacing: 0.14em;
+          text-transform: uppercase;
+        }
+
+        .settings-sidebar-summary strong {
+          font-size: 18px;
+          font-family: var(--font-family-headline);
+          font-weight: 800;
+          letter-spacing: -0.03em;
+        }
+
+        .settings-sidebar-summary p {
+          margin: 0;
+          color: var(--text-secondary);
+          font-size: 13px;
+          line-height: 1.55;
+        }
+
+        .settings-sidebar-summary-list {
+          display: grid;
+          gap: 10px;
+        }
+
+        .settings-sidebar-summary-item {
+          display: grid;
+          grid-template-columns: 16px minmax(0, 1fr);
+          gap: 10px;
+          align-items: start;
+          color: var(--text-primary);
+          font-size: 13px;
+          line-height: 1.4;
+        }
+
+        .settings-sidebar-summary-item i {
+          color: var(--accent-blue);
+          font-size: 15px;
+          margin-top: 1px;
         }
 
         .settings-sidebar-link {

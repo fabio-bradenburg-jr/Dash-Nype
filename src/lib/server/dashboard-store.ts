@@ -15,6 +15,7 @@ import type {
   DashboardTemplate,
   OperationCardRecord,
   OperationCommentRecord,
+  OperationCustomFieldRecord,
   OperationLaneRecord,
   OperationSettingsRecord,
   OperationStatusRecord,
@@ -69,6 +70,9 @@ const DEFAULT_OPERATION_STATUSES: Array<Pick<OperationStatusRecord, 'key' | 'lab
   { key: 'bloqueado', label: 'Bloqueado', color: '#ef4444' },
   { key: 'concluido', label: 'Concluído', color: '#10b981' },
 ]
+
+const DEFAULT_OPERATION_TASK_TYPES = ['Tarefa']
+const DEFAULT_OPERATION_CUSTOM_FIELDS: OperationCustomFieldRecord[] = []
 const DEFAULT_GLOBAL_INTEGRATIONS: DashboardIntegrations = {
   metaAccessToken: '',
   metaConnectionMode: 'manual',
@@ -205,6 +209,25 @@ function normalizeSubtaskTemplateList(items: unknown): string[] {
   return Array.from(new Set(items.map((item) => String(item || '').trim()).filter(Boolean)))
 }
 
+function normalizeOperationSettingTags(items: unknown): string[] {
+  if (!Array.isArray(items)) return []
+  return Array.from(new Set(items.map((item) => String(item || '').trim()).filter(Boolean)))
+}
+
+function normalizeOperationCustomFieldOptions(options: unknown): string[] {
+  if (!Array.isArray(options)) return []
+  return Array.from(new Set(options.map((option) => String(option || '').trim()).filter(Boolean)))
+}
+
+function normalizeOperationCustomFieldValues(values: unknown): Record<string, string> {
+  if (!values || typeof values !== 'object' || Array.isArray(values)) return {}
+  return Object.fromEntries(
+    Object.entries(values)
+      .map(([key, value]) => [String(key || '').trim(), String(value || '').trim()])
+      .filter(([key]) => Boolean(key))
+  )
+}
+
 function normalizeOperationCommentRecord(comment: LooseRecord): OperationCommentRecord {
   const now = new Date().toISOString()
   return {
@@ -266,6 +289,28 @@ function normalizeOperationStatusRecord(status: LooseRecord): OperationStatusRec
   }
 }
 
+function normalizeOperationCustomFieldRecord(field: LooseRecord): OperationCustomFieldRecord {
+  const label = String(field?.label || 'Novo campo').trim() || 'Novo campo'
+  const key = String(field?.key || label || 'novo_campo')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+
+  const type = field?.type === 'select' || field?.type === 'date' || field?.type === 'number'
+    ? field.type
+    : 'text'
+
+  return {
+    id: String(field?.id || createRecordId('operation-custom-field')).trim(),
+    key: key || createRecordId('operation_custom_field'),
+    label,
+    type,
+    options: type === 'select' ? normalizeOperationCustomFieldOptions(field?.options) : [],
+  }
+}
+
 function normalizeOperationSettingsRecord(settings: LooseRecord | null | undefined): OperationSettingsRecord {
   return {
     lanes: Array.isArray(settings?.lanes) && settings.lanes.length
@@ -274,6 +319,13 @@ function normalizeOperationSettingsRecord(settings: LooseRecord | null | undefin
     statuses: Array.isArray(settings?.statuses) && settings.statuses.length
       ? settings.statuses.map(normalizeOperationStatusRecord)
       : DEFAULT_OPERATION_STATUSES.map((status) => normalizeOperationStatusRecord(status)),
+    tags: normalizeOperationSettingTags(settings?.tags),
+    taskTypes: normalizeOperationSettingTags(settings?.taskTypes).length
+      ? normalizeOperationSettingTags(settings?.taskTypes)
+      : [...DEFAULT_OPERATION_TASK_TYPES],
+    customFields: Array.isArray(settings?.customFields) && settings.customFields.length
+      ? settings.customFields.map(normalizeOperationCustomFieldRecord)
+      : [...DEFAULT_OPERATION_CUSTOM_FIELDS],
     autoCreateCardForNewClient: settings?.autoCreateCardForNewClient !== false,
   }
 }
@@ -283,17 +335,27 @@ function normalizeOperationCardRecord(card: LooseRecord): OperationCardRecord {
   return {
     id: String(card?.id || createRecordId('operation-card')).trim(),
     taskCode: String(card?.taskCode || createOperationTaskCode()).trim() || createOperationTaskCode(),
+    taskType: String(card?.taskType || DEFAULT_OPERATION_TASK_TYPES[0] || 'Tarefa').trim() || DEFAULT_OPERATION_TASK_TYPES[0] || 'Tarefa',
     clientId: String(card?.clientId || '').trim(),
     title: String(card?.title || 'Novo card').trim() || 'Novo card',
     content: String(card?.content || '').trim(),
     lane: String(card?.lane || 'setup').trim() || 'setup',
     status: String(card?.status || 'aberto').trim() || 'aberto',
+    priority: card?.priority === 'baixa' || card?.priority === 'media' || card?.priority === 'alta' || card?.priority === 'urgente'
+      ? card.priority
+      : 'sem_prioridade',
+    startDate: String(card?.startDate || '').trim(),
+    dueDate: String(card?.dueDate || '').trim(),
+    timeEstimateMinutes: Number.isFinite(Number(card?.timeEstimateMinutes)) ? Math.max(0, Number(card.timeEstimateMinutes)) : 0,
+    timeTrackedMinutes: Number.isFinite(Number(card?.timeTrackedMinutes)) ? Math.max(0, Number(card.timeTrackedMinutes)) : 0,
+    timeTrackerStartedAt: String(card?.timeTrackerStartedAt || '').trim(),
     responsible: String(card?.responsible || '').trim(),
     assigneeIds: normalizeOperationUserIds(card?.assigneeIds),
     segment: String(card?.segment || '').trim(),
     tier: String(card?.tier || '').trim(),
     squad: String(card?.squad || '').trim(),
     tags: normalizeOperationCardTags(card?.tags),
+    customFieldValues: normalizeOperationCustomFieldValues(card?.customFieldValues),
     comments: Array.isArray(card?.comments)
       ? card.comments.map(normalizeOperationCommentRecord).filter((comment) => comment.body)
       : [],

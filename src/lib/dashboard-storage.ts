@@ -13,6 +13,7 @@ import type {
   DashboardTemplate,
   OperationCardRecord,
   OperationCommentRecord,
+  OperationCustomFieldRecord,
   OperationLaneRecord,
   OperationSettingsRecord,
   OperationStatusRecord,
@@ -31,6 +32,7 @@ type OperationCommentOverrides = Partial<OperationCommentRecord>
 type OperationSubtaskOverrides = Partial<OperationSubtaskRecord>
 type OperationLaneOverrides = Partial<OperationLaneRecord>
 type OperationStatusOverrides = Partial<OperationStatusRecord>
+type OperationCustomFieldOverrides = Partial<OperationCustomFieldRecord>
 type OperationSettingsOverrides = Partial<OperationSettingsRecord>
 
 export const DEFAULT_OPERATION_LANES: Array<Pick<OperationLaneRecord, 'key' | 'label' | 'color' | 'defaultSubtasks'>> = [
@@ -72,6 +74,9 @@ export const DEFAULT_OPERATION_STATUSES: Array<Pick<OperationStatusRecord, 'key'
   { key: 'bloqueado', label: 'Bloqueado', color: '#ef4444' },
   { key: 'concluido', label: 'Concluído', color: '#10b981' },
 ]
+
+export const DEFAULT_OPERATION_TASK_TYPES = ['Tarefa']
+export const DEFAULT_OPERATION_CUSTOM_FIELDS: OperationCustomFieldRecord[] = []
 
 function createOperationTaskCode(): string {
   const timestamp = Date.now().toString(36).toUpperCase()
@@ -184,6 +189,25 @@ function normalizeSubtaskTemplateList(items: unknown): string[] {
   return Array.from(new Set(items.map((item) => String(item || '').trim()).filter(Boolean)))
 }
 
+function normalizeOperationSettingTags(items: unknown): string[] {
+  if (!Array.isArray(items)) return []
+  return Array.from(new Set(items.map((item) => String(item || '').trim()).filter(Boolean)))
+}
+
+function normalizeOperationCustomFieldOptions(options: unknown): string[] {
+  if (!Array.isArray(options)) return []
+  return Array.from(new Set(options.map((option) => String(option || '').trim()).filter(Boolean)))
+}
+
+function normalizeOperationCustomFieldValues(values: unknown): Record<string, string> {
+  if (!values || typeof values !== 'object' || Array.isArray(values)) return {}
+  return Object.fromEntries(
+    Object.entries(values)
+      .map(([key, value]) => [String(key || '').trim(), String(value || '').trim()])
+      .filter(([key]) => Boolean(key))
+  )
+}
+
 export function createOperationCommentRecord(
   overrides: OperationCommentOverrides = {}
 ): OperationCommentRecord {
@@ -253,6 +277,30 @@ export function createOperationStatusRecord(
   }
 }
 
+export function createOperationCustomFieldRecord(
+  overrides: OperationCustomFieldOverrides = {}
+): OperationCustomFieldRecord {
+  const label = String(overrides.label || 'Novo campo').trim() || 'Novo campo'
+  const keySource = String(overrides.key || label || 'novo_campo')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+
+  const type = overrides.type === 'select' || overrides.type === 'date' || overrides.type === 'number'
+    ? overrides.type
+    : 'text'
+
+  return {
+    id: overrides.id || createRecordId('operation-custom-field'),
+    key: keySource || createRecordId('operation_custom_field'),
+    label,
+    type,
+    options: type === 'select' ? normalizeOperationCustomFieldOptions(overrides.options) : [],
+  }
+}
+
 export function createOperationSettingsRecord(
   overrides: OperationSettingsOverrides = {}
 ): OperationSettingsRecord {
@@ -266,6 +314,13 @@ export function createOperationSettingsRecord(
   return {
     lanes,
     statuses,
+    tags: normalizeOperationSettingTags(overrides.tags),
+    taskTypes: normalizeOperationSettingTags(overrides.taskTypes).length
+      ? normalizeOperationSettingTags(overrides.taskTypes)
+      : [...DEFAULT_OPERATION_TASK_TYPES],
+    customFields: Array.isArray(overrides.customFields) && overrides.customFields.length
+      ? overrides.customFields.map((field) => createOperationCustomFieldRecord(field))
+      : [...DEFAULT_OPERATION_CUSTOM_FIELDS],
     autoCreateCardForNewClient: overrides.autoCreateCardForNewClient !== false,
   }
 }
@@ -275,17 +330,27 @@ export function createOperationCardRecord(overrides: Partial<OperationCardRecord
   return {
     id: overrides.id || createRecordId('operation-card'),
     taskCode: String(overrides.taskCode || createOperationTaskCode()).trim() || createOperationTaskCode(),
+    taskType: String(overrides.taskType || DEFAULT_OPERATION_TASK_TYPES[0] || 'Tarefa').trim() || DEFAULT_OPERATION_TASK_TYPES[0] || 'Tarefa',
     clientId: String(overrides.clientId || '').trim(),
     title: String(overrides.title || 'Novo card').trim() || 'Novo card',
     content: String(overrides.content || '').trim(),
     lane: String(overrides.lane || 'setup').trim() || 'setup',
     status: String(overrides.status || 'aberto').trim() || 'aberto',
+    priority: overrides.priority === 'baixa' || overrides.priority === 'media' || overrides.priority === 'alta' || overrides.priority === 'urgente'
+      ? overrides.priority
+      : 'sem_prioridade',
+    startDate: String(overrides.startDate || '').trim(),
+    dueDate: String(overrides.dueDate || '').trim(),
+    timeEstimateMinutes: Number.isFinite(Number(overrides.timeEstimateMinutes)) ? Math.max(0, Number(overrides.timeEstimateMinutes)) : 0,
+    timeTrackedMinutes: Number.isFinite(Number(overrides.timeTrackedMinutes)) ? Math.max(0, Number(overrides.timeTrackedMinutes)) : 0,
+    timeTrackerStartedAt: String(overrides.timeTrackerStartedAt || '').trim(),
     responsible: String(overrides.responsible || '').trim(),
     assigneeIds: normalizeOperationUserIds(overrides.assigneeIds),
     segment: String(overrides.segment || '').trim(),
     tier: String(overrides.tier || '').trim(),
     squad: String(overrides.squad || '').trim(),
     tags: normalizeOperationCardTags(overrides.tags),
+    customFieldValues: normalizeOperationCustomFieldValues(overrides.customFieldValues),
     comments: Array.isArray(overrides.comments)
       ? overrides.comments.map((comment) => createOperationCommentRecord(comment)).filter((comment) => comment.body)
       : [],

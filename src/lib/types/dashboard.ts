@@ -88,26 +88,45 @@ export interface OperationStatusRecord {
   color: string
 }
 
+export interface OperationCustomFieldRecord {
+  id: string
+  key: string
+  label: string
+  type: 'text' | 'select' | 'date' | 'number'
+  options: string[]
+}
+
 export interface OperationSettingsRecord {
   lanes: OperationLaneRecord[]
   statuses: OperationStatusRecord[]
+  tags: string[]
+  taskTypes: string[]
+  customFields: OperationCustomFieldRecord[]
   autoCreateCardForNewClient: boolean
 }
 
 export interface OperationCardRecord {
   id: string
   taskCode: string
+  taskType: string
   clientId: string
   title: string
   content: string
   lane: string
   status: string
+  priority: 'sem_prioridade' | 'baixa' | 'media' | 'alta' | 'urgente'
+  startDate: string
+  dueDate: string
+  timeEstimateMinutes: number
+  timeTrackedMinutes: number
+  timeTrackerStartedAt: string
   responsible: string
   assigneeIds: string[]
   segment: string
   tier: string
   squad: string
   tags: string[]
+  customFieldValues: Record<string, string>
   comments: OperationCommentRecord[]
   subtasks: OperationSubtaskRecord[]
   createdAt: string
