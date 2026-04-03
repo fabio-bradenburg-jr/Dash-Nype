@@ -6436,6 +6436,105 @@ export default function DashboardShell({ initialTab = 'home' }) {
     const value = client?.[columnKey]
     const customColumn = customColumnsByKey.get(columnKey)
 
+    const renderInlineTextCell = (content, tone = 'default') => (
+      <div key={columnKey} className={`client-registry-cell client-registry-cell-readonly ${tone !== 'default' ? `client-registry-cell-${tone}` : ''}`}>
+        {content}
+      </div>
+    )
+
+    const renderInlineEmptyCell = (label = 'Nao informado') => renderInlineTextCell(
+      <span className="client-registry-placeholder">{label}</span>,
+      'muted'
+    )
+
+    const renderInlineValueForCustomField = (resolvedValue) => {
+      if (customColumn.type === 'flag') {
+        const derivedMeta = getClientFlagMeta(resolvedValue)
+        return renderInlineTextCell(
+          <span className={`client-status-badge client-status-${derivedMeta.tone}`}>{derivedMeta.label}</span>
+        )
+      }
+
+      if (customColumn.type === 'checkbox') {
+        const isChecked = String(resolvedValue || '').toLowerCase() === 'true'
+        return renderInlineTextCell(
+          <span className={`client-status-badge client-status-${isChecked ? 'success' : 'neutral'}`}>
+            {isChecked ? 'Marcado' : 'Livre'}
+          </span>
+        )
+      }
+
+      if (customColumn.type === 'date') {
+        return resolvedValue
+          ? renderInlineTextCell(<strong>{formatClientDate(resolvedValue)}</strong>)
+          : renderInlineEmptyCell('Sem data')
+      }
+
+      if (customColumn.type === 'currency') {
+        return renderInlineTextCell(
+          <strong>{formatClientCurrency(resolvedValue)}</strong>,
+          parseClientNumber(resolvedValue) == null ? 'muted' : 'accent'
+        )
+      }
+
+      if (customColumn.type === 'percent') {
+        return renderInlineTextCell(
+          <strong>{formatClientPercent(resolvedValue)}</strong>,
+          parseClientNumber(resolvedValue) == null ? 'muted' : 'accent'
+        )
+      }
+
+      if (customColumn.type === 'progress' || customColumn.type === 'number' || customColumn.type === 'formula') {
+        const parsed = parseClientNumber(resolvedValue)
+        return parsed == null
+          ? renderInlineEmptyCell()
+          : renderInlineTextCell(<strong>{formatNumber(parsed)}</strong>, 'accent')
+      }
+
+      if (customColumn.type === 'link') {
+        return resolvedValue
+          ? renderInlineTextCell(
+            <a href={resolvedValue} target="_blank" rel="noreferrer" className="client-registry-link">
+              Abrir link
+            </a>,
+            'accent'
+          )
+          : renderInlineEmptyCell('Sem link')
+      }
+
+      if (customColumn.type === 'email') {
+        return resolvedValue
+          ? renderInlineTextCell(
+            <a href={`mailto:${resolvedValue}`} className="client-registry-link">
+              {resolvedValue}
+            </a>
+          )
+          : renderInlineEmptyCell('Sem e-mail')
+      }
+
+      if (customColumn.type === 'phone') {
+        return resolvedValue
+          ? renderInlineTextCell(
+            <a href={`tel:${resolvedValue}`} className="client-registry-link">
+              {resolvedValue}
+            </a>
+          )
+          : renderInlineEmptyCell('Sem telefone')
+      }
+
+      if (customColumn.type === 'long_text') {
+        return resolvedValue
+          ? renderInlineTextCell(
+            <span className="client-registry-multiline">{resolvedValue}</span>
+          )
+          : renderInlineEmptyCell()
+      }
+
+      return resolvedValue
+        ? renderInlineTextCell(<span>{resolvedValue}</span>)
+        : renderInlineEmptyCell()
+    }
+
     if (meta.type === 'name' && isEditorMode) {
       return (
         <div key={columnKey} className="input-group">
@@ -6453,6 +6552,19 @@ export default function DashboardShell({ initialTab = 'home' }) {
 
     if (meta.type === 'status') {
       if (columnKey === 'salesModel') {
+        if (!isEditorMode) {
+          const salesModelLabels = {
+            INSIDE_SALES: 'Inside Sales',
+            ECOM: 'Ecom',
+            PDV: 'PDV',
+          }
+          return renderInlineTextCell(
+            <span className="client-status-badge client-status-info">
+              {salesModelLabels[value] || value || 'Nao definido'}
+            </span>
+          )
+        }
+
         return (
           <div key={columnKey} className={isEditorMode ? 'input-group' : 'client-registry-cell'}>
             {isEditorMode && <label>{meta.label}</label>}
@@ -6474,11 +6586,24 @@ export default function DashboardShell({ initialTab = 'home' }) {
       }
 
       if (columnKey === 'implementationPhase') {
+        if (!isEditorMode) {
+          return value
+            ? renderInlineTextCell(<span>{value}</span>)
+            : renderInlineEmptyCell('Nao iniciado')
+        }
+
         return (
           <div key={columnKey} className={isEditorMode ? 'input-group' : 'client-registry-cell'}>
             {isEditorMode && <label>{meta.label}</label>}
             <input type="text" value={value || ''} readOnly placeholder="Definido pelo modelo de vendas" />
           </div>
+        )
+      }
+
+      if (!isEditorMode) {
+        const statusMeta = getClientStatusMeta(client)
+        return renderInlineTextCell(
+          <span className={`client-status-badge client-status-${statusMeta.tone}`}>{statusMeta.label}</span>
         )
       }
 
@@ -6503,6 +6628,13 @@ export default function DashboardShell({ initialTab = 'home' }) {
     }
 
     if (columnKey === 'product') {
+      if (!isEditorMode) {
+        const productName = productsById.get(client?.productId)?.name || client?.product || ''
+        return productName
+          ? renderInlineTextCell(<span>{productName}</span>)
+          : renderInlineEmptyCell('Sem produto')
+      }
+
       return (
         <div key={columnKey} className={isEditorMode ? 'input-group' : 'client-registry-cell'}>
           {isEditorMode && <label>{meta.label}</label>}
@@ -6526,6 +6658,10 @@ export default function DashboardShell({ initialTab = 'home' }) {
 
     if (customColumn) {
       const customFieldValue = resolveClientFieldValue(client, columnKey)
+
+      if (!isEditorMode) {
+        return renderInlineValueForCustomField(customFieldValue)
+      }
 
       if (customColumn.type === 'flag') {
         return (
@@ -6623,6 +6759,13 @@ export default function DashboardShell({ initialTab = 'home' }) {
         )
       }
 
+      if (!isEditorMode) {
+        const flagMeta = getClientFlagMeta(value)
+        return renderInlineTextCell(
+          <span className={`client-status-badge client-status-${flagMeta.tone}`}>{flagMeta.label}</span>
+        )
+      }
+
       return (
         <div key={columnKey} className={isEditorMode ? 'input-group' : 'client-registry-cell'}>
           {isEditorMode && <label>{meta.label}</label>}
@@ -6645,6 +6788,19 @@ export default function DashboardShell({ initialTab = 'home' }) {
 
     if (meta.type === 'health') {
       const healthScore = calculateClientHealthScore(client)
+      if (!isEditorMode) {
+        const tone = healthScore == null ? 'neutral' : healthScore >= 80 ? 'success' : healthScore >= 50 ? 'warning' : 'danger'
+        return renderInlineTextCell(
+          <>
+            <strong>{healthScore == null ? '--' : `${healthScore}%`}</strong>
+            <small>{healthScore == null ? 'Sem leitura' : 'Baseado nas flags'}</small>
+            <span className={`client-status-badge client-status-${tone}`}>
+              {healthScore == null ? 'N/A' : healthScore >= 80 ? 'Saudavel' : healthScore >= 50 ? 'Atencao' : 'Risco'}
+            </span>
+          </>
+        )
+      }
+
       return (
         <div key={columnKey} className={isEditorMode ? 'input-group' : 'client-registry-cell'}>
           {isEditorMode && <label>{meta.label}</label>}
@@ -6657,6 +6813,12 @@ export default function DashboardShell({ initialTab = 'home' }) {
     }
 
     if (meta.type === 'date') {
+      if (!isEditorMode) {
+        return value
+          ? renderInlineTextCell(<strong>{formatClientDate(value)}</strong>)
+          : renderInlineEmptyCell('Sem data')
+      }
+
       return (
         <div key={columnKey} className={isEditorMode ? 'input-group' : 'client-registry-cell'}>
           {isEditorMode && <label>{meta.label}</label>}
@@ -6676,6 +6838,17 @@ export default function DashboardShell({ initialTab = 'home' }) {
     }
 
     if (meta.type === 'link') {
+      if (!isEditorMode) {
+        return value
+          ? renderInlineTextCell(
+            <a href={value} target="_blank" rel="noreferrer" className="client-registry-link">
+              Abrir link
+            </a>,
+            'accent'
+          )
+          : renderInlineEmptyCell('Sem link')
+      }
+
       return (
         <div key={columnKey} className={isEditorMode ? 'input-group' : 'client-registry-cell'}>
           {isEditorMode && <label>{meta.label}</label>}
@@ -6695,6 +6868,12 @@ export default function DashboardShell({ initialTab = 'home' }) {
     }
 
     if (meta.type === 'long_text') {
+      if (!isEditorMode) {
+        return value
+          ? renderInlineTextCell(<span className="client-registry-multiline">{value}</span>)
+          : renderInlineEmptyCell()
+      }
+
       return (
         <div key={columnKey} className={isEditorMode ? 'input-group client-long-text-field' : 'client-registry-cell'}>
           {isEditorMode && <label>{meta.label}</label>}
@@ -6721,6 +6900,38 @@ export default function DashboardShell({ initialTab = 'home' }) {
           )}
         </div>
       )
+    }
+
+    if (!isEditorMode) {
+      if (meta.type === 'currency') {
+        return renderInlineTextCell(
+          <strong>{formatClientCurrency(resolveClientFieldValue(client, columnKey))}</strong>,
+          parseClientNumber(resolveClientFieldValue(client, columnKey)) == null ? 'muted' : 'accent'
+        )
+      }
+
+      if (meta.type === 'percent') {
+        return renderInlineTextCell(
+          <strong>{formatClientPercent(resolveClientFieldValue(client, columnKey))}</strong>,
+          parseClientNumber(resolveClientFieldValue(client, columnKey)) == null ? 'muted' : 'accent'
+        )
+      }
+
+      if (meta.type === 'number') {
+        const resolvedValue = resolveClientFieldValue(client, columnKey)
+        const parsedValue = parseClientNumber(resolvedValue)
+        if (columnKey === 'roiMarketing' && parsedValue != null) {
+          return renderInlineTextCell(<strong>{formatMultiplier(parsedValue)}</strong>, 'accent')
+        }
+        return parsedValue == null
+          ? renderInlineEmptyCell()
+          : renderInlineTextCell(<strong>{formatNumber(parsedValue)}</strong>, 'accent')
+      }
+
+      const resolvedValue = resolveClientFieldValue(client, columnKey)
+      return resolvedValue
+        ? renderInlineTextCell(<span>{resolvedValue}</span>)
+        : renderInlineEmptyCell()
     }
 
     return (
@@ -10902,11 +11113,6 @@ export default function DashboardShell({ initialTab = 'home' }) {
               <i className="bx bxs-buildings"></i> Clientes
             </button>
           )}
-          {canManageClients && (
-            <button type="button" data-tooltip="Produtos" className={`nav-item nav-button ${activeTab === 'produtos' ? 'active' : ''}`} onClick={() => setActiveTab('produtos')}>
-              <i className="bx bx-package"></i> Produtos
-            </button>
-          )}
           <button type="button" data-tooltip="Apresentação" className={`nav-item nav-button ${activeTab === 'apresentacao' ? 'active' : ''}`} onClick={() => setActiveTab('apresentacao')}>
             <i className="bx bxs-dashboard"></i> Apresentação
           </button>
@@ -12295,18 +12501,6 @@ export default function DashboardShell({ initialTab = 'home' }) {
                       </button>
                     </div>
 
-                    <div className="client-create-operation-link">
-                      <select
-                        value={newClientOperationLane}
-                        onChange={(event) => setNewClientOperationLane(event.target.value)}
-                        disabled={!isMaster || !newClientOperationEnabled}
-                      >
-                        {operationLanes.map((lane) => (
-                          <option key={`new-client-lane-${lane.key}`} value={lane.key}>{lane.label}</option>
-                        ))}
-                      </select>
-                    </div>
-
                     {newClientDashboardEnabled && (
                       <div className="input-group">
                         <label>Integrações visíveis no dashboard</label>
@@ -12435,19 +12629,14 @@ export default function DashboardShell({ initialTab = 'home' }) {
                                     ) : (
                                       <span>{getNameInitials(client.name)}</span>
                                     )}
-                                  </div>
-                                  <div className="client-registry-client-copy">
-                                    <input
-                                      type="text"
-                                      value={client.name || ''}
-                                      onChange={(event) => handleClientInlineFieldChange(client.id, 'name', event.target.value)}
-                                      placeholder="Nome do cliente"
-                                    />
-                                    <small>
-                                      {client.cnpj ? `CNPJ ${client.cnpj} • ` : ''}
-                                      {linkedGroupsCount ? `${linkedGroupsCount} grupo(s)` : 'Sem grupo vinculado'}
-                                      {completenessScore != null ? ` • ${completenessScore}% completo` : ''}
-                                    </small>
+                                </div>
+                                <div className="client-registry-client-copy">
+                                  <strong>{client.name || 'Cliente sem nome'}</strong>
+                                  <small>
+                                    {client.cnpj ? `CNPJ ${client.cnpj} • ` : ''}
+                                    {linkedGroupsCount ? `${linkedGroupsCount} grupo(s)` : 'Sem grupo vinculado'}
+                                    {completenessScore != null ? ` • ${completenessScore}% completo` : ''}
+                                  </small>
                                   </div>
                                 </div>
                               )
@@ -18921,6 +19110,13 @@ export default function DashboardShell({ initialTab = 'home' }) {
           gap: 4px;
         }
 
+        .client-registry-client-copy strong {
+          font-size: 15px;
+          line-height: 1.3;
+          color: #ffffff;
+          overflow-wrap: anywhere;
+        }
+
         .client-registry-client-copy input,
         .client-registry-cell input,
         .client-registry-cell select {
@@ -18956,6 +19152,52 @@ export default function DashboardShell({ initialTab = 'home' }) {
         .client-registry-cell {
           display: grid;
           gap: 4px;
+        }
+
+        .client-registry-cell-readonly {
+          min-height: 52px;
+          align-content: center;
+          padding: 10px 12px;
+          border-radius: 14px;
+          border: 1px solid rgba(143, 144, 149, 0.12);
+          background: rgba(255, 255, 255, 0.03);
+        }
+
+        .client-registry-cell-readonly strong,
+        .client-registry-cell-readonly span,
+        .client-registry-cell-readonly a {
+          color: #ffffff;
+          overflow-wrap: anywhere;
+        }
+
+        .client-registry-cell-readonly.client-registry-cell-muted strong,
+        .client-registry-cell-readonly.client-registry-cell-muted span {
+          color: rgba(225, 226, 235, 0.58);
+        }
+
+        .client-registry-cell-readonly.client-registry-cell-accent strong,
+        .client-registry-cell-readonly.client-registry-cell-accent a {
+          color: color-mix(in srgb, var(--accent-blue) 78%, white);
+        }
+
+        .client-registry-placeholder {
+          color: rgba(225, 226, 235, 0.5);
+        }
+
+        .client-registry-link {
+          font-weight: 700;
+          text-decoration: none;
+        }
+
+        .client-registry-link:hover {
+          text-decoration: underline;
+        }
+
+        .client-registry-multiline {
+          display: -webkit-box;
+          -webkit-line-clamp: 3;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
         }
 
         .client-registry-actions {
