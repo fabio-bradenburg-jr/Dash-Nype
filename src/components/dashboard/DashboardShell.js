@@ -4,7 +4,6 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { createPortal } from 'react-dom'
 import AssistantPage from '@/app/assistant/page'
-import CalendarPage from '@/app/calendar/page'
 import { useUser } from '@/lib/contexts/UserContext'
 import { createClient } from '@/lib/supabase/client'
 import {
@@ -18,6 +17,10 @@ import {
   createOperationSettingsRecord,
   createOperationSubtaskRecord,
   createProductRecord,
+  createTeamMemberAllocationRecord,
+  createTeamMemberOkrRecord,
+  createTeamMemberPdiItemRecord,
+  createTeamMemberProfileRecord,
   DEFAULT_INTEGRATIONS,
   DEFAULT_META_CAMPAIGN_TABLE_COLUMN_KEYS,
   DEFAULT_PREFERENCES,
@@ -2849,6 +2852,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
   const [isSheetsMetricLibraryOpen, setIsSheetsMetricLibraryOpen] = useState(false)
   const [isQualifiedStagesVisible, setIsQualifiedStagesVisible] = useState(false)
   const [usersList, setUsersList] = useState([])
+  const [teamProfiles, setTeamProfiles] = useState([])
   const [usersLoading, setUsersLoading] = useState(false)
   const [userSearch, setUserSearch] = useState('')
   const [selectedUserId, setSelectedUserId] = useState('')
@@ -2897,6 +2901,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
   const editableClientIdsSet = useMemo(() => new Set(editableClientIds), [editableClientIds])
   const canAccessClientsTab = canManageClients || viewableClientIds.length > 0
   const canPersistClientChanges = canManageClients || editableClientIds.length > 0
+  const canAccessTeamTab = Boolean(user) && !access?.isClientRole
   const isMaster = role === 'master'
 
   const canEditClientRecord = useCallback(
@@ -3004,6 +3009,14 @@ export default function DashboardShell({ initialTab = 'home' }) {
   const selectedManagedUser = useMemo(
     () => usersList.find((managedUser) => managedUser.id === selectedUserId) || null,
     [usersList, selectedUserId]
+  )
+  const currentUserTeamProfile = useMemo(
+    () => teamProfiles.find((item) => item.userId === user?.id) || createTeamMemberProfileRecord({ userId: user?.id || '' }),
+    [teamProfiles, user?.id]
+  )
+  const selectedManagedUserTeamProfile = useMemo(
+    () => selectedManagedUser?.teamProfile || createTeamMemberProfileRecord({ userId: selectedManagedUser?.id || '' }),
+    [selectedManagedUser]
   )
   const clientGroupsById = useMemo(
     () =>
@@ -3586,21 +3599,19 @@ export default function DashboardShell({ initialTab = 'home' }) {
       { key: 'assistant', label: 'AI Search', helper: 'Copiloto da operação', onClick: () => setActiveTab('assistant') },
       { key: 'apresentacao', label: 'Pitch Deck', helper: activeClient ? activeClient.name : 'Leitura executiva', onClick: () => setActiveTab('apresentacao') },
       { key: 'contexto', label: 'Contexto', helper: activeClient ? `Analise de ${activeClient.name}` : 'Leitura contextual', onClick: () => setActiveTab('contexto') },
-      { key: 'clickup', label: 'ClickUp', helper: clickUpListsConfigured ? `${formatNumber(clickUpListsConfigured)} listas` : 'Configuração pendente', onClick: () => setActiveTab('clickup') },
       { key: 'monday', label: 'Monday', helper: mondayBoardsConfigured ? `${formatNumber(mondayBoardsConfigured)} boards` : 'Configuração pendente', onClick: () => setActiveTab('monday') },
-      { key: 'calendar', label: 'Agenda', helper: 'Rotina operacional', onClick: () => setActiveTab('calendar') },
     ]
 
     if (canManageClients) {
       items.splice(2, 0, { key: 'clientes', label: 'Clientes', helper: `${formatNumber(clients.length)} na base`, onClick: () => setActiveTab('clientes') })
     }
 
-    if (canManageUsers) {
-      items.push({ key: 'usuarios', label: 'Users', helper: `${formatNumber(usersList.length || 0)} usuários`, onClick: () => setActiveTab('usuarios') })
+    if (canAccessTeamTab) {
+      items.push({ key: 'usuarios', label: 'Time', helper: canManageUsers ? `${formatNumber(usersList.length || 0)} pessoas` : 'Seu hub interno', onClick: () => setActiveTab('usuarios') })
     }
 
     return items
-  }, [activeClient, clickUpListsConfigured, mondayBoardsConfigured, canManageClients, canManageUsers, clients.length, usersList.length])
+  }, [activeClient, mondayBoardsConfigured, canManageClients, canManageUsers, canAccessTeamTab, clients.length, usersList.length])
   const activeIntegrations = activeClient?.integrations || DEFAULT_INTEGRATIONS
   const activeClientVisibleIntegrations = useMemo(
     () => normalizeClientDashboardIntegrationKeys(activeClient?.dashboardVisibleIntegrationKeys),
@@ -4215,6 +4226,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
     setClientSystemFields(Array.isArray(preferences.clientSystemFields) ? preferences.clientSystemFields : [])
     setClientCustomColumns(Array.isArray(preferences.clientCustomColumns) ? preferences.clientCustomColumns : [])
     setClientCustomTabs(Array.isArray(preferences.clientCustomTabs) ? preferences.clientCustomTabs : [])
+    setTeamProfiles(Array.isArray(preferences.teamProfiles) ? preferences.teamProfiles : [])
     setActiveClientId(initialActiveClientId)
     setHasLoadedPreferences(true)
   }, [])
@@ -4416,18 +4428,22 @@ export default function DashboardShell({ initialTab = 'home' }) {
       setActiveTab('home')
     }
 
+    if (['operacao', 'clickup', 'calendar'].includes(activeTab)) {
+      setActiveTab('home')
+    }
+
     if (activeTab === 'produtos' && !canManageClients) {
       setActiveTab('home')
     }
 
-    if (activeTab === 'usuarios' && !canManageUsers) {
+    if (activeTab === 'usuarios' && !canAccessTeamTab) {
       setActiveTab('home')
     }
 
     if (activeTab === 'integracoes') {
       setActiveTab('home')
     }
-  }, [activeTab, canAccessClientsTab, canManageClients, canManageUsers])
+  }, [activeTab, canAccessClientsTab, canManageClients, canAccessTeamTab])
 
   useEffect(() => {
     const sellers = rdSummary?.sellers || []
@@ -4546,6 +4562,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
         setClientSystemFields(Array.isArray(state.clientSystemFields) ? state.clientSystemFields : [])
         setClientCustomColumns(Array.isArray(state.clientCustomColumns) ? state.clientCustomColumns : [])
         setClientCustomTabs(Array.isArray(state.clientCustomTabs) ? state.clientCustomTabs : [])
+        setTeamProfiles(Array.isArray(state.teamProfiles) ? state.teamProfiles : [])
         setActiveClientId(state.activeClientId || state.clients?.[0]?.id || '')
       } catch (error) {
         console.error('Erro ao sincronizar estado do servidor:', error)
@@ -4574,6 +4591,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
       clientSystemFields,
       clientCustomColumns,
       clientCustomTabs,
+      teamProfiles,
     }
 
     saveDashboardPreferences(state)
@@ -4593,7 +4611,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
     }, 300)
 
     return () => window.clearTimeout(timeoutId)
-  }, [hasLoadedPreferences, themeColor, metric1, metric2, activeClientId, globalIntegrations, clients, clientGroups, products, operationCards, operationSettings, clientSystemFields, clientCustomColumns, clientCustomTabs, userLoading, user, canPersistClientChanges, hasSyncedServerState])
+  }, [hasLoadedPreferences, themeColor, metric1, metric2, activeClientId, globalIntegrations, clients, clientGroups, products, operationCards, operationSettings, clientSystemFields, clientCustomColumns, clientCustomTabs, teamProfiles, userLoading, user, canPersistClientChanges, hasSyncedServerState])
 
   useEffect(() => {
     ChartJS.defaults.color = '#94a3b8'
@@ -4978,7 +4996,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
     setNewOperationLane('setup')
     setNewOperationStatus(operationStatuses[0]?.key || 'aberto')
     setExpandedOperationCardId(nextCard.id)
-    setActiveTab('operacao')
+    setActiveTab('clientes')
   }
 
   const handleOperationCardFieldChange = (cardId, fieldName, value) => {
@@ -5592,6 +5610,17 @@ export default function DashboardShell({ initialTab = 'home' }) {
     )
   }
 
+  const mergeUsersWithTeamProfiles = useCallback((incomingUsers, profileRows = teamProfiles) => (
+    Array.isArray(incomingUsers)
+      ? incomingUsers.map((managedUser) => ({
+          ...managedUser,
+          teamProfile:
+            profileRows.find((item) => item.userId === managedUser.id) ||
+            createTeamMemberProfileRecord({ userId: managedUser.id }),
+        }))
+      : []
+  ), [teamProfiles])
+
   const loadUsers = useCallback(async () => {
     if (!canPersistClientChanges) return
 
@@ -5604,7 +5633,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
         throw new Error(data.error || 'Não foi possível carregar os usuários.')
       }
 
-      setUsersList(data)
+      setUsersList(mergeUsersWithTeamProfiles(data))
       setSelectedUserId((current) => current || data[0]?.id || '')
     } catch (error) {
       console.error('Erro ao carregar usuários:', error)
@@ -5612,14 +5641,19 @@ export default function DashboardShell({ initialTab = 'home' }) {
     } finally {
       setUsersLoading(false)
     }
-  }, [canPersistClientChanges])
+  }, [canPersistClientChanges, mergeUsersWithTeamProfiles])
+
+  useEffect(() => {
+    if (!usersList.length) return
+    setUsersList((current) => mergeUsersWithTeamProfiles(current))
+  }, [teamProfiles, mergeUsersWithTeamProfiles, usersList.length])
 
   const filteredUsers = useMemo(() => {
     const term = userSearch.trim().toLowerCase()
     if (!term) return usersList
 
     return usersList.filter((managedUser) =>
-      [managedUser.full_name, managedUser.email]
+      [managedUser.full_name, managedUser.email, managedUser.teamProfile?.positionTitle, managedUser.teamProfile?.department]
         .filter(Boolean)
         .some((value) => value.toLowerCase().includes(term))
     )
@@ -5883,6 +5917,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
       operationSettings,
       clientCustomColumns,
       clientCustomTabs,
+      teamProfiles,
     }
 
     const response = await fetch('/api/dashboard/state', {
@@ -5979,6 +6014,98 @@ export default function DashboardShell({ initialTab = 'home' }) {
     )
   }
 
+  const handleTeamProfileChange = (userId, updater) => {
+    let nextProfile = null
+
+    setTeamProfiles((current) => {
+      const currentProfile = current.find((item) => item.userId === userId) || createTeamMemberProfileRecord({ userId })
+      const resolvedProfileInput = typeof updater === 'function' ? updater(currentProfile) : updater
+      nextProfile = createTeamMemberProfileRecord({
+        ...currentProfile,
+        ...resolvedProfileInput,
+        userId,
+      })
+
+      const remainingProfiles = current.filter((item) => item.userId !== userId)
+      return [...remainingProfiles, nextProfile]
+    })
+
+    setUsersList((current) =>
+      current.map((item) => (
+        item.id === userId
+          ? {
+              ...item,
+              teamProfile: nextProfile || item.teamProfile || createTeamMemberProfileRecord({ userId }),
+            }
+          : item
+      ))
+    )
+  }
+
+  const handleTeamProfileArrayChange = (userId, fieldName, updater) => {
+    handleTeamProfileChange(userId, (current) => ({
+      ...current,
+      [fieldName]: updater(Array.isArray(current[fieldName]) ? current[fieldName] : []),
+    }))
+  }
+
+  const handleAddTeamMemberOkr = (userId) => {
+    handleTeamProfileArrayChange(userId, 'okrs', (currentItems) => [
+      ...currentItems,
+      createTeamMemberOkrRecord({ title: 'Novo OKR', status: 'nao_iniciado' }),
+    ])
+  }
+
+  const handleUpdateTeamMemberOkr = (userId, okrId, fieldName, value) => {
+    handleTeamProfileArrayChange(userId, 'okrs', (currentItems) =>
+      currentItems.map((item) => (item.id === okrId ? { ...item, [fieldName]: value } : item))
+    )
+  }
+
+  const handleRemoveTeamMemberOkr = (userId, okrId) => {
+    handleTeamProfileArrayChange(userId, 'okrs', (currentItems) =>
+      currentItems.filter((item) => item.id !== okrId)
+    )
+  }
+
+  const handleAddTeamMemberPdiItem = (userId) => {
+    handleTeamProfileArrayChange(userId, 'pdiItems', (currentItems) => [
+      ...currentItems,
+      createTeamMemberPdiItemRecord({ title: 'Nova frente de desenvolvimento', status: 'planejado' }),
+    ])
+  }
+
+  const handleUpdateTeamMemberPdiItem = (userId, itemId, fieldName, value) => {
+    handleTeamProfileArrayChange(userId, 'pdiItems', (currentItems) =>
+      currentItems.map((item) => (item.id === itemId ? { ...item, [fieldName]: value } : item))
+    )
+  }
+
+  const handleRemoveTeamMemberPdiItem = (userId, itemId) => {
+    handleTeamProfileArrayChange(userId, 'pdiItems', (currentItems) =>
+      currentItems.filter((item) => item.id !== itemId)
+    )
+  }
+
+  const handleAddTeamMemberAllocation = (userId) => {
+    handleTeamProfileArrayChange(userId, 'allocations', (currentItems) => [
+      ...currentItems,
+      createTeamMemberAllocationRecord({}),
+    ])
+  }
+
+  const handleUpdateTeamMemberAllocation = (userId, allocationId, fieldName, value) => {
+    handleTeamProfileArrayChange(userId, 'allocations', (currentItems) =>
+      currentItems.map((item) => (item.id === allocationId ? { ...item, [fieldName]: value } : item))
+    )
+  }
+
+  const handleRemoveTeamMemberAllocation = (userId, allocationId) => {
+    handleTeamProfileArrayChange(userId, 'allocations', (currentItems) =>
+      currentItems.filter((item) => item.id !== allocationId)
+    )
+  }
+
   const handleDeleteUser = async (managedUserId) => {
     try {
       const response = await fetch(`/api/users/${managedUserId}`, {
@@ -5992,6 +6119,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
 
       setIsEditUserModalOpen(false)
       setSelectedUserId('')
+      setTeamProfiles((current) => current.filter((item) => item.userId !== managedUserId))
       await loadUsers()
     } catch (error) {
       alert(error.message || 'Não foi possível excluir o usuário.')
@@ -9524,10 +9652,6 @@ export default function DashboardShell({ initialTab = 'home' }) {
         time: 'Agora',
       },
       {
-        title: clickUpListsConfigured ? `ClickUp com ${formatNumber(clickUpListsConfigured)} lista(s) ativa(s)` : 'ClickUp aguardando configuração',
-        time: 'Sincronizado',
-      },
-      {
         title: mondayBoardsConfigured ? `Monday com ${formatNumber(mondayBoardsConfigured)} board(s) monitorado(s)` : 'Monday aguardando conexão',
         time: 'Operação',
       },
@@ -9556,17 +9680,6 @@ export default function DashboardShell({ initialTab = 'home' }) {
         onClick: () => setActiveTab('apresentacao'),
       },
       {
-        key: 'clickup',
-        title: 'ClickUp',
-        description: 'Entre na operação do ClickUp para entender fila, responsáveis e gargalos do time.',
-        icon: 'bx bx-task',
-        tone: 'purple',
-        accent: 'purple',
-        helper: clickUpListsConfigured ? `${formatNumber(clickUpListsConfigured)} lista(s) operacional(is) configurada(s).` : 'Configuração global pendente.',
-        actionLabel: 'Workflow sync',
-        onClick: () => setActiveTab('clickup'),
-      },
-      {
         key: 'monday',
         title: 'Monday',
         description: 'Acompanhe boards, prioridades, atrasos e capacidade em uma leitura operacional.',
@@ -9576,17 +9689,6 @@ export default function DashboardShell({ initialTab = 'home' }) {
         helper: mondayBoardsConfigured ? `${formatNumber(mondayBoardsConfigured)} board(s) monitorado(s) na operação.` : 'Configuração global pendente.',
         actionLabel: 'Timeline api',
         onClick: () => setActiveTab('monday'),
-      },
-      {
-        key: 'agenda',
-        title: 'Agenda',
-        description: 'Veja compromissos e a rotina operacional fora da leitura analítica.',
-        icon: 'bx bx-calendar-event',
-        tone: 'emerald',
-        accent: 'emerald',
-        helper: 'Acesso rápido ao calendário da operação.',
-        actionLabel: 'Agenda viva',
-        onClick: () => setActiveTab('calendar'),
       },
       {
         key: 'configuracoes',
@@ -9615,16 +9717,16 @@ export default function DashboardShell({ initialTab = 'home' }) {
       })
     }
 
-    if (canManageUsers) {
+    if (canAccessTeamTab) {
       homeCards.splice(canManageClients ? 4 : 3, 0, {
         key: 'usuarios',
-        title: 'Users',
-        description: 'Gerencie acessos, permissões e quais dashboards cada pessoa pode abrir.',
+        title: 'Time',
+        description: canManageUsers ? 'Gerencie pessoas, acessos, PDI, metas e carteira de cada colaborador.' : 'Acompanhe seu PDI, metas e clientes ligados ao seu escopo.',
         icon: 'bx bxs-user-detail',
         tone: 'pink',
         accent: 'pink',
-        helper: `${formatNumber(usersList.length || 0)} usuário(s) carregado(s) nesta operação.`,
-        actionLabel: 'Access layer',
+        helper: canManageUsers ? `${formatNumber(usersList.length || 0)} pessoa(s) no workspace.` : 'Seu painel interno de evolução.',
+        actionLabel: canManageUsers ? 'People ops' : 'Career hub',
         onClick: () => setActiveTab('usuarios'),
       })
     }
@@ -9654,8 +9756,8 @@ export default function DashboardShell({ initialTab = 'home' }) {
             </div>
             <div className="home-hub-metric glass-item">
               <span>Operational boards</span>
-              <strong>{formatNumber(mondayBoardsConfigured + clickUpListsConfigured)}</strong>
-              <small>{mondayBoardsConfigured || clickUpListsConfigured ? 'fontes ativas de operação' : 'aguardando configuração'}</small>
+              <strong>{formatNumber(mondayBoardsConfigured)}</strong>
+              <small>{mondayBoardsConfigured ? 'boards ativos de operação' : 'aguardando configuração'}</small>
             </div>
           </div>
         </section>
@@ -9735,8 +9837,8 @@ export default function DashboardShell({ initialTab = 'home' }) {
               </div>
               <div className="home-hub-analytics-metric-card">
                 <span>Ferramentas vivas</span>
-                <strong>{`${clickUpListsConfigured + mondayBoardsConfigured} fontes`}</strong>
-                <small>Operação, agenda e copiloto já entram no mesmo fluxo.</small>
+                <strong>{`${mondayBoardsConfigured} fonte${mondayBoardsConfigured === 1 ? '' : 's'}`}</strong>
+                <small>Copiloto, dashboards e boards seguem no mesmo fluxo.</small>
               </div>
             </div>
           </article>
@@ -10668,7 +10770,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
   const appBarPlaceholder = (() => {
     if (activeTab === 'operacao') return 'Search operations...'
     if (activeTab === 'clientes') return 'Buscar clientes...'
-    if (activeTab === 'usuarios') return 'Buscar usuários...'
+    if (activeTab === 'usuarios') return canManageUsers ? 'Buscar pessoas...' : 'Buscar metas, clientes e desenvolvimento...'
     if (activeTab === 'produtos') return 'Buscar produtos...'
     if (activeTab === 'apresentacao') return 'Buscar dashboards e campanhas...'
     if (activeTab === 'assistant') return 'Buscar conversas e prompts...'
@@ -10746,11 +10848,6 @@ export default function DashboardShell({ initialTab = 'home' }) {
               <i className="bx bxs-buildings"></i> Clientes
             </button>
           )}
-          {canAccessClientsTab && (
-            <button type="button" data-tooltip="Operação" className={`nav-item nav-button ${activeTab === 'operacao' ? 'active' : ''}`} onClick={() => setActiveTab('operacao')}>
-              <i className="bx bx-grid-alt"></i> Operação
-            </button>
-          )}
           {canManageClients && (
             <button type="button" data-tooltip="Produtos" className={`nav-item nav-button ${activeTab === 'produtos' ? 'active' : ''}`} onClick={() => setActiveTab('produtos')}>
               <i className="bx bx-package"></i> Produtos
@@ -10762,15 +10859,12 @@ export default function DashboardShell({ initialTab = 'home' }) {
           <button type="button" data-tooltip="Contexto" className={`nav-item nav-button ${activeTab === 'contexto' ? 'active' : ''}`} onClick={() => setActiveTab('contexto')}>
             <i className="bx bx-pulse"></i> Contexto
           </button>
-          <button type="button" data-tooltip="ClickUp" className={`nav-item nav-button ${activeTab === 'clickup' ? 'active' : ''}`} onClick={() => setActiveTab('clickup')}>
-            <i className="bx bx-task"></i> ClickUp
-          </button>
           <button type="button" data-tooltip="Monday" className={`nav-item nav-button ${activeTab === 'monday' ? 'active' : ''}`} onClick={() => setActiveTab('monday')}>
             <i className="bx bx-columns"></i> Monday
           </button>
-          {canManageUsers && (
-            <button type="button" data-tooltip="Usuários" className={`nav-item nav-button ${activeTab === 'usuarios' ? 'active' : ''}`} onClick={() => setActiveTab('usuarios')}>
-              <i className="bx bxs-user-detail"></i> Usuários
+          {canAccessTeamTab && (
+            <button type="button" data-tooltip="Time" className={`nav-item nav-button ${activeTab === 'usuarios' ? 'active' : ''}`} onClick={() => setActiveTab('usuarios')}>
+              <i className="bx bxs-user-detail"></i> Time
             </button>
           )}
           <a href="/settings" data-tooltip="Configurações" className="nav-item">
@@ -10955,7 +11049,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
               {activeTab === 'calendar' && 'Agenda da operação'}
               {activeTab === 'clickup' && 'Operação ClickUp'}
               {activeTab === 'monday' && 'Operação Monday'}
-              {activeTab === 'usuarios' && 'Gestão de usuários'}
+              {activeTab === 'usuarios' && (canManageUsers ? 'Gestão de time' : 'Meu desenvolvimento')}
             </h1>
             {activeTab !== 'assistant' && (
               <p>
@@ -10968,7 +11062,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
                 {activeTab === 'calendar' && 'Acompanhe a agenda da operação dentro da mesma Home, sem trocar de área.'}
                 {activeTab === 'clickup' && 'Acompanhe tarefas, responsáveis e status operacionais do ClickUp a partir da configuração global da operação.'}
                 {activeTab === 'monday' && 'Acompanhe boards, itens, status e responsáveis do Monday a partir da configuração global da operação.'}
-                {activeTab === 'usuarios' && 'Defina quem pode visualizar dashboards, editar integrações e acessar clientes específicos.'}
+                {activeTab === 'usuarios' && (canManageUsers ? 'Gerencie pessoas, acessos, PDI, metas e carteira de atendimento do time.' : 'Acompanhe seu escopo, metas, PDI e evolução dentro da operação.')}
               </p>
             )}
             {activeTab === 'assistant' && (
@@ -11124,12 +11218,6 @@ export default function DashboardShell({ initialTab = 'home' }) {
         {activeTab === 'assistant' && (
           <section style={{ width: '100%', minHeight: 'calc(100vh - 220px)' }}>
             <AssistantPage embeddedOverride={true} />
-          </section>
-        )}
-
-        {activeTab === 'calendar' && (
-          <section style={{ width: '100%', minHeight: 'calc(100vh - 220px)' }}>
-            <CalendarPage embeddedOverride={true} />
           </section>
         )}
 
@@ -13622,25 +13710,26 @@ export default function DashboardShell({ initialTab = 'home' }) {
           </section>
         )}
 
-        {activeTab === 'usuarios' && canManageUsers && (
+        {activeTab === 'usuarios' && canAccessTeamTab && (
+          canManageUsers ? (
           <section className="clients-layout users-management-layout">
             <div className="glass-panel management-hero users-intro-card">
               <div className="management-hero-copy">
-                <span className="management-hero-kicker">Access governance</span>
-                <h2>Gerencie acessos, permissões e leitura por workspace</h2>
-                <p>Defina quem entra na operação, quais dashboards cada pessoa pode visualizar e como o acesso se distribui entre master, operador, cliente e visualizador.</p>
+                <span className="management-hero-kicker">People ops</span>
+                <h2>Gerencie time, acessos, PDI e metas por pessoa</h2>
+                <p>Organize permissões, senioridade, carreira, capacidade e carteira de atendimento de cada colaborador dentro do mesmo workspace.</p>
               </div>
               <div className="management-stats-grid">
                 <div className="management-stat-card">
-                  <small>Total de usuários</small>
-                  <strong>{formatNumber(users.length)}</strong>
+                  <small>Total de pessoas</small>
+                  <strong>{formatNumber(usersList.length)}</strong>
                 </div>
                 <div className="management-stat-card">
                   <small>Masters</small>
-                  <strong>{formatNumber(users.filter((managedUser) => managedUser.role === 'master').length)}</strong>
+                  <strong>{formatNumber(usersList.filter((managedUser) => managedUser.role === 'master').length)}</strong>
                 </div>
                 <div className="management-stat-card">
-                  <small>Clientes liberados</small>
+                  <small>Clientes na base</small>
                   <strong>{formatNumber(clients.length)}</strong>
                 </div>
                 <div className="management-stat-card">
@@ -13654,12 +13743,12 @@ export default function DashboardShell({ initialTab = 'home' }) {
               <div className="user-picker-head">
                 <div>
                   <span className="management-card-kicker">Team registry</span>
-                  <h3>Usuários cadastrados</h3>
-                  <p>Use a busca para encontrar um acesso e abra a edição em um pop-up, sem ocupar a tela principal.</p>
+                  <h3>Pessoas cadastradas</h3>
+                  <p>Busque alguém do time para editar acessos, carreira, PDI, OKRs e alocação em clientes sem sair desta área.</p>
                 </div>
                 <div className="users-toolbar-actions">
                   <button type="button" className="btn btn-primary" onClick={() => setIsCreateUserModalOpen(true)}>
-                    Novo usuário
+                    Novo membro
                   </button>
                 </div>
               </div>
@@ -13698,9 +13787,11 @@ export default function DashboardShell({ initialTab = 'home' }) {
                       <div className="user-directory-meta">
                         <span className="user-role-badge">{aiAccessLabels[managedUser.ai_access_level] || 'IA Time'}</span>
                         <small>
-                          {managedUser.role === 'master'
-                            ? 'Acesso total'
-                            : `${getManagedUserAccessibleClientCount(managedUser)} dashboard(s) liberado(s)`}
+                          {managedUser.teamProfile?.positionTitle
+                            ? `${managedUser.teamProfile.positionTitle} · ${managedUser.teamProfile.seniority || 'junior'}`
+                            : managedUser.role === 'master'
+                              ? 'Acesso total'
+                              : `${getManagedUserAccessibleClientCount(managedUser)} dashboard(s) liberado(s)`}
                         </small>
                       </div>
                       <div className="user-directory-actions">
@@ -13844,8 +13935,8 @@ export default function DashboardShell({ initialTab = 'home' }) {
                 <div className="modal-card glass-panel" onClick={(event) => event.stopPropagation()}>
                   <div className="modal-header">
                     <div>
-                      <h3>Editar usuário</h3>
-                      <p>Ajuste nível, dashboards liberados e demais permissões deste acesso.</p>
+                      <h3>Editar membro do time</h3>
+                      <p>Ajuste acessos, senioridade, PDI, metas e carteira deste perfil interno.</p>
                     </div>
                     <button type="button" className="modal-close" onClick={() => setIsEditUserModalOpen(false)} aria-label="Fechar edição de usuário">
                       <i className="bx bx-x"></i>
@@ -13906,6 +13997,119 @@ export default function DashboardShell({ initialTab = 'home' }) {
                         </select>
                       </div>
                     </div>
+
+                  <div className="glass-item settings-block settings-block-full">
+                    <div className="settings-section-head">
+                      <div>
+                        <h3>Perfil interno</h3>
+                        <p>Defina cargo, senioridade, capacidade e contexto de carreira desta pessoa.</p>
+                      </div>
+                    </div>
+
+                    <div className="form-grid user-admin-grid">
+                      <div className="input-group">
+                        <label>Cargo</label>
+                        <input
+                          type="text"
+                          value={selectedManagedUserTeamProfile.positionTitle || ''}
+                          onChange={(event) => handleTeamProfileChange(selectedManagedUser.id, { positionTitle: event.target.value })}
+                          placeholder="Ex.: Gestor de Trafego, Designer, CS"
+                        />
+                      </div>
+                      <div className="input-group">
+                        <label>Departamento</label>
+                        <input
+                          type="text"
+                          value={selectedManagedUserTeamProfile.department || ''}
+                          onChange={(event) => handleTeamProfileChange(selectedManagedUser.id, { department: event.target.value })}
+                          placeholder="Ex.: Midia, Criacao, Atendimento"
+                        />
+                      </div>
+                      <div className="input-group">
+                        <label>Senioridade</label>
+                        <select
+                          className="client-select-input"
+                          value={selectedManagedUserTeamProfile.seniority || 'junior'}
+                          onChange={(event) => handleTeamProfileChange(selectedManagedUser.id, { seniority: event.target.value })}
+                        >
+                          <option value="junior">Junior</option>
+                          <option value="pleno">Pleno</option>
+                          <option value="senior">Senior</option>
+                          <option value="expert">Expert</option>
+                        </select>
+                      </div>
+                      <div className="input-group">
+                        <label>Gestor direto</label>
+                        <input
+                          type="text"
+                          value={selectedManagedUserTeamProfile.directManagerName || ''}
+                          onChange={(event) => handleTeamProfileChange(selectedManagedUser.id, { directManagerName: event.target.value })}
+                          placeholder="Nome do gestor"
+                        />
+                      </div>
+                      <div className="input-group">
+                        <label>Data de entrada</label>
+                        <input
+                          type="date"
+                          value={selectedManagedUserTeamProfile.employmentStartDate || ''}
+                          onChange={(event) => handleTeamProfileChange(selectedManagedUser.id, { employmentStartDate: event.target.value })}
+                        />
+                      </div>
+                      <div className="input-group">
+                        <label>Remuneração mensal</label>
+                        <input
+                          type="text"
+                          value={selectedManagedUserTeamProfile.monthlyCompensation || ''}
+                          onChange={(event) => handleTeamProfileChange(selectedManagedUser.id, { monthlyCompensation: event.target.value })}
+                          placeholder="Ex.: R$ 4.500"
+                        />
+                      </div>
+                      <div className="input-group">
+                        <label>Capacidade semanal (h)</label>
+                        <input
+                          type="number"
+                          min="0"
+                          step="1"
+                          value={selectedManagedUserTeamProfile.weeklyCapacityHours || 0}
+                          onChange={(event) => handleTeamProfileChange(selectedManagedUser.id, { weeklyCapacityHours: Number(event.target.value) || 0 })}
+                        />
+                      </div>
+                      <div className="input-group">
+                        <label>Modelo de vínculo</label>
+                        <input
+                          type="text"
+                          value={selectedManagedUserTeamProfile.employmentType || ''}
+                          onChange={(event) => handleTeamProfileChange(selectedManagedUser.id, { employmentType: event.target.value })}
+                          placeholder="Ex.: CLT, PJ"
+                        />
+                      </div>
+                      <div className="input-group settings-field-span-2">
+                        <label>Trilha / foco de carreira</label>
+                        <input
+                          type="text"
+                          value={selectedManagedUserTeamProfile.careerTrack || ''}
+                          onChange={(event) => handleTeamProfileChange(selectedManagedUser.id, { careerTrack: event.target.value })}
+                          placeholder="Ex.: Lideranca de midia, Especialista em criacao"
+                        />
+                      </div>
+                      <div className="input-group settings-field-span-2">
+                        <label>Resumo de performance</label>
+                        <textarea
+                          value={selectedManagedUserTeamProfile.performanceSummary || ''}
+                          onChange={(event) => handleTeamProfileChange(selectedManagedUser.id, { performanceSummary: event.target.value })}
+                          placeholder="Resumo da performance recente, pontos fortes e atencoes."
+                        />
+                      </div>
+                      <div className="input-group settings-field-span-2">
+                        <label>Próximo passo de carreira</label>
+                        <textarea
+                          value={selectedManagedUserTeamProfile.nextCareerStep || ''}
+                          onChange={(event) => handleTeamProfileChange(selectedManagedUser.id, { nextCareerStep: event.target.value })}
+                          placeholder="O que precisa acontecer para evoluir esse perfil no médio prazo."
+                        />
+                      </div>
+                    </div>
+                  </div>
 
                   {selectedManagedUser.role !== 'master' && (
                     <>
@@ -13996,6 +14200,204 @@ export default function DashboardShell({ initialTab = 'home' }) {
                     </>
                   )}
 
+                  <div className="glass-item settings-block settings-block-full">
+                    <div className="settings-section-head">
+                      <div>
+                        <h3>Alocação por cliente</h3>
+                        <p>Planeje a dedicação semanal, o papel e o foco principal desta pessoa em cada cliente.</p>
+                      </div>
+                      <button type="button" className="btn btn-secondary" onClick={() => handleAddTeamMemberAllocation(selectedManagedUser.id)}>
+                        Adicionar alocação
+                      </button>
+                    </div>
+
+                    <div className="settings-stack-list">
+                      {(selectedManagedUserTeamProfile.allocations || []).length ? (
+                        selectedManagedUserTeamProfile.allocations.map((allocation) => (
+                          <div key={allocation.id} className="glass-item settings-stack-card">
+                            <div className="form-grid user-admin-grid">
+                              <div className="input-group">
+                                <label>Cliente</label>
+                                <select
+                                  className="client-select-input"
+                                  value={allocation.clientId || ''}
+                                  onChange={(event) => handleUpdateTeamMemberAllocation(selectedManagedUser.id, allocation.id, 'clientId', event.target.value)}
+                                >
+                                  <option value="">Selecione um cliente</option>
+                                  {clients.map((client) => (
+                                    <option key={`${allocation.id}-${client.id}`} value={client.id}>{client.name}</option>
+                                  ))}
+                                </select>
+                              </div>
+                              <div className="input-group">
+                                <label>Papel no cliente</label>
+                                <input
+                                  type="text"
+                                  value={allocation.roleLabel || ''}
+                                  onChange={(event) => handleUpdateTeamMemberAllocation(selectedManagedUser.id, allocation.id, 'roleLabel', event.target.value)}
+                                  placeholder="Ex.: Gestor principal, Designer, CS"
+                                />
+                              </div>
+                              <div className="input-group">
+                                <label>Horas por semana</label>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  step="1"
+                                  value={allocation.weeklyHours || 0}
+                                  onChange={(event) => handleUpdateTeamMemberAllocation(selectedManagedUser.id, allocation.id, 'weeklyHours', Number(event.target.value) || 0)}
+                                />
+                              </div>
+                              <div className="input-group">
+                                <label>Foco principal</label>
+                                <input
+                                  type="text"
+                                  value={allocation.focusLabel || ''}
+                                  onChange={(event) => handleUpdateTeamMemberAllocation(selectedManagedUser.id, allocation.id, 'focusLabel', event.target.value)}
+                                  placeholder="Ex.: Performance, Criativos, Atendimento"
+                                />
+                              </div>
+                            </div>
+                            <div className="modal-actions">
+                              <button type="button" className="btn btn-secondary" onClick={() => handleRemoveTeamMemberAllocation(selectedManagedUser.id, allocation.id)}>
+                                Remover alocação
+                              </button>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="glass-item settings-stack-card">
+                          <span>Nenhuma alocação registrada ainda.</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="glass-item settings-block settings-block-full">
+                    <div className="settings-section-head">
+                      <div>
+                        <h3>OKRs do colaborador</h3>
+                        <p>Cadastre metas individuais com progresso e prazo para o colaborador acompanhar no próprio painel.</p>
+                      </div>
+                      <button type="button" className="btn btn-secondary" onClick={() => handleAddTeamMemberOkr(selectedManagedUser.id)}>
+                        Adicionar OKR
+                      </button>
+                    </div>
+
+                    <div className="settings-stack-list">
+                      {(selectedManagedUserTeamProfile.okrs || []).length ? (
+                        selectedManagedUserTeamProfile.okrs.map((okr) => (
+                          <div key={okr.id} className="glass-item settings-stack-card">
+                            <div className="form-grid user-admin-grid">
+                              <div className="input-group">
+                                <label>Objetivo</label>
+                                <input type="text" value={okr.title || ''} onChange={(event) => handleUpdateTeamMemberOkr(selectedManagedUser.id, okr.id, 'title', event.target.value)} />
+                              </div>
+                              <div className="input-group">
+                                <label>Métrica</label>
+                                <input type="text" value={okr.metric || ''} onChange={(event) => handleUpdateTeamMemberOkr(selectedManagedUser.id, okr.id, 'metric', event.target.value)} placeholder="Ex.: SLA, criativos entregues, ROI" />
+                              </div>
+                              <div className="input-group">
+                                <label>Atual</label>
+                                <input type="text" value={okr.currentValue || ''} onChange={(event) => handleUpdateTeamMemberOkr(selectedManagedUser.id, okr.id, 'currentValue', event.target.value)} />
+                              </div>
+                              <div className="input-group">
+                                <label>Meta</label>
+                                <input type="text" value={okr.targetValue || ''} onChange={(event) => handleUpdateTeamMemberOkr(selectedManagedUser.id, okr.id, 'targetValue', event.target.value)} />
+                              </div>
+                              <div className="input-group">
+                                <label>Unidade</label>
+                                <input type="text" value={okr.unit || ''} onChange={(event) => handleUpdateTeamMemberOkr(selectedManagedUser.id, okr.id, 'unit', event.target.value)} placeholder="Ex.: %, horas, entregas" />
+                              </div>
+                              <div className="input-group">
+                                <label>Prazo</label>
+                                <input type="date" value={okr.dueDate || ''} onChange={(event) => handleUpdateTeamMemberOkr(selectedManagedUser.id, okr.id, 'dueDate', event.target.value)} />
+                              </div>
+                              <div className="input-group">
+                                <label>Status</label>
+                                <select className="client-select-input" value={okr.status || 'nao_iniciado'} onChange={(event) => handleUpdateTeamMemberOkr(selectedManagedUser.id, okr.id, 'status', event.target.value)}>
+                                  <option value="nao_iniciado">Nao iniciado</option>
+                                  <option value="em_andamento">Em andamento</option>
+                                  <option value="concluido">Concluido</option>
+                                  <option value="atrasado">Atrasado</option>
+                                </select>
+                              </div>
+                            </div>
+                            <div className="modal-actions">
+                              <button type="button" className="btn btn-secondary" onClick={() => handleRemoveTeamMemberOkr(selectedManagedUser.id, okr.id)}>
+                                Remover OKR
+                              </button>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="glass-item settings-stack-card">
+                          <span>Nenhuma OKR cadastrada ainda.</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="glass-item settings-block settings-block-full">
+                    <div className="settings-section-head">
+                      <div>
+                        <h3>PDI</h3>
+                        <p>Defina frentes de desenvolvimento, plano de ação e checkpoints para a evolução da pessoa.</p>
+                      </div>
+                      <button type="button" className="btn btn-secondary" onClick={() => handleAddTeamMemberPdiItem(selectedManagedUser.id)}>
+                        Adicionar frente
+                      </button>
+                    </div>
+
+                    <div className="settings-stack-list">
+                      {(selectedManagedUserTeamProfile.pdiItems || []).length ? (
+                        selectedManagedUserTeamProfile.pdiItems.map((item) => (
+                          <div key={item.id} className="glass-item settings-stack-card">
+                            <div className="form-grid user-admin-grid">
+                              <div className="input-group">
+                                <label>Título</label>
+                                <input type="text" value={item.title || ''} onChange={(event) => handleUpdateTeamMemberPdiItem(selectedManagedUser.id, item.id, 'title', event.target.value)} />
+                              </div>
+                              <div className="input-group">
+                                <label>Competência</label>
+                                <input type="text" value={item.competency || ''} onChange={(event) => handleUpdateTeamMemberPdiItem(selectedManagedUser.id, item.id, 'competency', event.target.value)} placeholder="Ex.: Lideranca, copy, analise" />
+                              </div>
+                              <div className="input-group">
+                                <label>Prazo</label>
+                                <input type="date" value={item.dueDate || ''} onChange={(event) => handleUpdateTeamMemberPdiItem(selectedManagedUser.id, item.id, 'dueDate', event.target.value)} />
+                              </div>
+                              <div className="input-group">
+                                <label>Status</label>
+                                <select className="client-select-input" value={item.status || 'planejado'} onChange={(event) => handleUpdateTeamMemberPdiItem(selectedManagedUser.id, item.id, 'status', event.target.value)}>
+                                  <option value="planejado">Planejado</option>
+                                  <option value="em_andamento">Em andamento</option>
+                                  <option value="concluido">Concluido</option>
+                                </select>
+                              </div>
+                              <div className="input-group settings-field-span-2">
+                                <label>Plano de ação</label>
+                                <textarea value={item.actionPlan || ''} onChange={(event) => handleUpdateTeamMemberPdiItem(selectedManagedUser.id, item.id, 'actionPlan', event.target.value)} placeholder="Detalhe aqui o plano de desenvolvimento." />
+                              </div>
+                              <div className="input-group settings-field-span-2">
+                                <label>Observações</label>
+                                <textarea value={item.notes || ''} onChange={(event) => handleUpdateTeamMemberPdiItem(selectedManagedUser.id, item.id, 'notes', event.target.value)} placeholder="Evidencias, checkpoints, feedbacks e proximos passos." />
+                              </div>
+                            </div>
+                            <div className="modal-actions">
+                              <button type="button" className="btn btn-secondary" onClick={() => handleRemoveTeamMemberPdiItem(selectedManagedUser.id, item.id)}>
+                                Remover frente
+                              </button>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="glass-item settings-stack-card">
+                          <span>Nenhuma frente de PDI cadastrada ainda.</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
                   <div className="modal-foot">
                     <span className="form-note">
                       {selectedManagedUser.role === 'master' && 'Acesso total: usuários, clientes e integrações.'}
@@ -14012,7 +14414,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
                         Cancelar
                       </button>
                       <button type="button" className="btn btn-primary" onClick={() => handleUpdateUser(selectedManagedUser)}>
-                        Salvar acesso
+                        Salvar pessoa
                       </button>
                     </div>
                   </div>
@@ -14020,6 +14422,118 @@ export default function DashboardShell({ initialTab = 'home' }) {
               </div>
             )}
           </section>
+          ) : (
+            <section className="clients-layout users-management-layout">
+              <div className="glass-panel management-hero users-intro-card">
+                <div className="management-hero-copy">
+                  <span className="management-hero-kicker">Career hub</span>
+                  <h2>Seu painel interno de desenvolvimento</h2>
+                  <p>Use esta área para acompanhar sua senioridade, capacidade, clientes sob responsabilidade, OKRs e frentes do seu PDI.</p>
+                </div>
+                <div className="management-stats-grid">
+                  <div className="management-stat-card">
+                    <small>Senioridade</small>
+                    <strong>{currentUserTeamProfile.seniority || 'junior'}</strong>
+                  </div>
+                  <div className="management-stat-card">
+                    <small>Capacidade semanal</small>
+                    <strong>{formatNumber(currentUserTeamProfile.weeklyCapacityHours || 0)}h</strong>
+                  </div>
+                  <div className="management-stat-card">
+                    <small>Clientes no escopo</small>
+                    <strong>{formatNumber((currentUserTeamProfile.allocations || []).filter((item) => item.clientId).length)}</strong>
+                  </div>
+                  <div className="management-stat-card">
+                    <small>OKRs ativas</small>
+                    <strong>{formatNumber((currentUserTeamProfile.okrs || []).filter((item) => item.status !== 'concluido').length)}</strong>
+                  </div>
+                </div>
+              </div>
+
+              <div className="settings-grid" style={{ width: '100%' }}>
+                <div className="glass-panel context-panel">
+                  <span className="management-card-kicker">Perfil</span>
+                  <h3>{currentUserTeamProfile.positionTitle || (profile?.full_name || 'Seu perfil')}</h3>
+                  <div className="context-risk-list">
+                    <div className="context-stack-card">
+                      <div className="context-stack-head">
+                        <strong>Departamento</strong>
+                        <span>{currentUserTeamProfile.department || 'Nao informado'}</span>
+                      </div>
+                      <p>Gestor: {currentUserTeamProfile.directManagerName || 'Nao informado'} · Trilha: {currentUserTeamProfile.careerTrack || 'Nao definida'}</p>
+                    </div>
+                    <div className="context-stack-card">
+                      <div className="context-stack-head">
+                        <strong>Resumo de performance</strong>
+                        <span>{currentUserTeamProfile.nextCareerStep || 'Sem proximo passo definido'}</span>
+                      </div>
+                      <p>{currentUserTeamProfile.performanceSummary || 'Seu gestor ainda nao registrou um resumo recente aqui.'}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="glass-panel context-panel">
+                  <span className="management-card-kicker">Clientes</span>
+                  <h3>Alocacao planejada</h3>
+                  <div className="context-risk-list">
+                    {(currentUserTeamProfile.allocations || []).filter((item) => item.clientId).length ? (
+                      currentUserTeamProfile.allocations.filter((item) => item.clientId).map((allocation) => (
+                        <div key={allocation.id} className="context-stack-card">
+                          <div className="context-stack-head">
+                            <strong>{clientsById.get(allocation.clientId)?.name || 'Cliente nao encontrado'}</strong>
+                            <span>{formatNumber(allocation.weeklyHours || 0)}h/semana</span>
+                          </div>
+                          <p>{allocation.roleLabel || 'Papel nao definido'} · {allocation.focusLabel || 'Sem foco principal registrado'}</p>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="field-helper">Ainda nao existe alocacao planejada registrada para voce.</p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="glass-panel context-panel">
+                  <span className="management-card-kicker">OKRs</span>
+                  <h3>Metas em andamento</h3>
+                  <div className="context-risk-list">
+                    {(currentUserTeamProfile.okrs || []).length ? (
+                      currentUserTeamProfile.okrs.map((okr) => (
+                        <div key={okr.id} className="context-stack-card">
+                          <div className="context-stack-head">
+                            <strong>{okr.title || 'OKR sem titulo'}</strong>
+                            <span>{okr.status.replaceAll('_', ' ')}</span>
+                          </div>
+                          <p>{okr.metric || 'Metrica nao definida'} · {okr.currentValue || '0'} / {okr.targetValue || '0'} {okr.unit || ''}</p>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="field-helper">Nenhuma OKR cadastrada para voce ainda.</p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="glass-panel context-panel">
+                  <span className="management-card-kicker">PDI</span>
+                  <h3>Plano de desenvolvimento</h3>
+                  <div className="context-risk-list">
+                    {(currentUserTeamProfile.pdiItems || []).length ? (
+                      currentUserTeamProfile.pdiItems.map((item) => (
+                        <div key={item.id} className="context-stack-card">
+                          <div className="context-stack-head">
+                            <strong>{item.title || 'Frente sem titulo'}</strong>
+                            <span>{item.status.replaceAll('_', ' ')}</span>
+                          </div>
+                          <p>{item.competency || 'Competencia nao definida'} · {item.actionPlan || 'Sem plano de acao detalhado'}</p>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="field-helper">Seu PDI ainda nao foi preenchido.</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </section>
+          )
         )}
 
         {activeTab === 'apresentacao' && (

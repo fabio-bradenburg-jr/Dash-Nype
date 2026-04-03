@@ -19,6 +19,10 @@ import type {
   OperationStatusRecord,
   OperationSubtaskRecord,
   ProductRecord,
+  TeamMemberAllocationRecord,
+  TeamMemberOkrRecord,
+  TeamMemberPdiItemRecord,
+  TeamMemberProfileRecord,
 } from '@/lib/types/dashboard'
 
 export const DASHBOARD_STORAGE_KEY = 'nype-dashboard-preferences'
@@ -34,6 +38,10 @@ type OperationLaneOverrides = Partial<OperationLaneRecord>
 type OperationStatusOverrides = Partial<OperationStatusRecord>
 type OperationCustomFieldOverrides = Partial<OperationCustomFieldRecord>
 type OperationSettingsOverrides = Partial<OperationSettingsRecord>
+type TeamMemberOkrOverrides = Partial<TeamMemberOkrRecord>
+type TeamMemberPdiOverrides = Partial<TeamMemberPdiItemRecord>
+type TeamMemberAllocationOverrides = Partial<TeamMemberAllocationRecord>
+type TeamMemberProfileOverrides = Partial<TeamMemberProfileRecord>
 
 export const DEFAULT_OPERATION_LANES: Array<Pick<OperationLaneRecord, 'key' | 'label' | 'color' | 'defaultSubtasks'>> = [
   {
@@ -243,6 +251,87 @@ export function createOperationCommentRecord(
   }
 }
 
+function normalizeTeamMemberProgressStatus(value: unknown): TeamMemberOkrRecord['status'] {
+  return value === 'em_andamento' || value === 'concluido' || value === 'atrasado'
+    ? value
+    : 'nao_iniciado'
+}
+
+function normalizeTeamMemberPdiStatus(value: unknown): TeamMemberPdiItemRecord['status'] {
+  return value === 'em_andamento' || value === 'concluido'
+    ? value
+    : 'planejado'
+}
+
+export function createTeamMemberOkrRecord(
+  overrides: TeamMemberOkrOverrides = {}
+): TeamMemberOkrRecord {
+  return {
+    id: overrides.id || createRecordId('team-okr'),
+    title: String(overrides.title || '').trim(),
+    metric: String(overrides.metric || '').trim(),
+    targetValue: String(overrides.targetValue || '').trim(),
+    currentValue: String(overrides.currentValue || '').trim(),
+    unit: String(overrides.unit || '').trim(),
+    dueDate: String(overrides.dueDate || '').trim(),
+    status: normalizeTeamMemberProgressStatus(overrides.status),
+  }
+}
+
+export function createTeamMemberPdiItemRecord(
+  overrides: TeamMemberPdiOverrides = {}
+): TeamMemberPdiItemRecord {
+  return {
+    id: overrides.id || createRecordId('team-pdi'),
+    title: String(overrides.title || '').trim(),
+    competency: String(overrides.competency || '').trim(),
+    actionPlan: String(overrides.actionPlan || '').trim(),
+    dueDate: String(overrides.dueDate || '').trim(),
+    status: normalizeTeamMemberPdiStatus(overrides.status),
+    notes: String(overrides.notes || '').trim(),
+  }
+}
+
+export function createTeamMemberAllocationRecord(
+  overrides: TeamMemberAllocationOverrides = {}
+): TeamMemberAllocationRecord {
+  return {
+    id: overrides.id || createRecordId('team-allocation'),
+    clientId: String(overrides.clientId || '').trim(),
+    roleLabel: String(overrides.roleLabel || '').trim(),
+    weeklyHours: Number.isFinite(Number(overrides.weeklyHours)) ? Number(overrides.weeklyHours) : 0,
+    focusLabel: String(overrides.focusLabel || '').trim(),
+  }
+}
+
+export function createTeamMemberProfileRecord(
+  overrides: TeamMemberProfileOverrides = {}
+): TeamMemberProfileRecord {
+  return {
+    userId: String(overrides.userId || '').trim(),
+    positionTitle: String(overrides.positionTitle || '').trim(),
+    department: String(overrides.department || '').trim(),
+    seniority:
+      overrides.seniority === 'junior' ||
+      overrides.seniority === 'pleno' ||
+      overrides.seniority === 'senior' ||
+      overrides.seniority === 'expert'
+        ? overrides.seniority
+        : 'junior',
+    employmentType: String(overrides.employmentType || '').trim(),
+    directManagerName: String(overrides.directManagerName || '').trim(),
+    employmentStartDate: String(overrides.employmentStartDate || '').trim(),
+    monthlyCompensation: String(overrides.monthlyCompensation || '').trim(),
+    weeklyCapacityHours: Number.isFinite(Number(overrides.weeklyCapacityHours)) ? Number(overrides.weeklyCapacityHours) : 44,
+    careerTrack: String(overrides.careerTrack || '').trim(),
+    performanceSummary: String(overrides.performanceSummary || '').trim(),
+    nextCareerStep: String(overrides.nextCareerStep || '').trim(),
+    okrs: Array.isArray(overrides.okrs) ? overrides.okrs.map((item) => createTeamMemberOkrRecord(item)) : [],
+    pdiItems: Array.isArray(overrides.pdiItems) ? overrides.pdiItems.map((item) => createTeamMemberPdiItemRecord(item)) : [],
+    allocations: Array.isArray(overrides.allocations) ? overrides.allocations.map((item) => createTeamMemberAllocationRecord(item)) : [],
+  }
+}
+
 export function createOperationSubtaskRecord(
   overrides: OperationSubtaskOverrides = {}
 ): OperationSubtaskRecord {
@@ -426,6 +515,7 @@ export const DEFAULT_PREFERENCES: DashboardPreferences = {
   clientSystemFields: [],
   clientCustomColumns: [],
   clientCustomTabs: [],
+  teamProfiles: [],
 }
 
 export const DEFAULT_DASHBOARD_TEMPLATE_NAME = 'Principal'
@@ -782,6 +872,9 @@ export function loadDashboardPreferences(): DashboardPreferences {
         : [],
       clientCustomTabs: Array.isArray(parsed.clientCustomTabs)
         ? parsed.clientCustomTabs.map((tab) => createClientCustomTabRecord(tab))
+        : [],
+      teamProfiles: Array.isArray(parsed.teamProfiles)
+        ? parsed.teamProfiles.map((profile) => createTeamMemberProfileRecord(profile))
         : [],
     }
   } catch (error) {

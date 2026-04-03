@@ -60,7 +60,7 @@ interface MetaConnectionState {
   expiresAt: string
 }
 
-type SettingsTab = 'panel' | 'general' | 'operation' | 'calendar' | 'clients'
+type SettingsTab = 'panel' | 'general' | 'operation' | 'clients'
 
 const SETTINGS_TAB_STORAGE_KEY = 'dash_settings_active_tab'
 
@@ -503,18 +503,6 @@ export default function SettingsPage() {
       }
     }
 
-    if (activeSettingsTab === 'calendar') {
-      return {
-        title: 'Agenda operacional',
-        description: 'Conexão, leitura e governança do calendário do time.',
-        items: [
-          'Conexão com Google Calendar',
-          'Rotina operacional da agenda',
-          'Controle centralizado da operação',
-        ],
-      }
-    }
-
     return {
       title: 'Base de clientes',
       description: 'Ajustes estruturais da base que alimenta clientes e operação.',
@@ -769,14 +757,12 @@ export default function SettingsPage() {
     const error = params.get('meta_error')
 
     const storedTab = window.localStorage.getItem(SETTINGS_TAB_STORAGE_KEY)
-    const resolvedStoredTab = storedTab === 'panel' || storedTab === 'general' || storedTab === 'operation' || storedTab === 'calendar' || storedTab === 'clients'
+    const resolvedStoredTab = storedTab === 'panel' || storedTab === 'general' || storedTab === 'operation' || storedTab === 'clients'
       ? storedTab
       : null
 
     if (tab === 'operation') {
       setActiveSettingsTab('operation')
-    } else if (tab === 'calendar') {
-      setActiveSettingsTab('calendar')
     } else if (tab === 'clients') {
       setActiveSettingsTab('clients')
     } else if (tab === 'ai') {
@@ -1686,18 +1672,6 @@ export default function SettingsPage() {
                     <div>
                       <strong>Operação</strong>
                       <span>Boards, ferramentas e IDs globais.</span>
-                    </div>
-                  </button>
-
-                  <button
-                    type="button"
-                    className={`settings-sidebar-link ${activeSettingsTab === 'calendar' ? 'active' : ''}`}
-                    onClick={() => handleSettingsTabChange('calendar')}
-                  >
-                    <i className="bx bx-calendar-event"></i>
-                    <div>
-                      <strong>Agenda</strong>
-                      <span>Google Calendar e rotina operacional.</span>
                     </div>
                   </button>
 
@@ -2718,53 +2692,6 @@ export default function SettingsPage() {
                             ))}
                           </div>
                         ))}
-                      </div>
-                    </section>
-                  </div>
-                </div>
-              )}
-
-              {canManageClients && activeSettingsTab === 'calendar' && (
-                <div className="glass-item settings-block settings-block-full">
-                  <div className="settings-section-head">
-                    <div>
-                      <h2>Agenda da operação</h2>
-                      <p>Centralize aqui a configuração da agenda operacional e o acesso ao Google Calendar da equipe.</p>
-                    </div>
-                  </div>
-
-                  <div className="settings-general-layout">
-                    <section className="settings-category-shell">
-                      <div className="settings-category-head">
-                        <span className="settings-category-kicker">Agenda</span>
-                        <h3>Google Calendar</h3>
-                        <p>A área de agenda aparece na Home como produto do app, mas a configuração operacional dela fica centralizada aqui.</p>
-                      </div>
-
-                      <div className="settings-integrations-grid settings-category-grid">
-                        <div className="integration-block integration-block-meta">
-                          <div className="integration-heading">
-                            <div className="integration-icon" style={{ color: '#10b981', borderColor: '#10b98133' }}>
-                              <i className="bx bx-calendar-event"></i>
-                            </div>
-                            <div>
-                              <h3>Configuração da agenda</h3>
-                              <p>Use essa área para conectar sua conta Google, escolher o calendário ativo e organizar a rotina operacional fora da leitura analítica.</p>
-                            </div>
-                          </div>
-
-                          <div className="settings-callout info">
-                            A agenda continua como área do produto na Home, mas a conexão e os detalhes operacionais ficam organizados dentro de Configurações.
-                          </div>
-                          <div className="settings-choice-row settings-choice-row-compact">
-                            <Link href="/calendar" className="btn btn-primary">
-                              Abrir agenda
-                            </Link>
-                            <Link href="/calendar" className="btn btn-secondary">
-                              Gerenciar conexão
-                            </Link>
-                          </div>
-                        </div>
                       </div>
                     </section>
                   </div>

@@ -31,6 +31,53 @@ export interface ProductRecord {
   status: string
 }
 
+export interface TeamMemberOkrRecord {
+  id: string
+  title: string
+  metric: string
+  targetValue: string
+  currentValue: string
+  unit: string
+  dueDate: string
+  status: 'nao_iniciado' | 'em_andamento' | 'concluido' | 'atrasado'
+}
+
+export interface TeamMemberPdiItemRecord {
+  id: string
+  title: string
+  competency: string
+  actionPlan: string
+  dueDate: string
+  status: 'planejado' | 'em_andamento' | 'concluido'
+  notes: string
+}
+
+export interface TeamMemberAllocationRecord {
+  id: string
+  clientId: string
+  roleLabel: string
+  weeklyHours: number
+  focusLabel: string
+}
+
+export interface TeamMemberProfileRecord {
+  userId: string
+  positionTitle: string
+  department: string
+  seniority: 'junior' | 'pleno' | 'senior' | 'expert'
+  employmentType: string
+  directManagerName: string
+  employmentStartDate: string
+  monthlyCompensation: string
+  weeklyCapacityHours: number
+  careerTrack: string
+  performanceSummary: string
+  nextCareerStep: string
+  okrs: TeamMemberOkrRecord[]
+  pdiItems: TeamMemberPdiItemRecord[]
+  allocations: TeamMemberAllocationRecord[]
+}
+
 export interface ClientOkrRecord {
   id: string
   title: string
@@ -280,12 +327,15 @@ export interface DashboardPreferences {
   clientSystemFields: ClientCustomColumnRecord[]
   clientCustomColumns: ClientCustomColumnRecord[]
   clientCustomTabs: ClientCustomTabRecord[]
+  teamProfiles: TeamMemberProfileRecord[]
 }
 
 export interface AccessContextLike {
   workspaceId?: string | null
   role?: string | null
+  profile?: { id?: string | null } | null
   canManageClients?: boolean
+  canManageUsers?: boolean
   viewableClientIds?: string[]
   editableClientIds?: string[]
 }

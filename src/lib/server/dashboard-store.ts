@@ -21,6 +21,10 @@ import type {
   OperationStatusRecord,
   OperationSubtaskRecord,
   ProductRecord,
+  TeamMemberAllocationRecord,
+  TeamMemberOkrRecord,
+  TeamMemberPdiItemRecord,
+  TeamMemberProfileRecord,
 } from '@/lib/types/dashboard'
 
 const DEFAULT_FUNNEL_STEPS = ['impressions', 'clicks', 'leads', 'purchases']
@@ -139,6 +143,79 @@ function normalizeClientOkrs(okrs: unknown): ClientOkrRecord[] {
     cycleDays: String(okr?.cycleDays || '').trim(),
     completed: Boolean(okr?.completed),
   }))
+}
+
+function normalizeTeamMemberOkrStatus(value: unknown): TeamMemberOkrRecord['status'] {
+  return value === 'em_andamento' || value === 'concluido' || value === 'atrasado'
+    ? value
+    : 'nao_iniciado'
+}
+
+function normalizeTeamMemberPdiStatus(value: unknown): TeamMemberPdiItemRecord['status'] {
+  return value === 'em_andamento' || value === 'concluido'
+    ? value
+    : 'planejado'
+}
+
+function normalizeTeamMemberOkrRecord(value: unknown): TeamMemberOkrRecord {
+  return {
+    id: typeof value?.id === 'string' && value.id.trim() ? value.id : createRecordId('team-okr'),
+    title: String(value?.title || '').trim(),
+    metric: String(value?.metric || '').trim(),
+    targetValue: String(value?.targetValue || '').trim(),
+    currentValue: String(value?.currentValue || '').trim(),
+    unit: String(value?.unit || '').trim(),
+    dueDate: String(value?.dueDate || '').trim(),
+    status: normalizeTeamMemberOkrStatus(value?.status),
+  }
+}
+
+function normalizeTeamMemberPdiItemRecord(value: unknown): TeamMemberPdiItemRecord {
+  return {
+    id: typeof value?.id === 'string' && value.id.trim() ? value.id : createRecordId('team-pdi'),
+    title: String(value?.title || '').trim(),
+    competency: String(value?.competency || '').trim(),
+    actionPlan: String(value?.actionPlan || '').trim(),
+    dueDate: String(value?.dueDate || '').trim(),
+    status: normalizeTeamMemberPdiStatus(value?.status),
+    notes: String(value?.notes || '').trim(),
+  }
+}
+
+function normalizeTeamMemberAllocationRecord(value: unknown): TeamMemberAllocationRecord {
+  return {
+    id: typeof value?.id === 'string' && value.id.trim() ? value.id : createRecordId('team-allocation'),
+    clientId: String(value?.clientId || '').trim(),
+    roleLabel: String(value?.roleLabel || '').trim(),
+    weeklyHours: Number.isFinite(Number(value?.weeklyHours)) ? Number(value.weeklyHours) : 0,
+    focusLabel: String(value?.focusLabel || '').trim(),
+  }
+}
+
+function normalizeTeamMemberProfileRecord(value: unknown): TeamMemberProfileRecord {
+  return {
+    userId: String(value?.userId || '').trim(),
+    positionTitle: String(value?.positionTitle || '').trim(),
+    department: String(value?.department || '').trim(),
+    seniority:
+      value?.seniority === 'junior' ||
+      value?.seniority === 'pleno' ||
+      value?.seniority === 'senior' ||
+      value?.seniority === 'expert'
+        ? value.seniority
+        : 'junior',
+    employmentType: String(value?.employmentType || '').trim(),
+    directManagerName: String(value?.directManagerName || '').trim(),
+    employmentStartDate: String(value?.employmentStartDate || '').trim(),
+    monthlyCompensation: String(value?.monthlyCompensation || '').trim(),
+    weeklyCapacityHours: Number.isFinite(Number(value?.weeklyCapacityHours)) ? Number(value.weeklyCapacityHours) : 44,
+    careerTrack: String(value?.careerTrack || '').trim(),
+    performanceSummary: String(value?.performanceSummary || '').trim(),
+    nextCareerStep: String(value?.nextCareerStep || '').trim(),
+    okrs: Array.isArray(value?.okrs) ? value.okrs.map(normalizeTeamMemberOkrRecord) : [],
+    pdiItems: Array.isArray(value?.pdiItems) ? value.pdiItems.map(normalizeTeamMemberPdiItemRecord) : [],
+    allocations: Array.isArray(value?.allocations) ? value.allocations.map(normalizeTeamMemberAllocationRecord) : [],
+  }
 }
 
 function normalizeClientNotes(notes: unknown): ClientNoteRecord[] {
@@ -768,6 +845,7 @@ export async function getDashboardState(
       clientSystemFields: [],
       clientCustomColumns: [],
       clientCustomTabs: [],
+      teamProfiles: [],
     }
   }
 
@@ -829,6 +907,12 @@ export async function getDashboardState(
     accessContext
   )
   const preferencePayload = preferenceRow?.payload && typeof preferenceRow.payload === 'object' ? preferenceRow.payload : {}
+  const allTeamProfiles = Array.isArray(preferencePayload.teamProfiles)
+    ? preferencePayload.teamProfiles.map(normalizeTeamMemberProfileRecord).filter((item) => item.userId)
+    : []
+  const visibleTeamProfiles = accessContext.canManageUsers
+    ? allTeamProfiles
+    : allTeamProfiles.filter((item) => item.userId === accessContext.profile?.id)
 
   return {
     themeColor: preferenceRow?.theme_color || 'blue',
@@ -854,6 +938,7 @@ export async function getDashboardState(
     clientCustomTabs: Array.isArray(preferencePayload.clientCustomTabs)
       ? preferencePayload.clientCustomTabs.map(normalizeClientCustomTabRecord)
       : [],
+    teamProfiles: visibleTeamProfiles,
   }
 }
 
@@ -889,6 +974,9 @@ export async function saveDashboardState(
     : []
   const submittedClientCustomTabs = Array.isArray(state.clientCustomTabs)
     ? state.clientCustomTabs.map(normalizeClientCustomTabRecord)
+    : []
+  const submittedTeamProfiles = Array.isArray(state.teamProfiles)
+    ? state.teamProfiles.map(normalizeTeamMemberProfileRecord).filter((item) => item.userId)
     : []
   const submittedGlobalIntegrations = normalizeGlobalIntegrations(state.globalIntegrations)
 
@@ -936,6 +1024,7 @@ export async function saveDashboardState(
             clientSystemFields: submittedClientSystemFields,
             clientCustomColumns: submittedClientCustomColumns,
             clientCustomTabs: submittedClientCustomTabs,
+            teamProfiles: submittedTeamProfiles,
           },
         },
         { onConflict: 'workspace_id' }
@@ -1125,8 +1214,23 @@ export async function saveDashboardState(
   }
 
   if (editableOperationCards.length > 0) {
+    const { data: currentPreferenceRow, error: currentPreferenceError } = await adminSupabase
+      .from('workspace_preferences')
+      .select('payload')
+      .eq('workspace_id', accessContext.workspaceId)
+      .maybeSingle()
+
+    if (currentPreferenceError) throw currentPreferenceError
+
+    const currentPreferencePayload =
+      currentPreferenceRow?.payload && typeof currentPreferenceRow.payload === 'object'
+        ? currentPreferenceRow.payload
+        : {}
     const currentState = await getDashboardState(adminSupabase, accessContext)
     const preservedOperationCards = (currentState.operationCards || []).filter((card) => !editableIds.has(card.clientId))
+    const preservedTeamProfiles = Array.isArray(currentPreferencePayload.teamProfiles)
+      ? currentPreferencePayload.teamProfiles.map(normalizeTeamMemberProfileRecord).filter((item) => item.userId)
+      : []
 
     const { error: preferenceError } = await adminSupabase
       .from('workspace_preferences')
@@ -1142,6 +1246,7 @@ export async function saveDashboardState(
             clientSystemFields: submittedClientSystemFields.length ? submittedClientSystemFields : currentState.clientSystemFields,
             clientCustomColumns: submittedClientCustomColumns.length ? submittedClientCustomColumns : currentState.clientCustomColumns,
             clientCustomTabs: submittedClientCustomTabs.length ? submittedClientCustomTabs : currentState.clientCustomTabs,
+            teamProfiles: preservedTeamProfiles,
           },
         },
         { onConflict: 'workspace_id' }

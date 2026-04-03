@@ -3,6 +3,7 @@
 import type { ChangeEvent, FormEvent, MouseEvent } from 'react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
+import { redirect } from 'next/navigation'
 import { useUser } from '@/lib/contexts/UserContext'
 
 interface CalendarPageProps {
@@ -165,6 +166,10 @@ function createEventFormFromEvent(event: CalendarEventItem): EventFormState {
 }
 
 export default function CalendarPage({ embeddedOverride = null }: CalendarPageProps = {}) {
+  if (embeddedOverride === null) {
+    redirect('/home')
+  }
+
   const { access, loading } = useUser()
   const canViewDashboard = access?.canViewDashboard !== false
   const canEditCalendar = Boolean(access?.canEditIntegrations)
