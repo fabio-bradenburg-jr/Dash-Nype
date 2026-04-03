@@ -2834,6 +2834,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
   const [clientEditSection, setClientEditSection] = useState('geral')
   const [isCreateClientExpanded, setIsCreateClientExpanded] = useState(true)
   const [clientRegistryManagerMode, setClientRegistryManagerMode] = useState('')
+  const [clientRegistryInlineEdit, setClientRegistryInlineEdit] = useState({ clientId: '', columnKey: '' })
   const [adAccounts, setAdAccounts] = useState([])
   const [insights, setInsights] = useState(null)
   const [previousInsights, setPreviousInsights] = useState(null)
@@ -4739,6 +4740,14 @@ export default function DashboardShell({ initialTab = 'home' }) {
     }, 120)
   }, [])
 
+  const closeClientRegistryInlineEdit = useCallback(() => {
+    setClientRegistryInlineEdit({ clientId: '', columnKey: '' })
+  }, [])
+
+  const openClientRegistryInlineEdit = useCallback((clientId, columnKey) => {
+    setClientRegistryInlineEdit({ clientId, columnKey })
+  }, [])
+
   const handleSaveDashboardTemplate = () => {
     if (!activeDraftDashboardTemplate) return
 
@@ -5600,6 +5609,22 @@ export default function DashboardShell({ initialTab = 'home' }) {
           : column
       )
     )
+  }
+
+  const handleClientSystemFieldChange = (fieldKey, fieldName, value) => {
+    if (!canManageClients) return
+    setClientSystemFields((current) => {
+      const baseFields = Array.isArray(current) && current.length ? current : DEFAULT_CLIENT_SYSTEM_FIELDS
+      return baseFields.map((field) =>
+        field.key === fieldKey
+          ? createClientCustomColumnRecord({
+              ...field,
+              [fieldName]: value,
+              key: field.key,
+            })
+          : field
+      )
+    })
   }
 
   const handleRemoveClientCustomColumn = (columnKey) => {
@@ -6537,9 +6562,46 @@ export default function DashboardShell({ initialTab = 'home' }) {
     const isReadOnlyCalculatedField = ['ltv', 'mmf', 'roiMarketing', 'healthScore'].includes(columnKey)
     const value = client?.[columnKey]
     const customColumn = customColumnsByKey.get(columnKey)
+    const isInlineEditing =
+      !isEditorMode &&
+      clientRegistryInlineEdit.clientId === client.id &&
+      clientRegistryInlineEdit.columnKey === columnKey
+    const handleInlineKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        closeClientRegistryInlineEdit()
+      }
+      if (event.key === 'Enter' && event.currentTarget.tagName !== 'TEXTAREA') {
+        closeClientRegistryInlineEdit()
+      }
+    }
+    const canInlineEditCell = Boolean(
+      !isEditorMode &&
+      isEditable &&
+      !isReadOnlyCalculatedField &&
+      columnKey !== 'implementationPhase' &&
+      meta.type !== 'health' &&
+      !(customColumn?.type === 'formula') &&
+      !(meta.type === 'flag' && DERIVED_CLIENT_FLAG_KEYS.has(columnKey))
+    )
+    const renderInlineEditAction = () => (
+      canInlineEditCell ? (
+        <button
+          type="button"
+          className="client-registry-edit-trigger"
+          onClick={(event) => {
+            event.stopPropagation()
+            openClientRegistryInlineEdit(client.id, columnKey)
+          }}
+          aria-label={`Editar ${meta.label}`}
+        >
+          <i className="bx bx-pencil"></i>
+        </button>
+      ) : null
+    )
 
     const renderInlineTextCell = (content, tone = 'default') => (
       <div key={columnKey} className={`client-registry-cell client-registry-cell-readonly ${tone !== 'default' ? `client-registry-cell-${tone}` : ''}`}>
+        {renderInlineEditAction()}
         {content}
       </div>
     )
@@ -6647,6 +6709,234 @@ export default function DashboardShell({ initialTab = 'home' }) {
             disabled={!isEditable}
             onChange={(event) => handleClientFieldChange('name', event.target.value)}
             placeholder="Nome do cliente"
+          />
+        </div>
+      )
+    }
+
+    if (isInlineEditing) {
+      if (columnKey === 'product') {
+        return (
+          <div key={columnKey} className="client-registry-cell client-registry-cell-editing">
+            <select
+              autoFocus
+              value={client?.productId || ''}
+              onBlur={closeClientRegistryInlineEdit}
+              onChange={(event) => {
+                handleClientProductChange(client.id, event.target.value)
+                closeClientRegistryInlineEdit()
+              }}
+            >
+              <option value="">Selecione um produto</option>
+              {products.map((product) => (
+                <option key={product.id} value={product.id}>{product.name}</option>
+              ))}
+            </select>
+          </div>
+        )
+      }
+
+      if (meta.type === 'status') {
+        if (columnKey === 'salesModel') {
+          return (
+            <div key={columnKey} className="client-registry-cell client-registry-cell-editing">
+              <select
+                autoFocus
+                value={value || 'INSIDE_SALES'}
+                onBlur={closeClientRegistryInlineEdit}
+                onChange={(event) => {
+                  handleClientInlineFieldChange(client.id, columnKey, event.target.value)
+                  closeClientRegistryInlineEdit()
+                }}
+              >
+                {CLIENT_SALES_MODEL_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>{option.label}</option>
+                ))}
+              </select>
+            </div>
+          )
+        }
+
+        return (
+          <div key={columnKey} className="client-registry-cell client-registry-cell-editing">
+            <select
+              autoFocus
+              value={value || 'Ativo'}
+              onBlur={closeClientRegistryInlineEdit}
+              onChange={(event) => {
+                handleClientInlineFieldChange(client.id, columnKey, event.target.value)
+                closeClientRegistryInlineEdit()
+              }}
+            >
+              {CLIENT_STATUS_OPTIONS.map((option) => (
+                <option key={option} value={option}>{option}</option>
+              ))}
+            </select>
+          </div>
+        )
+      }
+
+      if (customColumn) {
+        if (customColumn.type === 'flag') {
+          return (
+            <div key={columnKey} className="client-registry-cell client-registry-cell-editing">
+              <select
+                autoFocus
+                value={client?.customFieldValues?.[columnKey] || 'na'}
+                onBlur={closeClientRegistryInlineEdit}
+                onChange={(event) => {
+                  handleClientInlineCustomFieldChange(client.id, columnKey, event.target.value)
+                  closeClientRegistryInlineEdit()
+                }}
+              >
+                {CLIENT_FLAG_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>{option.label}</option>
+                ))}
+              </select>
+            </div>
+          )
+        }
+
+        if (customColumn.type === 'select') {
+          return (
+            <div key={columnKey} className="client-registry-cell client-registry-cell-editing">
+              <select
+                autoFocus
+                value={client?.customFieldValues?.[columnKey] || ''}
+                onBlur={closeClientRegistryInlineEdit}
+                onChange={(event) => {
+                  handleClientInlineCustomFieldChange(client.id, columnKey, event.target.value)
+                  closeClientRegistryInlineEdit()
+                }}
+              >
+                <option value="">Selecione</option>
+                {(customColumn.options || []).map((option) => (
+                  <option key={`${columnKey}-${option}`} value={option}>{option}</option>
+                ))}
+              </select>
+            </div>
+          )
+        }
+
+        if (customColumn.type === 'checkbox') {
+          return (
+            <div key={columnKey} className="client-registry-cell client-registry-cell-editing">
+              <label className="client-checkbox-inline">
+                <input
+                  autoFocus
+                  type="checkbox"
+                  checked={String(client?.customFieldValues?.[columnKey] || '').toLowerCase() === 'true'}
+                  onBlur={closeClientRegistryInlineEdit}
+                  onChange={(event) => {
+                    handleClientInlineCustomFieldChange(client.id, columnKey, event.target.checked ? 'true' : 'false')
+                    closeClientRegistryInlineEdit()
+                  }}
+                />
+                <span>Atualizar</span>
+              </label>
+            </div>
+          )
+        }
+
+        const customFieldValue = resolveClientFieldValue(client, columnKey)
+        if (customColumn.type === 'long_text') {
+          return (
+            <div key={columnKey} className="client-registry-cell client-registry-cell-editing">
+              <textarea
+                autoFocus
+                value={customFieldValue || ''}
+                onBlur={closeClientRegistryInlineEdit}
+                onKeyDown={handleInlineKeyDown}
+                onChange={(event) => handleClientInlineCustomFieldChange(client.id, columnKey, event.target.value)}
+                rows={3}
+              />
+            </div>
+          )
+        }
+
+        return (
+          <div key={columnKey} className="client-registry-cell client-registry-cell-editing">
+            <input
+              autoFocus
+              type={
+                customColumn.type === 'date'
+                  ? 'date'
+                  : customColumn.type === 'email'
+                    ? 'email'
+                    : customColumn.type === 'phone'
+                      ? 'tel'
+                      : customColumn.type === 'link'
+                        ? 'url'
+                        : 'text'
+              }
+              value={customFieldValue || ''}
+              onBlur={closeClientRegistryInlineEdit}
+              onKeyDown={handleInlineKeyDown}
+              onChange={(event) => handleClientInlineCustomFieldChange(client.id, columnKey, event.target.value)}
+            />
+          </div>
+        )
+      }
+
+      if (meta.type === 'flag') {
+        return (
+          <div key={columnKey} className="client-registry-cell client-registry-cell-editing">
+            <select
+              autoFocus
+              value={value || 'na'}
+              onBlur={closeClientRegistryInlineEdit}
+              onChange={(event) => {
+                handleClientInlineFieldChange(client.id, columnKey, event.target.value)
+                closeClientRegistryInlineEdit()
+              }}
+            >
+              {CLIENT_FLAG_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>{option.label}</option>
+              ))}
+            </select>
+          </div>
+        )
+      }
+
+      if (meta.type === 'date') {
+        return (
+          <div key={columnKey} className="client-registry-cell client-registry-cell-editing">
+            <input
+              autoFocus
+              type="date"
+              value={value || ''}
+              onBlur={closeClientRegistryInlineEdit}
+              onKeyDown={handleInlineKeyDown}
+              onChange={(event) => handleClientInlineFieldChange(client.id, columnKey, event.target.value)}
+            />
+          </div>
+        )
+      }
+
+      if (meta.type === 'long_text') {
+        return (
+          <div key={columnKey} className="client-registry-cell client-registry-cell-editing">
+            <textarea
+              autoFocus
+              value={value || ''}
+              onBlur={closeClientRegistryInlineEdit}
+              onKeyDown={handleInlineKeyDown}
+              onChange={(event) => handleClientInlineFieldChange(client.id, columnKey, event.target.value)}
+              rows={3}
+            />
+          </div>
+        )
+      }
+
+      return (
+        <div key={columnKey} className="client-registry-cell client-registry-cell-editing">
+          <input
+            autoFocus
+            type={meta.type === 'link' ? 'url' : 'text'}
+            value={value || ''}
+            onBlur={closeClientRegistryInlineEdit}
+            onKeyDown={handleInlineKeyDown}
+            onChange={(event) => handleClientInlineFieldChange(client.id, columnKey, event.target.value)}
           />
         </div>
       )
@@ -12672,8 +12962,8 @@ export default function DashboardShell({ initialTab = 'home' }) {
 
             <div className="clients-grid clients-grid-single">
               <div className="glass-panel users-toolbar-card management-directory-card">
-                <div className="user-picker-head">
-                  <div>
+                <div className="user-picker-head client-registry-head">
+                  <div className="client-registry-head-copy">
                     <span className="management-card-kicker">Client registry</span>
                     <h3>Clientes cadastrados</h3>
                     <p>Cadastre contratos, financeiro, links, responsáveis, flags de entregáveis e integrações da operação em uma única base.</p>
@@ -12705,8 +12995,12 @@ export default function DashboardShell({ initialTab = 'home' }) {
                       </div>
 
                       {clientRegistryManagerMode === 'new_tab' && (
-                        <div className="client-registry-manager-panel glass-item">
-                          <strong>Nova aba</strong>
+                        <div className="client-registry-manager-panel client-registry-manager-panel-create glass-item">
+                          <div className="client-registry-manager-panel-headline">
+                            <span className="client-registry-manager-kicker">Estrutura</span>
+                            <strong>Nova aba</strong>
+                            <p>Crie uma visualização nova para organizar a base de clientes por frente, squad ou tema.</p>
+                          </div>
                           <div className="client-structure-form">
                             <input
                               type="text"
@@ -12723,9 +13017,13 @@ export default function DashboardShell({ initialTab = 'home' }) {
                       )}
 
                       {clientRegistryManagerMode === 'new_column' && (
-                        <div className="client-registry-manager-panel glass-item">
-                          <strong>Nova coluna em {activeClientRegistryTabLabel}</strong>
-                          <div className="client-structure-form">
+                        <div className="client-registry-manager-panel client-registry-manager-panel-create glass-item">
+                          <div className="client-registry-manager-panel-headline">
+                            <span className="client-registry-manager-kicker">Estrutura</span>
+                            <strong>Nova coluna em {activeClientRegistryTabLabel}</strong>
+                            <p>Adicione um campo novo nessa aba para enriquecer a leitura e o cadastro dos clientes.</p>
+                          </div>
+                          <div className="client-structure-form client-structure-form-compact">
                             <input
                               type="text"
                               value={newClientColumnLabel}
@@ -12752,7 +13050,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
                               placeholder={newClientColumnType === 'formula' ? 'Ex.: ({fee} * 12) / {mediaInvestment}' : 'Use para fórmulas'}
                               disabled={!canManageClients || newClientColumnType !== 'formula'}
                             />
-                            <button type="button" className="btn btn-primary" onClick={handleCreateClientCustomColumn} disabled={!canManageClients || !newClientColumnLabel.trim()}>
+                            <button type="button" className="btn btn-primary client-registry-manager-submit" onClick={handleCreateClientCustomColumn} disabled={!canManageClients || !newClientColumnLabel.trim()}>
                               Criar coluna
                             </button>
                           </div>
@@ -12763,6 +13061,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
                         <div className="client-registry-manager-panel glass-item">
                           <div className="client-registry-manager-panel-head">
                             <div>
+                              <span className="client-registry-manager-kicker">Editor da aba</span>
                               <strong>Editar aba atual</strong>
                               <small>{activeClientRegistryTabLabel}</small>
                             </div>
@@ -12785,13 +13084,33 @@ export default function DashboardShell({ initialTab = 'home' }) {
                           <div className="client-registry-manager-columns">
                             <div className="client-registry-manager-column-group">
                               <span className="field-helper">Colunas padrão dessa aba</span>
-                              <div className="stage-selector">
-                                {activeClientRegistrySystemColumns.map((column) => (
-                                  <span key={`system-column-${column.key}`} className="stage-chip">
-                                    <span>{column.label}</span>
-                                  </span>
-                                ))}
-                              </div>
+                              {activeClientRegistrySystemColumns.length ? (
+                                <div className="client-structure-list">
+                                  {activeClientRegistrySystemColumns.map((column) => (
+                                    <div key={`system-column-${column.key}`} className="client-structure-item">
+                                      <input
+                                        type="text"
+                                        value={column.label}
+                                        onChange={(event) => handleClientSystemFieldChange(column.key, 'label', event.target.value)}
+                                        placeholder="Nome da coluna"
+                                        disabled={!canManageClients}
+                                      />
+                                      <select
+                                        value={column.tabKey}
+                                        onChange={(event) => handleClientSystemFieldChange(column.key, 'tabKey', event.target.value)}
+                                        disabled={!canManageClients}
+                                      >
+                                        {clientFieldTabOptions.map((tab) => (
+                                          <option key={`system-${column.key}-${tab.key}`} value={tab.key}>{tab.label}</option>
+                                        ))}
+                                      </select>
+                                      <input type="text" value={column.type} readOnly />
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : (
+                                <p className="field-helper">Nenhuma coluna padrão vinculada a essa aba.</p>
+                              )}
                             </div>
 
                             <div className="client-registry-manager-column-group">
@@ -12814,6 +13133,15 @@ export default function DashboardShell({ initialTab = 'home' }) {
                                       >
                                         {CLIENT_CUSTOM_COLUMN_TYPE_OPTIONS.map((option) => (
                                           <option key={`${column.id}-${option.value}`} value={option.value}>{option.label}</option>
+                                        ))}
+                                      </select>
+                                      <select
+                                        value={column.tabKey}
+                                        onChange={(event) => handleClientCustomColumnFieldChange(column.id, 'tabKey', event.target.value)}
+                                        disabled={!canManageClients}
+                                      >
+                                        {clientFieldTabOptions.map((tab) => (
+                                          <option key={`${column.id}-tab-${tab.key}`} value={tab.key}>{tab.label}</option>
                                         ))}
                                       </select>
                                       <button type="button" className="btn btn-secondary" onClick={() => handleRemoveClientCustomColumn(column.key)}>
@@ -12907,9 +13235,36 @@ export default function DashboardShell({ initialTab = 'home' }) {
                                     ) : (
                                       <span>{getNameInitials(client.name)}</span>
                                     )}
-                                </div>
-                                <div className="client-registry-client-copy">
-                                  <strong>{client.name || 'Cliente sem nome'}</strong>
+                                  </div>
+                                  <div className="client-registry-client-copy">
+                                  {clientRegistryInlineEdit.clientId === client.id && clientRegistryInlineEdit.columnKey === 'name' ? (
+                                    <input
+                                      autoFocus
+                                      type="text"
+                                      value={client.name || ''}
+                                      onBlur={closeClientRegistryInlineEdit}
+                                      onKeyDown={(event) => {
+                                        if (event.key === 'Escape') closeClientRegistryInlineEdit()
+                                        if (event.key === 'Enter') closeClientRegistryInlineEdit()
+                                      }}
+                                      onChange={(event) => handleClientInlineFieldChange(client.id, 'name', event.target.value)}
+                                      placeholder="Nome do cliente"
+                                    />
+                                  ) : (
+                                    <div className="client-registry-title-row">
+                                      <strong>{client.name || 'Cliente sem nome'}</strong>
+                                      {canEditClientRecord(client.id) && (
+                                        <button
+                                          type="button"
+                                          className="client-registry-edit-trigger"
+                                          onClick={() => openClientRegistryInlineEdit(client.id, 'name')}
+                                          aria-label="Editar nome do cliente"
+                                        >
+                                          <i className="bx bx-pencil"></i>
+                                        </button>
+                                      )}
+                                    </div>
+                                  )}
                                   <small>
                                     {client.cnpj ? `CNPJ ${client.cnpj} • ` : ''}
                                     {linkedGroupsCount ? `${linkedGroupsCount} grupo(s)` : 'Sem grupo vinculado'}
@@ -19450,6 +19805,13 @@ export default function DashboardShell({ initialTab = 'home' }) {
           gap: 4px;
         }
 
+        .client-registry-title-row {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          min-width: 0;
+        }
+
         .client-registry-client-copy strong {
           font-size: 15px;
           line-height: 1.3;
@@ -19495,12 +19857,23 @@ export default function DashboardShell({ initialTab = 'home' }) {
         }
 
         .client-registry-cell-readonly {
+          position: relative;
           min-height: 42px;
           align-content: center;
-          padding: 7px 10px;
+          padding: 7px 34px 7px 10px;
           border-radius: 12px;
           border: 1px solid rgba(143, 144, 149, 0.12);
           background: rgba(255, 255, 255, 0.03);
+        }
+
+        .client-registry-cell-editing {
+          display: grid;
+        }
+
+        .client-registry-cell-editing input,
+        .client-registry-cell-editing select,
+        .client-registry-cell-editing textarea {
+          width: 100%;
         }
 
         .client-registry-cell-readonly strong,
@@ -19531,6 +19904,37 @@ export default function DashboardShell({ initialTab = 'home' }) {
 
         .client-registry-link:hover {
           text-decoration: underline;
+        }
+
+        .client-registry-edit-trigger {
+          width: 22px;
+          height: 22px;
+          border-radius: 999px;
+          border: 1px solid rgba(143, 144, 149, 0.14);
+          background: rgba(255, 255, 255, 0.04);
+          color: rgba(225, 226, 235, 0.62);
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          transition: 0.2s ease;
+          flex-shrink: 0;
+        }
+
+        .client-registry-cell-readonly .client-registry-edit-trigger {
+          position: absolute;
+          top: 8px;
+          right: 8px;
+        }
+
+        .client-registry-edit-trigger:hover {
+          color: #ffffff;
+          border-color: color-mix(in srgb, var(--accent-blue) 22%, transparent);
+          background: color-mix(in srgb, var(--accent-blue) 12%, transparent);
+        }
+
+        .client-registry-edit-trigger i {
+          font-size: 12px;
         }
 
         .client-registry-multiline {
@@ -21083,6 +21487,45 @@ export default function DashboardShell({ initialTab = 'home' }) {
           padding: 0;
         }
 
+        .modal-client-editor .integration-block {
+          display: grid;
+          gap: 18px;
+        }
+
+        .modal-client-editor .integration-heading {
+          margin-bottom: 0;
+        }
+
+        .modal-client-editor .client-form-grid,
+        .modal-client-editor .client-form-grid-2 {
+          gap: 18px 22px;
+          align-items: start;
+        }
+
+        .modal-client-editor .client-form-grid-2 {
+          grid-template-columns: repeat(2, minmax(280px, 1fr));
+        }
+
+        .modal-client-editor .client-form-grid .input-group,
+        .modal-client-editor .client-form-grid-2 .input-group {
+          margin-bottom: 0;
+        }
+
+        .modal-client-editor .client-form-grid .client-long-text-field,
+        .modal-client-editor .client-form-grid-2 .client-long-text-field {
+          grid-column: 1 / -1;
+        }
+
+        .modal-client-editor .input-group label {
+          font-size: 12px;
+          font-weight: 700;
+          letter-spacing: 0.03em;
+        }
+
+        .modal-client-editor .input-group textarea {
+          min-height: 132px;
+        }
+
         .branding-grid {
           display: grid;
           grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -21106,7 +21549,9 @@ export default function DashboardShell({ initialTab = 'home' }) {
         .client-fwo-checklist {
           display: grid;
           gap: 14px;
-          margin-top: 8px;
+          margin-top: 0;
+          padding-top: 4px;
+          border-top: 1px solid rgba(255, 255, 255, 0.06);
         }
 
         .client-fwo-checklist-head {
@@ -22202,8 +22647,11 @@ export default function DashboardShell({ initialTab = 'home' }) {
         }
 
         :root[data-ui-mode='light'] .client-registry-manager-panel {
-          background: rgba(255, 255, 255, 0.88);
+          background:
+            radial-gradient(circle at top right, color-mix(in srgb, var(--accent-blue) 8%, white), transparent 42%),
+            linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(248, 250, 252, 0.96));
           border-color: rgba(15, 23, 42, 0.08);
+          box-shadow: 0 16px 34px rgba(15, 23, 42, 0.06);
         }
 
         :root[data-ui-mode='light'] .client-create-inline input::placeholder {
@@ -24856,6 +25304,22 @@ export default function DashboardShell({ initialTab = 'home' }) {
           justify-items: stretch;
         }
 
+        .client-registry-head {
+          gap: 24px;
+          align-items: flex-start;
+        }
+
+        .client-registry-head-copy {
+          flex: 1 1 auto;
+          min-width: 0;
+          padding-right: 18px;
+        }
+
+        .client-registry-head-copy h3,
+        .client-registry-head-copy p {
+          max-width: 820px;
+        }
+
         .client-registry-manager-actions {
           display: flex;
           justify-content: flex-end;
@@ -24872,15 +25336,23 @@ export default function DashboardShell({ initialTab = 'home' }) {
         .client-registry-manager-panel {
           display: grid;
           gap: 14px;
-          padding: 16px;
-          border-radius: 20px;
+          padding: 18px;
+          border-radius: 22px;
           border: 1px solid rgba(143, 144, 149, 0.14);
-          background: rgba(255, 255, 255, 0.03);
+          background:
+            radial-gradient(circle at top right, color-mix(in srgb, var(--accent-blue) 10%, transparent), transparent 42%),
+            linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.02)),
+            rgba(20, 24, 34, 0.92);
+          box-shadow: 0 18px 42px rgba(0, 0, 0, 0.18);
         }
 
         .client-registry-manager-panel > strong {
           color: #ffffff;
           font-size: 15px;
+        }
+
+        .client-registry-manager-panel-create {
+          gap: 16px;
         }
 
         .client-registry-manager-panel-head {
@@ -24892,6 +25364,43 @@ export default function DashboardShell({ initialTab = 'home' }) {
 
         .client-registry-manager-panel-head small {
           color: rgba(225, 226, 235, 0.58);
+        }
+
+        .client-registry-manager-panel-headline {
+          display: grid;
+          gap: 6px;
+        }
+
+        .client-registry-manager-panel-headline strong {
+          font-size: 18px;
+          color: #ffffff;
+          line-height: 1.15;
+        }
+
+        .client-registry-manager-panel-headline p {
+          margin: 0;
+          color: rgba(225, 226, 235, 0.64);
+          line-height: 1.45;
+        }
+
+        .client-registry-manager-kicker {
+          color: color-mix(in srgb, var(--accent-blue) 72%, white);
+          font-size: 11px;
+          font-weight: 800;
+          letter-spacing: 0.14em;
+          text-transform: uppercase;
+        }
+
+        .client-structure-form-compact {
+          grid-template-columns: minmax(220px, 1.35fr) minmax(150px, 0.75fr) minmax(180px, 1fr) minmax(180px, 1fr) auto;
+          align-items: end;
+        }
+
+        .client-registry-manager-submit {
+          min-width: 164px;
+          min-height: 54px;
+          border-radius: 18px;
+          box-shadow: 0 16px 34px color-mix(in srgb, var(--accent-blue) 22%, transparent);
         }
 
         .client-registry-manager-columns {
@@ -25013,6 +25522,20 @@ export default function DashboardShell({ initialTab = 'home' }) {
           box-sizing: border-box;
         }
 
+        .input-group select {
+          width: 100%;
+          min-height: 48px;
+          padding: 0 14px;
+          border-radius: 10px;
+          background: rgba(0, 0, 0, 0.2);
+          border: 1px solid var(--border-color);
+          color: white;
+          font-family: inherit;
+          font-size: 14px;
+          box-sizing: border-box;
+          appearance: none;
+        }
+
         .input-group textarea {
           width: 100%;
           min-height: 120px;
@@ -25061,6 +25584,11 @@ export default function DashboardShell({ initialTab = 'home' }) {
         }
 
         .input-group textarea:focus {
+          outline: none;
+          border-color: var(--accent-blue);
+        }
+
+        .input-group select:focus {
           outline: none;
           border-color: var(--accent-blue);
         }
@@ -25382,6 +25910,10 @@ export default function DashboardShell({ initialTab = 'home' }) {
             grid-template-columns: 1fr;
           }
 
+          .client-structure-form-compact {
+            grid-template-columns: 1fr;
+          }
+
           .client-registry-controls {
             align-items: stretch;
           }
@@ -25395,6 +25927,10 @@ export default function DashboardShell({ initialTab = 'home' }) {
           .client-registry-manager-actions {
             width: 100%;
             justify-content: flex-start;
+          }
+
+          .client-registry-head-copy {
+            padding-right: 0;
           }
 
           .client-registry-view-tabs,
