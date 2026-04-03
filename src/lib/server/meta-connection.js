@@ -113,7 +113,7 @@ export async function getAuthorizedMetaConnectionContext({ requireEdit = false }
   if (!user) throw new Error('Não autenticado.')
 
   const adminSupabase = createAdminClient()
-  const accessContext = await getAccessContext(adminSupabase, user)
+  const accessContext = await getAccessContext(supabase, user, { adminSupabase })
 
   if (!accessContext.workspaceId) {
     throw new Error('Usuário sem workspace vinculado.')
@@ -125,6 +125,7 @@ export async function getAuthorizedMetaConnectionContext({ requireEdit = false }
 
   return {
     user,
+    supabase,
     adminSupabase,
     accessContext,
   }
@@ -294,8 +295,8 @@ export async function resolveWorkspaceMetaAccessToken(request) {
   }
 
   try {
-    const { adminSupabase, accessContext } = await getAuthorizedMetaConnectionContext()
-    const connection = await getWorkspaceMetaConnection(adminSupabase, accessContext.workspaceId)
+    const { supabase, accessContext } = await getAuthorizedMetaConnectionContext()
+    const connection = await getWorkspaceMetaConnection(supabase, accessContext.workspaceId)
     return connection?.access_token || ''
   } catch {
     return ''

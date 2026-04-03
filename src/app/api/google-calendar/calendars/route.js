@@ -6,10 +6,10 @@ import {
 
 export async function GET(request) {
   try {
-    const { adminSupabase, accessContext } = await getAuthorizedGoogleCalendarContext()
+    const { supabase, accessContext } = await getAuthorizedGoogleCalendarContext()
     const { data, connection } = await googleCalendarFetch({
       request,
-      adminSupabase,
+      adminSupabase: supabase,
       workspaceId: accessContext.workspaceId,
       path: 'users/me/calendarList',
     })

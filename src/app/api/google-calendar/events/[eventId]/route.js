@@ -8,8 +8,8 @@ import {
 } from '@/lib/server/google-calendar'
 
 async function resolveRouteContext(request, params) {
-  const { adminSupabase, accessContext } = await getAuthorizedGoogleCalendarContext({ requireEdit: true })
-  const connection = await getWorkspaceGoogleCalendarConnection(adminSupabase, accessContext.workspaceId)
+  const { supabase, accessContext } = await getAuthorizedGoogleCalendarContext({ requireEdit: true })
+  const connection = await getWorkspaceGoogleCalendarConnection(supabase, accessContext.workspaceId)
 
   if (!connection) {
     throw new Error('Conecte uma conta do Google Calendar antes de editar eventos.')
@@ -20,7 +20,7 @@ async function resolveRouteContext(request, params) {
   const calendarId = request.nextUrl.searchParams.get('calendarId') || connection.selected_calendar_id || 'primary'
 
   return {
-    adminSupabase,
+    supabase,
     accessContext,
     eventId,
     calendarId,
@@ -29,7 +29,7 @@ async function resolveRouteContext(request, params) {
 
 export async function PATCH(request, { params }) {
   try {
-    const { adminSupabase, accessContext, eventId, calendarId } = await resolveRouteContext(request, params)
+    const { supabase, accessContext, eventId, calendarId } = await resolveRouteContext(request, params)
     const body = await request.json()
     const payload = buildEventPayload(body)
 
@@ -49,7 +49,7 @@ export async function PATCH(request, { params }) {
 
     const { data } = await googleCalendarFetch({
       request,
-      adminSupabase,
+      adminSupabase: supabase,
       workspaceId: accessContext.workspaceId,
       path: `calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(eventId)}`,
       method: 'PATCH',
@@ -67,11 +67,11 @@ export async function PATCH(request, { params }) {
 
 export async function DELETE(request, { params }) {
   try {
-    const { adminSupabase, accessContext, eventId, calendarId } = await resolveRouteContext(request, params)
+    const { supabase, accessContext, eventId, calendarId } = await resolveRouteContext(request, params)
 
     await googleCalendarFetch({
       request,
-      adminSupabase,
+      adminSupabase: supabase,
       workspaceId: accessContext.workspaceId,
       path: `calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(eventId)}`,
       method: 'DELETE',

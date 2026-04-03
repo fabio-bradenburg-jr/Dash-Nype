@@ -21,7 +21,7 @@ export async function GET(
     }
 
     const adminSupabase = createAdminClient()
-    const accessContext = await getAccessContext(adminSupabase, user)
+    const accessContext = await getAccessContext(supabase, user, { adminSupabase })
 
     if (!accessContext.canUseAi || !accessContext.workspaceId) {
       return NextResponse.json({ error: 'Sem permissão para usar o assistente.' }, { status: 403 })
@@ -29,7 +29,7 @@ export async function GET(
 
     const params = await context.params
     const detail = await getAssistantConversationDetail(
-      adminSupabase,
+      supabase,
       accessContext.workspaceId,
       user.id,
       params.conversationId
@@ -66,7 +66,7 @@ export async function DELETE(
     }
 
     const adminSupabase = createAdminClient()
-    const accessContext = await getAccessContext(adminSupabase, user)
+    const accessContext = await getAccessContext(supabase, user, { adminSupabase })
 
     if (!accessContext.canUseAi || !accessContext.workspaceId) {
       return NextResponse.json({ error: 'Sem permissão para usar o assistente.' }, { status: 403 })
@@ -74,7 +74,7 @@ export async function DELETE(
 
     const params = await context.params
     const deleted = await deleteAssistantConversation(
-      adminSupabase,
+      supabase,
       accessContext.workspaceId,
       user.id,
       params.conversationId

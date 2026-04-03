@@ -45,13 +45,13 @@ export async function POST(request) {
 
     const body = await request.json().catch(() => ({}))
     const adminSupabase = createAdminClient()
-    const accessContext = await getAccessContext(adminSupabase, user)
+    const accessContext = await getAccessContext(supabase, user, { adminSupabase })
 
     if (!accessContext.canViewDashboard) {
       return NextResponse.json({ error: 'Seu usuário não tem permissão para usar os insights com IA.' }, { status: 403 })
     }
 
-    const dashboardState = await getDashboardState(adminSupabase, accessContext)
+    const dashboardState = await getDashboardState(supabase, accessContext)
     const aiConfig = resolveDashboardAiConfig(dashboardState.globalIntegrations)
     const payload = normalizeInsightPayload(body)
     const result = await requestDashboardInsights(aiConfig, payload)

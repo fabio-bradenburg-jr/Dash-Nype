@@ -18,7 +18,7 @@ export async function GET() {
     }
 
     const adminSupabase = createAdminClient()
-    const accessContext = await getAccessContext(adminSupabase, user)
+    const accessContext = await getAccessContext(supabase, user, { adminSupabase })
 
     return NextResponse.json({
       profile: accessContext.profile,

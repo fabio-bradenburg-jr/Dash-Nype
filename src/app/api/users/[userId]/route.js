@@ -70,13 +70,13 @@ async function getAuthorizedContext() {
   }
 
   const adminSupabase = createAdminClient()
-  const accessContext = await getAccessContext(adminSupabase, user)
+  const accessContext = await getAccessContext(supabase, user, { adminSupabase })
 
   if (!accessContext.canManageUsers || !accessContext.workspaceId) {
     return { errorResponse: NextResponse.json({ error: 'Sem permissão para gerenciar usuários.' }, { status: 403 }) }
   }
 
-  return { adminSupabase, accessContext, user }
+  return { supabase, adminSupabase, accessContext, user }
 }
 
 export async function PATCH(request, context) {

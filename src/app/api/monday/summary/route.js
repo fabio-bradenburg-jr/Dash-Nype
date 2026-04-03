@@ -18,7 +18,7 @@ export async function GET(request) {
     }
 
     const adminSupabase = createAdminClient()
-    const accessContext = await getAccessContext(adminSupabase, user)
+    const accessContext = await getAccessContext(supabase, user, { adminSupabase })
 
     if (!accessContext.canViewDashboard) {
       return NextResponse.json({ error: 'Sem permissão para acessar o dashboard.' }, { status: 403 })

@@ -21,8 +21,8 @@ export async function GET() {
     }
 
     const adminSupabase = createAdminClient()
-    const accessContext = await getAccessContext(adminSupabase, user)
-    const state = await getDashboardState(adminSupabase, accessContext)
+    const accessContext = await getAccessContext(supabase, user, { adminSupabase })
+    const state = await getDashboardState(supabase, accessContext)
 
     return NextResponse.json({
       ...state,
@@ -64,8 +64,8 @@ export async function PUT(request) {
 
     const body = await request.json()
     const adminSupabase = createAdminClient()
-    const accessContext = await getAccessContext(adminSupabase, user)
-    const savedState = await saveDashboardState(adminSupabase, accessContext, body)
+    const accessContext = await getAccessContext(supabase, user, { adminSupabase })
+    const savedState = await saveDashboardState(supabase, accessContext, body)
 
     return NextResponse.json({
       ...savedState,

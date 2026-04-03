@@ -21,18 +21,18 @@ export async function GET(request) {
       throw new Error('A confirmação do Google Calendar expirou. Tente conectar novamente.')
     }
 
-    const { adminSupabase, accessContext } = await getAuthorizedGoogleCalendarContext({ requireEdit: true })
+    const { supabase, accessContext } = await getAuthorizedGoogleCalendarContext({ requireEdit: true })
 
     if (oauthCookie.workspaceId && oauthCookie.workspaceId !== accessContext.workspaceId) {
       throw new Error('O workspace do retorno do Google Calendar não confere com a sessão atual.')
     }
 
-    const existingConnection = await getWorkspaceGoogleCalendarConnection(adminSupabase, accessContext.workspaceId)
+    const existingConnection = await getWorkspaceGoogleCalendarConnection(supabase, accessContext.workspaceId)
     const tokenData = await exchangeGoogleAuthorizationCode(request, code)
     const googleProfile = await getGoogleProfile(tokenData.access_token)
 
     await saveGoogleConnectionFromOAuth({
-      adminSupabase,
+      adminSupabase: supabase,
       workspaceId: accessContext.workspaceId,
       existingConnection,
       tokenData,

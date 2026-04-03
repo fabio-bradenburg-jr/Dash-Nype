@@ -38,7 +38,7 @@ export async function POST(request: Request) {
 
     const body = normalizeChatBody(await request.json().catch(() => ({})))
     const adminSupabase = createAdminClient()
-    const accessContext = await getAccessContext(adminSupabase, user)
+    const accessContext = await getAccessContext(supabase, user, { adminSupabase })
 
     if (!accessContext.canUseAi) {
       return NextResponse.json(
@@ -47,11 +47,11 @@ export async function POST(request: Request) {
       )
     }
 
-    const dashboardState = await getDashboardState(adminSupabase, accessContext)
+    const dashboardState = await getDashboardState(supabase, accessContext)
     const aiConfig = resolveAssistantAiConfig(dashboardState.globalIntegrations)
     const result = await requestAssistantReply({
       config: aiConfig,
-      adminSupabase,
+      adminSupabase: supabase,
       dashboardState,
       accessContext,
       clientId: body.clientId,

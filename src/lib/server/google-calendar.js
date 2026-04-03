@@ -121,7 +121,7 @@ export async function getAuthorizedGoogleCalendarContext({ requireEdit = false }
   }
 
   const adminSupabase = createAdminClient()
-  const accessContext = await getAccessContext(adminSupabase, user)
+  const accessContext = await getAccessContext(supabase, user, { adminSupabase })
 
   if (!accessContext.workspaceId) {
     throw new Error('Usuário sem workspace vinculado.')
@@ -137,6 +137,7 @@ export async function getAuthorizedGoogleCalendarContext({ requireEdit = false }
 
   return {
     user,
+    supabase,
     adminSupabase,
     accessContext,
   }

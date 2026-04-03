@@ -21,14 +21,14 @@ export async function GET() {
     }
 
     const adminSupabase = createAdminClient()
-    const accessContext = await getAccessContext(adminSupabase, user)
+    const accessContext = await getAccessContext(supabase, user, { adminSupabase })
 
     if (!accessContext.canUseAi || !accessContext.workspaceId) {
       return NextResponse.json({ error: 'Sem permissão para usar o assistente.' }, { status: 403 })
     }
 
     const conversations = await listAssistantConversations(
-      adminSupabase,
+      supabase,
       accessContext.workspaceId,
       user.id
     )
@@ -57,14 +57,14 @@ export async function POST() {
     }
 
     const adminSupabase = createAdminClient()
-    const accessContext = await getAccessContext(adminSupabase, user)
+    const accessContext = await getAccessContext(supabase, user, { adminSupabase })
 
     if (!accessContext.canUseAi || !accessContext.workspaceId) {
       return NextResponse.json({ error: 'Sem permissão para usar o assistente.' }, { status: 403 })
     }
 
     const conversation = await createAssistantConversation(
-      adminSupabase,
+      supabase,
       accessContext.workspaceId,
       user.id,
       accessContext.aiAccessLevel

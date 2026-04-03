@@ -115,8 +115,26 @@ export async function ensureUserProfile(adminSupabase, user) {
   return createdProfile
 }
 
-export async function getAccessContext(adminSupabase, user) {
-  const profile = await ensureUserProfile(adminSupabase, user)
+export async function getAccessContext(supabase, user, options = {}) {
+  const adminSupabase = options.adminSupabase || null
+  let profile = null
+
+  const { data: existingProfile, error: profileError } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', user.id)
+    .maybeSingle()
+
+  if (profileError) throw profileError
+
+  if (existingProfile) {
+    profile = existingProfile
+  } else if (adminSupabase) {
+    profile = await ensureUserProfile(adminSupabase, user)
+  } else {
+    throw new Error('Perfil do usuário não encontrado.')
+  }
+
   const role = profile.role || USER_ROLES.VIEWER
   const aiAccessLevel = resolveAiAccessLevel(profile, role)
   const workspaceId = profile.workspace_id || null
@@ -131,17 +149,17 @@ export async function getAccessContext(adminSupabase, user) {
       { data: groupAccessData, error: groupAccessError },
       { data: groupMemberData, error: groupMemberError },
     ] = await Promise.all([
-      adminSupabase
+      supabase
         .from('user_client_access')
         .select('client_id, can_view, can_edit')
         .eq('workspace_id', workspaceId)
         .eq('user_id', user.id),
-      adminSupabase
+      supabase
         .from('user_client_group_access')
         .select('group_id, can_view, can_edit')
         .eq('workspace_id', workspaceId)
         .eq('user_id', user.id),
-      adminSupabase
+      supabase
         .from('workspace_client_group_members')
         .select('group_id, client_id')
         .eq('workspace_id', workspaceId),

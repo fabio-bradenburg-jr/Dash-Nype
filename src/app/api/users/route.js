@@ -71,7 +71,7 @@ async function getAuthorizedContext(options = {}) {
   }
 
   const adminSupabase = createAdminClient()
-  const accessContext = await getAccessContext(adminSupabase, user)
+  const accessContext = await getAccessContext(supabase, user, { adminSupabase })
 
   const hasPermission = requireManageUsers ? accessContext.canManageUsers : (accessContext.canManageUsers || accessContext.canManageClients)
 
@@ -84,7 +84,7 @@ async function getAuthorizedContext(options = {}) {
     }
   }
 
-  return { adminSupabase, accessContext, user }
+  return { supabase, adminSupabase, accessContext, user }
 }
 
 export async function GET() {
@@ -92,23 +92,25 @@ export async function GET() {
     const authorized = await getAuthorizedContext({ requireManageUsers: false })
     if (authorized.errorResponse) return authorized.errorResponse
 
-    const { adminSupabase, accessContext } = authorized
+    const { supabase, adminSupabase, accessContext } = authorized
+    const profilesClient = accessContext.canManageUsers ? adminSupabase : supabase
+    const accessRowsClient = accessContext.canManageUsers ? adminSupabase : supabase
 
     const [
       { data: profiles, error: profilesError },
       { data: accessRows, error: accessError },
       { data: groupAccessRows, error: groupAccessError },
     ] = await Promise.all([
-      adminSupabase
+      profilesClient
         .from('profiles')
         .select('id, email, full_name, avatar_url, role, ai_access_level, workspace_id, created_at')
         .eq('workspace_id', accessContext.workspaceId)
         .order('created_at', { ascending: true }),
-      adminSupabase
+      accessRowsClient
         .from('user_client_access')
         .select('user_id, client_id, can_view, can_edit')
         .eq('workspace_id', accessContext.workspaceId),
-      adminSupabase
+      accessRowsClient
         .from('user_client_group_access')
         .select('user_id, group_id, can_view, can_edit')
         .eq('workspace_id', accessContext.workspaceId),

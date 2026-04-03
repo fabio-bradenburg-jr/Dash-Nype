@@ -9,8 +9,8 @@ import {
 
 export async function GET() {
   try {
-    const { adminSupabase, accessContext } = await getAuthorizedMetaConnectionContext()
-    const connection = await getWorkspaceMetaConnection(adminSupabase, accessContext.workspaceId)
+    const { supabase, accessContext } = await getAuthorizedMetaConnectionContext()
+    const connection = await getWorkspaceMetaConnection(supabase, accessContext.workspaceId)
 
     return NextResponse.json({
       connection: mapMetaConnection(connection),
@@ -30,8 +30,8 @@ export async function GET() {
 
 export async function DELETE() {
   try {
-    const { adminSupabase, accessContext } = await getAuthorizedMetaConnectionContext({ requireEdit: true })
-    await deleteWorkspaceMetaConnection(adminSupabase, accessContext.workspaceId)
+    const { supabase, accessContext } = await getAuthorizedMetaConnectionContext({ requireEdit: true })
+    await deleteWorkspaceMetaConnection(supabase, accessContext.workspaceId)
 
     return NextResponse.json({ ok: true })
   } catch (error) {

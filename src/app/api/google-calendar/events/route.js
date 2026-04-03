@@ -13,8 +13,8 @@ function resolveCalendarId(searchParams, connection) {
 
 export async function GET(request) {
   try {
-    const { adminSupabase, accessContext } = await getAuthorizedGoogleCalendarContext()
-    const connection = await getWorkspaceGoogleCalendarConnection(adminSupabase, accessContext.workspaceId)
+    const { supabase, accessContext } = await getAuthorizedGoogleCalendarContext()
+    const connection = await getWorkspaceGoogleCalendarConnection(supabase, accessContext.workspaceId)
 
     if (!connection) {
       return NextResponse.json({
@@ -26,7 +26,7 @@ export async function GET(request) {
     const calendarId = resolveCalendarId(request.nextUrl.searchParams, connection)
     const { data } = await googleCalendarFetch({
       request,
-      adminSupabase,
+      adminSupabase: supabase,
       workspaceId: accessContext.workspaceId,
       path: `calendars/${encodeURIComponent(calendarId)}/events`,
       query: {
@@ -49,8 +49,8 @@ export async function GET(request) {
 
 export async function POST(request) {
   try {
-    const { adminSupabase, accessContext } = await getAuthorizedGoogleCalendarContext({ requireEdit: true })
-    const connection = await getWorkspaceGoogleCalendarConnection(adminSupabase, accessContext.workspaceId)
+    const { supabase, accessContext } = await getAuthorizedGoogleCalendarContext({ requireEdit: true })
+    const connection = await getWorkspaceGoogleCalendarConnection(supabase, accessContext.workspaceId)
 
     if (!connection) {
       throw new Error('Conecte uma conta do Google Calendar antes de criar eventos.')
@@ -76,7 +76,7 @@ export async function POST(request) {
 
     const { data } = await googleCalendarFetch({
       request,
-      adminSupabase,
+      adminSupabase: supabase,
       workspaceId: accessContext.workspaceId,
       path: `calendars/${encodeURIComponent(calendarId)}/events`,
       method: 'POST',
