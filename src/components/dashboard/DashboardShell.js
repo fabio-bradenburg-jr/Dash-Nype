@@ -1959,6 +1959,14 @@ function formatDurationHours(value) {
   return `${hours}h ${String(minutes).padStart(2, '0')}min`
 }
 
+function normalizePersonLookup(value) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toLowerCase()
+}
+
 function formatShortDate(value) {
   const date = parseLocalDateInput(value) || (value ? new Date(value) : null)
   if (!date || Number.isNaN(date.getTime())) return '-'
@@ -5658,6 +5666,52 @@ export default function DashboardShell({ initialTab = 'home' }) {
         .some((value) => value.toLowerCase().includes(term))
     )
   }, [usersList, userSearch])
+  const mondayOwnerRankingByLookup = useMemo(
+    () => new Map((mondaySummary?.ownerRanking || []).map((item) => [normalizePersonLookup(item.label), item])),
+    [mondaySummary]
+  )
+  const mondayTasksByOwnerLookup = useMemo(() => {
+    const nextMap = new Map()
+
+    ;(mondaySummary?.taskCatalog || []).forEach((task) => {
+      ;(task.owners || []).forEach((owner) => {
+        const key = normalizePersonLookup(owner)
+        if (!key) return
+        const current = nextMap.get(key) || []
+        current.push(task)
+        nextMap.set(key, current)
+      })
+    })
+
+    return nextMap
+  }, [mondaySummary])
+  const teamMemberOperationalRows = useMemo(
+    () => usersList.map((managedUser) => {
+      const lookupKey = normalizePersonLookup(managedUser.full_name || managedUser.email)
+      const mondayOwnerSummary = mondayOwnerRankingByLookup.get(lookupKey) || null
+      const mondayTasks = mondayTasksByOwnerLookup.get(lookupKey) || []
+      const plannedHours = (managedUser.teamProfile?.allocations || []).reduce((sum, item) => sum + Number(item.weeklyHours || 0), 0)
+      const capacityHours = Number(managedUser.teamProfile?.weeklyCapacityHours || 0)
+
+      return {
+        ...managedUser,
+        mondayOwnerSummary,
+        mondayTasks,
+        plannedHours,
+        capacityHours,
+        trackedHours: Number((mondayOwnerSummary?.trackedSeconds || 0) / 3600),
+      }
+    }),
+    [usersList, mondayOwnerRankingByLookup, mondayTasksByOwnerLookup]
+  )
+  const selectedManagedUserOperationalSummary = useMemo(
+    () => teamMemberOperationalRows.find((item) => item.id === selectedManagedUser?.id) || null,
+    [teamMemberOperationalRows, selectedManagedUser]
+  )
+  const currentUserOperationalSummary = useMemo(
+    () => teamMemberOperationalRows.find((item) => item.id === user?.id) || null,
+    [teamMemberOperationalRows, user?.id]
+  )
   const metaFilteredAdsetIds = useMemo(
     () =>
       availableMetaAdsetOptions
@@ -6932,7 +6986,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
   useEffect(() => {
     const shouldFetchPresentationData = activeTab === 'apresentacao'
     const shouldFetchClickUpData = activeTab === 'clickup'
-    const shouldFetchMondayData = activeTab === 'monday'
+    const shouldFetchMondayData = activeTab === 'monday' || activeTab === 'usuarios'
 
     if (!shouldFetchPresentationData && !shouldFetchClickUpData && !shouldFetchMondayData) return
 
@@ -13736,6 +13790,14 @@ export default function DashboardShell({ initialTab = 'home' }) {
                   <small>Grupos disponíveis</small>
                   <strong>{formatNumber(clientGroups.length)}</strong>
                 </div>
+                <div className="management-stat-card">
+                  <small>Horas lançadas no Monday</small>
+                  <strong>{formatDurationHours(mondaySummary?.trackedSecondsTotal || 0)}</strong>
+                </div>
+                <div className="management-stat-card">
+                  <small>Pessoas com tempo</small>
+                  <strong>{formatNumber((mondaySummary?.ownerRanking || []).filter((item) => (item.trackedSeconds || 0) > 0).length)}</strong>
+                </div>
               </div>
             </div>
 
@@ -13815,6 +13877,40 @@ export default function DashboardShell({ initialTab = 'home' }) {
                 <div className="empty-panel glass-item users-empty-state compact-empty-state">
                   <h3>Nenhum usuário encontrado</h3>
                   <p>Ajuste a busca ou crie um novo acesso para o workspace.</p>
+                </div>
+              )}
+
+              {hasMondayConfigured && (
+                <div className="glass-panel ranking-card">
+                  <div className="section-header section-header-stack">
+                    <div>
+                      <h2>Performance operacional do time</h2>
+                      <p className="chart-subtitle">Leitura puxada do Monday para entender carga, atraso e tempo lançado por pessoa.</p>
+                    </div>
+                  </div>
+                  <div className="ranking-list">
+                    {teamMemberOperationalRows.length ? (
+                      teamMemberOperationalRows
+                        .slice()
+                        .sort((left, right) => (right.mondayOwnerSummary?.trackedSeconds || 0) - (left.mondayOwnerSummary?.trackedSeconds || 0))
+                        .map((member) => (
+                          <div key={`team-ops-${member.id}`} className="ranking-row ranking-row-rich monday-owner-row">
+                            <div className="ranking-main-column">
+                              <strong>{member.full_name || member.email}</strong>
+                              <span>
+                                {member.teamProfile?.positionTitle || 'Cargo não definido'} · {member.mondayOwnerSummary ? `${formatDurationHours(member.mondayOwnerSummary.trackedSeconds || 0)} no Monday` : 'Sem apontamento no Monday'}
+                              </span>
+                            </div>
+                            <div className="ranking-metrics">
+                              <strong>{formatNumber(member.mondayOwnerSummary?.openItems || 0)} aberto(s)</strong>
+                              <span>{formatNumber(member.mondayOwnerSummary?.overdueCount || 0)} atrasado(s)</span>
+                            </div>
+                          </div>
+                        ))
+                    ) : (
+                      <div className="ranking-empty">Ainda não encontramos dados operacionais suficientes do Monday para montar a leitura por pessoa.</div>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
@@ -14273,6 +14369,55 @@ export default function DashboardShell({ initialTab = 'home' }) {
                     </div>
                   </div>
 
+                  {hasMondayConfigured && (
+                    <div className="glass-item settings-block settings-block-full">
+                      <div className="settings-section-head">
+                        <div>
+                          <h3>Leitura operacional do Monday</h3>
+                          <p>Compare a alocação planejada desta pessoa com a carga real puxada dos boards monitorados.</p>
+                        </div>
+                      </div>
+
+                      <div className="management-stats-grid">
+                        <div className="management-stat-card">
+                          <small>Tempo lançado</small>
+                          <strong>{formatDurationHours(selectedManagedUserOperationalSummary?.mondayOwnerSummary?.trackedSeconds || 0)}</strong>
+                        </div>
+                        <div className="management-stat-card">
+                          <small>Itens abertos</small>
+                          <strong>{formatNumber(selectedManagedUserOperationalSummary?.mondayOwnerSummary?.openItems || 0)}</strong>
+                        </div>
+                        <div className="management-stat-card">
+                          <small>Atrasos</small>
+                          <strong>{formatNumber(selectedManagedUserOperationalSummary?.mondayOwnerSummary?.overdueCount || 0)}</strong>
+                        </div>
+                        <div className="management-stat-card">
+                          <small>Horas planejadas</small>
+                          <strong>{formatNumber(selectedManagedUserOperationalSummary?.plannedHours || 0)}h</strong>
+                        </div>
+                      </div>
+
+                      <div className="ranking-list">
+                        {selectedManagedUserOperationalSummary?.mondayTasks?.length ? (
+                          selectedManagedUserOperationalSummary.mondayTasks.slice(0, 6).map((task) => (
+                            <div key={`member-task-${task.id}`} className="ranking-row ranking-row-rich monday-owner-row">
+                              <div className="ranking-main-column">
+                                <strong>{task.name}</strong>
+                                <span>{task.boardName} · {task.groupLabel} · {task.statusLabel}</span>
+                              </div>
+                              <div className="ranking-metrics">
+                                <strong>{formatDurationHours(task.trackedSeconds || 0)}</strong>
+                                <span>{task.isOverdue ? `${formatNumber(task.daysOverdue || 0)} dia(s) de atraso` : (task.dueDate ? formatShortDate(task.dueDate) : 'Sem prazo')}</span>
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="ranking-empty">Nenhuma tarefa desta pessoa apareceu no Monday dentro do recorte atual.</div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
                   <div className="glass-item settings-block settings-block-full">
                     <div className="settings-section-head">
                       <div>
@@ -14491,6 +14636,36 @@ export default function DashboardShell({ initialTab = 'home' }) {
                     )}
                   </div>
                 </div>
+
+                {hasMondayConfigured && (
+                  <div className="glass-panel context-panel">
+                    <span className="management-card-kicker">Monday</span>
+                    <h3>Leitura operacional pessoal</h3>
+                    <div className="context-risk-list">
+                      <div className="context-stack-card">
+                        <div className="context-stack-head">
+                          <strong>Tempo lançado</strong>
+                          <span>{formatDurationHours(currentUserOperationalSummary?.mondayOwnerSummary?.trackedSeconds || 0)}</span>
+                        </div>
+                        <p>
+                          {formatNumber(currentUserOperationalSummary?.mondayOwnerSummary?.openItems || 0)} item(ns) abertos · {formatNumber(currentUserOperationalSummary?.mondayOwnerSummary?.overdueCount || 0)} atrasado(s)
+                        </p>
+                      </div>
+                      {(currentUserOperationalSummary?.mondayTasks || []).slice(0, 4).map((task) => (
+                        <div key={`my-task-${task.id}`} className="context-stack-card">
+                          <div className="context-stack-head">
+                            <strong>{task.name}</strong>
+                            <span>{formatDurationHours(task.trackedSeconds || 0)}</span>
+                          </div>
+                          <p>{task.boardName} · {task.groupLabel} · {task.statusLabel}</p>
+                        </div>
+                      ))}
+                      {!currentUserOperationalSummary?.mondayTasks?.length && (
+                        <p className="field-helper">Nenhuma tarefa sua apareceu no Monday dentro do recorte atual.</p>
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 <div className="glass-panel context-panel">
                   <span className="management-card-kicker">OKRs</span>
