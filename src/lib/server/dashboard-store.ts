@@ -7,6 +7,7 @@ import type {
   ClientOkrRecord,
   ClientCustomColumnRecord,
   ClientCustomTabRecord,
+  ClientTabOverrideRecord,
   ClientGroupRecord,
   ClientRecord,
   DashboardIntegrations,
@@ -804,6 +805,15 @@ function normalizeClientCustomTabRecord(
   }
 }
 
+function normalizeClientTabOverrideRecord(
+  tab: Partial<ClientTabOverrideRecord> | null | undefined
+): ClientTabOverrideRecord {
+  return {
+    key: String(tab?.key || '').trim(),
+    label: String(tab?.label || '').trim(),
+  }
+}
+
 function filterClientsByAccess(
   clients: ClientRecord[],
   accessContext: AccessContextLike
@@ -849,6 +859,7 @@ export async function getDashboardState(
       clientSystemFields: [],
       clientCustomColumns: [],
       clientCustomTabs: [],
+      clientTabOverrides: [],
       teamProfiles: [],
     }
   }
@@ -942,6 +953,9 @@ export async function getDashboardState(
     clientCustomTabs: Array.isArray(preferencePayload.clientCustomTabs)
       ? preferencePayload.clientCustomTabs.map(normalizeClientCustomTabRecord)
       : [],
+    clientTabOverrides: Array.isArray(preferencePayload.clientTabOverrides)
+      ? preferencePayload.clientTabOverrides.map(normalizeClientTabOverrideRecord).filter((tab) => tab.key && tab.label)
+      : [],
     teamProfiles: visibleTeamProfiles,
   }
 }
@@ -978,6 +992,9 @@ export async function saveDashboardState(
     : []
   const submittedClientCustomTabs = Array.isArray(state.clientCustomTabs)
     ? state.clientCustomTabs.map(normalizeClientCustomTabRecord)
+    : []
+  const submittedClientTabOverrides = Array.isArray(state.clientTabOverrides)
+    ? state.clientTabOverrides.map(normalizeClientTabOverrideRecord).filter((tab) => tab.key && tab.label)
     : []
   const submittedTeamProfiles = Array.isArray(state.teamProfiles)
     ? state.teamProfiles.map(normalizeTeamMemberProfileRecord).filter((item) => item.userId)
@@ -1028,6 +1045,7 @@ export async function saveDashboardState(
             clientSystemFields: submittedClientSystemFields,
             clientCustomColumns: submittedClientCustomColumns,
             clientCustomTabs: submittedClientCustomTabs,
+            clientTabOverrides: submittedClientTabOverrides,
             teamProfiles: submittedTeamProfiles,
           },
         },
@@ -1250,6 +1268,7 @@ export async function saveDashboardState(
             clientSystemFields: submittedClientSystemFields.length ? submittedClientSystemFields : currentState.clientSystemFields,
             clientCustomColumns: submittedClientCustomColumns.length ? submittedClientCustomColumns : currentState.clientCustomColumns,
             clientCustomTabs: submittedClientCustomTabs.length ? submittedClientCustomTabs : currentState.clientCustomTabs,
+            clientTabOverrides: submittedClientTabOverrides.length ? submittedClientTabOverrides : currentState.clientTabOverrides,
             teamProfiles: preservedTeamProfiles,
           },
         },

@@ -215,6 +215,11 @@ export interface ClientCustomTabRecord {
   columnKeys: string[]
 }
 
+export interface ClientTabOverrideRecord {
+  key: string
+  label: string
+}
+
 export type DashboardIntegrations = AiSettings & {
   metaAccessToken: string
   metaConnectionMode: string
@@ -327,6 +332,7 @@ export interface DashboardPreferences {
   clientSystemFields: ClientCustomColumnRecord[]
   clientCustomColumns: ClientCustomColumnRecord[]
   clientCustomTabs: ClientCustomTabRecord[]
+  clientTabOverrides: ClientTabOverrideRecord[]
   teamProfiles: TeamMemberProfileRecord[]
 }
 

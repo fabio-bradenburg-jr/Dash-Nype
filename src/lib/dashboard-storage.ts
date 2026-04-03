@@ -5,6 +5,7 @@ import type {
   ClientOkrRecord,
   ClientCustomColumnRecord,
   ClientCustomTabRecord,
+  ClientTabOverrideRecord,
   ClientGroupRecord,
   ClientRecord,
   DashboardIntegrations,
@@ -32,6 +33,7 @@ type ClientRecordOverrides = Partial<ClientRecord> & { integrations?: Partial<Da
 type ProductRecordOverrides = Partial<ProductRecord>
 type ClientCustomColumnOverrides = Partial<ClientCustomColumnRecord>
 type ClientCustomTabOverrides = Partial<ClientCustomTabRecord>
+type ClientTabOverrideOverrides = Partial<ClientTabOverrideRecord>
 type OperationCommentOverrides = Partial<OperationCommentRecord>
 type OperationSubtaskOverrides = Partial<OperationSubtaskRecord>
 type OperationLaneOverrides = Partial<OperationLaneRecord>
@@ -515,6 +517,7 @@ export const DEFAULT_PREFERENCES: DashboardPreferences = {
   clientSystemFields: [],
   clientCustomColumns: [],
   clientCustomTabs: [],
+  clientTabOverrides: [],
   teamProfiles: [],
 }
 
@@ -671,6 +674,13 @@ export function createClientCustomTabRecord(overrides: ClientCustomTabOverrides 
     key: keySource || createRecordId('client_tab'),
     label,
     columnKeys: Array.isArray(overrides.columnKeys) ? overrides.columnKeys.filter(Boolean) : [],
+  }
+}
+
+export function createClientTabOverrideRecord(overrides: ClientTabOverrideOverrides = {}): ClientTabOverrideRecord {
+  return {
+    key: String(overrides.key || '').trim(),
+    label: String(overrides.label || '').trim(),
   }
 }
 
@@ -872,6 +882,9 @@ export function loadDashboardPreferences(): DashboardPreferences {
         : [],
       clientCustomTabs: Array.isArray(parsed.clientCustomTabs)
         ? parsed.clientCustomTabs.map((tab) => createClientCustomTabRecord(tab))
+        : [],
+      clientTabOverrides: Array.isArray(parsed.clientTabOverrides)
+        ? parsed.clientTabOverrides.map((tab) => createClientTabOverrideRecord(tab)).filter((tab) => tab.key && tab.label)
         : [],
       teamProfiles: Array.isArray(parsed.teamProfiles)
         ? parsed.teamProfiles.map((profile) => createTeamMemberProfileRecord(profile))

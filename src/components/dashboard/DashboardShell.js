@@ -10,6 +10,7 @@ import {
   createClientRecord,
   createClientCustomColumnRecord,
   createClientCustomTabRecord,
+  createClientTabOverrideRecord,
   createClientGroupRecord,
   createDashboardTemplate,
   createOperationCardRecord,
@@ -899,6 +900,34 @@ function resolveClientRegistryColumnMeta(columnKey, systemFieldsByKey, customCol
 
   return getClientRegistryColumnMeta(columnKey)
 }
+
+function createDefaultClientSystemFields() {
+  const seenKeys = new Set()
+
+  return CLIENT_REGISTRY_VIEWS.flatMap((view) =>
+    view.columns
+      .filter((columnKey) => columnKey !== 'name')
+      .map((columnKey) => {
+        if (seenKeys.has(columnKey)) return null
+        seenKeys.add(columnKey)
+
+        const meta = getClientRegistryColumnMeta(columnKey)
+        return {
+          id: `system-${columnKey}`,
+          key: columnKey,
+          label: meta.label || columnKey,
+          type: meta.type || 'text',
+          options: [],
+          tabKey: view.key,
+          formulaExpression: '',
+          settings: {},
+        }
+      })
+      .filter(Boolean)
+  )
+}
+
+const DEFAULT_CLIENT_SYSTEM_FIELDS = createDefaultClientSystemFields()
 
 function formatClientCustomFieldValue(columnType, value) {
   if (columnType === 'currency') return formatClientCurrency(value)
@@ -2750,6 +2779,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
   const [clientSystemFields, setClientSystemFields] = useState([])
   const [clientCustomColumns, setClientCustomColumns] = useState([])
   const [clientCustomTabs, setClientCustomTabs] = useState([])
+  const [clientTabOverrides, setClientTabOverrides] = useState([])
   const [activeClientId, setActiveClientId] = useState('')
   const [newClientName, setNewClientName] = useState('')
   const [newClientCnpj, setNewClientCnpj] = useState('')
@@ -2802,6 +2832,8 @@ export default function DashboardShell({ initialTab = 'home' }) {
   const [clientSearch, setClientSearch] = useState('')
   const [clientStatusFilter, setClientStatusFilter] = useState('all')
   const [clientEditSection, setClientEditSection] = useState('geral')
+  const [isCreateClientExpanded, setIsCreateClientExpanded] = useState(true)
+  const [clientRegistryManagerMode, setClientRegistryManagerMode] = useState('')
   const [adAccounts, setAdAccounts] = useState([])
   const [insights, setInsights] = useState(null)
   const [previousInsights, setPreviousInsights] = useState(null)
@@ -3057,9 +3089,17 @@ export default function DashboardShell({ initialTab = 'home' }) {
     })
     return nextMap
   }, [operationCards])
-  const systemFieldsByKey = useMemo(
-    () => new Map(clientSystemFields.map((field) => [field.key, field])),
+  const effectiveClientSystemFields = useMemo(
+    () => (Array.isArray(clientSystemFields) && clientSystemFields.length ? clientSystemFields : DEFAULT_CLIENT_SYSTEM_FIELDS),
     [clientSystemFields]
+  )
+  const clientTabOverridesByKey = useMemo(
+    () => new Map((Array.isArray(clientTabOverrides) ? clientTabOverrides : []).map((tab) => [tab.key, tab.label])),
+    [clientTabOverrides]
+  )
+  const systemFieldsByKey = useMemo(
+    () => new Map(effectiveClientSystemFields.map((field) => [field.key, field])),
+    [effectiveClientSystemFields]
   )
   const customColumnsByKey = useMemo(
     () => new Map(clientCustomColumns.map((column) => [column.key, column])),
@@ -3067,10 +3107,10 @@ export default function DashboardShell({ initialTab = 'home' }) {
   )
   const clientFieldTabOptions = useMemo(
     () => [
-      ...CLIENT_DEFAULT_TABS.map((view) => ({ key: view.key, label: view.label })),
+      ...CLIENT_DEFAULT_TABS.map((view) => ({ key: view.key, label: clientTabOverridesByKey.get(view.key) || view.label })),
       ...clientCustomTabs.map((tab) => ({ key: tab.key, label: tab.label })),
     ],
-    [clientCustomTabs]
+    [clientCustomTabs, clientTabOverridesByKey]
   )
   const clientFormulaReferenceOptions = useMemo(() => {
     const builtInFields = [
@@ -3118,9 +3158,10 @@ export default function DashboardShell({ initialTab = 'home' }) {
     () => [
       ...CLIENT_DEFAULT_TABS.map((view) => ({
         ...view,
+        label: clientTabOverridesByKey.get(view.key) || view.label,
         columns: [
           'name',
-          ...clientSystemFields
+          ...effectiveClientSystemFields
             .filter((field) => field.tabKey === view.key && field.key !== 'name')
             .map((field) => field.key),
           ...clientCustomColumns
@@ -3145,7 +3186,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
         }))
         .filter((tab) => Array.isArray(tab.columns) && tab.columns.length > 1)
     ],
-    [clientCustomColumns, clientCustomTabs, clientSystemFields]
+    [clientCustomColumns, clientCustomTabs, effectiveClientSystemFields, clientTabOverridesByKey]
   )
   const allClientEditSections = useMemo(
     () => allClientRegistryViews.map((view) => ({ key: view.key, label: view.label })),
@@ -3154,6 +3195,26 @@ export default function DashboardShell({ initialTab = 'home' }) {
   const activeClientRegistryView = useMemo(
     () => allClientRegistryViews.find((view) => view.key === clientRegistryView) || allClientRegistryViews[0],
     [clientRegistryView, allClientRegistryViews]
+  )
+  const activeClientRegistryCustomTab = useMemo(
+    () => clientCustomTabs.find((tab) => tab.key === clientRegistryView) || null,
+    [clientCustomTabs, clientRegistryView]
+  )
+  const activeClientRegistryCustomColumns = useMemo(
+    () => clientCustomColumns.filter((column) => column.tabKey === clientRegistryView),
+    [clientCustomColumns, clientRegistryView]
+  )
+  const activeClientRegistrySystemColumns = useMemo(
+    () => effectiveClientSystemFields.filter((field) => field.tabKey === clientRegistryView),
+    [effectiveClientSystemFields, clientRegistryView]
+  )
+  const activeClientRegistryTabLabel = useMemo(
+    () =>
+      activeClientRegistryCustomTab?.label ||
+      clientTabOverridesByKey.get(clientRegistryView) ||
+      activeClientRegistryView?.label ||
+      'Aba atual',
+    [activeClientRegistryCustomTab, clientTabOverridesByKey, clientRegistryView, activeClientRegistryView]
   )
   const activeClientEditView = useMemo(
     () => allClientRegistryViews.find((view) => view.key === clientEditSection) || allClientRegistryViews[0],
@@ -3259,10 +3320,10 @@ export default function DashboardShell({ initialTab = 'home' }) {
   )
   const clientCompletenessTrackedKeys = useMemo(
     () =>
-      clientSystemFields
+      effectiveClientSystemFields
         .filter((field) => !CLIENT_COMPLETENESS_EXCLUDED_FIELDS.has(field.key))
         .map((field) => field.key),
-    [clientSystemFields]
+    [effectiveClientSystemFields]
   )
   const getClientCompleteness = useCallback((client) => {
     if (!clientCompletenessTrackedKeys.length) return null
@@ -4231,9 +4292,14 @@ export default function DashboardShell({ initialTab = 'home' }) {
     setProducts(Array.isArray(preferences.products) ? preferences.products : [])
     setOperationCards(Array.isArray(preferences.operationCards) ? preferences.operationCards : [])
     setOperationSettings(createOperationSettingsRecord(preferences.operationSettings))
-    setClientSystemFields(Array.isArray(preferences.clientSystemFields) ? preferences.clientSystemFields : [])
+    setClientSystemFields(
+      Array.isArray(preferences.clientSystemFields) && preferences.clientSystemFields.length
+        ? preferences.clientSystemFields
+        : DEFAULT_CLIENT_SYSTEM_FIELDS
+    )
     setClientCustomColumns(Array.isArray(preferences.clientCustomColumns) ? preferences.clientCustomColumns : [])
     setClientCustomTabs(Array.isArray(preferences.clientCustomTabs) ? preferences.clientCustomTabs : [])
+    setClientTabOverrides(Array.isArray(preferences.clientTabOverrides) ? preferences.clientTabOverrides : [])
     setTeamProfiles(Array.isArray(preferences.teamProfiles) ? preferences.teamProfiles : [])
     setActiveClientId(initialActiveClientId)
     setHasLoadedPreferences(true)
@@ -4567,9 +4633,14 @@ export default function DashboardShell({ initialTab = 'home' }) {
         setProducts(Array.isArray(state.products) ? state.products : [])
         setOperationCards(Array.isArray(state.operationCards) ? state.operationCards : [])
         setOperationSettings(createOperationSettingsRecord(state.operationSettings))
-        setClientSystemFields(Array.isArray(state.clientSystemFields) ? state.clientSystemFields : [])
+        setClientSystemFields(
+          Array.isArray(state.clientSystemFields) && state.clientSystemFields.length
+            ? state.clientSystemFields
+            : DEFAULT_CLIENT_SYSTEM_FIELDS
+        )
         setClientCustomColumns(Array.isArray(state.clientCustomColumns) ? state.clientCustomColumns : [])
         setClientCustomTabs(Array.isArray(state.clientCustomTabs) ? state.clientCustomTabs : [])
+        setClientTabOverrides(Array.isArray(state.clientTabOverrides) ? state.clientTabOverrides : [])
         setTeamProfiles(Array.isArray(state.teamProfiles) ? state.teamProfiles : [])
         setActiveClientId(state.activeClientId || state.clients?.[0]?.id || '')
       } catch (error) {
@@ -4596,9 +4667,10 @@ export default function DashboardShell({ initialTab = 'home' }) {
       products,
       operationCards,
       operationSettings,
-      clientSystemFields,
+      clientSystemFields: effectiveClientSystemFields,
       clientCustomColumns,
       clientCustomTabs,
+      clientTabOverrides,
       teamProfiles,
     }
 
@@ -4619,7 +4691,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
     }, 300)
 
     return () => window.clearTimeout(timeoutId)
-  }, [hasLoadedPreferences, themeColor, metric1, metric2, activeClientId, globalIntegrations, clients, clientGroups, products, operationCards, operationSettings, clientSystemFields, clientCustomColumns, clientCustomTabs, teamProfiles, userLoading, user, canPersistClientChanges, hasSyncedServerState])
+  }, [hasLoadedPreferences, themeColor, metric1, metric2, activeClientId, globalIntegrations, clients, clientGroups, products, operationCards, operationSettings, effectiveClientSystemFields, clientCustomColumns, clientCustomTabs, clientTabOverrides, teamProfiles, userLoading, user, canPersistClientChanges, hasSyncedServerState])
 
   useEffect(() => {
     ChartJS.defaults.color = '#94a3b8'
@@ -4659,6 +4731,13 @@ export default function DashboardShell({ initialTab = 'home' }) {
     setIsMetaMetricLibraryOpen(false)
     setIsRdMetricLibraryOpen(false)
   }
+
+  const focusClientCreateInput = useCallback(() => {
+    setIsCreateClientExpanded(true)
+    window.setTimeout(() => {
+      document.querySelector('.client-create-bar input')?.focus()
+    }, 120)
+  }, [])
 
   const handleSaveDashboardTemplate = () => {
     if (!activeDraftDashboardTemplate) return
@@ -5446,8 +5525,9 @@ export default function DashboardShell({ initialTab = 'home' }) {
     setNewClientColumnLabel('')
     setNewClientColumnType('text')
     setNewClientColumnOptions('')
-    setNewClientColumnTab('geral')
+    setNewClientColumnTab(clientRegistryView || 'geral')
     setNewClientColumnFormula('')
+    setClientRegistryManagerMode('edit_tab')
   }
 
   const handleCreateClientCustomTab = (event) => {
@@ -5456,11 +5536,14 @@ export default function DashboardShell({ initialTab = 'home' }) {
     const trimmedLabel = newClientTabLabel.trim()
     if (!trimmedLabel) return
 
+    const nextTab = createClientCustomTabRecord({ label: trimmedLabel })
     setClientCustomTabs((current) => [
       ...current,
-      createClientCustomTabRecord({ label: trimmedLabel }),
+      nextTab,
     ])
+    setClientRegistryView(nextTab.key)
     setNewClientTabLabel('')
+    setClientRegistryManagerMode('edit_tab')
   }
 
   const handleProductFieldChange = (productId, fieldName, value) => {
@@ -5512,7 +5595,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
                   : fieldName === 'formulaExpression'
                     ? String(value || '')
                     : column.formulaExpression,
-              key: fieldName === 'label' ? undefined : column.key,
+              key: column.key,
             })
           : column
       )
@@ -5548,11 +5631,30 @@ export default function DashboardShell({ initialTab = 'home' }) {
           ? createClientCustomTabRecord({
               ...tab,
               [fieldName]: value,
-              key: fieldName === 'label' ? undefined : tab.key,
+              key: tab.key,
             })
           : tab
       )
     )
+  }
+
+  const handleClientTabOverrideChange = (tabKey, nextLabel) => {
+    if (!canManageClients) return
+    const trimmedLabel = String(nextLabel || '').trim()
+
+    setClientTabOverrides((current) => {
+      const otherTabs = current.filter((tab) => tab.key !== tabKey)
+      if (!trimmedLabel) return otherTabs
+      return [...otherTabs, createClientTabOverrideRecord({ key: tabKey, label: trimmedLabel })]
+    })
+  }
+
+  const openClientRegistryManager = (mode) => {
+    if (!canManageClients) return
+    if (mode === 'new_column') {
+      setNewClientColumnTab(clientRegistryView || 'geral')
+    }
+    setClientRegistryManagerMode((current) => (current === mode ? '' : mode))
   }
 
   const handleClientCustomTabColumnToggle = (tabId, columnKey) => {
@@ -12358,7 +12460,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
                 <h2>Gestão de Clientes</h2>
                 <p>Controle parceiros, identidade de marca e prontidão operacional dentro do mesmo painel executivo.</p>
               </div>
-              <button type="button" className="btn btn-secondary management-header-button" onClick={() => document.querySelector('.client-create-bar input')?.focus()}>
+              <button type="button" className="btn btn-secondary management-header-button" onClick={focusClientCreateInput}>
                 <i className="bx bx-user-plus"></i>
                 Adicionar cliente
               </button>
@@ -12374,7 +12476,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
                   </p>
                 </div>
                 <div className="clients-hero-actions">
-                  <button type="button" className="btn btn-primary" onClick={() => document.querySelector('.client-create-bar input')?.focus()}>
+                  <button type="button" className="btn btn-primary" onClick={focusClientCreateInput}>
                     Novo cliente
                   </button>
                   <button type="button" className="btn btn-secondary" onClick={() => document.querySelector('.client-create-grid .client-create-bar:nth-child(2) input')?.focus()}>
@@ -12413,12 +12515,34 @@ export default function DashboardShell({ initialTab = 'home' }) {
             </div>
 
             <div className="client-create-grid">
-              <form className="glass-panel client-create-bar management-action-card" onSubmit={handleCreateClient}>
-                <div>
-                  <span className="management-card-kicker">FWO setup</span>
-                  <h3>Novo cliente</h3>
-                  <p>O cliente já nasce com o setup de implementação preenchido, fase FWO definida e checklist obrigatório por trilha.</p>
-                </div>
+              <form className={`glass-panel client-create-bar management-action-card ${isCreateClientExpanded ? 'client-create-bar-expanded' : 'client-create-bar-collapsed'}`} onSubmit={handleCreateClient}>
+                <button
+                  type="button"
+                  className="client-create-toggle"
+                  onClick={() => setIsCreateClientExpanded((current) => !current)}
+                  aria-expanded={isCreateClientExpanded}
+                >
+                  <div className="client-create-toggle-copy">
+                    <span className="management-card-kicker">FWO setup</span>
+                    <h3>Novo cliente</h3>
+                    <p>
+                      {isCreateClientExpanded
+                        ? 'O cliente já nasce com o setup de implementação preenchido, fase FWO definida e checklist obrigatório por trilha.'
+                        : `Expanda para cadastrar cliente, trilha ${CLIENT_SALES_MODEL_OPTIONS.find((option) => option.value === newClientSalesModel)?.label || 'padrão'} e governança inicial.`}
+                    </p>
+                  </div>
+                  <div className="client-create-toggle-meta">
+                    {!isCreateClientExpanded && (
+                      <span className="client-create-toggle-pill">
+                        {newClientName.trim() || 'Formulário recolhido'}
+                      </span>
+                    )}
+                    <span className={`client-create-toggle-icon ${isCreateClientExpanded ? 'active' : ''}`}>
+                      <i className="bx bx-chevron-down"></i>
+                    </span>
+                  </div>
+                </button>
+                {isCreateClientExpanded && (
                 <div className="client-create-stack">
                   <div className="client-create-inline">
                     <input type="text" value={newClientName} onChange={(event) => setNewClientName(event.target.value)} placeholder="Ex.: Clínica X, E-commerce Y..." disabled={!isMaster} />
@@ -12529,6 +12653,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
                     </button>
                   </div>
                 </div>
+                )}
               </form>
 
               <form className="glass-panel client-create-bar management-action-card" onSubmit={handleCreateClientGroup}>
@@ -12553,6 +12678,159 @@ export default function DashboardShell({ initialTab = 'home' }) {
                     <h3>Clientes cadastrados</h3>
                     <p>Cadastre contratos, financeiro, links, responsáveis, flags de entregáveis e integrações da operação em uma única base.</p>
                   </div>
+                  {canManageClients && (
+                    <div className="client-registry-manager-shell">
+                      <div className="client-registry-manager-actions">
+                        <button
+                          type="button"
+                          className={`btn btn-secondary ${clientRegistryManagerMode === 'new_tab' ? 'client-registry-manager-btn-active' : ''}`}
+                          onClick={() => openClientRegistryManager('new_tab')}
+                        >
+                          Nova aba
+                        </button>
+                        <button
+                          type="button"
+                          className={`btn btn-secondary ${clientRegistryManagerMode === 'new_column' ? 'client-registry-manager-btn-active' : ''}`}
+                          onClick={() => openClientRegistryManager('new_column')}
+                        >
+                          Nova coluna
+                        </button>
+                        <button
+                          type="button"
+                          className={`btn btn-secondary ${clientRegistryManagerMode === 'edit_tab' ? 'client-registry-manager-btn-active' : ''}`}
+                          onClick={() => openClientRegistryManager('edit_tab')}
+                        >
+                          Editar aba
+                        </button>
+                      </div>
+
+                      {clientRegistryManagerMode === 'new_tab' && (
+                        <div className="client-registry-manager-panel glass-item">
+                          <strong>Nova aba</strong>
+                          <div className="client-structure-form">
+                            <input
+                              type="text"
+                              value={newClientTabLabel}
+                              onChange={(event) => setNewClientTabLabel(event.target.value)}
+                              placeholder="Ex.: Suporte, Comercial, CS..."
+                              disabled={!canManageClients}
+                            />
+                            <button type="button" className="btn btn-primary" onClick={handleCreateClientCustomTab} disabled={!canManageClients || !newClientTabLabel.trim()}>
+                              Criar aba
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {clientRegistryManagerMode === 'new_column' && (
+                        <div className="client-registry-manager-panel glass-item">
+                          <strong>Nova coluna em {activeClientRegistryTabLabel}</strong>
+                          <div className="client-structure-form">
+                            <input
+                              type="text"
+                              value={newClientColumnLabel}
+                              onChange={(event) => setNewClientColumnLabel(event.target.value)}
+                              placeholder="Ex.: SLA, Categoria, Ticket..."
+                              disabled={!canManageClients}
+                            />
+                            <select value={newClientColumnType} onChange={(event) => setNewClientColumnType(event.target.value)} disabled={!canManageClients}>
+                              {CLIENT_CUSTOM_COLUMN_TYPE_OPTIONS.map((option) => (
+                                <option key={option.value} value={option.value}>{option.label}</option>
+                              ))}
+                            </select>
+                            <input
+                              type="text"
+                              value={newClientColumnOptions}
+                              onChange={(event) => setNewClientColumnOptions(event.target.value)}
+                              placeholder={newClientColumnType === 'select' ? 'Opções separadas por vírgula' : 'Use para dropdown'}
+                              disabled={!canManageClients || newClientColumnType !== 'select'}
+                            />
+                            <input
+                              type="text"
+                              value={newClientColumnFormula}
+                              onChange={(event) => setNewClientColumnFormula(event.target.value)}
+                              placeholder={newClientColumnType === 'formula' ? 'Ex.: ({fee} * 12) / {mediaInvestment}' : 'Use para fórmulas'}
+                              disabled={!canManageClients || newClientColumnType !== 'formula'}
+                            />
+                            <button type="button" className="btn btn-primary" onClick={handleCreateClientCustomColumn} disabled={!canManageClients || !newClientColumnLabel.trim()}>
+                              Criar coluna
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {clientRegistryManagerMode === 'edit_tab' && (
+                        <div className="client-registry-manager-panel glass-item">
+                          <div className="client-registry-manager-panel-head">
+                            <div>
+                              <strong>Editar aba atual</strong>
+                              <small>{activeClientRegistryTabLabel}</small>
+                            </div>
+                          </div>
+
+                          <div className="client-structure-form">
+                            <input
+                              type="text"
+                              value={activeClientRegistryTabLabel}
+                              onChange={(event) =>
+                                activeClientRegistryCustomTab
+                                  ? handleClientCustomTabFieldChange(activeClientRegistryCustomTab.id, 'label', event.target.value)
+                                  : handleClientTabOverrideChange(clientRegistryView, event.target.value)
+                              }
+                              placeholder="Nome da aba"
+                              disabled={!canManageClients}
+                            />
+                          </div>
+
+                          <div className="client-registry-manager-columns">
+                            <div className="client-registry-manager-column-group">
+                              <span className="field-helper">Colunas padrão dessa aba</span>
+                              <div className="stage-selector">
+                                {activeClientRegistrySystemColumns.map((column) => (
+                                  <span key={`system-column-${column.key}`} className="stage-chip">
+                                    <span>{column.label}</span>
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+
+                            <div className="client-registry-manager-column-group">
+                              <span className="field-helper">Colunas customizadas dessa aba</span>
+                              {activeClientRegistryCustomColumns.length ? (
+                                <div className="client-structure-list">
+                                  {activeClientRegistryCustomColumns.map((column) => (
+                                    <div key={column.id} className="client-structure-item">
+                                      <input
+                                        type="text"
+                                        value={column.label}
+                                        onChange={(event) => handleClientCustomColumnFieldChange(column.id, 'label', event.target.value)}
+                                        placeholder="Nome da coluna"
+                                        disabled={!canManageClients}
+                                      />
+                                      <select
+                                        value={column.type}
+                                        onChange={(event) => handleClientCustomColumnFieldChange(column.id, 'type', event.target.value)}
+                                        disabled={!canManageClients}
+                                      >
+                                        {CLIENT_CUSTOM_COLUMN_TYPE_OPTIONS.map((option) => (
+                                          <option key={`${column.id}-${option.value}`} value={option.value}>{option.label}</option>
+                                        ))}
+                                      </select>
+                                      <button type="button" className="btn btn-secondary" onClick={() => handleRemoveClientCustomColumn(column.key)}>
+                                        Excluir
+                                      </button>
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : (
+                                <p className="field-helper">Nenhuma coluna customizada nessa aba ainda.</p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 <div className="client-registry-controls">
@@ -18677,6 +18955,68 @@ export default function DashboardShell({ initialTab = 'home' }) {
           gap: 12px;
         }
 
+        .client-create-bar-collapsed {
+          gap: 0;
+        }
+
+        .client-create-toggle {
+          width: 100%;
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 16px;
+          padding: 0;
+          border: 0;
+          background: transparent;
+          color: inherit;
+          text-align: left;
+          cursor: pointer;
+        }
+
+        .client-create-toggle-copy {
+          display: grid;
+          gap: 6px;
+        }
+
+        .client-create-toggle-meta {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          flex-shrink: 0;
+        }
+
+        .client-create-toggle-pill {
+          min-height: 32px;
+          padding: 0 14px;
+          border-radius: 999px;
+          display: inline-flex;
+          align-items: center;
+          border: 1px solid rgba(143, 144, 149, 0.14);
+          background: rgba(255, 255, 255, 0.04);
+          color: rgba(225, 226, 235, 0.74);
+          font-size: 12px;
+          font-weight: 700;
+        }
+
+        .client-create-toggle-icon {
+          width: 38px;
+          height: 38px;
+          border-radius: 14px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          border: 1px solid rgba(143, 144, 149, 0.14);
+          background: rgba(255, 255, 255, 0.04);
+          color: #ffffff;
+          transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+        }
+
+        .client-create-toggle-icon.active {
+          transform: rotate(180deg);
+          border-color: color-mix(in srgb, var(--accent-blue) 20%, transparent);
+          background: color-mix(in srgb, var(--accent-blue) 10%, transparent);
+        }
+
         .management-action-card,
         .management-directory-card,
         .users-intro-card {
@@ -19073,12 +19413,12 @@ export default function DashboardShell({ initialTab = 'home' }) {
 
         .client-registry-body {
           display: grid;
-          gap: 10px;
+          gap: 8px;
         }
 
         .client-registry-row {
-          padding: 12px;
-          border-radius: 18px;
+          padding: 8px 10px;
+          border-radius: 16px;
           border: 1px solid rgba(143, 144, 149, 0.14);
           background:
             linear-gradient(180deg, rgba(255, 255, 255, 0.024), rgba(255, 255, 255, 0.012)),
@@ -19093,15 +19433,15 @@ export default function DashboardShell({ initialTab = 'home' }) {
         .client-registry-client {
           display: flex;
           align-items: center;
-          gap: 12px;
+          gap: 10px;
           min-width: 0;
         }
 
         .client-avatar-shell-sm {
-          width: 44px;
-          height: 44px;
-          border-radius: 14px;
-          font-size: 14px;
+          width: 38px;
+          height: 38px;
+          border-radius: 12px;
+          font-size: 13px;
         }
 
         .client-registry-client-copy {
@@ -19155,10 +19495,10 @@ export default function DashboardShell({ initialTab = 'home' }) {
         }
 
         .client-registry-cell-readonly {
-          min-height: 52px;
+          min-height: 42px;
           align-content: center;
-          padding: 10px 12px;
-          border-radius: 14px;
+          padding: 7px 10px;
+          border-radius: 12px;
           border: 1px solid rgba(143, 144, 149, 0.12);
           background: rgba(255, 255, 255, 0.03);
         }
@@ -19203,7 +19543,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
         .client-registry-actions {
           display: flex;
           justify-content: flex-end;
-          gap: 10px;
+          gap: 8px;
           flex-wrap: wrap;
           align-items: center;
         }
@@ -21854,6 +22194,18 @@ export default function DashboardShell({ initialTab = 'home' }) {
           color: var(--text-primary);
         }
 
+        :root[data-ui-mode='light'] .client-create-toggle-pill,
+        :root[data-ui-mode='light'] .client-create-toggle-icon {
+          background: rgba(255, 255, 255, 0.88);
+          border-color: rgba(15, 23, 42, 0.08);
+          color: var(--text-primary);
+        }
+
+        :root[data-ui-mode='light'] .client-registry-manager-panel {
+          background: rgba(255, 255, 255, 0.88);
+          border-color: rgba(15, 23, 42, 0.08);
+        }
+
         :root[data-ui-mode='light'] .client-create-inline input::placeholder {
           color: rgba(71, 85, 105, 0.62);
         }
@@ -24497,6 +24849,61 @@ export default function DashboardShell({ initialTab = 'home' }) {
           gap: 12px;
         }
 
+        .client-registry-manager-shell {
+          width: min(100%, 680px);
+          display: grid;
+          gap: 12px;
+          justify-items: stretch;
+        }
+
+        .client-registry-manager-actions {
+          display: flex;
+          justify-content: flex-end;
+          flex-wrap: wrap;
+          gap: 10px;
+        }
+
+        .client-registry-manager-btn-active {
+          border-color: color-mix(in srgb, var(--accent-blue) 24%, transparent);
+          background: color-mix(in srgb, var(--accent-blue) 10%, transparent);
+          color: #ffffff;
+        }
+
+        .client-registry-manager-panel {
+          display: grid;
+          gap: 14px;
+          padding: 16px;
+          border-radius: 20px;
+          border: 1px solid rgba(143, 144, 149, 0.14);
+          background: rgba(255, 255, 255, 0.03);
+        }
+
+        .client-registry-manager-panel > strong {
+          color: #ffffff;
+          font-size: 15px;
+        }
+
+        .client-registry-manager-panel-head {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 12px;
+        }
+
+        .client-registry-manager-panel-head small {
+          color: rgba(225, 226, 235, 0.58);
+        }
+
+        .client-registry-manager-columns {
+          display: grid;
+          gap: 14px;
+        }
+
+        .client-registry-manager-column-group {
+          display: grid;
+          gap: 10px;
+        }
+
         .user-picker-head span {
           min-width: 34px;
           height: 34px;
@@ -24891,6 +25298,12 @@ export default function DashboardShell({ initialTab = 'home' }) {
             align-items: stretch;
           }
 
+          .client-create-toggle,
+          .client-create-toggle-meta {
+            flex-direction: column;
+            align-items: flex-start;
+          }
+
           .client-create-grid-fields {
             grid-template-columns: 1fr;
           }
@@ -24976,6 +25389,12 @@ export default function DashboardShell({ initialTab = 'home' }) {
           .client-registry-search,
           .client-registry-filter-group {
             width: 100%;
+          }
+
+          .client-registry-manager-shell,
+          .client-registry-manager-actions {
+            width: 100%;
+            justify-content: flex-start;
           }
 
           .client-registry-view-tabs,
