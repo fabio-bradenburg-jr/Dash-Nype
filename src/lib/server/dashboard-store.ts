@@ -158,63 +158,67 @@ function normalizeTeamMemberPdiStatus(value: unknown): TeamMemberPdiItemRecord['
 }
 
 function normalizeTeamMemberOkrRecord(value: unknown): TeamMemberOkrRecord {
+  const record = value && typeof value === 'object' ? (value as LooseRecord) : {}
   return {
-    id: typeof value?.id === 'string' && value.id.trim() ? value.id : createRecordId('team-okr'),
-    title: String(value?.title || '').trim(),
-    metric: String(value?.metric || '').trim(),
-    targetValue: String(value?.targetValue || '').trim(),
-    currentValue: String(value?.currentValue || '').trim(),
-    unit: String(value?.unit || '').trim(),
-    dueDate: String(value?.dueDate || '').trim(),
-    status: normalizeTeamMemberOkrStatus(value?.status),
+    id: typeof record.id === 'string' && record.id.trim() ? record.id : createRecordId('team-okr'),
+    title: String(record.title || '').trim(),
+    metric: String(record.metric || '').trim(),
+    targetValue: String(record.targetValue || '').trim(),
+    currentValue: String(record.currentValue || '').trim(),
+    unit: String(record.unit || '').trim(),
+    dueDate: String(record.dueDate || '').trim(),
+    status: normalizeTeamMemberOkrStatus(record.status),
   }
 }
 
 function normalizeTeamMemberPdiItemRecord(value: unknown): TeamMemberPdiItemRecord {
+  const record = value && typeof value === 'object' ? (value as LooseRecord) : {}
   return {
-    id: typeof value?.id === 'string' && value.id.trim() ? value.id : createRecordId('team-pdi'),
-    title: String(value?.title || '').trim(),
-    competency: String(value?.competency || '').trim(),
-    actionPlan: String(value?.actionPlan || '').trim(),
-    dueDate: String(value?.dueDate || '').trim(),
-    status: normalizeTeamMemberPdiStatus(value?.status),
-    notes: String(value?.notes || '').trim(),
+    id: typeof record.id === 'string' && record.id.trim() ? record.id : createRecordId('team-pdi'),
+    title: String(record.title || '').trim(),
+    competency: String(record.competency || '').trim(),
+    actionPlan: String(record.actionPlan || '').trim(),
+    dueDate: String(record.dueDate || '').trim(),
+    status: normalizeTeamMemberPdiStatus(record.status),
+    notes: String(record.notes || '').trim(),
   }
 }
 
 function normalizeTeamMemberAllocationRecord(value: unknown): TeamMemberAllocationRecord {
+  const record = value && typeof value === 'object' ? (value as LooseRecord) : {}
   return {
-    id: typeof value?.id === 'string' && value.id.trim() ? value.id : createRecordId('team-allocation'),
-    clientId: String(value?.clientId || '').trim(),
-    roleLabel: String(value?.roleLabel || '').trim(),
-    weeklyHours: Number.isFinite(Number(value?.weeklyHours)) ? Number(value.weeklyHours) : 0,
-    focusLabel: String(value?.focusLabel || '').trim(),
+    id: typeof record.id === 'string' && record.id.trim() ? record.id : createRecordId('team-allocation'),
+    clientId: String(record.clientId || '').trim(),
+    roleLabel: String(record.roleLabel || '').trim(),
+    weeklyHours: Number.isFinite(Number(record.weeklyHours)) ? Number(record.weeklyHours) : 0,
+    focusLabel: String(record.focusLabel || '').trim(),
   }
 }
 
 function normalizeTeamMemberProfileRecord(value: unknown): TeamMemberProfileRecord {
+  const record = value && typeof value === 'object' ? (value as LooseRecord) : {}
   return {
-    userId: String(value?.userId || '').trim(),
-    positionTitle: String(value?.positionTitle || '').trim(),
-    department: String(value?.department || '').trim(),
+    userId: String(record.userId || '').trim(),
+    positionTitle: String(record.positionTitle || '').trim(),
+    department: String(record.department || '').trim(),
     seniority:
-      value?.seniority === 'junior' ||
-      value?.seniority === 'pleno' ||
-      value?.seniority === 'senior' ||
-      value?.seniority === 'expert'
-        ? value.seniority
+      record.seniority === 'junior' ||
+      record.seniority === 'pleno' ||
+      record.seniority === 'senior' ||
+      record.seniority === 'expert'
+        ? record.seniority
         : 'junior',
-    employmentType: String(value?.employmentType || '').trim(),
-    directManagerName: String(value?.directManagerName || '').trim(),
-    employmentStartDate: String(value?.employmentStartDate || '').trim(),
-    monthlyCompensation: String(value?.monthlyCompensation || '').trim(),
-    weeklyCapacityHours: Number.isFinite(Number(value?.weeklyCapacityHours)) ? Number(value.weeklyCapacityHours) : 44,
-    careerTrack: String(value?.careerTrack || '').trim(),
-    performanceSummary: String(value?.performanceSummary || '').trim(),
-    nextCareerStep: String(value?.nextCareerStep || '').trim(),
-    okrs: Array.isArray(value?.okrs) ? value.okrs.map(normalizeTeamMemberOkrRecord) : [],
-    pdiItems: Array.isArray(value?.pdiItems) ? value.pdiItems.map(normalizeTeamMemberPdiItemRecord) : [],
-    allocations: Array.isArray(value?.allocations) ? value.allocations.map(normalizeTeamMemberAllocationRecord) : [],
+    employmentType: String(record.employmentType || '').trim(),
+    directManagerName: String(record.directManagerName || '').trim(),
+    employmentStartDate: String(record.employmentStartDate || '').trim(),
+    monthlyCompensation: String(record.monthlyCompensation || '').trim(),
+    weeklyCapacityHours: Number.isFinite(Number(record.weeklyCapacityHours)) ? Number(record.weeklyCapacityHours) : 44,
+    careerTrack: String(record.careerTrack || '').trim(),
+    performanceSummary: String(record.performanceSummary || '').trim(),
+    nextCareerStep: String(record.nextCareerStep || '').trim(),
+    okrs: Array.isArray(record.okrs) ? record.okrs.map(normalizeTeamMemberOkrRecord) : [],
+    pdiItems: Array.isArray(record.pdiItems) ? record.pdiItems.map(normalizeTeamMemberPdiItemRecord) : [],
+    allocations: Array.isArray(record.allocations) ? record.allocations.map(normalizeTeamMemberAllocationRecord) : [],
   }
 }
 
