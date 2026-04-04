@@ -2,11 +2,12 @@ export const USER_APPEARANCE_KEY_PREFIX = 'nype-user-appearance'
 
 export const DEFAULT_USER_APPEARANCE = {
   mode: 'light',
-  accent: '#3b82f6',
-  backgroundTint: '#3b82f6',
+  accent: '#4744e5',
+  backgroundTint: '#4744e5',
 }
 
 export const USER_APPEARANCE_PRESETS = [
+  { label: 'Architect', value: '#4744e5' },
   { label: 'Azul', value: '#3b82f6' },
   { label: 'Esmeralda', value: '#10b981' },
   { label: 'Laranja', value: '#f59e0b' },

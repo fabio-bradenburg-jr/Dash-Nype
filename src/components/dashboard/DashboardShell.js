@@ -18295,9 +18295,9 @@ export default function DashboardShell({ initialTab = 'home', initialActiveClien
           background:
             radial-gradient(circle at top left, color-mix(in srgb, var(--accent-blue) 14%, transparent), transparent 34%),
             linear-gradient(180deg, rgba(255, 255, 255, 0.028), rgba(255, 255, 255, 0.012));
-          border: 1px solid rgba(143, 144, 149, 0.14);
-          border-radius: 28px;
-          box-shadow: 0 18px 48px rgba(0, 0, 0, 0.22);
+          border: 1px solid rgba(143, 144, 149, 0.1);
+          border-radius: 32px;
+          box-shadow: 0 18px 48px rgba(0, 0, 0, 0.16);
         }
 
         .management-hero-copy {
@@ -18340,13 +18340,13 @@ export default function DashboardShell({ initialTab = 'home', initialActiveClien
         .management-stat-card {
           min-height: 132px;
           padding: 22px;
-          border-radius: 22px;
-          border: 1px solid rgba(143, 144, 149, 0.12);
-          background: rgba(11, 14, 20, 0.64);
+          border-radius: 24px;
+          border: 1px solid rgba(143, 144, 149, 0.1);
+          background: rgba(11, 14, 20, 0.58);
           display: grid;
           align-content: space-between;
           gap: 14px;
-          box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+          box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03), 0 14px 30px rgba(0, 0, 0, 0.08);
         }
 
         .management-stat-card small {
@@ -18402,12 +18402,12 @@ export default function DashboardShell({ initialTab = 'home', initialActiveClien
         .clients-metric-card {
           min-height: 148px;
           padding: 24px;
-          border-radius: 24px;
-          border: 1px solid rgba(143, 144, 149, 0.14);
+          border-radius: 26px;
+          border: 1px solid rgba(143, 144, 149, 0.1);
           background:
             linear-gradient(180deg, rgba(255, 255, 255, 0.024), rgba(255, 255, 255, 0.012)),
             rgba(16, 19, 26, 0.92);
-          box-shadow: 0 14px 38px rgba(0, 0, 0, 0.18);
+          box-shadow: 0 14px 38px rgba(0, 0, 0, 0.14);
           display: grid;
           align-content: space-between;
           gap: 14px;
@@ -18464,13 +18464,14 @@ export default function DashboardShell({ initialTab = 'home', initialActiveClien
 
         .operation-stellar-search {
           min-height: 52px;
-          border-radius: 18px;
-          border: 1px solid rgba(255, 255, 255, 0.08);
+          border-radius: 20px;
+          border: 1px solid rgba(255, 255, 255, 0.07);
           background: rgba(16, 16, 18, 0.86);
           display: flex;
           align-items: center;
           gap: 12px;
           padding: 0 18px;
+          box-shadow: 0 14px 30px rgba(0, 0, 0, 0.08);
         }
 
         .operation-stellar-search i {
@@ -18691,7 +18692,7 @@ export default function DashboardShell({ initialTab = 'home', initialActiveClien
 
         .operation-stellar-filter select {
           min-height: 52px;
-          border-radius: 14px;
+          border-radius: 16px;
           border: 1px solid rgba(255, 255, 255, 0.06);
           background: rgba(28, 36, 64, 0.86);
           color: #eef2ff;
@@ -18701,7 +18702,7 @@ export default function DashboardShell({ initialTab = 'home', initialActiveClien
         .operation-stellar-filter-button {
           width: 54px;
           height: 54px;
-          border-radius: 14px;
+          border-radius: 16px;
           border: 1px solid rgba(255, 255, 255, 0.06);
           background: rgba(28, 36, 64, 0.86);
           color: #cbd5e1;
@@ -23176,10 +23177,10 @@ export default function DashboardShell({ initialTab = 'home', initialActiveClien
         }
 
         :root[data-ui-mode='light'] .home-tools-link {
-          background: rgba(255, 255, 255, 0.84);
-          border-color: rgba(15, 23, 42, 0.08);
+          background: linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(248, 246, 255, 0.98));
+          border-color: rgba(15, 23, 42, 0.06);
           color: var(--text-primary);
-          box-shadow: 0 10px 22px rgba(15, 23, 42, 0.04);
+          box-shadow: 0 12px 28px rgba(26, 27, 32, 0.05);
         }
 
         :root[data-ui-mode='light'] .home-tools-link span {
@@ -23188,26 +23189,26 @@ export default function DashboardShell({ initialTab = 'home', initialActiveClien
 
         :root[data-ui-mode='light'] .home-tools-link:hover,
         :root[data-ui-mode='light'] .home-tools-link.active {
-          background: color-mix(in srgb, var(--accent-blue) 8%, white);
+          background: linear-gradient(180deg, color-mix(in srgb, var(--accent-blue) 8%, white), rgba(248, 246, 255, 0.98));
           border-color: color-mix(in srgb, var(--accent-blue) 24%, rgba(15, 23, 42, 0.08));
         }
 
         :root[data-ui-mode='light'] .sidebar-toggle {
-          background: rgba(255, 255, 255, 0.96);
-          border-color: rgba(15, 23, 42, 0.08);
+          background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 246, 255, 0.98));
+          border-color: rgba(15, 23, 42, 0.06);
           color: var(--text-primary);
-          box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+          box-shadow: 0 14px 30px rgba(26, 27, 32, 0.08);
         }
 
         :root[data-ui-mode='light'] .sidebar :global(.nav-item:hover) {
-          background: linear-gradient(90deg, rgba(219, 234, 254, 0.92), rgba(239, 246, 255, 0.88));
-          color: #0f172a;
-          box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.12);
+          background: linear-gradient(90deg, rgba(239, 238, 255, 0.96), rgba(250, 248, 255, 0.92));
+          color: #1a1b20;
+          box-shadow: inset 3px 0 0 rgba(71, 68, 229, 0.72), inset 0 0 0 1px rgba(71, 68, 229, 0.08);
         }
 
         :root[data-ui-mode='light'] .sidebar :global(.nav-item.active:hover) {
-          background: linear-gradient(90deg, rgba(219, 234, 254, 0.98), rgba(239, 246, 255, 0.92));
-          box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.16);
+          background: linear-gradient(90deg, rgba(234, 232, 255, 0.98), rgba(250, 248, 255, 0.94));
+          box-shadow: inset 4px 0 0 rgba(71, 68, 229, 0.9), inset 0 0 0 1px rgba(71, 68, 229, 0.12);
         }
 
         :root[data-ui-mode='light'] .sidebar-collapsed :global(.nav-item)::after {
@@ -23219,10 +23220,10 @@ export default function DashboardShell({ initialTab = 'home', initialActiveClien
 
         :root[data-ui-mode='light'] .home-hub-hero-obsidian {
           background:
-            linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(248, 250, 252, 0.92)),
+            linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(248, 246, 255, 0.98)),
             radial-gradient(circle at top right, color-mix(in srgb, var(--accent-blue) 12%, transparent), transparent 34%);
-          border: 1px solid rgba(15, 23, 42, 0.08);
-          box-shadow: 0 18px 40px rgba(15, 23, 42, 0.06);
+          border: 1px solid rgba(15, 23, 42, 0.06);
+          box-shadow: 0 18px 40px rgba(26, 27, 32, 0.06);
         }
 
         :root[data-ui-mode='light'] .home-hub-kicker,
@@ -26332,8 +26333,11 @@ export default function DashboardShell({ initialTab = 'home', initialActiveClien
         .input-group label {
           display: block;
           color: var(--text-secondary);
-          font-size: 13px;
-          margin-bottom: 8px;
+          font-size: 12px;
+          font-weight: 800;
+          letter-spacing: 0.12em;
+          text-transform: uppercase;
+          margin-bottom: 10px;
         }
 
         .field-helper {
@@ -26355,10 +26359,10 @@ export default function DashboardShell({ initialTab = 'home', initialActiveClien
 
         .input-group input:not([type="checkbox"]):not([type="file"]) {
           width: 100%;
-          min-height: 48px;
-          padding: 0 14px;
-          border-radius: 10px;
-          background: rgba(0, 0, 0, 0.2);
+          min-height: 52px;
+          padding: 0 16px;
+          border-radius: 16px;
+          background: rgba(0, 0, 0, 0.18);
           border: 1px solid var(--border-color);
           color: white;
           font-family: inherit;
@@ -26369,10 +26373,10 @@ export default function DashboardShell({ initialTab = 'home', initialActiveClien
         .input-group select {
           display: block;
           width: 100%;
-          min-height: 48px;
-          padding: 0 14px;
-          border-radius: 10px;
-          background: rgba(0, 0, 0, 0.2);
+          min-height: 52px;
+          padding: 0 16px;
+          border-radius: 16px;
+          background: rgba(0, 0, 0, 0.18);
           border: 1px solid var(--border-color);
           color: white;
           font-family: inherit;
@@ -26384,9 +26388,9 @@ export default function DashboardShell({ initialTab = 'home', initialActiveClien
         .input-group textarea {
           width: 100%;
           min-height: 120px;
-          padding: 14px;
-          border-radius: 10px;
-          background: rgba(0, 0, 0, 0.2);
+          padding: 16px;
+          border-radius: 16px;
+          background: rgba(0, 0, 0, 0.18);
           border: 1px solid var(--border-color);
           color: white;
           font-family: inherit;
@@ -26397,10 +26401,10 @@ export default function DashboardShell({ initialTab = 'home', initialActiveClien
 
         .client-select-input {
           width: 100%;
-          min-height: 48px;
-          padding: 0 14px;
-          border-radius: 10px;
-          background: rgba(0, 0, 0, 0.2);
+          min-height: 52px;
+          padding: 0 16px;
+          border-radius: 16px;
+          background: rgba(0, 0, 0, 0.18);
           border: 1px solid var(--border-color);
           color: white;
           font-family: inherit;
@@ -26411,10 +26415,10 @@ export default function DashboardShell({ initialTab = 'home', initialActiveClien
 
         .input-group input[type="file"] {
           width: 100%;
-          min-height: 48px;
-          padding: 10px 14px;
-          border-radius: 10px;
-          background: rgba(0, 0, 0, 0.2);
+          min-height: 52px;
+          padding: 12px 16px;
+          border-radius: 16px;
+          background: rgba(0, 0, 0, 0.18);
           border: 1px solid var(--border-color);
           color: white;
           font-family: inherit;
