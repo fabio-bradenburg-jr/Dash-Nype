@@ -2844,6 +2844,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
   const [clientStatusFilter, setClientStatusFilter] = useState('all')
   const [clientEditSection, setClientEditSection] = useState('geral')
   const [isCreateClientModalOpen, setIsCreateClientModalOpen] = useState(false)
+  const [isCreateClientGroupModalOpen, setIsCreateClientGroupModalOpen] = useState(false)
   const [clientRegistryManagerMode, setClientRegistryManagerMode] = useState('')
   const [clientRegistryInlineEdit, setClientRegistryInlineEdit] = useState({ clientId: '', columnKey: '' })
   const [adAccounts, setAdAccounts] = useState([])
@@ -5111,6 +5112,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
 
     setClientGroups((currentGroups) => [...currentGroups, createClientGroupRecord({ name: trimmedName })])
     setNewClientGroupName('')
+    setIsCreateClientGroupModalOpen(false)
   }
 
   const handleCreateProduct = (event) => {
@@ -12896,7 +12898,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
                   <button type="button" className="btn btn-primary" onClick={openCreateClientModal}>
                     Novo cliente
                   </button>
-                  <button type="button" className="btn btn-secondary" onClick={() => document.querySelector('.client-create-grid .client-create-bar:nth-child(2) input')?.focus()}>
+                  <button type="button" className="btn btn-secondary" onClick={() => setIsCreateClientGroupModalOpen(true)}>
                     Novo grupo
                   </button>
                 </div>
@@ -12929,21 +12931,6 @@ export default function DashboardShell({ initialTab = 'home' }) {
                   <span>{incompleteClientsCount ? `${formatNumber(incompleteClientsCount)} cliente(s) incompletos` : 'Base bem preenchida'}</span>
                 </div>
               </div>
-            </div>
-
-            <div className="client-create-grid">
-              <form className="glass-panel client-create-bar management-action-card" onSubmit={handleCreateClientGroup}>
-                <div>
-                  <span className="management-card-kicker">New cluster</span>
-                  <h3>Novo grupo de clientes</h3>
-                  <p>Monte grupos para liberar acesso em lote e organizar dashboards relacionados.</p>
-                </div>
-                <div className="client-create-inline">
-                  <input type="text" value={newClientGroupName} onChange={(event) => setNewClientGroupName(event.target.value)} placeholder="Ex.: Franquias, Comercial, Clínicas..." disabled={!isMaster} />
-                  <button type="submit" className="btn btn-primary" disabled={!isMaster}>Adicionar grupo</button>
-                </div>
-              </form>
-
             </div>
 
             <div className="clients-grid clients-grid-single">
@@ -14878,6 +14865,44 @@ export default function DashboardShell({ initialTab = 'home' }) {
                   </button>
                   <button type="submit" className="btn btn-primary" disabled={!isMaster || !newClientName.trim() || !newClientSalesModel || !newClientStartDate}>
                     Criar cliente
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'clientes' && isCreateClientGroupModalOpen && (
+          <div className="modal-overlay" onClick={() => setIsCreateClientGroupModalOpen(false)}>
+            <div className="modal-card glass-panel modal-create-client-group" onClick={(event) => event.stopPropagation()}>
+              <div className="modal-header">
+                <div>
+                  <h3>Novo grupo de clientes</h3>
+                  <p>Monte grupos para liberar acesso em lote e organizar dashboards relacionados.</p>
+                </div>
+                <button type="button" className="modal-close" onClick={() => setIsCreateClientGroupModalOpen(false)} aria-label="Fechar cadastro de grupo">
+                  <i className="bx bx-x"></i>
+                </button>
+              </div>
+
+              <form className="client-create-stack" onSubmit={handleCreateClientGroup}>
+                <div className="input-group">
+                  <label>Nome do grupo</label>
+                  <input
+                    type="text"
+                    value={newClientGroupName}
+                    onChange={(event) => setNewClientGroupName(event.target.value)}
+                    placeholder="Ex.: Franquias, Comercial, Clínicas..."
+                    disabled={!isMaster}
+                    autoFocus
+                  />
+                </div>
+                <div className="client-create-actions">
+                  <button type="button" className="btn btn-secondary" onClick={() => setIsCreateClientGroupModalOpen(false)}>
+                    Cancelar
+                  </button>
+                  <button type="submit" className="btn btn-primary" disabled={!isMaster || !newClientGroupName.trim()}>
+                    Adicionar grupo
                   </button>
                 </div>
               </form>
@@ -19975,7 +20000,8 @@ export default function DashboardShell({ initialTab = 'home' }) {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          gap: 12px;
+          gap: 16px;
+          margin-top: 6px;
           flex-wrap: wrap;
         }
 
@@ -20151,6 +20177,11 @@ export default function DashboardShell({ initialTab = 'home' }) {
           min-width: 0;
         }
 
+        .client-registry-title-row .client-registry-edit-trigger {
+          position: static;
+          margin-left: 2px;
+        }
+
         .client-registry-client-copy strong {
           font-size: 15px;
           line-height: 1.3;
@@ -20160,15 +20191,21 @@ export default function DashboardShell({ initialTab = 'home' }) {
 
         .client-registry-client-copy input,
         .client-registry-cell input,
-        .client-registry-cell select {
+        .client-registry-cell select,
+        .client-registry-cell textarea {
+          display: block;
           width: 100%;
-          min-height: 38px;
-          padding: 8px 10px;
-          border-radius: 12px;
+          min-width: 0;
+          box-sizing: border-box;
+          min-height: 44px;
+          padding: 10px 14px;
+          border-radius: 14px;
           border: 1px solid rgba(143, 144, 149, 0.14);
           background: rgba(255, 255, 255, 0.035);
           color: #ffffff;
           font-family: inherit;
+          font-size: 14px;
+          line-height: 1.4;
           outline: none;
         }
 
@@ -20193,6 +20230,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
         .client-registry-cell {
           display: grid;
           gap: 4px;
+          min-width: 0;
         }
 
         .client-registry-cell-readonly {
@@ -20207,12 +20245,15 @@ export default function DashboardShell({ initialTab = 'home' }) {
 
         .client-registry-cell-editing {
           display: grid;
+          width: 100%;
+          min-width: 0;
         }
 
         .client-registry-cell-editing input,
         .client-registry-cell-editing select,
         .client-registry-cell-editing textarea {
           width: 100%;
+          min-width: 0;
         }
 
         .client-registry-cell-readonly strong,
@@ -20292,23 +20333,32 @@ export default function DashboardShell({ initialTab = 'home' }) {
         }
 
         .client-registry-edit-trigger {
-          width: 26px;
-          height: 26px;
+          width: 24px;
+          height: 24px;
           border-radius: 999px;
-          border: 1px solid rgba(143, 144, 149, 0.1);
+          border: 1px solid rgba(143, 144, 149, 0.08);
           background:
-            linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.04)),
-            rgba(17, 22, 32, 0.92);
-          color: rgba(225, 226, 235, 0.74);
+            linear-gradient(180deg, rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0.03)),
+            rgba(15, 20, 31, 0.78);
+          color: rgba(225, 226, 235, 0.68);
           display: inline-flex;
           align-items: center;
           justify-content: center;
           cursor: pointer;
-          box-shadow: 0 8px 18px rgba(0, 0, 0, 0.18);
+          backdrop-filter: blur(10px);
+          box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);
           opacity: 0;
-          transform: translateY(2px) scale(0.92);
+          visibility: hidden;
+          transform: translateY(4px) scale(0.9);
           pointer-events: none;
-          transition: opacity 0.18s ease, transform 0.18s ease, border-color 0.18s ease, background 0.18s ease, color 0.18s ease;
+          transition:
+            opacity 0.18s ease,
+            visibility 0.18s ease,
+            transform 0.18s ease,
+            border-color 0.18s ease,
+            background 0.18s ease,
+            color 0.18s ease,
+            box-shadow 0.18s ease;
           flex-shrink: 0;
         }
 
@@ -20323,20 +20373,22 @@ export default function DashboardShell({ initialTab = 'home' }) {
         .client-registry-cell-readonly:focus-within .client-registry-edit-trigger,
         .client-registry-client:focus-within .client-registry-edit-trigger {
           opacity: 1;
+          visibility: visible;
           transform: translateY(0) scale(1);
           pointer-events: auto;
         }
 
         .client-registry-edit-trigger:hover {
           color: #ffffff;
-          border-color: color-mix(in srgb, var(--accent-blue) 26%, transparent);
+          border-color: color-mix(in srgb, var(--accent-blue) 30%, transparent);
           background:
-            linear-gradient(180deg, color-mix(in srgb, var(--accent-blue) 24%, rgba(255,255,255,0.08)), color-mix(in srgb, var(--accent-blue) 12%, rgba(255,255,255,0.03))),
-            rgba(18, 25, 38, 0.96);
+            linear-gradient(180deg, color-mix(in srgb, var(--accent-blue) 22%, rgba(255,255,255,0.08)), color-mix(in srgb, var(--accent-blue) 10%, rgba(255,255,255,0.03))),
+            rgba(18, 25, 38, 0.94);
+          box-shadow: 0 12px 28px rgba(0, 0, 0, 0.22);
         }
 
         .client-registry-edit-trigger i {
-          font-size: 13px;
+          font-size: 12px;
         }
 
         .client-registry-multiline {
@@ -20708,8 +20760,9 @@ export default function DashboardShell({ initialTab = 'home' }) {
 
         .client-structure-form {
           display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
-          gap: 10px;
+          grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+          gap: 12px;
+          width: 100%;
         }
 
         .client-structure-grid {
@@ -21361,6 +21414,10 @@ export default function DashboardShell({ initialTab = 'home' }) {
 
         .modal-create-client {
           width: min(100%, 980px);
+        }
+
+        .modal-create-client-group {
+          width: min(100%, 620px);
         }
 
         .dashboard-entry-modal {
@@ -25967,19 +26024,27 @@ export default function DashboardShell({ initialTab = 'home' }) {
         }
 
         .client-registry-head {
-          gap: 24px;
+          gap: 32px;
           align-items: flex-start;
         }
 
         .client-registry-head-copy {
           flex: 1 1 auto;
           min-width: 0;
-          padding-right: 18px;
+          padding-right: 32px;
+          display: grid;
+          gap: 10px;
         }
 
         .client-registry-head-copy h3,
         .client-registry-head-copy p {
           max-width: 820px;
+        }
+
+        .client-registry-head-copy p {
+          margin: 0;
+          max-width: 760px;
+          line-height: 1.55;
         }
 
         .client-registry-manager-actions {
@@ -26054,13 +26119,23 @@ export default function DashboardShell({ initialTab = 'home' }) {
         }
 
         .client-structure-form-compact {
-          grid-template-columns: minmax(220px, 1.35fr) minmax(150px, 0.75fr) minmax(180px, 1fr) minmax(180px, 1fr) auto;
+          grid-template-columns: minmax(240px, 1.35fr) minmax(180px, 0.8fr) minmax(220px, 1fr) minmax(220px, 1fr);
           align-items: end;
+          gap: 12px;
+        }
+
+        .client-structure-form-compact > * {
+          min-width: 0;
+        }
+
+        .client-structure-form-compact .client-registry-manager-submit {
+          grid-column: 1 / -1;
+          justify-self: flex-start;
         }
 
         .client-registry-manager-submit {
-          min-width: 164px;
-          min-height: 54px;
+          min-width: 180px;
+          min-height: 48px;
           border-radius: 18px;
           box-shadow: 0 16px 34px color-mix(in srgb, var(--accent-blue) 22%, transparent);
         }
