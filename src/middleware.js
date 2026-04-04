@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse } from 'next/server'
+import { supabasePublishableKey, supabaseUrl } from '@/lib/supabase/config'
 
 export async function middleware(request) {
   let supabaseResponse = NextResponse.next({
@@ -7,8 +8,8 @@ export async function middleware(request) {
   })
 
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    supabaseUrl,
+    supabasePublishableKey,
     {
       cookies: {
         getAll() {
@@ -33,17 +34,21 @@ export async function middleware(request) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  // Protect Dashboard Route
-  if (!user && request.nextUrl.pathname === '/') {
+  const protectedPrefixes = ['/', '/home', '/clientes', '/operacao', '/settings']
+  const isProtectedRoute = protectedPrefixes.some((prefix) =>
+    prefix === '/' ? request.nextUrl.pathname === '/' : request.nextUrl.pathname.startsWith(prefix)
+  )
+
+  if (!user && isProtectedRoute) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
+    url.searchParams.set('next', request.nextUrl.pathname)
     return NextResponse.redirect(url)
   }
 
-  // Redirect to Dashboard if logged in and trying to access login
   if (user && request.nextUrl.pathname.startsWith('/login')) {
     const url = request.nextUrl.clone()
-    url.pathname = '/'
+    url.pathname = request.nextUrl.searchParams.get('next') || '/home'
     return NextResponse.redirect(url)
   }
 

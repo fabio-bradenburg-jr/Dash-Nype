@@ -1,9 +1,11 @@
 'use client'
 
 import { createClient } from '@/lib/supabase/client'
+import { useSearchParams } from 'next/navigation'
 import { useState } from 'react'
 
 export default function LoginPage() {
+  const searchParams = useSearchParams()
   const [loading, setLoading] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -11,6 +13,7 @@ export default function LoginPage() {
   const [isSignUp, setIsSignUp] = useState(false)
   
   const supabase = createClient()
+  const nextPath = searchParams.get('next') || '/home'
 
   const handleEmailAuth = async (e) => {
     e.preventDefault()
@@ -44,7 +47,7 @@ export default function LoginPage() {
       
       if (error) throw error
 
-      window.location.href = '/'
+      window.location.href = nextPath
     } catch (error) {
       alert('Erro na Autenticação: ' + error.message)
     } finally {
@@ -64,7 +67,7 @@ export default function LoginPage() {
         <p className="login-subtitle">
           {isSignUp 
             ? 'Cadastre-se para conectar suas APIs e ver dados em tempo real.' 
-            : 'Faça login para acessar seu painel de performance de anúncios.'}
+            : 'Faça login para acessar seu painel operacional e executivo.'}
         </p>
 
         <form onSubmit={handleEmailAuth} className="email-form">

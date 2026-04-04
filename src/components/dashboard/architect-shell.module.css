@@ -1,0 +1,466 @@
+.appShell {
+  --bg: #faf8ff;
+  --panel: #ffffff;
+  --panel-soft: #f4f3f9;
+  --panel-muted: #eeedf4;
+  --panel-strong: #e8e7ee;
+  --text: #1a1b20;
+  --text-soft: #464555;
+  --text-faint: #767587;
+  --outline: #c7c4d8;
+  --primary: #4744e5;
+  --primary-soft: #6161ff;
+  --success: #00864d;
+  --warning: #d97706;
+  --danger: #ba1a1a;
+  --shadow: 0 24px 60px rgba(26, 27, 32, 0.08);
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at top left, rgba(97, 97, 255, 0.08), transparent 24%),
+    radial-gradient(circle at bottom right, rgba(0, 134, 77, 0.08), transparent 22%),
+    var(--bg);
+  color: var(--text);
+}
+
+.sidebar {
+  position: fixed;
+  inset: 0 auto 0 0;
+  display: flex;
+  width: 16rem;
+  flex-direction: column;
+  gap: 1rem;
+  border-right: 1px solid rgba(199, 196, 216, 0.6);
+  background: rgba(250, 248, 255, 0.94);
+  padding: 1.5rem 1rem;
+  backdrop-filter: blur(18px);
+  box-shadow: 4px 0 24px rgba(0, 0, 0, 0.02);
+  z-index: 20;
+}
+
+.sidebarBrand {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  padding: 0.5rem 0.5rem 1rem;
+}
+
+.sidebarLogo {
+  display: grid;
+  height: 2.75rem;
+  width: 2.75rem;
+  place-items: center;
+  border-radius: 0.875rem;
+  background: linear-gradient(135deg, var(--primary), var(--primary-soft));
+  color: #fff;
+  font-size: 0.95rem;
+  font-weight: 800;
+}
+
+.sidebarBrand h1 {
+  font-size: 1.1rem;
+  font-weight: 900;
+  letter-spacing: -0.04em;
+}
+
+.sidebarBrand p {
+  margin-top: 0.18rem;
+  color: var(--text-faint);
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.sidebarNav {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.navLink {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  border-left: 4px solid transparent;
+  border-radius: 0.9rem;
+  color: var(--text-soft);
+  padding: 0.9rem 1rem;
+  text-decoration: none;
+  transition: background-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
+}
+
+.navLink:hover {
+  background: rgba(227, 226, 232, 0.6);
+  color: var(--text);
+  transform: translateX(2px);
+}
+
+.navLinkActive {
+  border-left-color: var(--primary);
+  background: rgba(71, 68, 229, 0.08);
+  color: var(--primary);
+  font-weight: 700;
+}
+
+.navIcon {
+  font-size: 1.2rem;
+}
+
+.sidebarProfile {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  border: 1px solid rgba(199, 196, 216, 0.5);
+  border-radius: 1rem;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 0.875rem;
+}
+
+.avatarBadge,
+.initialBadge {
+  display: grid;
+  place-items: center;
+  border-radius: 1rem;
+  color: #fff;
+  font-weight: 800;
+}
+
+.avatarBadge {
+  height: 2.5rem;
+  width: 2.5rem;
+  background: linear-gradient(135deg, var(--primary), #8b89ff);
+}
+
+.sidebarProfileCopy {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.sidebarProfileCopy strong {
+  font-size: 0.8rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidebarProfileCopy span {
+  color: var(--text-faint);
+  font-size: 0.68rem;
+}
+
+.mainContent {
+  min-height: 100vh;
+  padding-left: 16rem;
+}
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 15;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  min-height: 4rem;
+  border-bottom: 1px solid rgba(199, 196, 216, 0.35);
+  background: rgba(250, 248, 255, 0.9);
+  padding: 0 2rem;
+  backdrop-filter: blur(18px);
+}
+
+.topbarTitleGroup {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  min-width: 0;
+}
+
+.topbarTitleGroup h2 {
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+}
+
+.topbarTitleGroup p {
+  color: var(--text-soft);
+  font-size: 0.9rem;
+}
+
+.topbarDivider {
+  height: 1rem;
+  width: 1px;
+  background: rgba(199, 196, 216, 0.8);
+}
+
+.topbarActions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.iconButton {
+  display: grid;
+  height: 2.5rem;
+  width: 2.5rem;
+  place-items: center;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-soft);
+  cursor: pointer;
+}
+
+.iconButton:hover {
+  background: rgba(227, 226, 232, 0.7);
+  color: var(--text);
+}
+
+.pageContent {
+  padding: 2rem;
+}
+
+.pageIntro {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 2rem;
+  border-radius: 2rem;
+  background: linear-gradient(135deg, var(--primary), var(--primary-soft));
+  color: #fff;
+  overflow: hidden;
+  padding: 2rem;
+  position: relative;
+  box-shadow: 0 20px 40px rgba(71, 68, 229, 0.18);
+}
+
+.pageIntro::after {
+  content: '';
+  position: absolute;
+  right: -2rem;
+  top: -2rem;
+  height: 10rem;
+  width: 10rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.pageIntroCopy {
+  position: relative;
+  z-index: 1;
+  max-width: 42rem;
+}
+
+.pageIntroKicker {
+  display: inline-flex;
+  margin-bottom: 0.8rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  padding: 0.35rem 0.7rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.pageIntroCopy h1 {
+  font-size: clamp(2rem, 4vw, 3rem);
+  font-weight: 900;
+  letter-spacing: -0.06em;
+}
+
+.pageIntroCopy p {
+  margin-top: 0.8rem;
+  max-width: 38rem;
+  color: rgba(255, 255, 255, 0.84);
+  line-height: 1.6;
+}
+
+.pageIntroBadge {
+  position: relative;
+  z-index: 1;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+  padding: 0.55rem 0.9rem;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.sectionTitleWrap {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.sectionTitleBar {
+  width: 0.3rem;
+  height: 1.5rem;
+  border-radius: 999px;
+  background: var(--primary);
+}
+
+.sectionHeader h3 {
+  font-size: 1.1rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+.sectionAction {
+  color: var(--primary);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.statCard {
+  display: flex;
+  min-height: 10rem;
+  flex-direction: column;
+  justify-content: space-between;
+  border: 1px solid rgba(199, 196, 216, 0.45);
+  border-left-width: 3px;
+  border-radius: 1.2rem;
+  background: rgba(255, 255, 255, 0.88);
+  padding: 1.5rem;
+  box-shadow: var(--shadow);
+}
+
+.statCardHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  color: var(--text-faint);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.statCardIcon {
+  opacity: 0.24;
+}
+
+.statCard strong {
+  font-size: clamp(1.9rem, 3vw, 2.6rem);
+  font-weight: 900;
+  letter-spacing: -0.06em;
+}
+
+.statCard small {
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.accentPrimary {
+  border-left-color: var(--primary);
+}
+
+.accentSuccess {
+  border-left-color: var(--success);
+}
+
+.accentWarning {
+  border-left-color: var(--warning);
+}
+
+.accentDanger {
+  border-left-color: var(--danger);
+}
+
+.initialBadge {
+  height: 2.75rem;
+  width: 2.75rem;
+  font-size: 0.82rem;
+  border-radius: 0.95rem;
+}
+
+.tonePrimary {
+  background: linear-gradient(135deg, #4744e5, #7f7dff);
+}
+
+.toneSuccess {
+  background: linear-gradient(135deg, #00864d, #2bc777);
+}
+
+.toneWarning {
+  background: linear-gradient(135deg, #d97706, #f59e0b);
+}
+
+.toneDanger {
+  background: linear-gradient(135deg, #ba1a1a, #ef4444);
+}
+
+.mobileNav {
+  position: fixed;
+  inset: auto 0 0;
+  display: none;
+  align-items: center;
+  justify-content: space-around;
+  border-top: 1px solid rgba(199, 196, 216, 0.45);
+  background: rgba(250, 248, 255, 0.96);
+  padding: 0.6rem 1rem calc(0.6rem + env(safe-area-inset-bottom));
+  backdrop-filter: blur(18px);
+  z-index: 30;
+}
+
+.mobileNavLink {
+  display: flex;
+  min-width: 4.5rem;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  color: var(--text-faint);
+  text-decoration: none;
+  font-size: 0.62rem;
+  font-weight: 800;
+}
+
+.mobileNavLinkActive {
+  color: var(--primary);
+}
+
+@media (max-width: 960px) {
+  .sidebar {
+    display: none;
+  }
+
+  .mainContent {
+    padding-left: 0;
+  }
+
+  .pageContent {
+    padding: 1.25rem 1rem 5.5rem;
+  }
+
+  .topbar {
+    padding: 0 1rem;
+  }
+
+  .topbarTitleGroup p,
+  .topbarDivider {
+    display: none;
+  }
+
+  .pageIntro {
+    flex-direction: column;
+    align-items: flex-start;
+    border-radius: 1.5rem;
+    padding: 1.5rem;
+  }
+
+  .mobileNav {
+    display: flex;
+  }
+}

@@ -200,6 +200,8 @@ const CLIENT_FLAG_OPTIONS = [
   { value: 'na', label: 'N/A' },
 ]
 
+const CLIENT_BINARY_OPTIONS = ['Sim', 'Não']
+
 const CLIENT_HEALTH_FLAG_FIELDS = [
   { name: 'deliverablesFlag', label: 'Entregáveis' },
   { name: 'financialFlag', label: 'Financeiro' },
@@ -244,7 +246,7 @@ const CLIENT_REGISTRY_VIEWS = [
   {
     key: 'flags',
     label: 'Flags',
-    columns: ['name', 'healthScore', 'deliverablesFlag', 'financialFlag', 'roiFlag', 'healthScoreFlag'],
+    columns: ['name', 'healthScore', 'deliverablesFlag', 'trafficQuality', 'designQuality', 'copyQuality', 'csQuality', 'healthScoreFlag', 'roiAboveOne', 'csatAboveFour', 'npsAboveSeven', 'stakeholderAware', 'adAccountsHealthy', 'crmUsageProperly', 'clientParticipationAbove90', 'financialFlag', 'roiFlag'],
   },
   {
     key: 'quality',
@@ -532,18 +534,30 @@ function resolveOperationLaneFromSalesModel(salesModel) {
   return 'setup'
 }
 
-function getClientFlagMeta(value) {
+function getClientFlagMeta(value, variant = 'default') {
   const normalized = String(value || 'na').trim().toLowerCase()
   if (normalized === 'ok') {
+    if (variant === 'mmf') return { label: 'MM/F Saudável', tone: 'success', score: 100 }
+    if (variant === 'flag') return { label: 'Green Flag', tone: 'success', score: 100 }
     return { label: 'Ok', tone: 'success', score: 100 }
   }
   if (normalized === 'attention') {
+    if (variant === 'mmf') return { label: 'MM/F Atenção', tone: 'warning', score: 55 }
+    if (variant === 'flag') return { label: 'Yellow Flag', tone: 'warning', score: 55 }
     return { label: 'Atenção', tone: 'warning', score: 55 }
   }
   if (normalized === 'risk') {
+    if (variant === 'mmf') return { label: 'MM/F Crítico', tone: 'danger', score: 20 }
+    if (variant === 'flag') return { label: 'Red Flag', tone: 'danger', score: 20 }
     return { label: 'Risco', tone: 'danger', score: 20 }
   }
   return { label: 'N/A', tone: 'neutral', score: null }
+}
+
+function getClientFlagVariant(columnKey) {
+  if (columnKey === 'financialFlag') return 'mmf'
+  if (['deliverablesFlag', 'roiFlag', 'healthScoreFlag'].includes(columnKey)) return 'flag'
+  return 'default'
 }
 
 function calculateClientHealthScore(client) {
@@ -699,15 +713,44 @@ function deriveCoverageFlag(values = []) {
   return 'risk'
 }
 
+function mapClientQualityScore(value) {
+  const normalized = String(value || '').trim().toLowerCase()
+  if (!normalized) return null
+  if (normalized === 'bom') return 3
+  if (normalized === 'médio' || normalized === 'medio') return 2
+  return 1
+}
+
+function normalizeBinaryClientAnswer(value) {
+  const normalized = String(value || '').trim().toLowerCase()
+  if (normalized === 'sim') return 'yes'
+  if (normalized === 'não' || normalized === 'nao') return 'no'
+  return ''
+}
+
+function deriveBinaryFlagFromAnswer(answer, fallbackFlag = 'na') {
+  if (answer === 'yes') return 'ok'
+  if (answer === 'no') return 'risk'
+  return fallbackFlag
+}
+
+function getDefaultClientSystemFieldOptions(columnKey) {
+  if (['trafficQuality', 'designQuality', 'copyQuality', 'csQuality'].includes(columnKey)) {
+    return ['Bom', 'Médio', 'Ruim']
+  }
+
+  if (['roiAboveOne', 'csatAboveFour', 'npsAboveSeven', 'stakeholderAware', 'adAccountsHealthy', 'crmUsageProperly', 'clientParticipationAbove90'].includes(columnKey)) {
+    return CLIENT_BINARY_OPTIONS
+  }
+
+  return []
+}
+
 function deriveClientComputedFields(client) {
   const revenue = parseClientNumber(client?.monthlyRevenue)
   const mediaInvestment = parseClientNumber(client?.mediaInvestment)
   const fee = parseClientNumber(client?.fee)
   const contributionMarginPercent = parseClientNumber(client?.contributionMarginPercent)
-  const profitMarginPercent = parseClientNumber(client?.profitMarginPercent)
-  const organicDemands = parseClientNumber(client?.organicDemands)
-  const trafficDemands = parseClientNumber(client?.trafficDemands)
-  const totalDemands = parseClientNumber(client?.totalDemands)
   const contractLifetimeMonths = getContractLifetimeMonths(client?.contractSignedAt)
   const adAccountsCount = [
     client?.metaAdAccountId,
@@ -715,50 +758,54 @@ function deriveClientComputedFields(client) {
     client?.tiktokAdsAccountId,
     client?.linkedInAdsAccountId,
   ].filter((value) => String(value || '').trim()).length
+  const contributionMarginRatio = contributionMarginPercent != null ? contributionMarginPercent / 100 : null
+  const roiAboveOneAnswer = normalizeBinaryClientAnswer(client?.roiAboveOne)
+  const csatAboveFourAnswer = normalizeBinaryClientAnswer(client?.csatAboveFour)
+  const npsAboveSevenAnswer = normalizeBinaryClientAnswer(client?.npsAboveSeven)
+  const stakeholderAwareAnswer = normalizeBinaryClientAnswer(client?.stakeholderAware)
+  const adAccountsHealthyAnswer = normalizeBinaryClientAnswer(client?.adAccountsHealthy)
+  const crmUsageProperlyAnswer = normalizeBinaryClientAnswer(client?.crmUsageProperly)
+  const clientParticipationAbove90Answer = normalizeBinaryClientAnswer(client?.clientParticipationAbove90)
 
   const roiMarketing = revenue != null && mediaInvestment != null && mediaInvestment > 0
     ? revenue / mediaInvestment
     : null
-  const mmf = mediaInvestment != null && fee != null && fee > 0
-    ? mediaInvestment / fee
+  const mmf = revenue != null && contributionMarginRatio != null && mediaInvestment != null && fee != null && fee > 0
+    ? ((revenue * contributionMarginRatio) - mediaInvestment) / fee
     : null
   const ltv = fee != null && contractLifetimeMonths != null
     ? fee * contractLifetimeMonths
     : null
 
-  const financialFlag = (() => {
-    if (revenue == null && fee == null && contributionMarginPercent == null && profitMarginPercent == null) return 'na'
-    if (
-      revenue != null &&
-      fee != null &&
-      revenue > fee &&
-      (profitMarginPercent == null || profitMarginPercent > 0) &&
-      (contributionMarginPercent == null || contributionMarginPercent > 0)
-    ) {
-      return 'ok'
-    }
-    if (
-      (revenue != null && fee != null) ||
-      contributionMarginPercent != null ||
-      profitMarginPercent != null
-    ) {
-      return 'attention'
-    }
-    return 'risk'
-  })()
+  const financialFlag = mmf == null
+    ? 'na'
+    : mmf < 1
+      ? 'risk'
+      : mmf < 1.5
+        ? 'attention'
+        : 'ok'
 
-  const roiFlag = roiMarketing == null ? 'na' : deriveScoreFlag(roiMarketing * 100)
+  const roiFlag = roiMarketing == null
+    ? 'na'
+    : roiMarketing < 0
+      ? 'risk'
+      : roiMarketing < 1
+        ? 'attention'
+        : 'ok'
   const deliverablesFlag = (() => {
-    if (organicDemands == null && trafficDemands == null && totalDemands == null) return 'na'
-    if (
-      organicDemands != null &&
-      trafficDemands != null &&
-      totalDemands != null &&
-      totalDemands === organicDemands + trafficDemands
-    ) {
-      return 'ok'
-    }
-    return 'attention'
+    const scores = [
+      mapClientQualityScore(client?.trafficQuality),
+      mapClientQualityScore(client?.designQuality),
+      mapClientQualityScore(client?.copyQuality),
+      mapClientQualityScore(client?.csQuality),
+    ].filter((value) => Number.isFinite(value))
+
+    if (!scores.length) return 'na'
+
+    const average = scores.reduce((sum, value) => sum + value, 0) / scores.length
+    if (average < 1.8) return 'risk'
+    if (average < 2.6) return 'attention'
+    return 'ok'
   })()
   const crmUsageFlag = deriveCoverageFlag([
     client?.rdStationAccountId,
@@ -766,30 +813,33 @@ function deriveClientComputedFields(client) {
     Array.isArray(client?.rdQualifiedStages) ? client.rdQualifiedStages : [],
   ])
   const csAttendanceFlag = deriveCoverageFlag([client?.csOwner])
-  const csatFlag = deriveCoverageFlag([client?.csOwner, client?.dashboardUrl])
-  const clientParticipationFlag = deriveCoverageFlag([client?.dashboardUrl, client?.driveUrl, client?.contractUrl])
-  const adAccountsFlag = adAccountsCount === 0 ? 'risk' : adAccountsCount >= 2 ? 'ok' : 'attention'
-  const stakeholderFlag = deriveCoverageFlag([client?.contractUrl, client?.projectManager])
-  const npsFlag = deriveCoverageFlag([client?.csOwner, client?.projectManager, client?.contractUrl])
-
-  const aggregateScore = [
-    deliverablesFlag,
-    financialFlag,
-    roiFlag,
-    crmUsageFlag,
-    csAttendanceFlag,
+  const csatFlag = deriveBinaryFlagFromAnswer(csatAboveFourAnswer, deriveCoverageFlag([client?.csOwner, client?.dashboardUrl]))
+  const clientParticipationFlag = deriveBinaryFlagFromAnswer(clientParticipationAbove90Answer, deriveCoverageFlag([client?.dashboardUrl, client?.driveUrl, client?.contractUrl]))
+  const adAccountsFlag = deriveBinaryFlagFromAnswer(adAccountsHealthyAnswer, adAccountsCount === 0 ? 'risk' : adAccountsCount >= 2 ? 'ok' : 'attention')
+  const stakeholderFlag = deriveBinaryFlagFromAnswer(stakeholderAwareAnswer, deriveCoverageFlag([client?.contractUrl, client?.projectManager]))
+  const npsFlag = deriveBinaryFlagFromAnswer(npsAboveSevenAnswer, deriveCoverageFlag([client?.csOwner, client?.projectManager, client?.contractUrl]))
+  const roiAboveOneFlag = deriveBinaryFlagFromAnswer(
+    roiAboveOneAnswer,
+    roiMarketing == null ? 'na' : roiMarketing >= 1 ? 'ok' : 'risk'
+  )
+  const crmUsageFlagResolved = deriveBinaryFlagFromAnswer(crmUsageProperlyAnswer, crmUsageFlag)
+  const healthChecks = [
     csatFlag,
-    clientParticipationFlag,
-    adAccountsFlag,
     npsFlag,
     stakeholderFlag,
+    adAccountsFlag,
+    crmUsageFlagResolved,
+    clientParticipationFlag,
   ]
-    .map((flag) => getClientFlagMeta(flag).score)
-    .filter((value) => Number.isFinite(value))
-
-  const healthScoreFlag = aggregateScore.length
-    ? deriveScoreFlag(aggregateScore.reduce((sum, value) => sum + value, 0) / aggregateScore.length)
-    : 'na'
+  const healthInputsCount = healthChecks.filter((value) => value !== 'na').length + (roiAboveOneFlag === 'na' ? 0 : 1)
+  const negativeCount = healthChecks.filter((value) => value === 'risk').length + (roiAboveOneFlag === 'risk' ? 1 : 0)
+  const healthScoreFlag = healthInputsCount === 0
+    ? 'na'
+    : negativeCount >= 4
+      ? 'risk'
+      : negativeCount >= 2
+        ? 'attention'
+        : 'ok'
 
   return {
     roiMarketing: roiMarketing == null ? '' : formatDerivedClientNumber(roiMarketing, 2),
@@ -798,13 +848,20 @@ function deriveClientComputedFields(client) {
     financialFlag,
     roiFlag,
     deliverablesFlag,
-    crmUsageFlag,
+    crmUsageFlag: crmUsageFlagResolved,
     csAttendanceFlag,
     csatFlag,
     clientParticipationFlag,
     adAccountsFlag,
     npsFlag,
     stakeholderFlag,
+    roiAboveOne: roiAboveOneAnswer === 'yes' ? 'Sim' : roiAboveOneAnswer === 'no' ? 'Não' : '',
+    csatAboveFour: csatAboveFourAnswer === 'yes' ? 'Sim' : csatAboveFourAnswer === 'no' ? 'Não' : '',
+    npsAboveSeven: npsAboveSevenAnswer === 'yes' ? 'Sim' : npsAboveSevenAnswer === 'no' ? 'Não' : '',
+    stakeholderAware: stakeholderAwareAnswer === 'yes' ? 'Sim' : stakeholderAwareAnswer === 'no' ? 'Não' : '',
+    adAccountsHealthy: adAccountsHealthyAnswer === 'yes' ? 'Sim' : adAccountsHealthyAnswer === 'no' ? 'Não' : '',
+    crmUsageProperly: crmUsageProperlyAnswer === 'yes' ? 'Sim' : crmUsageProperlyAnswer === 'no' ? 'Não' : '',
+    clientParticipationAbove90: clientParticipationAbove90Answer === 'yes' ? 'Sim' : clientParticipationAbove90Answer === 'no' ? 'Não' : '',
     healthScoreFlag,
   }
 }
@@ -845,7 +902,18 @@ function getClientRegistryColumnMeta(columnKey) {
     ltv: { label: 'LTV', type: 'currency' },
     healthScore: { label: 'Health', type: 'health' },
     deliverablesFlag: { label: 'Flag dos Entregáveis', type: 'flag' },
-    financialFlag: { label: 'Flag Financeira', type: 'flag' },
+    trafficQuality: { label: 'Gestão de Tráfego', type: 'status' },
+    designQuality: { label: 'Design', type: 'status' },
+    copyQuality: { label: 'Copy', type: 'status' },
+    csQuality: { label: 'CS Atendimento', type: 'status' },
+    roiAboveOne: { label: 'ROI Acima de 1?', type: 'status' },
+    csatAboveFour: { label: 'CSAT Igual ou superior a 4?', type: 'status' },
+    npsAboveSeven: { label: 'NPS Igual ou superior a 7?', type: 'status' },
+    stakeholderAware: { label: 'Stakeholder Pagador Consciente Dos Avanços?', type: 'status' },
+    adAccountsHealthy: { label: 'Contas de Anúncio Ativa? Saldo Ok?', type: 'status' },
+    crmUsageProperly: { label: 'CRM Em Uso Corretamente?', type: 'status' },
+    clientParticipationAbove90: { label: 'Cliente Participou de >90% dos Check-ins?', type: 'status' },
+    financialFlag: { label: 'Flag MM/F', type: 'flag' },
     roiFlag: { label: 'Flag do ROI', type: 'flag' },
     healthScoreFlag: { label: 'Flag Health Score', type: 'flag' },
     crmUsageFlag: { label: 'CRM Em Uso Corretamente?', type: 'flag' },
@@ -923,7 +991,7 @@ function createDefaultClientSystemFields() {
           key: columnKey,
           label: meta.label || columnKey,
           type: meta.type || 'text',
-          options: [],
+          options: getDefaultClientSystemFieldOptions(columnKey),
           tabKey: view.key,
           formulaExpression: '',
           settings: {},
@@ -2715,7 +2783,25 @@ function getSummaryMetricValue(metricKey, summary, customMetrics) {
   }
 }
 
-export default function DashboardShell({ initialTab = 'home' }) {
+function mergeInitialClientRecord(currentClients, initialClientRecord) {
+  if (!initialClientRecord || typeof initialClientRecord !== 'object' || !initialClientRecord.id) {
+    return Array.isArray(currentClients) ? currentClients : []
+  }
+
+  const normalizedRecord = createClientRecord(initialClientRecord)
+  const existingClients = Array.isArray(currentClients) ? currentClients : []
+  const existingClient = existingClients.find((client) => client.id === normalizedRecord.id)
+
+  if (!existingClient) {
+    return [normalizedRecord, ...existingClients]
+  }
+
+  return existingClients.map((client) =>
+    client.id === normalizedRecord.id ? createClientRecord({ ...client, ...normalizedRecord }) : client
+  )
+}
+
+export default function DashboardShell({ initialTab = 'home', initialActiveClientId = '', initialClientRecord = null }) {
   const { user, profile, access, appearance, updateAppearance, loading: userLoading } = useUser()
   const supabase = createClient()
   const dashboardRef = useRef(null)
@@ -2847,6 +2933,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
   const [isCreateClientGroupModalOpen, setIsCreateClientGroupModalOpen] = useState(false)
   const [clientRegistryManagerMode, setClientRegistryManagerMode] = useState('')
   const [clientRegistryInlineEdit, setClientRegistryInlineEdit] = useState({ clientId: '', columnKey: '' })
+  const [clientRegistryHover, setClientRegistryHover] = useState({ clientId: '', columnKey: '' })
   const [adAccounts, setAdAccounts] = useState([])
   const [insights, setInsights] = useState(null)
   const [previousInsights, setPreviousInsights] = useState(null)
@@ -4347,7 +4434,8 @@ export default function DashboardShell({ initialTab = 'home' }) {
     const initialClients = preferences.clients?.length
       ? preferences.clients
       : [createClientRecord({ name: 'Cliente demo' })]
-    const initialActiveClientId = preferences.activeClientId || initialClients[0]?.id || ''
+    const mergedInitialClients = mergeInitialClientRecord(initialClients, initialClientRecord)
+    const resolvedInitialActiveClientId = initialActiveClientId || preferences.activeClientId || initialClients[0]?.id || ''
 
     setThemeColor(preferences.themeColor)
     setMetric1(preferences.metric1)
@@ -4359,7 +4447,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
         ...normalizeAiSettings(preferences.globalIntegrations || {}),
       }
     )
-    setClients(initialClients)
+    setClients(mergedInitialClients)
     setClientGroups(Array.isArray(preferences.clientGroups) ? cloneClientGroups(preferences.clientGroups) : [])
     setProducts(Array.isArray(preferences.products) ? preferences.products : [])
     setOperationCards(Array.isArray(preferences.operationCards) ? preferences.operationCards : [])
@@ -4378,9 +4466,9 @@ export default function DashboardShell({ initialTab = 'home' }) {
     setClientCustomTabs(Array.isArray(preferences.clientCustomTabs) ? preferences.clientCustomTabs : [])
     setClientTabOverrides(Array.isArray(preferences.clientTabOverrides) ? preferences.clientTabOverrides : [])
     setTeamProfiles(Array.isArray(preferences.teamProfiles) ? preferences.teamProfiles : [])
-    setActiveClientId(initialActiveClientId)
+    setActiveClientId(resolvedInitialActiveClientId)
     setHasLoadedPreferences(true)
-  }, [])
+  }, [initialActiveClientId, initialClientRecord])
 
   useEffect(() => {
     if (!hasLoadedPreferences || userLoading || !user) return
@@ -4705,7 +4793,8 @@ export default function DashboardShell({ initialTab = 'home' }) {
             ...normalizeAiSettings(nextIntegrations),
           }
         })
-        setClients(Array.isArray(state.clients) ? state.clients : [])
+        const mergedServerClients = mergeInitialClientRecord(Array.isArray(state.clients) ? state.clients : [], initialClientRecord)
+        setClients(mergedServerClients)
         setClientGroups(Array.isArray(state.clientGroups) ? cloneClientGroups(state.clientGroups) : [])
         setProducts(Array.isArray(state.products) ? state.products : [])
         setOperationCards(Array.isArray(state.operationCards) ? state.operationCards : [])
@@ -4724,7 +4813,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
         setClientCustomTabs(Array.isArray(state.clientCustomTabs) ? state.clientCustomTabs : [])
         setClientTabOverrides(Array.isArray(state.clientTabOverrides) ? state.clientTabOverrides : [])
         setTeamProfiles(Array.isArray(state.teamProfiles) ? state.teamProfiles : [])
-        setActiveClientId(state.activeClientId || state.clients?.[0]?.id || '')
+        setActiveClientId(initialActiveClientId || initialClientRecord?.id || state.activeClientId || mergedServerClients[0]?.id || '')
       } catch (error) {
         console.error('Erro ao sincronizar estado do servidor:', error)
       } finally {
@@ -4733,7 +4822,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
     }
 
     syncFromServer()
-  }, [hasLoadedPreferences, userLoading, user, hasSyncedServerState])
+  }, [hasLoadedPreferences, userLoading, user, hasSyncedServerState, initialActiveClientId, initialClientRecord])
 
   useEffect(() => {
     if (!hasLoadedPreferences) return
@@ -6672,6 +6761,10 @@ export default function DashboardShell({ initialTab = 'home' }) {
       !isEditorMode &&
       clientRegistryInlineEdit.clientId === client.id &&
       clientRegistryInlineEdit.columnKey === columnKey
+    const isInlineHovered =
+      !isEditorMode &&
+      clientRegistryHover.clientId === client.id &&
+      clientRegistryHover.columnKey === columnKey
     const handleInlineKeyDown = (event) => {
       if (event.key === 'Escape') {
         closeClientRegistryInlineEdit()
@@ -6690,7 +6783,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
       !(meta.type === 'flag' && DERIVED_CLIENT_FLAG_KEYS.has(columnKey))
     )
     const renderInlineEditAction = () => (
-      canInlineEditCell ? (
+      canInlineEditCell && isInlineHovered ? (
         <button
           type="button"
           className="client-registry-edit-trigger"
@@ -6706,7 +6799,14 @@ export default function DashboardShell({ initialTab = 'home' }) {
     )
 
     const renderInlineTextCell = (content, tone = 'default') => (
-      <div key={columnKey} className={`client-registry-cell client-registry-cell-readonly ${tone !== 'default' ? `client-registry-cell-${tone}` : ''}`}>
+      <div
+        key={columnKey}
+        className={`client-registry-cell client-registry-cell-readonly ${tone !== 'default' ? `client-registry-cell-${tone}` : ''}`}
+        onMouseEnter={() => setClientRegistryHover({ clientId: client.id, columnKey })}
+        onMouseLeave={() => setClientRegistryHover((current) => (
+          current.clientId === client.id && current.columnKey === columnKey ? { clientId: '', columnKey: '' } : current
+        ))}
+      >
         {renderInlineEditAction()}
         {content}
       </div>
@@ -7271,7 +7371,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
 
     if (meta.type === 'flag') {
       if (DERIVED_CLIENT_FLAG_KEYS.has(columnKey)) {
-        const derivedMeta = getClientFlagMeta(value)
+        const derivedMeta = getClientFlagMeta(value, getClientFlagVariant(columnKey))
         return (
           <div key={columnKey} className={isEditorMode ? 'input-group' : 'client-registry-cell'}>
             {isEditorMode && <label>{meta.label}</label>}
@@ -7281,7 +7381,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
       }
 
       if (!isEditorMode) {
-        const flagMeta = getClientFlagMeta(value)
+        const flagMeta = getClientFlagMeta(value, getClientFlagVariant(columnKey))
         return renderInlineTextCell(
           <span className={`client-status-badge client-status-${flagMeta.tone}`}>{flagMeta.label}</span>
         )
@@ -13218,7 +13318,14 @@ export default function DashboardShell({ initialTab = 'home' }) {
 
                               if (meta.type === 'name') {
                                 return (
-                                  <div key={columnKey} className="client-registry-client">
+                                  <div
+                                    key={columnKey}
+                                    className="client-registry-client"
+                                    onMouseEnter={() => setClientRegistryHover({ clientId: client.id, columnKey: 'name' })}
+                                    onMouseLeave={() => setClientRegistryHover((current) => (
+                                      current.clientId === client.id && current.columnKey === 'name' ? { clientId: '', columnKey: '' } : current
+                                    ))}
+                                  >
                                     <div className="client-avatar-shell client-avatar-shell-sm">
                                       {client.logoUrl ? (
                                         <img
@@ -13247,7 +13354,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
                                     ) : (
                                       <div className="client-registry-title-row">
                                         <strong>{client.name || 'Cliente sem nome'}</strong>
-                                        {canEditClientRecord(client.id) && (
+                                        {canEditClientRecord(client.id) && clientRegistryHover.clientId === client.id && clientRegistryHover.columnKey === 'name' && (
                                           <button
                                             type="button"
                                             className="client-registry-edit-trigger"

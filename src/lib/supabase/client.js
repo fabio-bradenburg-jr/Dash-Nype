@@ -1,4 +1,5 @@
 import { createBrowserClient } from '@supabase/ssr'
+import { supabasePublishableKey, supabaseUrl } from './config'
 
 let browserClient
 
@@ -39,8 +40,8 @@ export function createClient() {
   }
 
   browserClient = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    supabaseUrl,
+    supabasePublishableKey,
     {
       auth: {
         storage: resolveStorage(),

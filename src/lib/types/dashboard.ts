@@ -284,6 +284,17 @@ export interface ClientRecord {
   designer: string
   csOwner: string
   copyOwner: string
+  trafficQuality: string
+  designQuality: string
+  copyQuality: string
+  csQuality: string
+  roiAboveOne: string
+  csatAboveFour: string
+  npsAboveSeven: string
+  stakeholderAware: string
+  adAccountsHealthy: string
+  crmUsageProperly: string
+  clientParticipationAbove90: string
   organicDemands: string
   trafficDemands: string
   totalDemands: string
