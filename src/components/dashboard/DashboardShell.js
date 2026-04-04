@@ -11718,41 +11718,47 @@ export default function DashboardShell({ initialTab = 'home', initialActiveClien
             <i className="bx bx-bar-chart-alt-2"></i>
             {!isSidebarCollapsed && (
               <div className="logo-copy">
-                <span>Nype OS</span>
-                <small>Control center</small>
+                <span>Agency Hub</span>
+                <small>High Performance</small>
               </div>
             )}
           </div>
         </div>
 
         <nav className="nav-menu">
-          <button type="button" data-tooltip="Assistente" className={`nav-item nav-button ${activeTab === 'assistant' ? 'active' : ''}`} onClick={() => setActiveTab('assistant')}>
-            <i className="bx bx-bot"></i> Assistente
+          <button type="button" data-tooltip="Search" className={`nav-item nav-button ${activeTab === 'assistant' ? 'active' : ''}`} onClick={() => setActiveTab('assistant')}>
+            <i className="bx bx-search-alt"></i> Search
+          </button>
+          <button type="button" data-tooltip="Home" className={`nav-item nav-button ${activeTab === 'home' ? 'active' : ''}`} onClick={() => setActiveTab('home')}>
+            <i className="bx bx-home-alt-2"></i> Home
           </button>
           {canAccessClientsTab && (
-            <button type="button" data-tooltip="Clientes" className={`nav-item nav-button ${activeTab === 'clientes' ? 'active' : ''}`} onClick={() => setActiveTab('clientes')}>
-              <i className="bx bxs-buildings"></i> Clientes
+            <button type="button" data-tooltip="Clients" className={`nav-item nav-button ${activeTab === 'clientes' ? 'active' : ''}`} onClick={() => setActiveTab('clientes')}>
+              <i className="bx bxs-buildings"></i> Clients
             </button>
           )}
-          <button type="button" data-tooltip="Apresentação" className={`nav-item nav-button ${activeTab === 'apresentacao' ? 'active' : ''}`} onClick={() => setActiveTab('apresentacao')}>
-            <i className="bx bxs-dashboard"></i> Apresentação
+          <button type="button" data-tooltip="Presentation" className={`nav-item nav-button ${activeTab === 'apresentacao' ? 'active' : ''}`} onClick={() => setActiveTab('apresentacao')}>
+            <i className="bx bxs-dashboard"></i> Presentation
           </button>
-          <button type="button" data-tooltip="Contexto" className={`nav-item nav-button ${activeTab === 'contexto' ? 'active' : ''}`} onClick={() => setActiveTab('contexto')}>
-            <i className="bx bx-pulse"></i> Contexto
+          <button type="button" data-tooltip="Operations" className={`nav-item nav-button ${activeTab === 'operacao' ? 'active' : ''}`} onClick={() => setActiveTab('operacao')}>
+            <i className="bx bx-briefcase-alt-2"></i> Operations
           </button>
-          <button type="button" data-tooltip="Monday" className={`nav-item nav-button ${activeTab === 'monday' ? 'active' : ''}`} onClick={() => setActiveTab('monday')}>
-            <i className="bx bx-columns"></i> Monday
+          <button type="button" data-tooltip="Intelligence" className={`nav-item nav-button ${activeTab === 'contexto' ? 'active' : ''}`} onClick={() => setActiveTab('contexto')}>
+            <i className="bx bx-pulse"></i> Intelligence
+          </button>
+          <button type="button" data-tooltip="Boards" className={`nav-item nav-button ${activeTab === 'monday' ? 'active' : ''}`} onClick={() => setActiveTab('monday')}>
+            <i className="bx bx-columns"></i> Boards
           </button>
           {canAccessTeamTab && (
-            <button type="button" data-tooltip="Time" className={`nav-item nav-button ${activeTab === 'usuarios' ? 'active' : ''}`} onClick={() => setActiveTab('usuarios')}>
-              <i className="bx bxs-user-detail"></i> Time
+            <button type="button" data-tooltip="Team" className={`nav-item nav-button ${activeTab === 'usuarios' ? 'active' : ''}`} onClick={() => setActiveTab('usuarios')}>
+              <i className="bx bxs-user-detail"></i> Team
             </button>
           )}
-          <a href="/settings" data-tooltip="Configurações" className="nav-item">
-            <i className="bx bx-cog"></i> Configurações
+          <a href="/settings" data-tooltip="Settings" className="nav-item">
+            <i className="bx bx-cog"></i> Settings
           </a>
-          <a href="/privacy" data-tooltip="Política e Privacidade" className="nav-item" target="_blank" rel="noreferrer">
-            <i className="bx bx-shield-quarter"></i> Política e Privacidade
+          <a href="/privacy" data-tooltip="Security" className="nav-item" target="_blank" rel="noreferrer">
+            <i className="bx bx-shield-quarter"></i> Security
           </a>
         </nav>
 
@@ -11920,30 +11926,30 @@ export default function DashboardShell({ initialTab = 'home', initialActiveClien
         <header className="header" style={{ alignItems: 'flex-start' }}>
           <div className="page-title">
             <h1>
-              {activeTab === 'home' && 'Home'}
-              {activeTab === 'clientes' && 'Base de clientes'}
-              {activeTab === 'operacao' && 'Operação'}
-              {activeTab === 'produtos' && 'Base de produtos'}
-              {activeTab === 'apresentacao' && `Dashboard ${activeClient?.name || 'do cliente'}`}
-              {activeTab === 'contexto' && 'Painel de operação'}
+              {activeTab === 'home' && 'Agency Hub'}
+              {activeTab === 'clientes' && 'Global Client Dashboard'}
+              {activeTab === 'operacao' && 'Operations Overview'}
+              {activeTab === 'produtos' && 'Offer Portfolio'}
+              {activeTab === 'apresentacao' && `${activeClient?.name || 'Client'} Dashboard`}
+              {activeTab === 'contexto' && 'Retention Intelligence'}
               {activeTab === 'assistant' && assistantGreeting}
-              {activeTab === 'calendar' && 'Agenda da operação'}
-              {activeTab === 'clickup' && 'Operação ClickUp'}
-              {activeTab === 'monday' && 'Operação Monday'}
-              {activeTab === 'usuarios' && (canManageUsers ? 'Gestão de time' : 'Meu desenvolvimento')}
+              {activeTab === 'calendar' && 'Operations Calendar'}
+              {activeTab === 'clickup' && 'ClickUp Operations'}
+              {activeTab === 'monday' && 'Board Operations'}
+              {activeTab === 'usuarios' && (canManageUsers ? 'Team Performance' : 'My Performance')}
             </h1>
             {activeTab !== 'assistant' && (
               <p>
-                {activeTab === 'home' && 'Entre por aqui sempre que abrir o app e escolha rapidamente qual área da operação você quer acessar.'}
-                {activeTab === 'clientes' && 'Cadastre seus clientes e mantenha cada operação separada dentro do dashboard.'}
-                {activeTab === 'operacao' && 'Gerencie cards, responsáveis, fases e filtros operacionais em visões de Kanban, Tabela e Tickets.'}
-                {activeTab === 'produtos' && 'Cadastre os produtos da operação e vincule cada cliente a uma oferta padronizada.'}
-                {activeTab === 'apresentacao' && 'Uma visão executiva consolidada dos principais resultados do cliente, organizada por fonte de dados.'}
-                {activeTab === 'contexto' && 'Uma leitura consolidada da carteira para acompanhar churn, fee, health score e prioridades operacionais.'}
-                {activeTab === 'calendar' && 'Acompanhe a agenda da operação dentro da mesma Home, sem trocar de área.'}
-                {activeTab === 'clickup' && 'Acompanhe tarefas, responsáveis e status operacionais do ClickUp a partir da configuração global da operação.'}
-                {activeTab === 'monday' && 'Acompanhe boards, itens, status e responsáveis do Monday a partir da configuração global da operação.'}
-                {activeTab === 'usuarios' && (canManageUsers ? 'Gerencie pessoas, acessos, PDI, metas e carteira de atendimento do time.' : 'Acompanhe seu escopo, metas, PDI e evolução dentro da operação.')}
+                {activeTab === 'home' && 'Sua visão principal da agência com alertas, clientes em risco e atalhos para decisões rápidas.'}
+                {activeTab === 'clientes' && 'Gerencie sua carteira em uma leitura mais executiva, com health, churn, ROI e contexto operacional por cliente.'}
+                {activeTab === 'operacao' && 'Acompanhe demandas, responsáveis, prioridades e gargalos em uma visão operacional mais clara e moderna.'}
+                {activeTab === 'produtos' && 'Organize ofertas, linhas de receita e pacotes para padronizar a operação comercial da agência.'}
+                {activeTab === 'apresentacao' && 'Uma visão executiva pronta para reunião, consolidando performance, financeiro e sinais críticos do cliente.'}
+                {activeTab === 'contexto' && 'Centralize health score, churn risk, alertas e sinais de desalinhamento para priorizar retenção.'}
+                {activeTab === 'calendar' && 'Acompanhe a agenda operacional e os próximos pontos de contato sem sair do hub principal.'}
+                {activeTab === 'clickup' && 'Monitore filas, responsáveis e execução do ClickUp com leitura consolidada da operação.'}
+                {activeTab === 'monday' && 'Entenda carga, status, throughput e gargalos dos boards em uma leitura executiva da operação.'}
+                {activeTab === 'usuarios' && (canManageUsers ? 'Acompanhe performance, escopo, metas e evolução do time em um dashboard unificado.' : 'Acompanhe sua evolução, metas e contexto operacional dentro do hub da agência.')}
               </p>
             )}
             {activeTab === 'assistant' && (

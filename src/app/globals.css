@@ -208,16 +208,18 @@ body {
     letter-spacing: -0.03em;
     color: var(--text-primary);
     margin-bottom: 30px;
-    padding: 10px 14px;
-    min-height: 64px;
-    border-radius: 20px;
-    background: rgba(255, 255, 255, 0.02);
-    border: 1px solid rgba(255, 255, 255, 0.04);
+    padding: 12px 14px;
+    min-height: 68px;
+    border-radius: 22px;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.01));
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
 :root[data-ui-mode='light'] .logo {
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.84), rgba(248, 246, 255, 0.96));
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(247, 244, 255, 0.98));
     border-color: rgba(15, 23, 42, 0.06);
+    box-shadow: 0 16px 34px rgba(26, 27, 32, 0.05);
 }
 
 .logo-copy {
@@ -227,21 +229,30 @@ body {
 
 .logo-copy span {
     display: block;
-    font-size: 17px;
+    font-size: 18px;
+    font-weight: 900;
+    letter-spacing: -0.04em;
 }
 
 .logo-copy small {
     color: var(--text-muted);
-    font-size: 11px;
+    font-size: 10px;
     font-weight: 800;
-    letter-spacing: 0.14em;
+    letter-spacing: 0.18em;
     text-transform: uppercase;
 }
 
 .logo i {
-    color: var(--accent-blue);
-    font-size: 28px;
-    filter: drop-shadow(0 0 10px var(--glow-blue));
+    width: 42px;
+    height: 42px;
+    display: grid;
+    place-items: center;
+    border-radius: 14px;
+    color: #ffffff;
+    font-size: 22px;
+    background: linear-gradient(135deg, var(--accent-blue), color-mix(in srgb, var(--accent-blue) 72%, white));
+    box-shadow: 0 14px 30px rgba(var(--accent-rgb), 0.28);
+    filter: none;
 }
 
 .nav-menu {
@@ -259,7 +270,7 @@ body {
     padding: 0 18px;
     color: var(--text-secondary);
     text-decoration: none;
-    border-radius: 18px;
+    border-radius: 20px;
     font-family: var(--font-family-headline);
     font-size: 14px;
     font-weight: 700;
@@ -280,8 +291,8 @@ body {
 }
 
 :root[data-ui-mode='light'] .nav-item:hover {
-    background: linear-gradient(90deg, rgba(242, 242, 255, 0.96), rgba(250, 248, 255, 0.92));
-    border-color: rgba(71, 68, 229, 0.1);
+    background: linear-gradient(90deg, rgba(242, 242, 255, 0.98), rgba(250, 248, 255, 0.94));
+    border-color: rgba(71, 68, 229, 0.12);
     box-shadow: inset 3px 0 0 rgba(71, 68, 229, 0.7);
 }
 
@@ -299,14 +310,14 @@ body {
 
 :root[data-ui-mode='light'] .nav-item.active {
     background:
-        linear-gradient(180deg, rgba(71, 68, 229, 0.12), rgba(71, 68, 229, 0.05)),
+        linear-gradient(180deg, rgba(71, 68, 229, 0.14), rgba(71, 68, 229, 0.05)),
         rgba(255, 255, 255, 0.92);
     color: #4744e5;
-    border-color: rgba(71, 68, 229, 0.14);
+    border-color: rgba(71, 68, 229, 0.16);
     box-shadow:
         inset 0 1px 0 rgba(255, 255, 255, 0.9),
         inset 4px 0 0 rgba(71, 68, 229, 0.9),
-        0 14px 26px rgba(26, 27, 32, 0.05);
+        0 16px 30px rgba(26, 27, 32, 0.06);
 }
 
 .user-profile {
@@ -359,9 +370,9 @@ body {
     justify-content: space-between;
     align-items: center;
     margin-bottom: 28px;
-    min-height: 88px;
-    padding: 18px 22px;
-    border-radius: 28px;
+    min-height: 96px;
+    padding: 22px 24px;
+    border-radius: 30px;
     border: 1px solid rgba(255, 255, 255, 0.08);
     background:
         radial-gradient(circle at top right, rgba(255, 255, 255, 0.03), transparent 24%),
@@ -384,9 +395,9 @@ body {
 .page-title h1 {
     font-family: var(--font-family-headline);
     font-size: clamp(34px, 4vw, 50px);
-    font-weight: 800;
-    margin-bottom: 10px;
-    line-height: 0.98;
+    font-weight: 900;
+    margin-bottom: 12px;
+    line-height: 0.94;
     letter-spacing: -0.05em;
     background: linear-gradient(to right, #fafafa, #a3a3a3);
     background-clip: text;
@@ -405,8 +416,8 @@ body {
 .page-title p {
     color: var(--text-secondary);
     font-size: 15px;
-    line-height: 1.65;
-    max-width: 860px;
+    line-height: 1.72;
+    max-width: 820px;
 }
 
 :root[data-ui-mode='light'] .page-title p {
