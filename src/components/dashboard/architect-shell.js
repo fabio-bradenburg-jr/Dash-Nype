@@ -1,5 +1,4 @@
 import Link from 'next/link'
-import { AccountMenu } from '@/components/dashboard/account-menu'
 import styles from './architect-shell.module.css'
 
 const NAV_ITEMS = [
@@ -77,7 +76,9 @@ export function ArchitectShell({
             <button type="button" className={styles.iconButton} aria-label="Theme">
               <span className="material-symbols-outlined">contrast</span>
             </button>
-            <AccountMenu />
+            <Link href="/settings" className={styles.iconButton} aria-label="Settings">
+              <span className="material-symbols-outlined">account_circle</span>
+            </Link>
           </div>
         </header>
 

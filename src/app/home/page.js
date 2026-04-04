@@ -65,7 +65,12 @@ export default async function HomePage() {
     : riskClientsFallback
 
   return (
-    <ArchitectShell activeNav="home" topTitle="Architect" userName={user.user_metadata?.full_name || user.email || 'User'} userRole={access.role || 'authenticated'}>
+    <ArchitectShell
+      activeNav="home"
+      topTitle="Architect"
+      userName={user.user_metadata?.full_name || user.email || 'User'}
+      userRole={access.role || 'authenticated'}
+    >
       <PageIntro
         kicker="Dashboard Home"
         title="Welcome back, Master User"
@@ -291,7 +296,7 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <style jsx>{`
+      <style>{`
         @media (max-width: 1080px) {
           .home-main-grid {
             grid-template-columns: 1fr !important;

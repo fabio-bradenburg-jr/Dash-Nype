@@ -345,7 +345,7 @@ export default async function ClientesPage() {
         </article>
       </section>
 
-      <style jsx>{`
+      <style>{`
         @media (max-width: 980px) {
           .clients-hero-grid {
             grid-template-columns: 1fr !important;

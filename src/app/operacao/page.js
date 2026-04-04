@@ -283,7 +283,7 @@ export default async function OperacaoPage() {
         </aside>
       </section>
 
-      <style jsx>{`
+      <style>{`
         @media (max-width: 1080px) {
           .ops-hero-grid,
           .ops-main-grid {

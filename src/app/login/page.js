@@ -1,11 +1,9 @@
 'use client'
 
 import { createClient } from '@/lib/supabase/client'
-import { useSearchParams } from 'next/navigation'
 import { useState } from 'react'
 
 export default function LoginPage() {
-  const searchParams = useSearchParams()
   const [loading, setLoading] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -13,12 +11,15 @@ export default function LoginPage() {
   const [isSignUp, setIsSignUp] = useState(false)
   
   const supabase = createClient()
-  const nextPath = searchParams.get('next') || '/home'
 
   const handleEmailAuth = async (e) => {
     e.preventDefault()
     try {
       setLoading(true)
+      const nextPath =
+        typeof window === 'undefined'
+          ? '/home'
+          : new URLSearchParams(window.location.search).get('next') || '/home'
 
       if (isSignUp) {
         const registerResponse = await fetch('/api/auth/register', {
