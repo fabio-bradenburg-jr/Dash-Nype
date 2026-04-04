@@ -2987,13 +2987,18 @@ export default function DashboardShell({ initialTab = 'home' }) {
 
   useEffect(() => {
     setNewClientOperationLane(resolveOperationLaneFromSalesModel(newClientSalesModel))
+    const availablePhaseLabels = (
+      Array.isArray(clientImplementationPhases) && clientImplementationPhases.length
+        ? clientImplementationPhases
+        : getDefaultClientImplementationPhases()
+    ).map((phase) => String(phase?.label || '').trim()).filter(Boolean)
     const suggestedPhaseLabel = IMPLEMENTATION_PHASE_BY_SALES_MODEL[newClientSalesModel] || ''
     setNewClientImplementationPhase((current) => (
-      current && clientImplementationPhaseMap.has(current)
+      current && availablePhaseLabels.includes(current)
         ? current
-        : (clientImplementationPhaseMap.has(suggestedPhaseLabel) ? suggestedPhaseLabel : '')
+        : (availablePhaseLabels.includes(suggestedPhaseLabel) ? suggestedPhaseLabel : '')
     ))
-  }, [clientImplementationPhaseMap, newClientSalesModel])
+  }, [clientImplementationPhases, newClientSalesModel])
 
   useEffect(() => {
     setNewClientOperationEnabled(operationSettings?.autoCreateCardForNewClient !== false)
