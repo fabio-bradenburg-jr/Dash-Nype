@@ -9,6 +9,7 @@ import { createClient } from '@/lib/supabase/client'
 import {
   createClientRecord,
   createClientCustomColumnRecord,
+  createClientImplementationPhaseRecord,
   createClientCustomTabRecord,
   createClientTabOverrideRecord,
   createClientGroupRecord,
@@ -23,6 +24,7 @@ import {
   createTeamMemberPdiItemRecord,
   createTeamMemberProfileRecord,
   DEFAULT_INTEGRATIONS,
+  DEFAULT_CLIENT_IMPLEMENTATION_PHASES,
   DEFAULT_META_CAMPAIGN_TABLE_COLUMN_KEYS,
   DEFAULT_PREFERENCES,
   loadDashboardPreferences,
@@ -107,6 +109,10 @@ const IMPLEMENTATION_PHASE_BY_SALES_MODEL = {
   INSIDE_SALES: 'Implementação (Inside Sales)',
   ECOM: 'Implementação (Ecom)',
   PDV: 'Implementação (PDV)',
+}
+
+function getDefaultClientImplementationPhases() {
+  return DEFAULT_CLIENT_IMPLEMENTATION_PHASES.map((phase) => createClientImplementationPhaseRecord(phase))
 }
 const OPERATION_VIEW_OPTIONS = [
   { value: 'kanban', label: 'Kanban' },
@@ -826,15 +832,15 @@ function getClientRegistryColumnMeta(columnKey) {
     tier: { label: 'Tier', type: 'text' },
     squad: { label: 'Squad', type: 'text' },
     salesModel: { label: 'Modelo de Vendas', type: 'status' },
-    implementationPhase: { label: 'Fase FWO', type: 'status' },
-    implementationObservation: { label: 'Observação da Implementação', type: 'long_text' },
+    implementationPhase: { label: 'Etapa da Jornada', type: 'status' },
+    implementationObservation: { label: 'Observações da Jornada', type: 'long_text' },
     status: { label: 'Status', type: 'status' },
     product: { label: 'Produto', type: 'text' },
     fee: { label: 'Fee', type: 'currency' },
     mediaInvestment: { label: 'Investimento em Mídia', type: 'currency' },
     contractSignedAt: { label: 'Assinatura do Contrato', type: 'date' },
     churnDate: { label: 'Data de Churn', type: 'date' },
-    startDate: { label: 'Data de Início', type: 'date' },
+    startDate: { label: 'Data de Entrada', type: 'date' },
     step: { label: 'STEP', type: 'text' },
     ltv: { label: 'LTV', type: 'currency' },
     healthScore: { label: 'Health', type: 'health' },
@@ -2776,6 +2782,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
   const [products, setProducts] = useState([])
   const [operationCards, setOperationCards] = useState([])
   const [operationSettings, setOperationSettings] = useState(() => createOperationSettingsRecord())
+  const [clientImplementationPhases, setClientImplementationPhases] = useState([])
   const [clientSystemFields, setClientSystemFields] = useState([])
   const [clientCustomColumns, setClientCustomColumns] = useState([])
   const [clientCustomTabs, setClientCustomTabs] = useState([])
@@ -2784,6 +2791,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
   const [newClientName, setNewClientName] = useState('')
   const [newClientCnpj, setNewClientCnpj] = useState('')
   const [newClientSalesModel, setNewClientSalesModel] = useState('INSIDE_SALES')
+  const [newClientImplementationPhase, setNewClientImplementationPhase] = useState(IMPLEMENTATION_PHASE_BY_SALES_MODEL.INSIDE_SALES)
   const [newClientStartDate, setNewClientStartDate] = useState(getTodayDateInputValue())
   const [newClientImplementationObservation, setNewClientImplementationObservation] = useState('')
   const [newClientOperationEnabled, setNewClientOperationEnabled] = useState(true)
@@ -2829,10 +2837,13 @@ export default function DashboardShell({ initialTab = 'home' }) {
   const [newClientOkrCycleDays, setNewClientOkrCycleDays] = useState('')
   const [newClientNoteBody, setNewClientNoteBody] = useState('')
   const [clientRegistryView, setClientRegistryView] = useState('geral')
+  const [clientRegistryDisplayMode, setClientRegistryDisplayMode] = useState('table')
+  const [clientKanbanDragClientId, setClientKanbanDragClientId] = useState('')
+  const [clientKanbanDropPhaseKey, setClientKanbanDropPhaseKey] = useState('')
   const [clientSearch, setClientSearch] = useState('')
   const [clientStatusFilter, setClientStatusFilter] = useState('all')
   const [clientEditSection, setClientEditSection] = useState('geral')
-  const [isCreateClientExpanded, setIsCreateClientExpanded] = useState(true)
+  const [isCreateClientModalOpen, setIsCreateClientModalOpen] = useState(false)
   const [clientRegistryManagerMode, setClientRegistryManagerMode] = useState('')
   const [clientRegistryInlineEdit, setClientRegistryInlineEdit] = useState({ clientId: '', columnKey: '' })
   const [adAccounts, setAdAccounts] = useState([])
@@ -2976,7 +2987,13 @@ export default function DashboardShell({ initialTab = 'home' }) {
 
   useEffect(() => {
     setNewClientOperationLane(resolveOperationLaneFromSalesModel(newClientSalesModel))
-  }, [newClientSalesModel])
+    const suggestedPhaseLabel = IMPLEMENTATION_PHASE_BY_SALES_MODEL[newClientSalesModel] || ''
+    setNewClientImplementationPhase((current) => (
+      current && clientImplementationPhaseMap.has(current)
+        ? current
+        : (clientImplementationPhaseMap.has(suggestedPhaseLabel) ? suggestedPhaseLabel : '')
+    ))
+  }, [clientImplementationPhaseMap, newClientSalesModel])
 
   useEffect(() => {
     setNewClientOperationEnabled(operationSettings?.autoCreateCardForNewClient !== false)
@@ -3106,6 +3123,25 @@ export default function DashboardShell({ initialTab = 'home' }) {
     () => new Map(clientCustomColumns.map((column) => [column.key, column])),
     [clientCustomColumns]
   )
+  const effectiveClientImplementationPhases = useMemo(
+    () => (Array.isArray(clientImplementationPhases) && clientImplementationPhases.length ? clientImplementationPhases : getDefaultClientImplementationPhases()),
+    [clientImplementationPhases]
+  )
+  const clientImplementationPhaseMap = useMemo(
+    () => new Map(effectiveClientImplementationPhases.map((phase) => [phase.label, phase])),
+    [effectiveClientImplementationPhases]
+  )
+  const getClientJourneyPhasePreview = useCallback((phase) => {
+    if (!phase) return ''
+    const lines = [
+      phase.description ? `Resumo: ${phase.description}` : '',
+      phase.objective ? `Objetivo: ${phase.objective}` : '',
+      phase.slaDays ? `SLA esperado: ${phase.slaDays} dia(s)` : '',
+      Array.isArray(phase.checklist) && phase.checklist.length ? `Checklist base:\n- ${phase.checklist.join('\n- ')}` : '',
+    ].filter(Boolean)
+
+    return lines.join('\n\n')
+  }, [])
   const clientFieldTabOptions = useMemo(
     () => [
       ...CLIENT_DEFAULT_TABS.map((view) => ({ key: view.key, label: clientTabOverridesByKey.get(view.key) || view.label })),
@@ -3366,6 +3402,35 @@ export default function DashboardShell({ initialTab = 'home' }) {
       return matchesSearch && matchesStatus
     })
   }, [clients, clientSearch, clientStatusFilter, getClientCompleteness, productsById])
+  const clientKanbanColumns = useMemo(() => {
+    const orderedPhases = Array.from(
+      new Set(
+        [
+          ...effectiveClientImplementationPhases.map((phase) => phase.label),
+          ...filteredClients
+            .map((client) => String(client.implementationPhase || '').trim())
+            .filter(Boolean),
+        ]
+      )
+    )
+
+    const columns = orderedPhases.map((phaseLabel) => ({
+      key: phaseLabel,
+      label: phaseLabel,
+      clients: filteredClients.filter((client) => String(client.implementationPhase || '').trim() === phaseLabel),
+    }))
+
+    const clientsWithoutPhase = filteredClients.filter((client) => !String(client.implementationPhase || '').trim())
+    if (clientsWithoutPhase.length) {
+      columns.push({
+        key: 'sem_fase',
+        label: 'Sem fase',
+        clients: clientsWithoutPhase,
+      })
+    }
+
+    return columns
+  }, [effectiveClientImplementationPhases, filteredClients])
   const filteredOperationCards = useMemo(() => {
     const now = Date.now()
     const periodThresholds = {
@@ -4293,6 +4358,11 @@ export default function DashboardShell({ initialTab = 'home' }) {
     setProducts(Array.isArray(preferences.products) ? preferences.products : [])
     setOperationCards(Array.isArray(preferences.operationCards) ? preferences.operationCards : [])
     setOperationSettings(createOperationSettingsRecord(preferences.operationSettings))
+    setClientImplementationPhases(
+      Array.isArray(preferences.clientImplementationPhases) && preferences.clientImplementationPhases.length
+        ? preferences.clientImplementationPhases
+        : getDefaultClientImplementationPhases()
+    )
     setClientSystemFields(
       Array.isArray(preferences.clientSystemFields) && preferences.clientSystemFields.length
         ? preferences.clientSystemFields
@@ -4634,6 +4704,11 @@ export default function DashboardShell({ initialTab = 'home' }) {
         setProducts(Array.isArray(state.products) ? state.products : [])
         setOperationCards(Array.isArray(state.operationCards) ? state.operationCards : [])
         setOperationSettings(createOperationSettingsRecord(state.operationSettings))
+        setClientImplementationPhases(
+          Array.isArray(state.clientImplementationPhases) && state.clientImplementationPhases.length
+            ? state.clientImplementationPhases
+            : getDefaultClientImplementationPhases()
+        )
         setClientSystemFields(
           Array.isArray(state.clientSystemFields) && state.clientSystemFields.length
             ? state.clientSystemFields
@@ -4668,6 +4743,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
       products,
       operationCards,
       operationSettings,
+      clientImplementationPhases: effectiveClientImplementationPhases,
       clientSystemFields: effectiveClientSystemFields,
       clientCustomColumns,
       clientCustomTabs,
@@ -4692,7 +4768,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
     }, 300)
 
     return () => window.clearTimeout(timeoutId)
-  }, [hasLoadedPreferences, themeColor, metric1, metric2, activeClientId, globalIntegrations, clients, clientGroups, products, operationCards, operationSettings, effectiveClientSystemFields, clientCustomColumns, clientCustomTabs, clientTabOverrides, teamProfiles, userLoading, user, canPersistClientChanges, hasSyncedServerState])
+  }, [hasLoadedPreferences, themeColor, metric1, metric2, activeClientId, globalIntegrations, clients, clientGroups, products, operationCards, operationSettings, effectiveClientImplementationPhases, effectiveClientSystemFields, clientCustomColumns, clientCustomTabs, clientTabOverrides, teamProfiles, userLoading, user, canPersistClientChanges, hasSyncedServerState])
 
   useEffect(() => {
     ChartJS.defaults.color = '#94a3b8'
@@ -4733,10 +4809,10 @@ export default function DashboardShell({ initialTab = 'home' }) {
     setIsRdMetricLibraryOpen(false)
   }
 
-  const focusClientCreateInput = useCallback(() => {
-    setIsCreateClientExpanded(true)
+  const openCreateClientModal = useCallback(() => {
+    setIsCreateClientModalOpen(true)
     window.setTimeout(() => {
-      document.querySelector('.client-create-bar input')?.focus()
+      document.querySelector('.modal-create-client input')?.focus()
     }, 120)
   }, [])
 
@@ -4948,7 +5024,9 @@ export default function DashboardShell({ initialTab = 'home' }) {
     const trimmedName = newClientName.trim()
     if (!trimmedName || !newClientSalesModel || !newClientStartDate) return
 
-    const implementationPhase = IMPLEMENTATION_PHASE_BY_SALES_MODEL[newClientSalesModel] || ''
+    const implementationPhase = clientImplementationPhaseMap.has(newClientImplementationPhase)
+      ? newClientImplementationPhase
+      : ''
     const newClient = createClientRecord({
       name: trimmedName,
       cnpj: normalizeCnpjInput(newClientCnpj),
@@ -4991,6 +5069,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
     setNewClientName('')
     setNewClientCnpj('')
     setNewClientSalesModel('INSIDE_SALES')
+    setNewClientImplementationPhase(IMPLEMENTATION_PHASE_BY_SALES_MODEL.INSIDE_SALES)
     setNewClientStartDate(getTodayDateInputValue())
     setNewClientImplementationObservation('')
     setNewClientOperationEnabled(operationSettings?.autoCreateCardForNewClient !== false)
@@ -4998,6 +5077,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
     setNewClientDashboardIntegrationKeys(DEFAULT_CLIENT_DASHBOARD_INTEGRATION_KEYS)
     setNewClientOperationLane(resolveOperationLaneFromSalesModel('INSIDE_SALES'))
     setClientEditSection('geral')
+    setIsCreateClientModalOpen(false)
     setIsEditClientModalOpen(true)
   }
 
@@ -6358,7 +6438,9 @@ export default function DashboardShell({ initialTab = 'home' }) {
     }
 
     if (fieldName === 'salesModel') {
-      nextClient.implementationPhase = IMPLEMENTATION_PHASE_BY_SALES_MODEL[normalizedValue] || ''
+      const suggestedPhaseLabel = IMPLEMENTATION_PHASE_BY_SALES_MODEL[normalizedValue] || ''
+      const hasSuggestedPhase = clientImplementationPhaseMap.has(suggestedPhaseLabel)
+      nextClient.implementationPhase = hasSuggestedPhase ? suggestedPhaseLabel : nextClient.implementationPhase || ''
       nextClient.implementationChecklist = createImplementationChecklistForSalesModel(
         normalizedValue,
         nextClient.implementationChecklist
@@ -6366,7 +6448,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
     }
 
     return nextClient
-  }, [])
+  }, [clientImplementationPhaseMap])
 
   const handleClientFieldChange = (fieldName, value) => {
     if (fieldName === 'ltv' || fieldName === 'mmf' || fieldName === 'roiMarketing') {
@@ -6418,6 +6500,23 @@ export default function DashboardShell({ initialTab = 'home' }) {
           : client
       )
     )
+  }
+
+  const handleClientKanbanDragStart = (clientId) => {
+    if (!canEditClientRecord(clientId)) return
+    setClientKanbanDragClientId(clientId)
+  }
+
+  const handleClientKanbanDragEnd = () => {
+    setClientKanbanDragClientId('')
+    setClientKanbanDropPhaseKey('')
+  }
+
+  const handleClientKanbanDrop = (phaseKey) => {
+    if (!clientKanbanDragClientId) return
+    handleClientInlineFieldChange(clientKanbanDragClientId, 'implementationPhase', phaseKey === 'sem_fase' ? '' : phaseKey)
+    setClientKanbanDragClientId('')
+    setClientKanbanDropPhaseKey('')
   }
 
   const handleClientInlineCustomFieldChange = (clientId, fieldKey, value) => {
@@ -6979,15 +7078,38 @@ export default function DashboardShell({ initialTab = 'home' }) {
 
       if (columnKey === 'implementationPhase') {
         if (!isEditorMode) {
+          const phaseMeta = clientImplementationPhaseMap.get(String(value || '').trim())
+          const phasePreview = getClientJourneyPhasePreview(phaseMeta)
           return value
-            ? renderInlineTextCell(<span>{value}</span>)
+            ? renderInlineTextCell(
+              <span
+                className="client-phase-pill"
+                data-phase-preview={phasePreview}
+                title={phaseMeta?.description || String(value || '')}
+              >
+                {value}
+              </span>
+            )
             : renderInlineEmptyCell('Nao iniciado')
         }
 
         return (
           <div key={columnKey} className={isEditorMode ? 'input-group' : 'client-registry-cell'}>
             {isEditorMode && <label>{meta.label}</label>}
-            <input type="text" value={value || ''} readOnly placeholder="Definido pelo modelo de vendas" />
+            <select
+              value={value || ''}
+              disabled={!isEditable}
+              onChange={(event) =>
+                isEditorMode
+                  ? handleClientFieldChange(columnKey, event.target.value)
+                  : handleClientInlineFieldChange(client.id, columnKey, event.target.value)
+              }
+            >
+              <option value="">Selecione uma fase</option>
+              {effectiveClientImplementationPhases.map((phase) => (
+                <option key={phase.id} value={phase.label}>{phase.label}</option>
+              ))}
+            </select>
           </div>
         )
       }
@@ -12750,7 +12872,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
                 <h2>Gestão de Clientes</h2>
                 <p>Controle parceiros, identidade de marca e prontidão operacional dentro do mesmo painel executivo.</p>
               </div>
-              <button type="button" className="btn btn-secondary management-header-button" onClick={focusClientCreateInput}>
+              <button type="button" className="btn btn-secondary management-header-button" onClick={openCreateClientModal}>
                 <i className="bx bx-user-plus"></i>
                 Adicionar cliente
               </button>
@@ -12766,7 +12888,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
                   </p>
                 </div>
                 <div className="clients-hero-actions">
-                  <button type="button" className="btn btn-primary" onClick={focusClientCreateInput}>
+                  <button type="button" className="btn btn-primary" onClick={openCreateClientModal}>
                     Novo cliente
                   </button>
                   <button type="button" className="btn btn-secondary" onClick={() => document.querySelector('.client-create-grid .client-create-bar:nth-child(2) input')?.focus()}>
@@ -12805,147 +12927,6 @@ export default function DashboardShell({ initialTab = 'home' }) {
             </div>
 
             <div className="client-create-grid">
-              <form className={`glass-panel client-create-bar management-action-card ${isCreateClientExpanded ? 'client-create-bar-expanded' : 'client-create-bar-collapsed'}`} onSubmit={handleCreateClient}>
-                <button
-                  type="button"
-                  className="client-create-toggle"
-                  onClick={() => setIsCreateClientExpanded((current) => !current)}
-                  aria-expanded={isCreateClientExpanded}
-                >
-                  <div className="client-create-toggle-copy">
-                    <span className="management-card-kicker">FWO setup</span>
-                    <h3>Novo cliente</h3>
-                    <p>
-                      {isCreateClientExpanded
-                        ? 'O cliente já nasce com o setup de implementação preenchido, fase FWO definida e checklist obrigatório por trilha.'
-                        : `Expanda para cadastrar cliente, trilha ${CLIENT_SALES_MODEL_OPTIONS.find((option) => option.value === newClientSalesModel)?.label || 'padrão'} e governança inicial.`}
-                    </p>
-                  </div>
-                  <div className="client-create-toggle-meta">
-                    {!isCreateClientExpanded && (
-                      <span className="client-create-toggle-pill">
-                        {newClientName.trim() || 'Formulário recolhido'}
-                      </span>
-                    )}
-                    <span className={`client-create-toggle-icon ${isCreateClientExpanded ? 'active' : ''}`}>
-                      <i className="bx bx-chevron-down"></i>
-                    </span>
-                  </div>
-                </button>
-                {isCreateClientExpanded && (
-                <div className="client-create-stack">
-                  <div className="client-create-inline">
-                    <input type="text" value={newClientName} onChange={(event) => setNewClientName(event.target.value)} placeholder="Ex.: Clínica X, E-commerce Y..." disabled={!isMaster} />
-                    <input type="text" value={newClientCnpj} onChange={(event) => setNewClientCnpj(normalizeCnpjInput(event.target.value))} placeholder="CNPJ (opcional)" disabled={!isMaster} />
-                  </div>
-                  <div className="client-create-grid-fields">
-                    <div className="input-group">
-                      <label>Modelo de vendas</label>
-                      <select value={newClientSalesModel} onChange={(event) => setNewClientSalesModel(event.target.value)} disabled={!isMaster}>
-                        {CLIENT_SALES_MODEL_OPTIONS.map((option) => (
-                          <option key={`new-client-${option.value}`} value={option.value}>{option.label}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="input-group">
-                      <label>Fase FWO</label>
-                      <input type="text" value={IMPLEMENTATION_PHASE_BY_SALES_MODEL[newClientSalesModel] || ''} readOnly placeholder="Definida pelo modelo de vendas" />
-                    </div>
-                    <div className="input-group">
-                      <label>Data de início da implementação</label>
-                      <input type="date" value={newClientStartDate} onChange={(event) => setNewClientStartDate(event.target.value)} disabled={!isMaster} />
-                    </div>
-                  </div>
-                  <div className="input-group">
-                    <label>Observação da implementação</label>
-                    <textarea
-                      value={newClientImplementationObservation}
-                      onChange={(event) => setNewClientImplementationObservation(event.target.value)}
-                      placeholder="Contexto inicial, mapeamento de oportunidades, particularidades do setup..."
-                      rows={3}
-                      disabled={!isMaster}
-                    />
-                  </div>
-                  <div className="client-create-checklist-preview">
-                    {(FWO_IMPLEMENTATION_CHECKLISTS[newClientSalesModel] || []).map((item) => (
-                      <span key={`preview-${newClientSalesModel}-${item}`} className="stage-chip">
-                        <i className="bx bx-check-circle"></i>
-                        <span>{item}</span>
-                      </span>
-                    ))}
-                  </div>
-                  <div className="client-governance-card">
-                    <div className="client-governance-head">
-                      <div>
-                        <strong>Governança do cliente</strong>
-                        <span>Defina aqui se esse cliente entra na operação e no dashboard.</span>
-                      </div>
-                    </div>
-                    <div className="client-governance-switches">
-                      <button
-                        type="button"
-                        className={`ios-toggle-row ${newClientOperationEnabled ? 'active' : ''}`}
-                        onClick={() => isMaster && setNewClientOperationEnabled((current) => !current)}
-                        disabled={!isMaster}
-                        aria-pressed={newClientOperationEnabled}
-                      >
-                        <div className="ios-toggle-copy">
-                          <strong>Operação</strong>
-                          <span>Cria e libera o cliente no board operacional.</span>
-                        </div>
-                        <span className="ios-toggle-switch" aria-hidden="true">
-                          <span className="ios-toggle-knob"></span>
-                        </span>
-                      </button>
-
-                      <button
-                        type="button"
-                        className={`ios-toggle-row ${newClientDashboardEnabled ? 'active' : ''}`}
-                        onClick={() => isMaster && setNewClientDashboardEnabled((current) => !current)}
-                        disabled={!isMaster}
-                        aria-pressed={newClientDashboardEnabled}
-                      >
-                        <div className="ios-toggle-copy">
-                          <strong>Dashboard</strong>
-                          <span>Libera a apresentação executiva e as fontes visíveis do cliente.</span>
-                        </div>
-                        <span className="ios-toggle-switch" aria-hidden="true">
-                          <span className="ios-toggle-knob"></span>
-                        </span>
-                      </button>
-                    </div>
-
-                    {newClientDashboardEnabled && (
-                      <div className="input-group">
-                        <label>Integrações visíveis no dashboard</label>
-                        <div className="stage-selector">
-                          {CLIENT_DASHBOARD_INTEGRATION_OPTIONS.map((integration) => {
-                            const checked = newClientDashboardIntegrationKeys.includes(integration.key)
-                            return (
-                              <button
-                                key={`new-client-dashboard-integration-${integration.key}`}
-                                type="button"
-                                className={`stage-chip ${checked ? 'active' : ''}`}
-                                onClick={() => handleToggleNewClientDashboardIntegration(integration.key)}
-                                disabled={!isMaster}
-                              >
-                                <span>{integration.label}</span>
-                              </button>
-                            )
-                          })}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                  <div className="client-create-actions">
-                    <button type="submit" className="btn btn-primary" disabled={!isMaster || !newClientName.trim() || !newClientSalesModel || !newClientStartDate}>
-                      Criar cliente com setup FWO
-                    </button>
-                  </div>
-                </div>
-                )}
-              </form>
-
               <form className="glass-panel client-create-bar management-action-card" onSubmit={handleCreateClientGroup}>
                 <div>
                   <span className="management-card-kicker">New cluster</span>
@@ -13171,16 +13152,36 @@ export default function DashboardShell({ initialTab = 'home' }) {
                       placeholder="Buscar cliente, produto, responsável..."
                     />
                   </div>
-                  <div className="client-registry-filter-group">
-                    <select value={clientStatusFilter} onChange={(event) => setClientStatusFilter(event.target.value)}>
-                      <option value="all">Todos os status</option>
-                      <option value="ativo">Ativo</option>
-                      <option value="onboarding">Onboarding</option>
-                      <option value="pausado">Pausado</option>
-                      <option value="risco">Risco</option>
-                      <option value="risk">Health em risco</option>
-                      <option value="incomplete">Cadastro incompleto</option>
-                    </select>
+                  <div className="client-registry-controls-right">
+                    <div className="client-registry-display-toggle" role="tablist" aria-label="Modo de visualização dos clientes">
+                      <button
+                        type="button"
+                        className={`client-registry-display-btn ${clientRegistryDisplayMode === 'table' ? 'active' : ''}`}
+                        onClick={() => setClientRegistryDisplayMode('table')}
+                      >
+                        <i className="bx bx-table"></i>
+                        <span>Tabela</span>
+                      </button>
+                      <button
+                        type="button"
+                        className={`client-registry-display-btn ${clientRegistryDisplayMode === 'kanban' ? 'active' : ''}`}
+                        onClick={() => setClientRegistryDisplayMode('kanban')}
+                      >
+                        <i className="bx bx-columns"></i>
+                        <span>Kanban</span>
+                      </button>
+                    </div>
+                    <div className="client-registry-filter-group">
+                      <select value={clientStatusFilter} onChange={(event) => setClientStatusFilter(event.target.value)}>
+                        <option value="all">Todos os status</option>
+                        <option value="ativo">Ativo</option>
+                        <option value="onboarding">Onboarding</option>
+                        <option value="pausado">Pausado</option>
+                        <option value="risco">Risco</option>
+                        <option value="risk">Health em risco</option>
+                        <option value="incomplete">Cadastro incompleto</option>
+                      </select>
+                    </div>
                   </div>
                 </div>
 
@@ -13197,108 +13198,211 @@ export default function DashboardShell({ initialTab = 'home' }) {
                   ))}
                 </div>
 
-                <div className="client-registry-table">
-                  <div
-                    className="client-registry-header"
-                    style={{ gridTemplateColumns: `minmax(220px, 1.8fr) repeat(${Math.max(activeClientRegistryView.columns.length - 1, 0)}, minmax(140px, 1fr)) minmax(150px, 1.1fr)` }}
-                  >
-                    {activeClientRegistryView.columns.map((columnKey) => {
-                      const meta = getResolvedClientColumnMeta(columnKey)
-                      return <span key={columnKey}>{meta.label}</span>
-                    })}
-                    <span>Ações</span>
-                  </div>
-                  <div className="client-registry-body">
-                    {filteredClients.map((client) => {
-                      const linkedGroupsCount = clientGroups.filter((group) => normalizeClientGroupClientIds(group.clientIds).includes(client.id)).length
-                      const completenessScore = getClientCompleteness(client)
+                {clientRegistryDisplayMode === 'table' ? (
+                  <div className="client-registry-table">
+                    <div
+                      className="client-registry-header"
+                      style={{ gridTemplateColumns: `minmax(220px, 1.8fr) repeat(${Math.max(activeClientRegistryView.columns.length - 1, 0)}, minmax(140px, 1fr)) minmax(150px, 1.1fr)` }}
+                    >
+                      {activeClientRegistryView.columns.map((columnKey) => {
+                        const meta = getResolvedClientColumnMeta(columnKey)
+                        return <span key={columnKey}>{meta.label}</span>
+                      })}
+                      <span>Ações</span>
+                    </div>
+                    <div className="client-registry-body">
+                      {filteredClients.map((client) => {
+                        const linkedGroupsCount = clientGroups.filter((group) => normalizeClientGroupClientIds(group.clientIds).includes(client.id)).length
+                        const completenessScore = getClientCompleteness(client)
 
-                      return (
-                        <div
-                          key={client.id}
-                          className={`client-registry-row glass-item ${client.id === activeClientId ? 'client-registry-row-active' : ''}`}
-                          style={{ gridTemplateColumns: `minmax(220px, 1.8fr) repeat(${Math.max(activeClientRegistryView.columns.length - 1, 0)}, minmax(140px, 1fr)) minmax(150px, 1.1fr)` }}
-                        >
-                          {activeClientRegistryView.columns.map((columnKey) => {
-                            const meta = getResolvedClientColumnMeta(columnKey)
+                        return (
+                          <div
+                            key={client.id}
+                            className={`client-registry-row glass-item ${client.id === activeClientId ? 'client-registry-row-active' : ''}`}
+                            style={{ gridTemplateColumns: `minmax(220px, 1.8fr) repeat(${Math.max(activeClientRegistryView.columns.length - 1, 0)}, minmax(140px, 1fr)) minmax(150px, 1.1fr)` }}
+                          >
+                            {activeClientRegistryView.columns.map((columnKey) => {
+                              const meta = getResolvedClientColumnMeta(columnKey)
 
-                            if (meta.type === 'name') {
-                              return (
-                                <div key={columnKey} className="client-registry-client">
-                                  <div className="client-avatar-shell client-avatar-shell-sm">
-                                    {client.logoUrl ? (
-                                      <img
-                                        src={client.logoUrl}
-                                        alt={`Logo ${client.name}`}
-                                        className="client-avatar-image"
-                                      />
-                                    ) : (
-                                      <span>{getNameInitials(client.name)}</span>
-                                    )}
-                                  </div>
-                                  <div className="client-registry-client-copy">
-                                  {clientRegistryInlineEdit.clientId === client.id && clientRegistryInlineEdit.columnKey === 'name' ? (
-                                    <input
-                                      autoFocus
-                                      type="text"
-                                      value={client.name || ''}
-                                      onBlur={closeClientRegistryInlineEdit}
-                                      onKeyDown={(event) => {
-                                        if (event.key === 'Escape') closeClientRegistryInlineEdit()
-                                        if (event.key === 'Enter') closeClientRegistryInlineEdit()
-                                      }}
-                                      onChange={(event) => handleClientInlineFieldChange(client.id, 'name', event.target.value)}
-                                      placeholder="Nome do cliente"
-                                    />
-                                  ) : (
-                                    <div className="client-registry-title-row">
-                                      <strong>{client.name || 'Cliente sem nome'}</strong>
-                                      {canEditClientRecord(client.id) && (
-                                        <button
-                                          type="button"
-                                          className="client-registry-edit-trigger"
-                                          onClick={() => openClientRegistryInlineEdit(client.id, 'name')}
-                                          aria-label="Editar nome do cliente"
-                                        >
-                                          <i className="bx bx-pencil"></i>
-                                        </button>
+                              if (meta.type === 'name') {
+                                return (
+                                  <div key={columnKey} className="client-registry-client">
+                                    <div className="client-avatar-shell client-avatar-shell-sm">
+                                      {client.logoUrl ? (
+                                        <img
+                                          src={client.logoUrl}
+                                          alt={`Logo ${client.name}`}
+                                          className="client-avatar-image"
+                                        />
+                                      ) : (
+                                        <span>{getNameInitials(client.name)}</span>
                                       )}
                                     </div>
-                                  )}
-                                  <small>
-                                    {client.cnpj ? `CNPJ ${client.cnpj} • ` : ''}
-                                    {linkedGroupsCount ? `${linkedGroupsCount} grupo(s)` : 'Sem grupo vinculado'}
-                                    {completenessScore != null ? ` • ${completenessScore}% completo` : ''}
-                                  </small>
+                                    <div className="client-registry-client-copy">
+                                    {clientRegistryInlineEdit.clientId === client.id && clientRegistryInlineEdit.columnKey === 'name' ? (
+                                      <input
+                                        autoFocus
+                                        type="text"
+                                        value={client.name || ''}
+                                        onBlur={closeClientRegistryInlineEdit}
+                                        onKeyDown={(event) => {
+                                          if (event.key === 'Escape') closeClientRegistryInlineEdit()
+                                          if (event.key === 'Enter') closeClientRegistryInlineEdit()
+                                        }}
+                                        onChange={(event) => handleClientInlineFieldChange(client.id, 'name', event.target.value)}
+                                        placeholder="Nome do cliente"
+                                      />
+                                    ) : (
+                                      <div className="client-registry-title-row">
+                                        <strong>{client.name || 'Cliente sem nome'}</strong>
+                                        {canEditClientRecord(client.id) && (
+                                          <button
+                                            type="button"
+                                            className="client-registry-edit-trigger"
+                                            onClick={() => openClientRegistryInlineEdit(client.id, 'name')}
+                                            aria-label="Editar nome do cliente"
+                                          >
+                                            <i className="bx bx-pencil"></i>
+                                          </button>
+                                        )}
+                                      </div>
+                                    )}
+                                    <small>
+                                      {client.cnpj ? `CNPJ ${client.cnpj} • ` : ''}
+                                      {linkedGroupsCount ? `${linkedGroupsCount} grupo(s)` : 'Sem grupo vinculado'}
+                                      {completenessScore != null ? ` • ${completenessScore}% completo` : ''}
+                                    </small>
+                                    </div>
                                   </div>
-                                </div>
-                              )
-                            }
-                            return renderClientRegistryField(client, columnKey, 'inline')
-                          })}
-                          <div className="client-registry-actions">
-                            <button
-                              type="button"
-                              className="btn btn-secondary"
-                              onClick={() => {
-                                setActiveClientId(client.id)
-                                setClientEditSection(clientRegistryView)
-                                setIsEditClientModalOpen(true)
-                              }}
-                            >
-                              Editar
-                            </button>
-                            {isMaster && clients.length > 1 && (
-                              <button type="button" className="btn btn-secondary" onClick={() => handleRemoveClient(client.id)}>
-                                Excluir
+                                )
+                              }
+                              return renderClientRegistryField(client, columnKey, 'inline')
+                            })}
+                            <div className="client-registry-actions">
+                              <button
+                                type="button"
+                                className="btn btn-secondary"
+                                onClick={() => {
+                                  setActiveClientId(client.id)
+                                  setClientEditSection(clientRegistryView)
+                                  setIsEditClientModalOpen(true)
+                                }}
+                              >
+                                Editar
                               </button>
-                            )}
+                              {isMaster && clients.length > 1 && (
+                                <button type="button" className="btn btn-secondary" onClick={() => handleRemoveClient(client.id)}>
+                                  Excluir
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="client-kanban-board">
+                    {clientKanbanColumns.map((column) => (
+                      <div
+                        key={column.key}
+                        className={`client-kanban-column glass-item ${clientKanbanDropPhaseKey === column.key ? 'client-kanban-column-drop' : ''}`}
+                        onDragOver={(event) => {
+                          if (!clientKanbanDragClientId) return
+                          event.preventDefault()
+                          if (clientKanbanDropPhaseKey !== column.key) {
+                            setClientKanbanDropPhaseKey(column.key)
+                          }
+                        }}
+                        onDragLeave={() => {
+                          if (clientKanbanDropPhaseKey === column.key) {
+                            setClientKanbanDropPhaseKey('')
+                          }
+                        }}
+                        onDrop={(event) => {
+                          event.preventDefault()
+                          handleClientKanbanDrop(column.key)
+                        }}
+                      >
+                        <div className="client-kanban-column-head">
+                          <div>
+                            <strong>{column.label}</strong>
+                            <span>{column.clients.length} cliente(s)</span>
                           </div>
                         </div>
-                      )
-                    })}
+                        <div className="client-kanban-column-body">
+                          {column.clients.length ? (
+                            column.clients.map((client) => {
+                              const completenessScore = getClientCompleteness(client)
+                              const healthScore = calculateClientHealthScore(client)
+                              const productName = productsById.get(client.productId)?.name || client.product || 'Sem produto'
+
+                              return (
+                                <button
+                                  key={`kanban-${column.key}-${client.id}`}
+                                  type="button"
+                                  className={`client-kanban-card ${client.id === activeClientId ? 'active' : ''} ${clientKanbanDragClientId === client.id ? 'dragging' : ''}`}
+                                  draggable={canEditClientRecord(client.id)}
+                                  onDragStart={() => handleClientKanbanDragStart(client.id)}
+                                  onDragEnd={handleClientKanbanDragEnd}
+                                  onClick={() => {
+                                    setActiveClientId(client.id)
+                                    setClientEditSection(clientRegistryView)
+                                    setIsEditClientModalOpen(true)
+                                  }}
+                                >
+                                  <div className="client-kanban-card-head">
+                                    <div className="client-avatar-shell client-avatar-shell-sm">
+                                      {client.logoUrl ? (
+                                        <img
+                                          src={client.logoUrl}
+                                          alt={`Logo ${client.name}`}
+                                          className="client-avatar-image"
+                                        />
+                                      ) : (
+                                        <span>{getNameInitials(client.name)}</span>
+                                      )}
+                                    </div>
+                                    <div className="client-kanban-card-copy">
+                                      <strong>{client.name || 'Cliente sem nome'}</strong>
+                                      <small>{productName}</small>
+                                    </div>
+                                  </div>
+                                  <div className="client-kanban-card-badges">
+                                    <span className={`client-status-badge client-status-${getClientStatusMeta(client).tone}`}>
+                                      {getClientStatusMeta(client).label}
+                                    </span>
+                                    <span className="client-status-badge client-status-info">
+                                      {CLIENT_SALES_MODEL_OPTIONS.find((option) => option.value === client.salesModel)?.label || 'Sem trilha'}
+                                    </span>
+                                  </div>
+                                  <div className="client-kanban-card-metrics">
+                                    <div>
+                                      <span>Início</span>
+                                      <strong>{client.startDate ? formatClientDate(client.startDate) : 'Sem data'}</strong>
+                                    </div>
+                                    <div>
+                                      <span>Health</span>
+                                      <strong>{healthScore != null ? `${Math.round(healthScore)}` : 'N/A'}</strong>
+                                    </div>
+                                    <div>
+                                      <span>Completo</span>
+                                      <strong>{completenessScore != null ? `${completenessScore}%` : 'N/A'}</strong>
+                                    </div>
+                                  </div>
+                                </button>
+                              )
+                            })
+                          ) : (
+                            <div className="client-kanban-empty">
+                              <span>Nenhum cliente nesta fase.</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                </div>
+                )}
 
                 {!clients.length && (
                   <div className="empty-panel glass-item users-empty-state compact-empty-state">
@@ -13910,7 +14014,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
                     </div>
                   </div>
 
-                  <div className="client-form-grid client-form-grid-2">
+                  <div className="client-form-grid client-form-grid-2 client-editor-section-grid">
                     {activeClientEditView?.columns
                       ?.filter((columnKey) => !['name', 'cnpj', 'salesModel', 'implementationPhase', 'implementationObservation', 'startDate'].includes(columnKey))
                       .map((columnKey) => renderClientRegistryField(activeClient, columnKey, 'editor'))}
@@ -13923,21 +14027,52 @@ export default function DashboardShell({ initialTab = 'home' }) {
                       <i className="bx bx-git-branch"></i>
                     </div>
                     <div>
-                      <h3>Setup FWO</h3>
-                      <p>Direcione o cliente para a trilha certa de implementação, registre o contexto inicial e acompanhe os itens obrigatórios até o Go Live.</p>
+                      <h3>Jornada do cliente</h3>
+                      <p>Defina a etapa atual, registre o contexto operacional e acompanhe o que precisa acontecer para o cliente avançar na jornada.</p>
                     </div>
                   </div>
 
-                  <div className="client-form-grid client-form-grid-2">
+                  <div className="client-form-grid client-form-grid-2 client-editor-section-grid client-editor-section-grid-fwo">
                     {renderClientRegistryField(activeClient, 'salesModel', 'editor')}
                     {renderClientRegistryField(activeClient, 'implementationPhase', 'editor')}
                     {renderClientRegistryField(activeClient, 'startDate', 'editor')}
                     {renderClientRegistryField(activeClient, 'implementationObservation', 'editor')}
                   </div>
 
+                  {(() => {
+                    const activePhase = clientImplementationPhaseMap.get(String(activeClient.implementationPhase || '').trim())
+                    if (!activePhase) return null
+
+                    return (
+                      <div className="client-journey-phase-preview">
+                        <div className="client-journey-phase-preview-head">
+                          <strong>{activePhase.label}</strong>
+                          {!!activePhase.slaDays && <span>{activePhase.slaDays} dia(s) de SLA</span>}
+                        </div>
+                        {!!activePhase.description && <p>{activePhase.description}</p>}
+                        {!!activePhase.objective && (
+                          <div className="client-journey-phase-preview-block">
+                            <small>Objetivo da etapa</small>
+                            <strong>{activePhase.objective}</strong>
+                          </div>
+                        )}
+                        {!!(activePhase.checklist || []).length && (
+                          <div className="client-journey-phase-preview-list">
+                            {(activePhase.checklist || []).map((item) => (
+                              <span key={`${activePhase.id}-${item}`} className="stage-chip">
+                                <i className="bx bx-check-circle"></i>
+                                <span>{item}</span>
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })()}
+
                   <div className="client-fwo-checklist">
                     <div className="client-fwo-checklist-head">
-                      <strong>Checklist obrigatório da fase</strong>
+                      <strong>Checklist operacional da etapa</strong>
                       <span>{activeClient.salesModel ? `Trilha ${activeClient.salesModel}` : 'Escolha um modelo de vendas para liberar os itens'}</span>
                     </div>
 
@@ -14584,6 +14719,165 @@ export default function DashboardShell({ initialTab = 'home' }) {
               </>
             )}
           </section>
+        )}
+
+        {activeTab === 'clientes' && isCreateClientModalOpen && (
+          <div className="modal-overlay" onClick={() => setIsCreateClientModalOpen(false)}>
+            <div className="modal-card glass-panel modal-create-client" onClick={(event) => event.stopPropagation()}>
+              <div className="modal-header">
+                <div>
+                  <h3>Novo cliente</h3>
+                  <p>Cadastre o cliente com a trilha, contexto inicial e governança já definidos.</p>
+                </div>
+                <button type="button" className="modal-close" onClick={() => setIsCreateClientModalOpen(false)} aria-label="Fechar cadastro de cliente">
+                  <i className="bx bx-x"></i>
+                </button>
+              </div>
+
+              <form className="client-create-stack" onSubmit={handleCreateClient}>
+                <div className="client-create-inline">
+                  <input type="text" value={newClientName} onChange={(event) => setNewClientName(event.target.value)} placeholder="Ex.: Clínica X, E-commerce Y..." disabled={!isMaster} />
+                  <input type="text" value={newClientCnpj} onChange={(event) => setNewClientCnpj(normalizeCnpjInput(event.target.value))} placeholder="CNPJ (opcional)" disabled={!isMaster} />
+                </div>
+                <div className="client-create-grid-fields">
+                  <div className="input-group">
+                    <label>Modelo de vendas</label>
+                    <select value={newClientSalesModel} onChange={(event) => setNewClientSalesModel(event.target.value)} disabled={!isMaster}>
+                      {CLIENT_SALES_MODEL_OPTIONS.map((option) => (
+                        <option key={`new-client-modal-${option.value}`} value={option.value}>{option.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="input-group">
+                    <label>Etapa da jornada</label>
+                    <select
+                      value={newClientImplementationPhase}
+                      disabled={!isMaster}
+                      onChange={(event) => setNewClientImplementationPhase(event.target.value)}
+                    >
+                      <option value="">Selecione uma fase</option>
+                      {effectiveClientImplementationPhases.map((phase) => (
+                        <option key={`create-phase-${phase.id}`} value={phase.label}>{phase.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="input-group">
+                    <label>Data de entrada na jornada</label>
+                    <input type="date" value={newClientStartDate} onChange={(event) => setNewClientStartDate(event.target.value)} disabled={!isMaster} />
+                  </div>
+                </div>
+                {(() => {
+                  const selectedPhase = clientImplementationPhaseMap.get(String(newClientImplementationPhase || '').trim())
+                  if (!selectedPhase) return null
+
+                  return (
+                    <div className="client-journey-phase-preview">
+                      <div className="client-journey-phase-preview-head">
+                        <strong>{selectedPhase.label}</strong>
+                        {!!selectedPhase.slaDays && <span>{selectedPhase.slaDays} dia(s) de SLA</span>}
+                      </div>
+                      {!!selectedPhase.description && <p>{selectedPhase.description}</p>}
+                      {!!selectedPhase.objective && (
+                        <div className="client-journey-phase-preview-block">
+                          <small>Objetivo da etapa</small>
+                          <strong>{selectedPhase.objective}</strong>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })()}
+                <div className="input-group">
+                  <label>Observações da jornada</label>
+                  <textarea
+                    value={newClientImplementationObservation}
+                    onChange={(event) => setNewClientImplementationObservation(event.target.value)}
+                    placeholder="Contexto inicial, riscos, travas, próximos passos e particularidades da jornada..."
+                    rows={4}
+                    disabled={!isMaster}
+                  />
+                </div>
+                <div className="client-create-checklist-preview">
+                  {(FWO_IMPLEMENTATION_CHECKLISTS[newClientSalesModel] || []).map((item) => (
+                    <span key={`preview-modal-${newClientSalesModel}-${item}`} className="stage-chip">
+                      <i className="bx bx-check-circle"></i>
+                      <span>{item}</span>
+                    </span>
+                  ))}
+                </div>
+                <div className="client-governance-card">
+                  <div className="client-governance-head">
+                    <div>
+                      <strong>Governança do cliente</strong>
+                      <span>Defina aqui se esse cliente entra na operação e no dashboard.</span>
+                    </div>
+                  </div>
+                  <div className="client-governance-switches">
+                    <button
+                      type="button"
+                      className={`ios-toggle-row ${newClientOperationEnabled ? 'active' : ''}`}
+                      onClick={() => isMaster && setNewClientOperationEnabled((current) => !current)}
+                      disabled={!isMaster}
+                      aria-pressed={newClientOperationEnabled}
+                    >
+                      <div className="ios-toggle-copy">
+                        <strong>Operação</strong>
+                        <span>Cria e libera o cliente no board operacional.</span>
+                      </div>
+                      <span className="ios-toggle-switch" aria-hidden="true">
+                        <span className="ios-toggle-knob"></span>
+                      </span>
+                    </button>
+
+                    <button
+                      type="button"
+                      className={`ios-toggle-row ${newClientDashboardEnabled ? 'active' : ''}`}
+                      onClick={() => isMaster && setNewClientDashboardEnabled((current) => !current)}
+                      disabled={!isMaster}
+                      aria-pressed={newClientDashboardEnabled}
+                    >
+                      <div className="ios-toggle-copy">
+                        <strong>Dashboard</strong>
+                        <span>Libera a apresentação executiva e as fontes visíveis do cliente.</span>
+                      </div>
+                      <span className="ios-toggle-switch" aria-hidden="true">
+                        <span className="ios-toggle-knob"></span>
+                      </span>
+                    </button>
+                  </div>
+
+                  {newClientDashboardEnabled && (
+                    <div className="input-group">
+                      <label>Integrações visíveis no dashboard</label>
+                      <div className="stage-selector">
+                        {CLIENT_DASHBOARD_INTEGRATION_OPTIONS.map((integration) => {
+                          const checked = newClientDashboardIntegrationKeys.includes(integration.key)
+                          return (
+                            <button
+                              key={`new-client-modal-dashboard-integration-${integration.key}`}
+                              type="button"
+                              className={`stage-chip ${checked ? 'active' : ''}`}
+                              onClick={() => handleToggleNewClientDashboardIntegration(integration.key)}
+                              disabled={!isMaster}
+                            >
+                              <span>{integration.label}</span>
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <div className="client-create-actions">
+                  <button type="button" className="btn btn-secondary" onClick={() => setIsCreateClientModalOpen(false)}>
+                    Cancelar
+                  </button>
+                  <button type="submit" className="btn btn-primary" disabled={!isMaster || !newClientName.trim() || !newClientSalesModel || !newClientStartDate}>
+                    Criar cliente
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
         )}
 
         {activeTab === 'usuarios' && canAccessTeamTab && (
@@ -19680,6 +19974,46 @@ export default function DashboardShell({ initialTab = 'home' }) {
           flex-wrap: wrap;
         }
 
+        .client-registry-controls-right {
+          display: flex;
+          align-items: center;
+          justify-content: flex-end;
+          gap: 12px;
+          flex-wrap: wrap;
+        }
+
+        .client-registry-display-toggle {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          padding: 4px;
+          border-radius: 999px;
+          border: 1px solid rgba(143, 144, 149, 0.14);
+          background: rgba(9, 12, 18, 0.7);
+        }
+
+        .client-registry-display-btn {
+          min-height: 36px;
+          padding: 0 14px;
+          border-radius: 999px;
+          border: 0;
+          background: transparent;
+          color: rgba(225, 226, 235, 0.64);
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          font-size: 12px;
+          font-weight: 700;
+          font-family: inherit;
+          transition: 0.2s ease;
+        }
+
+        .client-registry-display-btn.active {
+          color: #ffffff;
+          background: color-mix(in srgb, var(--accent-blue) 16%, rgba(255, 255, 255, 0.04));
+          box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+        }
+
         .client-registry-search {
           min-width: min(100%, 360px);
           flex: 1 1 320px;
@@ -19906,18 +20240,70 @@ export default function DashboardShell({ initialTab = 'home' }) {
           text-decoration: underline;
         }
 
-        .client-registry-edit-trigger {
-          width: 22px;
-          height: 22px;
+        .client-phase-pill {
+          position: relative;
+          display: inline-flex;
+          align-items: center;
+          min-height: 28px;
+          padding: 0 12px;
           border-radius: 999px;
-          border: 1px solid rgba(143, 144, 149, 0.14);
-          background: rgba(255, 255, 255, 0.04);
-          color: rgba(225, 226, 235, 0.62);
+          border: 1px solid color-mix(in srgb, var(--accent-blue) 18%, transparent);
+          background: color-mix(in srgb, var(--accent-blue) 8%, transparent);
+          color: var(--accent-blue);
+          font-size: 11px;
+          font-weight: 800;
+          line-height: 1.2;
+          letter-spacing: 0.04em;
+        }
+
+        .client-phase-pill[data-phase-preview]:hover::after,
+        .client-phase-pill[data-phase-preview]:focus-visible::after {
+          content: attr(data-phase-preview);
+          position: absolute;
+          left: 0;
+          top: calc(100% + 10px);
+          z-index: 8;
+          width: min(280px, 60vw);
+          padding: 10px 12px;
+          border-radius: 14px;
+          border: 1px solid rgba(143, 144, 149, 0.18);
+          background:
+            linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.025)),
+            rgba(12, 16, 24, 0.96);
+          color: rgba(238, 240, 248, 0.92);
+          font-size: 12px;
+          font-weight: 500;
+          line-height: 1.5;
+          letter-spacing: normal;
+          text-transform: none;
+          box-shadow: 0 18px 40px rgba(0, 0, 0, 0.28);
+          white-space: pre-line;
+          pointer-events: none;
+        }
+
+        .client-phase-pill[data-phase-preview='']:hover::after,
+        .client-phase-pill[data-phase-preview='']:focus-visible::after {
+          content: none;
+        }
+
+        .client-registry-edit-trigger {
+          width: 26px;
+          height: 26px;
+          border-radius: 999px;
+          border: 1px solid rgba(143, 144, 149, 0.1);
+          background:
+            linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.04)),
+            rgba(17, 22, 32, 0.92);
+          color: rgba(225, 226, 235, 0.74);
           display: inline-flex;
           align-items: center;
           justify-content: center;
           cursor: pointer;
-          transition: 0.2s ease;
+          box-shadow: 0 8px 18px rgba(0, 0, 0, 0.18);
+          opacity: 0;
+          transform: translateY(2px) scale(0.92);
+          pointer-events: none;
+          transition: opacity 0.18s ease, transform 0.18s ease, border-color 0.18s ease, background 0.18s ease, color 0.18s ease;
           flex-shrink: 0;
         }
 
@@ -19927,14 +20313,25 @@ export default function DashboardShell({ initialTab = 'home' }) {
           right: 8px;
         }
 
+        .client-registry-cell-readonly:hover .client-registry-edit-trigger,
+        .client-registry-client:hover .client-registry-edit-trigger,
+        .client-registry-cell-readonly:focus-within .client-registry-edit-trigger,
+        .client-registry-client:focus-within .client-registry-edit-trigger {
+          opacity: 1;
+          transform: translateY(0) scale(1);
+          pointer-events: auto;
+        }
+
         .client-registry-edit-trigger:hover {
           color: #ffffff;
-          border-color: color-mix(in srgb, var(--accent-blue) 22%, transparent);
-          background: color-mix(in srgb, var(--accent-blue) 12%, transparent);
+          border-color: color-mix(in srgb, var(--accent-blue) 26%, transparent);
+          background:
+            linear-gradient(180deg, color-mix(in srgb, var(--accent-blue) 24%, rgba(255,255,255,0.08)), color-mix(in srgb, var(--accent-blue) 12%, rgba(255,255,255,0.03))),
+            rgba(18, 25, 38, 0.96);
         }
 
         .client-registry-edit-trigger i {
-          font-size: 12px;
+          font-size: 13px;
         }
 
         .client-registry-multiline {
@@ -19950,6 +20347,164 @@ export default function DashboardShell({ initialTab = 'home' }) {
           gap: 8px;
           flex-wrap: wrap;
           align-items: center;
+        }
+
+        .client-kanban-board {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+          gap: 16px;
+          align-items: start;
+        }
+
+        .client-kanban-column {
+          display: grid;
+          gap: 14px;
+          padding: 16px;
+          border-radius: 22px;
+          border: 1px solid rgba(143, 144, 149, 0.14);
+          background:
+            linear-gradient(180deg, rgba(255, 255, 255, 0.028), rgba(255, 255, 255, 0.014)),
+            rgba(11, 14, 20, 0.72);
+          min-height: 320px;
+          transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+        }
+
+        .client-kanban-column.client-kanban-column-drop {
+          border-color: color-mix(in srgb, var(--accent-blue) 28%, transparent);
+          box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-blue) 18%, transparent);
+          background:
+            radial-gradient(circle at top, color-mix(in srgb, var(--accent-blue) 12%, transparent), transparent 48%),
+            linear-gradient(180deg, rgba(255, 255, 255, 0.028), rgba(255, 255, 255, 0.014)),
+            rgba(11, 14, 20, 0.72);
+        }
+
+        .client-kanban-column-head {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 10px;
+        }
+
+        .client-kanban-column-head strong {
+          display: block;
+          color: #ffffff;
+          font-size: 15px;
+          line-height: 1.3;
+        }
+
+        .client-kanban-column-head span {
+          color: rgba(225, 226, 235, 0.56);
+          font-size: 12px;
+        }
+
+        .client-kanban-column-body {
+          display: grid;
+          gap: 10px;
+        }
+
+        .client-kanban-card {
+          width: 100%;
+          display: grid;
+          gap: 12px;
+          padding: 14px;
+          border-radius: 18px;
+          border: 1px solid rgba(143, 144, 149, 0.14);
+          background:
+            linear-gradient(180deg, rgba(255, 255, 255, 0.038), rgba(255, 255, 255, 0.018)),
+            rgba(16, 20, 28, 0.94);
+          text-align: left;
+          color: inherit;
+          cursor: pointer;
+          transition: border-color 0.22s ease, transform 0.22s ease, box-shadow 0.22s ease;
+        }
+
+        .client-kanban-card:hover,
+        .client-kanban-card.active {
+          border-color: color-mix(in srgb, var(--accent-blue) 24%, transparent);
+          transform: translateY(-2px);
+          box-shadow: 0 18px 34px rgba(0, 0, 0, 0.18);
+        }
+
+        .client-kanban-card[draggable='true'] {
+          cursor: grab;
+        }
+
+        .client-kanban-card.dragging {
+          opacity: 0.55;
+          transform: rotate(1deg) scale(0.985);
+          cursor: grabbing;
+        }
+
+        .client-kanban-card-head {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          min-width: 0;
+        }
+
+        .client-kanban-card-copy {
+          min-width: 0;
+          display: grid;
+          gap: 3px;
+        }
+
+        .client-kanban-card-copy strong {
+          color: #ffffff;
+          font-size: 15px;
+          line-height: 1.3;
+          overflow-wrap: anywhere;
+        }
+
+        .client-kanban-card-copy small {
+          color: rgba(225, 226, 235, 0.56);
+          overflow-wrap: anywhere;
+        }
+
+        .client-kanban-card-badges {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px;
+        }
+
+        .client-kanban-card-metrics {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 10px;
+        }
+
+        .client-kanban-card-metrics div {
+          display: grid;
+          gap: 3px;
+          padding: 10px;
+          border-radius: 14px;
+          background: rgba(255, 255, 255, 0.03);
+          border: 1px solid rgba(143, 144, 149, 0.1);
+        }
+
+        .client-kanban-card-metrics span {
+          color: rgba(225, 226, 235, 0.52);
+          font-size: 11px;
+          font-weight: 700;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+        }
+
+        .client-kanban-card-metrics strong {
+          color: #ffffff;
+          font-size: 14px;
+          line-height: 1.2;
+        }
+
+        .client-kanban-empty {
+          min-height: 120px;
+          display: grid;
+          place-items: center;
+          border-radius: 16px;
+          border: 1px dashed rgba(143, 144, 149, 0.18);
+          background: rgba(255, 255, 255, 0.02);
+          color: rgba(225, 226, 235, 0.48);
+          text-align: center;
+          padding: 18px;
         }
 
         .client-health-inline,
@@ -20799,6 +21354,10 @@ export default function DashboardShell({ initialTab = 'home' }) {
           width: min(100%, 1180px);
         }
 
+        .modal-create-client {
+          width: min(100%, 980px);
+        }
+
         .dashboard-entry-modal {
           width: min(100%, 560px);
         }
@@ -21508,6 +22067,11 @@ export default function DashboardShell({ initialTab = 'home' }) {
 
         .modal-client-editor .client-form-grid .input-group,
         .modal-client-editor .client-form-grid-2 .input-group {
+          display: grid;
+          align-content: start;
+          gap: 8px;
+          min-width: 0;
+          width: 100%;
           margin-bottom: 0;
         }
 
@@ -21516,14 +22080,53 @@ export default function DashboardShell({ initialTab = 'home' }) {
           grid-column: 1 / -1;
         }
 
+        .modal-client-editor .client-editor-section-grid {
+          grid-template-columns: repeat(2, minmax(320px, 1fr));
+          gap: 20px 28px;
+          align-items: start;
+        }
+
+        .modal-client-editor .client-editor-section-grid-fwo .client-long-text-field {
+          grid-column: 1 / -1;
+        }
+
         .modal-client-editor .input-group label {
+          display: block;
+          width: 100%;
           font-size: 12px;
           font-weight: 700;
           letter-spacing: 0.03em;
+          color: rgba(225, 226, 235, 0.82);
         }
 
         .modal-client-editor .input-group textarea {
           min-height: 132px;
+        }
+
+        .modal-client-editor .client-editor-section-grid input:not([type="checkbox"]):not([type="file"]),
+        .modal-client-editor .client-editor-section-grid select,
+        .modal-client-editor .client-editor-section-grid textarea {
+          width: 100%;
+          max-width: none;
+          min-height: 50px;
+          border-radius: 14px;
+          background:
+            linear-gradient(180deg, rgba(14, 20, 32, 0.92), rgba(10, 16, 28, 0.9)),
+            rgba(10, 16, 28, 0.9);
+          border: 1px solid rgba(71, 85, 105, 0.28);
+          box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+        }
+
+        .modal-client-editor .client-editor-section-grid textarea {
+          min-height: 140px;
+          padding-top: 14px;
+        }
+
+        .modal-client-editor .client-editor-section-grid input[readonly] {
+          color: rgba(225, 226, 235, 0.58);
+          background:
+            linear-gradient(180deg, rgba(18, 22, 30, 0.9), rgba(16, 20, 28, 0.88)),
+            rgba(16, 20, 28, 0.88);
         }
 
         .branding-grid {
@@ -21544,6 +22147,60 @@ export default function DashboardShell({ initialTab = 'home' }) {
           display: grid;
           gap: 18px;
           min-width: 0;
+        }
+
+        .client-journey-phase-preview {
+          display: grid;
+          gap: 12px;
+          margin-top: 2px;
+          padding: 16px 18px;
+          border-radius: 18px;
+          border: 1px solid rgba(59, 130, 246, 0.16);
+          background:
+            linear-gradient(180deg, rgba(59, 130, 246, 0.08), rgba(59, 130, 246, 0.02)),
+            rgba(255, 255, 255, 0.02);
+        }
+
+        .client-journey-phase-preview-head {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          flex-wrap: wrap;
+        }
+
+        .client-journey-phase-preview-head strong {
+          font-size: 15px;
+        }
+
+        .client-journey-phase-preview-head span,
+        .client-journey-phase-preview-block small {
+          color: var(--text-muted);
+          font-size: 12px;
+          letter-spacing: 0.04em;
+          text-transform: uppercase;
+        }
+
+        .client-journey-phase-preview p {
+          margin: 0;
+          color: var(--text-secondary);
+          line-height: 1.6;
+        }
+
+        .client-journey-phase-preview-block {
+          display: grid;
+          gap: 6px;
+        }
+
+        .client-journey-phase-preview-block strong {
+          font-size: 14px;
+          line-height: 1.5;
+        }
+
+        .client-journey-phase-preview-list {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 10px;
         }
 
         .client-fwo-checklist {
@@ -25523,6 +26180,7 @@ export default function DashboardShell({ initialTab = 'home' }) {
         }
 
         .input-group select {
+          display: block;
           width: 100%;
           min-height: 48px;
           padding: 0 14px;
@@ -25918,6 +26576,16 @@ export default function DashboardShell({ initialTab = 'home' }) {
             align-items: stretch;
           }
 
+          .client-registry-controls-right,
+          .client-registry-display-toggle {
+            width: 100%;
+          }
+
+          .client-registry-display-btn {
+            flex: 1 1 0;
+            justify-content: center;
+          }
+
           .client-registry-search,
           .client-registry-filter-group {
             width: 100%;
@@ -25952,6 +26620,14 @@ export default function DashboardShell({ initialTab = 'home' }) {
 
           .client-registry-actions {
             justify-content: flex-start;
+          }
+
+          .client-kanban-board {
+            grid-template-columns: 1fr;
+          }
+
+          .client-kanban-card-metrics {
+            grid-template-columns: 1fr;
           }
 
           .client-groups-grid {

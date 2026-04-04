@@ -8,11 +8,13 @@ import { DEFAULT_USER_APPEARANCE } from '@/lib/user-appearance-storage'
 import { USER_APPEARANCE_PRESETS } from '@/lib/user-appearance-storage'
 import {
   createClientCustomColumnRecord,
+  createClientImplementationPhaseRecord,
   createOperationCustomFieldRecord,
   createClientCustomTabRecord,
   createOperationLaneRecord,
   createOperationSettingsRecord,
   createOperationStatusRecord,
+  DEFAULT_CLIENT_IMPLEMENTATION_PHASES,
   DEFAULT_PREFERENCES,
   loadDashboardPreferences,
   saveDashboardPreferences,
@@ -31,6 +33,7 @@ import type { AiAgent, AiProviderConfig, AiProvidersMap, AiSettings } from '@/li
 import type {
   ClientCustomColumnRecord,
   ClientCustomTabRecord,
+  ClientImplementationPhaseRecord,
   ClientRecord,
   DashboardIntegrations,
   OperationCustomFieldRecord,
@@ -70,6 +73,7 @@ interface SettingsServerState {
   globalIntegrations?: Partial<GlobalIntegrationsState>
   clients?: ClientRecord[]
   operationSettings?: OperationSettingsRecord
+  clientImplementationPhases?: ClientImplementationPhaseRecord[]
   clientSystemFields?: ClientCustomColumnRecord[]
   clientCustomColumns?: ClientCustomColumnRecord[]
   clientCustomTabs?: ClientCustomTabRecord[]
@@ -250,15 +254,15 @@ const DEFAULT_CLIENT_SYSTEM_FIELDS: ClientCustomColumnRecord[] = [
   createClientCustomColumnRecord({ key: 'tier', label: 'Tier', type: 'text', tabKey: 'geral' }),
   createClientCustomColumnRecord({ key: 'squad', label: 'Squad', type: 'text', tabKey: 'dados' }),
   createClientCustomColumnRecord({ key: 'salesModel', label: 'Modelo de Vendas', type: 'select', tabKey: 'geral', options: ['INSIDE_SALES', 'ECOM', 'PDV'] }),
-  createClientCustomColumnRecord({ key: 'implementationPhase', label: 'Fase FWO', type: 'select', tabKey: 'geral', options: ['Implementação (Inside Sales)', 'Implementação (Ecom)', 'Implementação (PDV)'] }),
+  createClientCustomColumnRecord({ key: 'implementationPhase', label: 'Etapa da Jornada', type: 'select', tabKey: 'geral', options: ['Implementação (Inside Sales)', 'Implementação (Ecom)', 'Implementação (PDV)'] }),
   createClientCustomColumnRecord({ key: 'status', label: 'Status', type: 'select', tabKey: 'geral', options: ['Ativo', 'Onboarding', 'Pausado', 'Risco', 'Churn'] }),
   createClientCustomColumnRecord({ key: 'product', label: 'Produto', type: 'text', tabKey: 'geral' }),
   createClientCustomColumnRecord({ key: 'fee', label: 'Fee', type: 'currency', tabKey: 'geral', settings: { currencyCode: 'BRL' } }),
   createClientCustomColumnRecord({ key: 'mediaInvestment', label: 'Investimento em Mídia', type: 'currency', tabKey: 'geral', settings: { currencyCode: 'BRL' } }),
   createClientCustomColumnRecord({ key: 'contractSignedAt', label: 'Assinatura do Contrato', type: 'date', tabKey: 'geral', settings: { dateFormat: 'dd/MM/yyyy' } }),
   createClientCustomColumnRecord({ key: 'churnDate', label: 'Data de Churn', type: 'date', tabKey: 'geral', settings: { dateFormat: 'dd/MM/yyyy' } }),
-  createClientCustomColumnRecord({ key: 'startDate', label: 'Data de Início', type: 'date', tabKey: 'geral', settings: { dateFormat: 'dd/MM/yyyy' } }),
-  createClientCustomColumnRecord({ key: 'implementationObservation', label: 'Observação da Implementação', type: 'long_text', tabKey: 'dados' }),
+  createClientCustomColumnRecord({ key: 'startDate', label: 'Data de Entrada', type: 'date', tabKey: 'geral', settings: { dateFormat: 'dd/MM/yyyy' } }),
+  createClientCustomColumnRecord({ key: 'implementationObservation', label: 'Observações da Jornada', type: 'long_text', tabKey: 'dados' }),
   createClientCustomColumnRecord({ key: 'step', label: 'STEP', type: 'text', tabKey: 'geral' }),
   createClientCustomColumnRecord({ key: 'ltv', label: 'LTV', type: 'currency', tabKey: 'geral', settings: { currencyCode: 'BRL' } }),
   createClientCustomColumnRecord({ key: 'monthlyRevenue', label: 'Faturamento', type: 'currency', tabKey: 'financeiro', settings: { currencyCode: 'BRL' } }),
@@ -276,6 +280,30 @@ const DEFAULT_CLIENT_SYSTEM_FIELDS: ClientCustomColumnRecord[] = [
   createClientCustomColumnRecord({ key: 'dashboardUrl', label: 'Dashboard', type: 'link', tabKey: 'branding' }),
   createClientCustomColumnRecord({ key: 'driveUrl', label: 'Drive', type: 'link', tabKey: 'branding' }),
 ]
+
+function getResolvedClientImplementationPhases(phases?: ClientImplementationPhaseRecord[]): ClientImplementationPhaseRecord[] {
+  return Array.isArray(phases) && phases.length
+    ? phases
+    : DEFAULT_CLIENT_IMPLEMENTATION_PHASES.map((phase) => createClientImplementationPhaseRecord(phase))
+}
+
+function syncImplementationPhaseSystemFieldOptions(
+  fields: ClientCustomColumnRecord[],
+  phases: ClientImplementationPhaseRecord[]
+): ClientCustomColumnRecord[] {
+  const options = phases
+    .map((phase) => String(phase.label || '').trim())
+    .filter(Boolean)
+
+  return fields.map((field) =>
+    field.key === 'implementationPhase'
+      ? createClientCustomColumnRecord({
+          ...field,
+          options,
+        })
+      : field
+  )
+}
 
 function getDynamicFieldSettings(type: ClientCustomColumnRecord['type']) {
   const sharedTabField = [{ key: 'placeholder', label: 'Placeholder', placeholder: 'Texto de ajuda do campo' }]
@@ -320,6 +348,17 @@ function normalizeSelectOptionsInput(value: string): string[] {
     new Set(
       String(value || '')
         .split(',')
+        .map((item) => item.trim())
+        .filter(Boolean)
+    )
+  )
+}
+
+function normalizePhaseChecklistInput(value: string): string[] {
+  return Array.from(
+    new Set(
+      String(value || '')
+        .split(/\n|,/)
         .map((item) => item.trim())
         .filter(Boolean)
     )
@@ -397,9 +436,15 @@ export default function SettingsPage() {
   const [settingsSaveFeedback, setSettingsSaveFeedback] = useState('')
   const [clientSystemFields, setClientSystemFields] = useState<ClientCustomColumnRecord[]>(() => {
     const preferences = loadDashboardPreferences()
-    return Array.isArray(preferences.clientSystemFields) && preferences.clientSystemFields.length
+    const phases = getResolvedClientImplementationPhases(preferences.clientImplementationPhases)
+    const fields = Array.isArray(preferences.clientSystemFields) && preferences.clientSystemFields.length
       ? preferences.clientSystemFields
       : DEFAULT_CLIENT_SYSTEM_FIELDS
+    return syncImplementationPhaseSystemFieldOptions(fields, phases)
+  })
+  const [clientImplementationPhases, setClientImplementationPhases] = useState<ClientImplementationPhaseRecord[]>(() => {
+    const preferences = loadDashboardPreferences()
+    return getResolvedClientImplementationPhases(preferences.clientImplementationPhases)
   })
   const [operationSettings, setOperationSettings] = useState<OperationSettingsRecord>(() => {
     const preferences = loadDashboardPreferences()
@@ -420,6 +465,11 @@ export default function SettingsPage() {
   const [newClientColumnOptionDraft, setNewClientColumnOptionDraft] = useState('')
   const [newClientColumnFormula, setNewClientColumnFormula] = useState('')
   const [newClientTabLabel, setNewClientTabLabel] = useState('')
+  const [newClientPhaseLabel, setNewClientPhaseLabel] = useState('')
+  const [newClientPhaseDescription, setNewClientPhaseDescription] = useState('')
+  const [newClientPhaseObjective, setNewClientPhaseObjective] = useState('')
+  const [newClientPhaseChecklist, setNewClientPhaseChecklist] = useState('')
+  const [newClientPhaseSlaDays, setNewClientPhaseSlaDays] = useState('')
   const [newOperationLaneLabel, setNewOperationLaneLabel] = useState('')
   const [newOperationStatusLabel, setNewOperationStatusLabel] = useState('')
   const [newOperationTagLabel, setNewOperationTagLabel] = useState('')
@@ -506,15 +556,17 @@ export default function SettingsPage() {
     return {
       title: 'Base de clientes',
       description: 'Ajustes estruturais da base que alimenta clientes e operação.',
-      items: [
-        `${clientSystemFields.length} campo(s) de sistema`,
-        `${clientCustomColumns.length} campo(s) customizado(s)`,
-        `${clientCustomTabs.length} aba(s) customizada(s)`,
-      ],
-    }
+        items: [
+          `${clientImplementationPhases.length} etapa(s) da jornada`,
+          `${clientSystemFields.length} campo(s) de sistema`,
+          `${clientCustomColumns.length} campo(s) customizado(s)`,
+          `${clientCustomTabs.length} aba(s) customizada(s)`,
+        ],
+      }
   }, [
     activeSettingsTab,
     advertisingIntegrationGroups.length,
+    clientImplementationPhases.length,
     clientCustomColumns.length,
     clientCustomTabs.length,
     clientSystemFields.length,
@@ -667,10 +719,15 @@ export default function SettingsPage() {
             ...normalizeAiSettings(nextIntegrations),
           }
         })
+        const resolvedImplementationPhases = getResolvedClientImplementationPhases(state.clientImplementationPhases)
+        setClientImplementationPhases(resolvedImplementationPhases)
         setClientSystemFields(
-          Array.isArray(state.clientSystemFields) && state.clientSystemFields.length
-            ? state.clientSystemFields
-            : DEFAULT_CLIENT_SYSTEM_FIELDS
+          syncImplementationPhaseSystemFieldOptions(
+            Array.isArray(state.clientSystemFields) && state.clientSystemFields.length
+              ? state.clientSystemFields
+              : DEFAULT_CLIENT_SYSTEM_FIELDS,
+            resolvedImplementationPhases
+          )
         )
         setOperationSettings(createOperationSettingsRecord(state.operationSettings))
         setClientCustomColumns(Array.isArray(state.clientCustomColumns) ? state.clientCustomColumns : [])
@@ -1028,13 +1085,16 @@ export default function SettingsPage() {
 
   const persistClientStructure = useCallback(
     async (
+      nextImplementationPhases: ClientImplementationPhaseRecord[],
       nextSystemFields: ClientCustomColumnRecord[],
       nextColumns: ClientCustomColumnRecord[],
-      nextTabs: ClientCustomTabRecord[]
+      nextTabs: ClientCustomTabRecord[],
+      nextClients?: ClientRecord[]
     ) => {
       const preferences = loadDashboardPreferences()
       saveDashboardPreferences({
         ...preferences,
+        clientImplementationPhases: nextImplementationPhases,
         clientSystemFields: nextSystemFields,
         clientCustomColumns: nextColumns,
         clientCustomTabs: nextTabs,
@@ -1048,6 +1108,8 @@ export default function SettingsPage() {
           },
           body: JSON.stringify({
             ...serverState,
+            clients: nextClients || serverState.clients,
+            clientImplementationPhases: nextImplementationPhases,
             clientSystemFields: nextSystemFields,
             clientCustomColumns: nextColumns,
             clientCustomTabs: nextTabs,
@@ -1113,7 +1175,7 @@ export default function SettingsPage() {
     ]
 
     setClientCustomColumns(nextColumns)
-    void persistClientStructure(clientSystemFields, nextColumns, clientCustomTabs)
+    void persistClientStructure(clientImplementationPhases, clientSystemFields, nextColumns, clientCustomTabs)
     setNewClientColumnLabel('')
     setNewClientColumnType('text')
     setNewClientColumnTab('geral')
@@ -1342,7 +1404,7 @@ export default function SettingsPage() {
 
     const nextTabs = [...clientCustomTabs, createClientCustomTabRecord({ label: trimmedLabel })]
     setClientCustomTabs(nextTabs)
-    void persistClientStructure(clientSystemFields, clientCustomColumns, nextTabs)
+    void persistClientStructure(clientImplementationPhases, clientSystemFields, clientCustomColumns, nextTabs)
     setNewClientTabLabel('')
     setSettingsSaveFeedback('Aba salva em Configurações e sincronizada com a base.')
   }
@@ -1387,7 +1449,7 @@ export default function SettingsPage() {
     )
 
     setClientCustomColumns(nextColumns)
-    void persistClientStructure(clientSystemFields, nextColumns, clientCustomTabs)
+    void persistClientStructure(clientImplementationPhases, clientSystemFields, nextColumns, clientCustomTabs)
   }
 
   const handleRemoveClientCustomColumn = (columnKey: string) => {
@@ -1410,7 +1472,7 @@ export default function SettingsPage() {
     }))
     setClientCustomColumns(nextColumns)
     setClientCustomTabs(nextTabs)
-    void persistClientStructure(clientSystemFields, nextColumns, nextTabs)
+    void persistClientStructure(clientImplementationPhases, clientSystemFields, nextColumns, nextTabs)
     setSettingsSaveFeedback('Campo removido da estrutura de clientes.')
   }
 
@@ -1420,7 +1482,7 @@ export default function SettingsPage() {
       tab.id === tabId ? createClientCustomTabRecord({ ...tab, label: value }) : tab
     )
     setClientCustomTabs(nextTabs)
-    void persistClientStructure(clientSystemFields, clientCustomColumns, nextTabs)
+    void persistClientStructure(clientImplementationPhases, clientSystemFields, clientCustomColumns, nextTabs)
   }
 
   const handleClientCustomTabColumnToggle = (tabId: string, columnKey: string) => {
@@ -1436,7 +1498,7 @@ export default function SettingsPage() {
       }
     })
     setClientCustomTabs(nextTabs)
-    void persistClientStructure(clientSystemFields, clientCustomColumns, nextTabs)
+    void persistClientStructure(clientImplementationPhases, clientSystemFields, clientCustomColumns, nextTabs)
   }
 
   const handleRemoveClientCustomTab = (tabId: string) => {
@@ -1459,7 +1521,7 @@ export default function SettingsPage() {
 
     const nextTabs = clientCustomTabs.filter((tab) => tab.id !== tabId)
     setClientCustomTabs(nextTabs)
-    void persistClientStructure(clientSystemFields, clientCustomColumns, nextTabs)
+    void persistClientStructure(clientImplementationPhases, clientSystemFields, clientCustomColumns, nextTabs)
     setSettingsSaveFeedback('Aba removida da estrutura de clientes.')
   }
 
@@ -1470,6 +1532,7 @@ export default function SettingsPage() {
     settingKey?: string
   ) => {
     if (!canManageClients) return
+    if (fieldKey === 'implementationPhase' && fieldName === 'optionsInput') return
 
     const nextSystemFields = clientSystemFields.map((field) =>
       field.key === fieldKey
@@ -1503,7 +1566,7 @@ export default function SettingsPage() {
     )
 
     setClientSystemFields(nextSystemFields)
-    void persistClientStructure(nextSystemFields, clientCustomColumns, clientCustomTabs)
+    void persistClientStructure(clientImplementationPhases, nextSystemFields, clientCustomColumns, clientCustomTabs)
   }
 
   const handleAddNewClientColumnOption = () => {
@@ -1556,6 +1619,95 @@ export default function SettingsPage() {
       'optionsInput',
       (currentField.options || []).filter((option) => option !== optionToRemove).join(', ')
     )
+  }
+
+  const handleCreateClientImplementationPhase = () => {
+    if (!canManageClients) return
+    const trimmedLabel = newClientPhaseLabel.trim()
+    if (!trimmedLabel) return
+
+    const nextPhases = [
+      ...clientImplementationPhases,
+      createClientImplementationPhaseRecord({
+        label: trimmedLabel,
+        description: newClientPhaseDescription.trim(),
+        objective: newClientPhaseObjective.trim(),
+        checklist: normalizePhaseChecklistInput(newClientPhaseChecklist),
+        slaDays: Number.isFinite(Number(newClientPhaseSlaDays)) ? Number(newClientPhaseSlaDays) : 0,
+      }),
+    ]
+    const nextSystemFields = syncImplementationPhaseSystemFieldOptions(clientSystemFields, nextPhases)
+
+    setClientImplementationPhases(nextPhases)
+    setClientSystemFields(nextSystemFields)
+    void persistClientStructure(nextPhases, nextSystemFields, clientCustomColumns, clientCustomTabs)
+    setNewClientPhaseLabel('')
+    setNewClientPhaseDescription('')
+    setNewClientPhaseObjective('')
+    setNewClientPhaseChecklist('')
+    setNewClientPhaseSlaDays('')
+    setSettingsSaveFeedback('Etapa da jornada salva em Configurações e sincronizada com a base.')
+  }
+
+  const handleClientImplementationPhaseChange = (
+    phaseId: string,
+    fieldName: keyof ClientImplementationPhaseRecord,
+    value: string | string[]
+  ) => {
+    if (!canManageClients) return
+    const currentPhase = clientImplementationPhases.find((phase) => phase.id === phaseId)
+    if (!currentPhase) return
+
+    const nextPhases = clientImplementationPhases.map((phase) =>
+      phase.id === phaseId ? createClientImplementationPhaseRecord({ ...phase, [fieldName]: value }) : phase
+    )
+    const nextSystemFields = syncImplementationPhaseSystemFieldOptions(clientSystemFields, nextPhases)
+    const nextPhase = nextPhases.find((phase) => phase.id === phaseId)
+    const nextClients =
+      fieldName === 'label' && currentPhase.label !== String(nextPhase?.label || '').trim()
+        ? serverClients.map((client) =>
+            String(client.implementationPhase || '').trim() === currentPhase.label
+              ? {
+                  ...client,
+                  implementationPhase: String(nextPhase?.label || '').trim(),
+                }
+              : client
+          )
+        : serverClients
+
+    setClientImplementationPhases(nextPhases)
+    setClientSystemFields(nextSystemFields)
+    void persistClientStructure(nextPhases, nextSystemFields, clientCustomColumns, clientCustomTabs, nextClients)
+  }
+
+  const handleRemoveClientImplementationPhase = (phaseId: string) => {
+    if (!canManageClients) return
+
+    const phase = clientImplementationPhases.find((item) => item.id === phaseId)
+    if (!phase) return
+
+    const usageCount = serverClients.filter((client) => String(client.implementationPhase || '').trim() === phase.label).length
+    if (usageCount > 0) {
+      const confirmed = window.confirm(
+        `A fase "${phase.label}" está em uso por ${usageCount} cliente(s). Deseja excluir mesmo assim?`
+      )
+      if (!confirmed) return
+    }
+
+    const nextPhases = clientImplementationPhases.filter((item) => item.id !== phaseId)
+    const nextSystemFields = syncImplementationPhaseSystemFieldOptions(clientSystemFields, nextPhases)
+    const nextClients = serverClients.map((client) =>
+      String(client.implementationPhase || '').trim() === phase.label
+        ? {
+            ...client,
+            implementationPhase: '',
+          }
+        : client
+    )
+    setClientImplementationPhases(nextPhases)
+    setClientSystemFields(nextSystemFields)
+    void persistClientStructure(nextPhases, nextSystemFields, clientCustomColumns, clientCustomTabs, nextClients)
+    setSettingsSaveFeedback('Etapa da jornada removida da configuração dos clientes.')
   }
 
   const handleSaveCurrentSettings = async () => {
@@ -2842,6 +2994,143 @@ export default function SettingsPage() {
                       <div className="settings-category-grid">
                         <div className="integration-block">
                           <div className="integration-heading">
+                            <div className="integration-icon" style={{ color: '#60a5fa', borderColor: '#60a5fa33' }}>
+                              <i className="bx bx-git-branch"></i>
+                            </div>
+                            <div>
+                              <h3>Etapas da jornada do cliente</h3>
+                              <p>Cadastre as etapas que podem ser escolhidas no cliente e descreva objetivo, checklist e prazo esperado de cada uma.</p>
+                            </div>
+                          </div>
+
+                          <div className="settings-form-grid">
+                            <div className="input-group">
+                              <label>Nome da etapa</label>
+                              <input type="text" value={newClientPhaseLabel} onChange={(event) => setNewClientPhaseLabel(event.target.value)} placeholder="Ex.: Kickoff, Implantação, Go Live" />
+                            </div>
+                            <div className="input-group settings-field-span-2">
+                              <label>Descrição</label>
+                              <textarea
+                                value={newClientPhaseDescription}
+                                onChange={(event) => setNewClientPhaseDescription(event.target.value)}
+                                placeholder="Explique rapidamente o que essa fase representa e o que precisa acontecer nela."
+                                rows={3}
+                              />
+                            </div>
+                            <div className="input-group settings-field-span-2">
+                              <label>Objetivo da etapa</label>
+                              <textarea
+                                value={newClientPhaseObjective}
+                                onChange={(event) => setNewClientPhaseObjective(event.target.value)}
+                                placeholder="Explique o resultado esperado dessa etapa dentro da jornada do cliente."
+                                rows={3}
+                              />
+                            </div>
+                            <div className="input-group settings-field-span-2">
+                              <label>Checklist base</label>
+                              <textarea
+                                value={newClientPhaseChecklist}
+                                onChange={(event) => setNewClientPhaseChecklist(event.target.value)}
+                                placeholder="Separe os itens por vírgula ou por linha. Ex.: Kickoff alinhado, acessos recebidos, metas definidas"
+                                rows={3}
+                              />
+                            </div>
+                            <div className="input-group">
+                              <label>SLA esperado (dias)</label>
+                              <input
+                                type="number"
+                                min="0"
+                                value={newClientPhaseSlaDays}
+                                onChange={(event) => setNewClientPhaseSlaDays(event.target.value)}
+                                placeholder="Ex.: 15"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="modal-actions">
+                            <button type="button" className="btn btn-primary" onClick={handleCreateClientImplementationPhase}>
+                              Criar etapa
+                            </button>
+                          </div>
+
+                          <div className="settings-stack-list">
+                            {clientImplementationPhases.map((phase) => (
+                              <details key={phase.id} className="glass-item settings-stack-card settings-accordion-card" open>
+                                <summary className="settings-accordion-summary">
+                                  <div>
+                                    <strong>{phase.label}</strong>
+                                    <span>{phase.description || phase.objective || 'Sem resumo ainda.'}</span>
+                                  </div>
+                                  <small>Etapa da jornada</small>
+                                </summary>
+                                <div className="settings-form-grid">
+                                  <div className="input-group">
+                                    <label>Nome da etapa</label>
+                                    <input
+                                      type="text"
+                                      value={phase.label}
+                                      onChange={(event) => handleClientImplementationPhaseChange(phase.id, 'label', event.target.value)}
+                                    />
+                                  </div>
+                                  <div className="input-group settings-field-span-2">
+                                    <label>Descrição</label>
+                                    <textarea
+                                      value={phase.description || ''}
+                                      onChange={(event) => handleClientImplementationPhaseChange(phase.id, 'description', event.target.value)}
+                                      rows={3}
+                                      placeholder="Explique o contexto e o objetivo dessa fase."
+                                    />
+                                  </div>
+                                  <div className="input-group settings-field-span-2">
+                                    <label>Objetivo da etapa</label>
+                                    <textarea
+                                      value={phase.objective || ''}
+                                      onChange={(event) => handleClientImplementationPhaseChange(phase.id, 'objective', event.target.value)}
+                                      rows={3}
+                                      placeholder="Descreva o que precisa ser alcançado antes de mover o cliente para a próxima etapa."
+                                    />
+                                  </div>
+                                  <div className="input-group settings-field-span-2">
+                                    <label>Checklist base</label>
+                                    <textarea
+                                      value={(phase.checklist || []).join('\n')}
+                                      onChange={(event) => handleClientImplementationPhaseChange(phase.id, 'checklist', normalizePhaseChecklistInput(event.target.value))}
+                                      rows={4}
+                                      placeholder="Um item por linha ou separado por vírgula."
+                                    />
+                                  </div>
+                                  <div className="input-group">
+                                    <label>SLA esperado (dias)</label>
+                                    <input
+                                      type="number"
+                                      min="0"
+                                      value={String(phase.slaDays || '')}
+                                      onChange={(event) => handleClientImplementationPhaseChange(phase.id, 'slaDays', event.target.value)}
+                                      placeholder="Ex.: 15"
+                                    />
+                                  </div>
+                                </div>
+                                {!!(phase.checklist || []).length && (
+                                  <div className="settings-option-chips">
+                                    {(phase.checklist || []).map((item) => (
+                                      <span key={`${phase.id}-${item}`} className="stage-chip active">
+                                        {item}
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
+                                <div className="modal-actions">
+                                  <button type="button" className="btn btn-secondary" onClick={() => handleRemoveClientImplementationPhase(phase.id)}>
+                                    Excluir etapa
+                                  </button>
+                                </div>
+                              </details>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="integration-block">
+                          <div className="integration-heading">
                             <div className="integration-icon" style={{ color: '#38bdf8', borderColor: '#38bdf833' }}>
                               <i className="bx bx-layer"></i>
                             </div>
@@ -2898,25 +3187,31 @@ export default function SettingsPage() {
                                   {field.type === 'select' && (
                                     <div className="input-group">
                                       <label>Opções</label>
-                                      <div className="settings-inline-action">
-                                        <input
-                                          type="text"
-                                          value={systemFieldOptionDrafts[field.key] || ''}
-                                          onChange={(event) => setSystemFieldOptionDrafts((current) => ({ ...current, [field.key]: event.target.value }))}
-                                          placeholder="Adicionar opção"
-                                        />
-                                        <button type="button" className="settings-inline-confirm" onClick={() => handleAddSystemFieldOption(field.key)}>
-                                          <i className="bx bx-check"></i>
-                                        </button>
-                                        <button
-                                          type="button"
-                                          className="settings-inline-confirm settings-inline-remove"
-                                          onClick={() => setSystemFieldOptionDrafts((current) => ({ ...current, [field.key]: '' }))}
-                                          disabled={!systemFieldOptionDrafts[field.key]}
-                                        >
-                                          <i className="bx bx-x"></i>
-                                        </button>
-                                      </div>
+                                      {field.key === 'implementationPhase' ? (
+                                        <p className="settings-helper-copy">
+                                          Essas opções são controladas pelo bloco <strong>Etapas da jornada do cliente</strong> acima.
+                                        </p>
+                                      ) : (
+                                        <div className="settings-inline-action">
+                                          <input
+                                            type="text"
+                                            value={systemFieldOptionDrafts[field.key] || ''}
+                                            onChange={(event) => setSystemFieldOptionDrafts((current) => ({ ...current, [field.key]: event.target.value }))}
+                                            placeholder="Adicionar opção"
+                                          />
+                                          <button type="button" className="settings-inline-confirm" onClick={() => handleAddSystemFieldOption(field.key)}>
+                                            <i className="bx bx-check"></i>
+                                          </button>
+                                          <button
+                                            type="button"
+                                            className="settings-inline-confirm settings-inline-remove"
+                                            onClick={() => setSystemFieldOptionDrafts((current) => ({ ...current, [field.key]: '' }))}
+                                            disabled={!systemFieldOptionDrafts[field.key]}
+                                          >
+                                            <i className="bx bx-x"></i>
+                                          </button>
+                                        </div>
+                                      )}
                                       {Boolean((field.options || []).length) && (
                                         <div className="settings-option-chips">
                                           {(field.options || []).map((option) => (
@@ -2925,9 +3220,10 @@ export default function SettingsPage() {
                                               type="button"
                                               className="stage-chip active settings-chip-button"
                                               onClick={() => handleRemoveSystemFieldOption(field.key, option)}
+                                              disabled={field.key === 'implementationPhase'}
                                             >
                                               <span>{option}</span>
-                                              <i className="bx bx-x"></i>
+                                              {field.key !== 'implementationPhase' && <i className="bx bx-x"></i>}
                                             </button>
                                           ))}
                                         </div>
@@ -4314,6 +4610,18 @@ export default function SettingsPage() {
         .settings-chip-button {
           border: 0;
           cursor: pointer;
+        }
+
+        .settings-helper-copy {
+          margin: 0;
+          color: var(--text-secondary);
+          font-size: 13px;
+          line-height: 1.5;
+        }
+
+        .settings-chip-button:disabled {
+          cursor: default;
+          opacity: 0.86;
         }
 
         .settings-chip-button small {

@@ -318,6 +318,15 @@ export interface ClientRecord {
   activeDashboardTemplateId: string
 }
 
+export interface ClientImplementationPhaseRecord {
+  id: string
+  label: string
+  description: string
+  objective: string
+  checklist: string[]
+  slaDays: number
+}
+
 export interface DashboardPreferences {
   themeColor: string
   metric1: string
@@ -329,6 +338,7 @@ export interface DashboardPreferences {
   products: ProductRecord[]
   operationCards: OperationCardRecord[]
   operationSettings: OperationSettingsRecord
+  clientImplementationPhases: ClientImplementationPhaseRecord[]
   clientSystemFields: ClientCustomColumnRecord[]
   clientCustomColumns: ClientCustomColumnRecord[]
   clientCustomTabs: ClientCustomTabRecord[]

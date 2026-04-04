@@ -5,6 +5,7 @@ import type {
   ClientOkrRecord,
   ClientCustomColumnRecord,
   ClientCustomTabRecord,
+  ClientImplementationPhaseRecord,
   ClientTabOverrideRecord,
   ClientGroupRecord,
   ClientRecord,
@@ -33,6 +34,7 @@ type ClientRecordOverrides = Partial<ClientRecord> & { integrations?: Partial<Da
 type ProductRecordOverrides = Partial<ProductRecord>
 type ClientCustomColumnOverrides = Partial<ClientCustomColumnRecord>
 type ClientCustomTabOverrides = Partial<ClientCustomTabRecord>
+type ClientImplementationPhaseOverrides = Partial<ClientImplementationPhaseRecord>
 type ClientTabOverrideOverrides = Partial<ClientTabOverrideRecord>
 type OperationCommentOverrides = Partial<OperationCommentRecord>
 type OperationSubtaskOverrides = Partial<OperationSubtaskRecord>
@@ -96,6 +98,30 @@ export const DEFAULT_CLIENT_DASHBOARD_INTEGRATION_KEYS = [
   'rd_station',
   'salesforce',
   'agendor',
+]
+
+export const DEFAULT_CLIENT_IMPLEMENTATION_PHASES: Array<Pick<ClientImplementationPhaseRecord, 'label' | 'description' | 'objective' | 'checklist' | 'slaDays'>> = [
+  {
+    label: 'Implementação (Inside Sales)',
+    description: 'Fase de onboarding comercial com CRM, processo, treinamento e alinhamento da rotina de operação.',
+    objective: 'Deixar o time comercial pronto para operar com processo, cadência e indicadores claros.',
+    checklist: ['Configurar CRM', 'Treinar time comercial', 'Validar fluxo de comunicação'],
+    slaDays: 15,
+  },
+  {
+    label: 'Implementação (Ecom)',
+    description: 'Fase de estruturação do e-commerce com tracking, integrações, checkout e validação da operação digital.',
+    objective: 'Garantir que a operação de e-commerce entre no ar com tracking, checkout e integrações validados.',
+    checklist: ['Validar tracking', 'Revisar checkout', 'Conferir integrações da loja'],
+    slaDays: 20,
+  },
+  {
+    label: 'Implementação (PDV)',
+    description: 'Fase de implantação focada em loja física, integrações offline, atendimento e captura operacional do PDV.',
+    objective: 'Organizar a rotina operacional do PDV para capturar demanda offline e conectar o time interno.',
+    checklist: ['Mapear processo de loja', 'Confirmar integrações', 'Planejar captação offline'],
+    slaDays: 20,
+  },
 ]
 
 function createOperationTaskCode(): string {
@@ -235,6 +261,22 @@ function normalizeClientDashboardIntegrationKeys(items: unknown): string[] {
     new Set(items.map((item) => String(item || '').trim()).filter((item) => allowedKeys.has(item)))
   )
   return normalized.length ? normalized : [...DEFAULT_CLIENT_DASHBOARD_INTEGRATION_KEYS]
+}
+
+export function createClientImplementationPhaseRecord(
+  overrides: ClientImplementationPhaseOverrides = {}
+): ClientImplementationPhaseRecord {
+  const label = String(overrides.label || 'Nova fase').trim() || 'Nova fase'
+  return {
+    id: String(overrides.id || '').trim() || createRecordId('client-implementation-phase'),
+    label,
+    description: String(overrides.description || '').trim(),
+    objective: String(overrides.objective || '').trim(),
+    checklist: Array.isArray(overrides.checklist)
+      ? Array.from(new Set(overrides.checklist.map((item) => String(item || '').trim()).filter(Boolean)))
+      : [],
+    slaDays: Number.isFinite(Number(overrides.slaDays)) ? Math.max(0, Number(overrides.slaDays)) : 0,
+  }
 }
 
 export function createOperationCommentRecord(
@@ -514,6 +556,14 @@ export const DEFAULT_PREFERENCES: DashboardPreferences = {
   products: [],
   operationCards: [],
   operationSettings: createOperationSettingsRecord(),
+  clientImplementationPhases: DEFAULT_CLIENT_IMPLEMENTATION_PHASES.map((phase) => ({
+    id: createRecordId('client-implementation-phase'),
+    label: phase.label,
+    description: phase.description,
+    objective: phase.objective,
+    checklist: phase.checklist,
+    slaDays: phase.slaDays,
+  })),
   clientSystemFields: [],
   clientCustomColumns: [],
   clientCustomTabs: [],
@@ -874,6 +924,11 @@ export function loadDashboardPreferences(): DashboardPreferences {
         ? parsed.operationCards.map((card) => createOperationCardRecord(card))
         : [],
       operationSettings: createOperationSettingsRecord(parsed.operationSettings),
+      clientImplementationPhases: Array.isArray(parsed.clientImplementationPhases) && parsed.clientImplementationPhases.length
+        ? parsed.clientImplementationPhases
+            .map((phase) => createClientImplementationPhaseRecord(phase))
+            .filter((phase) => phase.label)
+        : DEFAULT_PREFERENCES.clientImplementationPhases,
       clientSystemFields: Array.isArray(parsed.clientSystemFields)
         ? parsed.clientSystemFields.map((column) => createClientCustomColumnRecord(column))
         : [],
