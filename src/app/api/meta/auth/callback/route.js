@@ -22,7 +22,7 @@ export async function GET(request) {
       throw new Error('A confirmação da Meta expirou. Tente conectar novamente.')
     }
 
-    const { supabase, accessContext } = await getAuthorizedMetaConnectionContext({ requireEdit: true })
+    const { supabase, adminSupabase, accessContext } = await getAuthorizedMetaConnectionContext({ requireEdit: true })
 
     if (oauthCookie.workspaceId && oauthCookie.workspaceId !== accessContext.workspaceId) {
       throw new Error('O workspace do retorno da Meta não confere com a sessão atual.')
@@ -32,7 +32,7 @@ export async function GET(request) {
     const longLivedToken = await exchangeMetaLongLivedToken(request, shortLivedToken.access_token)
     const metaProfile = await getMetaProfile(longLivedToken.access_token)
 
-    await saveWorkspaceMetaConnection(supabase, accessContext.workspaceId, {
+    await saveWorkspaceMetaConnection(adminSupabase, accessContext.workspaceId, {
       metaUserId: metaProfile.id,
       metaUserName: metaProfile.name,
       accessToken: longLivedToken.access_token,

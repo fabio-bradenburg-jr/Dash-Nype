@@ -43,11 +43,11 @@ export function isMissingRelationError(error) {
 }
 
 export function getMetaOauthConfig(request) {
-  const appId = process.env.META_APP_ID
-  const appSecret = process.env.META_APP_SECRET
+  const appId = process.env.META_APP_ID || process.env.FACEBOOK_APP_ID
+  const appSecret = process.env.META_APP_SECRET || process.env.FACEBOOK_APP_SECRET
 
   if (!appId || !appSecret) {
-    throw new Error('Configure META_APP_ID e META_APP_SECRET para conectar a Meta.')
+    throw new Error('Configure META_APP_ID/META_APP_SECRET ou FACEBOOK_APP_ID/FACEBOOK_APP_SECRET para conectar a Meta.')
   }
 
   return {
@@ -295,8 +295,8 @@ export async function resolveWorkspaceMetaAccessToken(request) {
   }
 
   try {
-    const { supabase, accessContext } = await getAuthorizedMetaConnectionContext()
-    const connection = await getWorkspaceMetaConnection(supabase, accessContext.workspaceId)
+    const { adminSupabase, accessContext } = await getAuthorizedMetaConnectionContext()
+    const connection = await getWorkspaceMetaConnection(adminSupabase, accessContext.workspaceId)
     return connection?.access_token || ''
   } catch {
     return ''
