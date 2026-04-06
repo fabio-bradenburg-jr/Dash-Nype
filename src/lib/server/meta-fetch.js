@@ -2,6 +2,31 @@ function isTimeoutError(error) {
   return error?.message === 'fetch failed' || error?.cause?.code === 'UND_ERR_CONNECT_TIMEOUT'
 }
 
+function isInvalidMetaTokenPayload(payload) {
+  const error = payload?.error
+  const message = String(error?.message || '').toLowerCase()
+
+  return (
+    error?.code === 190 ||
+    message.includes('error validating access token') ||
+    message.includes('session is invalid') ||
+    message.includes('user logged out') ||
+    message.includes('session has been invalidated')
+  )
+}
+
+function replaceMetaAccessToken(url, nextToken) {
+  if (!nextToken || typeof url !== 'string' || !url.includes('access_token=')) return url
+
+  try {
+    const parsed = new URL(url)
+    parsed.searchParams.set('access_token', nextToken)
+    return parsed.toString()
+  } catch {
+    return url.replace(/access_token=[^&]+/, `access_token=${encodeURIComponent(nextToken)}`)
+  }
+}
+
 const META_RESPONSE_CACHE = new Map()
 const META_CACHE_TTL_MS = 60_000
 const META_MAX_PAGES = 40
@@ -28,6 +53,7 @@ export async function fetchMetaJson(url, fallbackMessage, options = {}) {
   let lastError = null
   const cacheKey = `${options.method || 'GET'}:${url}`
   const cachedEntry = META_RESPONSE_CACHE.get(cacheKey)
+  const envToken = String(process.env.META_ACCESS_TOKEN || '').trim()
 
   if (cachedEntry && Date.now() - cachedEntry.timestamp < META_CACHE_TTL_MS) {
     return cachedEntry.data
@@ -38,12 +64,25 @@ export async function fetchMetaJson(url, fallbackMessage, options = {}) {
       let requestUrl = url
       let pageCount = 0
       let mergedData = null
+      let hasRetriedWithEnvToken = false
 
       while (requestUrl && pageCount < META_MAX_PAGES) {
         const response = await fetch(requestUrl, options)
         const data = await response.json()
 
         if (data?.error) {
+          if (
+            envToken &&
+            !hasRetriedWithEnvToken &&
+            isInvalidMetaTokenPayload(data) &&
+            requestUrl.includes('access_token=') &&
+            !requestUrl.includes(`access_token=${encodeURIComponent(envToken)}`)
+          ) {
+            requestUrl = replaceMetaAccessToken(requestUrl, envToken)
+            hasRetriedWithEnvToken = true
+            continue
+          }
+
           throw new Error(data.error.message || fallbackMessage)
         }
 
