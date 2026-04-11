@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import {
   Area,
   AreaChart,
@@ -63,7 +64,22 @@ function statusLabel(status: string) {
 }
 
 export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
+  const router = useRouter()
   const [selectedClientId, setSelectedClientId] = useState(snapshot.selectedClient.id)
+  const [creatingClient, setCreatingClient] = useState(false)
+  const [syncing, setSyncing] = useState(false)
+  const [showClientForm, setShowClientForm] = useState(false)
+  const [clientForm, setClientForm] = useState({
+    name: '',
+    company: '',
+    niche: '',
+    average_ticket: '0',
+    main_goal: 'leads',
+    ltv: '0',
+    start_date: new Date().toISOString().slice(0, 10),
+    status: 'onboarding',
+    target_roas: '2.5',
+  })
   const selectedClient = snapshot.clients.find((client) => client.id === selectedClientId) ?? snapshot.selectedClient
   const selectedClientIntegrations = snapshot.integrations.filter((integration) => integration.client_id === selectedClient.id)
   const positiveMetrics = snapshot.clientDashboard.overview_metrics.slice(0, 3)
@@ -78,6 +94,42 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
   async function handleLogout() {
     await fetch('/api/auth/logout', { method: 'POST' })
     window.location.href = '/login'
+  }
+
+  async function handleCreateClient() {
+    setCreatingClient(true)
+    try {
+      await fetch('/api/saas/clients', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...clientForm,
+          average_ticket: Number(clientForm.average_ticket),
+          ltv: Number(clientForm.ltv),
+          target_roas: Number(clientForm.target_roas),
+          business_data: {},
+        }),
+      })
+      setShowClientForm(false)
+      router.refresh()
+    } finally {
+      setCreatingClient(false)
+    }
+  }
+
+  async function handleSyncSources() {
+    if (selectedClientIntegrations.length === 0) return
+    setSyncing(true)
+    try {
+      await fetch('/api/saas/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ integrationIds: selectedClientIntegrations.map((integration) => integration.id) }),
+      })
+      router.refresh()
+    } finally {
+      setSyncing(false)
+    }
   }
 
   return (
@@ -163,8 +215,12 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
                       </option>
                     ))}
                   </select>
-                  <Button variant="secondary" className="h-12">Sync sources</Button>
-                  <Button className="h-12">New client</Button>
+                  <Button variant="secondary" className="h-12" onClick={handleSyncSources} disabled={syncing}>
+                    {syncing ? 'Syncing...' : 'Sync sources'}
+                  </Button>
+                  <Button className="h-12" onClick={() => setShowClientForm((value) => !value)}>
+                    {showClientForm ? 'Close form' : 'New client'}
+                  </Button>
                   <Button className="h-12" variant="ghost" onClick={handleLogout}>Logout</Button>
                 </div>
                 <div className="grid gap-3 sm:grid-cols-3">
@@ -184,6 +240,60 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
                     <p className="mt-2 font-manrope text-xl font-extrabold capitalize">{selectedClient.main_goal}</p>
                   </div>
                 </div>
+                {showClientForm ? (
+                  <div className="grid gap-3 rounded-[28px] border border-slate-200/70 bg-white/90 p-4 shadow-sm md:grid-cols-2">
+                    {[
+                      { key: 'name', label: 'Name', type: 'text' },
+                      { key: 'company', label: 'Company', type: 'text' },
+                      { key: 'niche', label: 'Niche', type: 'text' },
+                      { key: 'average_ticket', label: 'Average ticket', type: 'number' },
+                      { key: 'ltv', label: 'LTV', type: 'number' },
+                      { key: 'start_date', label: 'Start date', type: 'date' },
+                      { key: 'target_roas', label: 'Target ROAS', type: 'number' },
+                    ].map((field) => (
+                      <label key={field.key} className="grid gap-2 text-sm font-medium text-slate-600">
+                        {field.label}
+                        <input
+                          className="h-11 rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-900 outline-none"
+                          type={field.type}
+                          value={clientForm[field.key as keyof typeof clientForm]}
+                          onChange={(event) =>
+                            setClientForm((current) => ({ ...current, [field.key]: event.target.value }))
+                          }
+                        />
+                      </label>
+                    ))}
+                    <label className="grid gap-2 text-sm font-medium text-slate-600">
+                      Goal
+                      <select
+                        className="h-11 rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-900 outline-none"
+                        value={clientForm.main_goal}
+                        onChange={(event) => setClientForm((current) => ({ ...current, main_goal: event.target.value }))}
+                      >
+                        <option value="leads">Leads</option>
+                        <option value="sales">Sales</option>
+                        <option value="messages">Messages</option>
+                      </select>
+                    </label>
+                    <label className="grid gap-2 text-sm font-medium text-slate-600">
+                      Status
+                      <select
+                        className="h-11 rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-900 outline-none"
+                        value={clientForm.status}
+                        onChange={(event) => setClientForm((current) => ({ ...current, status: event.target.value }))}
+                      >
+                        <option value="onboarding">Onboarding</option>
+                        <option value="active">Active</option>
+                        <option value="paused">Paused</option>
+                      </select>
+                    </label>
+                    <div className="md:col-span-2">
+                      <Button className="h-12 w-full" onClick={handleCreateClient} disabled={creatingClient}>
+                        {creatingClient ? 'Creating client...' : 'Create client'}
+                      </Button>
+                    </div>
+                  </div>
+                ) : null}
               </div>
             </div>
           </section>

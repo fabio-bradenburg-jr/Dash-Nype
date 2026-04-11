@@ -20,7 +20,7 @@ const legacyPrefixes = [
   '/saas',
 ]
 
-export function middleware(request) {
+export function proxy(request) {
   const { pathname } = request.nextUrl
   const hasAuthCookie = Boolean(request.cookies.get(PLATFORM_AUTH_COOKIE)?.value)
 

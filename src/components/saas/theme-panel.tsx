@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -8,6 +9,8 @@ import { ThemeSettings } from '@/lib/saas/types'
 
 export function ThemePanel({ initialTheme }: { initialTheme: ThemeSettings }) {
   const [theme, setTheme] = useState(initialTheme)
+  const [saving, setSaving] = useState(false)
+  const router = useRouter()
 
   function updateTheme(nextTheme: ThemeSettings) {
     setTheme(nextTheme)
@@ -16,6 +19,20 @@ export function ThemePanel({ initialTheme }: { initialTheme: ThemeSettings }) {
     root.style.setProperty('--saas-accent', nextTheme.accentColor)
     root.style.setProperty('--saas-surface', nextTheme.backgroundColor)
     root.dataset.uiMode = nextTheme.darkMode ? 'dark' : 'light'
+  }
+
+  async function persistTheme() {
+    setSaving(true)
+    try {
+      await fetch('/api/saas/theme', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(theme),
+      })
+      router.refresh()
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
@@ -45,6 +62,11 @@ export function ThemePanel({ initialTheme }: { initialTheme: ThemeSettings }) {
         <div className="flex items-end">
           <Button variant="secondary" className="w-full" onClick={() => updateTheme({ ...theme, darkMode: !theme.darkMode })}>
             {theme.darkMode ? 'Disable dark mode' : 'Enable dark mode'}
+          </Button>
+        </div>
+        <div className="md:col-span-2">
+          <Button className="w-full" onClick={persistTheme} disabled={saving}>
+            {saving ? 'Saving theme...' : 'Save theme'}
           </Button>
         </div>
       </CardContent>
