@@ -1,5 +1,5 @@
-import { redirect } from 'next/navigation'
+import SaaSPage from './saas/page'
 
-export default function HomePage() {
-  redirect('/home')
-}
+export const dynamic = 'force-dynamic'
+
+export default SaaSPage

@@ -2,8 +2,8 @@ import { UserProvider } from '@/lib/contexts/UserContext'
 import './globals.css'
 
 export const metadata = {
-  title: 'Dash',
-  description: 'Dashboard de performance para apresentação de clientes e gestão de integrações',
+  title: 'Nype Orbit',
+  description: 'SaaS platform for marketing metrics, client management, integrations, and operations tracking.',
 }
 
 export default function RootLayout({ children }) {
@@ -13,14 +13,14 @@ export default function RootLayout({ children }) {
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&display=swap" rel="stylesheet" />
-        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;700;800&display=swap" rel="stylesheet" />
         <link
           href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0"
           rel="stylesheet"
         />
         <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet' />
       </head>
-      <body>
+      <body className="font-sans antialiased">
         <UserProvider>
           {children}
         </UserProvider>

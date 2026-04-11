@@ -1,89 +1,113 @@
-# Nype SaaS Platform
+# Nype Orbit SaaS
 
-Plataforma SaaS multi-tenant para gestão de clientes de agência com foco em performance, operação, risco de churn e leitura assistida por IA.
+Multi-tenant SaaS platform for marketing metrics, client management, integrations, health scoring, and operational tracking.
 
-## Arquitetura
+## Stack
 
-- `src/`: frontend Next.js atual, já conectado à camada de plataforma por rotas internas em `/api/platform/*`
-- `apps/api`: backend NestJS com JWT, RBAC, Prisma, BullMQ e módulos de negócio
-- `apps/ai-service`: microserviço FastAPI para análise de risco e recomendações
-- `packages/db`: schema Prisma, seeds e regra central de cálculo de health score, churn score e alertas
+- Frontend: Next.js, React, TypeScript, TailwindCSS, shadcn/ui-style components, Recharts
+- Backend: FastAPI, SQLAlchemy ORM, PostgreSQL, JWT authentication
+- Architecture: REST API, multi-tenant data isolation, modular services, mock background sync jobs
 
-## Domínio coberto
+## Project structure
 
-- Multi-tenant por `Tenant`
-- RBAC com `MASTER`, `USER`, `VIEWER`, `CLIENT`
-- Permissão por cliente e dashboard
-- Métricas financeiras, performance, engajamento, operacional e qualidade
-- Health score ponderado
-- Churn score por regras de negócio
-- Alertas automáticos e risco manual
-- Integrações com fila assíncrona
-- Ponte frontend -> API -> IA
-
-## Endpoints principais
-
-- `POST /api/auth/login`
-- `GET /api/clients?tenantId=...`
-- `POST /api/clients`
-- `GET /api/clients/:clientId`
-- `GET /api/dashboards/home?tenantId=...`
-- `GET /api/dashboards/executive?tenantId=...`
-- `GET /api/alerts?tenantId=...`
-- `PATCH /api/alerts/:alertId/resolve`
-- `GET /api/integrations?tenantId=...`
-- `POST /api/integrations/:integrationId/sync`
-- `GET /api/health/clients/:clientId/analysis`
-
-## Setup local
-
-### 1. Banco e Redis
-
-```bash
-docker run --name nype-postgres -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=nype -p 5432:5432 -d postgres:16
-docker run --name nype-redis -p 6379:6379 -d redis:7
+```text
+Nype/
+├── apps/
+│   ├── backend/                 # FastAPI API, SQLAlchemy models, seed data, cron sync
+│   ├── ai-service/              # Existing lightweight AI service
+│   └── api/                     # Existing NestJS API kept intact
+├── src/
+│   ├── app/saas/                # New SaaS dashboard route
+│   ├── components/saas/         # Dashboard modules
+│   ├── components/ui/           # shadcn/ui-style primitives
+│   └── lib/saas/                # Types, mock data, API adapter
+└── packages/db/                 # Existing shared package
 ```
 
-### 2. Variáveis de ambiente
+## Backend modules
 
-Copie `.env.example` para `.env.local`.
+- `auth`: email/password login and JWT issue
+- `clients`: full CRUD with tenant scoping
+- `integrations`: Meta Ads, Google Ads, LinkedIn Ads, and Agendor connection records
+- `dashboards`: client and operations aggregations
+- `tasks`: project management per client
+- `settings`: tenant theme customization
+- `services/seed.py`: production-style demo seed
+- `services/integrations.py`: mock sync + metric normalization
+- `services/health.py`: green/yellow/red health score engine
 
-### 3. Prisma
+## Frontend modules
+
+- Sidebar navigation
+- Topbar with client selector
+- Metric cards
+- Time-series and distribution charts
+- Dynamic funnel builder
+- Client health and integration panels
+- Project checklist and task management
+- Theme customization panel
+
+## Local run
+
+### 1. Start PostgreSQL
 
 ```bash
-npm --workspace @nype/db run prisma:generate
-npm --workspace @nype/db run prisma:migrate
-npm --workspace @nype/db run prisma:seed
+docker run --name nype-marketing-postgres -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=nype_marketing -p 5432:5432 -d postgres:16
 ```
 
-### 4. API NestJS
+### 2. Install frontend dependencies
 
 ```bash
-npm --workspace @nype/api run start:dev
+npm install
 ```
 
-### 5. Microserviço de IA
+### 3. Configure and run the FastAPI backend
 
 ```bash
-cd apps/ai-service
-python -m venv .venv
+cd apps/backend
+python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
+cp .env.example .env
 uvicorn app.main:app --reload --port 8000
 ```
 
-### 6. Frontend
+Demo users:
+
+- `admin@nype.demo` / `admin123`
+- `operator@nype.demo` / `operator123`
+
+### 4. Run the Next.js frontend
 
 ```bash
+cd ../..
 npm run dev
 ```
 
-## Seeds
+Open [http://localhost:3000](http://localhost:3000). The new SaaS is now the primary application at the root domain, and the legacy interface routes redirect back to `/`.
 
-O seed cria tenant, usuário master, cliente em risco, métricas, scores, alertas, integrações e tarefas.
+## API overview
 
-## Observações
+- `POST /api/v1/auth/login`
+- `GET /api/v1/auth/me`
+- `GET /api/v1/clients`
+- `POST /api/v1/clients`
+- `PUT /api/v1/clients/{client_id}`
+- `DELETE /api/v1/clients/{client_id}`
+- `GET /api/v1/clients/{client_id}/checklist`
+- `GET /api/v1/clients/{client_id}/tasks`
+- `GET /api/v1/dashboards/clients/{client_id}`
+- `GET /api/v1/dashboards/operations`
+- `GET /api/v1/integrations`
+- `POST /api/v1/integrations`
+- `POST /api/v1/integrations/{integration_id}/sync`
+- `GET /api/v1/settings/theme`
+- `PUT /api/v1/settings/theme`
+- `GET /api/v1/tasks`
+- `POST /api/v1/tasks/clients/{client_id}`
+- `PATCH /api/v1/tasks/{task_id}`
 
-- A UI nova já pode consumir a camada de plataforma com fallback seguro.
-- O domínio compartilhado está centralizado em `packages/db`.
-- As integrações entram por fila BullMQ para sync assíncrono.
+## Notes
+
+- The frontend uses live API data when available and falls back to typed mock data so the dashboard still renders during setup.
+- Integration sync currently uses deterministic mock payloads with normalization logic; the provider module boundaries are ready for real API clients.

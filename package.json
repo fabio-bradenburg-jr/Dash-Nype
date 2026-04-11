@@ -9,6 +9,7 @@
   "scripts": {
     "dev": "next dev",
     "dev:web": "next dev",
+    "dev:backend": "cd apps/backend && uvicorn app.main:app --reload --port 8000",
     "dev:api": "npm --workspace @nype/api run start:dev",
     "dev:db:seed": "npm --workspace @nype/db run prisma:seed",
     "build": "next build",
@@ -18,13 +19,19 @@
   "dependencies": {
     "@supabase/ssr": "^0.9.0",
     "@supabase/supabase-js": "^2.99.1",
+    "class-variance-authority": "^0.7.1",
     "chart.js": "^4.5.1",
+    "clsx": "^2.1.1",
     "html2canvas": "^1.4.1",
     "jspdf": "^4.2.0",
+    "lucide-react": "^0.511.0",
     "next": "16.1.6",
     "react": "19.2.3",
     "react-chartjs-2": "^5.3.1",
-    "react-dom": "19.2.3"
+    "react-dom": "19.2.3",
+    "recharts": "^3.2.1",
+    "tailwind-merge": "^3.3.1",
+    "tailwindcss": "^4.1.11"
   },
   "devDependencies": {
     "eslint": "^9",

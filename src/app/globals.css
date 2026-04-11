@@ -1,8 +1,13 @@
+@import "tailwindcss";
+
 /* =========================================
    Meta Ads Dashboard - Styles
    ========================================= */
 
 :root {
+    --saas-primary: #0f766e;
+    --saas-accent: #f97316;
+    --saas-surface: #f8fafc;
     /* Colors */
     --bg-dark: #05060a;
     --bg-panel: rgba(15, 15, 17, 0.88);
@@ -39,8 +44,8 @@
     --app-bg-rgb: 78, 137, 255;
 
     /* Typography */
-    --font-family: 'Inter', sans-serif;
-    --font-family-headline: 'Inter', sans-serif;
+    --font-family: 'Plus Jakarta Sans', sans-serif;
+    --font-family-headline: 'Manrope', sans-serif;
     
     /* Layout */
     --sidebar-width: 286px;
@@ -78,6 +83,10 @@ body {
         linear-gradient(180deg, rgba(255, 255, 255, 0.018), rgba(255, 255, 255, 0)),
         linear-gradient(180deg, #040404 0%, #060606 38%, #080808 100%);
     background-attachment: fixed;
+}
+
+.font-manrope {
+    font-family: var(--font-family-headline);
 }
 
 :root[data-ui-mode='light'] body {
