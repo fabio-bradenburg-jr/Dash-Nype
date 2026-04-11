@@ -35,15 +35,30 @@ def create_integration(payload: IntegrationCreate, user: User = Depends(get_curr
     if not client or client.tenant_id != user.tenant_id:
         raise HTTPException(status_code=404, detail="Client not found")
 
-    integration = Integration(
-        tenant_id=user.tenant_id,
-        client_id=payload.client_id,
-        provider=IntegrationProvider(payload.provider),
-        account_name=payload.account_name,
-        external_account_id=payload.external_account_id,
-        access_token_encrypted=encrypt_secret(payload.access_token),
-    )
-    db.add(integration)
+    provider = IntegrationProvider(payload.provider)
+    integration = db.execute(
+        select(Integration).where(
+            Integration.tenant_id == user.tenant_id,
+            Integration.client_id == payload.client_id,
+            Integration.provider == provider,
+        )
+    ).scalar_one_or_none()
+
+    if integration:
+        integration.account_name = payload.account_name
+        integration.external_account_id = payload.external_account_id
+        integration.access_token_encrypted = encrypt_secret(payload.access_token)
+    else:
+        integration = Integration(
+            tenant_id=user.tenant_id,
+            client_id=payload.client_id,
+            provider=provider,
+            account_name=payload.account_name,
+            external_account_id=payload.external_account_id,
+            access_token_encrypted=encrypt_secret(payload.access_token),
+        )
+        db.add(integration)
+
     db.commit()
     db.refresh(integration)
 

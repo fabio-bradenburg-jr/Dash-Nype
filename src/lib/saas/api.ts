@@ -1,10 +1,11 @@
 import { cookies } from 'next/headers'
 
 import { PLATFORM_AUTH_COOKIE } from '@/lib/saas/auth'
+import { getPlatformApiUrl } from '@/lib/saas/server-api'
 import { demoPlatformSnapshot } from '@/lib/saas/mock-data'
 import { PlatformSnapshot } from '@/lib/saas/types'
 
-const API_URL = process.env.NEXT_PUBLIC_PLATFORM_API_URL ?? 'http://localhost:8000/api/v1'
+const API_URL = getPlatformApiUrl()
 const DEMO_TOKEN = process.env.NEXT_PUBLIC_PLATFORM_DEMO_TOKEN
 
 async function apiFetch<T>(path: string, token?: string): Promise<T> {

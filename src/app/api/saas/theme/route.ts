@@ -2,8 +2,9 @@ import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 
 import { PLATFORM_AUTH_COOKIE } from '@/lib/saas/auth'
+import { getPlatformApiUrl } from '@/lib/saas/server-api'
 
-const API_URL = process.env.NEXT_PUBLIC_PLATFORM_API_URL ?? 'http://localhost:8000/api/v1'
+const API_URL = getPlatformApiUrl()
 
 export async function PUT(request: Request) {
   const token = (await cookies()).get(PLATFORM_AUTH_COOKIE)?.value

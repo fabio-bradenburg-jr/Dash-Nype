@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import {
   Area,
   AreaChart,
@@ -22,7 +22,9 @@ import {
   BriefcaseBusiness,
   Building2,
   CheckCircle2,
+  ChevronRight,
   LayoutDashboard,
+  Link2,
   LineChart,
   ShieldCheck,
   Settings2,
@@ -83,9 +85,14 @@ function objectiveLabel(objective: string) {
 
 export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [selectedClientId, setSelectedClientId] = useState(snapshot.selectedClient.id)
   const [creatingClient, setCreatingClient] = useState(false)
   const [syncing, setSyncing] = useState(false)
+  const [linkingMeta, setLinkingMeta] = useState(false)
+  const [loadingMetaAccounts, setLoadingMetaAccounts] = useState(false)
+  const [metaAccounts, setMetaAccounts] = useState<Array<{ id: string; name: string; clientId: string }>>([])
+  const [selectedMetaAccountId, setSelectedMetaAccountId] = useState('')
   const [showClientForm, setShowClientForm] = useState(false)
   const [clientForm, setClientForm] = useState({
     name: '',
@@ -100,7 +107,10 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
   })
   const selectedClient = snapshot.clients.find((client) => client.id === selectedClientId) ?? snapshot.selectedClient
   const selectedClientIntegrations = snapshot.integrations.filter((integration) => integration.client_id === selectedClient.id)
+  const selectedMetaIntegration = selectedClientIntegrations.find((integration) => integration.provider === 'meta_ads')
   const positiveMetrics = snapshot.clientDashboard.overview_metrics.slice(0, 3)
+  const metaError = searchParams.get('meta_error')
+  const metaPending = searchParams.get('meta_pending') === '1'
 
   useEffect(() => {
     const root = document.documentElement
@@ -108,6 +118,26 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
     root.style.setProperty('--saas-accent', snapshot.theme.accentColor)
     root.style.setProperty('--saas-surface', snapshot.theme.backgroundColor)
   }, [snapshot.theme])
+
+  useEffect(() => {
+    async function loadMetaAccounts() {
+      if (!metaPending) return
+      setLoadingMetaAccounts(true)
+      try {
+        const response = await fetch('/api/saas/meta/adaccounts', { cache: 'no-store' })
+        const data = await response.json()
+        const accounts = data.accounts || []
+        setMetaAccounts(accounts)
+        if (accounts[0]?.id) {
+          setSelectedMetaAccountId(accounts[0].id)
+        }
+      } finally {
+        setLoadingMetaAccounts(false)
+      }
+    }
+
+    loadMetaAccounts()
+  }, [metaPending])
 
   async function handleLogout() {
     await fetch('/api/auth/logout', { method: 'POST' })
@@ -147,6 +177,32 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
       router.refresh()
     } finally {
       setSyncing(false)
+    }
+  }
+
+  function handleConnectMeta() {
+    window.location.href = `/api/saas/meta/start?client_id=${encodeURIComponent(selectedClient.id)}&return_to=/`
+  }
+
+  async function handleLinkMetaAccount() {
+    const selectedAccount = metaAccounts.find((account) => account.id === selectedMetaAccountId)
+    if (!selectedAccount) return
+
+    setLinkingMeta(true)
+    try {
+      await fetch('/api/saas/meta/connect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          clientId: selectedClient.id,
+          accountId: selectedAccount.id,
+          accountName: selectedAccount.name,
+        }),
+      })
+      router.replace('/')
+      router.refresh()
+    } finally {
+      setLinkingMeta(false)
     }
   }
 
@@ -197,6 +253,12 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
         </aside>
 
         <main className="min-w-0 flex-1 space-y-6">
+          {metaError ? (
+            <div className="rounded-[28px] border border-rose-200 bg-rose-50 px-5 py-4 text-sm font-medium text-rose-700">
+              {metaError}
+            </div>
+          ) : null}
+
           <section className="relative overflow-hidden rounded-[34px] border border-white/80 bg-[linear-gradient(135deg,rgba(255,255,255,0.92),rgba(248,250,252,0.76))] p-5 shadow-[0_26px_80px_rgba(15,23,42,0.08)] backdrop-blur-xl">
             <div className="pointer-events-none absolute inset-y-0 right-0 w-[38%] bg-[radial-gradient(circle_at_top,rgba(249,115,22,0.15),transparent_46%),radial-gradient(circle_at_bottom,rgba(15,118,110,0.18),transparent_42%)]" />
             <div className="relative flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
@@ -569,14 +631,61 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
                 </CardHeader>
                 <CardContent className="space-y-3">
                   {selectedClientIntegrations.map((integration) => (
-                      <div key={integration.id} className="flex items-center justify-between rounded-2xl border border-slate-200/80 bg-white px-4 py-3 shadow-sm">
-                        <div>
-                          <p className="font-semibold capitalize text-slate-900">{integration.provider.replace('_', ' ')}</p>
-                          <p className="text-xs text-slate-400">{integration.account_name}</p>
-                        </div>
-                        <Badge tone={integration.status === 'connected' ? 'green' : 'yellow'}>{statusLabel(integration.status)}</Badge>
+                    <div key={integration.id} className="flex items-center justify-between rounded-2xl border border-slate-200/80 bg-white px-4 py-3 shadow-sm">
+                      <div>
+                        <p className="font-semibold capitalize text-slate-900">{integration.provider.replace('_', ' ')}</p>
+                        <p className="text-xs text-slate-400">{integration.account_name}</p>
                       </div>
-                    ))}
+                      <Badge tone={integration.status === 'connected' ? 'green' : 'yellow'}>{statusLabel(integration.status)}</Badge>
+                    </div>
+                  ))}
+                  <div className="rounded-[28px] border border-slate-200/80 bg-slate-50/80 p-4">
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <Link2 className="h-4 w-4 text-[var(--saas-primary)]" />
+                          <p className="font-semibold text-slate-900">Meta Ads</p>
+                        </div>
+                        <p className="mt-2 text-sm leading-6 text-slate-500">
+                          {selectedMetaIntegration
+                            ? `Conectado com ${selectedMetaIntegration.account_name}.`
+                            : 'Conecte sua conta do Facebook para listar contas de anúncio e vincular ao cliente selecionado.'}
+                        </p>
+                      </div>
+                      <Button variant="secondary" onClick={handleConnectMeta}>
+                        {selectedMetaIntegration ? 'Reconectar' : 'Conectar Meta'}
+                      </Button>
+                    </div>
+
+                    {metaPending ? (
+                      <div className="mt-4 space-y-3 rounded-2xl border border-emerald-200 bg-white p-4">
+                        <p className="text-sm font-semibold text-slate-900">Selecionar conta de anúncio</p>
+                        <p className="text-sm text-slate-500">
+                          {loadingMetaAccounts
+                            ? 'Carregando contas disponíveis...'
+                            : 'Escolha qual conta da Meta será vinculada a este cliente.'}
+                        </p>
+                        {!loadingMetaAccounts && metaAccounts.length > 0 ? (
+                          <>
+                            <select
+                              className="h-11 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-900 outline-none"
+                              value={selectedMetaAccountId}
+                              onChange={(event) => setSelectedMetaAccountId(event.target.value)}
+                            >
+                              {metaAccounts.map((account) => (
+                                <option key={account.id} value={account.id}>
+                                  {account.name}
+                                </option>
+                              ))}
+                            </select>
+                            <Button className="w-full" onClick={handleLinkMetaAccount} disabled={linkingMeta}>
+                              {linkingMeta ? 'Vinculando conta...' : 'Vincular conta selecionada'}
+                            </Button>
+                          </>
+                        ) : null}
+                      </div>
+                    ) : null}
+                  </div>
                 </CardContent>
               </Card>
             </div>
@@ -739,7 +848,10 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
                         {client.niche} • {formatValue(client.ltv, 'currency')} de LTV
                       </p>
                     </div>
-                    <Badge tone={healthTone(client.health_band)}>{client.health_score}</Badge>
+                    <div className="flex items-center gap-3">
+                      <Badge tone={healthTone(client.health_band)}>{client.health_score}</Badge>
+                      <ChevronRight className={`h-4 w-4 ${client.id === selectedClientId ? 'text-white/60' : 'text-slate-400'}`} />
+                    </div>
                   </button>
                 ))}
               </CardContent>
