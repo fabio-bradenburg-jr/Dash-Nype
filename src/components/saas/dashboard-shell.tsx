@@ -38,18 +38,18 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { PlatformSnapshot } from '@/lib/saas/types'
 
 const navigation = [
-  { label: 'Overview', icon: LayoutDashboard },
-  { label: 'Clients', icon: Users },
-  { label: 'Operations', icon: Activity },
-  { label: 'Projects', icon: BriefcaseBusiness },
-  { label: 'Settings', icon: Settings2 },
+  { label: 'Visão geral', icon: LayoutDashboard },
+  { label: 'Clientes', icon: Users },
+  { label: 'Operações', icon: Activity },
+  { label: 'Projetos', icon: BriefcaseBusiness },
+  { label: 'Configurações', icon: Settings2 },
 ]
 
 function formatValue(value: number, format: string) {
-  if (format === 'currency') return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(value)
+  if (format === 'currency') return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(value)
   if (format === 'percent') return `${value}%`
   if (format === 'ratio') return `${value.toFixed(2)}x`
-  return new Intl.NumberFormat('en-US').format(value)
+  return new Intl.NumberFormat('pt-BR').format(value)
 }
 
 function healthTone(band: string) {
@@ -60,7 +60,25 @@ function healthTone(band: string) {
 }
 
 function statusLabel(status: string) {
-  return status.replace('_', ' ')
+  const map: Record<string, string> = {
+    todo: 'a fazer',
+    in_progress: 'em andamento',
+    done: 'concluída',
+    active: 'ativo',
+    onboarding: 'onboarding',
+    paused: 'pausado',
+    connected: 'conectado',
+  }
+  return map[status] || status.replace('_', ' ')
+}
+
+function objectiveLabel(objective: string) {
+  const map: Record<string, string> = {
+    purchases: 'compras',
+    leads: 'leads',
+    messages: 'mensagens',
+  }
+  return map[objective] || objective
 }
 
 export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
@@ -158,7 +176,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
                 <button
                   key={item.label}
                   className={`flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-medium transition ${
-                    item.label === 'Overview'
+                    item.label === 'Visão geral'
                       ? 'bg-white text-slate-950 shadow-[0_12px_30px_rgba(255,255,255,0.12)]'
                       : 'text-white/70 hover:bg-white/10 hover:text-white'
                   }`}
@@ -172,9 +190,9 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
           <div className="mt-auto rounded-[30px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.09),rgba(255,255,255,0.03))] p-5">
             <div className="flex items-center gap-2">
               <ShieldCheck className="h-4 w-4 text-emerald-300" />
-              <p className="text-sm font-semibold">Multi-tenant guardrails</p>
+              <p className="text-sm font-semibold">Segurança multi-tenant</p>
             </div>
-            <p className="mt-2 text-sm leading-6 text-white/60">Admin and operator views stay scoped to the authenticated tenant and only expose their own client portfolio.</p>
+            <p className="mt-2 text-sm leading-6 text-white/60">As visões de admin e operação ficam limitadas ao tenant autenticado e só expõem a própria carteira.</p>
           </div>
         </aside>
 
@@ -185,13 +203,13 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
               <div className="max-w-3xl">
                 <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/80 bg-white/90 px-3 py-2 text-xs font-semibold uppercase tracking-[0.26em] text-slate-500">
                   <Sparkles className="h-3.5 w-3.5 text-[var(--saas-accent)]" />
-                  Agency command center
+                  Central da operação
                 </div>
                 <h1 className="font-manrope text-4xl font-extrabold tracking-[-0.05em] text-slate-950 md:text-5xl">
-                  Metrics, CRM, operations, and client delivery in one SaaS surface.
+                  Métricas, CRM, operação e entrega ao cliente em uma única plataforma.
                 </h1>
                 <p className="mt-4 max-w-2xl text-base leading-7 text-slate-600">
-                  Unified campaign data, CRM sync, client health, and operator workflows shaped into one premium control layer for the entire agency.
+                  Dados unificados de campanha, sync com CRM, saúde da carteira e fluxos operacionais em uma camada premium de controle para a agência inteira.
                 </p>
                 <div className="mt-6 flex flex-wrap gap-3">
                   {positiveMetrics.map((metric) => (
@@ -216,40 +234,40 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
                     ))}
                   </select>
                   <Button variant="secondary" className="h-12" onClick={handleSyncSources} disabled={syncing}>
-                    {syncing ? 'Syncing...' : 'Sync sources'}
+                    {syncing ? 'Sincronizando...' : 'Sincronizar'}
                   </Button>
                   <Button className="h-12" onClick={() => setShowClientForm((value) => !value)}>
-                    {showClientForm ? 'Close form' : 'New client'}
+                    {showClientForm ? 'Fechar' : 'Novo cliente'}
                   </Button>
-                  <Button className="h-12" variant="ghost" onClick={handleLogout}>Logout</Button>
+                  <Button className="h-12" variant="ghost" onClick={handleLogout}>Sair</Button>
                 </div>
                 <div className="grid gap-3 sm:grid-cols-3">
                   <div className="rounded-2xl border border-slate-200/70 bg-white/80 px-4 py-3">
-                    <p className="text-xs uppercase tracking-[0.22em] text-slate-400">Health</p>
+                    <p className="text-xs uppercase tracking-[0.22em] text-slate-400">Saúde</p>
                     <div className="mt-2 flex items-center justify-between">
                       <span className="font-manrope text-2xl font-extrabold">{snapshot.clientDashboard.health_score}</span>
                       <Badge tone={healthTone(snapshot.clientDashboard.health_band)}>{snapshot.clientDashboard.health_band}</Badge>
                     </div>
                   </div>
                   <div className="rounded-2xl border border-slate-200/70 bg-white/80 px-4 py-3">
-                    <p className="text-xs uppercase tracking-[0.22em] text-slate-400">Integrations</p>
+                    <p className="text-xs uppercase tracking-[0.22em] text-slate-400">Integrações</p>
                     <p className="mt-2 font-manrope text-2xl font-extrabold">{selectedClientIntegrations.length}</p>
                   </div>
                   <div className="rounded-2xl border border-slate-200/70 bg-white/80 px-4 py-3">
-                    <p className="text-xs uppercase tracking-[0.22em] text-slate-400">Goal</p>
-                    <p className="mt-2 font-manrope text-xl font-extrabold capitalize">{selectedClient.main_goal}</p>
+                    <p className="text-xs uppercase tracking-[0.22em] text-slate-400">Objetivo</p>
+                    <p className="mt-2 font-manrope text-xl font-extrabold capitalize">{objectiveLabel(selectedClient.main_goal)}</p>
                   </div>
                 </div>
                 {showClientForm ? (
                   <div className="grid gap-3 rounded-[28px] border border-slate-200/70 bg-white/90 p-4 shadow-sm md:grid-cols-2">
                     {[
-                      { key: 'name', label: 'Name', type: 'text' },
-                      { key: 'company', label: 'Company', type: 'text' },
-                      { key: 'niche', label: 'Niche', type: 'text' },
-                      { key: 'average_ticket', label: 'Average ticket', type: 'number' },
+                      { key: 'name', label: 'Nome', type: 'text' },
+                      { key: 'company', label: 'Empresa', type: 'text' },
+                      { key: 'niche', label: 'Nicho', type: 'text' },
+                      { key: 'average_ticket', label: 'Ticket médio', type: 'number' },
                       { key: 'ltv', label: 'LTV', type: 'number' },
-                      { key: 'start_date', label: 'Start date', type: 'date' },
-                      { key: 'target_roas', label: 'Target ROAS', type: 'number' },
+                      { key: 'start_date', label: 'Data de início', type: 'date' },
+                      { key: 'target_roas', label: 'ROAS alvo', type: 'number' },
                     ].map((field) => (
                       <label key={field.key} className="grid gap-2 text-sm font-medium text-slate-600">
                         {field.label}
@@ -264,15 +282,15 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
                       </label>
                     ))}
                     <label className="grid gap-2 text-sm font-medium text-slate-600">
-                      Goal
+                      Objetivo
                       <select
                         className="h-11 rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-900 outline-none"
                         value={clientForm.main_goal}
                         onChange={(event) => setClientForm((current) => ({ ...current, main_goal: event.target.value }))}
                       >
                         <option value="leads">Leads</option>
-                        <option value="sales">Sales</option>
-                        <option value="messages">Messages</option>
+                        <option value="sales">Vendas</option>
+                        <option value="messages">Mensagens</option>
                       </select>
                     </label>
                     <label className="grid gap-2 text-sm font-medium text-slate-600">
@@ -283,13 +301,13 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
                         onChange={(event) => setClientForm((current) => ({ ...current, status: event.target.value }))}
                       >
                         <option value="onboarding">Onboarding</option>
-                        <option value="active">Active</option>
-                        <option value="paused">Paused</option>
+                        <option value="active">Ativo</option>
+                        <option value="paused">Pausado</option>
                       </select>
                     </label>
                     <div className="md:col-span-2">
                       <Button className="h-12 w-full" onClick={handleCreateClient} disabled={creatingClient}>
-                        {creatingClient ? 'Creating client...' : 'Create client'}
+                        {creatingClient ? 'Criando cliente...' : 'Criar cliente'}
                       </Button>
                     </div>
                   </div>
@@ -327,8 +345,8 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
             <Card>
               <CardHeader>
                 <div>
-                  <CardTitle>Client performance timeline</CardTitle>
-                  <CardDescription>Unified spend, conversions, and ROAS across Meta, Google, LinkedIn, and Agendor touches.</CardDescription>
+                  <CardTitle>Linha do tempo de performance</CardTitle>
+                  <CardDescription>Investimento, conversões e ROAS unificados entre Meta, Google, LinkedIn e Agendor.</CardDescription>
                 </div>
               </CardHeader>
               <CardContent className="h-[320px]">
@@ -354,16 +372,16 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
             <Card>
               <CardHeader>
                 <div>
-                  <CardTitle>Results by objective</CardTitle>
-                  <CardDescription>Normalized outcomes mapped into a unified conversion model.</CardDescription>
+                  <CardTitle>Resultados por objetivo</CardTitle>
+                  <CardDescription>Resultados normalizados em um modelo unificado de conversão.</CardDescription>
                 </div>
               </CardHeader>
               <CardContent className="grid gap-4">
                 {snapshot.clientDashboard.results_by_objective.map((item) => (
                   <div key={item.objective} className="rounded-3xl border border-slate-200 bg-slate-50/80 p-4">
                     <div className="flex items-center justify-between">
-                      <p className="font-semibold capitalize text-slate-900">{item.objective}</p>
-                      <p className="text-sm text-slate-500">{item.volume} volume</p>
+                      <p className="font-semibold capitalize text-slate-900">{objectiveLabel(item.objective)}</p>
+                      <p className="text-sm text-slate-500">{item.volume.toLocaleString('pt-BR')} volume</p>
                     </div>
                     <div className="mt-3 h-2 rounded-full bg-slate-200">
                       <div
@@ -374,7 +392,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
                         }}
                       />
                     </div>
-                    <p className="mt-3 text-sm text-slate-500">${item.cost_per_result.toFixed(2)} cost per result</p>
+                    <p className="mt-3 text-sm text-slate-500">{formatValue(item.cost_per_result, 'currency')} por resultado</p>
                   </div>
                 ))}
               </CardContent>
@@ -387,8 +405,8 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
             <Card>
               <CardHeader>
                 <div>
-                  <CardTitle>Audience insights</CardTitle>
-                  <CardDescription>Top cities and age groups by normalized performance.</CardDescription>
+                  <CardTitle>Insights de público</CardTitle>
+                  <CardDescription>Principais cidades e faixas etárias por performance normalizada.</CardDescription>
                 </div>
               </CardHeader>
               <CardContent className="space-y-6">
@@ -407,7 +425,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
                   {snapshot.clientDashboard.age_performance.map((row) => (
                     <div key={row.range} className="flex items-center justify-between rounded-2xl border border-slate-200/70 bg-slate-50/80 px-4 py-3">
                       <span className="text-sm font-medium text-slate-600">{row.range}</span>
-                      <span className="font-semibold text-slate-950">{row.roas.toFixed(2)}x ROAS</span>
+                      <span className="font-semibold text-slate-950">{row.roas.toFixed(2)}x de ROAS</span>
                     </div>
                   ))}
                 </div>
@@ -417,8 +435,8 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
             <Card>
               <CardHeader>
                 <div>
-                  <CardTitle>Creative distribution</CardTitle>
-                  <CardDescription>Top creatives and revenue efficiency split.</CardDescription>
+                  <CardTitle>Distribuição de criativos</CardTitle>
+                  <CardDescription>Melhores criativos e divisão de eficiência de receita.</CardDescription>
                 </div>
               </CardHeader>
               <CardContent>
@@ -457,18 +475,18 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
             <Card>
               <CardHeader>
                 <div>
-                  <CardTitle>Campaign table</CardTitle>
-                  <CardDescription>Filterable acquisition view with normalized CPA and ROAS.</CardDescription>
+                  <CardTitle>Tabela de campanhas</CardTitle>
+                  <CardDescription>Visão de aquisição com CPA e ROAS normalizados.</CardDescription>
                 </div>
               </CardHeader>
               <CardContent className="overflow-x-auto">
                 <table className="min-w-full text-left text-sm">
                   <thead className="text-slate-400">
                     <tr>
-                      <th className="pb-3 font-medium">Campaign</th>
+                      <th className="pb-3 font-medium">Campanha</th>
                       <th className="pb-3 font-medium">Status</th>
-                      <th className="pb-3 font-medium">Spend</th>
-                      <th className="pb-3 font-medium">Conversions</th>
+                      <th className="pb-3 font-medium">Investimento</th>
+                      <th className="pb-3 font-medium">Conversões</th>
                       <th className="pb-3 font-medium">CPA</th>
                       <th className="pb-3 font-medium">ROAS</th>
                     </tr>
@@ -482,10 +500,10 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
                             <p className="text-xs capitalize text-slate-400">{campaign.source.replace('_', ' ')}</p>
                           </div>
                         </td>
-                        <td className="py-4"><Badge tone={campaign.status === 'ACTIVE' ? 'green' : 'yellow'}>{campaign.status.toLowerCase()}</Badge></td>
-                        <td className="py-4">${campaign.spend.toFixed(0)}</td>
+                        <td className="py-4"><Badge tone={campaign.status === 'ACTIVE' ? 'green' : 'yellow'}>{statusLabel(campaign.status.toLowerCase())}</Badge></td>
+                        <td className="py-4">{formatValue(campaign.spend, 'currency')}</td>
                         <td className="py-4">{campaign.conversions}</td>
-                        <td className="py-4">${campaign.cpa.toFixed(2)}</td>
+                        <td className="py-4">{formatValue(campaign.cpa, 'currency')}</td>
                         <td className="py-4">{campaign.roas.toFixed(2)}x</td>
                       </tr>
                     ))}
@@ -498,8 +516,8 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
               <Card>
                 <CardHeader>
                   <div>
-                    <CardTitle>Client profile</CardTitle>
-                    <CardDescription>Business data, tenant health score, and operational status.</CardDescription>
+                    <CardTitle>Perfil do cliente</CardTitle>
+                    <CardDescription>Dados do negócio, health score do tenant e status operacional.</CardDescription>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -513,9 +531,9 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
                   <div className="rounded-[26px] border border-slate-200/70 bg-[linear-gradient(135deg,rgba(15,118,110,0.08),rgba(249,115,22,0.1))] p-4">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">Business pulse</p>
+                        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">Pulso do negócio</p>
                         <p className="mt-2 text-sm leading-6 text-slate-600">
-                          Budget {String(selectedClient.business_data.monthly_budget ?? 'N/A')} with {String(selectedClient.business_data.sales_cycle_days ?? 'N/A')} day cycle.
+                          Orçamento de {String(selectedClient.business_data.monthly_budget ?? 'N/A')} com ciclo de {String(selectedClient.business_data.sales_cycle_days ?? 'N/A')} dias.
                         </p>
                       </div>
                       <ArrowUpRight className="h-5 w-5 text-slate-500" />
@@ -523,16 +541,16 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
                   </div>
                   <div className="grid gap-3 sm:grid-cols-2">
                     <div className="rounded-2xl bg-slate-50 p-4">
-                      <p className="text-sm text-slate-500">Average ticket</p>
-                      <p className="mt-2 text-xl font-bold">${selectedClient.average_ticket.toLocaleString()}</p>
+                      <p className="text-sm text-slate-500">Ticket médio</p>
+                      <p className="mt-2 text-xl font-bold">{formatValue(selectedClient.average_ticket, 'currency')}</p>
                     </div>
                     <div className="rounded-2xl bg-slate-50 p-4">
                       <p className="text-sm text-slate-500">LTV</p>
-                      <p className="mt-2 text-xl font-bold">${selectedClient.ltv.toLocaleString()}</p>
+                      <p className="mt-2 text-xl font-bold">{formatValue(selectedClient.ltv, 'currency')}</p>
                     </div>
                     <div className="rounded-2xl bg-slate-50 p-4">
-                      <p className="text-sm text-slate-500">Goal</p>
-                      <p className="mt-2 text-xl font-bold capitalize">{selectedClient.main_goal}</p>
+                      <p className="text-sm text-slate-500">Objetivo</p>
+                      <p className="mt-2 text-xl font-bold capitalize">{objectiveLabel(selectedClient.main_goal)}</p>
                     </div>
                     <div className="rounded-2xl bg-slate-50 p-4">
                       <p className="text-sm text-slate-500">Health score</p>
@@ -545,8 +563,8 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
               <Card>
                 <CardHeader>
                   <div>
-                    <CardTitle>Integrations</CardTitle>
-                    <CardDescription>Platform connections and last sync status.</CardDescription>
+                    <CardTitle>Integrações</CardTitle>
+                    <CardDescription>Conexões da plataforma e status do último sync.</CardDescription>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-3">
@@ -556,7 +574,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
                           <p className="font-semibold capitalize text-slate-900">{integration.provider.replace('_', ' ')}</p>
                           <p className="text-xs text-slate-400">{integration.account_name}</p>
                         </div>
-                        <Badge tone={integration.status === 'connected' ? 'green' : 'yellow'}>{integration.status}</Badge>
+                        <Badge tone={integration.status === 'connected' ? 'green' : 'yellow'}>{statusLabel(integration.status)}</Badge>
                       </div>
                     ))}
                 </CardContent>
@@ -567,19 +585,19 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
           <section className="grid gap-6 xl:grid-cols-[1.1fr_1.1fr_0.8fr]">
             <Card>
               <CardHeader>
-                <div>
-                  <CardTitle>Operations dashboard</CardTitle>
-                  <CardDescription>Internal team visibility for portfolio health and revenue efficiency.</CardDescription>
-                </div>
-              </CardHeader>
+                  <div>
+                    <CardTitle>Dashboard operacional</CardTitle>
+                    <CardDescription>Visibilidade interna da carteira, saúde dos clientes e eficiência de receita.</CardDescription>
+                  </div>
+                </CardHeader>
               <CardContent className="grid gap-4 sm:grid-cols-2">
                 {[
-                  { label: 'Total clients', value: snapshot.operations.total_clients },
-                  { label: 'Active clients', value: snapshot.operations.active_clients },
-                  { label: 'Churn rate', value: `${snapshot.operations.churn_rate}%` },
-                  { label: 'Average LTV', value: `$${snapshot.operations.average_ltv.toLocaleString()}` },
-                  { label: 'CAC', value: `$${snapshot.operations.cac.toFixed(2)}` },
-                  { label: 'Average ROI', value: `${snapshot.operations.average_roi.toFixed(2)}x` },
+                  { label: 'Total de clientes', value: snapshot.operations.total_clients },
+                  { label: 'Clientes ativos', value: snapshot.operations.active_clients },
+                  { label: 'Taxa de churn', value: `${snapshot.operations.churn_rate}%` },
+                  { label: 'LTV médio', value: formatValue(snapshot.operations.average_ltv, 'currency') },
+                  { label: 'CAC', value: formatValue(snapshot.operations.cac, 'currency') },
+                  { label: 'ROI médio', value: `${snapshot.operations.average_roi.toFixed(2)}x` },
                 ].map((item) => (
                   <div key={item.label} className="rounded-3xl border border-slate-200/70 bg-slate-50/85 p-4">
                     <p className="text-sm text-slate-500">{item.label}</p>
@@ -591,17 +609,17 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
 
             <Card>
               <CardHeader>
-                <div>
-                  <CardTitle>Health score system</CardTitle>
-                  <CardDescription>Green, yellow, and red client scoring from conversions, CPA, ROAS, and inactivity.</CardDescription>
-                </div>
-              </CardHeader>
+                  <div>
+                    <CardTitle>Sistema de health score</CardTitle>
+                    <CardDescription>Classificação verde, amarela e vermelha com base em conversões, CPA, ROAS e inatividade.</CardDescription>
+                  </div>
+                </CardHeader>
               <CardContent className="space-y-3">
                 {snapshot.operations.client_health.map((client) => (
                   <div key={client.client_id} className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
                     <div>
                       <p className="font-semibold text-slate-900">{client.client_name}</p>
-                      <p className="text-xs text-slate-400">{client.roas.toFixed(2)}x ROAS</p>
+                      <p className="text-xs text-slate-400">{client.roas.toFixed(2)}x de ROAS</p>
                     </div>
                     <div className="text-right">
                       <Badge tone={healthTone(client.health_band)}>{client.health_band}</Badge>
@@ -618,11 +636,11 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
           <section className="grid gap-6 xl:grid-cols-[1fr_1fr]">
             <Card>
               <CardHeader>
-                <div>
-                  <CardTitle>Project management</CardTitle>
-                  <CardDescription>Client onboarding checklist and operator task queue.</CardDescription>
-                </div>
-              </CardHeader>
+                  <div>
+                    <CardTitle>Gestão de projeto</CardTitle>
+                    <CardDescription>Checklist de onboarding e fila de tarefas da operação.</CardDescription>
+                  </div>
+                </CardHeader>
               <CardContent className="space-y-4">
                 {snapshot.checklist.map((item) => (
                   <div key={item.id} className="flex items-center justify-between rounded-2xl border border-slate-200/70 bg-slate-50/80 px-4 py-3">
@@ -630,12 +648,12 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
                       <CheckCircle2 className={`h-4 w-4 ${item.completed ? 'text-emerald-500' : 'text-slate-300'}`} />
                       {item.label}
                     </span>
-                    <Badge tone={item.completed ? 'green' : 'yellow'}>{item.completed ? 'done' : 'pending'}</Badge>
+                    <Badge tone={item.completed ? 'green' : 'yellow'}>{item.completed ? 'concluído' : 'pendente'}</Badge>
                   </div>
                 ))}
                 <div className="rounded-[28px] bg-slate-950 p-5 text-white">
-                  <p className="text-sm uppercase tracking-[0.22em] text-white/50">Client status</p>
-                  <p className="mt-2 text-2xl font-bold capitalize">{selectedClient.status}</p>
+                  <p className="text-sm uppercase tracking-[0.22em] text-white/50">Status do cliente</p>
+                  <p className="mt-2 text-2xl font-bold capitalize">{statusLabel(selectedClient.status)}</p>
                 </div>
               </CardContent>
             </Card>
@@ -643,8 +661,8 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
             <Card>
               <CardHeader>
                 <div>
-                  <CardTitle>Tasks</CardTitle>
-                  <CardDescription>Create campaigns, adjust creatives, and optimize performance per client.</CardDescription>
+                  <CardTitle>Tarefas</CardTitle>
+                  <CardDescription>Criar campanhas, ajustar criativos e otimizar a performance por cliente.</CardDescription>
                 </div>
               </CardHeader>
               <CardContent className="space-y-3">
@@ -672,16 +690,16 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
           <section className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
             <Card className="bg-slate-950 text-white">
               <CardHeader>
-                <div>
-                  <CardTitle className="text-white">Module map</CardTitle>
-                  <CardDescription className="text-white/60">The platform ships with clients, integrations, dashboards, health, and project modules.</CardDescription>
-                </div>
-              </CardHeader>
+                  <div>
+                    <CardTitle className="text-white">Mapa de módulos</CardTitle>
+                    <CardDescription className="text-white/60">A plataforma já entrega clientes, integrações, dashboards, health e gestão de projetos.</CardDescription>
+                  </div>
+                </CardHeader>
               <CardContent className="space-y-3">
                 {[
-                  { label: 'Client CRM', icon: Building2, copy: 'Full CRUD, business profile, linked integrations, and tenant scoping.' },
-                  { label: 'Marketing analytics', icon: LineChart, copy: 'Unified campaign metrics, funnel analytics, insights, and ROAS reporting.' },
-                  { label: 'Operator workspace', icon: Users, copy: 'Tasks, checklist status, churn watch, and global portfolio KPIs.' },
+                  { label: 'CRM de clientes', icon: Building2, copy: 'CRUD completo, perfil do negócio, integrações vinculadas e escopo por tenant.' },
+                  { label: 'Analytics de marketing', icon: LineChart, copy: 'Métricas unificadas, análise de funil, insights e leitura de ROAS.' },
+                  { label: 'Workspace operacional', icon: Users, copy: 'Tarefas, checklist, risco de churn e KPIs globais da carteira.' },
                 ].map((item) => {
                   const Icon = item.icon
                   return (
@@ -699,11 +717,11 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
 
             <Card>
               <CardHeader>
-                <div>
-                  <CardTitle>Client portfolio</CardTitle>
-                  <CardDescription>Quick access to health, lifecycle stage, and account value across the tenant.</CardDescription>
-                </div>
-              </CardHeader>
+                  <div>
+                    <CardTitle>Carteira de clientes</CardTitle>
+                    <CardDescription>Acesso rápido à saúde, estágio e valor das contas dentro do tenant.</CardDescription>
+                  </div>
+                </CardHeader>
               <CardContent className="space-y-3">
                 {snapshot.clients.map((client) => (
                   <button
@@ -718,7 +736,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
                     <div>
                       <p className="font-semibold">{client.name}</p>
                       <p className={`text-sm ${client.id === selectedClientId ? 'text-white/60' : 'text-slate-500'}`}>
-                        {client.niche} • ${client.ltv.toLocaleString()} LTV
+                        {client.niche} • {formatValue(client.ltv, 'currency')} de LTV
                       </p>
                     </div>
                     <Badge tone={healthTone(client.health_band)}>{client.health_score}</Badge>

@@ -7,7 +7,7 @@ const API_URL = process.env.NEXT_PUBLIC_PLATFORM_API_URL ?? 'http://localhost:80
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const response = await fetch(`${API_URL}/auth/login`, {
+    const response = await fetch(`${API_URL}/auth/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
@@ -18,7 +18,7 @@ export async function POST(request: Request) {
 
     if (!response.ok) {
       return NextResponse.json(
-        { error: data?.detail || data?.error || 'Não foi possível entrar.' },
+        { error: data?.detail || data?.error || 'Não foi possível criar a conta.' },
         { status: response.status }
       )
     }
@@ -36,6 +36,6 @@ export async function POST(request: Request) {
 
     return nextResponse
   } catch {
-    return NextResponse.json({ error: 'Não foi possível entrar.' }, { status: 500 })
+    return NextResponse.json({ error: 'Não foi possível criar a conta.' }, { status: 500 })
   }
 }

@@ -1,13 +1,16 @@
 'use client'
 
 import { useState } from 'react'
-import { LockKeyhole, Mail, ShieldCheck, Sparkles } from 'lucide-react'
+import { Building2, LockKeyhole, Mail, ShieldCheck, Sparkles, User2 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('admin@nype.demo')
-  const [password, setPassword] = useState('admin123')
+  const [mode, setMode] = useState<'login' | 'register'>('login')
+  const [fullName, setFullName] = useState('')
+  const [companyName, setCompanyName] = useState('')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -22,16 +25,25 @@ export default function LoginPage() {
           ? '/'
           : new URLSearchParams(window.location.search).get('next') || '/'
 
-      const response = await fetch('/api/auth/login', {
+      const response = await fetch(mode === 'login' ? '/api/auth/login' : '/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify(
+          mode === 'login'
+            ? { email, password }
+            : {
+                full_name: fullName,
+                company_name: companyName,
+                email,
+                password,
+              }
+        ),
       })
 
       const data = await response.json()
 
       if (!response.ok) {
-        throw new Error(data?.error || 'Nao foi possivel autenticar.')
+        throw new Error(data?.error || 'Não foi possível autenticar.')
       }
 
       window.location.href = nextPath
@@ -51,26 +63,26 @@ export default function LoginPage() {
             Nype Orbit
           </div>
           <h1 className="mt-6 font-manrope text-5xl font-extrabold tracking-[-0.05em] text-slate-950">
-            Marketing intelligence with client ops built in.
+            Inteligência de marketing com operação de clientes no mesmo sistema.
           </h1>
           <p className="mt-5 max-w-2xl text-lg leading-8 text-slate-600">
-            Enter with your agency account to access unified ad metrics, CRM sync, health scoring, client management, and operator workflows in one interface.
+            Entre com a sua conta ou crie um novo ambiente para acessar métricas unificadas, sync com CRM, health score, gestão de clientes e operação em uma interface só.
           </p>
           <div className="mt-8 grid gap-4 md:grid-cols-3">
             {[
               {
-                title: 'Multi-tenant access',
-                copy: 'Each user only sees the tenant and portfolio they are allowed to operate.',
+                title: 'Acesso multi-tenant',
+                copy: 'Cada usuário enxerga apenas o tenant e a carteira que pode operar.',
                 icon: ShieldCheck,
               },
               {
-                title: 'Marketing data layer',
-                copy: 'Meta Ads, Google Ads, LinkedIn Ads, and Agendor metrics normalized in one model.',
+                title: 'Camada de dados',
+                copy: 'Meta Ads, Google Ads, LinkedIn Ads e Agendor normalizados no mesmo modelo.',
                 icon: Sparkles,
               },
               {
-                title: 'Operations visibility',
-                copy: 'Checklist, tasks, churn watch, and account health all stay connected to delivery.',
+                title: 'Visibilidade operacional',
+                copy: 'Checklist, tarefas, risco de churn e saúde da conta conectados à entrega.',
                 icon: LockKeyhole,
               },
             ].map((item) => {
@@ -90,16 +102,72 @@ export default function LoginPage() {
 
         <section className="rounded-[36px] border border-slate-200/80 bg-white p-8 shadow-[0_24px_80px_rgba(15,23,42,0.08)] md:p-10">
           <div className="mb-8">
-            <p className="text-sm font-semibold uppercase tracking-[0.22em] text-slate-400">Secure sign in</p>
-            <h2 className="mt-3 font-manrope text-3xl font-extrabold tracking-tight text-slate-950">Access your workspace</h2>
-            <p className="mt-3 text-sm leading-6 text-slate-500">
-              Use the FastAPI JWT flow. Demo credentials are prefilled so we can validate the experience end to end.
+            <p className="text-sm font-semibold uppercase tracking-[0.22em] text-slate-400">
+              {mode === 'login' ? 'Entrar com segurança' : 'Criar nova conta'}
             </p>
+            <h2 className="mt-3 font-manrope text-3xl font-extrabold tracking-tight text-slate-950">
+              {mode === 'login' ? 'Acesse seu ambiente' : 'Crie seu ambiente'}
+            </h2>
+            <p className="mt-3 text-sm leading-6 text-slate-500">
+              {mode === 'login'
+                ? 'Use seu e-mail e sua senha para entrar no sistema.'
+                : 'Cadastre sua conta de administrador e criamos um novo workspace para sua operação.'}
+            </p>
+            <div className="mt-5 inline-flex rounded-full border border-slate-200 bg-slate-50 p-1">
+              <button
+                className={`rounded-full px-4 py-2 text-sm font-semibold transition ${mode === 'login' ? 'bg-slate-950 text-white' : 'text-slate-500'}`}
+                onClick={() => setMode('login')}
+                type="button"
+              >
+                Entrar
+              </button>
+              <button
+                className={`rounded-full px-4 py-2 text-sm font-semibold transition ${mode === 'register' ? 'bg-slate-950 text-white' : 'text-slate-500'}`}
+                onClick={() => setMode('register')}
+                type="button"
+              >
+                Criar conta
+              </button>
+            </div>
           </div>
 
           <form className="space-y-4" onSubmit={handleSubmit}>
+            {mode === 'register' ? (
+              <>
+                <label className="grid gap-2 text-sm font-medium text-slate-700">
+                  Nome completo
+                  <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3">
+                    <User2 className="h-4 w-4 text-slate-400" />
+                    <input
+                      className="w-full bg-transparent text-sm text-slate-950 outline-none placeholder:text-slate-400"
+                      type="text"
+                      value={fullName}
+                      onChange={(event) => setFullName(event.target.value)}
+                      placeholder="Seu nome"
+                      required
+                    />
+                  </div>
+                </label>
+
+                <label className="grid gap-2 text-sm font-medium text-slate-700">
+                  Empresa ou agência
+                  <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3">
+                    <Building2 className="h-4 w-4 text-slate-400" />
+                    <input
+                      className="w-full bg-transparent text-sm text-slate-950 outline-none placeholder:text-slate-400"
+                      type="text"
+                      value={companyName}
+                      onChange={(event) => setCompanyName(event.target.value)}
+                      placeholder="Nome da empresa"
+                      required
+                    />
+                  </div>
+                </label>
+              </>
+            ) : null}
+
             <label className="grid gap-2 text-sm font-medium text-slate-700">
-              Email
+              E-mail
               <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3">
                 <Mail className="h-4 w-4 text-slate-400" />
                 <input
@@ -107,14 +175,14 @@ export default function LoginPage() {
                   type="email"
                   value={email}
                   onChange={(event) => setEmail(event.target.value)}
-                  placeholder="admin@nype.demo"
+                  placeholder="voce@empresa.com"
                   required
                 />
               </div>
             </label>
 
             <label className="grid gap-2 text-sm font-medium text-slate-700">
-              Password
+              Senha
               <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3">
                 <LockKeyhole className="h-4 w-4 text-slate-400" />
                 <input
@@ -122,7 +190,7 @@ export default function LoginPage() {
                   type="password"
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
-                  placeholder="admin123"
+                  placeholder="Sua senha"
                   required
                 />
               </div>
@@ -135,17 +203,15 @@ export default function LoginPage() {
             ) : null}
 
             <Button className="h-12 w-full text-base" disabled={loading} type="submit">
-              {loading ? 'Signing in...' : 'Enter platform'}
+              {loading
+                ? mode === 'login'
+                  ? 'Entrando...'
+                  : 'Criando conta...'
+                : mode === 'login'
+                  ? 'Entrar na plataforma'
+                  : 'Criar conta e entrar'}
             </Button>
           </form>
-
-          <div className="mt-6 rounded-[28px] border border-slate-200/80 bg-slate-50 p-5">
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Demo access</p>
-            <div className="mt-3 grid gap-2 text-sm text-slate-600">
-              <p><strong>Admin:</strong> admin@nype.demo / admin123</p>
-              <p><strong>Operator:</strong> operator@nype.demo / operator123</p>
-            </div>
-          </div>
         </section>
       </div>
     </div>
