@@ -33,30 +33,37 @@ export function FunnelBuilder({ initialStages }: { initialStages: FunnelStage[] 
           <CardDescription>Drag-inspired sequencing for impressions, clicks, leads, and purchases.</CardDescription>
         </div>
       </CardHeader>
-      <CardContent className="space-y-3">
+      <CardContent className="space-y-4">
         {hydratedStages.map((stage, index) => (
-          <div key={`${stage.stage_name}-${index}`} className="rounded-3xl border border-slate-200 bg-slate-50/80 p-4">
+          <div
+            key={`${stage.stage_name}-${index}`}
+            className="rounded-[28px] border border-slate-200/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.92),rgba(248,250,252,0.9))] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]"
+          >
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-3">
-                <div className="rounded-2xl bg-white p-2 text-slate-400 shadow-sm">
+                <div className="rounded-2xl bg-white p-2 text-slate-400 shadow-sm ring-1 ring-slate-200">
                   <GripVertical className="h-4 w-4" />
                 </div>
                 <div>
-                  <p className="font-semibold text-slate-900">{stage.stage_name}</p>
+                  <p className="font-manrope text-lg font-extrabold tracking-tight text-slate-950">{stage.stage_name}</p>
                   <p className="text-sm text-slate-500">{stage.volume.toLocaleString()} volume</p>
                 </div>
               </div>
               <div className="flex items-center gap-2 text-sm text-slate-500">
-                {stage.conversionRate != null ? <span>{stage.conversionRate}% rate</span> : <span>Top of funnel</span>}
+                {stage.conversionRate != null ? (
+                  <span className="rounded-full bg-emerald-50 px-3 py-1 font-semibold text-emerald-700">{stage.conversionRate}% rate</span>
+                ) : (
+                  <span className="rounded-full bg-slate-100 px-3 py-1 font-semibold text-slate-600">Top of funnel</span>
+                )}
                 <button
-                  className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 disabled:opacity-30"
+                  className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 shadow-sm disabled:opacity-30"
                   disabled={index === 0}
                   onClick={() => moveStage(index, index - 1)}
                 >
                   Up
                 </button>
                 <button
-                  className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 disabled:opacity-30"
+                  className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 shadow-sm disabled:opacity-30"
                   disabled={index === hydratedStages.length - 1}
                   onClick={() => moveStage(index, index + 1)}
                 >

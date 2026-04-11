@@ -17,10 +17,13 @@ import {
 } from 'recharts'
 import {
   Activity,
+  ArrowUpRight,
   BriefcaseBusiness,
   Building2,
+  CheckCircle2,
   LayoutDashboard,
   LineChart,
+  ShieldCheck,
   Settings2,
   Sparkles,
   Users,
@@ -55,9 +58,15 @@ function healthTone(band: string) {
   return 'slate'
 }
 
+function statusLabel(status: string) {
+  return status.replace('_', ' ')
+}
+
 export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
   const [selectedClientId, setSelectedClientId] = useState(snapshot.selectedClient.id)
   const selectedClient = snapshot.clients.find((client) => client.id === selectedClientId) ?? snapshot.selectedClient
+  const selectedClientIntegrations = snapshot.integrations.filter((integration) => integration.client_id === selectedClient.id)
+  const positiveMetrics = snapshot.clientDashboard.overview_metrics.slice(0, 3)
 
   useEffect(() => {
     const root = document.documentElement
@@ -71,13 +80,13 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
       className="min-h-screen text-slate-900"
       style={{
         background:
-          'radial-gradient(circle at top left, color-mix(in srgb, var(--saas-primary) 18%, transparent), transparent 32%), radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--saas-accent) 18%, transparent), transparent 26%), linear-gradient(180deg, color-mix(in srgb, var(--saas-surface) 92%, white), white)',
+          'radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--saas-primary) 18%, transparent), transparent 28%), radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--saas-accent) 22%, transparent), transparent 24%), radial-gradient(circle at 50% 100%, rgba(15,23,42,0.05), transparent 36%), linear-gradient(180deg, color-mix(in srgb, var(--saas-surface) 94%, white), #ffffff)',
       }}
     >
-      <div className="mx-auto flex max-w-[1600px] gap-6 px-4 py-6 lg:px-8">
-        <aside className="sticky top-6 hidden h-[calc(100vh-3rem)] w-[280px] flex-col rounded-[32px] border border-white/70 bg-slate-950 px-6 py-7 text-white shadow-[0_24px_80px_rgba(2,6,23,0.28)] lg:flex">
+      <div className="mx-auto flex max-w-[1640px] gap-6 px-4 py-6 lg:px-8">
+        <aside className="sticky top-6 hidden h-[calc(100vh-3rem)] w-[292px] flex-col rounded-[34px] border border-white/10 bg-[linear-gradient(180deg,#020617,#0f172a)] px-6 py-7 text-white shadow-[0_30px_100px_rgba(2,6,23,0.36)] lg:flex">
           <div className="mb-8 flex items-center gap-3">
-            <div className="grid h-12 w-12 place-items-center rounded-2xl bg-white/10">
+            <div className="grid h-12 w-12 place-items-center rounded-2xl bg-white/10 ring-1 ring-white/15">
               <Sparkles className="h-6 w-6" />
             </div>
             <div>
@@ -89,49 +98,93 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
             {navigation.map((item) => {
               const Icon = item.icon
               return (
-                <button key={item.label} className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-medium text-white/70 transition hover:bg-white/10 hover:text-white">
+                <button
+                  key={item.label}
+                  className={`flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-medium transition ${
+                    item.label === 'Overview'
+                      ? 'bg-white text-slate-950 shadow-[0_12px_30px_rgba(255,255,255,0.12)]'
+                      : 'text-white/70 hover:bg-white/10 hover:text-white'
+                  }`}
+                >
                   <Icon className="h-4 w-4" />
                   {item.label}
                 </button>
               )
             })}
           </nav>
-          <div className="mt-auto rounded-[28px] border border-white/10 bg-white/5 p-5">
-            <p className="text-sm font-semibold">Multi-tenant guardrails</p>
-            <p className="mt-2 text-sm text-white/60">Admin and operator views stay scoped to the authenticated tenant and only expose their own client portfolio.</p>
+          <div className="mt-auto rounded-[30px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.09),rgba(255,255,255,0.03))] p-5">
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="h-4 w-4 text-emerald-300" />
+              <p className="text-sm font-semibold">Multi-tenant guardrails</p>
+            </div>
+            <p className="mt-2 text-sm leading-6 text-white/60">Admin and operator views stay scoped to the authenticated tenant and only expose their own client portfolio.</p>
           </div>
         </aside>
 
         <main className="min-w-0 flex-1 space-y-6">
-          <section className="rounded-[32px] border border-white/70 bg-white/75 p-5 shadow-[0_24px_70px_rgba(15,23,42,0.06)] backdrop-blur-xl">
-            <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-              <div>
-                <p className="text-sm font-semibold uppercase tracking-[0.28em] text-slate-400">Agency command center</p>
-                <h1 className="font-manrope text-3xl font-extrabold tracking-tight text-slate-950 md:text-4xl">
+          <section className="relative overflow-hidden rounded-[34px] border border-white/80 bg-[linear-gradient(135deg,rgba(255,255,255,0.92),rgba(248,250,252,0.76))] p-5 shadow-[0_26px_80px_rgba(15,23,42,0.08)] backdrop-blur-xl">
+            <div className="pointer-events-none absolute inset-y-0 right-0 w-[38%] bg-[radial-gradient(circle_at_top,rgba(249,115,22,0.15),transparent_46%),radial-gradient(circle_at_bottom,rgba(15,118,110,0.18),transparent_42%)]" />
+            <div className="relative flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
+              <div className="max-w-3xl">
+                <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/80 bg-white/90 px-3 py-2 text-xs font-semibold uppercase tracking-[0.26em] text-slate-500">
+                  <Sparkles className="h-3.5 w-3.5 text-[var(--saas-accent)]" />
+                  Agency command center
+                </div>
+                <h1 className="font-manrope text-4xl font-extrabold tracking-[-0.05em] text-slate-950 md:text-5xl">
                   Metrics, CRM, operations, and client delivery in one SaaS surface.
                 </h1>
-              </div>
-              <div className="grid gap-3 sm:grid-cols-[1fr_auto_auto]">
-                <select
-                  className="h-11 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 shadow-sm"
-                  value={selectedClientId}
-                  onChange={(event) => setSelectedClientId(event.target.value)}
-                >
-                  {snapshot.clients.map((client) => (
-                    <option key={client.id} value={client.id}>
-                      {client.name}
-                    </option>
+                <p className="mt-4 max-w-2xl text-base leading-7 text-slate-600">
+                  Unified campaign data, CRM sync, client health, and operator workflows shaped into one premium control layer for the entire agency.
+                </p>
+                <div className="mt-6 flex flex-wrap gap-3">
+                  {positiveMetrics.map((metric) => (
+                    <div key={metric.label} className="rounded-2xl border border-slate-200/80 bg-white/90 px-4 py-3 shadow-sm">
+                      <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">{metric.label}</p>
+                      <p className="mt-2 font-manrope text-xl font-extrabold text-slate-950">{formatValue(metric.value, metric.format)}</p>
+                    </div>
                   ))}
-                </select>
-                <Button variant="secondary">Sync sources</Button>
-                <Button>New client</Button>
+                </div>
+              </div>
+              <div className="grid gap-3 xl:min-w-[420px]">
+                <div className="grid gap-3 sm:grid-cols-[1fr_auto_auto]">
+                  <select
+                    className="h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 shadow-sm"
+                    value={selectedClientId}
+                    onChange={(event) => setSelectedClientId(event.target.value)}
+                  >
+                    {snapshot.clients.map((client) => (
+                      <option key={client.id} value={client.id}>
+                        {client.name}
+                      </option>
+                    ))}
+                  </select>
+                  <Button variant="secondary" className="h-12">Sync sources</Button>
+                  <Button className="h-12">New client</Button>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <div className="rounded-2xl border border-slate-200/70 bg-white/80 px-4 py-3">
+                    <p className="text-xs uppercase tracking-[0.22em] text-slate-400">Health</p>
+                    <div className="mt-2 flex items-center justify-between">
+                      <span className="font-manrope text-2xl font-extrabold">{snapshot.clientDashboard.health_score}</span>
+                      <Badge tone={healthTone(snapshot.clientDashboard.health_band)}>{snapshot.clientDashboard.health_band}</Badge>
+                    </div>
+                  </div>
+                  <div className="rounded-2xl border border-slate-200/70 bg-white/80 px-4 py-3">
+                    <p className="text-xs uppercase tracking-[0.22em] text-slate-400">Integrations</p>
+                    <p className="mt-2 font-manrope text-2xl font-extrabold">{selectedClientIntegrations.length}</p>
+                  </div>
+                  <div className="rounded-2xl border border-slate-200/70 bg-white/80 px-4 py-3">
+                    <p className="text-xs uppercase tracking-[0.22em] text-slate-400">Goal</p>
+                    <p className="mt-2 font-manrope text-xl font-extrabold capitalize">{selectedClient.main_goal}</p>
+                  </div>
+                </div>
               </div>
             </div>
           </section>
 
           <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             {snapshot.clientDashboard.overview_metrics.map((metric) => (
-              <Card key={metric.label} className="overflow-hidden">
+              <Card key={metric.label} className="overflow-hidden border-slate-200/70">
                 <CardContent className="p-5">
                   <div className="flex items-center justify-between">
                     <p className="text-sm font-medium text-slate-500">{metric.label}</p>
@@ -140,6 +193,15 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
                   <p className="mt-5 font-manrope text-3xl font-extrabold tracking-tight text-slate-950">
                     {formatValue(metric.value, metric.format)}
                   </p>
+                  <div className="mt-4 h-1.5 rounded-full bg-slate-100">
+                    <div
+                      className="h-1.5 rounded-full"
+                      style={{
+                        width: `${Math.max(16, Math.min(Math.abs(metric.change) * 10, 100))}%`,
+                        background: 'linear-gradient(90deg, var(--saas-primary), var(--saas-accent))',
+                      }}
+                    />
+                  </div>
                 </CardContent>
               </Card>
             ))}
@@ -227,7 +289,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
                 </div>
                 <div className="space-y-3">
                   {snapshot.clientDashboard.age_performance.map((row) => (
-                    <div key={row.range} className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3">
+                    <div key={row.range} className="flex items-center justify-between rounded-2xl border border-slate-200/70 bg-slate-50/80 px-4 py-3">
                       <span className="text-sm font-medium text-slate-600">{row.range}</span>
                       <span className="font-semibold text-slate-950">{row.roas.toFixed(2)}x ROAS</span>
                     </div>
@@ -332,6 +394,17 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
                     </div>
                     <Badge tone={healthTone(selectedClient.health_band)}>{selectedClient.health_band}</Badge>
                   </div>
+                  <div className="rounded-[26px] border border-slate-200/70 bg-[linear-gradient(135deg,rgba(15,118,110,0.08),rgba(249,115,22,0.1))] p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">Business pulse</p>
+                        <p className="mt-2 text-sm leading-6 text-slate-600">
+                          Budget {String(selectedClient.business_data.monthly_budget ?? 'N/A')} with {String(selectedClient.business_data.sales_cycle_days ?? 'N/A')} day cycle.
+                        </p>
+                      </div>
+                      <ArrowUpRight className="h-5 w-5 text-slate-500" />
+                    </div>
+                  </div>
                   <div className="grid gap-3 sm:grid-cols-2">
                     <div className="rounded-2xl bg-slate-50 p-4">
                       <p className="text-sm text-slate-500">Average ticket</p>
@@ -361,10 +434,8 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  {snapshot.integrations
-                    .filter((integration) => integration.client_id === selectedClient.id)
-                    .map((integration) => (
-                      <div key={integration.id} className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                  {selectedClientIntegrations.map((integration) => (
+                      <div key={integration.id} className="flex items-center justify-between rounded-2xl border border-slate-200/80 bg-white px-4 py-3 shadow-sm">
                         <div>
                           <p className="font-semibold capitalize text-slate-900">{integration.provider.replace('_', ' ')}</p>
                           <p className="text-xs text-slate-400">{integration.account_name}</p>
@@ -394,7 +465,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
                   { label: 'CAC', value: `$${snapshot.operations.cac.toFixed(2)}` },
                   { label: 'Average ROI', value: `${snapshot.operations.average_roi.toFixed(2)}x` },
                 ].map((item) => (
-                  <div key={item.label} className="rounded-3xl bg-slate-50 p-4">
+                  <div key={item.label} className="rounded-3xl border border-slate-200/70 bg-slate-50/85 p-4">
                     <p className="text-sm text-slate-500">{item.label}</p>
                     <p className="mt-3 text-2xl font-bold text-slate-950">{item.value}</p>
                   </div>
@@ -411,7 +482,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
               </CardHeader>
               <CardContent className="space-y-3">
                 {snapshot.operations.client_health.map((client) => (
-                  <div key={client.client_id} className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                  <div key={client.client_id} className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
                     <div>
                       <p className="font-semibold text-slate-900">{client.client_name}</p>
                       <p className="text-xs text-slate-400">{client.roas.toFixed(2)}x ROAS</p>
@@ -438,8 +509,11 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
               </CardHeader>
               <CardContent className="space-y-4">
                 {snapshot.checklist.map((item) => (
-                  <div key={item.id} className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3">
-                    <span className="font-medium text-slate-700">{item.label}</span>
+                  <div key={item.id} className="flex items-center justify-between rounded-2xl border border-slate-200/70 bg-slate-50/80 px-4 py-3">
+                    <span className="flex items-center gap-2 font-medium text-slate-700">
+                      <CheckCircle2 className={`h-4 w-4 ${item.completed ? 'text-emerald-500' : 'text-slate-300'}`} />
+                      {item.label}
+                    </span>
                     <Badge tone={item.completed ? 'green' : 'yellow'}>{item.completed ? 'done' : 'pending'}</Badge>
                   </div>
                 ))}
@@ -459,14 +533,14 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
               </CardHeader>
               <CardContent className="space-y-3">
                 {snapshot.tasks.map((task) => (
-                  <div key={task.id} className="rounded-3xl border border-slate-200 bg-white p-4">
+                  <div key={task.id} className="rounded-3xl border border-slate-200/80 bg-white p-4 shadow-sm">
                     <div className="flex items-start justify-between gap-4">
                       <div>
                         <p className="font-semibold text-slate-900">{task.title}</p>
                         <p className="mt-1 text-sm text-slate-500">{task.description}</p>
                       </div>
                       <Badge tone={task.status === 'done' ? 'green' : task.status === 'in_progress' ? 'yellow' : 'slate'}>
-                        {task.status.replace('_', ' ')}
+                        {statusLabel(task.status)}
                       </Badge>
                     </div>
                     <div className="mt-4 flex items-center justify-between text-xs text-slate-400">
@@ -495,7 +569,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
                 ].map((item) => {
                   const Icon = item.icon
                   return (
-                    <div key={item.label} className="rounded-3xl border border-white/10 bg-white/5 p-4">
+                    <div key={item.label} className="rounded-3xl border border-white/10 bg-white/5 p-4 backdrop-blur">
                       <div className="flex items-center gap-3">
                         <Icon className="h-4 w-4 text-white/80" />
                         <p className="font-semibold">{item.label}</p>
@@ -519,7 +593,9 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
                   <button
                     key={client.id}
                     className={`flex w-full items-center justify-between rounded-3xl border px-4 py-4 text-left transition ${
-                      client.id === selectedClientId ? 'border-transparent bg-slate-950 text-white shadow-xl' : 'border-slate-200 bg-white text-slate-900'
+                      client.id === selectedClientId
+                        ? 'border-transparent bg-[linear-gradient(135deg,#020617,#0f172a)] text-white shadow-xl'
+                        : 'border-slate-200/80 bg-white text-slate-900 hover:border-slate-300 hover:bg-slate-50/70'
                     }`}
                     onClick={() => setSelectedClientId(client.id)}
                   >

@@ -33,21 +33,17 @@ export function ThemePanel({ initialTheme }: { initialTheme: ThemeSettings }) {
           { label: 'Background', value: theme.backgroundColor, key: 'backgroundColor' },
         ].map((item) => (
           <label key={item.key} className="grid gap-2 text-sm font-medium text-slate-600">
-            {item.label}
+            <span className="font-semibold text-slate-700">{item.label}</span>
             <input
               type="color"
-              className="h-12 w-full rounded-2xl border border-slate-200 bg-white p-2"
+              className="h-12 w-full rounded-2xl border border-slate-200 bg-white p-2 shadow-sm"
               value={item.value}
               onChange={(event) => updateTheme({ ...theme, [item.key]: event.target.value })}
             />
           </label>
         ))}
         <div className="flex items-end">
-          <Button
-            variant="secondary"
-            className="w-full"
-            onClick={() => updateTheme({ ...theme, darkMode: !theme.darkMode })}
-          >
+          <Button variant="secondary" className="w-full" onClick={() => updateTheme({ ...theme, darkMode: !theme.darkMode })}>
             {theme.darkMode ? 'Disable dark mode' : 'Enable dark mode'}
           </Button>
         </div>
