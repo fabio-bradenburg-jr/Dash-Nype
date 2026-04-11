@@ -75,6 +75,11 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
     root.style.setProperty('--saas-surface', snapshot.theme.backgroundColor)
   }, [snapshot.theme])
 
+  async function handleLogout() {
+    await fetch('/api/auth/logout', { method: 'POST' })
+    window.location.href = '/login'
+  }
+
   return (
     <div
       className="min-h-screen text-slate-900"
@@ -146,7 +151,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
                 </div>
               </div>
               <div className="grid gap-3 xl:min-w-[420px]">
-                <div className="grid gap-3 sm:grid-cols-[1fr_auto_auto]">
+                <div className="grid gap-3 sm:grid-cols-[1fr_auto_auto_auto]">
                   <select
                     className="h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 shadow-sm"
                     value={selectedClientId}
@@ -160,6 +165,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
                   </select>
                   <Button variant="secondary" className="h-12">Sync sources</Button>
                   <Button className="h-12">New client</Button>
+                  <Button className="h-12" variant="ghost" onClick={handleLogout}>Logout</Button>
                 </div>
                 <div className="grid gap-3 sm:grid-cols-3">
                   <div className="rounded-2xl border border-slate-200/70 bg-white/80 px-4 py-3">

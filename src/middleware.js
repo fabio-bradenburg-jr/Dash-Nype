@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { PLATFORM_AUTH_COOKIE } from '@/lib/saas/auth'
 
 const legacyPrefixes = [
   '/home',
@@ -21,8 +22,24 @@ const legacyPrefixes = [
 
 export function middleware(request) {
   const { pathname } = request.nextUrl
+  const hasAuthCookie = Boolean(request.cookies.get(PLATFORM_AUTH_COOKIE)?.value)
+
+  if (pathname === '/login') {
+    if (hasAuthCookie) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/'
+      return NextResponse.redirect(url)
+    }
+    return NextResponse.next()
+  }
 
   if (pathname === '/') {
+    if (!hasAuthCookie) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/login'
+      url.searchParams.set('next', '/')
+      return NextResponse.redirect(url)
+    }
     return NextResponse.next()
   }
 
@@ -30,7 +47,10 @@ export function middleware(request) {
 
   if (isLegacyRoute) {
     const url = request.nextUrl.clone()
-    url.pathname = '/'
+    url.pathname = hasAuthCookie ? '/' : '/login'
+    if (!hasAuthCookie) {
+      url.searchParams.set('next', '/')
+    }
     return NextResponse.redirect(url)
   }
 
