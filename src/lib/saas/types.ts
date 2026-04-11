@@ -75,6 +75,20 @@ export type TaskItem = {
   assignee_name?: string | null
 }
 
+export type KnowledgeSourceType =
+  | 'google_drive_folder'
+  | 'google_sheets'
+  | 'google_docs'
+  | 'link'
+
+export type KnowledgeSource = {
+  id: string
+  type: KnowledgeSourceType
+  title: string
+  url: string
+  notes?: string
+}
+
 export type ClientDashboard = {
   overview_metrics: MetricCard[]
   results_by_objective: ObjectivePerformance[]
@@ -122,4 +136,12 @@ export type PlatformSnapshot = {
     external_account_id: string
     last_sync_at: string | null
   }>
+}
+
+export type ClientContextBundle = {
+  client: ClientSummary
+  clientDashboard: ClientDashboard
+  checklist: ChecklistItem[]
+  tasks: TaskItem[]
+  integrations: PlatformSnapshot['integrations']
 }

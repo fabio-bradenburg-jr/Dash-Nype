@@ -15,6 +15,10 @@ type UserRow = {
 
 let pool: Pool | null = null
 
+export function hasLocalDatabaseConfig() {
+  return Boolean(process.env.DATABASE_URL)
+}
+
 function getPool() {
   if (!pool) {
     if (!process.env.DATABASE_URL) {

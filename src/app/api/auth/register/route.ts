@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 
 import { PLATFORM_AUTH_COOKIE } from '@/lib/saas/auth'
 import { getPlatformApiUrl } from '@/lib/saas/server-api'
-import { registerWithLocalDatabase } from '@/lib/server/platform-auth-fallback'
+import { hasLocalDatabaseConfig, registerWithLocalDatabase } from '@/lib/server/platform-auth-fallback'
 
 const API_URL = getPlatformApiUrl()
 
@@ -39,6 +39,16 @@ export async function POST(request: Request) {
 
     return nextResponse
   } catch {
+    if (!hasLocalDatabaseConfig()) {
+      return NextResponse.json(
+        {
+          error:
+            'O cadastro não está disponível neste ambiente agora. Configure `PLATFORM_BACKEND_URL` para o backend do SaaS ou `DATABASE_URL` para o fallback local.',
+        },
+        { status: 500 }
+      )
+    }
+
     try {
       const token = await registerWithLocalDatabase(body)
       const nextResponse = NextResponse.json({ ok: true, fallback: true })
@@ -53,10 +63,14 @@ export async function POST(request: Request) {
       })
       return nextResponse
     } catch (fallbackError) {
-      return NextResponse.json(
-        { error: fallbackError instanceof Error ? fallbackError.message : 'Não foi possível criar a conta.' },
-        { status: 500 }
-      )
+      const message =
+        fallbackError instanceof Error && fallbackError.message === 'DATABASE_URL não configurada'
+          ? 'O cadastro não está disponível neste ambiente agora. Falta configurar a conexão com o banco.'
+          : fallbackError instanceof Error
+            ? fallbackError.message
+            : 'Não foi possível criar a conta.'
+
+      return NextResponse.json({ error: message }, { status: 500 })
     }
   }
 }

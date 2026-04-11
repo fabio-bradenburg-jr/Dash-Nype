@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { ArrowDown, GripVertical } from 'lucide-react'
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -8,6 +8,10 @@ import { FunnelStage } from '@/lib/saas/types'
 
 export function FunnelBuilder({ initialStages }: { initialStages: FunnelStage[] }) {
   const [stages, setStages] = useState(initialStages)
+
+  useEffect(() => {
+    setStages(initialStages)
+  }, [initialStages])
 
   const hydratedStages = useMemo(
     () =>

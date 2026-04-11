@@ -23,6 +23,7 @@ import {
   Building2,
   CheckCircle2,
   ChevronRight,
+  Cpu,
   LayoutDashboard,
   Link2,
   LineChart,
@@ -33,17 +34,20 @@ import {
 } from 'lucide-react'
 
 import { FunnelBuilder } from '@/components/saas/funnel-builder'
+import { AiAssistantPanel } from '@/components/saas/ai-assistant-panel'
+import { ClientKnowledgePanel } from '@/components/saas/client-knowledge-panel'
 import { ThemePanel } from '@/components/saas/theme-panel'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { PlatformSnapshot } from '@/lib/saas/types'
+import { ClientContextBundle, KnowledgeSource, PlatformSnapshot } from '@/lib/saas/types'
 
 const navigation = [
   { label: 'Visão geral', icon: LayoutDashboard },
   { label: 'Clientes', icon: Users },
   { label: 'Operações', icon: Activity },
   { label: 'Projetos', icon: BriefcaseBusiness },
+  { label: 'IA', icon: Cpu },
   { label: 'Configurações', icon: Settings2 },
 ]
 
@@ -83,10 +87,41 @@ function objectiveLabel(objective: string) {
   return map[objective] || objective
 }
 
+function extractKnowledgeSourcesFromBusinessData(businessData: Record<string, unknown> | undefined): KnowledgeSource[] {
+  const rawSources = Array.isArray(businessData?.knowledge_sources) ? businessData.knowledge_sources : []
+
+  return rawSources
+    .map((item, index) => {
+      const source = item && typeof item === 'object' ? (item as Record<string, unknown>) : {}
+      const title = String(source.title || '').trim()
+      const url = String(source.url || '').trim()
+      if (!title || !url) return null
+
+      return {
+        id: String(source.id || `source-${index + 1}`),
+        title,
+        url,
+        type: ['google_drive_folder', 'google_sheets', 'google_docs', 'link'].includes(String(source.type || ''))
+          ? (source.type as KnowledgeSource['type'])
+          : 'link',
+        notes: String(source.notes || '').trim(),
+      }
+    })
+    .filter(Boolean) as KnowledgeSource[]
+}
+
 export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [selectedClientId, setSelectedClientId] = useState(snapshot.selectedClient.id)
+  const [selectedClient, setSelectedClient] = useState(snapshot.selectedClient)
+  const [clientDashboard, setClientDashboard] = useState(snapshot.clientDashboard)
+  const [checklist, setChecklist] = useState(snapshot.checklist)
+  const [tasks, setTasks] = useState(snapshot.tasks)
+  const [clientIntegrations, setClientIntegrations] = useState(
+    snapshot.integrations.filter((integration) => integration.client_id === snapshot.selectedClient.id)
+  )
+  const [loadingClientContext, setLoadingClientContext] = useState(false)
   const [creatingClient, setCreatingClient] = useState(false)
   const [syncing, setSyncing] = useState(false)
   const [linkingMeta, setLinkingMeta] = useState(false)
@@ -105,12 +140,36 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
     status: 'onboarding',
     target_roas: '2.5',
   })
-  const selectedClient = snapshot.clients.find((client) => client.id === selectedClientId) ?? snapshot.selectedClient
-  const selectedClientIntegrations = snapshot.integrations.filter((integration) => integration.client_id === selectedClient.id)
+  const [knowledgeSources, setKnowledgeSources] = useState<KnowledgeSource[]>(
+    extractKnowledgeSourcesFromBusinessData(snapshot.selectedClient.business_data as Record<string, unknown>)
+  )
+  const selectedClientIntegrations = clientIntegrations
   const selectedMetaIntegration = selectedClientIntegrations.find((integration) => integration.provider === 'meta_ads')
-  const positiveMetrics = snapshot.clientDashboard.overview_metrics.slice(0, 3)
+  const positiveMetrics = clientDashboard.overview_metrics.slice(0, 3)
   const metaError = searchParams.get('meta_error')
   const metaPending = searchParams.get('meta_pending') === '1'
+  const googleDriveError = searchParams.get('google_drive_error')
+  const googleDriveConnected = searchParams.get('google_drive_connected') === '1'
+  const selectedClientFromQuery = searchParams.get('selected_client')
+
+  async function reloadClientContext(clientId: string) {
+    const response = await fetch(`/api/saas/client-context?clientId=${encodeURIComponent(clientId)}`, {
+      cache: 'no-store',
+    })
+    const data = (await response.json()) as ClientContextBundle
+    if (!response.ok) {
+      throw new Error('Não foi possível carregar o cliente selecionado.')
+    }
+
+    setSelectedClient(data.client)
+    setClientDashboard(data.clientDashboard)
+    setChecklist(data.checklist)
+    setTasks(data.tasks)
+    setClientIntegrations(data.integrations)
+    setKnowledgeSources(
+      extractKnowledgeSourcesFromBusinessData(data.client.business_data as Record<string, unknown>)
+    )
+  }
 
   useEffect(() => {
     const root = document.documentElement
@@ -118,6 +177,26 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
     root.style.setProperty('--saas-accent', snapshot.theme.accentColor)
     root.style.setProperty('--saas-surface', snapshot.theme.backgroundColor)
   }, [snapshot.theme])
+
+  useEffect(() => {
+    async function loadClientContext() {
+      if (selectedClientId === selectedClient.id) return
+      setLoadingClientContext(true)
+      try {
+        await reloadClientContext(selectedClientId)
+      } finally {
+        setLoadingClientContext(false)
+      }
+    }
+
+    loadClientContext()
+  }, [selectedClient.id, selectedClientId])
+
+  useEffect(() => {
+    if (selectedClientFromQuery && selectedClientFromQuery !== selectedClientId) {
+      setSelectedClientId(selectedClientFromQuery)
+    }
+  }, [selectedClientFromQuery, selectedClientId])
 
   useEffect(() => {
     async function loadMetaAccounts() {
@@ -258,6 +337,16 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
               {metaError}
             </div>
           ) : null}
+          {googleDriveError ? (
+            <div className="rounded-[28px] border border-rose-200 bg-rose-50 px-5 py-4 text-sm font-medium text-rose-700">
+              {googleDriveError}
+            </div>
+          ) : null}
+          {googleDriveConnected ? (
+            <div className="rounded-[28px] border border-emerald-200 bg-emerald-50 px-5 py-4 text-sm font-medium text-emerald-700">
+              Google Drive conectado com sucesso ao cliente selecionado.
+            </div>
+          ) : null}
 
           <section className="relative overflow-hidden rounded-[34px] border border-white/80 bg-[linear-gradient(135deg,rgba(255,255,255,0.92),rgba(248,250,252,0.76))] p-5 shadow-[0_26px_80px_rgba(15,23,42,0.08)] backdrop-blur-xl">
             <div className="pointer-events-none absolute inset-y-0 right-0 w-[38%] bg-[radial-gradient(circle_at_top,rgba(249,115,22,0.15),transparent_46%),radial-gradient(circle_at_bottom,rgba(15,118,110,0.18),transparent_42%)]" />
@@ -307,8 +396,8 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
                   <div className="rounded-2xl border border-slate-200/70 bg-white/80 px-4 py-3">
                     <p className="text-xs uppercase tracking-[0.22em] text-slate-400">Saúde</p>
                     <div className="mt-2 flex items-center justify-between">
-                      <span className="font-manrope text-2xl font-extrabold">{snapshot.clientDashboard.health_score}</span>
-                      <Badge tone={healthTone(snapshot.clientDashboard.health_band)}>{snapshot.clientDashboard.health_band}</Badge>
+                      <span className="font-manrope text-2xl font-extrabold">{clientDashboard.health_score}</span>
+                      <Badge tone={healthTone(clientDashboard.health_band)}>{clientDashboard.health_band}</Badge>
                     </div>
                   </div>
                   <div className="rounded-2xl border border-slate-200/70 bg-white/80 px-4 py-3">
@@ -320,6 +409,11 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
                     <p className="mt-2 font-manrope text-xl font-extrabold capitalize">{objectiveLabel(selectedClient.main_goal)}</p>
                   </div>
                 </div>
+                {loadingClientContext ? (
+                  <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-700">
+                    Carregando o contexto completo do cliente selecionado...
+                  </div>
+                ) : null}
                 {showClientForm ? (
                   <div className="grid gap-3 rounded-[28px] border border-slate-200/70 bg-white/90 p-4 shadow-sm md:grid-cols-2">
                     {[
@@ -379,7 +473,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
           </section>
 
           <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            {snapshot.clientDashboard.overview_metrics.map((metric) => (
+            {clientDashboard.overview_metrics.map((metric) => (
               <Card key={metric.label} className="overflow-hidden border-slate-200/70">
                 <CardContent className="p-5">
                   <div className="flex items-center justify-between">
@@ -413,7 +507,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
               </CardHeader>
               <CardContent className="h-[320px]">
                 <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={snapshot.clientDashboard.time_series}>
+                  <AreaChart data={clientDashboard.time_series}>
                     <defs>
                       <linearGradient id="spendFill" x1="0" x2="0" y1="0" y2="1">
                         <stop offset="0%" stopColor="var(--saas-primary)" stopOpacity={0.35} />
@@ -439,7 +533,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
                 </div>
               </CardHeader>
               <CardContent className="grid gap-4">
-                {snapshot.clientDashboard.results_by_objective.map((item) => (
+                {clientDashboard.results_by_objective.map((item) => (
                   <div key={item.objective} className="rounded-3xl border border-slate-200 bg-slate-50/80 p-4">
                     <div className="flex items-center justify-between">
                       <p className="font-semibold capitalize text-slate-900">{objectiveLabel(item.objective)}</p>
@@ -462,7 +556,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
           </section>
 
           <section className="grid gap-6 xl:grid-cols-[1.15fr_1fr_1fr]">
-            <FunnelBuilder initialStages={snapshot.clientDashboard.funnel} />
+            <FunnelBuilder initialStages={clientDashboard.funnel} />
 
             <Card>
               <CardHeader>
@@ -474,7 +568,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
               <CardContent className="space-y-6">
                 <div className="h-[160px]">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={snapshot.clientDashboard.top_cities}>
+                    <BarChart data={clientDashboard.top_cities}>
                       <CartesianGrid stroke="#e2e8f0" strokeDasharray="3 3" vertical={false} />
                       <XAxis dataKey="city" stroke="#64748b" tickLine={false} axisLine={false} />
                       <YAxis stroke="#64748b" tickLine={false} axisLine={false} />
@@ -484,7 +578,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
                   </ResponsiveContainer>
                 </div>
                 <div className="space-y-3">
-                  {snapshot.clientDashboard.age_performance.map((row) => (
+                  {clientDashboard.age_performance.map((row) => (
                     <div key={row.range} className="flex items-center justify-between rounded-2xl border border-slate-200/70 bg-slate-50/80 px-4 py-3">
                       <span className="text-sm font-medium text-slate-600">{row.range}</span>
                       <span className="font-semibold text-slate-950">{row.roas.toFixed(2)}x de ROAS</span>
@@ -506,14 +600,14 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie
-                        data={snapshot.clientDashboard.top_creatives.map((item) => ({ name: item.creative, value: item.roas }))}
+                        data={clientDashboard.top_creatives.map((item) => ({ name: item.creative, value: item.roas }))}
                         dataKey="value"
                         nameKey="name"
                         innerRadius={48}
                         outerRadius={76}
                         paddingAngle={3}
                       >
-                        {snapshot.clientDashboard.top_creatives.map((item, index) => (
+                        {clientDashboard.top_creatives.map((item, index) => (
                           <Cell key={item.creative} fill={['#0f766e', '#f97316', '#0f172a'][index % 3]} />
                         ))}
                       </Pie>
@@ -522,7 +616,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
                   </ResponsiveContainer>
                 </div>
                 <div className="space-y-3">
-                  {snapshot.clientDashboard.top_creatives.map((creative) => (
+                  {clientDashboard.top_creatives.map((creative) => (
                     <div key={creative.creative} className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3">
                       <span className="text-sm font-medium text-slate-600">{creative.creative}</span>
                       <span className="font-semibold text-slate-950">{creative.roas.toFixed(2)}x</span>
@@ -554,7 +648,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {snapshot.clientDashboard.campaigns.map((campaign) => (
+                    {clientDashboard.campaigns.map((campaign) => (
                       <tr key={campaign.campaign_name}>
                         <td className="py-4">
                           <div>
@@ -595,7 +689,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
                       <div>
                         <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">Pulso do negócio</p>
                         <p className="mt-2 text-sm leading-6 text-slate-600">
-                          Orçamento de {String(selectedClient.business_data.monthly_budget ?? 'N/A')} com ciclo de {String(selectedClient.business_data.sales_cycle_days ?? 'N/A')} dias.
+                          Orçamento de {String((selectedClient.business_data as Record<string, unknown>)?.monthly_budget ?? 'N/A')} com ciclo de {String((selectedClient.business_data as Record<string, unknown>)?.sales_cycle_days ?? 'N/A')} dias.
                         </p>
                       </div>
                       <ArrowUpRight className="h-5 w-5 text-slate-500" />
@@ -688,6 +782,17 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
                   </div>
                 </CardContent>
               </Card>
+
+              <ClientKnowledgePanel
+                clientId={selectedClient.id}
+                sources={knowledgeSources}
+                onSaved={(nextSources) => setKnowledgeSources(nextSources)}
+                googleDrive={((selectedClient.business_data as Record<string, unknown>)?.google_drive_public || null) as {
+                  email?: string
+                  name?: string
+                  picture?: string
+                } | null}
+              />
             </div>
           </section>
 
@@ -742,6 +847,14 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
             <ThemePanel initialTheme={snapshot.theme} />
           </section>
 
+          <section>
+            <AiAssistantPanel
+              client={selectedClient}
+              knowledgeSources={knowledgeSources}
+              onTaskCreated={() => reloadClientContext(selectedClient.id)}
+            />
+          </section>
+
           <section className="grid gap-6 xl:grid-cols-[1fr_1fr]">
             <Card>
               <CardHeader>
@@ -751,7 +864,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
                   </div>
                 </CardHeader>
               <CardContent className="space-y-4">
-                {snapshot.checklist.map((item) => (
+                {checklist.map((item) => (
                   <div key={item.id} className="flex items-center justify-between rounded-2xl border border-slate-200/70 bg-slate-50/80 px-4 py-3">
                     <span className="flex items-center gap-2 font-medium text-slate-700">
                       <CheckCircle2 className={`h-4 w-4 ${item.completed ? 'text-emerald-500' : 'text-slate-300'}`} />
@@ -775,7 +888,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
                 </div>
               </CardHeader>
               <CardContent className="space-y-3">
-                {snapshot.tasks.map((task) => (
+                {tasks.map((task) => (
                   <div key={task.id} className="rounded-3xl border border-slate-200/80 bg-white p-4 shadow-sm">
                     <div className="flex items-start justify-between gap-4">
                       <div>
