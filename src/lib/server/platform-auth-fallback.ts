@@ -52,6 +52,14 @@ export async function createLocalAccessToken(payload: { sub: string; tenant_id: 
     .sign(secretKey())
 }
 
+export async function createPreviewAccessToken() {
+  return createLocalAccessToken({
+    sub: 'preview-user',
+    tenant_id: 'tenant-demo',
+    role: 'admin',
+  })
+}
+
 export async function verifyLocalAccessToken(token: string) {
   const { payload } = await jwtVerify(token, secretKey())
   return payload
@@ -139,6 +147,16 @@ export async function getLocalSessionUser(token: string) {
   const userId = String(payload.sub || '')
   if (!userId) {
     throw new Error('Sessão inválida')
+  }
+
+  if (userId === 'preview-user') {
+    return {
+      id: 'preview-user',
+      email: 'preview@nype.orbit',
+      full_name: 'Acesso Preview',
+      role: String(payload.role || 'admin'),
+      tenant_id: String(payload.tenant_id || 'tenant-demo'),
+    }
   }
 
   const db = getPool()

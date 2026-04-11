@@ -12,6 +12,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
+  const [previewLoading, setPreviewLoading] = useState(false)
   const [error, setError] = useState('')
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -51,6 +52,33 @@ export default function LoginPage() {
       setError(submitError instanceof Error ? submitError.message : 'Erro inesperado.')
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function handlePreviewAccess() {
+    setPreviewLoading(true)
+    setError('')
+
+    try {
+      const nextPath =
+        typeof window === 'undefined'
+          ? '/'
+          : new URLSearchParams(window.location.search).get('next') || '/'
+
+      const response = await fetch('/api/auth/preview', {
+        method: 'POST',
+      })
+
+      const data = await response.json()
+      if (!response.ok) {
+        throw new Error(data?.error || 'Não foi possível liberar o preview.')
+      }
+
+      window.location.href = nextPath
+    } catch (previewError) {
+      setError(previewError instanceof Error ? previewError.message : 'Erro inesperado no preview.')
+    } finally {
+      setPreviewLoading(false)
     }
   }
 
@@ -211,6 +239,15 @@ export default function LoginPage() {
                   ? 'Entrar na plataforma'
                   : 'Criar conta e entrar'}
             </Button>
+
+            <button
+              className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 disabled:opacity-60"
+              disabled={previewLoading}
+              onClick={handlePreviewAccess}
+              type="button"
+            >
+              {previewLoading ? 'Abrindo preview...' : 'Entrar agora em modo preview'}
+            </button>
           </form>
         </section>
       </div>
