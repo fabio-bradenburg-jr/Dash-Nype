@@ -154,8 +154,6 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
   const selectedClientIntegrations = clientIntegrations
   const selectedMetaIntegration = selectedClientIntegrations.find((integration) => integration.provider === 'meta_ads')
   const positiveMetrics = clientDashboard.overview_metrics.slice(0, 3)
-  const googleDriveError = searchParams.get('google_drive_error')
-  const googleDriveConnected = searchParams.get('google_drive_connected') === '1'
   const selectedClientFromQuery = searchParams.get('selected_client')
   const metaPendingFromQuery = searchParams.get('meta_pending') === '1'
   const metaPending = metaConnectionPending
@@ -452,17 +450,6 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
         </aside>
 
         <main className="min-w-0 flex-1 space-y-6">
-          {googleDriveError ? (
-            <div className="rounded-[28px] border border-rose-200 bg-rose-50 px-5 py-4 text-sm font-medium text-rose-700">
-              {googleDriveError}
-            </div>
-          ) : null}
-          {googleDriveConnected ? (
-            <div className="rounded-[28px] border border-emerald-200 bg-emerald-50 px-5 py-4 text-sm font-medium text-emerald-700">
-              Google Drive conectado com sucesso ao cliente selecionado.
-            </div>
-          ) : null}
-
           <section className="relative overflow-hidden rounded-[34px] border border-white/80 bg-[linear-gradient(135deg,rgba(255,255,255,0.92),rgba(248,250,252,0.76))] p-5 shadow-[0_26px_80px_rgba(15,23,42,0.08)] backdrop-blur-xl">
             <div className="pointer-events-none absolute inset-y-0 right-0 w-[38%] bg-[radial-gradient(circle_at_top,rgba(249,115,22,0.15),transparent_46%),radial-gradient(circle_at_bottom,rgba(15,118,110,0.18),transparent_42%)]" />
             <div className="relative flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
@@ -871,11 +858,6 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
                 clientId={selectedClient.id}
                 sources={knowledgeSources}
                 onSaved={(nextSources) => setKnowledgeSources(nextSources)}
-                googleDrive={((selectedClient.business_data as Record<string, unknown>)?.google_drive_public || null) as {
-                  email?: string
-                  name?: string
-                  picture?: string
-                } | null}
               />
             </div>
           </section>
