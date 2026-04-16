@@ -1,8 +1,8 @@
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 
-import { createDefaultAiAgents } from '@/lib/ai-config'
 import { extractKnowledgeSources, resolveKnowledgeSourceSnippets } from '@/lib/server/client-knowledge'
+import { resolveSaasAiSettings } from '@/lib/server/saas-ai-settings'
 import { PLATFORM_AUTH_COOKIE } from '@/lib/saas/auth'
 import { getPlatformApiUrl } from '@/lib/saas/server-api'
 
@@ -13,24 +13,33 @@ type ChatMessage = {
   content: string
 }
 
+const SAAS_AI_AGENTS = [
+  {
+    id: 'copilot',
+    name: 'Copiloto',
+    prompt:
+      'Atue como copiloto principal de marketing. Priorize clareza, leitura de carteira, campanhas, CRM, arquivos vinculados e próximos passos comerciais.',
+  },
+  {
+    id: 'media',
+    name: 'Analista de mídia',
+    prompt:
+      'Atue como analista senior de mídia paga. Leia campanhas, conjuntos, anúncios, criativos, orçamento e breakdowns. Explique impacto dos números, gargalos e ajustes objetivos.',
+  },
+  {
+    id: 'copywriter',
+    name: 'Copywriter',
+    prompt:
+      'Atue como copywriter senior. Gere headlines, copies, ganchos, argumentos e CTAs alinhados ao cliente, ao produto e ao material contextual disponível.',
+  },
+]
+
 function summarizeBusinessData(data: Record<string, unknown>) {
   return Object.entries(data)
     .filter(([key, value]) => key !== 'knowledge_sources' && value != null && String(value).trim() !== '')
     .slice(0, 10)
     .map(([key, value]) => `${key}: ${typeof value === 'object' ? JSON.stringify(value) : String(value)}`)
     .join('\n')
-}
-
-function resolveAiProviderConfig() {
-  const apiKey = process.env.OPENAI_API_KEY || process.env.AI_API_KEY || ''
-  const baseUrl = process.env.OPENAI_BASE_URL || process.env.AI_BASE_URL || 'https://api.openai.com/v1'
-  const model = process.env.OPENAI_MODEL || process.env.AI_MODEL || 'gpt-4o-mini'
-
-  return {
-    apiKey,
-    baseUrl,
-    model,
-  }
 }
 
 function normalizeForSearch(value: unknown) {
@@ -67,13 +76,27 @@ function findMentionedClient(question: string, clients: any[], fallbackClientId:
 }
 
 function buildFallbackReply(input: {
-  client: any
-  dashboard: any
-  tasks: any[]
+  client?: any
+  dashboard?: any
+  clients?: any[]
   integrations: any[]
   snippets: Awaited<ReturnType<typeof resolveKnowledgeSourceSnippets>>
   question: string
 }) {
+  if (!input.client) {
+    const clientNames = (input.clients || []).slice(0, 8).map((client) => client.name).filter(Boolean)
+    const integrationCount = Array.isArray(input.integrations) ? input.integrations.length : 0
+
+    return [
+      'Leitura geral da carteira:',
+      clientNames.length ? `- Clientes cadastrados: ${clientNames.join(', ')}.` : '- Ainda não há clientes cadastrados.',
+      `- Integrações registradas: ${integrationCount}.`,
+      '- Para uma análise com métricas, cite o nome do cliente ou selecione um cliente no campo acima.',
+      '',
+      `Pergunta recebida: ${input.question}`,
+    ].join('\n')
+  }
+
   const overview = Array.isArray(input.dashboard?.overview_metrics) ? input.dashboard.overview_metrics : []
   const spend = overview.find((item: any) => String(item.label).toLowerCase().includes('invest'))
   const roas = overview.find((item: any) => String(item.label).toLowerCase().includes('roas'))
@@ -82,7 +105,6 @@ function buildFallbackReply(input: {
   const worstCampaigns = campaigns
     .filter((item: any) => Number(item.roas || 0) < Number(input.client?.target_roas || 0))
     .slice(0, 2)
-  const openTasks = input.tasks.filter((task) => task.status !== 'done').slice(0, 3)
   const readableSources = input.snippets.filter((item) => item.readable)
 
   return [
@@ -93,15 +115,12 @@ function buildFallbackReply(input: {
     worstCampaigns.length
       ? `- Campanhas abaixo da meta de ROAS: ${worstCampaigns.map((item: any) => item.campaign_name).join(', ')}.`
       : '- Não identifiquei campanhas críticas abaixo da meta no recorte atual.',
-    openTasks.length
-      ? `- Tarefas abertas: ${openTasks.map((task) => task.title).join(', ')}.`
-      : '- Não há tarefas abertas relevantes no cliente.',
     readableSources.length
       ? `- Fontes lidas no Google: ${readableSources.map((item) => item.title).join(', ')}.`
       : '- Não encontrei fontes do Google legíveis no momento; confira compartilhamento/publicação.',
     '',
     `Pergunta recebida: ${input.question}`,
-    'Posso aprofundar em mídia, operação, CRM ou material do Drive com base nesse contexto.',
+    'Posso aprofundar em mídia, CRM ou material do Drive com base nesse contexto.',
   ]
     .filter(Boolean)
     .join('\n')
@@ -120,8 +139,8 @@ export async function POST(request: Request) {
     const agentId = String(body.agentId || 'copilot').trim()
     const history = Array.isArray(body.messages) ? (body.messages as ChatMessage[]).slice(-8) : []
 
-    if (!clientId || !question) {
-      return NextResponse.json({ error: 'Cliente e mensagem são obrigatórios.' }, { status: 400 })
+    if (!question) {
+      return NextResponse.json({ error: 'Mensagem é obrigatória.' }, { status: 400 })
     }
 
     const headers = {
@@ -132,13 +151,102 @@ export async function POST(request: Request) {
     const clientsResponse = await fetch(`${API_URL}/clients`, { headers, cache: 'no-store' })
     const clients = clientsResponse.ok ? await clientsResponse.json() : []
     const targetClient = findMentionedClient(question, clients, clientId)
-    const targetClientId = String(targetClient?.id || clientId)
+    const targetClientId = String(targetClient?.id || '')
 
-    const [clientResponse, dashboardResponse, checklistResponse, tasksResponse, integrationsResponse] = await Promise.all([
+    if (!targetClientId) {
+      const integrationsResponse = await fetch(`${API_URL}/integrations`, { headers, cache: 'no-store' })
+      const integrations = integrationsResponse.ok ? await integrationsResponse.json() : []
+      const agent = SAAS_AI_AGENTS.find((item) => item.id === agentId) || SAAS_AI_AGENTS[0]
+      const aiConfig = await resolveSaasAiSettings(token)
+      const context = `
+Carteira:
+${JSON.stringify(clients, null, 2)}
+
+Integrações:
+${JSON.stringify(integrations, null, 2)}
+
+Observação:
+- Nenhum cliente foi selecionado.
+- Se a pergunta citar um cliente pelo nome e ele existir na carteira, use essa referência.
+      `.trim()
+
+      if (!aiConfig.apiKey) {
+        return NextResponse.json({
+          reply: buildFallbackReply({
+            clients,
+            integrations,
+            snippets: [],
+            question,
+          }),
+          mode: 'fallback',
+          sources: [],
+        })
+      }
+
+      const response = await fetch(`${aiConfig.baseUrl.replace(/\/$/, '')}/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${aiConfig.apiKey}`,
+        },
+        body: JSON.stringify({
+          model: aiConfig.model,
+          temperature: 0.4,
+          messages: [
+            {
+              role: 'system',
+              content:
+                'Você é a IA de marketing do Nype Orbit. Responda em português do Brasil, com objetividade e visão executiva. Nunca invente números que não estão no contexto.',
+            },
+            {
+              role: 'system',
+              content: `Agente ativo: ${agent.name}. Instrução especializada: ${agent.prompt}`,
+            },
+            {
+              role: 'system',
+              content: `Use este contexto geral antes de responder:\n${context}`,
+            },
+            ...history.map((message) => ({
+              role: message.role,
+              content: message.content,
+            })),
+            {
+              role: 'user',
+              content: question,
+            },
+          ],
+        }),
+        cache: 'no-store',
+      })
+
+      const payload = await response.json().catch(() => ({}))
+      const reply = payload?.choices?.[0]?.message?.content
+
+      if (!response.ok || !reply) {
+        return NextResponse.json({
+          reply: buildFallbackReply({
+            clients,
+            integrations,
+            snippets: [],
+            question,
+          }),
+          mode: 'fallback',
+          sources: [],
+        })
+      }
+
+      return NextResponse.json({
+        reply,
+        mode: 'llm',
+        sources: [],
+        analyzedClientId: null,
+        analyzedClientName: null,
+      })
+    }
+
+    const [clientResponse, dashboardResponse, integrationsResponse] = await Promise.all([
       fetch(`${API_URL}/clients/${targetClientId}`, { headers, cache: 'no-store' }),
       fetch(`${API_URL}/dashboards/clients/${targetClientId}`, { headers, cache: 'no-store' }),
-      fetch(`${API_URL}/clients/${targetClientId}/checklist`, { headers, cache: 'no-store' }),
-      fetch(`${API_URL}/clients/${targetClientId}/tasks`, { headers, cache: 'no-store' }),
       fetch(`${API_URL}/integrations`, { headers, cache: 'no-store' }),
     ])
 
@@ -147,16 +255,13 @@ export async function POST(request: Request) {
       return NextResponse.json(payload, { status: clientResponse.status })
     }
 
-    const [client, dashboard, checklist, tasks, integrations] = await Promise.all([
+    const [client, dashboard, integrations] = await Promise.all([
       clientResponse.json(),
       dashboardResponse.json(),
-      checklistResponse.json(),
-      tasksResponse.json(),
       integrationsResponse.json(),
     ])
 
-    const agents = createDefaultAiAgents()
-    const agent = agents.find((item) => item.id === agentId) || agents[0]
+    const agent = SAAS_AI_AGENTS.find((item) => item.id === agentId) || SAAS_AI_AGENTS[0]
     const knowledgeSources = extractKnowledgeSources(client.business_data)
     const snippets = await resolveKnowledgeSourceSnippets(knowledgeSources)
 
@@ -176,12 +281,6 @@ ${summarizeBusinessData(client.business_data || {}) || 'Sem dados adicionais cad
 Métricas do dashboard:
 ${JSON.stringify(dashboard, null, 2)}
 
-Checklist:
-${JSON.stringify(checklist, null, 2)}
-
-Tarefas:
-${JSON.stringify(tasks, null, 2)}
-
 Integrações:
 ${JSON.stringify(Array.isArray(integrations) ? integrations.filter((item: any) => item.client_id === targetClientId) : [], null, 2)}
 
@@ -194,13 +293,12 @@ Observação de roteamento:
 - Se a pergunta citou outro cliente pelo nome, o dashboard usado foi o cliente citado.
     `.trim()
 
-    const aiConfig = resolveAiProviderConfig()
+    const aiConfig = await resolveSaasAiSettings(token)
     if (!aiConfig.apiKey) {
       return NextResponse.json({
         reply: buildFallbackReply({
           client,
           dashboard,
-          tasks,
           integrations: Array.isArray(integrations) ? integrations.filter((item: any) => item.client_id === targetClientId) : [],
           snippets,
           question,
@@ -223,7 +321,7 @@ Observação de roteamento:
           {
             role: 'system',
             content:
-              'Você é a IA operacional do Nype Orbit. Responda em português do Brasil, com objetividade, visão executiva e próximos passos acionáveis. Nunca invente números que não estão no contexto.',
+              'Você é a IA de marketing do Nype Orbit. Responda em português do Brasil, com objetividade, visão executiva e próximos passos acionáveis. Nunca invente números que não estão no contexto.',
           },
           {
             role: 'system',
@@ -254,7 +352,6 @@ Observação de roteamento:
         reply: buildFallbackReply({
           client,
           dashboard,
-          tasks,
           integrations: Array.isArray(integrations) ? integrations.filter((item: any) => item.client_id === targetClientId) : [],
           snippets,
           question,

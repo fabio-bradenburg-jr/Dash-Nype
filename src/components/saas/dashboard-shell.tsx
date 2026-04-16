@@ -17,11 +17,8 @@ import {
   YAxis,
 } from 'recharts'
 import {
-  Activity,
   ArrowUpRight,
-  BriefcaseBusiness,
   Building2,
-  CheckCircle2,
   ChevronRight,
   Cpu,
   LayoutDashboard,
@@ -35,6 +32,7 @@ import {
 
 import { FunnelBuilder } from '@/components/saas/funnel-builder'
 import { AiAssistantPanel } from '@/components/saas/ai-assistant-panel'
+import { AiIntegrationPanel } from '@/components/saas/ai-integration-panel'
 import { ClientKnowledgePanel } from '@/components/saas/client-knowledge-panel'
 import { ThemePanel } from '@/components/saas/theme-panel'
 import { Badge } from '@/components/ui/badge'
@@ -46,8 +44,6 @@ const navigation = [
   { key: 'overview', label: 'Visão geral', icon: Cpu },
   { key: 'dashs', label: 'Dashs', icon: LayoutDashboard },
   { key: 'clients', label: 'Clientes', icon: Users },
-  { key: 'operations', label: 'Operações', icon: Activity },
-  { key: 'projects', label: 'Projetos', icon: BriefcaseBusiness },
   { key: 'settings', label: 'Configurações', icon: Settings2 },
 ] as const
 
@@ -55,8 +51,8 @@ type NavigationKey = (typeof navigation)[number]['key']
 
 const moduleCopy: Record<NavigationKey, { title: string; description: string }> = {
   overview: {
-    title: 'IA operacional',
-    description: 'Converse com a IA sobre clientes, campanhas, dashs, tarefas, integrações e fontes vinculadas.',
+    title: 'IA inteligente',
+    description: 'Converse com a IA sobre clientes, campanhas, dashs, integrações e fontes vinculadas.',
   },
   dashs: {
     title: 'Dashs de performance',
@@ -66,17 +62,9 @@ const moduleCopy: Record<NavigationKey, { title: string; description: string }> 
     title: 'Gestão de clientes',
     description: 'Carteira, perfil do cliente, integrações, fontes de conhecimento e criação de novos clientes.',
   },
-  operations: {
-    title: 'Operação da carteira',
-    description: 'KPIs globais, receita, churn e eficiência operacional por cliente.',
-  },
-  projects: {
-    title: 'Projetos e entregas',
-    description: 'Checklist, tarefas, status de onboarding e fila de execução do time.',
-  },
   settings: {
     title: 'Configurações',
-    description: 'Tema, módulos ativos, segurança e ajustes da experiência do SaaS.',
+    description: 'Tema, Meta Ads, IA e ajustes da experiência do SaaS.',
   },
 }
 
@@ -140,8 +128,6 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
   const [selectedClientId, setSelectedClientId] = useState(snapshot.selectedClient.id)
   const [selectedClient, setSelectedClient] = useState(snapshot.selectedClient)
   const [clientDashboard, setClientDashboard] = useState(snapshot.clientDashboard)
-  const [checklist, setChecklist] = useState(snapshot.checklist)
-  const [tasks, setTasks] = useState(snapshot.tasks)
   const [clientIntegrations, setClientIntegrations] = useState(
     snapshot.integrations.filter((integration) => integration.client_id === snapshot.selectedClient.id)
   )
@@ -176,8 +162,6 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
   const showOverview = activeModule === 'overview'
   const showDashs = activeModule === 'dashs'
   const showClients = activeModule === 'clients'
-  const showOperations = activeModule === 'operations'
-  const showProjects = activeModule === 'projects'
   const showSettings = activeModule === 'settings'
   const showWorkspaceControls = activeModule !== 'overview'
 
@@ -192,8 +176,6 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
 
     setSelectedClient(data.client)
     setClientDashboard(data.clientDashboard)
-    setChecklist(data.checklist)
-    setTasks(data.tasks)
     setClientIntegrations(data.integrations)
     setKnowledgeSources(
       extractKnowledgeSourcesFromBusinessData(data.client.business_data as Record<string, unknown>)
@@ -227,6 +209,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
 
   useEffect(() => {
     async function loadClientContext() {
+      if (!selectedClientId) return
       if (selectedClientId === selectedClient.id) return
       setLoadingClientContext(true)
       try {
@@ -435,7 +418,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
               <ShieldCheck className="h-4 w-4 text-emerald-300" />
               <p className="text-sm font-semibold">Segurança multi-tenant</p>
             </div>
-            <p className="mt-2 text-sm leading-6 text-white/60">As visões de admin e operação ficam limitadas ao tenant autenticado e só expõem a própria carteira.</p>
+            <p className="mt-2 text-sm leading-6 text-white/60">Cada usuário acessa somente os clientes, dashs e integrações vinculados ao próprio tenant.</p>
           </div>
         </aside>
 
@@ -468,14 +451,14 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
                   {showOverview
                     ? `Boas-vindas, ${currentUserName}`
                     : activeModule === 'dashs'
-                    ? 'Métricas, CRM, operação e entrega ao cliente em uma única plataforma.'
+                    ? 'Métricas, CRM e entrega ao cliente em uma única plataforma.'
                     : currentModule.title}
                 </h1>
                 <p className="mt-4 max-w-2xl text-base leading-7 text-slate-600">
                   {showOverview
-                    ? 'Use a IA para consultar clientes, campanhas, dashs, tarefas, integrações e próximos passos da operação.'
+                    ? 'Use a IA para consultar clientes, campanhas, dashs, integrações e arquivos vinculados.'
                     : activeModule === 'dashs'
-                    ? 'Dados unificados de campanha, sync com CRM e fluxos operacionais em uma camada premium de controle para a agência inteira.'
+                    ? 'Dados unificados de campanha, sync com CRM e leitura premium de performance para a agência inteira.'
                     : currentModule.description}
                 </p>
                 {showWorkspaceControls ? (
@@ -495,7 +478,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
                   <select
                     className="h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 shadow-sm"
                     disabled={snapshot.clients.length === 0}
-                    value={selectedClientId}
+                    value={selectedClientId || selectedClient.id}
                     onChange={(event) => setSelectedClientId(event.target.value)}
                   >
                     {snapshot.clients.length > 0 ? (
@@ -536,7 +519,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
                 <div className="rounded-[30px] border border-slate-200/80 bg-white/80 p-5 shadow-sm xl:min-w-[360px]">
                   <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">Atalho inteligente</p>
                   <p className="mt-2 text-sm leading-6 text-slate-600">
-                    Cadastre um cliente e pergunte sobre desempenho, campanhas, CRM, tarefas ou próximos passos.
+                    Pergunte sobre a carteira inteira ou selecione um cliente para consultar desempenho, campanhas, CRM e arquivos vinculados.
                   </p>
                 </div>
               )}
@@ -751,7 +734,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
                 <CardHeader>
                   <div>
                     <CardTitle>Perfil do cliente</CardTitle>
-                    <CardDescription>Dados do negócio, objetivo do dash e status operacional.</CardDescription>
+                    <CardDescription>Dados do negócio, objetivo do dash e status do cliente.</CardDescription>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -874,38 +857,12 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
           </section>
           ) : null}
 
-          {showOperations || showSettings ? (
-          <section className="grid gap-6 xl:grid-cols-[1.4fr_0.8fr]">
-            <Card>
-              <CardHeader>
-                  <div>
-                    <CardTitle>Dashboard operacional</CardTitle>
-                    <CardDescription>Visibilidade interna da carteira, churn e eficiência de receita.</CardDescription>
-                  </div>
-                </CardHeader>
-              <CardContent className="grid gap-4 sm:grid-cols-2">
-                {[
-                  { label: 'Total de clientes', value: snapshot.operations.total_clients },
-                  { label: 'Clientes ativos', value: snapshot.operations.active_clients },
-                  { label: 'Taxa de churn', value: `${snapshot.operations.churn_rate}%` },
-                  { label: 'LTV médio', value: formatValue(snapshot.operations.average_ltv, 'currency') },
-                  { label: 'CAC', value: formatValue(snapshot.operations.cac, 'currency') },
-                  { label: 'ROI médio', value: `${snapshot.operations.average_roi.toFixed(2)}x` },
-                ].map((item) => (
-                  <div key={item.label} className="rounded-3xl border border-slate-200/70 bg-slate-50/85 p-4">
-                    <p className="text-sm text-slate-500">{item.label}</p>
-                    <p className="mt-3 text-2xl font-bold text-slate-950">{item.value}</p>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-
-            <ThemePanel initialTheme={snapshot.theme} />
-          </section>
-          ) : null}
-
           {showSettings ? (
           <section className="grid gap-6 xl:grid-cols-[1fr_1fr]">
+            <ThemePanel initialTheme={snapshot.theme} />
+
+            <AiIntegrationPanel />
+
             <Card>
               <CardHeader>
                 <div>
@@ -965,64 +922,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
               selectedClientId={selectedClientId}
               knowledgeSources={knowledgeSources}
               onClientChange={setSelectedClientId}
-              onTaskCreated={() => selectedClient.id && reloadClientContext(selectedClient.id)}
             />
-          </section>
-          ) : null}
-
-          {showProjects ? (
-          <section className="grid gap-6 xl:grid-cols-[1fr_1fr]">
-            <Card>
-              <CardHeader>
-                  <div>
-                    <CardTitle>Gestão de projeto</CardTitle>
-                    <CardDescription>Checklist de onboarding e fila de tarefas da operação.</CardDescription>
-                  </div>
-                </CardHeader>
-              <CardContent className="space-y-4">
-                {checklist.map((item) => (
-                  <div key={item.id} className="flex items-center justify-between rounded-2xl border border-slate-200/70 bg-slate-50/80 px-4 py-3">
-                    <span className="flex items-center gap-2 font-medium text-slate-700">
-                      <CheckCircle2 className={`h-4 w-4 ${item.completed ? 'text-emerald-500' : 'text-slate-300'}`} />
-                      {item.label}
-                    </span>
-                    <Badge tone={item.completed ? 'green' : 'yellow'}>{item.completed ? 'concluído' : 'pendente'}</Badge>
-                  </div>
-                ))}
-                <div className="rounded-[28px] bg-slate-950 p-5 text-white">
-                  <p className="text-sm uppercase tracking-[0.22em] text-white/50">Status do cliente</p>
-                  <p className="mt-2 text-2xl font-bold capitalize">{statusLabel(selectedClient.status)}</p>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <div>
-                  <CardTitle>Tarefas</CardTitle>
-                  <CardDescription>Criar campanhas, ajustar criativos e otimizar a performance por cliente.</CardDescription>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {tasks.map((task) => (
-                  <div key={task.id} className="rounded-3xl border border-slate-200/80 bg-white p-4 shadow-sm">
-                    <div className="flex items-start justify-between gap-4">
-                      <div>
-                        <p className="font-semibold text-slate-900">{task.title}</p>
-                        <p className="mt-1 text-sm text-slate-500">{task.description}</p>
-                      </div>
-                      <Badge tone={task.status === 'done' ? 'green' : task.status === 'in_progress' ? 'yellow' : 'slate'}>
-                        {statusLabel(task.status)}
-                      </Badge>
-                    </div>
-                    <div className="mt-4 flex items-center justify-between text-xs text-slate-400">
-                      <span>{task.assignee_name}</span>
-                      <span>{task.due_date}</span>
-                    </div>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
           </section>
           ) : null}
 
@@ -1032,14 +932,14 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
               <CardHeader>
                   <div>
                     <CardTitle className="text-white">Mapa de módulos</CardTitle>
-                    <CardDescription className="text-white/60">A plataforma já entrega clientes, integrações, dashboards e gestão de projetos.</CardDescription>
+                    <CardDescription className="text-white/60">A plataforma centraliza clientes, integrações, dashboards e IA contextual.</CardDescription>
                   </div>
                 </CardHeader>
               <CardContent className="space-y-3">
                 {[
                   { label: 'CRM de clientes', icon: Building2, copy: 'CRUD completo, perfil do negócio, integrações vinculadas e escopo por tenant.' },
                   { label: 'Analytics de marketing', icon: LineChart, copy: 'Métricas unificadas, análise de funil, insights e leitura de ROAS.' },
-                  { label: 'Workspace operacional', icon: Users, copy: 'Tarefas, checklist, risco de churn e KPIs globais da carteira.' },
+                  { label: 'IA contextual', icon: Users, copy: 'Perguntas sobre clientes, campanhas, CRM, dashs e arquivos vinculados ao tenant.' },
                 ].map((item) => {
                   const Icon = item.icon
                   return (

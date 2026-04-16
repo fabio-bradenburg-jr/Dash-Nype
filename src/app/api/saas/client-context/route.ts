@@ -24,11 +24,9 @@ export async function GET(request: Request) {
       'Content-Type': 'application/json',
     }
 
-    const [clientResponse, dashboardResponse, checklistResponse, tasksResponse, integrationsResponse] = await Promise.all([
+    const [clientResponse, dashboardResponse, integrationsResponse] = await Promise.all([
       fetch(`${API_URL}/clients/${clientId}`, { headers, cache: 'no-store' }),
       fetch(`${API_URL}/dashboards/clients/${clientId}`, { headers, cache: 'no-store' }),
-      fetch(`${API_URL}/clients/${clientId}/checklist`, { headers, cache: 'no-store' }),
-      fetch(`${API_URL}/clients/${clientId}/tasks`, { headers, cache: 'no-store' }),
       fetch(`${API_URL}/integrations`, { headers, cache: 'no-store' }),
     ])
 
@@ -37,19 +35,15 @@ export async function GET(request: Request) {
       return NextResponse.json(payload, { status: clientResponse.status })
     }
 
-    const [client, clientDashboard, checklist, tasks, integrations] = await Promise.all([
+    const [client, clientDashboard, integrations] = await Promise.all([
       clientResponse.json(),
       dashboardResponse.json(),
-      checklistResponse.json(),
-      tasksResponse.json(),
       integrationsResponse.json(),
     ])
 
     return NextResponse.json({
       client,
       clientDashboard,
-      checklist,
-      tasks,
       integrations: Array.isArray(integrations)
         ? integrations.filter((integration) => integration.client_id === clientId)
         : [],

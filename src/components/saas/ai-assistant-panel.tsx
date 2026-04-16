@@ -15,7 +15,6 @@ type Message = {
 const agents = [
   { id: 'copilot', label: 'Copiloto' },
   { id: 'media', label: 'Mídia' },
-  { id: 'operations', label: 'Operações' },
   { id: 'copywriter', label: 'Copy' },
 ]
 
@@ -25,15 +24,6 @@ type Props = {
   selectedClientId: string
   knowledgeSources: KnowledgeSource[]
   onClientChange: (clientId: string) => void
-  onTaskCreated?: () => void
-}
-
-function taskTitleFromReply(content: string) {
-  const cleaned = String(content || '')
-    .replace(/\n+/g, ' ')
-    .trim()
-  const firstSentence = cleaned.split(/[.!?]/)[0] || cleaned
-  return (firstSentence || 'Ação recomendada pela IA').slice(0, 120)
 }
 
 export function AiAssistantPanel({
@@ -42,29 +32,33 @@ export function AiAssistantPanel({
   selectedClientId,
   knowledgeSources,
   onClientChange,
-  onTaskCreated,
 }: Props) {
   const [agentId, setAgentId] = useState('copilot')
   const [loading, setLoading] = useState(false)
-  const [creatingTaskIndex, setCreatingTaskIndex] = useState<number | null>(null)
   const [error, setError] = useState('')
   const [input, setInput] = useState('')
+  const activeClientSelected = Boolean(selectedClientId && client.id)
   const [messages, setMessages] = useState<Message[]>([
     {
       role: 'assistant',
-      content: `Estou com o contexto de ${client.name}. Posso cruzar campanhas, tarefas e também as fontes vinculadas do Google para responder com mais profundidade.`,
+      content: activeClientSelected
+        ? `Estou com o contexto de ${client.name}. Posso cruzar campanhas, CRM e fontes vinculadas do Google para responder com mais profundidade.`
+        : 'Estou pronto para responder sobre a carteira inteira. Você pode perguntar sem selecionar cliente ou citar um cliente pelo nome.',
     },
   ])
 
   const hasClients = clients.length > 0
   const sourceCount = useMemo(() => knowledgeSources.length, [knowledgeSources])
-  const storageKey = useMemo(() => `nype-orbit-ai:${client.id}`, [client.id])
+  const activeContextId = selectedClientId || 'geral'
+  const storageKey = useMemo(() => `nype-orbit-ai:${activeContextId}`, [activeContextId])
 
   useEffect(() => {
     const defaultMessage = [
       {
         role: 'assistant' as const,
-        content: `Estou com o contexto de ${client.name}. Posso cruzar campanhas, tarefas e também as fontes vinculadas do Google para responder com mais profundidade.`,
+        content: activeClientSelected
+          ? `Estou com o contexto de ${client.name}. Posso cruzar campanhas, CRM e fontes vinculadas do Google para responder com mais profundidade.`
+          : 'Estou pronto para responder sobre a carteira inteira. Você pode perguntar sem selecionar cliente ou citar um cliente pelo nome.',
       },
     ]
 
@@ -90,7 +84,7 @@ export function AiAssistantPanel({
 
     setError('')
     setInput('')
-  }, [client.id, client.name, storageKey])
+  }, [activeClientSelected, client.name, storageKey])
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -100,7 +94,7 @@ export function AiAssistantPanel({
 
   async function handleSubmit() {
     const message = input.trim()
-    if (!message || !client.id) return
+    if (!message) return
 
     const nextMessages = [...messages, { role: 'user' as const, content: message }]
     setMessages(nextMessages)
@@ -113,7 +107,7 @@ export function AiAssistantPanel({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          clientId: client.id,
+          clientId: selectedClientId || '',
           agentId,
           message,
           messages: nextMessages,
@@ -133,41 +127,12 @@ export function AiAssistantPanel({
     }
   }
 
-  async function handleCreateTaskFromReply(message: Message, index: number) {
-    if (message.role !== 'assistant') return
-
-    setCreatingTaskIndex(index)
-    setError('')
-    try {
-      const response = await fetch('/api/saas/tasks', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          clientId: client.id,
-          title: taskTitleFromReply(message.content),
-          description: message.content,
-        }),
-      })
-
-      const data = await response.json()
-      if (!response.ok) {
-        throw new Error(data?.error || 'Não foi possível criar a tarefa a partir da IA.')
-      }
-
-      onTaskCreated?.()
-    } catch (taskError) {
-      setError(taskError instanceof Error ? taskError.message : 'Erro ao criar a tarefa.')
-    } finally {
-      setCreatingTaskIndex(null)
-    }
-  }
-
   return (
     <Card className="overflow-hidden border-slate-200/80">
       <CardHeader>
         <div>
           <CardTitle>IA do cliente</CardTitle>
-          <CardDescription>Copiloto contextual com acesso a campanhas, dados cadastrais, tarefas e fontes vinculadas.</CardDescription>
+          <CardDescription>Copiloto contextual com acesso a clientes, campanhas, dados cadastrais e fontes vinculadas.</CardDescription>
         </div>
         <div className="flex flex-wrap gap-2">
           {agents.map((agent) => (
@@ -190,27 +155,25 @@ export function AiAssistantPanel({
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">Cliente para análise</p>
               <p className="mt-1 text-sm text-slate-500">
-                Selecione um cliente cadastrado para a IA buscar dash, campanhas, CRM, tarefas e fontes vinculadas.
+                Selecione um cliente para aprofundar ou use a visão geral para perguntar sobre a carteira inteira.
               </p>
             </div>
             <select
               className="h-12 min-w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 shadow-sm outline-none md:min-w-[320px]"
-              disabled={!hasClients}
-              value={hasClients ? selectedClientId : ''}
+              value={selectedClientId || ''}
               onChange={(event) => onClientChange(event.target.value)}
             >
+              <option value="">Visão geral do app</option>
               {hasClients ? (
                 clients.map((item) => (
                   <option key={item.id} value={item.id}>
                     {item.name}
                   </option>
                 ))
-              ) : (
-                <option value="">Nenhum cliente cadastrado</option>
-              )}
+              ) : null}
             </select>
           </div>
-          {hasClients ? (
+          {hasClients && activeClientSelected ? (
             <div className="mt-3 flex flex-wrap gap-2 text-xs font-semibold text-slate-500">
               <span className="rounded-full border border-slate-200 bg-white px-3 py-1.5">{client.company}</span>
               <span className="rounded-full border border-slate-200 bg-white px-3 py-1.5">
@@ -238,18 +201,6 @@ export function AiAssistantPanel({
                   {message.role === 'assistant' ? 'IA Orbit' : 'Você'}
                 </div>
                 <p className="whitespace-pre-wrap">{message.content}</p>
-                {message.role === 'assistant' ? (
-                  <div className="mt-3">
-                    <button
-                      className="rounded-full border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-50"
-                      disabled={creatingTaskIndex === index}
-                      onClick={() => handleCreateTaskFromReply(message, index)}
-                      type="button"
-                    >
-                      {creatingTaskIndex === index ? 'Criando tarefa...' : 'Transformar em tarefa'}
-                    </button>
-                  </div>
-                ) : null}
               </div>
             </div>
           ))}
@@ -257,7 +208,7 @@ export function AiAssistantPanel({
             <div className="flex justify-start">
               <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm text-slate-500">
                 <LoaderCircle className="h-4 w-4 animate-spin" />
-                Analisando contexto do cliente...
+                Analisando contexto disponível...
               </div>
             </div>
           ) : null}
@@ -267,17 +218,16 @@ export function AiAssistantPanel({
 
         <div className="rounded-[28px] border border-slate-200/80 bg-white p-4">
           <div className="mb-3 text-sm font-medium text-slate-600">
-            Exemplos: "Quais campanhas estão puxando o ROAS para baixo?", "Monte um plano de ação desta semana", "Leia a planilha vinculada e destaque gargalos do comercial".
+            Exemplos: "Quais campanhas estão puxando o ROAS para baixo?", "Qual cliente devo priorizar hoje?", "Leia a planilha vinculada e destaque gargalos do comercial".
           </div>
           <div className="flex flex-col gap-3 md:flex-row">
             <textarea
               className="min-h-[108px] flex-1 rounded-3xl border border-slate-200 bg-slate-50/80 px-4 py-3 text-sm text-slate-900 outline-none"
               value={input}
               onChange={(event) => setInput(event.target.value)}
-              placeholder="Pergunte sobre campanhas, operação, CRM, criativos ou arquivos vinculados do cliente..."
-              disabled={!hasClients}
+              placeholder="Pergunte sobre campanhas, CRM, criativos, clientes ou arquivos vinculados..."
             />
-                <Button className="h-auto min-h-[108px] min-w-[180px] rounded-3xl" disabled={loading || !hasClients} onClick={handleSubmit} type="button">
+                <Button className="h-auto min-h-[108px] min-w-[180px] rounded-3xl" disabled={loading} onClick={handleSubmit} type="button">
               <span className="flex items-center gap-2">
                 <SendHorizontal className="h-4 w-4" />
                 Enviar para IA

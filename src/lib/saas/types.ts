@@ -57,22 +57,6 @@ export type ClientSummary = {
   last_sync_at: string | null
 }
 
-export type ChecklistItem = {
-  id: string
-  key: string
-  label: string
-  completed: boolean
-}
-
-export type TaskItem = {
-  id: string
-  title: string
-  description?: string | null
-  status: string
-  due_date?: string | null
-  assignee_name?: string | null
-}
-
 export type KnowledgeSourceType =
   | 'google_drive_folder'
   | 'google_sheets'
@@ -98,24 +82,11 @@ export type ClientDashboard = {
   campaigns: CampaignRow[]
 }
 
-export type OperationsDashboard = {
-  total_clients: number
-  active_clients: number
-  churn_rate: number
-  average_ltv: number
-  cac: number
-  total_revenue: number
-  average_roi: number
-}
-
 export type PlatformSnapshot = {
   theme: ThemeSettings
   clients: ClientSummary[]
   selectedClient: ClientSummary
   clientDashboard: ClientDashboard
-  operations: OperationsDashboard
-  checklist: ChecklistItem[]
-  tasks: TaskItem[]
   integrations: Array<{
     id: string
     client_id: string
@@ -130,7 +101,5 @@ export type PlatformSnapshot = {
 export type ClientContextBundle = {
   client: ClientSummary
   clientDashboard: ClientDashboard
-  checklist: ChecklistItem[]
-  tasks: TaskItem[]
   integrations: PlatformSnapshot['integrations']
 }

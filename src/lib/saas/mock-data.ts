@@ -33,16 +33,5 @@ export const demoPlatformSnapshot: PlatformSnapshot = {
     funnel: [],
     campaigns: [],
   },
-  operations: {
-    total_clients: 0,
-    active_clients: 0,
-    churn_rate: 0,
-    average_ltv: 0,
-    cac: 0,
-    total_revenue: 0,
-    average_roi: 0,
-  },
-  checklist: [],
-  tasks: [],
   integrations: [],
 }
