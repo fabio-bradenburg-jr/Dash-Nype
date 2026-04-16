@@ -169,7 +169,6 @@ Cliente:
 - Ticket médio: ${client.average_ticket}
 - LTV: ${client.ltv}
 - Meta de ROAS: ${client.target_roas}
-- Health score: ${client.health_score} (${client.health_band})
 
 Dados cadastrais e de negócio:
 ${summarizeBusinessData(client.business_data || {}) || 'Sem dados adicionais cadastrados.'}

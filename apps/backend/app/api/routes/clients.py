@@ -27,8 +27,6 @@ def _serialize_client(client: Client, db: Session) -> ClientResponse:
         status=client.status.value,
         target_roas=client.target_roas,
         business_data=client.business_data,
-        health_score=dashboard["health_score"],
-        health_band=dashboard["health_band"],
         last_sync_at=last_sync.isoformat() if last_sync else None,
     )
 

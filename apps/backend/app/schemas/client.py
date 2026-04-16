@@ -37,8 +37,6 @@ class ClientUpdate(BaseModel):
 class ClientResponse(ClientBase):
     id: str
     tenant_id: str
-    health_score: int
-    health_band: str
     last_sync_at: Optional[str] = None
 
 

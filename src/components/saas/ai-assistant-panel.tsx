@@ -52,7 +52,7 @@ export function AiAssistantPanel({
   const [messages, setMessages] = useState<Message[]>([
     {
       role: 'assistant',
-      content: `Estou com o contexto de ${client.name}. Posso cruzar campanhas, health score, tarefas e também as fontes vinculadas do Google para responder com mais profundidade.`,
+      content: `Estou com o contexto de ${client.name}. Posso cruzar campanhas, tarefas e também as fontes vinculadas do Google para responder com mais profundidade.`,
     },
   ])
 
@@ -64,7 +64,7 @@ export function AiAssistantPanel({
     const defaultMessage = [
       {
         role: 'assistant' as const,
-        content: `Estou com o contexto de ${client.name}. Posso cruzar campanhas, health score, tarefas e também as fontes vinculadas do Google para responder com mais profundidade.`,
+        content: `Estou com o contexto de ${client.name}. Posso cruzar campanhas, tarefas e também as fontes vinculadas do Google para responder com mais profundidade.`,
       },
     ]
 
@@ -215,9 +215,6 @@ export function AiAssistantPanel({
               <span className="rounded-full border border-slate-200 bg-white px-3 py-1.5">{client.company}</span>
               <span className="rounded-full border border-slate-200 bg-white px-3 py-1.5">
                 {sourceCount} fontes vinculadas
-              </span>
-              <span className="rounded-full border border-slate-200 bg-white px-3 py-1.5">
-                Saúde {client.health_score}
               </span>
             </div>
           ) : null}

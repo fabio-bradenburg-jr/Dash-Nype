@@ -82,7 +82,7 @@ export default function LoginPage() {
             Inteligência de marketing com operação de clientes no mesmo sistema.
           </h1>
           <p className="mt-5 max-w-2xl text-lg leading-8 text-slate-600">
-            Entre com a sua conta ou crie um novo ambiente para acessar métricas unificadas, sync com CRM, health score, gestão de clientes e operação em uma interface só.
+            Entre com a sua conta ou crie um novo ambiente para acessar métricas unificadas, sync com CRM, gestão de clientes e operação em uma interface só.
           </p>
           <div className="mt-8 grid gap-4 md:grid-cols-3">
             {[
@@ -98,7 +98,7 @@ export default function LoginPage() {
               },
               {
                 title: 'Visibilidade operacional',
-                copy: 'Checklist, tarefas, risco de churn e saúde da conta conectados à entrega.',
+                copy: 'Checklist, tarefas, integrações e entrega conectados à operação.',
                 icon: LockKeyhole,
               },
             ].map((item) => {

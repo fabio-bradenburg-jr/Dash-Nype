@@ -7,7 +7,6 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.models.entities import CampaignSnapshot, Client, ClientStatus, FunnelStage, MetricSnapshot
-from app.services.health import calculate_health_score
 
 
 def _sum(values) -> float:
@@ -25,7 +24,6 @@ def build_client_dashboard(db: Session, client: Client) -> dict:
         .all()
     )
     recent = snapshots[-7:]
-    previous = snapshots[-14:-7]
 
     spend = _sum(row.spend for row in recent)
     impressions = sum(row.impressions for row in recent)
@@ -35,20 +33,7 @@ def build_client_dashboard(db: Session, client: Client) -> dict:
     cpc = round(spend / max(clicks, 1), 2)
     ctr = round((clicks / max(impressions, 1)) * 100, 2)
     roas = round(revenue / max(spend, 1), 2)
-    previous_conversions = sum(row.conversions for row in previous)
     cpa = round(spend / max(conversions, 1), 2)
-
-    last_sync = max((integration.last_sync_at for integration in client.integrations if integration.last_sync_at), default=None)
-    inactive_days = (date.today() - last_sync.date()).days if last_sync else 30
-    health = calculate_health_score(
-        current_conversions=conversions,
-        previous_conversions=previous_conversions,
-        cpa=cpa,
-        target_cpa=max(float(client.average_ticket) * 0.18, 35),
-        roas=roas,
-        target_roas=client.target_roas,
-        inactive_days=inactive_days,
-    )
 
     objectives = {
         "purchases": sum(row.purchases for row in recent),
@@ -124,8 +109,6 @@ def build_client_dashboard(db: Session, client: Client) -> dict:
             }
             for row in campaigns[:8]
         ],
-        "health_score": health.score,
-        "health_band": health.band,
     }
 
 
@@ -154,19 +137,6 @@ def build_operations_dashboard(db: Session, tenant_id: str) -> dict:
     average_roi = round(total_revenue / max(total_spend, 1), 2)
     cac = round(total_spend / max(sum(conversions_by_client.values()), 1), 2)
 
-    client_health = []
-    for client in clients:
-        dashboard = build_client_dashboard(db, client)
-        client_health.append(
-            {
-                "client_id": client.id,
-                "client_name": client.name,
-                "health_score": dashboard["health_score"],
-                "health_band": dashboard["health_band"],
-                "roas": next((card["value"] for card in dashboard["overview_metrics"] if card["label"] == "ROAS"), 0),
-            }
-        )
-
     return {
         "total_clients": total_clients,
         "active_clients": active_clients,
@@ -175,5 +145,4 @@ def build_operations_dashboard(db: Session, tenant_id: str) -> dict:
         "cac": cac,
         "total_revenue": total_revenue,
         "average_roi": average_roi,
-        "client_health": client_health,
     }

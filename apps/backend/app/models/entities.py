@@ -43,12 +43,6 @@ class IntegrationStatus(str, enum.Enum):
     ERROR = "error"
 
 
-class HealthBand(str, enum.Enum):
-    GREEN = "green"
-    YELLOW = "yellow"
-    RED = "red"
-
-
 class TaskStatus(str, enum.Enum):
     TODO = "todo"
     IN_PROGRESS = "in_progress"

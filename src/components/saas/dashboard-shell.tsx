@@ -68,7 +68,7 @@ const moduleCopy: Record<NavigationKey, { title: string; description: string }> 
   },
   operations: {
     title: 'Operação da carteira',
-    description: 'KPIs globais, health score, risco e eficiência operacional por cliente.',
+    description: 'KPIs globais, receita, churn e eficiência operacional por cliente.',
   },
   projects: {
     title: 'Projetos e entregas',
@@ -85,13 +85,6 @@ function formatValue(value: number, format: string) {
   if (format === 'percent') return `${value}%`
   if (format === 'ratio') return `${value.toFixed(2)}x`
   return new Intl.NumberFormat('pt-BR').format(value)
-}
-
-function healthTone(band: string) {
-  if (band === 'green') return 'green'
-  if (band === 'yellow') return 'yellow'
-  if (band === 'red') return 'red'
-  return 'slate'
 }
 
 function statusLabel(status: string) {
@@ -482,7 +475,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
                   {showOverview
                     ? 'Use a IA para consultar clientes, campanhas, dashs, tarefas, integrações e próximos passos da operação.'
                     : activeModule === 'dashs'
-                    ? 'Dados unificados de campanha, sync com CRM, saúde da carteira e fluxos operacionais em uma camada premium de controle para a agência inteira.'
+                    ? 'Dados unificados de campanha, sync com CRM e fluxos operacionais em uma camada premium de controle para a agência inteira.'
                     : currentModule.description}
                 </p>
                 {showWorkspaceControls ? (
@@ -523,14 +516,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
                   </Button>
                   <Button className="h-12" variant="ghost" onClick={handleLogout}>Sair</Button>
                 </div>
-                <div className="grid gap-3 sm:grid-cols-3">
-                  <div className="rounded-2xl border border-slate-200/70 bg-white/80 px-4 py-3">
-                    <p className="text-xs uppercase tracking-[0.22em] text-slate-400">Saúde</p>
-                    <div className="mt-2 flex items-center justify-between">
-                      <span className="font-manrope text-2xl font-extrabold">{clientDashboard.health_score}</span>
-                      <Badge tone={healthTone(clientDashboard.health_band)}>{clientDashboard.health_band}</Badge>
-                    </div>
-                  </div>
+                <div className="grid gap-3 sm:grid-cols-2">
                   <div className="rounded-2xl border border-slate-200/70 bg-white/80 px-4 py-3">
                     <p className="text-xs uppercase tracking-[0.22em] text-slate-400">Integrações</p>
                     <p className="mt-2 font-manrope text-2xl font-extrabold">{selectedClientIntegrations.length}</p>
@@ -765,16 +751,15 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
                 <CardHeader>
                   <div>
                     <CardTitle>Perfil do cliente</CardTitle>
-                    <CardDescription>Dados do negócio, health score do tenant e status operacional.</CardDescription>
+                    <CardDescription>Dados do negócio, objetivo do dash e status operacional.</CardDescription>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="flex items-center justify-between">
+                  <div>
                     <div>
                       <p className="font-manrope text-2xl font-extrabold">{selectedClient.name}</p>
                       <p className="text-sm text-slate-500">{selectedClient.niche} • {selectedClient.company}</p>
                     </div>
-                    <Badge tone={healthTone(selectedClient.health_band)}>{selectedClient.health_band}</Badge>
                   </div>
                   <div className="rounded-[26px] border border-slate-200/70 bg-[linear-gradient(135deg,rgba(15,118,110,0.08),rgba(249,115,22,0.1))] p-4">
                     <div className="flex items-center justify-between">
@@ -801,8 +786,8 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
                       <p className="mt-2 text-xl font-bold capitalize">{objectiveLabel(selectedClient.main_goal)}</p>
                     </div>
                     <div className="rounded-2xl bg-slate-50 p-4">
-                      <p className="text-sm text-slate-500">Health score</p>
-                      <p className="mt-2 text-xl font-bold">{selectedClient.health_score}</p>
+                      <p className="text-sm text-slate-500">Status</p>
+                      <p className="mt-2 text-xl font-bold capitalize">{statusLabel(selectedClient.status)}</p>
                     </div>
                   </div>
                 </CardContent>
@@ -890,12 +875,12 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
           ) : null}
 
           {showOperations || showSettings ? (
-          <section className="grid gap-6 xl:grid-cols-[1.1fr_1.1fr_0.8fr]">
+          <section className="grid gap-6 xl:grid-cols-[1.4fr_0.8fr]">
             <Card>
               <CardHeader>
                   <div>
                     <CardTitle>Dashboard operacional</CardTitle>
-                    <CardDescription>Visibilidade interna da carteira, saúde dos clientes e eficiência de receita.</CardDescription>
+                    <CardDescription>Visibilidade interna da carteira, churn e eficiência de receita.</CardDescription>
                   </div>
                 </CardHeader>
               <CardContent className="grid gap-4 sm:grid-cols-2">
@@ -910,29 +895,6 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
                   <div key={item.label} className="rounded-3xl border border-slate-200/70 bg-slate-50/85 p-4">
                     <p className="text-sm text-slate-500">{item.label}</p>
                     <p className="mt-3 text-2xl font-bold text-slate-950">{item.value}</p>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                  <div>
-                    <CardTitle>Sistema de health score</CardTitle>
-                    <CardDescription>Classificação verde, amarela e vermelha com base em conversões, CPA, ROAS e inatividade.</CardDescription>
-                  </div>
-                </CardHeader>
-              <CardContent className="space-y-3">
-                {snapshot.operations.client_health.map((client) => (
-                  <div key={client.client_id} className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
-                    <div>
-                      <p className="font-semibold text-slate-900">{client.client_name}</p>
-                      <p className="text-xs text-slate-400">{client.roas.toFixed(2)}x de ROAS</p>
-                    </div>
-                    <div className="text-right">
-                      <Badge tone={healthTone(client.health_band)}>{client.health_band}</Badge>
-                      <p className="mt-2 text-sm font-semibold text-slate-700">{client.health_score}</p>
-                    </div>
                   </div>
                 ))}
               </CardContent>
@@ -1070,7 +1032,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
               <CardHeader>
                   <div>
                     <CardTitle className="text-white">Mapa de módulos</CardTitle>
-                    <CardDescription className="text-white/60">A plataforma já entrega clientes, integrações, dashboards, health e gestão de projetos.</CardDescription>
+                    <CardDescription className="text-white/60">A plataforma já entrega clientes, integrações, dashboards e gestão de projetos.</CardDescription>
                   </div>
                 </CardHeader>
               <CardContent className="space-y-3">
@@ -1097,7 +1059,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
               <CardHeader>
                   <div>
                     <CardTitle>Carteira de clientes</CardTitle>
-                    <CardDescription>Acesso rápido à saúde, estágio e valor das contas dentro do tenant.</CardDescription>
+                    <CardDescription>Acesso rápido ao estágio e valor das contas dentro do tenant.</CardDescription>
                   </div>
               </CardHeader>
               <CardContent className="space-y-3">
@@ -1118,10 +1080,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
                           {client.niche} • {formatValue(client.ltv, 'currency')} de LTV
                         </p>
                       </div>
-                      <div className="flex items-center gap-3">
-                        <Badge tone={healthTone(client.health_band)}>{client.health_score}</Badge>
-                        <ChevronRight className={`h-4 w-4 ${client.id === selectedClientId ? 'text-white/60' : 'text-slate-400'}`} />
-                      </div>
+                      <ChevronRight className={`h-4 w-4 ${client.id === selectedClientId ? 'text-white/60' : 'text-slate-400'}`} />
                     </button>
                   ))
                 ) : (

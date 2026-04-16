@@ -54,8 +54,6 @@ export type ClientSummary = {
   status: string
   target_roas: number
   business_data: Record<string, unknown>
-  health_score: number
-  health_band: string
   last_sync_at: string | null
 }
 
@@ -98,8 +96,6 @@ export type ClientDashboard = {
   age_performance: Array<{ range: string; roas: number }>
   funnel: FunnelStage[]
   campaigns: CampaignRow[]
-  health_score: number
-  health_band: string
 }
 
 export type OperationsDashboard = {
@@ -110,13 +106,6 @@ export type OperationsDashboard = {
   cac: number
   total_revenue: number
   average_roi: number
-  client_health: Array<{
-    client_id: string
-    client_name: string
-    health_score: number
-    health_band: string
-    roas: number
-  }>
 }
 
 export type PlatformSnapshot = {

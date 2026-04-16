@@ -48,8 +48,6 @@ class ClientDashboardResponse(BaseModel):
     age_performance: list[dict]
     funnel: list[FunnelStagePayload]
     campaigns: list[CampaignRow]
-    health_score: int
-    health_band: str
 
 
 class OperationsDashboardResponse(BaseModel):
@@ -60,4 +58,3 @@ class OperationsDashboardResponse(BaseModel):
     cac: float
     total_revenue: float
     average_roi: float
-    client_health: list[dict]

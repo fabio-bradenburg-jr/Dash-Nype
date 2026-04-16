@@ -36,7 +36,6 @@ export async function getPlatformSnapshot(): Promise<PlatformSnapshot> {
           ...operations,
           total_clients: clients.length,
           active_clients: clients.filter((client) => client.status === 'active').length,
-          client_health: [],
         },
       }
     }

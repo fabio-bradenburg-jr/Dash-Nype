@@ -21,8 +21,6 @@ export const demoPlatformSnapshot: PlatformSnapshot = {
     status: 'empty',
     target_roas: 0,
     business_data: {},
-    health_score: 0,
-    health_band: 'green',
     last_sync_at: null,
   },
   clientDashboard: {
@@ -34,8 +32,6 @@ export const demoPlatformSnapshot: PlatformSnapshot = {
     age_performance: [],
     funnel: [],
     campaigns: [],
-    health_score: 0,
-    health_band: 'green',
   },
   operations: {
     total_clients: 0,
@@ -45,7 +41,6 @@ export const demoPlatformSnapshot: PlatformSnapshot = {
     cac: 0,
     total_revenue: 0,
     average_roi: 0,
-    client_health: [],
   },
   checklist: [],
   tasks: [],
