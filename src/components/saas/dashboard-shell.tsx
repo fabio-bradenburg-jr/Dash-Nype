@@ -371,7 +371,8 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
   }
 
   function handleConnectMeta() {
-    window.location.href = `/api/saas/meta/start?client_id=${encodeURIComponent(selectedClient.id)}&return_to=/`
+    const clientParam = selectedClient.id ? `client_id=${encodeURIComponent(selectedClient.id)}&` : ''
+    window.location.href = `/api/saas/meta/start?${clientParam}return_to=/`
   }
 
   async function handleLinkMetaAccount() {
@@ -500,14 +501,19 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
                 <div className="grid gap-3 sm:grid-cols-[1fr_auto_auto_auto]">
                   <select
                     className="h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 shadow-sm"
+                    disabled={snapshot.clients.length === 0}
                     value={selectedClientId}
                     onChange={(event) => setSelectedClientId(event.target.value)}
                   >
-                    {snapshot.clients.map((client) => (
-                      <option key={client.id} value={client.id}>
-                        {client.name}
-                      </option>
-                    ))}
+                    {snapshot.clients.length > 0 ? (
+                      snapshot.clients.map((client) => (
+                        <option key={client.id} value={client.id}>
+                          {client.name}
+                        </option>
+                      ))
+                    ) : (
+                      <option value="">Nenhum cliente cadastrado</option>
+                    )}
                   </select>
                   <Button variant="secondary" className="h-12" onClick={handleSyncSources} disabled={syncing}>
                     {syncing ? 'Sincronizando...' : 'Sincronizar'}
@@ -544,7 +550,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
                 <div className="rounded-[30px] border border-slate-200/80 bg-white/80 p-5 shadow-sm xl:min-w-[360px]">
                   <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">Atalho inteligente</p>
                   <p className="mt-2 text-sm leading-6 text-slate-600">
-                    Pergunte algo como: “Como está o desempenho da Pulse Clinic?” ou “Quais campanhas precisam de atenção hoje?”.
+                    Cadastre um cliente e pergunte sobre desempenho, campanhas, CRM, tarefas ou próximos passos.
                   </p>
                 </div>
               )}
@@ -993,8 +999,11 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
           <section>
             <AiAssistantPanel
               client={selectedClient}
+              clients={snapshot.clients}
+              selectedClientId={selectedClientId}
               knowledgeSources={knowledgeSources}
-              onTaskCreated={() => reloadClientContext(selectedClient.id)}
+              onClientChange={setSelectedClientId}
+              onTaskCreated={() => selectedClient.id && reloadClientContext(selectedClient.id)}
             />
           </section>
           ) : null}
@@ -1090,30 +1099,36 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
                     <CardTitle>Carteira de clientes</CardTitle>
                     <CardDescription>Acesso rápido à saúde, estágio e valor das contas dentro do tenant.</CardDescription>
                   </div>
-                </CardHeader>
+              </CardHeader>
               <CardContent className="space-y-3">
-                {snapshot.clients.map((client) => (
-                  <button
-                    key={client.id}
-                    className={`flex w-full items-center justify-between rounded-3xl border px-4 py-4 text-left transition ${
-                      client.id === selectedClientId
-                        ? 'border-transparent bg-[linear-gradient(135deg,#020617,#0f172a)] text-white shadow-xl'
-                        : 'border-slate-200/80 bg-white text-slate-900 hover:border-slate-300 hover:bg-slate-50/70'
-                    }`}
-                    onClick={() => setSelectedClientId(client.id)}
-                  >
-                    <div>
-                      <p className="font-semibold">{client.name}</p>
-                      <p className={`text-sm ${client.id === selectedClientId ? 'text-white/60' : 'text-slate-500'}`}>
-                        {client.niche} • {formatValue(client.ltv, 'currency')} de LTV
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <Badge tone={healthTone(client.health_band)}>{client.health_score}</Badge>
-                      <ChevronRight className={`h-4 w-4 ${client.id === selectedClientId ? 'text-white/60' : 'text-slate-400'}`} />
-                    </div>
-                  </button>
-                ))}
+                {snapshot.clients.length > 0 ? (
+                  snapshot.clients.map((client) => (
+                    <button
+                      key={client.id}
+                      className={`flex w-full items-center justify-between rounded-3xl border px-4 py-4 text-left transition ${
+                        client.id === selectedClientId
+                          ? 'border-transparent bg-[linear-gradient(135deg,#020617,#0f172a)] text-white shadow-xl'
+                          : 'border-slate-200/80 bg-white text-slate-900 hover:border-slate-300 hover:bg-slate-50/70'
+                      }`}
+                      onClick={() => setSelectedClientId(client.id)}
+                    >
+                      <div>
+                        <p className="font-semibold">{client.name}</p>
+                        <p className={`text-sm ${client.id === selectedClientId ? 'text-white/60' : 'text-slate-500'}`}>
+                          {client.niche} • {formatValue(client.ltv, 'currency')} de LTV
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <Badge tone={healthTone(client.health_band)}>{client.health_score}</Badge>
+                        <ChevronRight className={`h-4 w-4 ${client.id === selectedClientId ? 'text-white/60' : 'text-slate-400'}`} />
+                      </div>
+                    </button>
+                  ))
+                ) : (
+                  <div className="rounded-3xl border border-dashed border-slate-300 bg-slate-50/80 p-5 text-sm leading-6 text-slate-500">
+                    Nenhum cliente cadastrado ainda. Use “Novo cliente” para criar o primeiro dash com Meta e Agendor.
+                  </div>
+                )}
               </CardContent>
             </Card>
           </section>

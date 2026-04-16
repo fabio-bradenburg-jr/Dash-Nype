@@ -19,19 +19,13 @@ export async function GET(request: Request) {
     const clientId = url.searchParams.get('client_id')
     const returnTo = url.searchParams.get('return_to') || '/'
 
-    if (!clientId) {
-      const fallback = new URL('/', request.url)
-      fallback.searchParams.set('meta_error', 'Selecione um cliente antes de conectar a Meta.')
-      return NextResponse.redirect(fallback)
-    }
-
     const authorization = await createMetaAuthorizationUrl(
       {
         headers: new Headers(request.headers),
         nextUrl: url,
         url: request.url,
       } as never,
-      clientId,
+      clientId || 'global-meta',
       returnTo
     )
 
@@ -41,7 +35,7 @@ export async function GET(request: Request) {
       value: Buffer.from(
         JSON.stringify({
           state: authorization.state,
-          clientId,
+          clientId: clientId || '',
           returnTo,
         })
       ).toString('base64url'),

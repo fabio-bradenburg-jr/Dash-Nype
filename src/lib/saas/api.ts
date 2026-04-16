@@ -27,7 +27,18 @@ export async function getPlatformSnapshot(): Promise<PlatformSnapshot> {
     const clients = await apiFetch<PlatformSnapshot['clients']>('/clients', token)
     const selectedClient = clients[0]
     if (!selectedClient) {
-      return demoPlatformSnapshot
+      const operations = await apiFetch<PlatformSnapshot['operations']>('/dashboards/operations', token).catch(
+        () => demoPlatformSnapshot.operations
+      )
+      return {
+        ...demoPlatformSnapshot,
+        operations: {
+          ...operations,
+          total_clients: clients.length,
+          active_clients: clients.filter((client) => client.status === 'active').length,
+          client_health: [],
+        },
+      }
     }
 
     const [clientDashboard, operations, checklist, tasks, integrations] = await Promise.all([

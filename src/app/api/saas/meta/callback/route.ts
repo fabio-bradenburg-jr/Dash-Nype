@@ -52,7 +52,9 @@ export async function GET(request: Request) {
 
     redirectUrl.pathname = oauthCookie.returnTo || '/'
     redirectUrl.searchParams.set('meta_pending', '1')
-    redirectUrl.searchParams.set('meta_client_id', oauthCookie.clientId)
+    if (oauthCookie.clientId) {
+      redirectUrl.searchParams.set('meta_client_id', oauthCookie.clientId)
+    }
 
     const response = NextResponse.redirect(redirectUrl)
     response.cookies.set({

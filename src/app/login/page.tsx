@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Building2, LockKeyhole, Mail, ShieldCheck, Sparkles, User2 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
@@ -12,8 +12,15 @@ export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
-  const [previewLoading, setPreviewLoading] = useState(false)
   const [error, setError] = useState('')
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const urlError = new URLSearchParams(window.location.search).get('error')
+    if (urlError) {
+      setError(urlError)
+    }
+  }, [])
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -55,31 +62,12 @@ export default function LoginPage() {
     }
   }
 
-  async function handlePreviewAccess() {
-    setPreviewLoading(true)
-    setError('')
-
-    try {
-      const nextPath =
-        typeof window === 'undefined'
-          ? '/'
-          : new URLSearchParams(window.location.search).get('next') || '/'
-
-      const response = await fetch('/api/auth/preview', {
-        method: 'POST',
-      })
-
-      const data = await response.json()
-      if (!response.ok) {
-        throw new Error(data?.error || 'Não foi possível liberar o preview.')
-      }
-
-      window.location.href = nextPath
-    } catch (previewError) {
-      setError(previewError instanceof Error ? previewError.message : 'Erro inesperado no preview.')
-    } finally {
-      setPreviewLoading(false)
-    }
+  function handleFacebookLogin() {
+    const nextPath =
+      typeof window === 'undefined'
+        ? '/'
+        : new URLSearchParams(window.location.search).get('next') || '/'
+    window.location.href = `/api/auth/facebook/start?next=${encodeURIComponent(nextPath)}`
   }
 
   return (
@@ -241,12 +229,14 @@ export default function LoginPage() {
             </Button>
 
             <button
-              className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 disabled:opacity-60"
-              disabled={previewLoading}
-              onClick={handlePreviewAccess}
+              className="flex w-full items-center justify-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-800 shadow-sm transition hover:bg-slate-50"
+              onClick={handleFacebookLogin}
               type="button"
             >
-              {previewLoading ? 'Abrindo preview...' : 'Entrar agora em modo preview'}
+              <span className="grid h-6 w-6 place-items-center rounded-full bg-[#1877f2] font-manrope text-sm font-extrabold text-white">
+                f
+              </span>
+              Entrar com Facebook
             </button>
           </form>
         </section>

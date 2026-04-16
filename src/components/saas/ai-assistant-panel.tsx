@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Bot, LoaderCircle, SendHorizontal, Sparkles } from 'lucide-react'
 
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { ClientSummary, KnowledgeSource } from '@/lib/saas/types'
@@ -22,7 +21,10 @@ const agents = [
 
 type Props = {
   client: ClientSummary
+  clients: ClientSummary[]
+  selectedClientId: string
   knowledgeSources: KnowledgeSource[]
+  onClientChange: (clientId: string) => void
   onTaskCreated?: () => void
 }
 
@@ -34,7 +36,14 @@ function taskTitleFromReply(content: string) {
   return (firstSentence || 'Ação recomendada pela IA').slice(0, 120)
 }
 
-export function AiAssistantPanel({ client, knowledgeSources, onTaskCreated }: Props) {
+export function AiAssistantPanel({
+  client,
+  clients,
+  selectedClientId,
+  knowledgeSources,
+  onClientChange,
+  onTaskCreated,
+}: Props) {
   const [agentId, setAgentId] = useState('copilot')
   const [loading, setLoading] = useState(false)
   const [creatingTaskIndex, setCreatingTaskIndex] = useState<number | null>(null)
@@ -47,6 +56,7 @@ export function AiAssistantPanel({ client, knowledgeSources, onTaskCreated }: Pr
     },
   ])
 
+  const hasClients = clients.length > 0
   const sourceCount = useMemo(() => knowledgeSources.length, [knowledgeSources])
   const storageKey = useMemo(() => `nype-orbit-ai:${client.id}`, [client.id])
 
@@ -90,7 +100,7 @@ export function AiAssistantPanel({ client, knowledgeSources, onTaskCreated }: Pr
 
   async function handleSubmit() {
     const message = input.trim()
-    if (!message) return
+    if (!message || !client.id) return
 
     const nextMessages = [...messages, { role: 'user' as const, content: message }]
     setMessages(nextMessages)
@@ -175,26 +185,42 @@ export function AiAssistantPanel({ client, knowledgeSources, onTaskCreated }: Pr
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="grid gap-3 md:grid-cols-3">
-          <div className="rounded-3xl border border-slate-200/80 bg-slate-50/80 p-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">Cliente em foco</p>
-            <p className="mt-2 font-manrope text-xl font-extrabold text-slate-950">{client.name}</p>
-            <p className="mt-1 text-sm text-slate-500">{client.company}</p>
-          </div>
-          <div className="rounded-3xl border border-slate-200/80 bg-slate-50/80 p-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">Health atual</p>
-            <div className="mt-2 flex items-center gap-2">
-              <span className="font-manrope text-xl font-extrabold text-slate-950">{client.health_score}</span>
-              <Badge tone={client.health_band === 'green' ? 'green' : client.health_band === 'yellow' ? 'yellow' : 'red'}>
-                {client.health_band}
-              </Badge>
+        <div className="rounded-3xl border border-slate-200/80 bg-slate-50/80 p-4">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">Cliente para análise</p>
+              <p className="mt-1 text-sm text-slate-500">
+                Selecione um cliente cadastrado para a IA buscar dash, campanhas, CRM, tarefas e fontes vinculadas.
+              </p>
             </div>
+            <select
+              className="h-12 min-w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 shadow-sm outline-none md:min-w-[320px]"
+              disabled={!hasClients}
+              value={hasClients ? selectedClientId : ''}
+              onChange={(event) => onClientChange(event.target.value)}
+            >
+              {hasClients ? (
+                clients.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.name}
+                  </option>
+                ))
+              ) : (
+                <option value="">Nenhum cliente cadastrado</option>
+              )}
+            </select>
           </div>
-          <div className="rounded-3xl border border-slate-200/80 bg-slate-50/80 p-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">Fontes vinculadas</p>
-            <p className="mt-2 font-manrope text-xl font-extrabold text-slate-950">{sourceCount}</p>
-            <p className="mt-1 text-sm text-slate-500">Drive, Docs, Sheets e links contextuais.</p>
-          </div>
+          {hasClients ? (
+            <div className="mt-3 flex flex-wrap gap-2 text-xs font-semibold text-slate-500">
+              <span className="rounded-full border border-slate-200 bg-white px-3 py-1.5">{client.company}</span>
+              <span className="rounded-full border border-slate-200 bg-white px-3 py-1.5">
+                {sourceCount} fontes vinculadas
+              </span>
+              <span className="rounded-full border border-slate-200 bg-white px-3 py-1.5">
+                Saúde {client.health_score}
+              </span>
+            </div>
+          ) : null}
         </div>
 
         <div className="max-h-[420px] space-y-3 overflow-y-auto rounded-[28px] border border-slate-200/80 bg-[linear-gradient(180deg,rgba(248,250,252,0.9),rgba(255,255,255,0.95))] p-4">
@@ -252,8 +278,9 @@ export function AiAssistantPanel({ client, knowledgeSources, onTaskCreated }: Pr
               value={input}
               onChange={(event) => setInput(event.target.value)}
               placeholder="Pergunte sobre campanhas, operação, CRM, criativos ou arquivos vinculados do cliente..."
+              disabled={!hasClients}
             />
-                <Button className="h-auto min-h-[108px] min-w-[180px] rounded-3xl" disabled={loading} onClick={handleSubmit} type="button">
+                <Button className="h-auto min-h-[108px] min-w-[180px] rounded-3xl" disabled={loading || !hasClients} onClick={handleSubmit} type="button">
               <span className="flex items-center gap-2">
                 <SendHorizontal className="h-4 w-4" />
                 Enviar para IA
