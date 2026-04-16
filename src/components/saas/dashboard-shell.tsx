@@ -163,13 +163,10 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
   const [clientForm, setClientForm] = useState({
     name: '',
     company: '',
-    niche: '',
-    average_ticket: '0',
     main_goal: 'leads',
-    ltv: '0',
-    start_date: new Date().toISOString().slice(0, 10),
-    status: 'onboarding',
-    target_roas: '2.5',
+    metaAdAccountId: '',
+    agendorToken: '',
+    agendorAccountId: '',
   })
   const [knowledgeSources, setKnowledgeSources] = useState<KnowledgeSource[]>(
     extractKnowledgeSourcesFromBusinessData(snapshot.selectedClient.business_data as Record<string, unknown>)
@@ -281,21 +278,78 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
   }
 
   async function handleCreateClient() {
+    const selectedAccount = metaAccounts.find((account) => account.id === clientForm.metaAdAccountId)
     setCreatingClient(true)
     try {
-      await fetch('/api/saas/clients', {
+      const response = await fetch('/api/saas/clients', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          ...clientForm,
-          average_ticket: Number(clientForm.average_ticket),
-          ltv: Number(clientForm.ltv),
-          target_roas: Number(clientForm.target_roas),
-          business_data: {},
+          name: clientForm.name,
+          company: clientForm.company || clientForm.name,
+          niche: 'Dashboard',
+          average_ticket: 0,
+          main_goal: clientForm.main_goal,
+          ltv: 0,
+          start_date: new Date().toISOString().slice(0, 10),
+          status: 'active',
+          target_roas: 2.5,
+          business_data: {
+            dashboardEnabled: true,
+            dashboardVisibleIntegrationKeys: ['meta_ads', 'agendor'],
+            funnelSteps: ['impressions', 'clicks', 'leads', 'purchases'],
+            metaAdAccountId: clientForm.metaAdAccountId,
+            agendorAccountId: clientForm.agendorAccountId,
+            integrations: {
+              agendorToken: clientForm.agendorToken,
+            },
+          },
         }),
       })
+      const createdClient = await response.json()
+
+      if (!response.ok) {
+        throw new Error(createdClient?.error || createdClient?.detail || 'Não foi possível criar o cliente.')
+      }
+
+      if (clientForm.metaAdAccountId && selectedAccount) {
+        await fetch('/api/saas/meta/connect', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            clientId: createdClient.id,
+            accountId: selectedAccount.id,
+            accountName: selectedAccount.name,
+          }),
+        })
+      }
+
+      if (clientForm.agendorToken.trim()) {
+        await fetch('/api/saas/integrations', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            client_id: createdClient.id,
+            provider: 'agendor',
+            account_name: clientForm.agendorAccountId || `${clientForm.name} Agendor`,
+            external_account_id: clientForm.agendorAccountId || `agendor-${createdClient.id}`,
+            access_token: clientForm.agendorToken,
+          }),
+        })
+      }
+
       setShowClientForm(false)
+      setClientForm({
+        name: '',
+        company: '',
+        main_goal: 'leads',
+        metaAdAccountId: '',
+        agendorToken: '',
+        agendorAccountId: '',
+      })
       router.refresh()
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Não foi possível criar o cliente.')
     } finally {
       setCreatingClient(false)
     }
@@ -459,7 +513,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
                     {syncing ? 'Sincronizando...' : 'Sincronizar'}
                   </Button>
                   <Button className="h-12" onClick={() => setShowClientForm((value) => !value)}>
-                    {showClientForm ? 'Fechar' : 'Novo cliente'}
+                    Novo cliente
                   </Button>
                   <Button className="h-12" variant="ghost" onClick={handleLogout}>Sair</Button>
                 </div>
@@ -483,60 +537,6 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
                 {loadingClientContext ? (
                   <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-700">
                     Carregando o contexto completo do cliente selecionado...
-                  </div>
-                ) : null}
-                {showClientForm ? (
-                  <div className="grid gap-3 rounded-[28px] border border-slate-200/70 bg-white/90 p-4 shadow-sm md:grid-cols-2">
-                    {[
-                      { key: 'name', label: 'Nome', type: 'text' },
-                      { key: 'company', label: 'Empresa', type: 'text' },
-                      { key: 'niche', label: 'Nicho', type: 'text' },
-                      { key: 'average_ticket', label: 'Ticket médio', type: 'number' },
-                      { key: 'ltv', label: 'LTV', type: 'number' },
-                      { key: 'start_date', label: 'Data de início', type: 'date' },
-                      { key: 'target_roas', label: 'ROAS alvo', type: 'number' },
-                    ].map((field) => (
-                      <label key={field.key} className="grid gap-2 text-sm font-medium text-slate-600">
-                        {field.label}
-                        <input
-                          className="h-11 rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-900 outline-none"
-                          type={field.type}
-                          value={clientForm[field.key as keyof typeof clientForm]}
-                          onChange={(event) =>
-                            setClientForm((current) => ({ ...current, [field.key]: event.target.value }))
-                          }
-                        />
-                      </label>
-                    ))}
-                    <label className="grid gap-2 text-sm font-medium text-slate-600">
-                      Objetivo
-                      <select
-                        className="h-11 rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-900 outline-none"
-                        value={clientForm.main_goal}
-                        onChange={(event) => setClientForm((current) => ({ ...current, main_goal: event.target.value }))}
-                      >
-                        <option value="leads">Leads</option>
-                        <option value="sales">Vendas</option>
-                        <option value="messages">Mensagens</option>
-                      </select>
-                    </label>
-                    <label className="grid gap-2 text-sm font-medium text-slate-600">
-                      Status
-                      <select
-                        className="h-11 rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-900 outline-none"
-                        value={clientForm.status}
-                        onChange={(event) => setClientForm((current) => ({ ...current, status: event.target.value }))}
-                      >
-                        <option value="onboarding">Onboarding</option>
-                        <option value="active">Ativo</option>
-                        <option value="paused">Pausado</option>
-                      </select>
-                    </label>
-                    <div className="md:col-span-2">
-                      <Button className="h-12 w-full" onClick={handleCreateClient} disabled={creatingClient}>
-                        {creatingClient ? 'Criando cliente...' : 'Criar cliente'}
-                      </Button>
-                    </div>
                   </div>
                 ) : null}
               </div>
@@ -936,6 +936,59 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
           </section>
           ) : null}
 
+          {showSettings ? (
+          <section className="grid gap-6 xl:grid-cols-[1fr_1fr]">
+            <Card>
+              <CardHeader>
+                <div>
+                  <CardTitle>API da Meta</CardTitle>
+                  <CardDescription>Conecte a credencial global da Meta para listar as contas de anúncio no cadastro do cliente.</CardDescription>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="rounded-[28px] border border-slate-200/80 bg-slate-50/80 p-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <p className="font-semibold text-slate-900">Meta Ads</p>
+                      <p className="mt-2 text-sm leading-6 text-slate-500">
+                        Use essa conexão para buscar as contas de anúncio disponíveis. No cadastro do cliente você escolhe qual conta alimenta o dash.
+                      </p>
+                    </div>
+                    <Button variant="secondary" onClick={handleConnectMeta}>
+                      Vincular Meta
+                    </Button>
+                  </div>
+                  {metaPending ? (
+                    <div className="mt-4 rounded-2xl border border-emerald-200 bg-white px-4 py-3 text-sm text-emerald-700">
+                      Meta conectada temporariamente. As contas disponíveis já podem ser selecionadas no cadastro do cliente.
+                    </div>
+                  ) : null}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <div>
+                  <CardTitle>Integrações do dash</CardTitle>
+                  <CardDescription>O cadastro novo fica restrito a Meta Ads e Agendor, seguindo a estrutura de dados do dash antigo.</CardDescription>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {[
+                  'Meta: token global em Configurações e conta de anúncio no cliente.',
+                  'Agendor: API/token e referência da conta/pipeline no cadastro do cliente.',
+                  'Dash: métricas, campanha, funil e resultados preservam a leitura do modelo antigo no visual novo.',
+                ].map((item) => (
+                  <div key={item} className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600">
+                    {item}
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          </section>
+          ) : null}
+
           {showOverview ? (
           <section>
             <AiAssistantPanel
@@ -1067,6 +1120,132 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
           ) : null}
         </main>
       </div>
+
+      {showClientForm ? (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/45 px-4 py-8 backdrop-blur-sm">
+          <div className="w-full max-w-2xl rounded-[34px] border border-white/80 bg-white p-6 shadow-[0_40px_120px_rgba(15,23,42,0.28)]">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Novo cliente</p>
+                <h2 className="mt-2 font-manrope text-3xl font-extrabold tracking-tight text-slate-950">
+                  Dados para o dash
+                </h2>
+                <p className="mt-2 text-sm leading-6 text-slate-500">
+                  Cadastre somente as fontes que alimentam o dashboard: cliente, conta Meta e API do Agendor.
+                </p>
+              </div>
+              <button
+                className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-600"
+                onClick={() => setShowClientForm(false)}
+                type="button"
+              >
+                Fechar
+              </button>
+            </div>
+
+            <div className="mt-6 grid gap-4">
+              <div className="grid gap-4 md:grid-cols-2">
+                <label className="grid gap-2 text-sm font-medium text-slate-600">
+                  Nome do cliente
+                  <input
+                    className="h-12 rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-900 outline-none"
+                    value={clientForm.name}
+                    onChange={(event) => setClientForm((current) => ({ ...current, name: event.target.value }))}
+                    placeholder="Ex.: Clínica Pulse"
+                  />
+                </label>
+                <label className="grid gap-2 text-sm font-medium text-slate-600">
+                  Empresa
+                  <input
+                    className="h-12 rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-900 outline-none"
+                    value={clientForm.company}
+                    onChange={(event) => setClientForm((current) => ({ ...current, company: event.target.value }))}
+                    placeholder="Mesmo nome, se preferir"
+                  />
+                </label>
+              </div>
+
+              <label className="grid gap-2 text-sm font-medium text-slate-600">
+                Objetivo principal do dash
+                <select
+                  className="h-12 rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-900 outline-none"
+                  value={clientForm.main_goal}
+                  onChange={(event) => setClientForm((current) => ({ ...current, main_goal: event.target.value }))}
+                >
+                  <option value="leads">Leads</option>
+                  <option value="sales">Vendas</option>
+                  <option value="messages">Mensagens</option>
+                </select>
+              </label>
+
+              <div className="rounded-[28px] border border-slate-200/80 bg-slate-50/80 p-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="font-semibold text-slate-900">Meta Ads</p>
+                    <p className="mt-1 text-sm leading-6 text-slate-500">
+                      Selecione a conta de anúncio. Caso a lista esteja vazia, vincule a API da Meta em Configurações.
+                    </p>
+                  </div>
+                  <Button variant="secondary" onClick={handleConnectMeta} type="button">
+                    Vincular API
+                  </Button>
+                </div>
+                <select
+                  className="mt-4 h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
+                  value={clientForm.metaAdAccountId}
+                  onChange={(event) => setClientForm((current) => ({ ...current, metaAdAccountId: event.target.value }))}
+                >
+                  <option value="">
+                    {loadingMetaAccounts ? 'Carregando contas...' : 'Selecione uma conta de anúncio'}
+                  </option>
+                  {metaAccounts.map((account) => (
+                    <option key={account.id} value={account.id}>
+                      {account.name} ({account.id})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="rounded-[28px] border border-slate-200/80 bg-slate-50/80 p-4">
+                <p className="font-semibold text-slate-900">Agendor</p>
+                <p className="mt-1 text-sm leading-6 text-slate-500">
+                  Informe a API/token e a referência da conta ou pipeline comercial desse cliente.
+                </p>
+                <div className="mt-4 grid gap-4 md:grid-cols-2">
+                  <label className="grid gap-2 text-sm font-medium text-slate-600">
+                    API / Token do Agendor
+                    <input
+                      className="h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
+                      type="password"
+                      value={clientForm.agendorToken}
+                      onChange={(event) => setClientForm((current) => ({ ...current, agendorToken: event.target.value }))}
+                      placeholder="Token do Agendor"
+                    />
+                  </label>
+                  <label className="grid gap-2 text-sm font-medium text-slate-600">
+                    Conta / Pipeline
+                    <input
+                      className="h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
+                      value={clientForm.agendorAccountId}
+                      onChange={(event) => setClientForm((current) => ({ ...current, agendorAccountId: event.target.value }))}
+                      placeholder="ID, pipeline ou referência"
+                    />
+                  </label>
+                </div>
+              </div>
+
+              <div className="flex flex-col-reverse gap-3 pt-2 md:flex-row md:justify-end">
+                <Button variant="secondary" onClick={() => setShowClientForm(false)} type="button">
+                  Cancelar
+                </Button>
+                <Button onClick={handleCreateClient} disabled={creatingClient || !clientForm.name.trim()} type="button">
+                  {creatingClient ? 'Criando cliente...' : 'Criar cliente e dash'}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }
