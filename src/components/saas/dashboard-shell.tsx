@@ -143,6 +143,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [activeModule, setActiveModule] = useState<NavigationKey>('overview')
+  const [currentUserName, setCurrentUserName] = useState('Usuário')
   const [selectedClientId, setSelectedClientId] = useState(snapshot.selectedClient.id)
   const [selectedClient, setSelectedClient] = useState(snapshot.selectedClient)
   const [clientDashboard, setClientDashboard] = useState(snapshot.clientDashboard)
@@ -188,6 +189,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
   const showOperations = activeModule === 'operations'
   const showProjects = activeModule === 'projects'
   const showSettings = activeModule === 'settings'
+  const showWorkspaceControls = activeModule !== 'overview'
 
   async function reloadClientContext(clientId: string) {
     const response = await fetch(`/api/saas/client-context?clientId=${encodeURIComponent(clientId)}`, {
@@ -214,6 +216,24 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
     root.style.setProperty('--saas-accent', snapshot.theme.accentColor)
     root.style.setProperty('--saas-surface', snapshot.theme.backgroundColor)
   }, [snapshot.theme])
+
+  useEffect(() => {
+    async function loadSessionUser() {
+      try {
+        const response = await fetch('/api/auth/session', { cache: 'no-store' })
+        const data = await response.json()
+        const user = data?.user || {}
+        const name = String(user.full_name || user.fullName || user.name || user.email || '').trim()
+        if (name) {
+          setCurrentUserName(name.includes('@') ? name.split('@')[0] : name.split(' ')[0])
+        }
+      } catch {
+        setCurrentUserName('Usuário')
+      }
+    }
+
+    loadSessionUser()
+  }, [])
 
   useEffect(() => {
     async function loadClientContext() {
@@ -394,18 +414,23 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
               <div className="max-w-3xl">
                 <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/80 bg-white/90 px-3 py-2 text-xs font-semibold uppercase tracking-[0.26em] text-slate-500">
                   <Sparkles className="h-3.5 w-3.5 text-[var(--saas-accent)]" />
-                  {currentModule.title}
+                  {showOverview ? 'Nype Orbit' : currentModule.title}
                 </div>
                 <h1 className="font-manrope text-4xl font-extrabold tracking-[-0.05em] text-slate-950 md:text-5xl">
-                  {activeModule === 'dashs'
+                  {showOverview
+                    ? `Boas-vindas, ${currentUserName}`
+                    : activeModule === 'dashs'
                     ? 'Métricas, CRM, operação e entrega ao cliente em uma única plataforma.'
                     : currentModule.title}
                 </h1>
                 <p className="mt-4 max-w-2xl text-base leading-7 text-slate-600">
-                  {activeModule === 'dashs'
+                  {showOverview
+                    ? 'Use a IA para consultar clientes, campanhas, dashs, tarefas, integrações e próximos passos da operação.'
+                    : activeModule === 'dashs'
                     ? 'Dados unificados de campanha, sync com CRM, saúde da carteira e fluxos operacionais em uma camada premium de controle para a agência inteira.'
                     : currentModule.description}
                 </p>
+                {showWorkspaceControls ? (
                 <div className="mt-6 flex flex-wrap gap-3">
                   {positiveMetrics.map((metric) => (
                     <div key={metric.label} className="rounded-2xl border border-slate-200/80 bg-white/90 px-4 py-3 shadow-sm">
@@ -414,7 +439,9 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
                     </div>
                   ))}
                 </div>
+                ) : null}
               </div>
+              {showWorkspaceControls ? (
               <div className="grid gap-3 xl:min-w-[420px]">
                 <div className="grid gap-3 sm:grid-cols-[1fr_auto_auto_auto]">
                   <select
@@ -513,6 +540,14 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
                   </div>
                 ) : null}
               </div>
+              ) : (
+                <div className="rounded-[30px] border border-slate-200/80 bg-white/80 p-5 shadow-sm xl:min-w-[360px]">
+                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">Atalho inteligente</p>
+                  <p className="mt-2 text-sm leading-6 text-slate-600">
+                    Pergunte algo como: “Como está o desempenho da Pulse Clinic?” ou “Quais campanhas precisam de atenção hoje?”.
+                  </p>
+                </div>
+              )}
             </div>
           </section>
 
