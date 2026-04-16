@@ -2,12 +2,61 @@ import { NextResponse } from 'next/server'
 
 import { PLATFORM_AUTH_COOKIE } from '@/lib/saas/auth'
 import { getPlatformApiUrl } from '@/lib/saas/server-api'
-import { hasLocalDatabaseConfig, loginWithLocalDatabase } from '@/lib/server/platform-auth-fallback'
+import { createLocalAccessToken, hasLocalDatabaseConfig, loginWithLocalDatabase } from '@/lib/server/platform-auth-fallback'
 
 const API_URL = getPlatformApiUrl()
 
+async function loginWithLegacySupabase(body: { email: string; password: string }) {
+  const [{ createClient }, { createAdminClient }, { getAccessContext }] = await Promise.all([
+    import('@/lib/supabase/server'),
+    import('@/lib/server/supabase-admin'),
+    import('@/lib/server/access-control'),
+  ])
+
+  const supabase = await createClient()
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email: String(body.email || '').trim(),
+    password: String(body.password || '').trim(),
+  })
+
+  if (error || !data.user) {
+    throw new Error(error?.message || 'Credenciais inválidas.')
+  }
+
+  const adminSupabase = createAdminClient()
+  const accessContext = await getAccessContext(supabase, data.user, { adminSupabase })
+  const token = await createLocalAccessToken({
+    sub: `supabase:${data.user.id}`,
+    tenant_id: accessContext.workspaceId || data.user.id,
+    role: accessContext.role || 'operator',
+    email: data.user.email || '',
+    full_name: accessContext.profile?.full_name || data.user.user_metadata?.full_name || data.user.email || '',
+    provider: 'supabase',
+  })
+
+  return token
+}
+
 export async function POST(request: Request) {
   const body = await request.json()
+
+  try {
+    const legacyToken = await loginWithLegacySupabase(body)
+    const nextResponse = NextResponse.json({ ok: true, provider: 'supabase' })
+    nextResponse.cookies.set({
+      name: PLATFORM_AUTH_COOKIE,
+      value: legacyToken,
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
+      path: '/',
+      maxAge: 60 * 60 * 12,
+    })
+
+    return nextResponse
+  } catch {
+    // Se o login antigo não estiver disponível, seguimos para o backend novo.
+  }
 
   try {
     const response = await fetch(`${API_URL}/auth/login`, {

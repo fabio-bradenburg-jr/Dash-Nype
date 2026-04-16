@@ -44,8 +44,21 @@ function verifyPassword(password: string, storedHash: string) {
   return hashPassword(password, salt) === storedHash
 }
 
-export async function createLocalAccessToken(payload: { sub: string; tenant_id: string; role: string }) {
-  return new SignJWT({ role: payload.role, tenant_id: payload.tenant_id })
+export async function createLocalAccessToken(payload: {
+  sub: string
+  tenant_id: string
+  role: string
+  email?: string
+  full_name?: string
+  provider?: string
+}) {
+  return new SignJWT({
+    role: payload.role,
+    tenant_id: payload.tenant_id,
+    email: payload.email,
+    full_name: payload.full_name,
+    provider: payload.provider,
+  })
     .setProtectedHeader({ alg: 'HS256' })
     .setSubject(payload.sub)
     .setExpirationTime('12h')
@@ -156,6 +169,16 @@ export async function getLocalSessionUser(token: string) {
       full_name: 'Acesso Preview',
       role: String(payload.role || 'admin'),
       tenant_id: String(payload.tenant_id || 'tenant-demo'),
+    }
+  }
+
+  if (userId.startsWith('supabase:')) {
+    return {
+      id: userId.replace('supabase:', ''),
+      email: String(payload.email || ''),
+      full_name: String(payload.full_name || 'Usuário'),
+      role: String(payload.role || 'operator').toLowerCase(),
+      tenant_id: String(payload.tenant_id || ''),
     }
   }
 
