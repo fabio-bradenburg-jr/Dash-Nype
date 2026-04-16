@@ -33,6 +33,39 @@ function resolveAiProviderConfig() {
   }
 }
 
+function normalizeForSearch(value: unknown) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim()
+}
+
+function findMentionedClient(question: string, clients: any[], fallbackClientId: string) {
+  const normalizedQuestion = normalizeForSearch(question)
+  if (!normalizedQuestion || !Array.isArray(clients)) {
+    return clients.find((client) => client.id === fallbackClientId) || null
+  }
+
+  const ranked = clients
+    .map((client) => {
+      const names = [client.name, client.company].map(normalizeForSearch).filter(Boolean)
+      const score = names.reduce((total, name) => {
+        if (!name) return total
+        if (normalizedQuestion.includes(name)) return total + name.length + 100
+        const tokens = name.split(' ').filter((token) => token.length >= 3)
+        return total + tokens.filter((token) => normalizedQuestion.includes(token)).length
+      }, 0)
+
+      return { client, score }
+    })
+    .filter((item) => item.score > 0)
+    .sort((left, right) => right.score - left.score)
+
+  return ranked[0]?.client || clients.find((client) => client.id === fallbackClientId) || null
+}
+
 function buildFallbackReply(input: {
   client: any
   dashboard: any
@@ -96,11 +129,16 @@ export async function POST(request: Request) {
       'Content-Type': 'application/json',
     }
 
+    const clientsResponse = await fetch(`${API_URL}/clients`, { headers, cache: 'no-store' })
+    const clients = clientsResponse.ok ? await clientsResponse.json() : []
+    const targetClient = findMentionedClient(question, clients, clientId)
+    const targetClientId = String(targetClient?.id || clientId)
+
     const [clientResponse, dashboardResponse, checklistResponse, tasksResponse, integrationsResponse] = await Promise.all([
-      fetch(`${API_URL}/clients/${clientId}`, { headers, cache: 'no-store' }),
-      fetch(`${API_URL}/dashboards/clients/${clientId}`, { headers, cache: 'no-store' }),
-      fetch(`${API_URL}/clients/${clientId}/checklist`, { headers, cache: 'no-store' }),
-      fetch(`${API_URL}/clients/${clientId}/tasks`, { headers, cache: 'no-store' }),
+      fetch(`${API_URL}/clients/${targetClientId}`, { headers, cache: 'no-store' }),
+      fetch(`${API_URL}/dashboards/clients/${targetClientId}`, { headers, cache: 'no-store' }),
+      fetch(`${API_URL}/clients/${targetClientId}/checklist`, { headers, cache: 'no-store' }),
+      fetch(`${API_URL}/clients/${targetClientId}/tasks`, { headers, cache: 'no-store' }),
       fetch(`${API_URL}/integrations`, { headers, cache: 'no-store' }),
     ])
 
@@ -146,10 +184,15 @@ Tarefas:
 ${JSON.stringify(tasks, null, 2)}
 
 Integrações:
-${JSON.stringify(Array.isArray(integrations) ? integrations.filter((item: any) => item.client_id === clientId) : [], null, 2)}
+${JSON.stringify(Array.isArray(integrations) ? integrations.filter((item: any) => item.client_id === targetClientId) : [], null, 2)}
 
 Fontes vinculadas do cliente:
 ${JSON.stringify(snippets, null, 2)}
+
+Observação de roteamento:
+- Cliente selecionado na tela: ${clientId}
+- Cliente analisado nesta resposta: ${targetClientId}
+- Se a pergunta citou outro cliente pelo nome, o dashboard usado foi o cliente citado.
     `.trim()
 
     const aiConfig = resolveAiProviderConfig()
@@ -159,7 +202,7 @@ ${JSON.stringify(snippets, null, 2)}
           client,
           dashboard,
           tasks,
-          integrations: Array.isArray(integrations) ? integrations.filter((item: any) => item.client_id === clientId) : [],
+          integrations: Array.isArray(integrations) ? integrations.filter((item: any) => item.client_id === targetClientId) : [],
           snippets,
           question,
         }),
@@ -213,7 +256,7 @@ ${JSON.stringify(snippets, null, 2)}
           client,
           dashboard,
           tasks,
-          integrations: Array.isArray(integrations) ? integrations.filter((item: any) => item.client_id === clientId) : [],
+          integrations: Array.isArray(integrations) ? integrations.filter((item: any) => item.client_id === targetClientId) : [],
           snippets,
           question,
         }),
@@ -226,6 +269,8 @@ ${JSON.stringify(snippets, null, 2)}
       reply,
       mode: 'llm',
       sources: snippets,
+      analyzedClientId: targetClientId,
+      analyzedClientName: client.name,
     })
   } catch (error) {
     return NextResponse.json(

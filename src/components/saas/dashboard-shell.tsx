@@ -43,11 +43,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { ClientContextBundle, KnowledgeSource, PlatformSnapshot } from '@/lib/saas/types'
 
 const navigation = [
-  { key: 'overview', label: 'Visão geral', icon: LayoutDashboard },
+  { key: 'overview', label: 'Visão geral', icon: Cpu },
+  { key: 'dashs', label: 'Dashs', icon: LayoutDashboard },
   { key: 'clients', label: 'Clientes', icon: Users },
   { key: 'operations', label: 'Operações', icon: Activity },
   { key: 'projects', label: 'Projetos', icon: BriefcaseBusiness },
-  { key: 'ai', label: 'IA', icon: Cpu },
   { key: 'settings', label: 'Configurações', icon: Settings2 },
 ] as const
 
@@ -55,7 +55,11 @@ type NavigationKey = (typeof navigation)[number]['key']
 
 const moduleCopy: Record<NavigationKey, { title: string; description: string }> = {
   overview: {
-    title: 'Visão geral da performance',
+    title: 'IA operacional',
+    description: 'Converse com a IA sobre clientes, campanhas, dashs, tarefas, integrações e fontes vinculadas.',
+  },
+  dashs: {
+    title: 'Dashs de performance',
     description: 'Métricas, campanhas, funil e leitura executiva do cliente selecionado.',
   },
   clients: {
@@ -69,10 +73,6 @@ const moduleCopy: Record<NavigationKey, { title: string; description: string }> 
   projects: {
     title: 'Projetos e entregas',
     description: 'Checklist, tarefas, status de onboarding e fila de execução do time.',
-  },
-  ai: {
-    title: 'IA operacional',
-    description: 'Copiloto contextual com acesso aos dados cadastrados, campanhas, tarefas e fontes vinculadas.',
   },
   settings: {
     title: 'Configurações',
@@ -183,10 +183,10 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
   const selectedClientFromQuery = searchParams.get('selected_client')
   const currentModule = moduleCopy[activeModule]
   const showOverview = activeModule === 'overview'
+  const showDashs = activeModule === 'dashs'
   const showClients = activeModule === 'clients'
   const showOperations = activeModule === 'operations'
   const showProjects = activeModule === 'projects'
-  const showAi = activeModule === 'ai'
   const showSettings = activeModule === 'settings'
 
   async function reloadClientContext(clientId: string) {
@@ -397,12 +397,12 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
                   {currentModule.title}
                 </div>
                 <h1 className="font-manrope text-4xl font-extrabold tracking-[-0.05em] text-slate-950 md:text-5xl">
-                  {activeModule === 'overview'
+                  {activeModule === 'dashs'
                     ? 'Métricas, CRM, operação e entrega ao cliente em uma única plataforma.'
                     : currentModule.title}
                 </h1>
                 <p className="mt-4 max-w-2xl text-base leading-7 text-slate-600">
-                  {activeModule === 'overview'
+                  {activeModule === 'dashs'
                     ? 'Dados unificados de campanha, sync com CRM, saúde da carteira e fluxos operacionais em uma camada premium de controle para a agência inteira.'
                     : currentModule.description}
                 </p>
@@ -516,7 +516,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
             </div>
           </section>
 
-          {showOverview ? (
+          {showDashs ? (
           <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             {clientDashboard.overview_metrics.map((metric) => (
               <Card key={metric.label} className="overflow-hidden border-slate-200/70">
@@ -543,7 +543,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
           </section>
           ) : null}
 
-          {showOverview ? (
+          {showDashs ? (
           <section className="grid gap-6 xl:grid-cols-[1.5fr_1fr]">
             <Card>
               <CardHeader>
@@ -603,7 +603,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
           </section>
           ) : null}
 
-          {showOverview ? (
+          {showDashs ? (
           <section className="grid gap-6 xl:grid-cols-[1.15fr_1fr_1fr]">
             <FunnelBuilder initialStages={clientDashboard.funnel} />
 
@@ -677,7 +677,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
           </section>
           ) : null}
 
-          {showOverview || showClients ? (
+          {showDashs || showClients ? (
           <section className="grid gap-6 xl:grid-cols-[1.35fr_1fr]">
             <Card>
               <CardHeader>
@@ -901,7 +901,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
           </section>
           ) : null}
 
-          {showAi ? (
+          {showOverview ? (
           <section>
             <AiAssistantPanel
               client={selectedClient}
