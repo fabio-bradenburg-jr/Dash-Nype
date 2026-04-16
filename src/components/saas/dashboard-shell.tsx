@@ -136,6 +136,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
   const [syncing, setSyncing] = useState(false)
   const [linkingMeta, setLinkingMeta] = useState(false)
   const [loadingMetaAccounts, setLoadingMetaAccounts] = useState(false)
+  const [metaConnectionPending, setMetaConnectionPending] = useState(false)
   const [metaAccounts, setMetaAccounts] = useState<Array<{ id: string; name: string; clientId: string }>>([])
   const [selectedMetaAccountId, setSelectedMetaAccountId] = useState('')
   const [showClientForm, setShowClientForm] = useState(false)
@@ -153,11 +154,11 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
   const selectedClientIntegrations = clientIntegrations
   const selectedMetaIntegration = selectedClientIntegrations.find((integration) => integration.provider === 'meta_ads')
   const positiveMetrics = clientDashboard.overview_metrics.slice(0, 3)
-  const metaError = searchParams.get('meta_error')
-  const metaPending = searchParams.get('meta_pending') === '1'
   const googleDriveError = searchParams.get('google_drive_error')
   const googleDriveConnected = searchParams.get('google_drive_connected') === '1'
   const selectedClientFromQuery = searchParams.get('selected_client')
+  const metaPendingFromQuery = searchParams.get('meta_pending') === '1'
+  const metaPending = metaConnectionPending
   const currentModule = moduleCopy[activeModule]
   const showOverview = activeModule === 'overview'
   const showDashs = activeModule === 'dashs'
@@ -229,14 +230,42 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
   }, [selectedClientFromQuery, selectedClientId])
 
   useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    const url = new URL(window.location.href)
+    const transientParams = [
+      'meta_error',
+      'meta_pending',
+      'meta_client_id',
+      'google_drive_error',
+      'google_drive_connected',
+      'selected_client',
+    ]
+    let changed = false
+
+    transientParams.forEach((param) => {
+      if (url.searchParams.has(param)) {
+        url.searchParams.delete(param)
+        changed = true
+      }
+    })
+
+    if (changed) {
+      window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`)
+    }
+  }, [])
+
+  useEffect(() => {
     async function loadMetaAccounts() {
-      if (!metaPending) return
       setLoadingMetaAccounts(true)
       try {
         const response = await fetch('/api/saas/meta/adaccounts', { cache: 'no-store' })
         const data = await response.json()
         const accounts = data.accounts || []
         setMetaAccounts(accounts)
+        if (accounts.length > 0 || metaPendingFromQuery) {
+          setMetaConnectionPending(true)
+        }
         if (accounts[0]?.id) {
           setSelectedMetaAccountId(accounts[0].id)
         }
@@ -246,7 +275,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
     }
 
     loadMetaAccounts()
-  }, [metaPending])
+  }, [metaPendingFromQuery])
 
   async function handleLogout() {
     await fetch('/api/auth/logout', { method: 'POST' })
@@ -381,8 +410,8 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
           'radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--saas-primary) 18%, transparent), transparent 28%), radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--saas-accent) 22%, transparent), transparent 24%), radial-gradient(circle at 50% 100%, rgba(15,23,42,0.05), transparent 36%), linear-gradient(180deg, color-mix(in srgb, var(--saas-surface) 94%, white), #ffffff)',
       }}
     >
-      <div className="mx-auto flex max-w-[1640px] gap-6 px-4 py-6 lg:px-8">
-        <aside className="sticky top-6 hidden h-[calc(100vh-3rem)] w-[292px] flex-col rounded-[34px] border border-white/10 bg-[linear-gradient(180deg,#020617,#0f172a)] px-6 py-7 text-white shadow-[0_30px_100px_rgba(2,6,23,0.36)] lg:flex">
+      <div className="flex min-h-screen w-full gap-4 px-3 py-4 sm:px-4 lg:gap-6 lg:px-6 xl:px-8">
+        <aside className="sticky top-4 hidden h-[calc(100vh-2rem)] w-[272px] flex-none flex-col rounded-[34px] border border-white/10 bg-[linear-gradient(180deg,#020617,#0f172a)] px-6 py-7 text-white shadow-[0_30px_100px_rgba(2,6,23,0.36)] lg:flex xl:w-[292px]">
           <div className="mb-8 flex items-center gap-3">
             <div className="grid h-12 w-12 place-items-center rounded-2xl bg-white/10 ring-1 ring-white/15">
               <Sparkles className="h-6 w-6" />
@@ -423,11 +452,6 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
         </aside>
 
         <main className="min-w-0 flex-1 space-y-6">
-          {metaError ? (
-            <div className="rounded-[28px] border border-rose-200 bg-rose-50 px-5 py-4 text-sm font-medium text-rose-700">
-              {metaError}
-            </div>
-          ) : null}
           {googleDriveError ? (
             <div className="rounded-[28px] border border-rose-200 bg-rose-50 px-5 py-4 text-sm font-medium text-rose-700">
               {googleDriveError}

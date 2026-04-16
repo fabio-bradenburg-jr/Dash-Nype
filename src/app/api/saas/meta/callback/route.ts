@@ -51,10 +51,6 @@ export async function GET(request: Request) {
     const metaProfile = await getMetaProfile(longLivedToken.access_token)
 
     redirectUrl.pathname = oauthCookie.returnTo || '/'
-    redirectUrl.searchParams.set('meta_pending', '1')
-    if (oauthCookie.clientId) {
-      redirectUrl.searchParams.set('meta_client_id', oauthCookie.clientId)
-    }
 
     const response = NextResponse.redirect(redirectUrl)
     response.cookies.set({
@@ -89,10 +85,6 @@ export async function GET(request: Request) {
     })
     return response
   } catch (error) {
-    redirectUrl.searchParams.set(
-      'meta_error',
-      error instanceof Error ? error.message : 'Não foi possível concluir a conexão com a Meta.'
-    )
     const response = NextResponse.redirect(redirectUrl)
     response.cookies.set({
       name: META_SAAS_COOKIE,

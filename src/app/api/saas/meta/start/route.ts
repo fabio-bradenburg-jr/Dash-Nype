@@ -49,10 +49,6 @@ export async function GET(request: Request) {
     return response
   } catch (error) {
     const fallback = new URL('/', request.url)
-    fallback.searchParams.set(
-      'meta_error',
-      error instanceof Error ? error.message : 'Não foi possível iniciar a conexão com a Meta.'
-    )
     return NextResponse.redirect(fallback)
   }
 }
