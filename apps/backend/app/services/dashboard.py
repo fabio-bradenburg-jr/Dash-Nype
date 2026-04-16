@@ -13,6 +13,23 @@ def _sum(values) -> float:
     return float(sum(float(value) for value in values))
 
 
+def _metric(key: str, label: str, value: float, previous_value: float, fmt: str) -> dict:
+    current = float(value or 0)
+    previous = float(previous_value or 0)
+    if previous == 0:
+        change = 0.0 if current == 0 else 100.0
+    else:
+        change = round(((current - previous) / abs(previous)) * 100, 1)
+
+    return {
+        "key": key,
+        "label": label,
+        "value": round(current, 2),
+        "change": change,
+        "format": fmt,
+    }
+
+
 def build_client_dashboard(db: Session, client: Client) -> dict:
     snapshots = (
         db.execute(
@@ -24,21 +41,56 @@ def build_client_dashboard(db: Session, client: Client) -> dict:
         .all()
     )
     recent = snapshots[-7:]
+    previous = snapshots[-14:-7]
 
     spend = _sum(row.spend for row in recent)
     impressions = sum(row.impressions for row in recent)
     clicks = sum(row.clicks for row in recent)
     conversions = sum(row.conversions for row in recent)
     revenue = _sum(row.revenue for row in recent)
+    purchases = sum(row.purchases for row in recent)
+    leads = sum(row.leads for row in recent)
+    messages = sum(row.messages for row in recent)
     cpc = round(spend / max(clicks, 1), 2)
+    cpm = round((spend / max(impressions, 1)) * 1000, 2)
     ctr = round((clicks / max(impressions, 1)) * 100, 2)
     roas = round(revenue / max(spend, 1), 2)
     cpa = round(spend / max(conversions, 1), 2)
+    conversion_rate = round((conversions / max(clicks, 1)) * 100, 2)
+    average_ticket = round(revenue / max(purchases, 1), 2) if purchases else 0
+    cost_per_purchase = round(spend / max(purchases, 1), 2) if purchases else 0
+    cost_per_lead = round(spend / max(leads, 1), 2) if leads else 0
+    cost_per_message = round(spend / max(messages, 1), 2) if messages else 0
+    clicks_without_conversion = max(clicks - conversions, 0)
+    # The old dashboard showed reach/frequency when Meta returned them. The SaaS snapshot
+    # does not store reach separately yet, so we keep the same fields with safe fallbacks.
+    reach = impressions
+    frequency = 1.0 if reach else 0.0
+
+    previous_spend = _sum(row.spend for row in previous)
+    previous_impressions = sum(row.impressions for row in previous)
+    previous_clicks = sum(row.clicks for row in previous)
+    previous_conversions = sum(row.conversions for row in previous)
+    previous_revenue = _sum(row.revenue for row in previous)
+    previous_purchases = sum(row.purchases for row in previous)
+    previous_leads = sum(row.leads for row in previous)
+    previous_messages = sum(row.messages for row in previous)
+    previous_cpc = round(previous_spend / max(previous_clicks, 1), 2)
+    previous_cpm = round((previous_spend / max(previous_impressions, 1)) * 1000, 2)
+    previous_ctr = round((previous_clicks / max(previous_impressions, 1)) * 100, 2)
+    previous_roas = round(previous_revenue / max(previous_spend, 1), 2)
+    previous_cpa = round(previous_spend / max(previous_conversions, 1), 2)
+    previous_conversion_rate = round((previous_conversions / max(previous_clicks, 1)) * 100, 2)
+    previous_average_ticket = round(previous_revenue / max(previous_purchases, 1), 2) if previous_purchases else 0
+    previous_cost_per_purchase = round(previous_spend / max(previous_purchases, 1), 2) if previous_purchases else 0
+    previous_cost_per_lead = round(previous_spend / max(previous_leads, 1), 2) if previous_leads else 0
+    previous_cost_per_message = round(previous_spend / max(previous_messages, 1), 2) if previous_messages else 0
+    previous_clicks_without_conversion = max(previous_clicks - previous_conversions, 0)
 
     objectives = {
-        "purchases": sum(row.purchases for row in recent),
-        "leads": sum(row.leads for row in recent),
-        "messages": sum(row.messages for row in recent),
+        "purchases": purchases,
+        "leads": leads,
+        "messages": messages,
     }
     results_by_objective = [
         {
@@ -55,6 +107,10 @@ def build_client_dashboard(db: Session, client: Client) -> dict:
             "spend": float(row.spend),
             "conversions": row.conversions,
             "roas": round(float(row.revenue) / max(float(row.spend), 1), 2),
+            "purchases": row.purchases,
+            "leads": row.leads,
+            "messages": row.messages,
+            "cpa": round(float(row.spend) / max(row.conversions, 1), 2),
         }
         for row in recent
     ]
@@ -83,13 +139,26 @@ def build_client_dashboard(db: Session, client: Client) -> dict:
 
     return {
         "overview_metrics": [
-            {"label": "Spend", "value": spend, "change": 8.4, "format": "currency"},
-            {"label": "Impressions", "value": impressions, "change": 5.2, "format": "number"},
-            {"label": "Clicks", "value": clicks, "change": 4.3, "format": "number"},
-            {"label": "CPC", "value": cpc, "change": -2.1, "format": "currency"},
-            {"label": "CTR", "value": ctr, "change": 1.7, "format": "percent"},
-            {"label": "Conversions", "value": conversions, "change": 6.6, "format": "number"},
-            {"label": "ROAS", "value": roas, "change": 3.9, "format": "ratio"},
+            _metric("spend", "Investimento", spend, previous_spend, "currency"),
+            _metric("impressions", "Impressões", impressions, previous_impressions, "number"),
+            _metric("cpm", "CPM", cpm, previous_cpm, "currency"),
+            _metric("reach", "Alcance", reach, previous_impressions, "number"),
+            _metric("frequency", "Frequência", frequency, 1.0 if previous_impressions else 0.0, "decimal"),
+            _metric("clicks", "Cliques no link", clicks, previous_clicks, "number"),
+            _metric("cpc", "CPC", cpc, previous_cpc, "currency"),
+            _metric("ctr", "CTR", ctr, previous_ctr, "percent"),
+            _metric("totalConversions", "Conversões totais", conversions, previous_conversions, "number"),
+            _metric("conversionRate", "Taxa de conversão", conversion_rate, previous_conversion_rate, "percent"),
+            _metric("purchaseValue", "Faturamento", revenue, previous_revenue, "currency"),
+            _metric("purchases", "Compras", purchases, previous_purchases, "number"),
+            _metric("costPerPurchase", "Custo por compra", cost_per_purchase, previous_cost_per_purchase, "currency"),
+            _metric("averageTicket", "Ticket médio", average_ticket, previous_average_ticket, "currency"),
+            _metric("leads", "Leads", leads, previous_leads, "number"),
+            _metric("costPerLead", "Custo por lead", cost_per_lead, previous_cost_per_lead, "currency"),
+            _metric("messages", "Mensagens iniciadas", messages, previous_messages, "number"),
+            _metric("costPerMessage", "Custo por mensagem", cost_per_message, previous_cost_per_message, "currency"),
+            _metric("clicksWithoutConversion", "Cliques sem conversão", clicks_without_conversion, previous_clicks_without_conversion, "number"),
+            _metric("roas", "ROAS consolidado", roas, previous_roas, "ratio"),
         ],
         "results_by_objective": results_by_objective,
         "time_series": time_series,
@@ -106,6 +175,18 @@ def build_client_dashboard(db: Session, client: Client) -> dict:
                 "cpa": row.cpa,
                 "roas": row.roas,
                 "source": row.source.value,
+                "purchases": row.conversions if row.roas > 0 else 0,
+                "leads": 0,
+                "messages": 0,
+                "purchase_value": round(float(row.spend) * row.roas, 2),
+                "clicks": 0,
+                "impressions": 0,
+                "reach": 0,
+                "ctr": 0,
+                "cpc": 0,
+                "cpm": 0,
+                "frequency": 0,
+                "conversion_rate": 0,
             }
             for row in campaigns[:8]
         ],

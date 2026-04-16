@@ -72,7 +72,70 @@ function formatValue(value: number, format: string) {
   if (format === 'currency') return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(value)
   if (format === 'percent') return `${value}%`
   if (format === 'ratio') return `${value.toFixed(2)}x`
+  if (format === 'decimal') return value.toFixed(2).replace('.', ',')
   return new Intl.NumberFormat('pt-BR').format(value)
+}
+
+function metricKey(metric: { key?: string | null; label: string }) {
+  return String(metric.key || metric.label || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9]+/g, '')
+    .toLowerCase()
+}
+
+const legacyMetricGroups = [
+  {
+    title: 'Mídia',
+    keys: ['spend', 'impressions', 'cpm', 'reach', 'frequency', 'clicks', 'cpc', 'ctr'],
+  },
+  {
+    title: 'Conversão',
+    keys: ['totalConversions', 'conversionRate', 'purchases', 'costPerPurchase', 'leads', 'costPerLead', 'messages', 'costPerMessage'],
+  },
+  {
+    title: 'Receita',
+    keys: ['purchaseValue', 'averageTicket', 'clicksWithoutConversion', 'roas'],
+  },
+] as const
+
+const metricAliases: Record<string, string> = {
+  totalconversions: 'totalConversions',
+  conversoestotais: 'totalConversions',
+  conversionrate: 'conversionRate',
+  taxadeconversao: 'conversionRate',
+  purchasevalue: 'purchaseValue',
+  faturamento: 'purchaseValue',
+  costperpurchase: 'costPerPurchase',
+  custoporcompra: 'costPerPurchase',
+  averageticket: 'averageTicket',
+  ticketmedio: 'averageTicket',
+  costperlead: 'costPerLead',
+  custoporlead: 'costPerLead',
+  costpermessage: 'costPerMessage',
+  customensagem: 'costPerMessage',
+  clickswithoutconversion: 'clicksWithoutConversion',
+  cliquessemconversao: 'clicksWithoutConversion',
+  roasconsolidado: 'roas',
+}
+
+function getCampaignValue(campaign: PlatformSnapshot['clientDashboard']['campaigns'][number], key: string) {
+  const map: Record<string, number> = {
+    spend: campaign.spend,
+    totalConversions: campaign.conversions,
+    purchases: campaign.purchases || 0,
+    leads: campaign.leads || 0,
+    messages: campaign.messages || 0,
+    cpa: campaign.cpa,
+    roas: campaign.roas,
+    purchaseValue: campaign.purchase_value || campaign.spend * campaign.roas,
+    clicks: campaign.clicks || 0,
+    impressions: campaign.impressions || 0,
+    ctr: campaign.ctr || 0,
+    cpc: campaign.cpc || 0,
+  }
+
+  return map[key] || 0
 }
 
 function statusLabel(status: string) {
@@ -154,6 +217,32 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
   const selectedClientIntegrations = clientIntegrations
   const selectedMetaIntegration = selectedClientIntegrations.find((integration) => integration.provider === 'meta_ads')
   const positiveMetrics = clientDashboard.overview_metrics.slice(0, 3)
+  const metricsByKey = new Map(
+    clientDashboard.overview_metrics.map((metric) => {
+      const normalized = metricKey(metric)
+      return [metricAliases[normalized] || metric.key || normalized, metric]
+    })
+  )
+  const legacyMetrics = legacyMetricGroups.map((group) => ({
+    ...group,
+    metrics: group.keys
+      .map((key) => metricsByKey.get(key))
+      .filter(Boolean),
+  }))
+  const campaignColumns = [
+    { key: 'spend', label: 'Investimento', format: 'currency' },
+    { key: 'totalConversions', label: 'Conversões', format: 'number' },
+    { key: 'purchases', label: 'Compras', format: 'number' },
+    { key: 'leads', label: 'Leads', format: 'number' },
+    { key: 'messages', label: 'Mensagens', format: 'number' },
+    { key: 'cpa', label: 'CPA', format: 'currency' },
+    { key: 'roas', label: 'ROAS', format: 'ratio' },
+    { key: 'purchaseValue', label: 'Faturamento', format: 'currency' },
+    { key: 'clicks', label: 'Cliques', format: 'number' },
+    { key: 'impressions', label: 'Impressões', format: 'number' },
+    { key: 'ctr', label: 'CTR', format: 'percent' },
+    { key: 'cpc', label: 'CPC', format: 'currency' },
+  ]
   const selectedClientFromQuery = searchParams.get('selected_client')
   const metaPendingFromQuery = searchParams.get('meta_pending') === '1'
   const metaPending = metaConnectionPending
@@ -538,29 +627,61 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
           </section>
 
           {showDashs ? (
-          <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            {clientDashboard.overview_metrics.map((metric) => (
-              <Card key={metric.label} className="overflow-hidden border-slate-200/70">
-                <CardContent className="p-5">
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm font-medium text-slate-500">{metric.label}</p>
-                    <Badge tone={metric.change >= 0 ? 'green' : 'red'}>{metric.change >= 0 ? '+' : ''}{metric.change}%</Badge>
-                  </div>
-                  <p className="mt-5 font-manrope text-3xl font-extrabold tracking-tight text-slate-950">
-                    {formatValue(metric.value, metric.format)}
+          <section className="space-y-4">
+            <Card className="border-slate-200/70">
+              <CardContent className="flex flex-col gap-4 p-5 lg:flex-row lg:items-center lg:justify-between">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Dashboard antigo, visual novo</p>
+                  <h2 className="mt-2 font-manrope text-2xl font-extrabold tracking-tight text-slate-950">
+                    Mesma leitura de mídia, conversão e receita do dash legado
+                  </h2>
+                  <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500">
+                    Mantém os indicadores de Meta Ads do dashboard anterior: investimento, alcance, cliques, custos, conversões, compras, leads, mensagens, faturamento e ROAS.
                   </p>
-                  <div className="mt-4 h-1.5 rounded-full bg-slate-100">
-                    <div
-                      className="h-1.5 rounded-full"
-                      style={{
-                        width: `${Math.max(16, Math.min(Math.abs(metric.change) * 10, 100))}%`,
-                        background: 'linear-gradient(90deg, var(--saas-primary), var(--saas-accent))',
-                      }}
-                    />
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                </div>
+                <div className="flex flex-wrap gap-2 text-xs font-semibold text-slate-500">
+                  {['Últimos 7 dias', 'Campanhas ativas', 'Meta Ads', 'Agendor'].map((item) => (
+                    <span key={item} className="rounded-full border border-slate-200 bg-white px-3 py-2 shadow-sm">
+                      {item}
+                    </span>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            <div className="grid gap-4 2xl:grid-cols-3">
+              {legacyMetrics.map((group) => (
+                <Card key={group.title} className="border-slate-200/70">
+                  <CardHeader>
+                    <div>
+                      <CardTitle>{group.title}</CardTitle>
+                      <CardDescription>
+                        {group.title === 'Mídia'
+                          ? 'Entrega e custo de tráfego.'
+                          : group.title === 'Conversão'
+                          ? 'Resultados e eficiência por objetivo.'
+                          : 'Receita atribuída e retorno.'}
+                      </CardDescription>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="grid gap-3 sm:grid-cols-2">
+                    {group.metrics.map((metric) => (
+                      <div key={metric.label} className="rounded-3xl border border-slate-200/70 bg-white/85 p-4 shadow-sm">
+                        <div className="flex items-start justify-between gap-3">
+                          <p className="text-sm font-medium leading-5 text-slate-500">{metric.label}</p>
+                          <Badge tone={metric.change >= 0 ? 'green' : 'red'}>
+                            {metric.change >= 0 ? '+' : ''}{metric.change}%
+                          </Badge>
+                        </div>
+                        <p className="mt-4 font-manrope text-2xl font-extrabold tracking-tight text-slate-950">
+                          {formatValue(metric.value, metric.format)}
+                        </p>
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
           </section>
           ) : null}
 
@@ -570,7 +691,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
               <CardHeader>
                 <div>
                   <CardTitle>Linha do tempo de performance</CardTitle>
-                  <CardDescription>Investimento, conversões e ROAS unificados entre Meta, Google, LinkedIn e Agendor.</CardDescription>
+                  <CardDescription>Investimento, conversões, compras, leads, mensagens e ROAS no mesmo recorte do dash antigo.</CardDescription>
                 </div>
               </CardHeader>
               <CardContent className="h-[320px]">
@@ -588,6 +709,9 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
                     <Tooltip />
                     <Area type="monotone" dataKey="spend" stroke="var(--saas-primary)" fill="url(#spendFill)" strokeWidth={3} />
                     <Area type="monotone" dataKey="conversions" stroke="var(--saas-accent)" fillOpacity={0} strokeWidth={3} />
+                    <Area type="monotone" dataKey="purchases" stroke="#10b981" fillOpacity={0} strokeWidth={2} />
+                    <Area type="monotone" dataKey="leads" stroke="#f59e0b" fillOpacity={0} strokeWidth={2} />
+                    <Area type="monotone" dataKey="messages" stroke="#3b82f6" fillOpacity={0} strokeWidth={2} />
                   </AreaChart>
                 </ResponsiveContainer>
               </CardContent>
@@ -597,7 +721,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
               <CardHeader>
                 <div>
                   <CardTitle>Resultados por objetivo</CardTitle>
-                  <CardDescription>Resultados normalizados em um modelo unificado de conversão.</CardDescription>
+                  <CardDescription>Mesmo bloco do dash antigo: volume e custo médio por compra, cadastro e mensagem.</CardDescription>
                 </div>
               </CardHeader>
               <CardContent className="grid gap-4">
@@ -704,7 +828,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
               <CardHeader>
                 <div>
                   <CardTitle>Tabela de campanhas</CardTitle>
-                  <CardDescription>Visão de aquisição com CPA e ROAS normalizados.</CardDescription>
+                  <CardDescription>Colunas do dashboard antigo para leitura de mídia, resultado, receita e eficiência.</CardDescription>
                 </div>
               </CardHeader>
               <CardContent className="overflow-x-auto">
@@ -713,10 +837,9 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
                     <tr>
                       <th className="pb-3 font-medium">Campanha</th>
                       <th className="pb-3 font-medium">Status</th>
-                      <th className="pb-3 font-medium">Investimento</th>
-                      <th className="pb-3 font-medium">Conversões</th>
-                      <th className="pb-3 font-medium">CPA</th>
-                      <th className="pb-3 font-medium">ROAS</th>
+                      {campaignColumns.map((column) => (
+                        <th key={column.key} className="whitespace-nowrap pb-3 pr-5 font-medium">{column.label}</th>
+                      ))}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
@@ -729,10 +852,11 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
                           </div>
                         </td>
                         <td className="py-4"><Badge tone={campaign.status === 'ACTIVE' ? 'green' : 'yellow'}>{statusLabel(campaign.status.toLowerCase())}</Badge></td>
-                        <td className="py-4">{formatValue(campaign.spend, 'currency')}</td>
-                        <td className="py-4">{campaign.conversions}</td>
-                        <td className="py-4">{formatValue(campaign.cpa, 'currency')}</td>
-                        <td className="py-4">{campaign.roas.toFixed(2)}x</td>
+                        {campaignColumns.map((column) => (
+                          <td key={column.key} className="whitespace-nowrap py-4 pr-5">
+                            {formatValue(getCampaignValue(campaign, column.key), column.format)}
+                          </td>
+                        ))}
                       </tr>
                     ))}
                   </tbody>

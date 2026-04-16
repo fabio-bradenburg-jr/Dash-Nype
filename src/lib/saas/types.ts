@@ -6,10 +6,11 @@ export type ThemeSettings = {
 }
 
 export type MetricCard = {
+  key?: string | null
   label: string
   value: number
   change: number
-  format: 'currency' | 'number' | 'percent' | 'ratio'
+  format: 'currency' | 'number' | 'percent' | 'ratio' | 'decimal'
 }
 
 export type ObjectivePerformance = {
@@ -23,6 +24,10 @@ export type TimeSeriesPoint = {
   spend: number
   conversions: number
   roas: number
+  purchases?: number
+  leads?: number
+  messages?: number
+  cpa?: number
 }
 
 export type FunnelStage = {
@@ -39,6 +44,18 @@ export type CampaignRow = {
   cpa: number
   roas: number
   source: string
+  purchases?: number
+  leads?: number
+  messages?: number
+  purchase_value?: number
+  clicks?: number
+  impressions?: number
+  reach?: number
+  ctr?: number
+  cpc?: number
+  cpm?: number
+  frequency?: number
+  conversion_rate?: number
 }
 
 export type ClientSummary = {

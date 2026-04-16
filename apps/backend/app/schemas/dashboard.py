@@ -4,6 +4,7 @@ from pydantic import BaseModel
 
 
 class MetricCard(BaseModel):
+    key: str | None = None
     label: str
     value: float
     change: float
@@ -21,6 +22,10 @@ class TimeSeriesPoint(BaseModel):
     spend: float
     conversions: int
     roas: float
+    purchases: int = 0
+    leads: int = 0
+    messages: int = 0
+    cpa: float = 0
 
 
 class FunnelStagePayload(BaseModel):
@@ -37,6 +42,18 @@ class CampaignRow(BaseModel):
     cpa: float
     roas: float
     source: str
+    purchases: int = 0
+    leads: int = 0
+    messages: int = 0
+    purchase_value: float = 0
+    clicks: int = 0
+    impressions: int = 0
+    reach: int = 0
+    ctr: float = 0
+    cpc: float = 0
+    cpm: float = 0
+    frequency: float = 0
+    conversion_rate: float = 0
 
 
 class ClientDashboardResponse(BaseModel):
