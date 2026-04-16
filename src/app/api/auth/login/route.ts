@@ -2,7 +2,12 @@ import { NextResponse } from 'next/server'
 
 import { PLATFORM_AUTH_COOKIE } from '@/lib/saas/auth'
 import { getPlatformApiUrl } from '@/lib/saas/server-api'
-import { createLocalAccessToken, hasLocalDatabaseConfig, loginWithLocalDatabase } from '@/lib/server/platform-auth-fallback'
+import {
+  createLocalAccessToken,
+  ensurePlatformUserForSupabase,
+  hasLocalDatabaseConfig,
+  loginWithLocalDatabase,
+} from '@/lib/server/platform-auth-fallback'
 
 const API_URL = getPlatformApiUrl()
 
@@ -25,10 +30,18 @@ async function loginWithLegacySupabase(body: { email: string; password: string }
 
   const adminSupabase = createAdminClient()
   const accessContext = await getAccessContext(supabase, data.user, { adminSupabase })
-  const token = await createLocalAccessToken({
-    sub: `supabase:${data.user.id}`,
+  const platformUser = await ensurePlatformUserForSupabase({
+    user_id: data.user.id,
     tenant_id: accessContext.workspaceId || data.user.id,
+    tenant_name: accessContext.profile?.workspace?.name || accessContext.profile?.company_name || 'Workspace principal',
+    email: data.user.email || '',
+    full_name: accessContext.profile?.full_name || data.user.user_metadata?.full_name || data.user.email || '',
     role: accessContext.role || 'operator',
+  })
+  const token = await createLocalAccessToken({
+    sub: platformUser.user_id,
+    tenant_id: platformUser.tenant_id,
+    role: platformUser.role,
     email: data.user.email || '',
     full_name: accessContext.profile?.full_name || data.user.user_metadata?.full_name || data.user.email || '',
     provider: 'supabase',

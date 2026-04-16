@@ -24,7 +24,7 @@ function getPool() {
     if (!process.env.DATABASE_URL) {
       throw new Error('DATABASE_URL não configurada')
     }
-    pool = new Pool({ connectionString: process.env.DATABASE_URL })
+    pool = new Pool({ connectionString: process.env.DATABASE_URL.replace(/^postgresql\+psycopg:\/\//, 'postgresql://') })
   }
   return pool
 }
@@ -42,6 +42,101 @@ function hashPassword(password: string, salt?: string) {
 function verifyPassword(password: string, storedHash: string) {
   const [salt] = storedHash.split('$')
   return hashPassword(password, salt) === storedHash
+}
+
+function slugFromName(value: string) {
+  return (
+    value
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '') || 'workspace'
+  )
+}
+
+function roleForPlatformDatabase(role: string) {
+  const normalized = String(role || '').trim().toLowerCase()
+  if (normalized === 'master' || normalized === 'admin') return 'ADMIN'
+  if (normalized === 'cliente' || normalized === 'client') return 'CLIENT'
+  return 'OPERATOR'
+}
+
+export async function ensurePlatformUserForSupabase(input: {
+  user_id: string
+  tenant_id: string
+  tenant_name?: string | null
+  email?: string | null
+  full_name?: string | null
+  role?: string | null
+}) {
+  if (!hasLocalDatabaseConfig()) {
+    return {
+      user_id: `supabase:${input.user_id}`,
+      tenant_id: input.tenant_id,
+      role: String(input.role || 'operator').toLowerCase(),
+    }
+  }
+
+  const db = getPool()
+  const tenantId = input.tenant_id || input.user_id
+  const tenantName = String(input.tenant_name || 'Workspace principal').trim() || 'Workspace principal'
+  const email = String(input.email || '').trim().toLowerCase()
+  const fullName = String(input.full_name || email || 'Usuário').trim()
+  const role = roleForPlatformDatabase(String(input.role || 'operator'))
+
+  await db.query('begin')
+  try {
+    await db.query(
+      `insert into tenants (id, name, slug, primary_color, accent_color, background_color, dark_mode, created_at, updated_at)
+       values ($1, $2, $3, '#0f766e', '#fb7185', '#f8fafc', false, now(), now())
+       on conflict (id) do update set
+         name = excluded.name,
+         updated_at = now()`,
+      [tenantId, tenantName, slugFromName(`${tenantName}-${tenantId.slice(0, 8)}`)]
+    )
+
+    const existing = email
+      ? await db.query<UserRow>(
+          'select id, tenant_id, email, full_name, password_hash, role, is_active from users where id = $1 or email = $2 limit 1',
+          [input.user_id, email]
+        )
+      : await db.query<UserRow>(
+          'select id, tenant_id, email, full_name, password_hash, role, is_active from users where id = $1 limit 1',
+          [input.user_id]
+        )
+    const platformUserId = existing.rows[0]?.id || input.user_id
+
+    await db.query(
+      `insert into users (id, tenant_id, email, full_name, password_hash, role, is_active, created_at)
+       values ($1, $2, $3, $4, $5, $6, true, now())
+       on conflict (id) do update set
+         tenant_id = excluded.tenant_id,
+         email = excluded.email,
+         full_name = excluded.full_name,
+         role = excluded.role,
+         is_active = true`,
+      [
+        platformUserId,
+        tenantId,
+        email || `${platformUserId}@supabase.local`,
+        fullName,
+        existing.rows[0]?.password_hash || hashPassword(randomUUID()),
+        role,
+      ]
+    )
+
+    await db.query('commit')
+
+    return {
+      user_id: platformUserId,
+      tenant_id: tenantId,
+      role: role.toLowerCase(),
+    }
+  } catch (error) {
+    await db.query('rollback')
+    throw error
+  }
 }
 
 export async function createLocalAccessToken(payload: {
