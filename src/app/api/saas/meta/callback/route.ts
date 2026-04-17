@@ -5,7 +5,9 @@ import {
   exchangeMetaAuthorizationCode,
   exchangeMetaLongLivedToken,
   getMetaProfile,
+  saveWorkspaceMetaConnection,
 } from '@/lib/server/meta-connection'
+import { createAdminClient } from '@/lib/server/supabase-admin'
 
 const META_SAAS_COOKIE = 'meta_saas_oauth'
 const META_SAAS_PENDING_COOKIE = 'meta_saas_pending'
@@ -52,27 +54,30 @@ export async function GET(request: Request) {
 
     redirectUrl.pathname = oauthCookie.returnTo || '/'
 
+    if (oauthCookie.workspaceId) {
+      await saveWorkspaceMetaConnection(createAdminClient(), oauthCookie.workspaceId, {
+        metaUserId: metaProfile.id,
+        metaUserName: metaProfile.name,
+        accessToken: longLivedToken.access_token,
+        tokenType: longLivedToken.token_type || 'Bearer',
+        scope: shortLivedToken.scope || longLivedToken.scope || '',
+        expiryDate: longLivedToken.expires_in
+          ? new Date(Date.now() + Number(longLivedToken.expires_in) * 1000).toISOString()
+          : null,
+      })
+    }
+
+    redirectUrl.searchParams.set('meta_connected', '1')
+
     const response = NextResponse.redirect(redirectUrl)
     response.cookies.set({
       name: META_SAAS_PENDING_COOKIE,
-      value: Buffer.from(
-        JSON.stringify({
-          clientId: oauthCookie.clientId,
-          accessToken: longLivedToken.access_token,
-          tokenType: longLivedToken.token_type || 'Bearer',
-          scope: shortLivedToken.scope || longLivedToken.scope || '',
-          expiryDate: longLivedToken.expires_in
-            ? new Date(Date.now() + Number(longLivedToken.expires_in) * 1000).toISOString()
-            : null,
-          metaUserId: metaProfile.id,
-          metaUserName: metaProfile.name,
-        })
-      ).toString('base64url'),
+      value: '',
       httpOnly: true,
       sameSite: 'lax',
       secure: process.env.NODE_ENV === 'production',
       path: '/',
-      maxAge: 60 * 10,
+      maxAge: 0,
     })
     response.cookies.set({
       name: META_SAAS_COOKIE,

@@ -393,7 +393,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
     { key: 'conversionRate', label: 'Taxa de conversão', format: 'percent' },
   ]
   const selectedClientFromQuery = searchParams.get('selected_client')
-  const metaPendingFromQuery = searchParams.get('meta_pending') === '1'
+  const metaPendingFromQuery = searchParams.get('meta_pending') === '1' || searchParams.get('meta_connected') === '1'
   const metaPending = metaConnectionPending
   const currentModule = moduleCopy[activeModule]
   const showOverview = activeModule === 'overview'
@@ -472,6 +472,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
     const transientParams = [
       'meta_error',
       'meta_pending',
+      'meta_connected',
       'meta_client_id',
       'google_drive_error',
       'google_drive_connected',
@@ -499,7 +500,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
         const data = await response.json()
         const accounts = data.accounts || []
         setMetaAccounts(accounts)
-        if (accounts.length > 0 || metaPendingFromQuery) {
+        if (data.connected || accounts.length > 0 || metaPendingFromQuery) {
           setMetaConnectionPending(true)
         }
         if (accounts[0]?.id) {
@@ -612,8 +613,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
   }
 
   function handleConnectMeta() {
-    const clientParam = selectedClient.id ? `client_id=${encodeURIComponent(selectedClient.id)}&` : ''
-    window.location.href = `/api/saas/meta/start?${clientParam}return_to=/`
+    window.location.href = `/api/meta/auth/start?return_to=/`
   }
 
   async function handleSaveMetaApiToken() {
@@ -1342,11 +1342,11 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
                         <p className="mt-2 text-sm leading-6 text-slate-500">
                           {selectedMetaIntegration
                             ? `Conectado com ${selectedMetaIntegration.account_name}.`
-                            : 'Conecte sua conta do Facebook para listar contas de anúncio e vincular ao cliente selecionado.'}
+                            : 'Configure a Meta uma vez nas Configurações da agência. Depois, escolha aqui a conta de anúncio do cliente.'}
                         </p>
                       </div>
-                      <Button variant="secondary" onClick={handleConnectMeta}>
-                        {selectedMetaIntegration ? 'Reconectar' : 'Conectar Meta'}
+                      <Button variant="secondary" onClick={() => setActiveModule('settings')}>
+                        Configurações
                       </Button>
                     </div>
 
@@ -1408,26 +1408,26 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
                 <div className="rounded-[28px] border border-slate-200/80 bg-slate-50/80 p-4">
                   <div className="flex items-start justify-between gap-4">
                     <div>
-                      <p className="font-semibold text-slate-900">Login com Facebook</p>
+                      <p className="font-semibold text-slate-900">Conexão global via Facebook</p>
                       <p className="mt-2 text-sm leading-6 text-slate-500">
-                        Entre com sua conta do Facebook para buscar as contas de anúncio disponíveis. No cadastro do cliente você escolhe qual conta alimenta o dash.
+                        Conecte uma vez a conta Facebook da agência para listar todas as contas de anúncio disponíveis. No cadastro do cliente você apenas seleciona a conta correta.
                       </p>
                     </div>
                     <Button variant="secondary" onClick={handleConnectMeta}>
-                      Entrar com Facebook
+                      Conectar Facebook da agência
                     </Button>
                   </div>
                   {metaPending ? (
                     <div className="mt-4 rounded-2xl border border-emerald-200 bg-white px-4 py-3 text-sm text-emerald-700">
-                      Meta conectada temporariamente. As contas disponíveis já podem ser selecionadas no cadastro do cliente.
+                      Meta conectada globalmente. As contas disponíveis já podem ser selecionadas no cadastro de qualquer cliente.
                     </div>
                   ) : null}
                 </div>
 
                 <div className="rounded-[28px] border border-slate-200/80 bg-white p-4">
-                  <p className="font-semibold text-slate-900">Código/API token da Meta</p>
+                  <p className="font-semibold text-slate-900">Token/API global da Meta</p>
                   <p className="mt-2 text-sm leading-6 text-slate-500">
-                    Se preferir não usar o login do Facebook, cole aqui o access token da Meta. Ele libera a listagem de contas de anúncio no cadastro do cliente.
+                    Se preferir não usar o login do Facebook, cole aqui um access token da Meta uma única vez. A última opção conectada, Facebook ou token, fica ativa para listar as contas dos clientes.
                   </p>
                   <div className="mt-4 grid gap-3 md:grid-cols-[1fr_auto]">
                     <input
@@ -1615,11 +1615,11 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
                   <div>
                     <p className="font-semibold text-slate-900">Meta Ads</p>
                     <p className="mt-1 text-sm leading-6 text-slate-500">
-                      Selecione a conta de anúncio. Caso a lista esteja vazia, vincule a API da Meta em Configurações.
+                      Selecione a conta de anúncio. Caso a lista esteja vazia, conecte o Facebook da agência ou salve o token global em Configurações.
                     </p>
                   </div>
-                  <Button variant="secondary" onClick={handleConnectMeta} type="button">
-                    Vincular API
+                  <Button variant="secondary" onClick={() => setActiveModule('settings')} type="button">
+                    Configurar Meta
                   </Button>
                 </div>
                 <select

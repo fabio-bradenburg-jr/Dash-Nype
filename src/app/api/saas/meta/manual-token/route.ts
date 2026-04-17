@@ -2,8 +2,9 @@ import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 
 import { PLATFORM_AUTH_COOKIE } from '@/lib/saas/auth'
-
-const META_SAAS_PENDING_COOKIE = 'meta_saas_pending'
+import { createAdminClient } from '@/lib/server/supabase-admin'
+import { saveWorkspaceMetaConnection } from '@/lib/server/meta-connection'
+import { verifyLocalAccessToken } from '@/lib/server/platform-auth-fallback'
 
 export async function POST(request: Request) {
   const token = (await cookies()).get(PLATFORM_AUTH_COOKIE)?.value
@@ -19,29 +20,26 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Informe o código/API token da Meta.' }, { status: 400 })
     }
 
-    const response = NextResponse.json({ ok: true })
-    response.cookies.set({
-      name: META_SAAS_PENDING_COOKIE,
-      value: Buffer.from(
-        JSON.stringify({
-          clientId: '',
-          accessToken,
-          tokenType: 'Bearer',
-          scope: 'manual',
-          expiryDate: null,
-          metaUserId: '',
-          metaUserName: 'Token manual',
-        })
-      ).toString('base64url'),
-      httpOnly: true,
-      sameSite: 'lax',
-      secure: process.env.NODE_ENV === 'production',
-      path: '/',
-      maxAge: 60 * 60 * 24 * 7,
+    const payload = await verifyLocalAccessToken(token)
+    const workspaceId = String(payload.tenant_id || '')
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Workspace não encontrado na sessão.' }, { status: 401 })
+    }
+
+    await saveWorkspaceMetaConnection(createAdminClient(), workspaceId, {
+      accessToken,
+      tokenType: 'Bearer',
+      scope: 'manual',
+      expiryDate: null,
+      metaUserId: '',
+      metaUserName: 'Token/API manual',
     })
 
-    return response
-  } catch {
-    return NextResponse.json({ error: 'Não foi possível salvar o token da Meta.' }, { status: 500 })
+    return NextResponse.json({ ok: true, mode: 'manual' })
+  } catch (error) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Não foi possível salvar o token da Meta.' },
+      { status: 500 }
+    )
   }
 }

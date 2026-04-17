@@ -4,6 +4,9 @@ import { NextResponse } from 'next/server'
 import { PLATFORM_AUTH_COOKIE } from '@/lib/saas/auth'
 import { createLocalSaasIntegration } from '@/lib/saas/local-api'
 import { getPlatformApiUrl } from '@/lib/saas/server-api'
+import { createAdminClient } from '@/lib/server/supabase-admin'
+import { getWorkspaceMetaConnection } from '@/lib/server/meta-connection'
+import { verifyLocalAccessToken } from '@/lib/server/platform-auth-fallback'
 
 const API_URL = getPlatformApiUrl()
 const META_SAAS_PENDING_COOKIE = 'meta_saas_pending'
@@ -25,8 +28,18 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 })
   }
 
-  if (!pending?.accessToken) {
-    return NextResponse.json({ error: 'A conexão da Meta expirou. Tente novamente.' }, { status: 400 })
+  let accessToken = String(pending?.accessToken || '')
+  if (token) {
+    const payload = await verifyLocalAccessToken(token)
+    const workspaceId = String(payload.tenant_id || '')
+    if (workspaceId) {
+      const connection = await getWorkspaceMetaConnection(createAdminClient(), workspaceId)
+      accessToken = String(connection?.access_token || accessToken)
+    }
+  }
+
+  if (!accessToken) {
+    return NextResponse.json({ error: 'Conecte a Meta uma vez em Configurações antes de vincular contas aos clientes.' }, { status: 400 })
   }
 
   const body = await request.json()
@@ -50,27 +63,13 @@ export async function POST(request: Request) {
         provider: 'meta_ads',
         account_name: accountName || `Conta ${accountId}`,
         external_account_id: accountId,
-        access_token: pending.accessToken,
+        access_token: accessToken,
       }),
       cache: 'no-store',
     })
 
     const data = await response.json()
-    const nextResponse = NextResponse.json(data, { status: response.status })
-
-    if (response.ok) {
-      nextResponse.cookies.set({
-        name: META_SAAS_PENDING_COOKIE,
-        value: '',
-        httpOnly: true,
-        sameSite: 'lax',
-        secure: process.env.NODE_ENV === 'production',
-        path: '/',
-        maxAge: 0,
-      })
-    }
-
-    return nextResponse
+    return NextResponse.json(data, { status: response.status })
   } catch (error) {
     try {
       const integration = await createLocalSaasIntegration(token, {
@@ -78,19 +77,9 @@ export async function POST(request: Request) {
         provider: 'meta_ads',
         account_name: accountName || `Conta ${accountId}`,
         external_account_id: accountId,
-        access_token: pending.accessToken,
+        access_token: accessToken,
       })
-      const nextResponse = NextResponse.json(integration, { status: 201 })
-      nextResponse.cookies.set({
-        name: META_SAAS_PENDING_COOKIE,
-        value: '',
-        httpOnly: true,
-        sameSite: 'lax',
-        secure: process.env.NODE_ENV === 'production',
-        path: '/',
-        maxAge: 0,
-      })
-      return nextResponse
+      return NextResponse.json(integration, { status: 201 })
     } catch (fallbackError) {
       return NextResponse.json(
         {
