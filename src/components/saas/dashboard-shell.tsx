@@ -8,6 +8,9 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
+  Cell,
+  Pie,
+  PieChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -83,22 +86,18 @@ function metricKey(metric: { key?: string | null; label: string }) {
 const fixedLegacyMetricKeys = [
   'spend',
   'impressions',
-  'cpm',
-  'reach',
-  'frequency',
   'clicks',
   'cpc',
   'ctr',
   'totalConversions',
+] as const
+
+const optionalLegacyMetricKeys = [
+  'cpm',
+  'reach',
+  'frequency',
   'conversionRate',
   'purchaseValue',
-  'purchases',
-  'costPerPurchase',
-  'roas',
-  'leads',
-  'costPerLead',
-  'messages',
-  'costPerMessage',
 ] as const
 
 const legacyResultGroups = [
@@ -294,10 +293,19 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
       return [metricAliases[normalized] || metric.key || normalized, metric]
     })
   )
-  const fixedLegacyMetrics = fixedLegacyMetricKeys
+  const getMetric = (key: string) => metricsByKey.get(key)
+  const configuredDashboardMetricKeys = Array.isArray(selectedClient.business_data?.dashboardMetricKeys)
+    ? selectedClient.business_data.dashboardMetricKeys.map((item) => String(item))
+    : []
+  const fixedLegacyMetrics = [
+    ...fixedLegacyMetricKeys,
+    ...optionalLegacyMetricKeys.filter((key) => {
+      const metric = getMetric(key)
+      return configuredDashboardMetricKeys.includes(key) || Boolean(metric?.value)
+    }),
+  ]
     .map((key) => metricsByKey.get(key))
     .filter((metric): metric is MetricCard => Boolean(metric))
-  const getMetric = (key: string) => metricsByKey.get(key)
   const legacyObjectiveCards = legacyResultGroups.map((group) => {
     const resultMetric = getMetric(group.metricKey)
     const costMetric = getMetric(group.costMetricKey)
@@ -310,8 +318,32 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
       costFormat: costMetric?.format || 'currency',
     }
   })
+  const hasActiveObjectiveResult = legacyObjectiveCards.some((group) => ['purchases', 'leads', 'messages'].includes(group.key) && group.resultValue > 0)
+  const visibleObjectiveCards = legacyObjectiveCards.filter((group) => {
+    if (['reach', 'truplays'].includes(group.key)) {
+      return group.resultValue > 0 || configuredDashboardMetricKeys.includes(group.metricKey)
+    }
+
+    if (hasActiveObjectiveResult) return group.resultValue > 0
+    return ['purchases', 'leads', 'messages'].includes(group.key)
+  })
   const primaryChartConfig = chartMetricOptions.find((option) => option.key === primaryChartMetric) || chartMetricOptions[0]
   const secondaryChartConfig = chartMetricOptions.find((option) => option.key === secondaryChartMetric) || chartMetricOptions[1]
+  const distributionData = [
+    { name: 'Compras', value: getMetric('purchases')?.value || 0, color: '#3b82f6' },
+    { name: 'Leads', value: getMetric('leads')?.value || 0, color: '#10b981' },
+    { name: 'Mensagens', value: getMetric('messages')?.value || 0, color: '#f59e0b' },
+    { name: 'Cliques sem conversão', value: getMetric('clicksWithoutConversion')?.value || 0, color: '#475569' },
+  ]
+  const chartHasDistribution = distributionData.some((item) => item.value > 0)
+  const funnelStages = clientDashboard.funnel.length
+    ? clientDashboard.funnel
+    : [
+        { stage_name: 'Impressões', volume: getMetric('impressions')?.value || 0, conversion_rate: null },
+        { stage_name: 'Cliques', volume: getMetric('clicks')?.value || 0, conversion_rate: null },
+        { stage_name: 'Leads', volume: getMetric('leads')?.value || 0, conversion_rate: null },
+        { stage_name: 'Compras', volume: getMetric('purchases')?.value || 0, conversion_rate: null },
+      ]
   const campaignColumns = [
     { key: 'spend', label: 'Investimento', format: 'currency' },
     { key: 'totalConversions', label: 'Conversões', format: 'number' },
@@ -632,23 +664,27 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
               <div className="max-w-3xl">
                 <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/80 bg-white/90 px-3 py-2 text-xs font-semibold uppercase tracking-[0.26em] text-slate-500">
                   <Sparkles className="h-3.5 w-3.5 text-[var(--saas-accent)]" />
-                  {showOverview ? 'Nype Orbit' : currentModule.title}
+                  {showOverview
+                    ? 'Nype Orbit'
+                    : showDashs
+                    ? `Dashboard ${selectedClient.name || 'cliente'}`
+                    : currentModule.title}
                 </div>
                 <h1 className="font-manrope text-4xl font-extrabold tracking-[-0.05em] text-slate-950 md:text-5xl">
                   {showOverview
                     ? `Boas-vindas, ${currentUserName}`
-                    : activeModule === 'dashs'
-                    ? 'Métricas, CRM e entrega ao cliente em uma única plataforma.'
+                    : showDashs
+                    ? selectedClient.name || 'Dashboard do cliente'
                     : currentModule.title}
                 </h1>
                 <p className="mt-4 max-w-2xl text-base leading-7 text-slate-600">
                   {showOverview
                     ? 'Use a IA para consultar clientes, campanhas, dashs, integrações e arquivos vinculados.'
-                    : activeModule === 'dashs'
-                    ? 'Dados unificados de campanha, sync com CRM e leitura premium de performance para a agência inteira.'
+                    : showDashs
+                    ? 'A seguir, apresentamos um panorama consolidado do período selecionado, separando os dados por origem para facilitar a leitura executiva da operação.'
                     : currentModule.description}
                 </p>
-                {showWorkspaceControls ? (
+                {showWorkspaceControls && !showDashs ? (
                 <div className="mt-6 flex flex-wrap gap-3">
                   {positiveMetrics.map((metric) => (
                     <div key={metric.label} className="rounded-2xl border border-slate-200/80 bg-white/90 px-4 py-3 shadow-sm">
@@ -686,16 +722,37 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
                   </Button>
                   <Button className="h-12" variant="ghost" onClick={handleLogout}>Sair</Button>
                 </div>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <div className="rounded-2xl border border-slate-200/70 bg-white/80 px-4 py-3">
-                    <p className="text-xs uppercase tracking-[0.22em] text-slate-400">Integrações</p>
-                    <p className="mt-2 font-manrope text-2xl font-extrabold">{selectedClientIntegrations.length}</p>
+                {showDashs ? (
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="rounded-2xl border border-slate-200/70 bg-white/80 px-4 py-3">
+                      <p className="text-xs uppercase tracking-[0.22em] text-slate-400">Conta de anúncio</p>
+                      <p className="mt-2 font-manrope text-xl font-extrabold">{selectedMetaIntegration?.external_account_id || selectedMetaIntegration?.account_name || 'Não vinculada'}</p>
+                    </div>
+                    <div className="rounded-2xl border border-slate-200/70 bg-white/80 px-4 py-3">
+                      <p className="text-xs uppercase tracking-[0.22em] text-slate-400">CRM</p>
+                      <p className="mt-2 font-manrope text-xl font-extrabold">{selectedClientIntegrations.find((integration) => integration.provider === 'agendor')?.account_name || 'Não vinculado'}</p>
+                    </div>
+                    <div className="rounded-2xl border border-slate-200/70 bg-white/80 px-4 py-3">
+                      <p className="text-xs uppercase tracking-[0.22em] text-slate-400">Vendedor</p>
+                      <p className="mt-2 font-manrope text-xl font-extrabold">Todos os vendedores</p>
+                    </div>
+                    <div className="rounded-2xl border border-slate-200/70 bg-white/80 px-4 py-3">
+                      <p className="text-xs uppercase tracking-[0.22em] text-slate-400">Demais integrações mapeadas</p>
+                      <p className="mt-2 font-manrope text-xl font-extrabold">{selectedClientIntegrations.length} conta(s) vinculada(s)</p>
+                    </div>
                   </div>
-                  <div className="rounded-2xl border border-slate-200/70 bg-white/80 px-4 py-3">
-                    <p className="text-xs uppercase tracking-[0.22em] text-slate-400">Objetivo</p>
-                    <p className="mt-2 font-manrope text-xl font-extrabold capitalize">{objectiveLabel(selectedClient.main_goal)}</p>
+                ) : (
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="rounded-2xl border border-slate-200/70 bg-white/80 px-4 py-3">
+                      <p className="text-xs uppercase tracking-[0.22em] text-slate-400">Integrações</p>
+                      <p className="mt-2 font-manrope text-2xl font-extrabold">{selectedClientIntegrations.length}</p>
+                    </div>
+                    <div className="rounded-2xl border border-slate-200/70 bg-white/80 px-4 py-3">
+                      <p className="text-xs uppercase tracking-[0.22em] text-slate-400">Objetivo</p>
+                      <p className="mt-2 font-manrope text-xl font-extrabold capitalize">{objectiveLabel(selectedClient.main_goal)}</p>
+                    </div>
                   </div>
-                </div>
+                )}
                 {loadingClientContext ? (
                   <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-700">
                     Carregando o contexto completo do cliente selecionado...
@@ -719,65 +776,84 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
               <CardContent className="space-y-5 p-5">
                 <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                   <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Meta Ads</p>
-                    <h2 className="mt-2 font-manrope text-2xl font-extrabold tracking-tight text-slate-950">
-                      Resumo de resultados
-                    </h2>
-                    <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500">
-                      Mesma leitura do dash antigo: filtros de resultado, métricas fixas, comparativos, rankings e tabela de campanhas.
-                    </p>
+                    <div className="inline-flex items-center gap-2 rounded-2xl border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-bold text-blue-700">
+                      <span>∞</span>
+                      <span>Meta Ads</span>
+                    </div>
                   </div>
-                  <div className="grid gap-2 sm:grid-cols-4 xl:min-w-[520px]">
-                    {['Compras', 'Cadastros', 'Mensagens iniciadas', 'Alcance'].map((item) => (
-                      <span key={item} className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-center text-xs font-semibold text-slate-600 shadow-sm">
-                        {item}
-                      </span>
-                    ))}
-                  </div>
+                  <p className="text-sm font-semibold text-slate-500">
+                    Primeiro bloco de leitura das contas de anúncio e da performance de mídia.
+                  </p>
                 </div>
-                <div className="grid gap-3 lg:grid-cols-3">
-                  <div className="rounded-3xl border border-slate-200 bg-slate-50/80 p-4">
-                    <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">Conta de anúncio</p>
-                    <p className="mt-2 font-semibold text-slate-900">{selectedMetaIntegration?.account_name || 'Nenhuma conta Meta vinculada'}</p>
-                  </div>
-                  <div className="rounded-3xl border border-slate-200 bg-slate-50/80 p-4">
-                    <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">Recorte</p>
-                    <p className="mt-2 font-semibold text-slate-900">Campanhas, conjuntos e anúncios ativos</p>
-                  </div>
-                  <div className="rounded-3xl border border-slate-200 bg-slate-50/80 p-4">
-                    <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">Cliente</p>
-                    <p className="mt-2 font-semibold text-slate-900">{selectedClient.name || 'Selecione um cliente'}</p>
-                  </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-slate-200/70">
+              <CardContent className="flex flex-col gap-4 p-5 lg:flex-row lg:items-center lg:justify-between">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Leitura por objetivo</p>
+                  <h2 className="mt-2 font-manrope text-2xl font-extrabold tracking-tight text-slate-950">
+                    Filtro por tipo de resultado
+                  </h2>
+                  <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500">
+                    O relatório considera apenas campanhas que geraram o tipo de resultado selecionado.
+                  </p>
+                </div>
+                <div className="grid gap-2 sm:grid-cols-4 xl:min-w-[520px]">
+                  {['Compras', 'Cadastros', 'Mensagens iniciadas', 'Alcance'].map((item) => (
+                    <span key={item} className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-center text-xs font-semibold text-slate-600 shadow-sm">
+                      {item}
+                    </span>
+                  ))}
                 </div>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader>
-                <div>
-                  <CardTitle>Mídia e distribuição</CardTitle>
-                  <CardDescription>Cards fixos do dashboard antigo, na mesma ordem de leitura.</CardDescription>
+                <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                  <div>
+                    <CardTitle>Resumo de resultados</CardTitle>
+                    <CardDescription>Os indicadores abaixo consideram somente as campanhas enquadradas no filtro de resultado ativo.</CardDescription>
+                  </div>
+                  <Button variant="secondary">+ Adicionar métrica</Button>
                 </div>
               </CardHeader>
-              <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6">
-                {fixedLegacyMetrics.map((metric) => (
-                  <div key={metric.key || metric.label} className="rounded-3xl border border-slate-200/70 bg-white/85 p-4 shadow-sm">
-                    <div className="flex items-start justify-between gap-3">
-                      <p className="text-sm font-semibold leading-5 text-slate-600">{metric.label}</p>
-                      <Badge tone={metric.change >= 0 ? 'green' : 'red'}>
-                        {metric.change >= 0 ? '+' : ''}{metric.change}%
-                      </Badge>
+              <CardContent className="space-y-5">
+                <div>
+                  <h3 className="font-manrope text-xl font-extrabold text-slate-950">Mídia e distribuição</h3>
+                  <p className="mt-1 text-sm text-slate-500">Visão geral do investimento e da entrega da campanha.</p>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+                  {fixedLegacyMetrics.map((metric) => (
+                    <div key={metric.key || metric.label} className="rounded-3xl border border-slate-200/70 bg-white/85 p-5 shadow-sm">
+                      <div className="flex items-start justify-between gap-3">
+                        <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">{metric.label}</p>
+                        <Badge tone={metric.change >= 0 ? 'green' : 'red'}>
+                          {metric.change >= 0 ? '+' : ''}{metric.change}%
+                        </Badge>
+                      </div>
+                      <p className="mt-5 font-manrope text-3xl font-extrabold tracking-tight text-slate-950">
+                        {formatValue(metric.value, metric.format)}
+                      </p>
+                      <p className="mt-3 text-xs font-medium text-slate-400">
+                        {metric.change === 0 ? 'Sem variação vs período anterior' : 'Atualizado conforme o período selecionado'}
+                      </p>
                     </div>
-                    <p className="mt-4 font-manrope text-2xl font-extrabold tracking-tight text-slate-950">
-                      {formatValue(metric.value, metric.format)}
-                    </p>
+                  ))}
+                  <div className="grid min-h-[150px] place-items-center rounded-3xl border border-dashed border-slate-200/90 bg-slate-50/60 p-5 text-center text-sm text-slate-400">
+                    <div>
+                      <p className="text-lg font-semibold text-slate-500">+</p>
+                      <p className="font-semibold">Adicionar métrica</p>
+                      <p className="mt-1">Criar um novo card nessa sequência.</p>
+                    </div>
                   </div>
-                ))}
+                </div>
               </CardContent>
             </Card>
 
-            <div className="grid gap-4 xl:grid-cols-5">
-              {legacyObjectiveCards.map((group) => (
+            <div className="grid gap-4 xl:grid-cols-3">
+              {visibleObjectiveCards.map((group) => (
                 <Card key={group.key} className="overflow-hidden">
                   <CardContent className="p-0">
                     <div className={`h-1.5 bg-gradient-to-r ${group.tone}`} />
@@ -867,39 +943,79 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
               <Card>
                 <CardHeader>
                   <div>
-                    <CardTitle>{legacyObjectiveCards[0].title} x custo</CardTitle>
-                    <CardDescription>Comparativo de resultado e custo no agrupamento principal.</CardDescription>
+                    <CardTitle>Distribuição de resultados</CardTitle>
+                    <CardDescription>Leitura rápida do resultado da operação Meta desse cliente.</CardDescription>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-5">
-                  <div className="grid gap-3 sm:grid-cols-3 xl:grid-cols-1">
-                    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">{legacyObjectiveCards[0].resultLabel}</p>
-                      <p className="mt-1 font-manrope text-xl font-extrabold">{formatValue(legacyObjectiveCards[0].resultValue, legacyObjectiveCards[0].resultFormat)}</p>
-                    </div>
-                    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">{legacyObjectiveCards[0].costLabel}</p>
-                      <p className="mt-1 font-manrope text-xl font-extrabold">{formatValue(legacyObjectiveCards[0].costValue, legacyObjectiveCards[0].costFormat)}</p>
-                    </div>
-                    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Investimento</p>
-                      <p className="mt-1 font-manrope text-xl font-extrabold">{formatValue(getMetric('spend')?.value || 0, 'currency')}</p>
-                    </div>
-                  </div>
-                  <div className="h-[190px]">
+                  <div className="h-[260px]">
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={clientDashboard.time_series}>
-                        <CartesianGrid stroke="#e2e8f0" strokeDasharray="3 3" vertical={false} />
-                        <XAxis dataKey="date" stroke="#64748b" tickLine={false} axisLine={false} />
-                        <YAxis stroke="#64748b" tickLine={false} axisLine={false} />
+                      <PieChart>
+                        <Pie
+                          data={chartHasDistribution ? distributionData : distributionData.map((item, index) => ({ ...item, value: index === 3 ? 1 : 0 }))}
+                          dataKey="value"
+                          nameKey="name"
+                          innerRadius={72}
+                          outerRadius={104}
+                          paddingAngle={2}
+                        >
+                          {distributionData.map((item) => (
+                            <Cell key={item.name} fill={item.color} />
+                          ))}
+                        </Pie>
                         <Tooltip />
-                        <Bar dataKey="purchases" name="Compras" fill="var(--saas-primary)" radius={[8, 8, 0, 0]} />
-                      </BarChart>
+                      </PieChart>
                     </ResponsiveContainer>
+                  </div>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {distributionData.map((item) => (
+                      <div key={item.name} className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600">
+                        <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: item.color }} />
+                        <span>{item.name}</span>
+                      </div>
+                    ))}
                   </div>
                 </CardContent>
               </Card>
             </section>
+
+            <Card>
+              <CardHeader>
+                <div>
+                  <CardTitle>Funil de métricas</CardTitle>
+                  <CardDescription>Arraste as métricas para montar a jornada manualmente. O sistema calcula a taxa de uma etapa para outra automaticamente.</CardDescription>
+                </div>
+              </CardHeader>
+              <CardContent className="grid gap-5 xl:grid-cols-[0.36fr_1fr]">
+                <div className="rounded-3xl border border-slate-200 bg-slate-50/80 p-4">
+                  <p className="text-sm font-bold text-slate-900">Métricas disponíveis</p>
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {fixedLegacyMetrics.slice(0, 8).map((metric) => (
+                      <span key={`available-${metric.key || metric.label}`} className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600">
+                        + {metric.label}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+                <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                  {funnelStages.map((stage, index) => {
+                    const previousVolume = index > 0 ? funnelStages[index - 1].volume : 0
+                    const rate = index > 0 ? Number(((stage.volume / Math.max(previousVolume, 1)) * 100).toFixed(1)) : null
+
+                    return (
+                      <div key={`${stage.stage_name}-${index}`} className="rounded-3xl border border-slate-200/80 bg-white p-4 shadow-sm">
+                        <div className="flex items-center justify-between">
+                          <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">{stage.stage_name}</p>
+                          <span className="text-xs font-semibold text-rose-500">Remover</span>
+                        </div>
+                        <p className="mt-4 font-manrope text-3xl font-extrabold text-slate-950">{formatValue(stage.volume, 'number')}</p>
+                        <p className="mt-2 text-sm text-slate-500">{rate === null ? 'Topo do funil' : `${formatValue(rate, 'percent')} da etapa anterior`}</p>
+                      </div>
+                    )
+                  })}
+                </div>
+              </CardContent>
+            </Card>
 
             <section className="grid gap-6 xl:grid-cols-3">
               <Card>
