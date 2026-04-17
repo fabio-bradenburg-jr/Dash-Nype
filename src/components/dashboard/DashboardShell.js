@@ -2801,7 +2801,7 @@ function mergeInitialClientRecord(currentClients, initialClientRecord) {
   )
 }
 
-export default function DashboardShell({ initialTab = 'home', initialActiveClientId = '', initialClientRecord = null }) {
+export default function DashboardShell({ initialTab = 'home', initialActiveClientId = '', initialClientRecord = null, initialClientsOverride = null }) {
   const { user, profile, access, appearance, updateAppearance, loading: userLoading } = useUser()
   const supabase = createClient()
   const dashboardRef = useRef(null)
@@ -2817,6 +2817,7 @@ export default function DashboardShell({ initialTab = 'home', initialActiveClien
   const metaFilteredCampaignIdsRef = useRef([])
   const metaFilteredAdsetIdsRef = useRef([])
   const metaFilteredAdIdsRef = useRef([])
+  const hasInitialClientsOverride = Array.isArray(initialClientsOverride)
 
   const [hasLoadedPreferences, setHasLoadedPreferences] = useState(false)
   const [activeTab, setActiveTab] = useState(initialTab)
@@ -4431,11 +4432,13 @@ export default function DashboardShell({ initialTab = 'home', initialActiveClien
 
   useEffect(() => {
     const preferences = loadDashboardPreferences()
-    const initialClients = preferences.clients?.length
-      ? preferences.clients
-      : [createClientRecord({ name: 'Cliente demo' })]
+    const initialClients = hasInitialClientsOverride
+      ? initialClientsOverride
+      : preferences.clients?.length
+        ? preferences.clients
+        : [createClientRecord({ name: 'Cliente demo' })]
     const mergedInitialClients = mergeInitialClientRecord(initialClients, initialClientRecord)
-    const resolvedInitialActiveClientId = initialActiveClientId || preferences.activeClientId || initialClients[0]?.id || ''
+    const resolvedInitialActiveClientId = initialActiveClientId || (hasInitialClientsOverride ? '' : preferences.activeClientId) || initialClients[0]?.id || ''
 
     setThemeColor(preferences.themeColor)
     setMetric1(preferences.metric1)
@@ -4468,7 +4471,7 @@ export default function DashboardShell({ initialTab = 'home', initialActiveClien
     setTeamProfiles(Array.isArray(preferences.teamProfiles) ? preferences.teamProfiles : [])
     setActiveClientId(resolvedInitialActiveClientId)
     setHasLoadedPreferences(true)
-  }, [initialActiveClientId, initialClientRecord])
+  }, [initialActiveClientId, initialClientRecord, initialClientsOverride, hasInitialClientsOverride])
 
   useEffect(() => {
     if (!hasLoadedPreferences || userLoading || !user) return
@@ -4644,6 +4647,11 @@ export default function DashboardShell({ initialTab = 'home', initialActiveClien
       return
     }
 
+    if (hasInitialClientsOverride) {
+      setIsDashboardEntryModalOpen(false)
+      return
+    }
+
     if (dashboardEligibleClients.length <= 1) {
       setIsDashboardEntryModalOpen(false)
       return
@@ -4660,7 +4668,7 @@ export default function DashboardShell({ initialTab = 'home', initialActiveClien
         : dashboardEligibleClients[0]?.id || ''
     )
     setIsDashboardEntryModalOpen(true)
-  }, [activeTab, activeClientId, dashboardEligibleClients])
+  }, [activeTab, activeClientId, dashboardEligibleClients, hasInitialClientsOverride])
 
   useEffect(() => {
     if ((activeTab === 'clientes' || activeTab === 'operacao') && !canAccessClientsTab) {
@@ -4767,7 +4775,7 @@ export default function DashboardShell({ initialTab = 'home', initialActiveClien
   }, [activeTab, activeClientId, activeClient?.rdPipelineId, activeIntegrations.rdStationToken])
 
   useEffect(() => {
-    if (!hasLoadedPreferences || userLoading || !user || hasSyncedServerState) return
+    if (!hasLoadedPreferences || userLoading || !user || hasSyncedServerState || hasInitialClientsOverride) return
 
     const syncFromServer = async () => {
       try {
@@ -4822,7 +4830,7 @@ export default function DashboardShell({ initialTab = 'home', initialActiveClien
     }
 
     syncFromServer()
-  }, [hasLoadedPreferences, userLoading, user, hasSyncedServerState, initialActiveClientId, initialClientRecord])
+  }, [hasLoadedPreferences, userLoading, user, hasSyncedServerState, initialActiveClientId, initialClientRecord, hasInitialClientsOverride])
 
   useEffect(() => {
     if (!hasLoadedPreferences) return
@@ -4846,6 +4854,8 @@ export default function DashboardShell({ initialTab = 'home', initialActiveClien
       teamProfiles,
     }
 
+    if (hasInitialClientsOverride) return
+
     saveDashboardPreferences(state)
 
     if (userLoading || !user || !canPersistClientChanges || !hasSyncedServerState) return
@@ -4863,7 +4873,7 @@ export default function DashboardShell({ initialTab = 'home', initialActiveClien
     }, 300)
 
     return () => window.clearTimeout(timeoutId)
-  }, [hasLoadedPreferences, themeColor, metric1, metric2, activeClientId, globalIntegrations, clients, clientGroups, products, operationCards, operationSettings, effectiveClientImplementationPhases, effectiveClientSystemFields, clientCustomColumns, clientCustomTabs, clientTabOverrides, teamProfiles, userLoading, user, canPersistClientChanges, hasSyncedServerState])
+  }, [hasLoadedPreferences, themeColor, metric1, metric2, activeClientId, globalIntegrations, clients, clientGroups, products, operationCards, operationSettings, effectiveClientImplementationPhases, effectiveClientSystemFields, clientCustomColumns, clientCustomTabs, clientTabOverrides, teamProfiles, userLoading, user, canPersistClientChanges, hasSyncedServerState, hasInitialClientsOverride])
 
   useEffect(() => {
     ChartJS.defaults.color = '#94a3b8'

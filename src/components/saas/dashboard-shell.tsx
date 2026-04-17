@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import {
   Area,
@@ -271,6 +271,9 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
   const [metaConnectionPending, setMetaConnectionPending] = useState(false)
   const [metaAccounts, setMetaAccounts] = useState<Array<{ id: string; name: string; clientId: string }>>([])
   const [selectedMetaAccountId, setSelectedMetaAccountId] = useState('')
+  const [metaApiToken, setMetaApiToken] = useState('')
+  const [savingMetaApiToken, setSavingMetaApiToken] = useState(false)
+  const [metaApiTokenMessage, setMetaApiTokenMessage] = useState('')
   const [showClientForm, setShowClientForm] = useState(false)
   const [primaryChartMetric, setPrimaryChartMetric] = useState('spend')
   const [secondaryChartMetric, setSecondaryChartMetric] = useState('conversions')
@@ -287,6 +290,32 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
   )
   const selectedClientIntegrations = clientIntegrations
   const selectedMetaIntegration = selectedClientIntegrations.find((integration) => integration.provider === 'meta_ads')
+  const legacyDashboardClients = useMemo(() => {
+    return snapshot.clients.map((client) => {
+      const clientIntegrations = snapshot.integrations.filter((integration) => integration.client_id === client.id)
+      const metaIntegration = clientIntegrations.find((integration) => integration.provider === 'meta_ads')
+      const agendorIntegration = clientIntegrations.find((integration) => integration.provider === 'agendor')
+      const businessData = (client.business_data || {}) as Record<string, unknown>
+      const businessIntegrations = (businessData.integrations || {}) as Record<string, unknown>
+
+      return {
+        id: client.id,
+        name: client.name,
+        company: client.company,
+        dashboardEnabled: true,
+        operationEnabled: false,
+        dashboardColor: 'blue',
+        dashboardVisibleIntegrationKeys: ['meta_ads', 'rd_station'],
+        metaAdAccountId: metaIntegration?.external_account_id || String(businessData.metaAdAccountId || ''),
+        rdStationAccountId: agendorIntegration?.account_name || String(businessData.agendorAccountId || ''),
+        rdPipelineId: String(businessData.agendorAccountId || ''),
+        rdStationToken: String(businessIntegrations.agendorToken || ''),
+        funnelSteps: ['impressions', 'clicks', 'leads', 'purchases'],
+        activeDashboardTemplateId: '',
+        dashboardTemplates: [],
+      }
+    })
+  }, [snapshot.clients, snapshot.integrations])
   const positiveMetrics = clientDashboard.overview_metrics.slice(0, 3)
   const metricsByKey = new Map(
     clientDashboard.overview_metrics.map((metric) => {
@@ -587,6 +616,43 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
     window.location.href = `/api/saas/meta/start?${clientParam}return_to=/`
   }
 
+  async function handleSaveMetaApiToken() {
+    if (!metaApiToken.trim()) return
+
+    setSavingMetaApiToken(true)
+    setMetaApiTokenMessage('')
+    try {
+      const response = await fetch('/api/saas/meta/manual-token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ accessToken: metaApiToken.trim() }),
+      })
+      const data = await response.json()
+      if (!response.ok) {
+        throw new Error(data?.error || 'Não foi possível salvar a API da Meta.')
+      }
+
+      const accountsResponse = await fetch('/api/saas/meta/adaccounts', { cache: 'no-store' })
+      const accountsData = await accountsResponse.json()
+      const accounts = accountsData.accounts || []
+      setMetaAccounts(accounts)
+      setMetaConnectionPending(true)
+      if (accounts[0]?.id) {
+        setSelectedMetaAccountId(accounts[0].id)
+      }
+      setMetaApiToken('')
+      setMetaApiTokenMessage(
+        accounts.length
+          ? 'API da Meta salva. As contas de anúncio já estão disponíveis no cadastro do cliente.'
+          : 'API da Meta salva. Se nenhuma conta aparecer, confira permissões do token.'
+      )
+    } catch (error) {
+      setMetaApiTokenMessage(error instanceof Error ? error.message : 'Não foi possível salvar a API da Meta.')
+    } finally {
+      setSavingMetaApiToken(false)
+    }
+  }
+
   async function handleLinkMetaAccount() {
     const selectedAccount = metaAccounts.find((account) => account.id === selectedMetaAccountId)
     if (!selectedAccount) return
@@ -775,7 +841,11 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
 
           {showDashs ? (
           <section className="saas-legacy-dashboard-frame">
-            <LegacyDashboardShell initialTab="apresentacao" />
+            <LegacyDashboardShell
+              initialTab="apresentacao"
+              initialActiveClientId={selectedClientId || selectedClient.id}
+              initialClientsOverride={legacyDashboardClients}
+            />
           </section>
           ) : null}
 
@@ -1338,18 +1408,42 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
                 <div className="rounded-[28px] border border-slate-200/80 bg-slate-50/80 p-4">
                   <div className="flex items-start justify-between gap-4">
                     <div>
-                      <p className="font-semibold text-slate-900">Meta Ads</p>
+                      <p className="font-semibold text-slate-900">Login com Facebook</p>
                       <p className="mt-2 text-sm leading-6 text-slate-500">
-                        Use essa conexão para buscar as contas de anúncio disponíveis. No cadastro do cliente você escolhe qual conta alimenta o dash.
+                        Entre com sua conta do Facebook para buscar as contas de anúncio disponíveis. No cadastro do cliente você escolhe qual conta alimenta o dash.
                       </p>
                     </div>
                     <Button variant="secondary" onClick={handleConnectMeta}>
-                      Vincular Meta
+                      Entrar com Facebook
                     </Button>
                   </div>
                   {metaPending ? (
                     <div className="mt-4 rounded-2xl border border-emerald-200 bg-white px-4 py-3 text-sm text-emerald-700">
                       Meta conectada temporariamente. As contas disponíveis já podem ser selecionadas no cadastro do cliente.
+                    </div>
+                  ) : null}
+                </div>
+
+                <div className="rounded-[28px] border border-slate-200/80 bg-white p-4">
+                  <p className="font-semibold text-slate-900">Código/API token da Meta</p>
+                  <p className="mt-2 text-sm leading-6 text-slate-500">
+                    Se preferir não usar o login do Facebook, cole aqui o access token da Meta. Ele libera a listagem de contas de anúncio no cadastro do cliente.
+                  </p>
+                  <div className="mt-4 grid gap-3 md:grid-cols-[1fr_auto]">
+                    <input
+                      className="h-12 rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-900 outline-none"
+                      type="password"
+                      value={metaApiToken}
+                      onChange={(event) => setMetaApiToken(event.target.value)}
+                      placeholder="Cole o access token da Meta"
+                    />
+                    <Button onClick={handleSaveMetaApiToken} disabled={savingMetaApiToken || !metaApiToken.trim()} type="button">
+                      {savingMetaApiToken ? 'Salvando...' : 'Salvar API'}
+                    </Button>
+                  </div>
+                  {metaApiTokenMessage ? (
+                    <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                      {metaApiTokenMessage}
                     </div>
                   ) : null}
                 </div>
