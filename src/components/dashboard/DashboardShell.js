@@ -3958,6 +3958,10 @@ export default function DashboardShell({ initialTab = 'home', initialActiveClien
     () => parseDashboardColor(activeClient?.dashboardColor || themeColor || 'blue') || hexToRgb(THEMES.blue.main),
     [activeClient?.dashboardColor, themeColor]
   )
+  const activeClientDashboardAccentRgb = useMemo(
+    () => parseDashboardColor(activeClient?.dashboardAccentColor || activeClient?.dashboardComplementaryColor || 'orange') || hexToRgb(THEMES.orange.main),
+    [activeClient?.dashboardAccentColor, activeClient?.dashboardComplementaryColor]
+  )
   const currentMetaResultWindow = useMemo(
     () => resolveDateWindow(dateRange, customSince, customUntil, { excludeTodayForLast30d: dateRange === 'last_30d' }),
     [dateRange, customSince, customUntil]
@@ -3965,6 +3969,10 @@ export default function DashboardShell({ initialTab = 'home', initialActiveClien
   const activeClientDashboardHex = useMemo(
     () => rgbToHex(activeClientDashboardRgb),
     [activeClientDashboardRgb]
+  )
+  const activeClientDashboardAccentHex = useMemo(
+    () => rgbToHex(activeClientDashboardAccentRgb),
+    [activeClientDashboardAccentRgb]
   )
   const selectedQualifiedStagesKey = useMemo(
     () => JSON.stringify([...selectedQualifiedStages].sort()),
@@ -4357,8 +4365,6 @@ export default function DashboardShell({ initialTab = 'home', initialActiveClien
     const hasSellerChanges = draftRdSellerFilter !== rdSellerFilter
     const hasLeadSourceChanges = !haveSameSelection(activeDraftRdLeadSources, activeRdLeadSources)
     const hasFunnelChanges = !haveSameSelection(activeDraftFunnelSteps, activeFunnelSteps)
-    const hasTemplateSelectionChanges = activeDraftDashboardTemplateId !== activeDashboardTemplateId
-    const hasTemplateContentChanges = !haveSameDashboardTemplates(activeDraftDashboardTemplates, activeDashboardTemplates)
 
     return (
       hasDateRangeChanges ||
@@ -4370,9 +4376,7 @@ export default function DashboardShell({ initialTab = 'home', initialActiveClien
       hasPipelineChanges ||
       hasSellerChanges ||
       hasLeadSourceChanges ||
-      hasFunnelChanges ||
-      hasTemplateSelectionChanges ||
-      hasTemplateContentChanges
+      hasFunnelChanges
     )
   }, [
     draftDateRange,
@@ -4397,10 +4401,6 @@ export default function DashboardShell({ initialTab = 'home', initialActiveClien
     activeRdLeadSources,
     activeDraftFunnelSteps,
     activeFunnelSteps,
-    activeDraftDashboardTemplateId,
-    activeDashboardTemplateId,
-    activeDraftDashboardTemplates,
-    activeDashboardTemplates,
   ])
   const hasPendingMondayFilters = useMemo(() => {
     const hasDateRangeChanges = draftMondayDateRange !== mondayDateRange
@@ -7592,24 +7592,28 @@ export default function DashboardShell({ initialTab = 'home', initialActiveClien
     setIsDashboardEntryModalOpen(false)
   }
 
-  const handleClientDashboardRgbChange = (channel, value) => {
+  const handleClientDashboardRgbChange = (fieldName, sourceRgb, channel, value) => {
     const nextRgb = {
-      ...activeClientDashboardRgb,
+      ...sourceRgb,
       [channel]: clampColorChannel(value),
     }
     const nextColor = `rgb(${nextRgb.r}, ${nextRgb.g}, ${nextRgb.b})`
 
-    handleClientFieldChange('dashboardColor', nextColor)
-    setThemeColor(nextColor)
+    handleClientFieldChange(fieldName, nextColor)
+    if (fieldName === 'dashboardColor') {
+      setThemeColor(nextColor)
+    }
   }
 
-  const handleClientDashboardHexChange = (value) => {
+  const handleClientDashboardHexChange = (fieldName, value) => {
     const parsedColor = hexToRgb(value)
     if (!parsedColor) return
 
     const nextColor = `rgb(${parsedColor.r}, ${parsedColor.g}, ${parsedColor.b})`
-    handleClientFieldChange('dashboardColor', nextColor)
-    setThemeColor(nextColor)
+    handleClientFieldChange(fieldName, nextColor)
+    if (fieldName === 'dashboardColor') {
+      setThemeColor(nextColor)
+    }
   }
 
   const handleGlobalIntegrationChange = (fieldName, value) => {
@@ -11699,7 +11703,17 @@ export default function DashboardShell({ initialTab = 'home', initialActiveClien
   }
 
   return (
-    <div className="dashboard-container dashboard-shell-stellar">
+    <div
+      className="dashboard-container dashboard-shell-stellar"
+      style={{
+        '--accent-blue': currentTheme.main,
+        '--main': currentTheme.main,
+        '--meta-blue': currentTheme.main,
+        '--theme-surface': currentTheme.surface,
+        '--accent-orange': `rgb(${activeClientDashboardAccentRgb.r}, ${activeClientDashboardAccentRgb.g}, ${activeClientDashboardAccentRgb.b})`,
+        '--accent': `rgb(${activeClientDashboardAccentRgb.r}, ${activeClientDashboardAccentRgb.g}, ${activeClientDashboardAccentRgb.b})`,
+      }}
+    >
       <aside className={`sidebar glass-panel ${isSidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
         <button
           type="button"
@@ -14042,14 +14056,14 @@ export default function DashboardShell({ initialTab = 'home', initialActiveClien
 
                     <div className="client-identity-side">
                       <div className="input-group">
-                        <label>Cor da dashboard</label>
+                        <label>Cor dos botões do dash</label>
                         <div className="dashboard-color-editor">
                           <div className="dashboard-color-preview-row">
                             <input
                               type="color"
                               value={activeClientDashboardHex}
-                              onChange={(event) => handleClientDashboardHexChange(event.target.value)}
-                              aria-label="Selecionar cor da dashboard"
+                              onChange={(event) => handleClientDashboardHexChange('dashboardColor', event.target.value)}
+                              aria-label="Selecionar cor dos botões do dash"
                               disabled={!canEditActiveClient}
                             />
                             <div className="dashboard-color-code">
@@ -14065,7 +14079,7 @@ export default function DashboardShell({ initialTab = 'home', initialActiveClien
                                 min="0"
                                 max="255"
                                 value={activeClientDashboardRgb.r}
-                                onChange={(event) => handleClientDashboardRgbChange('r', event.target.value)}
+                                onChange={(event) => handleClientDashboardRgbChange('dashboardColor', activeClientDashboardRgb, 'r', event.target.value)}
                                 disabled={!canEditActiveClient}
                               />
                             </label>
@@ -14076,7 +14090,7 @@ export default function DashboardShell({ initialTab = 'home', initialActiveClien
                                 min="0"
                                 max="255"
                                 value={activeClientDashboardRgb.g}
-                                onChange={(event) => handleClientDashboardRgbChange('g', event.target.value)}
+                                onChange={(event) => handleClientDashboardRgbChange('dashboardColor', activeClientDashboardRgb, 'g', event.target.value)}
                                 disabled={!canEditActiveClient}
                               />
                             </label>
@@ -14087,7 +14101,7 @@ export default function DashboardShell({ initialTab = 'home', initialActiveClien
                                 min="0"
                                 max="255"
                                 value={activeClientDashboardRgb.b}
-                                onChange={(event) => handleClientDashboardRgbChange('b', event.target.value)}
+                                onChange={(event) => handleClientDashboardRgbChange('dashboardColor', activeClientDashboardRgb, 'b', event.target.value)}
                                 disabled={!canEditActiveClient}
                               />
                             </label>
@@ -14108,6 +14122,60 @@ export default function DashboardShell({ initialTab = 'home', initialActiveClien
                                 <small>{themeKey}</small>
                               </button>
                             ))}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="input-group">
+                        <label>Cor complementar do dash</label>
+                        <div className="dashboard-color-editor">
+                          <div className="dashboard-color-preview-row">
+                            <input
+                              type="color"
+                              value={activeClientDashboardAccentHex}
+                              onChange={(event) => handleClientDashboardHexChange('dashboardAccentColor', event.target.value)}
+                              aria-label="Selecionar cor complementar do dash"
+                              disabled={!canEditActiveClient}
+                            />
+                            <div className="dashboard-color-code">
+                              <strong>{activeClientDashboardAccentHex.toUpperCase()}</strong>
+                              <span>{`rgb(${activeClientDashboardAccentRgb.r}, ${activeClientDashboardAccentRgb.g}, ${activeClientDashboardAccentRgb.b})`}</span>
+                            </div>
+                          </div>
+                          <div className="dashboard-rgb-grid">
+                            <label className="dashboard-rgb-field">
+                              <span>R</span>
+                              <input
+                                type="number"
+                                min="0"
+                                max="255"
+                                value={activeClientDashboardAccentRgb.r}
+                                onChange={(event) => handleClientDashboardRgbChange('dashboardAccentColor', activeClientDashboardAccentRgb, 'r', event.target.value)}
+                                disabled={!canEditActiveClient}
+                              />
+                            </label>
+                            <label className="dashboard-rgb-field">
+                              <span>G</span>
+                              <input
+                                type="number"
+                                min="0"
+                                max="255"
+                                value={activeClientDashboardAccentRgb.g}
+                                onChange={(event) => handleClientDashboardRgbChange('dashboardAccentColor', activeClientDashboardAccentRgb, 'g', event.target.value)}
+                                disabled={!canEditActiveClient}
+                              />
+                            </label>
+                            <label className="dashboard-rgb-field">
+                              <span>B</span>
+                              <input
+                                type="number"
+                                min="0"
+                                max="255"
+                                value={activeClientDashboardAccentRgb.b}
+                                onChange={(event) => handleClientDashboardRgbChange('dashboardAccentColor', activeClientDashboardAccentRgb, 'b', event.target.value)}
+                                disabled={!canEditActiveClient}
+                              />
+                            </label>
                           </div>
                         </div>
                       </div>

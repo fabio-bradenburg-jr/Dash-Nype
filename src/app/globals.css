@@ -22,13 +22,13 @@
     --panel-shadow: 0 30px 80px rgba(0, 0, 0, 0.34);
     
     /* Brand Colors */
-    --meta-blue: #4744e5;
-    --accent-blue: #4744e5;
+    --meta-blue: var(--saas-primary);
+    --accent-blue: var(--saas-primary);
     --accent-rgb: 71, 68, 229;
     --accent-purple: #8b5cf6;
     --accent-cyan: var(--accent-blue);
     --accent-emerald: #4EDE63;
-    --accent-orange: #f59e0b;
+    --accent-orange: var(--saas-accent);
     --accent-red: #ef4444;
     --accent-gold: #fbbf24;
     --accent-pink: #ec4899;
@@ -38,7 +38,7 @@
     --accent-soft: rgba(71, 68, 229, 0.12);
     --accent-muted: rgba(71, 68, 229, 0.2);
     --accent-strong: rgba(71, 68, 229, 0.3);
-    --theme-surface: rgba(71, 68, 229, 0.1);
+    --theme-surface: color-mix(in srgb, var(--saas-primary) 10%, transparent);
     --glow-emerald: rgba(78, 222, 99, 0.14);
     --app-bg-primary: rgba(255, 255, 255, 0.035);
     --app-bg-secondary: rgba(255, 255, 255, 0.02);

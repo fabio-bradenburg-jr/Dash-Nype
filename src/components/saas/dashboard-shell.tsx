@@ -284,6 +284,8 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
     metaAdAccountId: '',
     agendorToken: '',
     agendorAccountId: '',
+    dashboardButtonColor: snapshot.theme.primaryColor || '#0f766e',
+    dashboardAccentColor: snapshot.theme.accentColor || '#f97316',
   })
   const [knowledgeSources, setKnowledgeSources] = useState<KnowledgeSource[]>(
     extractKnowledgeSourcesFromBusinessData(snapshot.selectedClient.business_data as Record<string, unknown>)
@@ -297,6 +299,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
       const agendorIntegration = clientIntegrations.find((integration) => integration.provider === 'agendor')
       const businessData = (client.business_data || {}) as Record<string, unknown>
       const businessIntegrations = (businessData.integrations || {}) as Record<string, unknown>
+      const dashboardTheme = (businessData.dashboardTheme || {}) as Record<string, unknown>
 
       return {
         id: client.id,
@@ -304,7 +307,8 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
         company: client.company,
         dashboardEnabled: true,
         operationEnabled: false,
-        dashboardColor: 'blue',
+        dashboardColor: String(dashboardTheme.buttonColor || businessData.dashboardButtonColor || snapshot.theme.primaryColor || '#0f766e'),
+        dashboardAccentColor: String(dashboardTheme.accentColor || businessData.dashboardAccentColor || snapshot.theme.accentColor || '#f97316'),
         dashboardVisibleIntegrationKeys: ['meta_ads', 'rd_station'],
         metaAdAccountId: metaIntegration?.external_account_id || String(businessData.metaAdAccountId || ''),
         rdStationAccountId: agendorIntegration?.account_name || String(businessData.agendorAccountId || ''),
@@ -315,7 +319,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
         dashboardTemplates: [],
       }
     })
-  }, [snapshot.clients, snapshot.integrations])
+  }, [snapshot.clients, snapshot.integrations, snapshot.theme.accentColor, snapshot.theme.primaryColor])
   const positiveMetrics = clientDashboard.overview_metrics.slice(0, 3)
   const metricsByKey = new Map(
     clientDashboard.overview_metrics.map((metric) => {
@@ -424,6 +428,11 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
     root.style.setProperty('--saas-primary', snapshot.theme.primaryColor)
     root.style.setProperty('--saas-accent', snapshot.theme.accentColor)
     root.style.setProperty('--saas-surface', snapshot.theme.backgroundColor)
+    root.style.setProperty('--accent-blue', snapshot.theme.primaryColor)
+    root.style.setProperty('--accent-orange', snapshot.theme.accentColor)
+    root.style.setProperty('--main', snapshot.theme.primaryColor)
+    root.style.setProperty('--accent', snapshot.theme.accentColor)
+    root.dataset.uiMode = snapshot.theme.darkMode ? 'dark' : 'light'
   }, [snapshot.theme])
 
   useEffect(() => {
@@ -542,6 +551,12 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
             funnelSteps: ['impressions', 'clicks', 'leads', 'purchases'],
             metaAdAccountId: clientForm.metaAdAccountId,
             agendorAccountId: clientForm.agendorAccountId,
+            dashboardButtonColor: clientForm.dashboardButtonColor,
+            dashboardAccentColor: clientForm.dashboardAccentColor,
+            dashboardTheme: {
+              buttonColor: clientForm.dashboardButtonColor,
+              accentColor: clientForm.dashboardAccentColor,
+            },
             integrations: {
               agendorToken: clientForm.agendorToken,
             },
@@ -588,6 +603,8 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
         metaAdAccountId: '',
         agendorToken: '',
         agendorAccountId: '',
+        dashboardButtonColor: snapshot.theme.primaryColor || '#0f766e',
+        dashboardAccentColor: snapshot.theme.accentColor || '#f97316',
       })
       router.refresh()
     } catch (error) {
@@ -1609,6 +1626,33 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
                   <option value="messages">Mensagens</option>
                 </select>
               </label>
+
+              <div className="rounded-[28px] border border-slate-200/80 bg-slate-50/80 p-4">
+                <p className="font-semibold text-slate-900">Tema deste dashboard</p>
+                <p className="mt-1 text-sm leading-6 text-slate-500">
+                  Cada cliente pode ter cores próprias no dash, sem alterar o tema global do app.
+                </p>
+                <div className="mt-4 grid gap-4 md:grid-cols-2">
+                  <label className="grid gap-2 text-sm font-medium text-slate-600">
+                    Fundo dos botões
+                    <input
+                      className="h-12 w-full rounded-2xl border border-slate-200 bg-white p-2 shadow-sm"
+                      type="color"
+                      value={clientForm.dashboardButtonColor}
+                      onChange={(event) => setClientForm((current) => ({ ...current, dashboardButtonColor: event.target.value }))}
+                    />
+                  </label>
+                  <label className="grid gap-2 text-sm font-medium text-slate-600">
+                    Cor complementar
+                    <input
+                      className="h-12 w-full rounded-2xl border border-slate-200 bg-white p-2 shadow-sm"
+                      type="color"
+                      value={clientForm.dashboardAccentColor}
+                      onChange={(event) => setClientForm((current) => ({ ...current, dashboardAccentColor: event.target.value }))}
+                    />
+                  </label>
+                </div>
+              </div>
 
               <div className="rounded-[28px] border border-slate-200/80 bg-slate-50/80 p-4">
                 <div className="flex items-start justify-between gap-4">

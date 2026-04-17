@@ -18,6 +18,10 @@ export function ThemePanel({ initialTheme }: { initialTheme: ThemeSettings }) {
     root.style.setProperty('--saas-primary', nextTheme.primaryColor)
     root.style.setProperty('--saas-accent', nextTheme.accentColor)
     root.style.setProperty('--saas-surface', nextTheme.backgroundColor)
+    root.style.setProperty('--accent-blue', nextTheme.primaryColor)
+    root.style.setProperty('--accent-orange', nextTheme.accentColor)
+    root.style.setProperty('--main', nextTheme.primaryColor)
+    root.style.setProperty('--accent', nextTheme.accentColor)
     root.dataset.uiMode = nextTheme.darkMode ? 'dark' : 'light'
   }
 
