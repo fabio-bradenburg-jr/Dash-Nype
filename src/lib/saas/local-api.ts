@@ -2,7 +2,8 @@ import { randomUUID } from 'crypto'
 
 import { Pool } from 'pg'
 
-import { getLocalSessionUser, hasLocalDatabaseConfig } from '@/lib/server/platform-auth-fallback'
+import { createAdminClient } from '@/lib/server/supabase-admin'
+import { getLocalSessionUser, hasLocalDatabaseConfig, verifyLocalAccessToken } from '@/lib/server/platform-auth-fallback'
 import { ClientSummary, PlatformSnapshot } from '@/lib/saas/types'
 
 type LocalClientRow = {
@@ -29,6 +30,19 @@ type LocalIntegrationRow = {
   account_name: string
   external_account_id: string
   last_sync_at: string | Date | null
+}
+
+type WorkspaceClientRow = {
+  id: string
+  name: string
+  payload: Record<string, unknown> | null
+  updated_at?: string | null
+}
+
+type LocalSaasUser = {
+  id: string
+  tenant_id: string
+  role?: string
 }
 
 let pool: Pool | null = null
@@ -93,15 +107,199 @@ function serializeIntegration(row: LocalIntegrationRow): PlatformSnapshot['integ
   }
 }
 
+function serializeWorkspaceClient(row: WorkspaceClientRow, workspaceId: string): ClientSummary {
+  const payload = row.payload || {}
+  const businessData = (payload.business_data || payload.businessData || {}) as Record<string, unknown>
+
+  return {
+    id: row.id,
+    tenant_id: workspaceId,
+    name: row.name,
+    company: String(payload.company || payload.companyName || row.name),
+    niche: String(payload.niche || 'Dashboard'),
+    average_ticket: asNumber(payload.average_ticket as number),
+    main_goal: enumValue(String(payload.main_goal || 'leads')),
+    ltv: asNumber(payload.ltv as number),
+    start_date: String(payload.start_date || '').slice(0, 10),
+    status: enumValue(String(payload.status || 'active')),
+    target_roas: asNumber(payload.target_roas as number) || 2.5,
+    business_data: businessData,
+    last_sync_at: row.updated_at ? new Date(row.updated_at).toISOString() : null,
+  }
+}
+
+function serializeWorkspaceIntegration(
+  integration: Record<string, unknown>,
+  fallbackClientId: string
+): PlatformSnapshot['integrations'][number] {
+  return {
+    id: String(integration.id || randomUUID()),
+    client_id: String(integration.client_id || integration.clientId || fallbackClientId),
+    provider: enumValue(String(integration.provider || 'meta_ads')),
+    status: enumValue(String(integration.status || 'connected')),
+    account_name: String(integration.account_name || integration.accountName || 'Conta vinculada'),
+    external_account_id: String(integration.external_account_id || integration.externalAccountId || ''),
+    last_sync_at: integration.last_sync_at ? new Date(String(integration.last_sync_at)).toISOString() : null,
+  }
+}
+
 export async function getLocalSaasUser(token: string) {
-  if (!hasLocalDatabaseConfig()) {
-    throw new Error('DATABASE_URL não configurada.')
+  if (hasLocalDatabaseConfig()) {
+    return getLocalSessionUser(token) as Promise<LocalSaasUser>
   }
 
-  return getLocalSessionUser(token)
+  const payload = await verifyLocalAccessToken(token)
+  const userId = String(payload.sub || '')
+  const tenantId = String(payload.tenant_id || '')
+
+  if (!userId || !tenantId) {
+    throw new Error('Sessão inválida.')
+  }
+
+  return {
+    id: userId.replace(/^supabase:/, ''),
+    tenant_id: tenantId,
+    role: String(payload.role || 'operator'),
+  }
+}
+
+async function listWorkspaceClients(token: string) {
+  const user = await getLocalSaasUser(token)
+  const supabase = createAdminClient()
+  const { data, error } = await supabase
+    .from('workspace_clients')
+    .select('id, name, payload, updated_at')
+    .eq('workspace_id', user.tenant_id)
+    .order('updated_at', { ascending: false })
+
+  if (error) throw error
+
+  return (data || []).map((row) => serializeWorkspaceClient(row as WorkspaceClientRow, user.tenant_id))
+}
+
+async function createWorkspaceClient(token: string, payload: Record<string, unknown>) {
+  const user = await getLocalSaasUser(token)
+  const supabase = createAdminClient()
+  const id = randomUUID()
+  const name = String(payload.name || '').trim()
+  const company = String(payload.company || name).trim()
+
+  if (!name || !company) {
+    throw new Error('Nome do cliente e empresa são obrigatórios.')
+  }
+
+  const businessData = payload.business_data && typeof payload.business_data === 'object' ? payload.business_data : {}
+  const clientPayload = {
+    company,
+    niche: String(payload.niche || 'Dashboard'),
+    average_ticket: asNumber(payload.average_ticket as number),
+    main_goal: enumValue(String(payload.main_goal || 'leads')),
+    ltv: asNumber(payload.ltv as number),
+    start_date: String(payload.start_date || new Date().toISOString().slice(0, 10)),
+    status: enumValue(String(payload.status || 'active')),
+    target_roas: asNumber(payload.target_roas as number) || 2.5,
+    business_data: businessData,
+    saas_integrations: [],
+  }
+
+  const { data, error } = await supabase
+    .from('workspace_clients')
+    .insert({
+      workspace_id: user.tenant_id,
+      id,
+      name,
+      cnpj: '',
+      payload: clientPayload,
+    })
+    .select('id, name, payload, updated_at')
+    .single()
+
+  if (error) throw error
+
+  return serializeWorkspaceClient(data as WorkspaceClientRow, user.tenant_id)
+}
+
+async function listWorkspaceIntegrations(token: string) {
+  const user = await getLocalSaasUser(token)
+  const supabase = createAdminClient()
+  const { data, error } = await supabase
+    .from('workspace_clients')
+    .select('id, payload')
+    .eq('workspace_id', user.tenant_id)
+
+  if (error) throw error
+
+  return (data || []).flatMap((row) => {
+    const payload = ((row as WorkspaceClientRow).payload || {}) as Record<string, unknown>
+    const integrations = Array.isArray(payload.saas_integrations) ? payload.saas_integrations : []
+    return integrations.map((integration) => serializeWorkspaceIntegration(integration as Record<string, unknown>, String(row.id)))
+  })
+}
+
+async function createWorkspaceIntegration(token: string, payload: Record<string, unknown>) {
+  const user = await getLocalSaasUser(token)
+  const supabase = createAdminClient()
+  const clientId = String(payload.client_id || payload.clientId || '').trim()
+  const provider = enumValue(String(payload.provider || 'meta_ads'))
+  const accountName = String(payload.account_name || payload.accountName || 'Conta vinculada').trim()
+  const externalAccountId = String(payload.external_account_id || payload.accountId || '').trim()
+  const accessToken = String(payload.access_token || payload.accessToken || '').trim()
+
+  if (!clientId || !externalAccountId || !accessToken) {
+    throw new Error('Cliente, conta e token são obrigatórios para salvar a integração.')
+  }
+
+  const { data: client, error: loadError } = await supabase
+    .from('workspace_clients')
+    .select('id, name, payload')
+    .eq('workspace_id', user.tenant_id)
+    .eq('id', clientId)
+    .maybeSingle()
+
+  if (loadError) throw loadError
+  if (!client) throw new Error('Cliente não encontrado.')
+
+  const currentPayload = ((client as WorkspaceClientRow).payload || {}) as Record<string, unknown>
+  const currentIntegrations = Array.isArray(currentPayload.saas_integrations) ? currentPayload.saas_integrations : []
+  const integration = {
+    id: randomUUID(),
+    client_id: clientId,
+    provider,
+    status: 'connected',
+    account_name: accountName,
+    external_account_id: externalAccountId,
+    access_token: accessToken,
+    last_sync_at: null,
+  }
+  const nextIntegrations = [
+    ...currentIntegrations.filter((item) => {
+      const typed = item as Record<string, unknown>
+      return String(typed.provider || '') !== provider || String(typed.external_account_id || '') !== externalAccountId
+    }),
+    integration,
+  ]
+
+  const { error: updateError } = await supabase
+    .from('workspace_clients')
+    .update({
+      payload: {
+        ...currentPayload,
+        saas_integrations: nextIntegrations,
+      },
+    })
+    .eq('workspace_id', user.tenant_id)
+    .eq('id', clientId)
+
+  if (updateError) throw updateError
+
+  return serializeWorkspaceIntegration(integration, clientId)
 }
 
 export async function listLocalSaasClients(token: string) {
+  if (!hasLocalDatabaseConfig()) {
+    return listWorkspaceClients(token)
+  }
+
   const user = await getLocalSaasUser(token)
   const result = await getPool().query<LocalClientRow>(
     `select
@@ -130,6 +328,10 @@ export async function listLocalSaasClients(token: string) {
 }
 
 export async function createLocalSaasClient(token: string, payload: Record<string, unknown>) {
+  if (!hasLocalDatabaseConfig()) {
+    return createWorkspaceClient(token, payload)
+  }
+
   const user = await getLocalSaasUser(token)
   const id = randomUUID()
   const name = String(payload.name || '').trim()
@@ -191,6 +393,10 @@ export async function createLocalSaasClient(token: string, payload: Record<strin
 }
 
 export async function listLocalSaasIntegrations(token: string) {
+  if (!hasLocalDatabaseConfig()) {
+    return listWorkspaceIntegrations(token)
+  }
+
   const user = await getLocalSaasUser(token)
   const result = await getPool().query<LocalIntegrationRow>(
     `select
@@ -212,6 +418,10 @@ export async function listLocalSaasIntegrations(token: string) {
 }
 
 export async function createLocalSaasIntegration(token: string, payload: Record<string, unknown>) {
+  if (!hasLocalDatabaseConfig()) {
+    return createWorkspaceIntegration(token, payload)
+  }
+
   const user = await getLocalSaasUser(token)
   const clientId = String(payload.client_id || payload.clientId || '').trim()
   const provider = enumName(payload.provider as string, 'META_ADS')
