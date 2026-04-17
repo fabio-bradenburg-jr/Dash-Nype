@@ -2,6 +2,7 @@ import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 
 import { PLATFORM_AUTH_COOKIE } from '@/lib/saas/auth'
+import { createLocalSaasIntegration } from '@/lib/saas/local-api'
 import { getPlatformApiUrl } from '@/lib/saas/server-api'
 
 const API_URL = getPlatformApiUrl()
@@ -28,16 +29,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'A conexão da Meta expirou. Tente novamente.' }, { status: 400 })
   }
 
+  const body = await request.json()
+  const clientId = String(body.clientId || pending.clientId || '').trim()
+  const accountId = String(body.accountId || '').trim()
+  const accountName = String(body.accountName || '').trim()
+
+  if (!clientId || !accountId) {
+    return NextResponse.json({ error: 'Cliente e conta de anúncio são obrigatórios.' }, { status: 400 })
+  }
+
   try {
-    const body = await request.json()
-    const clientId = String(body.clientId || pending.clientId || '').trim()
-    const accountId = String(body.accountId || '').trim()
-    const accountName = String(body.accountName || '').trim()
-
-    if (!clientId || !accountId) {
-      return NextResponse.json({ error: 'Cliente e conta de anúncio são obrigatórios.' }, { status: 400 })
-    }
-
     const response = await fetch(`${API_URL}/integrations`, {
       method: 'POST',
       headers: {
@@ -70,7 +71,38 @@ export async function POST(request: Request) {
     }
 
     return nextResponse
-  } catch {
-    return NextResponse.json({ error: 'Não foi possível vincular a conta da Meta.' }, { status: 500 })
+  } catch (error) {
+    try {
+      const integration = await createLocalSaasIntegration(token, {
+        client_id: clientId,
+        provider: 'meta_ads',
+        account_name: accountName || `Conta ${accountId}`,
+        external_account_id: accountId,
+        access_token: pending.accessToken,
+      })
+      const nextResponse = NextResponse.json(integration, { status: 201 })
+      nextResponse.cookies.set({
+        name: META_SAAS_PENDING_COOKIE,
+        value: '',
+        httpOnly: true,
+        sameSite: 'lax',
+        secure: process.env.NODE_ENV === 'production',
+        path: '/',
+        maxAge: 0,
+      })
+      return nextResponse
+    } catch (fallbackError) {
+      return NextResponse.json(
+        {
+          error:
+            fallbackError instanceof Error
+              ? fallbackError.message
+              : error instanceof Error
+                ? error.message
+                : 'Não foi possível vincular a conta da Meta.',
+        },
+        { status: 500 }
+      )
+    }
   }
 }

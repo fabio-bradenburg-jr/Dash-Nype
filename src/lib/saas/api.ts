@@ -4,6 +4,7 @@ import { PLATFORM_AUTH_COOKIE } from '@/lib/saas/auth'
 import { getPlatformApiUrl } from '@/lib/saas/server-api'
 import { demoPlatformSnapshot } from '@/lib/saas/mock-data'
 import { PlatformSnapshot } from '@/lib/saas/types'
+import { listLocalSaasClients, listLocalSaasIntegrations } from '@/lib/saas/local-api'
 
 const API_URL = getPlatformApiUrl()
 const DEMO_TOKEN = process.env.NEXT_PUBLIC_PLATFORM_DEMO_TOKEN
@@ -22,8 +23,9 @@ async function apiFetch<T>(path: string, token?: string): Promise<T> {
 }
 
 export async function getPlatformSnapshot(): Promise<PlatformSnapshot> {
+  const token = (await cookies()).get(PLATFORM_AUTH_COOKIE)?.value
+
   try {
-    const token = (await cookies()).get(PLATFORM_AUTH_COOKIE)?.value
     const clients = await apiFetch<PlatformSnapshot['clients']>('/clients', token)
     const selectedClient = clients[0]
     if (!selectedClient) {
@@ -46,6 +48,20 @@ export async function getPlatformSnapshot(): Promise<PlatformSnapshot> {
       integrations,
     }
   } catch {
+    if (token) {
+      try {
+        const [clients, integrations] = await Promise.all([listLocalSaasClients(token), listLocalSaasIntegrations(token)])
+        return {
+          ...demoPlatformSnapshot,
+          clients,
+          selectedClient: clients[0] || demoPlatformSnapshot.selectedClient,
+          integrations,
+        }
+      } catch {
+        return demoPlatformSnapshot
+      }
+    }
+
     return demoPlatformSnapshot
   }
 }
