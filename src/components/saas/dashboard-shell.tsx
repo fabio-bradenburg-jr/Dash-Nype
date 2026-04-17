@@ -8,9 +8,6 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
-  Cell,
-  Pie,
-  PieChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -30,7 +27,6 @@ import {
   Users,
 } from 'lucide-react'
 
-import { FunnelBuilder } from '@/components/saas/funnel-builder'
 import { AiAssistantPanel } from '@/components/saas/ai-assistant-panel'
 import { AiIntegrationPanel } from '@/components/saas/ai-integration-panel'
 import { ClientKnowledgePanel } from '@/components/saas/client-knowledge-panel'
@@ -38,7 +34,7 @@ import { ThemePanel } from '@/components/saas/theme-panel'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { ClientContextBundle, KnowledgeSource, PlatformSnapshot } from '@/lib/saas/types'
+import { ClientContextBundle, KnowledgeSource, MetricCard, PlatformSnapshot } from '@/lib/saas/types'
 
 const navigation = [
   { key: 'overview', label: 'Visão geral', icon: Cpu },
@@ -70,7 +66,7 @@ const moduleCopy: Record<NavigationKey, { title: string; description: string }> 
 
 function formatValue(value: number, format: string) {
   if (format === 'currency') return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(value)
-  if (format === 'percent') return `${value}%`
+  if (format === 'percent') return `${new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 2 }).format(value)}%`
   if (format === 'ratio') return `${value.toFixed(2)}x`
   if (format === 'decimal') return value.toFixed(2).replace('.', ',')
   return new Intl.NumberFormat('pt-BR').format(value)
@@ -84,19 +80,88 @@ function metricKey(metric: { key?: string | null; label: string }) {
     .toLowerCase()
 }
 
-const legacyMetricGroups = [
+const fixedLegacyMetricKeys = [
+  'spend',
+  'impressions',
+  'cpm',
+  'reach',
+  'frequency',
+  'clicks',
+  'cpc',
+  'ctr',
+  'totalConversions',
+  'conversionRate',
+  'purchaseValue',
+  'purchases',
+  'costPerPurchase',
+  'roas',
+  'leads',
+  'costPerLead',
+  'messages',
+  'costPerMessage',
+] as const
+
+const legacyResultGroups = [
   {
-    title: 'Mídia',
-    keys: ['spend', 'impressions', 'cpm', 'reach', 'frequency', 'clicks', 'cpc', 'ctr'],
+    key: 'purchases',
+    title: 'Compras',
+    description: 'Resultado de vendas atribuídas no período',
+    resultLabel: 'Compras',
+    costLabel: 'Custo por compra',
+    metricKey: 'purchases',
+    costMetricKey: 'costPerPurchase',
+    tone: 'from-emerald-500 to-teal-700',
   },
   {
-    title: 'Conversão',
-    keys: ['totalConversions', 'conversionRate', 'purchases', 'costPerPurchase', 'leads', 'costPerLead', 'messages', 'costPerMessage'],
+    key: 'leads',
+    title: 'Cadastros',
+    description: 'Conversões em leads atribuídas no período',
+    resultLabel: 'Cadastros',
+    costLabel: 'Custo por cadastro',
+    metricKey: 'leads',
+    costMetricKey: 'costPerLead',
+    tone: 'from-amber-500 to-orange-600',
   },
   {
-    title: 'Receita',
-    keys: ['purchaseValue', 'averageTicket', 'clicksWithoutConversion', 'roas'],
+    key: 'messages',
+    title: 'Mensagens iniciadas',
+    description: 'Conversas iniciadas em canais de mensagem',
+    resultLabel: 'Mensagens iniciadas',
+    costLabel: 'Custo por mensagem iniciada',
+    metricKey: 'messages',
+    costMetricKey: 'costPerMessage',
+    tone: 'from-sky-500 to-blue-700',
   },
+  {
+    key: 'reach',
+    title: 'Alcance',
+    description: 'Entrega das campanhas classificadas como alcance',
+    resultLabel: 'Pessoas alcançadas',
+    costLabel: 'Custo por alcance',
+    metricKey: 'reachResults',
+    costMetricKey: 'costPerReach',
+    tone: 'from-cyan-500 to-slate-700',
+  },
+  {
+    key: 'truplays',
+    title: 'TruPlays',
+    description: 'Resultados das campanhas de vídeo no período',
+    resultLabel: 'TruPlays',
+    costLabel: 'Custo por TruPlay',
+    metricKey: 'thruplays',
+    costMetricKey: 'costPerTruplay',
+    tone: 'from-violet-500 to-slate-800',
+  },
+] as const
+
+const chartMetricOptions = [
+  { key: 'spend', label: 'Investimento', format: 'currency' },
+  { key: 'conversions', label: 'Conversões totais', format: 'number' },
+  { key: 'purchases', label: 'Compras', format: 'number' },
+  { key: 'leads', label: 'Cadastros', format: 'number' },
+  { key: 'messages', label: 'Mensagens iniciadas', format: 'number' },
+  { key: 'roas', label: 'ROAS', format: 'ratio' },
+  { key: 'cpa', label: 'CPA', format: 'currency' },
 ] as const
 
 const metricAliases: Record<string, string> = {
@@ -131,8 +196,12 @@ function getCampaignValue(campaign: PlatformSnapshot['clientDashboard']['campaig
     purchaseValue: campaign.purchase_value || campaign.spend * campaign.roas,
     clicks: campaign.clicks || 0,
     impressions: campaign.impressions || 0,
+    reach: campaign.reach || 0,
     ctr: campaign.ctr || 0,
     cpc: campaign.cpc || 0,
+    cpm: campaign.cpm || 0,
+    frequency: campaign.frequency || 0,
+    conversionRate: campaign.conversion_rate || 0,
   }
 
   return map[key] || 0
@@ -203,6 +272,8 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
   const [metaAccounts, setMetaAccounts] = useState<Array<{ id: string; name: string; clientId: string }>>([])
   const [selectedMetaAccountId, setSelectedMetaAccountId] = useState('')
   const [showClientForm, setShowClientForm] = useState(false)
+  const [primaryChartMetric, setPrimaryChartMetric] = useState('spend')
+  const [secondaryChartMetric, setSecondaryChartMetric] = useState('conversions')
   const [clientForm, setClientForm] = useState({
     name: '',
     company: '',
@@ -223,12 +294,24 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
       return [metricAliases[normalized] || metric.key || normalized, metric]
     })
   )
-  const legacyMetrics = legacyMetricGroups.map((group) => ({
-    ...group,
-    metrics: group.keys
-      .map((key) => metricsByKey.get(key))
-      .filter(Boolean),
-  }))
+  const fixedLegacyMetrics = fixedLegacyMetricKeys
+    .map((key) => metricsByKey.get(key))
+    .filter((metric): metric is MetricCard => Boolean(metric))
+  const getMetric = (key: string) => metricsByKey.get(key)
+  const legacyObjectiveCards = legacyResultGroups.map((group) => {
+    const resultMetric = getMetric(group.metricKey)
+    const costMetric = getMetric(group.costMetricKey)
+
+    return {
+      ...group,
+      resultValue: resultMetric?.value || 0,
+      resultFormat: resultMetric?.format || 'number',
+      costValue: costMetric?.value || 0,
+      costFormat: costMetric?.format || 'currency',
+    }
+  })
+  const primaryChartConfig = chartMetricOptions.find((option) => option.key === primaryChartMetric) || chartMetricOptions[0]
+  const secondaryChartConfig = chartMetricOptions.find((option) => option.key === secondaryChartMetric) || chartMetricOptions[1]
   const campaignColumns = [
     { key: 'spend', label: 'Investimento', format: 'currency' },
     { key: 'totalConversions', label: 'Conversões', format: 'number' },
@@ -240,8 +323,12 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
     { key: 'purchaseValue', label: 'Faturamento', format: 'currency' },
     { key: 'clicks', label: 'Cliques', format: 'number' },
     { key: 'impressions', label: 'Impressões', format: 'number' },
+    { key: 'reach', label: 'Alcance', format: 'number' },
     { key: 'ctr', label: 'CTR', format: 'percent' },
     { key: 'cpc', label: 'CPC', format: 'currency' },
+    { key: 'cpm', label: 'CPM', format: 'currency' },
+    { key: 'frequency', label: 'Frequência', format: 'decimal' },
+    { key: 'conversionRate', label: 'Taxa de conversão', format: 'percent' },
   ]
   const selectedClientFromQuery = searchParams.get('selected_client')
   const metaPendingFromQuery = searchParams.get('meta_pending') === '1'
@@ -627,202 +714,324 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
           </section>
 
           {showDashs ? (
-          <section className="space-y-4">
+          <section className="space-y-6">
             <Card className="border-slate-200/70">
-              <CardContent className="flex flex-col gap-4 p-5 lg:flex-row lg:items-center lg:justify-between">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Dashboard antigo, visual novo</p>
-                  <h2 className="mt-2 font-manrope text-2xl font-extrabold tracking-tight text-slate-950">
-                    Mesma leitura de mídia, conversão e receita do dash legado
-                  </h2>
-                  <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500">
-                    Mantém os indicadores de Meta Ads do dashboard anterior: investimento, alcance, cliques, custos, conversões, compras, leads, mensagens, faturamento e ROAS.
-                  </p>
-                </div>
-                <div className="flex flex-wrap gap-2 text-xs font-semibold text-slate-500">
-                  {['Últimos 7 dias', 'Campanhas ativas', 'Meta Ads', 'Agendor'].map((item) => (
-                    <span key={item} className="rounded-full border border-slate-200 bg-white px-3 py-2 shadow-sm">
-                      {item}
-                    </span>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-
-            <div className="grid gap-4 2xl:grid-cols-3">
-              {legacyMetrics.map((group) => (
-                <Card key={group.title} className="border-slate-200/70">
-                  <CardHeader>
-                    <div>
-                      <CardTitle>{group.title}</CardTitle>
-                      <CardDescription>
-                        {group.title === 'Mídia'
-                          ? 'Entrega e custo de tráfego.'
-                          : group.title === 'Conversão'
-                          ? 'Resultados e eficiência por objetivo.'
-                          : 'Receita atribuída e retorno.'}
-                      </CardDescription>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="grid gap-3 sm:grid-cols-2">
-                    {group.metrics.map((metric) => (
-                      <div key={metric.label} className="rounded-3xl border border-slate-200/70 bg-white/85 p-4 shadow-sm">
-                        <div className="flex items-start justify-between gap-3">
-                          <p className="text-sm font-medium leading-5 text-slate-500">{metric.label}</p>
-                          <Badge tone={metric.change >= 0 ? 'green' : 'red'}>
-                            {metric.change >= 0 ? '+' : ''}{metric.change}%
-                          </Badge>
-                        </div>
-                        <p className="mt-4 font-manrope text-2xl font-extrabold tracking-tight text-slate-950">
-                          {formatValue(metric.value, metric.format)}
-                        </p>
-                      </div>
+              <CardContent className="space-y-5 p-5">
+                <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Meta Ads</p>
+                    <h2 className="mt-2 font-manrope text-2xl font-extrabold tracking-tight text-slate-950">
+                      Resumo de resultados
+                    </h2>
+                    <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500">
+                      Mesma leitura do dash antigo: filtros de resultado, métricas fixas, comparativos, rankings e tabela de campanhas.
+                    </p>
+                  </div>
+                  <div className="grid gap-2 sm:grid-cols-4 xl:min-w-[520px]">
+                    {['Compras', 'Cadastros', 'Mensagens iniciadas', 'Alcance'].map((item) => (
+                      <span key={item} className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-center text-xs font-semibold text-slate-600 shadow-sm">
+                        {item}
+                      </span>
                     ))}
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </section>
-          ) : null}
-
-          {showDashs ? (
-          <section className="grid gap-6 xl:grid-cols-[1.5fr_1fr]">
-            <Card>
-              <CardHeader>
-                <div>
-                  <CardTitle>Linha do tempo de performance</CardTitle>
-                  <CardDescription>Investimento, conversões, compras, leads, mensagens e ROAS no mesmo recorte do dash antigo.</CardDescription>
+                  </div>
                 </div>
-              </CardHeader>
-              <CardContent className="h-[320px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={clientDashboard.time_series}>
-                    <defs>
-                      <linearGradient id="spendFill" x1="0" x2="0" y1="0" y2="1">
-                        <stop offset="0%" stopColor="var(--saas-primary)" stopOpacity={0.35} />
-                        <stop offset="100%" stopColor="var(--saas-primary)" stopOpacity={0.02} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid stroke="#e2e8f0" strokeDasharray="3 3" />
-                    <XAxis dataKey="date" stroke="#64748b" tickLine={false} axisLine={false} />
-                    <YAxis stroke="#64748b" tickLine={false} axisLine={false} />
-                    <Tooltip />
-                    <Area type="monotone" dataKey="spend" stroke="var(--saas-primary)" fill="url(#spendFill)" strokeWidth={3} />
-                    <Area type="monotone" dataKey="conversions" stroke="var(--saas-accent)" fillOpacity={0} strokeWidth={3} />
-                    <Area type="monotone" dataKey="purchases" stroke="#10b981" fillOpacity={0} strokeWidth={2} />
-                    <Area type="monotone" dataKey="leads" stroke="#f59e0b" fillOpacity={0} strokeWidth={2} />
-                    <Area type="monotone" dataKey="messages" stroke="#3b82f6" fillOpacity={0} strokeWidth={2} />
-                  </AreaChart>
-                </ResponsiveContainer>
+                <div className="grid gap-3 lg:grid-cols-3">
+                  <div className="rounded-3xl border border-slate-200 bg-slate-50/80 p-4">
+                    <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">Conta de anúncio</p>
+                    <p className="mt-2 font-semibold text-slate-900">{selectedMetaIntegration?.account_name || 'Nenhuma conta Meta vinculada'}</p>
+                  </div>
+                  <div className="rounded-3xl border border-slate-200 bg-slate-50/80 p-4">
+                    <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">Recorte</p>
+                    <p className="mt-2 font-semibold text-slate-900">Campanhas, conjuntos e anúncios ativos</p>
+                  </div>
+                  <div className="rounded-3xl border border-slate-200 bg-slate-50/80 p-4">
+                    <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">Cliente</p>
+                    <p className="mt-2 font-semibold text-slate-900">{selectedClient.name || 'Selecione um cliente'}</p>
+                  </div>
+                </div>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader>
                 <div>
-                  <CardTitle>Resultados por objetivo</CardTitle>
-                  <CardDescription>Mesmo bloco do dash antigo: volume e custo médio por compra, cadastro e mensagem.</CardDescription>
+                  <CardTitle>Mídia e distribuição</CardTitle>
+                  <CardDescription>Cards fixos do dashboard antigo, na mesma ordem de leitura.</CardDescription>
                 </div>
               </CardHeader>
-              <CardContent className="grid gap-4">
-                {clientDashboard.results_by_objective.map((item) => (
-                  <div key={item.objective} className="rounded-3xl border border-slate-200 bg-slate-50/80 p-4">
-                    <div className="flex items-center justify-between">
-                      <p className="font-semibold capitalize text-slate-900">{objectiveLabel(item.objective)}</p>
-                      <p className="text-sm text-slate-500">{item.volume.toLocaleString('pt-BR')} volume</p>
+              <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6">
+                {fixedLegacyMetrics.map((metric) => (
+                  <div key={metric.key || metric.label} className="rounded-3xl border border-slate-200/70 bg-white/85 p-4 shadow-sm">
+                    <div className="flex items-start justify-between gap-3">
+                      <p className="text-sm font-semibold leading-5 text-slate-600">{metric.label}</p>
+                      <Badge tone={metric.change >= 0 ? 'green' : 'red'}>
+                        {metric.change >= 0 ? '+' : ''}{metric.change}%
+                      </Badge>
                     </div>
-                    <div className="mt-3 h-2 rounded-full bg-slate-200">
-                      <div
-                        className="h-2 rounded-full"
-                        style={{
-                          width: `${Math.min(item.volume / 2, 100)}%`,
-                          background: 'linear-gradient(90deg, var(--saas-primary), var(--saas-accent))',
-                        }}
-                      />
-                    </div>
-                    <p className="mt-3 text-sm text-slate-500">{formatValue(item.cost_per_result, 'currency')} por resultado</p>
+                    <p className="mt-4 font-manrope text-2xl font-extrabold tracking-tight text-slate-950">
+                      {formatValue(metric.value, metric.format)}
+                    </p>
                   </div>
                 ))}
               </CardContent>
             </Card>
-          </section>
-          ) : null}
 
-          {showDashs ? (
-          <section className="grid gap-6 xl:grid-cols-[1.15fr_1fr_1fr]">
-            <FunnelBuilder initialStages={clientDashboard.funnel} />
+            <div className="grid gap-4 xl:grid-cols-5">
+              {legacyObjectiveCards.map((group) => (
+                <Card key={group.key} className="overflow-hidden">
+                  <CardContent className="p-0">
+                    <div className={`h-1.5 bg-gradient-to-r ${group.tone}`} />
+                    <div className="p-5">
+                      <p className="font-manrope text-lg font-extrabold text-slate-950">{group.title}</p>
+                      <p className="mt-1 min-h-[40px] text-sm leading-5 text-slate-500">{group.description}</p>
+                      <div className="mt-5 space-y-3">
+                        <div className="rounded-2xl bg-slate-50 px-4 py-3">
+                          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">{group.resultLabel}</p>
+                          <p className="mt-1 font-manrope text-xl font-extrabold">{formatValue(group.resultValue, group.resultFormat)}</p>
+                        </div>
+                        <div className="rounded-2xl bg-slate-50 px-4 py-3">
+                          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">{group.costLabel}</p>
+                          <p className="mt-1 font-manrope text-xl font-extrabold">{formatValue(group.costValue, group.costFormat)}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
 
-            <Card>
-              <CardHeader>
-                <div>
-                  <CardTitle>Insights de público</CardTitle>
-                  <CardDescription>Principais cidades e faixas etárias por performance normalizada.</CardDescription>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="h-[160px]">
+            <section className="grid gap-6 xl:grid-cols-[1.45fr_0.95fr]">
+              <Card>
+                <CardHeader>
+                  <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                    <div>
+                      <CardTitle>Evolução das métricas</CardTitle>
+                      <CardDescription>Seleção de métrica 1 e métrica 2 como no dashboard antigo.</CardDescription>
+                    </div>
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      <select
+                        className="h-11 rounded-2xl border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700"
+                        value={primaryChartMetric}
+                        onChange={(event) => setPrimaryChartMetric(event.target.value)}
+                      >
+                        {chartMetricOptions.map((option) => (
+                          <option key={`primary-${option.key}`} value={option.key}>{option.label}</option>
+                        ))}
+                      </select>
+                      <select
+                        className="h-11 rounded-2xl border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700"
+                        value={secondaryChartMetric}
+                        onChange={(event) => setSecondaryChartMetric(event.target.value)}
+                      >
+                        {chartMetricOptions.map((option) => (
+                          <option key={`secondary-${option.key}`} value={option.key}>{option.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="h-[360px]">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={clientDashboard.top_cities}>
-                      <CartesianGrid stroke="#e2e8f0" strokeDasharray="3 3" vertical={false} />
-                      <XAxis dataKey="city" stroke="#64748b" tickLine={false} axisLine={false} />
+                    <AreaChart data={clientDashboard.time_series}>
+                      <defs>
+                        <linearGradient id="legacyPrimaryFill" x1="0" x2="0" y1="0" y2="1">
+                          <stop offset="0%" stopColor="var(--saas-primary)" stopOpacity={0.34} />
+                          <stop offset="100%" stopColor="var(--saas-primary)" stopOpacity={0.02} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid stroke="#e2e8f0" strokeDasharray="3 3" />
+                      <XAxis dataKey="date" stroke="#64748b" tickLine={false} axisLine={false} />
                       <YAxis stroke="#64748b" tickLine={false} axisLine={false} />
                       <Tooltip />
-                      <Bar dataKey="value" fill="var(--saas-primary)" radius={[8, 8, 0, 0]} />
-                    </BarChart>
+                      <Area
+                        type="monotone"
+                        dataKey={primaryChartConfig.key}
+                        name={primaryChartConfig.label}
+                        stroke="var(--saas-primary)"
+                        fill="url(#legacyPrimaryFill)"
+                        strokeWidth={3}
+                      />
+                      <Area
+                        type="monotone"
+                        dataKey={secondaryChartConfig.key}
+                        name={secondaryChartConfig.label}
+                        stroke="var(--saas-accent)"
+                        fillOpacity={0}
+                        strokeWidth={3}
+                      />
+                    </AreaChart>
                   </ResponsiveContainer>
-                </div>
-                <div className="space-y-3">
-                  {clientDashboard.age_performance.map((row) => (
-                    <div key={row.range} className="flex items-center justify-between rounded-2xl border border-slate-200/70 bg-slate-50/80 px-4 py-3">
-                      <span className="text-sm font-medium text-slate-600">{row.range}</span>
-                      <span className="font-semibold text-slate-950">{row.roas.toFixed(2)}x de ROAS</span>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <div>
+                    <CardTitle>{legacyObjectiveCards[0].title} x custo</CardTitle>
+                    <CardDescription>Comparativo de resultado e custo no agrupamento principal.</CardDescription>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-5">
+                  <div className="grid gap-3 sm:grid-cols-3 xl:grid-cols-1">
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">{legacyObjectiveCards[0].resultLabel}</p>
+                      <p className="mt-1 font-manrope text-xl font-extrabold">{formatValue(legacyObjectiveCards[0].resultValue, legacyObjectiveCards[0].resultFormat)}</p>
+                    </div>
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">{legacyObjectiveCards[0].costLabel}</p>
+                      <p className="mt-1 font-manrope text-xl font-extrabold">{formatValue(legacyObjectiveCards[0].costValue, legacyObjectiveCards[0].costFormat)}</p>
+                    </div>
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Investimento</p>
+                      <p className="mt-1 font-manrope text-xl font-extrabold">{formatValue(getMetric('spend')?.value || 0, 'currency')}</p>
+                    </div>
+                  </div>
+                  <div className="h-[190px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={clientDashboard.time_series}>
+                        <CartesianGrid stroke="#e2e8f0" strokeDasharray="3 3" vertical={false} />
+                        <XAxis dataKey="date" stroke="#64748b" tickLine={false} axisLine={false} />
+                        <YAxis stroke="#64748b" tickLine={false} axisLine={false} />
+                        <Tooltip />
+                        <Bar dataKey="purchases" name="Compras" fill="var(--saas-primary)" radius={[8, 8, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+            </section>
+
+            <section className="grid gap-6 xl:grid-cols-3">
+              <Card>
+                <CardHeader>
+                  <div>
+                    <CardTitle>Ranking de localização</CardTitle>
+                    <CardDescription>Top cidades do recorte atual, como no painel de rankings do legado.</CardDescription>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="h-[180px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={clientDashboard.top_cities}>
+                        <CartesianGrid stroke="#e2e8f0" strokeDasharray="3 3" vertical={false} />
+                        <XAxis dataKey="city" stroke="#64748b" tickLine={false} axisLine={false} />
+                        <YAxis stroke="#64748b" tickLine={false} axisLine={false} />
+                        <Tooltip />
+                        <Bar dataKey="value" fill="var(--saas-primary)" radius={[8, 8, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <div>
+                    <CardTitle>Resultado por idade</CardTitle>
+                    <CardDescription>Faixas etárias separadas pelo resultado ativo.</CardDescription>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {clientDashboard.age_performance.map((row, index) => (
+                    <div key={row.range} className="rounded-2xl border border-slate-200/70 bg-slate-50/80 px-4 py-3">
+                      <div className="flex items-center justify-between">
+                        <span className="font-semibold text-slate-700">#{index + 1} {row.range}</span>
+                        <span className="font-semibold text-slate-950">{row.roas.toFixed(2)}x</span>
+                      </div>
+                      <div className="mt-3 h-2 rounded-full bg-slate-200">
+                        <div className="h-2 rounded-full bg-[var(--saas-accent)]" style={{ width: `${Math.min(row.roas * 22, 100)}%` }} />
+                      </div>
                     </div>
                   ))}
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
 
-            <Card>
-              <CardHeader>
-                <div>
-                  <CardTitle>Distribuição de criativos</CardTitle>
-                  <CardDescription>Melhores criativos e divisão de eficiência de receita.</CardDescription>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="h-[190px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={clientDashboard.top_creatives.map((item) => ({ name: item.creative, value: item.roas }))}
-                        dataKey="value"
-                        nameKey="name"
-                        innerRadius={48}
-                        outerRadius={76}
-                        paddingAngle={3}
-                      >
-                        {clientDashboard.top_creatives.map((item, index) => (
-                          <Cell key={item.creative} fill={['#0f766e', '#f97316', '#0f172a'][index % 3]} />
-                        ))}
-                      </Pie>
-                      <Tooltip />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-                <div className="space-y-3">
-                  {clientDashboard.top_creatives.map((creative) => (
+              <Card>
+                <CardHeader>
+                  <div>
+                    <CardTitle>Top 5 por criativos</CardTitle>
+                    <CardDescription>Camada de criativos do dashboard antigo.</CardDescription>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {clientDashboard.top_creatives.map((creative, index) => (
                     <div key={creative.creative} className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3">
-                      <span className="text-sm font-medium text-slate-600">{creative.creative}</span>
+                      <div>
+                        <p className="font-semibold text-slate-900">#{index + 1} {creative.creative}</p>
+                        <p className="text-xs text-slate-500">Criativo no recorte atual</p>
+                      </div>
                       <span className="font-semibold text-slate-950">{creative.roas.toFixed(2)}x</span>
                     </div>
                   ))}
+                </CardContent>
+              </Card>
+            </section>
+
+            <Card>
+              <CardHeader>
+                <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                  <div>
+                    <CardTitle>Campanhas do cliente ({clientDashboard.campaigns.length})</CardTitle>
+                    <CardDescription>Tabela pronta para reunião com as colunas do dashboard antigo.</CardDescription>
+                  </div>
+                  <div className="flex flex-wrap gap-2 text-xs font-semibold text-slate-500">
+                    {['Buscar campanha', 'Todos os status', 'Ordenar por investimento'].map((item) => (
+                      <span key={item} className="rounded-full border border-slate-200 bg-white px-3 py-2">{item}</span>
+                    ))}
+                  </div>
                 </div>
+              </CardHeader>
+              <CardContent className="overflow-x-auto">
+                <table className="min-w-full text-left text-sm">
+                  <thead className="text-slate-400">
+                    <tr>
+                      <th className="pb-3 pr-5 font-medium">Status</th>
+                      <th className="pb-3 pr-5 font-medium">Campanha</th>
+                      {campaignColumns.map((column) => (
+                        <th key={column.key} className="whitespace-nowrap pb-3 pr-5 font-medium">{column.label}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {clientDashboard.campaigns.length > 0 ? (
+                      clientDashboard.campaigns.map((campaign) => (
+                        <tr key={campaign.campaign_name}>
+                          <td className="py-4 pr-5"><Badge tone={campaign.status === 'ACTIVE' ? 'green' : 'yellow'}>{statusLabel(campaign.status.toLowerCase())}</Badge></td>
+                          <td className="py-4 pr-5">
+                            <p className="font-semibold text-slate-900">{campaign.campaign_name}</p>
+                            <p className="text-xs capitalize text-slate-400">{campaign.source.replace('_', ' ')}</p>
+                          </td>
+                          {campaignColumns.map((column) => (
+                            <td key={column.key} className="whitespace-nowrap py-4 pr-5">
+                              {column.key === 'totalConversions' ? (
+                                <div>
+                                  <strong>{formatValue(getCampaignValue(campaign, column.key), column.format)}</strong>
+                                  <p className="mt-1 text-xs text-slate-400">
+                                    {campaign.purchases || 0} compras, {campaign.leads || 0} leads, {campaign.messages || 0} mensagens
+                                  </p>
+                                </div>
+                              ) : (
+                                formatValue(getCampaignValue(campaign, column.key), column.format)
+                              )}
+                            </td>
+                          ))}
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={campaignColumns.length + 2} className="py-10 text-center text-slate-500">
+                          Nenhuma campanha encontrada para esse cliente.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
               </CardContent>
             </Card>
           </section>
           ) : null}
 
-          {showDashs || showClients ? (
+          {showClients ? (
           <section className="grid gap-6 xl:grid-cols-[1.35fr_1fr]">
             <Card>
               <CardHeader>

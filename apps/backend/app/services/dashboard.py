@@ -66,6 +66,10 @@ def build_client_dashboard(db: Session, client: Client) -> dict:
     # does not store reach separately yet, so we keep the same fields with safe fallbacks.
     reach = impressions
     frequency = 1.0 if reach else 0.0
+    reach_results = reach
+    cost_per_reach = round(spend / max(reach_results, 1), 2) if reach_results else 0
+    thruplays = 0
+    cost_per_truplay = 0
 
     previous_spend = _sum(row.spend for row in previous)
     previous_impressions = sum(row.impressions for row in previous)
@@ -86,6 +90,8 @@ def build_client_dashboard(db: Session, client: Client) -> dict:
     previous_cost_per_lead = round(previous_spend / max(previous_leads, 1), 2) if previous_leads else 0
     previous_cost_per_message = round(previous_spend / max(previous_messages, 1), 2) if previous_messages else 0
     previous_clicks_without_conversion = max(previous_clicks - previous_conversions, 0)
+    previous_reach_results = previous_impressions
+    previous_cost_per_reach = round(previous_spend / max(previous_reach_results, 1), 2) if previous_reach_results else 0
 
     objectives = {
         "purchases": purchases,
@@ -157,6 +163,10 @@ def build_client_dashboard(db: Session, client: Client) -> dict:
             _metric("costPerLead", "Custo por lead", cost_per_lead, previous_cost_per_lead, "currency"),
             _metric("messages", "Mensagens iniciadas", messages, previous_messages, "number"),
             _metric("costPerMessage", "Custo por mensagem", cost_per_message, previous_cost_per_message, "currency"),
+            _metric("reachResults", "Pessoas alcançadas", reach_results, previous_reach_results, "number"),
+            _metric("costPerReach", "Custo por alcance", cost_per_reach, previous_cost_per_reach, "currency"),
+            _metric("thruplays", "TruPlays", thruplays, 0, "number"),
+            _metric("costPerTruplay", "Custo por TruPlay", cost_per_truplay, 0, "currency"),
             _metric("clicksWithoutConversion", "Cliques sem conversão", clicks_without_conversion, previous_clicks_without_conversion, "number"),
             _metric("roas", "ROAS consolidado", roas, previous_roas, "ratio"),
         ],
