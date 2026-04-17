@@ -54,6 +54,9 @@ export async function fetchMetaJson(url, fallbackMessage, options = {}) {
   const cacheKey = `${options.method || 'GET'}:${url}`
   const cachedEntry = META_RESPONSE_CACHE.get(cacheKey)
   const envToken = String(process.env.META_ACCESS_TOKEN || '').trim()
+  const maxPages = Number.isFinite(Number(options.maxPages)) ? Number(options.maxPages) : META_MAX_PAGES
+  const fetchOptions = { ...options }
+  delete fetchOptions.maxPages
 
   if (cachedEntry && Date.now() - cachedEntry.timestamp < META_CACHE_TTL_MS) {
     return cachedEntry.data
@@ -66,8 +69,8 @@ export async function fetchMetaJson(url, fallbackMessage, options = {}) {
       let mergedData = null
       let hasRetriedWithEnvToken = false
 
-      while (requestUrl && pageCount < META_MAX_PAGES) {
-        const response = await fetch(requestUrl, options)
+      while (requestUrl && pageCount < maxPages) {
+        const response = await fetch(requestUrl, fetchOptions)
         const data = await response.json()
 
         if (data?.error) {

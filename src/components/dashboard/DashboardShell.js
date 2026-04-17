@@ -7876,10 +7876,6 @@ export default function DashboardShell({ initialTab = 'home', initialActiveClien
       return
     }
 
-    if (shouldFetchPresentationData && hasMetaConfigured && !isMetaStructureReady) {
-      return
-    }
-
     let cancelled = false
 
     const fetchDashboardData = async () => {

@@ -59,7 +59,8 @@ export async function GET(request) {
     
     const data = await fetchMetaJson(
       campaignsUrl,
-      'A Meta demorou para responder ao carregar as campanhas. Tente novamente em alguns instantes.'
+      'A Meta demorou para responder ao carregar as campanhas. Tente novamente em alguns instantes.',
+      { maxPages: 4 }
     )
 
     return NextResponse.json(

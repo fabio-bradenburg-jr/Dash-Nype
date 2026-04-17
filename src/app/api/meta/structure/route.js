@@ -28,7 +28,8 @@ export async function GET(request) {
 
     const data = await fetchMetaJson(
       structureUrl,
-      'A Meta demorou para responder ao carregar campanhas, conjuntos e anúncios. Tente novamente em alguns instantes.'
+      'A Meta demorou para responder ao carregar campanhas, conjuntos e anúncios. Tente novamente em alguns instantes.',
+      { maxPages: 2 }
     )
 
     const rows = (data.data || [])
