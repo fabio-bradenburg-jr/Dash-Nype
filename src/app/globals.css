@@ -205,7 +205,9 @@ body {
 .saas-legacy-dashboard-frame .dashboard-container::before,
 .saas-legacy-dashboard-frame .sidebar,
 .saas-legacy-dashboard-frame .operation-stellar-topbar,
-.saas-legacy-dashboard-frame .main-content > .header {
+.saas-legacy-dashboard-frame .main-content > .header,
+.saas-legacy-dashboard-frame .hero-section .hero-stat,
+.saas-legacy-dashboard-frame .feedback-banner {
     display: none !important;
 }
 
