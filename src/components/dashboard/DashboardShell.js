@@ -4000,8 +4000,7 @@ export default function DashboardShell({ initialTab = 'home', initialActiveClien
   const hasMetaConfigured = Boolean(
     isActiveClientDashboardEnabled &&
     activeClientVisibleIntegrationsSet.has('meta_ads') &&
-    selectedAdAccount &&
-    (hasMetaManualToken || hasMetaOauthConnection)
+    selectedAdAccount
   )
   const hasRdConfigured = Boolean(
     isActiveClientDashboardEnabled &&
@@ -7948,7 +7947,7 @@ export default function DashboardShell({ initialTab = 'home', initialActiveClien
 
           const insightsParams = new URLSearchParams(params)
 
-          if (currentMetaFilteredCampaignIds.length === 0) {
+          if (hasActiveMetaCampaignNarrowing && currentMetaFilteredCampaignIds.length === 0) {
             insightsParams.set('campaign_ids', '__none__')
           } else if (hasActiveMetaCampaignNarrowing) {
             insightsParams.set('campaign_ids', currentMetaFilteredCampaignIds.join(','))
@@ -7973,7 +7972,7 @@ export default function DashboardShell({ initialTab = 'home', initialActiveClien
             previousInsightsParams.set('since', formatLocalDateInput(previousMetaWindow.start))
             previousInsightsParams.set('until', formatLocalDateInput(previousMetaWindow.end))
           }
-          if (currentMetaFilteredCampaignIds.length === 0) {
+          if (hasActiveMetaCampaignNarrowing && currentMetaFilteredCampaignIds.length === 0) {
             previousInsightsParams.set('campaign_ids', '__none__')
           } else if (hasActiveMetaCampaignNarrowing) {
             previousInsightsParams.set('campaign_ids', currentMetaFilteredCampaignIds.join(','))
@@ -8349,7 +8348,7 @@ export default function DashboardShell({ initialTab = 'home', initialActiveClien
         const currentMetaFilteredAdsetIds = metaFilteredAdsetIdsRef.current
         const currentMetaFilteredAdIds = metaFilteredAdIdsRef.current
 
-        if (currentMetaFilteredCampaignIds.length === 0) {
+        if (hasActiveMetaCampaignNarrowing && currentMetaFilteredCampaignIds.length === 0) {
           params.set('campaign_ids', '__none__')
         } else if (hasActiveMetaCampaignNarrowing) {
           params.set('campaign_ids', currentMetaFilteredCampaignIds.join(','))
@@ -16070,7 +16069,12 @@ export default function DashboardShell({ initialTab = 'home', initialActiveClien
               </div>
             </section>
 
-            {errorMessage && <div className="feedback-banner">{errorMessage}</div>}
+            {errorMessage && (
+              <div className="api-error-banner" role="status">
+                <i className="bx bx-error-circle"></i>
+                <span>{errorMessage}</span>
+              </div>
+            )}
 
             {!activeClient ? (
               !canViewDashboard ? (
