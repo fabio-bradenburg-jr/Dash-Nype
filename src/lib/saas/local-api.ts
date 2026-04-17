@@ -128,6 +128,10 @@ function serializeWorkspaceClient(row: WorkspaceClientRow, workspaceId: string):
   }
 }
 
+function isWorkspaceSaasClient(row: WorkspaceClientRow) {
+  return Array.isArray(row.payload?.saas_integrations)
+}
+
 function serializeWorkspaceIntegration(
   integration: Record<string, unknown>,
   fallbackClientId: string
@@ -174,7 +178,10 @@ async function listWorkspaceClients(token: string) {
 
   if (error) throw error
 
-  return (data || []).map((row) => serializeWorkspaceClient(row as WorkspaceClientRow, user.tenant_id))
+  return (data || [])
+    .map((row) => row as WorkspaceClientRow)
+    .filter(isWorkspaceSaasClient)
+    .map((row) => serializeWorkspaceClient(row, user.tenant_id))
 }
 
 async function createWorkspaceClient(token: string, payload: Record<string, unknown>) {
@@ -230,6 +237,8 @@ async function listWorkspaceIntegrations(token: string) {
   if (error) throw error
 
   return (data || []).flatMap((row) => {
+    if (!isWorkspaceSaasClient(row as WorkspaceClientRow)) return []
+
     const payload = ((row as WorkspaceClientRow).payload || {}) as Record<string, unknown>
     const integrations = Array.isArray(payload.saas_integrations) ? payload.saas_integrations : []
     return integrations.map((integration) => serializeWorkspaceIntegration(integration as Record<string, unknown>, String(row.id)))
