@@ -3972,8 +3972,10 @@ export default function DashboardShell({ initialTab = 'home', initialActiveClien
   )
   const hasMetaManualToken = Boolean(String(globalIntegrations.metaAccessToken || '').trim())
   const hasMetaOauthConnection = Boolean(metaConnection.connected)
+  const shouldUseServerMetaConnection = hasInitialClientsOverride
   const shouldUseMetaOauth =
-    hasMetaOauthConnection && (globalIntegrations.metaConnectionMode === 'oauth' || !hasMetaManualToken)
+    shouldUseServerMetaConnection ||
+    (hasMetaOauthConnection && (globalIntegrations.metaConnectionMode === 'oauth' || !hasMetaManualToken))
   const metaRequestHeaders = useMemo(() => {
     if (shouldUseMetaOauth || !hasMetaManualToken) return {}
 
@@ -3984,12 +3986,13 @@ export default function DashboardShell({ initialTab = 'home', initialActiveClien
   const metaCredentialSignature = useMemo(
     () =>
       JSON.stringify({
-        mode: shouldUseMetaOauth ? 'oauth' : 'manual',
-        manualToken: hasMetaManualToken ? globalIntegrations.metaAccessToken : '',
+        mode: shouldUseServerMetaConnection ? 'server' : shouldUseMetaOauth ? 'oauth' : 'manual',
+        manualToken: !shouldUseServerMetaConnection && hasMetaManualToken ? globalIntegrations.metaAccessToken : '',
         connectionUserId: metaConnection.userId || '',
         connectionExpiresAt: metaConnection.expiresAt || '',
       }),
     [
+      shouldUseServerMetaConnection,
       shouldUseMetaOauth,
       hasMetaManualToken,
       globalIntegrations.metaAccessToken,
