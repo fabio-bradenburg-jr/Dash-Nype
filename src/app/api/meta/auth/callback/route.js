@@ -6,6 +6,7 @@ import {
   getAuthorizedMetaConnectionContext,
   getMetaOauthCookie,
   getMetaProfile,
+  getPlatformMetaConnectionContext,
   saveWorkspaceMetaConnection,
 } from '@/lib/server/meta-connection'
 import { getDashboardState, saveDashboardState } from '@/lib/server/dashboard-store'
@@ -22,7 +23,17 @@ export async function GET(request) {
       throw new Error('A confirmação da Meta expirou. Tente conectar novamente.')
     }
 
-    const { supabase, adminSupabase, accessContext } = await getAuthorizedMetaConnectionContext({ requireEdit: true })
+    let context = null
+    try {
+      context = await getPlatformMetaConnectionContext({ requireEdit: true })
+    } catch {
+      context = await getAuthorizedMetaConnectionContext({ requireEdit: true })
+    }
+
+    const { supabase, adminSupabase, accessContext } = context
+    if (!accessContext.canEditIntegrations) {
+      throw new Error('Sem permissão para gerenciar a conexão da Meta.')
+    }
 
     if (oauthCookie.workspaceId && oauthCookie.workspaceId !== accessContext.workspaceId) {
       throw new Error('O workspace do retorno da Meta não confere com a sessão atual.')
@@ -43,14 +54,16 @@ export async function GET(request) {
         : null,
     })
 
-    const dashboardState = await getDashboardState(supabase, accessContext)
-    await saveDashboardState(supabase, accessContext, {
-      ...dashboardState,
-      globalIntegrations: {
-        ...(dashboardState.globalIntegrations || {}),
-        metaConnectionMode: 'oauth',
-      },
-    })
+    if (supabase) {
+      const dashboardState = await getDashboardState(supabase, accessContext)
+      await saveDashboardState(supabase, accessContext, {
+        ...dashboardState,
+        globalIntegrations: {
+          ...(dashboardState.globalIntegrations || {}),
+          metaConnectionMode: 'oauth',
+        },
+      })
+    }
 
     redirectUrl.pathname = oauthCookie.returnTo || '/settings'
     redirectUrl.searchParams.set('meta_connected', '1')

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import {
   deleteWorkspaceMetaConnection,
   getAuthorizedMetaConnectionContext,
+  getPlatformMetaConnectionContext,
   getWorkspaceMetaConnection,
   isMissingRelationError,
   mapMetaConnection,
@@ -9,7 +10,14 @@ import {
 
 export async function GET() {
   try {
-    const { adminSupabase, accessContext } = await getAuthorizedMetaConnectionContext()
+    let context = null
+    try {
+      context = await getPlatformMetaConnectionContext()
+    } catch {
+      context = await getAuthorizedMetaConnectionContext()
+    }
+
+    const { adminSupabase, accessContext } = context
     const connection = await getWorkspaceMetaConnection(adminSupabase, accessContext.workspaceId)
 
     return NextResponse.json({
@@ -30,7 +38,18 @@ export async function GET() {
 
 export async function DELETE() {
   try {
-    const { adminSupabase, accessContext } = await getAuthorizedMetaConnectionContext({ requireEdit: true })
+    let context = null
+    try {
+      context = await getPlatformMetaConnectionContext()
+    } catch {
+      context = await getAuthorizedMetaConnectionContext({ requireEdit: true })
+    }
+
+    const { adminSupabase, accessContext } = context
+    if (!accessContext.canEditIntegrations) {
+      return NextResponse.json({ error: 'Sem permissão para desconectar a Meta.' }, { status: 403 })
+    }
+
     await deleteWorkspaceMetaConnection(adminSupabase, accessContext.workspaceId)
 
     return NextResponse.json({ ok: true })

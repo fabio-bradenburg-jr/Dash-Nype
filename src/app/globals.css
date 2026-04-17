@@ -205,10 +205,23 @@ body {
 .saas-legacy-dashboard-frame .dashboard-container::before,
 .saas-legacy-dashboard-frame .sidebar,
 .saas-legacy-dashboard-frame .operation-stellar-topbar,
-.saas-legacy-dashboard-frame .main-content > .header,
 .saas-legacy-dashboard-frame .hero-section .hero-stat,
 .saas-legacy-dashboard-frame .feedback-banner {
     display: none !important;
+}
+
+.saas-legacy-dashboard-frame .main-content > .header {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    display: flex !important;
+    margin: 0 0 18px !important;
+    border-radius: 28px;
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    background: rgba(255, 255, 255, 0.86);
+    box-shadow: 0 18px 50px rgba(15, 23, 42, 0.08);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
 }
 
 .saas-legacy-dashboard-frame .main-content,

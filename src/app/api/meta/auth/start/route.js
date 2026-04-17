@@ -2,12 +2,24 @@ import { NextResponse } from 'next/server'
 import {
   createMetaAuthorizationUrl,
   getAuthorizedMetaConnectionContext,
+  getPlatformMetaConnectionContext,
   setMetaOauthCookie,
 } from '@/lib/server/meta-connection'
 
 export async function GET(request) {
   try {
-    const { accessContext } = await getAuthorizedMetaConnectionContext({ requireEdit: true })
+    let context = null
+    try {
+      context = await getPlatformMetaConnectionContext({ requireEdit: true })
+    } catch {
+      context = await getAuthorizedMetaConnectionContext({ requireEdit: true })
+    }
+
+    const { accessContext } = context
+    if (!accessContext.canEditIntegrations) {
+      throw new Error('Sem permissão para gerenciar a conexão da Meta.')
+    }
+
     const returnTo = request.nextUrl.searchParams.get('return_to') || '/settings'
     const authorization = await createMetaAuthorizationUrl(request, accessContext.workspaceId, returnTo)
     const response = NextResponse.redirect(authorization.url)

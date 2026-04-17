@@ -2,6 +2,8 @@ import { cookies } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/server/supabase-admin'
 import { getAccessContext } from '@/lib/server/access-control'
+import { PLATFORM_AUTH_COOKIE } from '@/lib/saas/auth'
+import { verifyLocalAccessToken } from '@/lib/server/platform-auth-fallback'
 
 const META_OAUTH_COOKIE = 'meta_oauth'
 const META_SCOPES = ['public_profile', 'ads_read', 'ads_management', 'business_management']
@@ -141,6 +143,36 @@ export async function getWorkspaceMetaConnection(adminSupabase, workspaceId) {
   if (error && isMissingRelationError(error)) return null
   if (error) throw error
   return data || null
+}
+
+export async function getPlatformMetaConnectionContext({ requireEdit = false } = {}) {
+  const cookieStore = await cookies()
+  const token = cookieStore.get(PLATFORM_AUTH_COOKIE)?.value
+
+  if (!token) {
+    throw new Error('Sessão do SaaS não encontrada.')
+  }
+
+  const payload = await verifyLocalAccessToken(token)
+  const workspaceId = String(payload.tenant_id || '')
+
+  if (!workspaceId) {
+    throw new Error('Workspace não encontrado na sessão do SaaS.')
+  }
+
+  const canEditIntegrations = ['admin', 'master', 'operator', 'operador'].includes(String(payload.role || '').toLowerCase())
+
+  if (requireEdit && !canEditIntegrations) {
+    throw new Error('Sem permissão para gerenciar a conexão da Meta.')
+  }
+
+  return {
+    adminSupabase: createAdminClient(),
+    accessContext: {
+      workspaceId,
+      canEditIntegrations,
+    },
+  }
 }
 
 export function mapMetaConnection(connection) {
@@ -290,15 +322,25 @@ export async function resolveWorkspaceMetaAccessToken(request) {
     return headerToken || bearerToken
   }
 
-  if (process.env.META_ACCESS_TOKEN) {
-    return process.env.META_ACCESS_TOKEN
+  try {
+    const { adminSupabase, accessContext } = await getPlatformMetaConnectionContext()
+    const connection = await getWorkspaceMetaConnection(adminSupabase, accessContext.workspaceId)
+    if (connection?.access_token) {
+      return connection.access_token
+    }
+  } catch {
+    // Continua para a sessão Supabase antiga ou token de ambiente.
   }
 
   try {
     const { adminSupabase, accessContext } = await getAuthorizedMetaConnectionContext()
     const connection = await getWorkspaceMetaConnection(adminSupabase, accessContext.workspaceId)
-    return connection?.access_token || ''
+    if (connection?.access_token) {
+      return connection.access_token
+    }
   } catch {
-    return ''
+    // Continua para token de ambiente.
   }
+
+  return process.env.META_ACCESS_TOKEN || ''
 }
