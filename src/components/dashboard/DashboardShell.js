@@ -4474,7 +4474,7 @@ export default function DashboardShell({ initialTab = 'home', initialActiveClien
   }, [initialActiveClientId, initialClientRecord, initialClientsOverride, hasInitialClientsOverride])
 
   useEffect(() => {
-    if (!hasLoadedPreferences || userLoading || !user) return
+    if (!hasLoadedPreferences || userLoading) return
 
     let cancelled = false
 
@@ -4516,7 +4516,7 @@ export default function DashboardShell({ initialTab = 'home', initialActiveClien
     return () => {
       cancelled = true
     }
-  }, [hasLoadedPreferences, userLoading, user])
+  }, [hasLoadedPreferences, userLoading])
 
   useEffect(() => {
     if (!activeClient?.dashboardColor) return
