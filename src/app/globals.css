@@ -180,6 +180,54 @@ body {
         radial-gradient(circle at 55% 100%, rgba(71, 68, 229, 0.08), transparent 28%);
 }
 
+.saas-legacy-dashboard-frame {
+    --main: var(--saas-primary, #0f766e);
+    --accent: var(--saas-accent, #f97316);
+    --accent-emerald: var(--saas-primary, #0f766e);
+    --accent-orange: var(--saas-accent, #f97316);
+    --shell-sidebar: #020617;
+    overflow: hidden;
+    border-radius: 34px;
+    border: 1px solid rgba(255, 255, 255, 0.78);
+    background:
+        radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--saas-primary, #0f766e) 16%, transparent), transparent 28%),
+        radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--saas-accent, #f97316) 18%, transparent), transparent 24%),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(248, 250, 252, 0.78));
+    box-shadow: 0 28px 90px rgba(15, 23, 42, 0.12);
+}
+
+.saas-legacy-dashboard-frame .dashboard-container {
+    display: block;
+    min-height: auto;
+    background: transparent;
+}
+
+.saas-legacy-dashboard-frame .dashboard-container::before,
+.saas-legacy-dashboard-frame .sidebar,
+.saas-legacy-dashboard-frame .operation-stellar-topbar,
+.saas-legacy-dashboard-frame .main-content > .header {
+    display: none !important;
+}
+
+.saas-legacy-dashboard-frame .main-content,
+.saas-legacy-dashboard-frame .main-content-expanded {
+    width: 100%;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+.saas-legacy-dashboard-frame .source-section,
+.saas-legacy-dashboard-frame .glass-panel,
+.saas-legacy-dashboard-frame .kpi-card,
+.saas-legacy-dashboard-frame .glass-item {
+    border-color: rgba(15, 23, 42, 0.08);
+}
+
+.saas-legacy-dashboard-frame .btn.btn-primary,
+.saas-legacy-dashboard-frame .source-section-badge {
+    border-color: color-mix(in srgb, var(--saas-primary, #0f766e) 58%, white);
+}
+
 /* Sidebar */
 .sidebar {
     width: var(--sidebar-width);
