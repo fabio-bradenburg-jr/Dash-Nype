@@ -286,6 +286,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
     agendorAccountId: '',
     dashboardButtonColor: snapshot.theme.primaryColor || '#0f766e',
     dashboardAccentColor: snapshot.theme.accentColor || '#f97316',
+    logoUrl: '',
   })
   const [knowledgeSources, setKnowledgeSources] = useState<KnowledgeSource[]>(
     extractKnowledgeSourcesFromBusinessData(snapshot.selectedClient.business_data as Record<string, unknown>)
@@ -300,6 +301,12 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
       const businessData = (client.business_data || {}) as Record<string, unknown>
       const businessIntegrations = (businessData.integrations || {}) as Record<string, unknown>
       const dashboardTheme = (businessData.dashboardTheme || {}) as Record<string, unknown>
+      const dashboardTemplates = Array.isArray(businessData.dashboardTemplates) ? businessData.dashboardTemplates : []
+      const activeDashboardTemplateId =
+        typeof businessData.activeDashboardTemplateId === 'string' ? businessData.activeDashboardTemplateId : ''
+      const funnelSteps = Array.isArray(businessData.funnelSteps)
+        ? businessData.funnelSteps.map((step) => String(step)).filter(Boolean)
+        : ['impressions', 'clicks', 'leads', 'purchases']
 
       return {
         id: client.id,
@@ -309,14 +316,15 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
         operationEnabled: false,
         dashboardColor: String(dashboardTheme.buttonColor || businessData.dashboardButtonColor || snapshot.theme.primaryColor || '#0f766e'),
         dashboardAccentColor: String(dashboardTheme.accentColor || businessData.dashboardAccentColor || snapshot.theme.accentColor || '#f97316'),
+        logoUrl: String(businessData.logoUrl || ''),
         dashboardVisibleIntegrationKeys: ['meta_ads', 'rd_station'],
         metaAdAccountId: metaIntegration?.external_account_id || String(businessData.metaAdAccountId || ''),
         rdStationAccountId: agendorIntegration?.account_name || String(businessData.agendorAccountId || ''),
         rdPipelineId: String(businessData.agendorAccountId || ''),
         rdStationToken: String(businessIntegrations.agendorToken || ''),
-        funnelSteps: ['impressions', 'clicks', 'leads', 'purchases'],
-        activeDashboardTemplateId: '',
-        dashboardTemplates: [],
+        funnelSteps,
+        activeDashboardTemplateId,
+        dashboardTemplates,
       }
     })
   }, [snapshot.clients, snapshot.integrations, snapshot.theme.accentColor, snapshot.theme.primaryColor])
@@ -553,6 +561,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
             agendorAccountId: clientForm.agendorAccountId,
             dashboardButtonColor: clientForm.dashboardButtonColor,
             dashboardAccentColor: clientForm.dashboardAccentColor,
+            logoUrl: clientForm.logoUrl,
             dashboardTheme: {
               buttonColor: clientForm.dashboardButtonColor,
               accentColor: clientForm.dashboardAccentColor,
@@ -605,6 +614,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
         agendorAccountId: '',
         dashboardButtonColor: snapshot.theme.primaryColor || '#0f766e',
         dashboardAccentColor: snapshot.theme.accentColor || '#f97316',
+        logoUrl: '',
       })
       router.refresh()
     } catch (error) {
@@ -631,6 +641,16 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
 
   function handleConnectMeta() {
     window.location.href = `/api/meta/auth/start?return_to=/`
+  }
+
+  function handleClientLogoUpload(file: File | undefined) {
+    if (!file) return
+
+    const reader = new FileReader()
+    reader.onload = () => {
+      setClientForm((current) => ({ ...current, logoUrl: reader.result?.toString() || '' }))
+    }
+    reader.readAsDataURL(file)
   }
 
   async function handleSaveMetaApiToken() {
@@ -704,7 +724,11 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
         <aside className="sticky top-4 hidden h-[calc(100vh-2rem)] w-[272px] flex-none flex-col rounded-[34px] border border-white/10 bg-[linear-gradient(180deg,#020617,#0f172a)] px-6 py-7 text-white shadow-[0_30px_100px_rgba(2,6,23,0.36)] lg:flex xl:w-[292px]">
           <div className="mb-8 flex items-center gap-3">
             <div className="grid h-12 w-12 place-items-center rounded-2xl bg-white/10 ring-1 ring-white/15">
-              <Sparkles className="h-6 w-6" />
+              {snapshot.theme.logoUrl ? (
+                <img src={snapshot.theme.logoUrl} alt="Logo Nype Orbit" className="h-full w-full rounded-2xl object-contain p-2" />
+              ) : (
+                <Sparkles className="h-6 w-6" />
+              )}
             </div>
             <div>
               <p className="font-manrope text-lg font-extrabold">Nype Orbit</p>
@@ -862,6 +886,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
               initialTab="apresentacao"
               initialActiveClientId={selectedClientId || selectedClient.id}
               initialClientsOverride={legacyDashboardClients}
+              initialAppLogoUrl={snapshot.theme.logoUrl || ''}
             />
           </section>
           ) : null}
@@ -1651,6 +1676,35 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
                       onChange={(event) => setClientForm((current) => ({ ...current, dashboardAccentColor: event.target.value }))}
                     />
                   </label>
+                </div>
+                <div className="mt-4 grid gap-4 md:grid-cols-[96px_1fr] md:items-center">
+                  <div className="grid h-20 w-20 place-items-center overflow-hidden rounded-3xl border border-slate-200 bg-white">
+                    {clientForm.logoUrl ? (
+                      <img src={clientForm.logoUrl} alt="Logo do cliente" className="h-full w-full object-contain p-2" />
+                    ) : (
+                      <span className="px-2 text-center text-[11px] font-semibold text-slate-400">Sem logo</span>
+                    )}
+                  </div>
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <label className="grid gap-2 text-sm font-medium text-slate-600">
+                      Logo do cliente
+                      <input
+                        className="h-12 rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700 shadow-sm"
+                        type="file"
+                        accept="image/*"
+                        onChange={(event) => handleClientLogoUpload(event.target.files?.[0])}
+                      />
+                    </label>
+                    <label className="grid gap-2 text-sm font-medium text-slate-600">
+                      URL da logo
+                      <input
+                        className="h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 shadow-sm outline-none"
+                        value={clientForm.logoUrl}
+                        onChange={(event) => setClientForm((current) => ({ ...current, logoUrl: event.target.value }))}
+                        placeholder="https://..."
+                      />
+                    </label>
+                  </div>
                 </div>
               </div>
 

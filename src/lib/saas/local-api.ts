@@ -401,6 +401,94 @@ export async function createLocalSaasClient(token: string, payload: Record<strin
   return serializeClient(result.rows[0])
 }
 
+export async function updateLocalSaasClientDashboardLayout(token: string, payload: Record<string, unknown>) {
+  const user = await getLocalSaasUser(token)
+  const clientId = String(payload.clientId || payload.client_id || '').trim()
+
+  if (!clientId) {
+    throw new Error('Cliente obrigatório para salvar o layout.')
+  }
+
+  const layoutData = {
+    dashboardTemplates: Array.isArray(payload.dashboardTemplates) ? payload.dashboardTemplates : [],
+    activeDashboardTemplateId: String(payload.activeDashboardTemplateId || ''),
+    funnelSteps: Array.isArray(payload.funnelSteps) ? payload.funnelSteps : [],
+    dashboardButtonColor: String(payload.dashboardButtonColor || ''),
+    dashboardAccentColor: String(payload.dashboardAccentColor || ''),
+    logoUrl: String(payload.logoUrl || ''),
+    dashboardTheme:
+      payload.dashboardTheme && typeof payload.dashboardTheme === 'object'
+        ? payload.dashboardTheme
+        : {
+            buttonColor: String(payload.dashboardButtonColor || ''),
+            accentColor: String(payload.dashboardAccentColor || ''),
+          },
+  }
+
+  if (!hasLocalDatabaseConfig()) {
+    const supabase = createAdminClient()
+    const { data: client, error: loadError } = await supabase
+      .from('workspace_clients')
+      .select('id, name, payload, updated_at')
+      .eq('workspace_id', user.tenant_id)
+      .eq('id', clientId)
+      .maybeSingle()
+
+    if (loadError) throw loadError
+    if (!client) throw new Error('Cliente não encontrado.')
+
+    const currentPayload = ((client as WorkspaceClientRow).payload || {}) as Record<string, unknown>
+    const currentBusinessData =
+      currentPayload.business_data && typeof currentPayload.business_data === 'object'
+        ? (currentPayload.business_data as Record<string, unknown>)
+        : {}
+
+    const nextPayload = {
+      ...currentPayload,
+      business_data: {
+        ...currentBusinessData,
+        ...layoutData,
+      },
+    }
+
+    const { data, error } = await supabase
+      .from('workspace_clients')
+      .update({ payload: nextPayload })
+      .eq('workspace_id', user.tenant_id)
+      .eq('id', clientId)
+      .select('id, name, payload, updated_at')
+      .single()
+
+    if (error) throw error
+    return serializeWorkspaceClient(data as WorkspaceClientRow, user.tenant_id)
+  }
+
+  const current = await getPool().query<LocalClientRow>(
+    'select id, tenant_id, name, company, niche, average_ticket, main_goal::text as main_goal, ltv, start_date, status::text as status, target_roas, business_data, null as last_sync_at from clients where id = $1 and tenant_id = $2 limit 1',
+    [clientId, user.tenant_id]
+  )
+
+  if (!current.rowCount) {
+    throw new Error('Cliente não encontrado.')
+  }
+
+  const currentBusinessData = current.rows[0].business_data || {}
+  const nextBusinessData = {
+    ...currentBusinessData,
+    ...layoutData,
+  }
+
+  const result = await getPool().query<LocalClientRow>(
+    `update clients
+     set business_data = $3, updated_at = now()
+     where id = $1 and tenant_id = $2
+     returning id, tenant_id, name, company, niche, average_ticket, main_goal::text as main_goal, ltv, start_date, status::text as status, target_roas, business_data, null as last_sync_at`,
+    [clientId, user.tenant_id, JSON.stringify(nextBusinessData)]
+  )
+
+  return serializeClient(result.rows[0])
+}
+
 export async function listLocalSaasIntegrations(token: string) {
   if (!hasLocalDatabaseConfig()) {
     return listWorkspaceIntegrations(token)

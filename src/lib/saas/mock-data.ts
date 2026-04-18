@@ -6,6 +6,7 @@ export const demoPlatformSnapshot: PlatformSnapshot = {
     accentColor: '#f97316',
     backgroundColor: '#f8fafc',
     darkMode: false,
+    logoUrl: '',
   },
   clients: [],
   selectedClient: {

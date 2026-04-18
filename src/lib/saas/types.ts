@@ -3,6 +3,7 @@ export type ThemeSettings = {
   accentColor: string
   backgroundColor: string
   darkMode: boolean
+  logoUrl?: string
 }
 
 export type MetricCard = {

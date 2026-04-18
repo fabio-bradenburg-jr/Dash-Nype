@@ -2801,7 +2801,7 @@ function mergeInitialClientRecord(currentClients, initialClientRecord) {
   )
 }
 
-export default function DashboardShell({ initialTab = 'home', initialActiveClientId = '', initialClientRecord = null, initialClientsOverride = null }) {
+export default function DashboardShell({ initialTab = 'home', initialActiveClientId = '', initialClientRecord = null, initialClientsOverride = null, initialAppLogoUrl = '' }) {
   const { user, profile, access, appearance, updateAppearance, loading: userLoading } = useUser()
   const supabase = createClient()
   const dashboardRef = useRef(null)
@@ -2988,6 +2988,8 @@ export default function DashboardShell({ initialTab = 'home', initialActiveClien
   const [draftFunnelSteps, setDraftFunnelSteps] = useState([])
   const [draftDashboardTemplates, setDraftDashboardTemplates] = useState([])
   const [draftDashboardTemplateId, setDraftDashboardTemplateId] = useState('')
+  const [layoutSaveMessage, setLayoutSaveMessage] = useState('')
+  const [isSavingDashboardLayout, setIsSavingDashboardLayout] = useState(false)
   const [isMetaMetricLibraryOpen, setIsMetaMetricLibraryOpen] = useState(false)
   const [isRdMetricLibraryOpen, setIsRdMetricLibraryOpen] = useState(false)
   const [isSheetsMetricLibraryOpen, setIsSheetsMetricLibraryOpen] = useState(false)
@@ -3026,6 +3028,7 @@ export default function DashboardShell({ initialTab = 'home', initialActiveClien
   })
 
   const currentTheme = useMemo(() => resolveDashboardTheme(themeColor), [themeColor])
+  const appLogoUrl = initialAppLogoUrl || globalIntegrations.appLogoUrl || ''
   const role = access?.role || profile?.role || 'visualizador'
   const canManageUsers = Boolean(access?.canManageUsers)
   const canManageClients = Boolean(access?.canManageClients)
@@ -4931,6 +4934,69 @@ export default function DashboardShell({ initialTab = 'home', initialActiveClien
     setClientRegistryInlineEdit({ clientId, columnKey })
   }, [])
 
+  const persistDashboardLayout = async (nextClient) => {
+    if (!hasInitialClientsOverride || !nextClient?.id) return
+
+    const response = await fetch('/api/saas/dashboard-layout', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        clientId: nextClient.id,
+        dashboardTemplates: nextClient.dashboardTemplates,
+        activeDashboardTemplateId: nextClient.activeDashboardTemplateId,
+        funnelSteps: nextClient.funnelSteps,
+        dashboardButtonColor: nextClient.dashboardColor,
+        dashboardAccentColor: nextClient.dashboardAccentColor,
+        logoUrl: nextClient.logoUrl || '',
+        dashboardTheme: {
+          buttonColor: nextClient.dashboardColor,
+          accentColor: nextClient.dashboardAccentColor,
+        },
+      }),
+    })
+
+    const data = await response.json().catch(() => ({}))
+    if (!response.ok) {
+      throw new Error(data?.error || 'Não foi possível salvar este layout.')
+    }
+  }
+
+  const saveDashboardLayout = async ({ templates, templateId, message }) => {
+    if (!activeClient) return
+
+    const normalizedTemplates = cloneDashboardTemplates(templates)
+    const normalizedTemplateId = templateId || normalizedTemplates[0]?.id || activeClient.activeDashboardTemplateId || ''
+    const nextClient = {
+      ...activeClient,
+      funnelSteps: activeDraftFunnelSteps,
+      dashboardTemplates: normalizedTemplates,
+      activeDashboardTemplateId: normalizedTemplateId,
+    }
+
+    setIsSavingDashboardLayout(true)
+    setLayoutSaveMessage('')
+
+    try {
+      setClients((currentClients) => currentClients.map((client) => (client.id === nextClient.id ? nextClient : client)))
+      await persistDashboardLayout(nextClient)
+      setLayoutSaveMessage(message)
+    } catch (error) {
+      setLayoutSaveMessage(error instanceof Error ? error.message : 'Não foi possível salvar este layout.')
+    } finally {
+      setIsSavingDashboardLayout(false)
+    }
+  }
+
+  const handleSaveDashboardLayout = () => {
+    if (!activeDraftDashboardTemplate) return
+
+    saveDashboardLayout({
+      templates: activeDraftDashboardTemplates,
+      templateId: draftDashboardTemplateId || activeDraftDashboardTemplateId,
+      message: 'Layout salvo.',
+    })
+  }
+
   const handleSaveDashboardTemplate = () => {
     if (!activeDraftDashboardTemplate) return
 
@@ -4951,11 +5017,17 @@ export default function DashboardShell({ initialTab = 'home', initialActiveClien
       sheetsMetricLayouts: cloneDashboardMetricLayouts(draftSheetsDashboardMetricLayouts),
     })
 
-    setDraftDashboardTemplates((currentTemplates) => [...currentTemplates, newTemplate])
+    const nextTemplates = [...activeDraftDashboardTemplates, newTemplate]
+    setDraftDashboardTemplates(nextTemplates)
     setDraftDashboardTemplateId(newTemplate.id)
     setIsMetaMetricLibraryOpen(false)
     setIsRdMetricLibraryOpen(false)
     setIsSheetsMetricLibraryOpen(false)
+    saveDashboardLayout({
+      templates: nextTemplates,
+      templateId: newTemplate.id,
+      message: 'Nova versão de layout salva.',
+    })
   }
 
   const handleAddMetaDashboardMetric = (metricKey) => {
@@ -11737,7 +11809,11 @@ export default function DashboardShell({ initialTab = 'home', initialActiveClien
 
         <div className="sidebar-top">
           <div className="logo">
-            <i className="bx bx-bar-chart-alt-2"></i>
+            {appLogoUrl ? (
+              <img src={appLogoUrl} alt="Logo do app" className="logo-image" />
+            ) : (
+              <i className="bx bx-bar-chart-alt-2"></i>
+            )}
             {!isSidebarCollapsed && (
               <div className="logo-copy">
                 <span>Agency Hub</span>
@@ -12006,10 +12082,29 @@ export default function DashboardShell({ initialTab = 'home', initialActiveClien
                       </select>
                     </div>
 
-                    <button type="button" onClick={handleSaveDashboardTemplate} className="btn btn-secondary">
-                      <i className="bx bx-bookmark-plus"></i>
-                      Salvar modelo
+                    <button
+                      type="button"
+                      onClick={handleSaveDashboardLayout}
+                      className="btn btn-secondary"
+                      disabled={isSavingDashboardLayout}
+                    >
+                      <i className="bx bx-save"></i>
+                      {isSavingDashboardLayout ? 'Salvando...' : 'Salvar layout'}
                     </button>
+
+                    <button
+                      type="button"
+                      onClick={handleSaveDashboardTemplate}
+                      className="btn btn-secondary"
+                      disabled={isSavingDashboardLayout}
+                    >
+                      <i className="bx bx-bookmark-plus"></i>
+                      Salvar versão
+                    </button>
+
+                    {layoutSaveMessage && (
+                      <span className="layout-save-message">{layoutSaveMessage}</span>
+                    )}
                   </>
                 )}
 
@@ -24515,7 +24610,7 @@ export default function DashboardShell({ initialTab = 'home', initialActiveClien
 
         .dashboard-metrics-grid {
           display: grid;
-          grid-template-columns: repeat(12, minmax(0, 1fr));
+          grid-template-columns: 1fr;
           gap: 18px;
         }
 
@@ -24524,11 +24619,11 @@ export default function DashboardShell({ initialTab = 'home', initialActiveClien
         }
 
         .dashboard-metric-card-sm {
-          grid-column: span 3;
+          grid-column: 1 / -1;
         }
 
         .dashboard-metric-card-lg {
-          grid-column: span 6;
+          grid-column: 1 / -1;
         }
 
         .template-metric-actions {
@@ -24691,6 +24786,7 @@ export default function DashboardShell({ initialTab = 'home', initialActiveClien
 
         .meta-summary-grid {
           align-items: stretch;
+          grid-template-columns: 1fr;
         }
 
         .meta-summary-card,
@@ -24926,6 +25022,20 @@ export default function DashboardShell({ initialTab = 'home', initialActiveClien
 
         .compact-kpi-grid {
           margin-bottom: 0;
+        }
+
+        .layout-save-message {
+          display: inline-flex;
+          align-items: center;
+          min-height: 42px;
+          padding: 0 12px;
+          border-radius: 999px;
+          color: var(--text-muted);
+          font-size: 12px;
+          font-weight: 700;
+          letter-spacing: -0.01em;
+          background: rgba(var(--accent-blue), 0.08);
+          border: 1px solid rgba(var(--accent-blue), 0.16);
         }
 
         .conversion-groups-grid {
@@ -26639,6 +26749,17 @@ export default function DashboardShell({ initialTab = 'home', initialActiveClien
           line-height: 1.2;
         }
 
+        :root[data-ui-mode='light'] .stage-chip,
+        :root[data-ui-mode='light'] .stage-chip.active,
+        :root[data-ui-mode='light'] .stage-chip span,
+        :root[data-ui-mode='light'] .stage-chip.active span,
+        .saas-legacy-dashboard-frame .stage-chip,
+        .saas-legacy-dashboard-frame .stage-chip.active,
+        .saas-legacy-dashboard-frame .stage-chip span,
+        .saas-legacy-dashboard-frame .stage-chip.active span {
+          color: #0f172a;
+        }
+
         .stage-empty {
           width: 100%;
           padding: 14px 16px;
@@ -26940,12 +27061,12 @@ export default function DashboardShell({ initialTab = 'home', initialActiveClien
           }
 
           .dashboard-metrics-grid {
-            grid-template-columns: repeat(6, minmax(0, 1fr));
+            grid-template-columns: 1fr;
           }
 
           .dashboard-metric-card-sm,
           .dashboard-metric-card-lg {
-            grid-column: span 3;
+            grid-column: 1 / -1;
           }
 
           .metric-library-grid-compact {

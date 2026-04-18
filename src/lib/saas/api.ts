@@ -26,11 +26,15 @@ export async function getPlatformSnapshot(): Promise<PlatformSnapshot> {
   const token = (await cookies()).get(PLATFORM_AUTH_COOKIE)?.value
 
   try {
-    const clients = await apiFetch<PlatformSnapshot['clients']>('/clients', token)
+    const [clients, theme] = await Promise.all([
+      apiFetch<PlatformSnapshot['clients']>('/clients', token),
+      apiFetch<PlatformSnapshot['theme']>('/settings/theme', token).catch(() => demoPlatformSnapshot.theme),
+    ])
     const selectedClient = clients[0]
     if (!selectedClient) {
       return {
         ...demoPlatformSnapshot,
+        theme,
         clients,
       }
     }
@@ -42,6 +46,7 @@ export async function getPlatformSnapshot(): Promise<PlatformSnapshot> {
 
     return {
       ...demoPlatformSnapshot,
+      theme,
       clients,
       selectedClient,
       clientDashboard,
