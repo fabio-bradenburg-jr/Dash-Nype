@@ -28,6 +28,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { createDashboardTemplate } from '@/lib/dashboard-storage'
 import { ClientContextBundle, KnowledgeSource, MetricCard, PlatformSnapshot } from '@/lib/saas/types'
 
+const SAAS_THEME_STORAGE_KEY = 'nype-orbit-saas-theme'
+
 const navigation = [
   { key: 'overview', label: 'Visão geral', icon: Cpu },
   { key: 'dashs', label: 'Dashs', icon: LayoutDashboard },
@@ -244,6 +246,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [activeModule, setActiveModule] = useState<NavigationKey>('overview')
+  const [currentTheme, setCurrentTheme] = useState(snapshot.theme)
   const [currentUserName, setCurrentUserName] = useState('Usuário')
   const [selectedClientId, setSelectedClientId] = useState(snapshot.selectedClient.id)
   const [selectedClient, setSelectedClient] = useState(snapshot.selectedClient)
@@ -273,8 +276,8 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
     metaAdAccountId: '',
     agendorToken: '',
     agendorAccountId: '',
-    dashboardButtonColor: snapshot.theme.primaryColor || '#0f766e',
-    dashboardAccentColor: snapshot.theme.accentColor || '#f97316',
+    dashboardButtonColor: currentTheme.primaryColor || '#0f766e',
+    dashboardAccentColor: currentTheme.accentColor || '#f97316',
     logoUrl: '',
   })
   const [knowledgeSources, setKnowledgeSources] = useState<KnowledgeSource[]>(
@@ -316,8 +319,8 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
         company: client.company,
         dashboardEnabled: true,
         operationEnabled: false,
-        dashboardColor: String(dashboardTheme.buttonColor || businessData.dashboardButtonColor || snapshot.theme.primaryColor || '#0f766e'),
-        dashboardAccentColor: String(dashboardTheme.accentColor || businessData.dashboardAccentColor || snapshot.theme.accentColor || '#f97316'),
+        dashboardColor: String(dashboardTheme.buttonColor || businessData.dashboardButtonColor || currentTheme.primaryColor || '#0f766e'),
+        dashboardAccentColor: String(dashboardTheme.accentColor || businessData.dashboardAccentColor || currentTheme.accentColor || '#f97316'),
         logoUrl: String(businessData.logoUrl || ''),
         dashboardVisibleIntegrationKeys: ['meta_ads', 'rd_station'],
         metaAdAccountId: metaIntegration?.external_account_id || String(businessData.metaAdAccountId || ''),
@@ -329,7 +332,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
         dashboardTemplates,
       }
     })
-  }, [snapshot.clients, snapshot.integrations, snapshot.theme.accentColor, snapshot.theme.primaryColor])
+  }, [currentTheme.accentColor, currentTheme.primaryColor, snapshot.clients, snapshot.integrations])
   const positiveMetrics = clientDashboard.overview_metrics.slice(0, 3)
   const metricsByKey = new Map(
     clientDashboard.overview_metrics.map((metric) => {
@@ -416,6 +419,18 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
   const showSettings = activeModule === 'settings'
   const showWorkspaceControls = activeModule !== 'overview' && activeModule !== 'settings'
 
+  function readStoredTheme() {
+    if (typeof window === 'undefined') return null
+
+    try {
+      const rawTheme = localStorage.getItem(SAAS_THEME_STORAGE_KEY)
+      if (!rawTheme) return null
+      return JSON.parse(rawTheme) as Partial<typeof snapshot.theme>
+    } catch {
+      return null
+    }
+  }
+
   async function reloadClientContext(clientId: string) {
     const response = await fetch(`/api/saas/client-context?clientId=${encodeURIComponent(clientId)}`, {
       cache: 'no-store',
@@ -434,16 +449,34 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
   }
 
   useEffect(() => {
-    const root = document.documentElement
-    root.style.setProperty('--saas-primary', snapshot.theme.primaryColor)
-    root.style.setProperty('--saas-accent', snapshot.theme.accentColor)
-    root.style.setProperty('--saas-surface', snapshot.theme.backgroundColor)
-    root.style.setProperty('--accent-blue', snapshot.theme.primaryColor)
-    root.style.setProperty('--accent-orange', snapshot.theme.accentColor)
-    root.style.setProperty('--main', snapshot.theme.primaryColor)
-    root.style.setProperty('--accent', snapshot.theme.accentColor)
-    root.dataset.uiMode = snapshot.theme.darkMode ? 'dark' : 'light'
+    const storedTheme = readStoredTheme()
+    setCurrentTheme({
+      ...snapshot.theme,
+      ...(storedTheme || {}),
+    })
   }, [snapshot.theme])
+
+  useEffect(() => {
+    const storedTheme = readStoredTheme()
+    if (!storedTheme) return
+
+    setCurrentTheme((current) => ({
+      ...current,
+      ...storedTheme,
+    }))
+  }, [])
+
+  useEffect(() => {
+    const root = document.documentElement
+    root.style.setProperty('--saas-primary', currentTheme.primaryColor)
+    root.style.setProperty('--saas-accent', currentTheme.accentColor)
+    root.style.setProperty('--saas-surface', currentTheme.backgroundColor)
+    root.style.setProperty('--accent-blue', currentTheme.primaryColor)
+    root.style.setProperty('--accent-orange', currentTheme.accentColor)
+    root.style.setProperty('--main', currentTheme.primaryColor)
+    root.style.setProperty('--accent', currentTheme.accentColor)
+    root.dataset.uiMode = currentTheme.darkMode ? 'dark' : 'light'
+  }, [currentTheme])
 
   useEffect(() => {
     async function loadSessionUser() {
@@ -617,8 +650,8 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
         metaAdAccountId: '',
         agendorToken: '',
         agendorAccountId: '',
-        dashboardButtonColor: snapshot.theme.primaryColor || '#0f766e',
-        dashboardAccentColor: snapshot.theme.accentColor || '#f97316',
+        dashboardButtonColor: currentTheme.primaryColor || '#0f766e',
+        dashboardAccentColor: currentTheme.accentColor || '#f97316',
         logoUrl: '',
       })
       router.refresh()
@@ -798,8 +831,8 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
         <aside className={`relative sticky top-4 hidden h-[calc(100vh-2rem)] flex-none flex-col rounded-[34px] border border-white/10 bg-[linear-gradient(180deg,#020617,#0f172a)] py-7 text-white shadow-[0_30px_100px_rgba(2,6,23,0.36)] transition-all duration-300 lg:flex ${isSidebarCollapsed ? 'w-[92px] px-3' : 'w-[272px] px-6 xl:w-[292px]'}`}>
           <div className={`mb-8 flex items-center ${isSidebarCollapsed ? 'justify-center' : 'gap-3'}`}>
             <div className="grid h-12 w-12 place-items-center rounded-2xl bg-white/10 ring-1 ring-white/15">
-              {snapshot.theme.logoUrl ? (
-                <img src={snapshot.theme.logoUrl} alt="Logo Nype Orbit" className="h-full w-full rounded-2xl object-contain p-2" />
+              {currentTheme.logoUrl ? (
+                <img src={currentTheme.logoUrl} alt="Logo Nype Orbit" className="h-full w-full rounded-2xl object-contain p-2" />
               ) : (
                 <Sparkles className="h-6 w-6" />
               )}
@@ -984,7 +1017,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
               initialTab="apresentacao"
               initialActiveClientId={selectedClientId || selectedClient.id}
               initialClientsOverride={legacyDashboardClients}
-              initialAppLogoUrl={snapshot.theme.logoUrl || ''}
+              initialAppLogoUrl={currentTheme.logoUrl || ''}
             />
           </section>
           ) : null}
@@ -1428,7 +1461,11 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
 
           {showSettings ? (
           <section className="grid gap-6 xl:grid-cols-[1fr_1fr]">
-            <ThemePanel initialTheme={snapshot.theme} />
+            <ThemePanel
+              initialTheme={currentTheme}
+              onThemeChange={setCurrentTheme}
+              onThemeSaved={setCurrentTheme}
+            />
 
             <AiIntegrationPanel />
 

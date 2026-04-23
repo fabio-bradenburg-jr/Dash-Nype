@@ -1,19 +1,32 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { ThemeSettings } from '@/lib/saas/types'
 
-export function ThemePanel({ initialTheme }: { initialTheme: ThemeSettings }) {
+const SAAS_THEME_STORAGE_KEY = 'nype-orbit-saas-theme'
+
+type ThemePanelProps = {
+  initialTheme: ThemeSettings
+  onThemeChange?: (theme: ThemeSettings) => void
+  onThemeSaved?: (theme: ThemeSettings) => void
+}
+
+export function ThemePanel({ initialTheme, onThemeChange, onThemeSaved }: ThemePanelProps) {
   const [theme, setTheme] = useState(initialTheme)
   const [saving, setSaving] = useState(false)
   const router = useRouter()
 
+  useEffect(() => {
+    setTheme(initialTheme)
+  }, [initialTheme])
+
   function updateTheme(nextTheme: ThemeSettings) {
     setTheme(nextTheme)
+    onThemeChange?.(nextTheme)
     const root = document.documentElement
     root.style.setProperty('--saas-primary', nextTheme.primaryColor)
     root.style.setProperty('--saas-accent', nextTheme.accentColor)
@@ -43,6 +56,8 @@ export function ThemePanel({ initialTheme }: { initialTheme: ThemeSettings }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(theme),
       })
+      localStorage.setItem(SAAS_THEME_STORAGE_KEY, JSON.stringify(theme))
+      onThemeSaved?.(theme)
       router.refresh()
     } finally {
       setSaving(false)
