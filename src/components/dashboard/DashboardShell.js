@@ -2801,7 +2801,14 @@ function mergeInitialClientRecord(currentClients, initialClientRecord) {
   )
 }
 
-export default function DashboardShell({ initialTab = 'home', initialActiveClientId = '', initialClientRecord = null, initialClientsOverride = null, initialAppLogoUrl = '' }) {
+export default function DashboardShell({
+  initialTab = 'home',
+  initialActiveClientId = '',
+  initialClientRecord = null,
+  initialClientsOverride = null,
+  initialAppLogoUrl = '',
+  externalAppMode = '',
+}) {
   const { user, profile, access, appearance, updateAppearance, loading: userLoading } = useUser()
   const supabase = createClient()
   const dashboardRef = useRef(null)
@@ -2855,7 +2862,11 @@ export default function DashboardShell({ initialTab = 'home', initialActiveClien
   const [isMetaAdFilterOpen, setIsMetaAdFilterOpen] = useState(false)
   const [isRdDiagnosticsOpen, setIsRdDiagnosticsOpen] = useState(false)
   const [isRdSourceFilterOpen, setIsRdSourceFilterOpen] = useState(false)
-  const currentAppMode = appearance?.mode === 'light' ? 'light' : 'dark'
+  const currentAppMode = externalAppMode === 'light' || externalAppMode === 'dark'
+    ? externalAppMode
+    : appearance?.mode === 'light'
+      ? 'light'
+      : 'dark'
   const isLightAppMode = currentAppMode === 'light'
   const handleToggleAppMode = (mode) => {
     if (mode === currentAppMode) return

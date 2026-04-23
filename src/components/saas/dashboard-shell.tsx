@@ -1154,6 +1154,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
               initialActiveClientId={selectedClientId || selectedClient.id}
               initialClientsOverride={legacyDashboardClients}
               initialAppLogoUrl={currentTheme.logoUrl || ''}
+              externalAppMode={currentTheme.darkMode ? 'dark' : 'light'}
             />
           </section>
           ) : null}
