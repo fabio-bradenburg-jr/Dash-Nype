@@ -16,7 +16,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
-import { Building2, ChevronRight, Cpu, LayoutDashboard, LineChart, ShieldCheck, Settings2, Sparkles, Users } from 'lucide-react'
+import { Building2, ChevronRight, Cpu, LayoutDashboard, LineChart, LogOut, ShieldCheck, Settings2, Sparkles, Users } from 'lucide-react'
 
 import { AiAssistantPanel } from '@/components/saas/ai-assistant-panel'
 import { AiIntegrationPanel } from '@/components/saas/ai-integration-panel'
@@ -414,7 +414,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
   const showDashs = activeModule === 'dashs'
   const showClients = activeModule === 'clients'
   const showSettings = activeModule === 'settings'
-  const showWorkspaceControls = activeModule !== 'overview'
+  const showWorkspaceControls = activeModule !== 'overview' && activeModule !== 'settings'
 
   async function reloadClientContext(clientId: string) {
     const response = await fetch(`/api/saas/client-context?clientId=${encodeURIComponent(clientId)}`, {
@@ -851,6 +851,16 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
               <p className="mt-2 text-sm leading-6 text-white/60">Cada usuário acessa somente os clientes, dashs e integrações vinculados ao próprio tenant.</p>
             ) : null}
           </div>
+          <button
+            type="button"
+            onClick={handleLogout}
+            className={`mt-3 flex items-center rounded-2xl border border-white/10 bg-white/5 py-3 text-sm font-medium text-white/70 transition hover:bg-white/10 hover:text-white ${isSidebarCollapsed ? 'justify-center px-0' : 'gap-3 px-4'}`}
+            title="Sair"
+            aria-label="Sair"
+          >
+            <LogOut className="h-4 w-4" />
+            {!isSidebarCollapsed ? 'Sair' : null}
+          </button>
         </aside>
 
         <main className="min-w-0 flex-1 space-y-6">
