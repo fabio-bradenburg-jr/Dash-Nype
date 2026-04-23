@@ -1046,14 +1046,6 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
             <div className="pointer-events-none absolute inset-y-0 right-0 w-[38%] bg-[radial-gradient(circle_at_top,rgba(249,115,22,0.15),transparent_46%),radial-gradient(circle_at_bottom,rgba(15,118,110,0.18),transparent_42%)]" />
             <div className="relative flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
               <div className="max-w-3xl">
-                <div className={`mb-4 inline-flex items-center gap-2 rounded-full px-3 py-2 text-xs font-semibold uppercase tracking-[0.26em] ${isDarkMode ? 'border border-white/10 bg-white/5 text-white/50' : 'border border-white/80 bg-white/90 text-slate-500'}`}>
-                  <Sparkles className="h-3.5 w-3.5 text-[var(--saas-accent)]" />
-                  {showOverview
-                    ? 'Nype Orbit'
-                    : showDashs
-                    ? `Dashboard ${selectedClient.name || 'cliente'}`
-                    : currentModule.title}
-                </div>
                 <h1 className={`font-manrope text-4xl font-extrabold tracking-[-0.05em] md:text-5xl ${isDarkMode ? 'text-white' : 'text-slate-950'}`}>
                   {showOverview
                     ? `Boas-vindas, ${currentUserName}`
