@@ -24,6 +24,7 @@ type Props = {
   selectedClientId: string
   knowledgeSources: KnowledgeSource[]
   onClientChange: (clientId: string) => void
+  isDarkMode?: boolean
 }
 
 export function AiAssistantPanel({
@@ -32,6 +33,7 @@ export function AiAssistantPanel({
   selectedClientId,
   knowledgeSources,
   onClientChange,
+  isDarkMode = false,
 }: Props) {
   const [agentId, setAgentId] = useState('copilot')
   const [loading, setLoading] = useState(false)
@@ -128,18 +130,22 @@ export function AiAssistantPanel({
   }
 
   return (
-    <Card className="overflow-hidden border-slate-200/80">
+    <Card className={`overflow-hidden ${isDarkMode ? 'border-white/10 bg-[linear-gradient(180deg,rgba(15,23,42,0.88),rgba(2,6,23,0.92))] text-white shadow-[0_24px_80px_rgba(0,0,0,0.35)]' : 'border-slate-200/80'}`}>
       <CardHeader>
         <div>
-          <CardTitle>IA do cliente</CardTitle>
-          <CardDescription>Copiloto contextual com acesso a clientes, campanhas, dados cadastrais e fontes vinculadas.</CardDescription>
+          <CardTitle className={isDarkMode ? 'text-white' : ''}>IA do cliente</CardTitle>
+          <CardDescription className={isDarkMode ? 'text-white/60' : ''}>Copiloto contextual com acesso a clientes, campanhas, dados cadastrais e fontes vinculadas.</CardDescription>
         </div>
         <div className="flex flex-wrap gap-2">
           {agents.map((agent) => (
             <button
               key={agent.id}
               className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
-                agentId === agent.id ? 'bg-slate-950 text-white' : 'bg-slate-100 text-slate-600'
+                agentId === agent.id
+                  ? 'bg-slate-950 text-white'
+                  : isDarkMode
+                    ? 'bg-white/10 text-white/70'
+                    : 'bg-slate-100 text-slate-600'
               }`}
               onClick={() => setAgentId(agent.id)}
               type="button"
@@ -150,16 +156,16 @@ export function AiAssistantPanel({
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="rounded-3xl border border-slate-200/80 bg-slate-50/80 p-4">
+        <div className={`rounded-3xl p-4 ${isDarkMode ? 'border border-white/10 bg-white/5' : 'border border-slate-200/80 bg-slate-50/80'}`}>
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">Cliente para análise</p>
-              <p className="mt-1 text-sm text-slate-500">
+              <p className={`text-xs font-semibold uppercase tracking-[0.22em] ${isDarkMode ? 'text-white/40' : 'text-slate-400'}`}>Cliente para análise</p>
+              <p className={`mt-1 text-sm ${isDarkMode ? 'text-white/60' : 'text-slate-500'}`}>
                 Selecione um cliente para aprofundar ou use a visão geral para perguntar sobre a carteira inteira.
               </p>
             </div>
             <select
-              className="h-12 min-w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 shadow-sm outline-none md:min-w-[320px]"
+              className={`h-12 min-w-full rounded-2xl px-4 text-sm font-semibold shadow-sm outline-none md:min-w-[320px] ${isDarkMode ? 'border border-white/10 bg-slate-950/70 text-white' : 'border border-slate-200 bg-white text-slate-700'}`}
               value={selectedClientId || ''}
               onChange={(event) => onClientChange(event.target.value)}
             >
@@ -174,16 +180,16 @@ export function AiAssistantPanel({
             </select>
           </div>
           {hasClients && activeClientSelected ? (
-            <div className="mt-3 flex flex-wrap gap-2 text-xs font-semibold text-slate-500">
-              <span className="rounded-full border border-slate-200 bg-white px-3 py-1.5">{client.company}</span>
-              <span className="rounded-full border border-slate-200 bg-white px-3 py-1.5">
+            <div className={`mt-3 flex flex-wrap gap-2 text-xs font-semibold ${isDarkMode ? 'text-white/60' : 'text-slate-500'}`}>
+              <span className={`rounded-full px-3 py-1.5 ${isDarkMode ? 'border border-white/10 bg-slate-950/70' : 'border border-slate-200 bg-white'}`}>{client.company}</span>
+              <span className={`rounded-full px-3 py-1.5 ${isDarkMode ? 'border border-white/10 bg-slate-950/70' : 'border border-slate-200 bg-white'}`}>
                 {sourceCount} fontes vinculadas
               </span>
             </div>
           ) : null}
         </div>
 
-        <div className="max-h-[420px] space-y-3 overflow-y-auto rounded-[28px] border border-slate-200/80 bg-[linear-gradient(180deg,rgba(248,250,252,0.9),rgba(255,255,255,0.95))] p-4">
+        <div className={`max-h-[420px] space-y-3 overflow-y-auto rounded-[28px] p-4 ${isDarkMode ? 'border border-white/10 bg-[linear-gradient(180deg,rgba(2,6,23,0.78),rgba(15,23,42,0.92))]' : 'border border-slate-200/80 bg-[linear-gradient(180deg,rgba(248,250,252,0.9),rgba(255,255,255,0.95))]'}`}>
           {messages.map((message, index) => (
             <div
               key={`${message.role}-${index}`}
@@ -192,7 +198,9 @@ export function AiAssistantPanel({
               <div
                 className={`max-w-[85%] rounded-[24px] px-4 py-3 text-sm leading-7 shadow-sm ${
                   message.role === 'assistant'
-                    ? 'border border-slate-200 bg-white text-slate-700'
+                    ? isDarkMode
+                      ? 'border border-white/10 bg-white/5 text-white/80'
+                      : 'border border-slate-200 bg-white text-slate-700'
                     : 'bg-slate-950 text-white'
                 }`}
               >
@@ -206,7 +214,7 @@ export function AiAssistantPanel({
           ))}
           {loading ? (
             <div className="flex justify-start">
-              <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm text-slate-500">
+              <div className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm ${isDarkMode ? 'border border-white/10 bg-white/5 text-white/60' : 'border border-slate-200 bg-white text-slate-500'}`}>
                 <LoaderCircle className="h-4 w-4 animate-spin" />
                 Analisando contexto disponível...
               </div>
@@ -214,15 +222,15 @@ export function AiAssistantPanel({
           ) : null}
         </div>
 
-        {error ? <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div> : null}
+        {error ? <div className={`rounded-2xl px-4 py-3 text-sm ${isDarkMode ? 'border border-rose-500/30 bg-rose-500/10 text-rose-200' : 'border border-rose-200 bg-rose-50 text-rose-700'}`}>{error}</div> : null}
 
-        <div className="rounded-[28px] border border-slate-200/80 bg-white p-4">
-          <div className="mb-3 text-sm font-medium text-slate-600">
+        <div className={`rounded-[28px] p-4 ${isDarkMode ? 'border border-white/10 bg-white/5' : 'border border-slate-200/80 bg-white'}`}>
+          <div className={`mb-3 text-sm font-medium ${isDarkMode ? 'text-white/60' : 'text-slate-600'}`}>
             Exemplos: "Quais campanhas estão puxando o ROAS para baixo?", "Qual cliente devo priorizar hoje?", "Leia a planilha vinculada e destaque gargalos do comercial".
           </div>
           <div className="flex flex-col gap-3 md:flex-row">
             <textarea
-              className="min-h-[108px] flex-1 rounded-3xl border border-slate-200 bg-slate-50/80 px-4 py-3 text-sm text-slate-900 outline-none"
+              className={`min-h-[108px] flex-1 rounded-3xl px-4 py-3 text-sm outline-none ${isDarkMode ? 'border border-white/10 bg-slate-950/70 text-white placeholder:text-white/30' : 'border border-slate-200 bg-slate-50/80 text-slate-900'}`}
               value={input}
               onChange={(event) => setInput(event.target.value)}
               placeholder="Pergunte sobre campanhas, CRM, criativos, clientes ou arquivos vinculados..."

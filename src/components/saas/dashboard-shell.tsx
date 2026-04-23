@@ -442,6 +442,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
   const showClients = activeModule === 'clients'
   const showSettings = activeModule === 'settings'
   const showWorkspaceControls = activeModule !== 'overview' && activeModule !== 'settings'
+  const isDarkMode = currentTheme.darkMode
 
   function readStoredTheme() {
     if (typeof window === 'undefined') return null
@@ -950,10 +951,11 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
 
   return (
     <div
-      className="min-h-screen text-slate-900"
+      className={`min-h-screen ${isDarkMode ? 'text-white' : 'text-slate-900'}`}
       style={{
-        background:
-          'radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--saas-primary) 18%, transparent), transparent 28%), radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--saas-accent) 22%, transparent), transparent 24%), radial-gradient(circle at 50% 100%, rgba(15,23,42,0.05), transparent 36%), linear-gradient(180deg, color-mix(in srgb, var(--saas-surface) 94%, white), #ffffff)',
+        background: isDarkMode
+          ? 'radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--saas-primary) 20%, transparent), transparent 28%), radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--saas-accent) 18%, transparent), transparent 24%), radial-gradient(circle at 50% 100%, rgba(148,163,184,0.08), transparent 34%), linear-gradient(180deg,#020617,#0f172a 54%,#020617)'
+          : 'radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--saas-primary) 18%, transparent), transparent 28%), radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--saas-accent) 22%, transparent), transparent 24%), radial-gradient(circle at 50% 100%, rgba(15,23,42,0.05), transparent 36%), linear-gradient(180deg, color-mix(in srgb, var(--saas-surface) 94%, white), #ffffff)',
       }}
     >
       <div className="flex min-h-screen w-full gap-4 px-3 py-4 sm:px-4 lg:gap-6 lg:px-6 xl:px-8">
@@ -1040,11 +1042,11 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
 
         <main className="min-w-0 flex-1 space-y-6">
           {!showDashs ? (
-          <section className="relative overflow-hidden rounded-[34px] border border-white/80 bg-[linear-gradient(135deg,rgba(255,255,255,0.92),rgba(248,250,252,0.76))] p-5 shadow-[0_26px_80px_rgba(15,23,42,0.08)] backdrop-blur-xl">
+          <section className={`relative overflow-hidden rounded-[34px] p-5 backdrop-blur-xl ${isDarkMode ? 'border border-white/10 bg-[linear-gradient(135deg,rgba(15,23,42,0.88),rgba(2,6,23,0.94))] shadow-[0_26px_80px_rgba(0,0,0,0.35)]' : 'border border-white/80 bg-[linear-gradient(135deg,rgba(255,255,255,0.92),rgba(248,250,252,0.76))] shadow-[0_26px_80px_rgba(15,23,42,0.08)]'}`}>
             <div className="pointer-events-none absolute inset-y-0 right-0 w-[38%] bg-[radial-gradient(circle_at_top,rgba(249,115,22,0.15),transparent_46%),radial-gradient(circle_at_bottom,rgba(15,118,110,0.18),transparent_42%)]" />
             <div className="relative flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
               <div className="max-w-3xl">
-                <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/80 bg-white/90 px-3 py-2 text-xs font-semibold uppercase tracking-[0.26em] text-slate-500">
+                <div className={`mb-4 inline-flex items-center gap-2 rounded-full px-3 py-2 text-xs font-semibold uppercase tracking-[0.26em] ${isDarkMode ? 'border border-white/10 bg-white/5 text-white/50' : 'border border-white/80 bg-white/90 text-slate-500'}`}>
                   <Sparkles className="h-3.5 w-3.5 text-[var(--saas-accent)]" />
                   {showOverview
                     ? 'Nype Orbit'
@@ -1052,14 +1054,14 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
                     ? `Dashboard ${selectedClient.name || 'cliente'}`
                     : currentModule.title}
                 </div>
-                <h1 className="font-manrope text-4xl font-extrabold tracking-[-0.05em] text-slate-950 md:text-5xl">
+                <h1 className={`font-manrope text-4xl font-extrabold tracking-[-0.05em] md:text-5xl ${isDarkMode ? 'text-white' : 'text-slate-950'}`}>
                   {showOverview
                     ? `Boas-vindas, ${currentUserName}`
                     : showDashs
                     ? selectedClient.name || 'Dashboard do cliente'
                     : currentModule.title}
                 </h1>
-                <p className="mt-4 max-w-2xl text-base leading-7 text-slate-600">
+                <p className={`mt-4 max-w-2xl text-base leading-7 ${isDarkMode ? 'text-white/65' : 'text-slate-600'}`}>
                   {showOverview
                     ? 'Use a IA para consultar clientes, campanhas, dashs, integrações e arquivos vinculados.'
                     : showDashs
@@ -1069,9 +1071,9 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
                 {showWorkspaceControls && !showDashs ? (
                 <div className="mt-6 flex flex-wrap gap-3">
                   {positiveMetrics.map((metric) => (
-                    <div key={metric.label} className="rounded-2xl border border-slate-200/80 bg-white/90 px-4 py-3 shadow-sm">
-                      <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">{metric.label}</p>
-                      <p className="mt-2 font-manrope text-xl font-extrabold text-slate-950">{formatValue(metric.value, metric.format)}</p>
+                    <div key={metric.label} className={`rounded-2xl px-4 py-3 shadow-sm ${isDarkMode ? 'border border-white/10 bg-white/5' : 'border border-slate-200/80 bg-white/90'}`}>
+                      <p className={`text-xs font-semibold uppercase tracking-[0.22em] ${isDarkMode ? 'text-white/40' : 'text-slate-400'}`}>{metric.label}</p>
+                      <p className={`mt-2 font-manrope text-xl font-extrabold ${isDarkMode ? 'text-white' : 'text-slate-950'}`}>{formatValue(metric.value, metric.format)}</p>
                     </div>
                   ))}
                 </div>
@@ -1142,9 +1144,9 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
                 ) : null}
               </div>
               ) : (
-                <div className="rounded-[30px] border border-slate-200/80 bg-white/80 p-5 shadow-sm xl:min-w-[360px]">
-                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">Atalho inteligente</p>
-                  <p className="mt-2 text-sm leading-6 text-slate-600">
+                <div className={`rounded-[30px] p-5 shadow-sm xl:min-w-[360px] ${isDarkMode ? 'border border-white/10 bg-white/5' : 'border border-slate-200/80 bg-white/80'}`}>
+                  <p className={`text-xs font-semibold uppercase tracking-[0.22em] ${isDarkMode ? 'text-white/40' : 'text-slate-400'}`}>Atalho inteligente</p>
+                  <p className={`mt-2 text-sm leading-6 ${isDarkMode ? 'text-white/60' : 'text-slate-600'}`}>
                     Pergunte sobre a carteira inteira ou selecione um cliente para consultar desempenho, campanhas, CRM e arquivos vinculados.
                   </p>
                 </div>
@@ -1675,6 +1677,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
               selectedClientId={selectedClientId}
               knowledgeSources={knowledgeSources}
               onClientChange={setSelectedClientId}
+              isDarkMode={isDarkMode}
             />
           </section>
           ) : null}
