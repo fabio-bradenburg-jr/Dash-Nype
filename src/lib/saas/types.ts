@@ -4,6 +4,8 @@ export type ThemeSettings = {
   backgroundColor: string
   darkMode: boolean
   logoUrl?: string
+  appName?: string
+  appSubtitle?: string
 }
 
 export type MetricCard = {

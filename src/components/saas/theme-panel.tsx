@@ -73,6 +73,24 @@ export function ThemePanel({ initialTheme, onThemeChange, onThemeSaved }: ThemeP
         </div>
       </CardHeader>
       <CardContent className="grid gap-4 md:grid-cols-2">
+        <label className="grid gap-2 text-sm font-medium text-slate-600">
+          <span className="font-semibold text-slate-700">Nome do app</span>
+          <input
+            className="h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 shadow-sm outline-none"
+            value={theme.appName || ''}
+            onChange={(event) => updateTheme({ ...theme, appName: event.target.value })}
+            placeholder="Ex.: Nype Orbit"
+          />
+        </label>
+        <label className="grid gap-2 text-sm font-medium text-slate-600">
+          <span className="font-semibold text-slate-700">Subtítulo</span>
+          <input
+            className="h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 shadow-sm outline-none"
+            value={theme.appSubtitle || ''}
+            onChange={(event) => updateTheme({ ...theme, appSubtitle: event.target.value })}
+            placeholder="Ex.: Marketing OS"
+          />
+        </label>
         {[
           { label: 'Primária', value: theme.primaryColor, key: 'primaryColor' },
           { label: 'Destaque', value: theme.accentColor, key: 'accentColor' },

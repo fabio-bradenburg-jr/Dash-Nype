@@ -963,15 +963,15 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
           <div className={`mb-8 flex items-center ${isSidebarCollapsed ? 'justify-center' : 'gap-3'}`}>
             <div className="grid h-12 w-12 place-items-center rounded-2xl bg-white/10 ring-1 ring-white/15">
               {currentTheme.logoUrl ? (
-                <img src={currentTheme.logoUrl} alt="Logo Nype Orbit" className="h-full w-full rounded-2xl object-contain p-2" />
+                <img src={currentTheme.logoUrl} alt={`Logo ${currentTheme.appName || 'Nype Orbit'}`} className="h-full w-full rounded-2xl object-contain p-2" />
               ) : (
                 <Sparkles className="h-6 w-6" />
               )}
             </div>
             {!isSidebarCollapsed ? (
             <div>
-              <p className="font-manrope text-lg font-extrabold">Nype Orbit</p>
-              <p className="text-xs uppercase tracking-[0.3em] text-white/50">Marketing OS</p>
+              <p className="font-manrope text-lg font-extrabold">{currentTheme.appName || 'Nype Orbit'}</p>
+              <p className="text-xs uppercase tracking-[0.3em] text-white/50">{currentTheme.appSubtitle || 'Marketing OS'}</p>
             </div>
             ) : null}
             <button

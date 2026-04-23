@@ -7,6 +7,8 @@ export const demoPlatformSnapshot: PlatformSnapshot = {
     backgroundColor: '#f8fafc',
     darkMode: false,
     logoUrl: '',
+    appName: 'Nype Orbit',
+    appSubtitle: 'Marketing OS',
   },
   clients: [],
   selectedClient: {
