@@ -401,6 +401,106 @@ export async function createLocalSaasClient(token: string, payload: Record<strin
   return serializeClient(result.rows[0])
 }
 
+export async function updateLocalSaasClient(token: string, clientId: string, payload: Record<string, unknown>) {
+  const user = await getLocalSaasUser(token)
+  const normalizedClientId = String(clientId || payload.clientId || payload.client_id || '').trim()
+
+  if (!normalizedClientId) {
+    throw new Error('Cliente obrigatório.')
+  }
+
+  if (!hasLocalDatabaseConfig()) {
+    const supabase = createAdminClient()
+    const { data: client, error: loadError } = await supabase
+      .from('workspace_clients')
+      .select('id, name, payload, updated_at')
+      .eq('workspace_id', user.tenant_id)
+      .eq('id', normalizedClientId)
+      .maybeSingle()
+
+    if (loadError) throw loadError
+    if (!client) throw new Error('Cliente não encontrado.')
+
+    const currentPayload = ((client as WorkspaceClientRow).payload || {}) as Record<string, unknown>
+    const currentBusinessData =
+      currentPayload.business_data && typeof currentPayload.business_data === 'object'
+        ? (currentPayload.business_data as Record<string, unknown>)
+        : {}
+    const nextBusinessData =
+      payload.business_data && typeof payload.business_data === 'object'
+        ? { ...currentBusinessData, ...(payload.business_data as Record<string, unknown>) }
+        : currentBusinessData
+
+    const nextPayload = {
+      ...currentPayload,
+      ...payload,
+      business_data: nextBusinessData,
+    }
+    delete (nextPayload as Record<string, unknown>).clientId
+    delete (nextPayload as Record<string, unknown>).client_id
+
+    const { data, error } = await supabase
+      .from('workspace_clients')
+      .update({ payload: nextPayload })
+      .eq('workspace_id', user.tenant_id)
+      .eq('id', normalizedClientId)
+      .select('id, name, payload, updated_at')
+      .single()
+
+    if (error) throw error
+    return serializeWorkspaceClient(data as WorkspaceClientRow, user.tenant_id)
+  }
+
+  const current = await getPool().query<LocalClientRow>(
+    'select id, tenant_id, name, company, niche, average_ticket, main_goal::text as main_goal, ltv, start_date, status::text as status, target_roas, business_data, null as last_sync_at from clients where id = $1 and tenant_id = $2 limit 1',
+    [normalizedClientId, user.tenant_id]
+  )
+
+  if (!current.rowCount) {
+    throw new Error('Cliente não encontrado.')
+  }
+
+  const currentRow = current.rows[0]
+  const businessData =
+    payload.business_data && typeof payload.business_data === 'object'
+      ? { ...(currentRow.business_data || {}), ...(payload.business_data as Record<string, unknown>) }
+      : currentRow.business_data || {}
+
+  const result = await getPool().query<LocalClientRow>(
+    `update clients
+     set
+       name = $3,
+       company = $4,
+       niche = $5,
+       average_ticket = $6,
+       main_goal = $7,
+       ltv = $8,
+       start_date = $9,
+       status = $10,
+       target_roas = $11,
+       business_data = $12,
+       updated_at = now()
+     where id = $1 and tenant_id = $2
+     returning id, tenant_id, name, company, niche, average_ticket, main_goal::text as main_goal, ltv, start_date, status::text as status, target_roas, business_data, null as last_sync_at`,
+    [
+      normalizedClientId,
+      user.tenant_id,
+      String(payload.name || currentRow.name),
+      String(payload.company || currentRow.company),
+      String(payload.niche || currentRow.niche || 'Dashboard'),
+      asNumber(payload.average_ticket as number) || currentRow.average_ticket,
+      enumName(payload.main_goal as string, currentRow.main_goal || 'LEADS'),
+      asNumber(payload.ltv as number) || currentRow.ltv,
+      String(payload.start_date || currentRow.start_date),
+      enumName(payload.status as string, currentRow.status || 'ACTIVE'),
+      asNumber(payload.target_roas as number) || currentRow.target_roas,
+      JSON.stringify(businessData),
+    ]
+  )
+
+  return serializeClient(result.rows[0])
+}
+
 export async function updateLocalSaasClientDashboardLayout(token: string, payload: Record<string, unknown>) {
   const user = await getLocalSaasUser(token)
   const clientId = String(payload.clientId || payload.client_id || '').trim()

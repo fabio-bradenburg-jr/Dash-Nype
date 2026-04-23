@@ -16,23 +16,10 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
-import {
-  ArrowUpRight,
-  Building2,
-  ChevronRight,
-  Cpu,
-  LayoutDashboard,
-  Link2,
-  LineChart,
-  ShieldCheck,
-  Settings2,
-  Sparkles,
-  Users,
-} from 'lucide-react'
+import { Building2, ChevronRight, Cpu, LayoutDashboard, LineChart, ShieldCheck, Settings2, Sparkles, Users } from 'lucide-react'
 
 import { AiAssistantPanel } from '@/components/saas/ai-assistant-panel'
 import { AiIntegrationPanel } from '@/components/saas/ai-integration-panel'
-import { ClientKnowledgePanel } from '@/components/saas/client-knowledge-panel'
 import { ThemePanel } from '@/components/saas/theme-panel'
 import LegacyDashboardShell from '@/components/dashboard/DashboardShell'
 import { Badge } from '@/components/ui/badge'
@@ -293,6 +280,14 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
   const [knowledgeSources, setKnowledgeSources] = useState<KnowledgeSource[]>(
     extractKnowledgeSourcesFromBusinessData(snapshot.selectedClient.business_data as Record<string, unknown>)
   )
+  const [showClientEditModal, setShowClientEditModal] = useState(false)
+  const [editingClient, setEditingClient] = useState<PlatformSnapshot['clients'][number] | null>(null)
+  const [editingClientSaving, setEditingClientSaving] = useState(false)
+  const [editingClientForm, setEditingClientForm] = useState({
+    metaAdAccountId: '',
+    agendorToken: '',
+    agendorAccountId: '',
+  })
   const selectedClientIntegrations = clientIntegrations
   const selectedMetaIntegration = selectedClientIntegrations.find((integration) => integration.provider === 'meta_ads')
   const legacyDashboardClients = useMemo(() => {
@@ -651,6 +646,75 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
 
   function handleConnectMeta() {
     window.location.href = `/api/meta/auth/start?return_to=/`
+  }
+
+  function openClientEditModal(client: PlatformSnapshot['clients'][number]) {
+    const businessData = (client.business_data || {}) as Record<string, unknown>
+    const clientMetaIntegration = snapshot.integrations.find(
+      (integration) => integration.client_id === client.id && integration.provider === 'meta_ads'
+    )
+    const clientAgendorIntegration = snapshot.integrations.find(
+      (integration) => integration.client_id === client.id && integration.provider === 'agendor'
+    )
+
+    setEditingClient(client)
+    setSelectedClientId(client.id)
+    setEditingClientForm({
+      metaAdAccountId: clientMetaIntegration?.external_account_id || String(businessData.metaAdAccountId || ''),
+      agendorToken: String(((businessData.integrations || {}) as Record<string, unknown>).agendorToken || ''),
+      agendorAccountId: clientAgendorIntegration?.account_name || String(businessData.agendorAccountId || ''),
+    })
+    setSelectedMetaAccountId(clientMetaIntegration?.external_account_id || String(businessData.metaAdAccountId || ''))
+    setShowClientEditModal(true)
+  }
+
+  async function handleSaveClientSetup() {
+    if (!editingClient) return
+
+    setEditingClientSaving(true)
+    try {
+      const response = await fetch(`/api/saas/clients/${editingClient.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          business_data: {
+            metaAdAccountId: editingClientForm.metaAdAccountId,
+            agendorAccountId: editingClientForm.agendorAccountId,
+            integrations: {
+              agendorToken: editingClientForm.agendorToken,
+            },
+          },
+        }),
+      })
+
+      const data = await response.json()
+      if (!response.ok) {
+        throw new Error(data?.error || 'Não foi possível atualizar o cliente.')
+      }
+
+      if (editingClientForm.metaAdAccountId) {
+        const selectedAccount = metaAccounts.find((account) => account.id === editingClientForm.metaAdAccountId)
+        if (selectedAccount) {
+          await fetch('/api/saas/meta/connect', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              clientId: editingClient.id,
+              accountId: selectedAccount.id,
+              accountName: selectedAccount.name,
+            }),
+          })
+        }
+      }
+
+      setShowClientEditModal(false)
+      setEditingClient(null)
+      router.refresh()
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Não foi possível salvar a configuração do cliente.')
+    } finally {
+      setEditingClientSaving(false)
+    }
   }
 
   function handleClientLogoUpload(file: File | undefined) {
@@ -1293,12 +1357,12 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
           ) : null}
 
           {showClients ? (
-          <section className="grid gap-6 xl:grid-cols-[1.35fr_1fr]">
+          <section className="grid gap-6">
             <Card>
               <CardHeader>
                 <div>
                   <CardTitle>Clientes cadastrados</CardTitle>
-                  <CardDescription>Selecione um cliente para abrir o perfil, integrações e fontes vinculadas.</CardDescription>
+                  <CardDescription>Clique em um cliente para abrir a configuração rápida de conta Meta e API do Agendor.</CardDescription>
                 </div>
               </CardHeader>
               <CardContent>
@@ -1312,7 +1376,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
                         <button
                           key={client.id}
                           type="button"
-                          onClick={() => setSelectedClientId(client.id)}
+                          onClick={() => openClientEditModal(client)}
                           className={`group flex min-h-[148px] flex-col justify-between rounded-[28px] border px-5 py-4 text-left transition ${
                             isActiveClient
                               ? 'border-[var(--saas-primary)] bg-[linear-gradient(135deg,rgba(15,118,110,0.12),rgba(249,115,22,0.08))] shadow-[0_18px_45px_rgba(15,23,42,0.08)]'
@@ -1349,127 +1413,6 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
                 )}
               </CardContent>
             </Card>
-
-            <div className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <div>
-                    <CardTitle>Perfil do cliente</CardTitle>
-                    <CardDescription>Dados do negócio, objetivo do dash e status do cliente.</CardDescription>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <div>
-                      <p className="font-manrope text-2xl font-extrabold">{selectedClient.name}</p>
-                      <p className="text-sm text-slate-500">{selectedClient.niche} • {selectedClient.company}</p>
-                    </div>
-                  </div>
-                  <div className="rounded-[26px] border border-slate-200/70 bg-[linear-gradient(135deg,rgba(15,118,110,0.08),rgba(249,115,22,0.1))] p-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">Pulso do negócio</p>
-                        <p className="mt-2 text-sm leading-6 text-slate-600">
-                          Orçamento de {String((selectedClient.business_data as Record<string, unknown>)?.monthly_budget ?? 'N/A')} com ciclo de {String((selectedClient.business_data as Record<string, unknown>)?.sales_cycle_days ?? 'N/A')} dias.
-                        </p>
-                      </div>
-                      <ArrowUpRight className="h-5 w-5 text-slate-500" />
-                    </div>
-                  </div>
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <div className="rounded-2xl bg-slate-50 p-4">
-                      <p className="text-sm text-slate-500">Ticket médio</p>
-                      <p className="mt-2 text-xl font-bold">{formatValue(selectedClient.average_ticket, 'currency')}</p>
-                    </div>
-                    <div className="rounded-2xl bg-slate-50 p-4">
-                      <p className="text-sm text-slate-500">LTV</p>
-                      <p className="mt-2 text-xl font-bold">{formatValue(selectedClient.ltv, 'currency')}</p>
-                    </div>
-                    <div className="rounded-2xl bg-slate-50 p-4">
-                      <p className="text-sm text-slate-500">Objetivo</p>
-                      <p className="mt-2 text-xl font-bold capitalize">{objectiveLabel(selectedClient.main_goal)}</p>
-                    </div>
-                    <div className="rounded-2xl bg-slate-50 p-4">
-                      <p className="text-sm text-slate-500">Status</p>
-                      <p className="mt-2 text-xl font-bold capitalize">{statusLabel(selectedClient.status)}</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <div>
-                    <CardTitle>Integrações</CardTitle>
-                    <CardDescription>Conexões da plataforma e status do último sync.</CardDescription>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {selectedClientIntegrations.map((integration) => (
-                    <div key={integration.id} className="flex items-center justify-between rounded-2xl border border-slate-200/80 bg-white px-4 py-3 shadow-sm">
-                      <div>
-                        <p className="font-semibold capitalize text-slate-900">{integration.provider.replace('_', ' ')}</p>
-                        <p className="text-xs text-slate-400">{integration.account_name}</p>
-                      </div>
-                      <Badge tone={integration.status === 'connected' ? 'green' : 'yellow'}>{statusLabel(integration.status)}</Badge>
-                    </div>
-                  ))}
-                  <div className="rounded-[28px] border border-slate-200/80 bg-slate-50/80 p-4">
-                    <div className="flex items-start justify-between gap-4">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <Link2 className="h-4 w-4 text-[var(--saas-primary)]" />
-                          <p className="font-semibold text-slate-900">Meta Ads</p>
-                        </div>
-                        <p className="mt-2 text-sm leading-6 text-slate-500">
-                          {selectedMetaIntegration
-                            ? `Conectado com ${selectedMetaIntegration.account_name}.`
-                            : 'Configure a Meta uma vez nas Configurações da agência. Depois, escolha aqui a conta de anúncio do cliente.'}
-                        </p>
-                      </div>
-                      <Button variant="secondary" onClick={() => setActiveModule('settings')}>
-                        Configurações
-                      </Button>
-                    </div>
-
-                    {metaPending ? (
-                      <div className="mt-4 space-y-3 rounded-2xl border border-emerald-200 bg-white p-4">
-                        <p className="text-sm font-semibold text-slate-900">Selecionar conta de anúncio</p>
-                        <p className="text-sm text-slate-500">
-                          {loadingMetaAccounts
-                            ? 'Carregando contas disponíveis...'
-                            : 'Escolha qual conta da Meta será vinculada a este cliente.'}
-                        </p>
-                        {!loadingMetaAccounts && metaAccounts.length > 0 ? (
-                          <>
-                            <select
-                              className="h-11 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-900 outline-none"
-                              value={selectedMetaAccountId}
-                              onChange={(event) => setSelectedMetaAccountId(event.target.value)}
-                            >
-                              {metaAccounts.map((account) => (
-                                <option key={account.id} value={account.id}>
-                                  {account.name}
-                                </option>
-                              ))}
-                            </select>
-                            <Button className="w-full" onClick={handleLinkMetaAccount} disabled={linkingMeta}>
-                              {linkingMeta ? 'Vinculando conta...' : 'Vincular conta selecionada'}
-                            </Button>
-                          </>
-                        ) : null}
-                      </div>
-                    ) : null}
-                  </div>
-                </CardContent>
-              </Card>
-
-              <ClientKnowledgePanel
-                clientId={selectedClient.id}
-                sources={knowledgeSources}
-                onSaved={(nextSources) => setKnowledgeSources(nextSources)}
-              />
-            </div>
           </section>
           ) : null}
 
@@ -1615,6 +1558,106 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
           ) : null}
         </main>
       </div>
+
+      {showClientEditModal && editingClient ? (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/45 px-4 py-8 backdrop-blur-sm">
+          <div className="w-full max-w-2xl rounded-[34px] border border-white/80 bg-white p-6 shadow-[0_40px_120px_rgba(15,23,42,0.28)]">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Editar cliente</p>
+                <h2 className="mt-2 font-manrope text-3xl font-extrabold tracking-tight text-slate-950">
+                  {editingClient.name}
+                </h2>
+                <p className="mt-2 text-sm leading-6 text-slate-500">
+                  Selecione a conta de anúncio da Meta e informe a API/token do Agendor para este cliente.
+                </p>
+              </div>
+              <button
+                className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-600"
+                onClick={() => {
+                  setShowClientEditModal(false)
+                  setEditingClient(null)
+                }}
+                type="button"
+              >
+                Fechar
+              </button>
+            </div>
+
+            <div className="mt-6 grid gap-5">
+              <div className="rounded-[28px] border border-slate-200/80 bg-slate-50/80 p-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="font-semibold text-slate-900">Meta Ads</p>
+                    <p className="mt-1 text-sm leading-6 text-slate-500">
+                      Escolha a conta da Meta já conectada globalmente para vincular ao cliente.
+                    </p>
+                  </div>
+                  <Button variant="secondary" onClick={() => setActiveModule('settings')} type="button">
+                    Configurações
+                  </Button>
+                </div>
+                <select
+                  className="mt-4 h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
+                  value={editingClientForm.metaAdAccountId}
+                  onChange={(event) => setEditingClientForm((current) => ({ ...current, metaAdAccountId: event.target.value }))}
+                >
+                  <option value="">{loadingMetaAccounts ? 'Carregando contas...' : 'Selecione uma conta de anúncio'}</option>
+                  {metaAccounts.map((account) => (
+                    <option key={account.id} value={account.id}>
+                      {account.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="rounded-[28px] border border-slate-200/80 bg-slate-50/80 p-4">
+                <p className="font-semibold text-slate-900">Agendor</p>
+                <p className="mt-1 text-sm leading-6 text-slate-500">
+                  Informe o token/API e a referência da conta ou pipeline comercial deste cliente.
+                </p>
+                <div className="mt-4 grid gap-4 md:grid-cols-2">
+                  <label className="grid gap-2 text-sm font-medium text-slate-600">
+                    API / Token do Agendor
+                    <input
+                      className="h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
+                      type="password"
+                      value={editingClientForm.agendorToken}
+                      onChange={(event) => setEditingClientForm((current) => ({ ...current, agendorToken: event.target.value }))}
+                      placeholder="Cole o token do Agendor"
+                    />
+                  </label>
+                  <label className="grid gap-2 text-sm font-medium text-slate-600">
+                    Conta / Pipeline
+                    <input
+                      className="h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
+                      value={editingClientForm.agendorAccountId}
+                      onChange={(event) => setEditingClientForm((current) => ({ ...current, agendorAccountId: event.target.value }))}
+                      placeholder="ID, nome ou referência"
+                    />
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-6 flex justify-end gap-3">
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setShowClientEditModal(false)
+                  setEditingClient(null)
+                }}
+                type="button"
+              >
+                Cancelar
+              </Button>
+              <Button onClick={handleSaveClientSetup} disabled={editingClientSaving} type="button">
+                {editingClientSaving ? 'Salvando...' : 'Salvar cliente'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {showClientForm ? (
         <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/45 px-4 py-8 backdrop-blur-sm">
