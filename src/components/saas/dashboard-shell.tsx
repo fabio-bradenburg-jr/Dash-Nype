@@ -267,6 +267,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
   const [loadingClientContext, setLoadingClientContext] = useState(false)
   const [creatingClient, setCreatingClient] = useState(false)
   const [syncing, setSyncing] = useState(false)
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
   const [linkingMeta, setLinkingMeta] = useState(false)
   const [loadingMetaAccounts, setLoadingMetaAccounts] = useState(false)
   const [metaConnectionPending, setMetaConnectionPending] = useState(false)
@@ -730,8 +731,8 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
       }}
     >
       <div className="flex min-h-screen w-full gap-4 px-3 py-4 sm:px-4 lg:gap-6 lg:px-6 xl:px-8">
-        <aside className="sticky top-4 hidden h-[calc(100vh-2rem)] w-[272px] flex-none flex-col rounded-[34px] border border-white/10 bg-[linear-gradient(180deg,#020617,#0f172a)] px-6 py-7 text-white shadow-[0_30px_100px_rgba(2,6,23,0.36)] lg:flex xl:w-[292px]">
-          <div className="mb-8 flex items-center gap-3">
+        <aside className={`relative sticky top-4 hidden h-[calc(100vh-2rem)] flex-none flex-col rounded-[34px] border border-white/10 bg-[linear-gradient(180deg,#020617,#0f172a)] py-7 text-white shadow-[0_30px_100px_rgba(2,6,23,0.36)] transition-all duration-300 lg:flex ${isSidebarCollapsed ? 'w-[92px] px-3' : 'w-[272px] px-6 xl:w-[292px]'}`}>
+          <div className={`mb-8 flex items-center ${isSidebarCollapsed ? 'justify-center' : 'gap-3'}`}>
             <div className="grid h-12 w-12 place-items-center rounded-2xl bg-white/10 ring-1 ring-white/15">
               {snapshot.theme.logoUrl ? (
                 <img src={snapshot.theme.logoUrl} alt="Logo Nype Orbit" className="h-full w-full rounded-2xl object-contain p-2" />
@@ -739,10 +740,21 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
                 <Sparkles className="h-6 w-6" />
               )}
             </div>
+            {!isSidebarCollapsed ? (
             <div>
               <p className="font-manrope text-lg font-extrabold">Nype Orbit</p>
               <p className="text-xs uppercase tracking-[0.3em] text-white/50">Marketing OS</p>
             </div>
+            ) : null}
+            <button
+              type="button"
+              onClick={() => setIsSidebarCollapsed((current) => !current)}
+              className={`grid h-10 w-10 place-items-center rounded-2xl border border-white/10 bg-white/5 text-white/70 transition hover:bg-white/10 hover:text-white ${isSidebarCollapsed ? 'absolute left-1/2 top-6 -translate-x-1/2' : 'ml-auto'}`}
+              aria-label={isSidebarCollapsed ? 'Expandir menu lateral' : 'Recolher menu lateral'}
+              title={isSidebarCollapsed ? 'Expandir menu lateral' : 'Recolher menu lateral'}
+            >
+              <ChevronRight className={`h-4 w-4 transition-transform ${isSidebarCollapsed ? '' : 'rotate-180'}`} />
+            </button>
           </div>
           <nav className="space-y-2">
             {navigation.map((item) => {
@@ -752,25 +764,28 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
                 <button
                   key={item.label}
                   onClick={() => setActiveModule(item.key)}
-                  className={`flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-medium transition ${
+                  className={`flex w-full items-center rounded-2xl py-3 text-left text-sm font-medium transition ${
                     active
                       ? 'bg-white text-slate-950 shadow-[0_12px_30px_rgba(255,255,255,0.12)]'
                       : 'text-white/70 hover:bg-white/10 hover:text-white'
-                  }`}
+                  } ${isSidebarCollapsed ? 'justify-center px-0' : 'gap-3 px-4'}`}
                   type="button"
+                  title={isSidebarCollapsed ? item.label : undefined}
                 >
                   <Icon className="h-4 w-4" />
-                  {item.label}
+                  {!isSidebarCollapsed ? item.label : null}
                 </button>
               )
             })}
           </nav>
-          <div className="mt-auto rounded-[30px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.09),rgba(255,255,255,0.03))] p-5">
-            <div className="flex items-center gap-2">
+          <div className={`mt-auto rounded-[30px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.09),rgba(255,255,255,0.03))] ${isSidebarCollapsed ? 'p-3' : 'p-5'}`}>
+            <div className={`flex items-center ${isSidebarCollapsed ? 'justify-center' : 'gap-2'}`}>
               <ShieldCheck className="h-4 w-4 text-emerald-300" />
-              <p className="text-sm font-semibold">Segurança multi-tenant</p>
+              {!isSidebarCollapsed ? <p className="text-sm font-semibold">Segurança multi-tenant</p> : null}
             </div>
-            <p className="mt-2 text-sm leading-6 text-white/60">Cada usuário acessa somente os clientes, dashs e integrações vinculados ao próprio tenant.</p>
+            {!isSidebarCollapsed ? (
+              <p className="mt-2 text-sm leading-6 text-white/60">Cada usuário acessa somente os clientes, dashs e integrações vinculados ao próprio tenant.</p>
+            ) : null}
           </div>
         </aside>
 
