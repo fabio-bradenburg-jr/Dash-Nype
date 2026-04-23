@@ -38,6 +38,7 @@ import LegacyDashboardShell from '@/components/dashboard/DashboardShell'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { createDashboardTemplate } from '@/lib/dashboard-storage'
 import { ClientContextBundle, KnowledgeSource, MetricCard, PlatformSnapshot } from '@/lib/saas/types'
 
 const navigation = [
@@ -301,9 +302,14 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
       const businessData = (client.business_data || {}) as Record<string, unknown>
       const businessIntegrations = (businessData.integrations || {}) as Record<string, unknown>
       const dashboardTheme = (businessData.dashboardTheme || {}) as Record<string, unknown>
-      const dashboardTemplates = Array.isArray(businessData.dashboardTemplates) ? businessData.dashboardTemplates : []
+      const dashboardTemplates =
+        Array.isArray(businessData.dashboardTemplates) && businessData.dashboardTemplates.length
+          ? businessData.dashboardTemplates
+          : [createDashboardTemplate({ name: 'Modelo principal' })]
       const activeDashboardTemplateId =
-        typeof businessData.activeDashboardTemplateId === 'string' ? businessData.activeDashboardTemplateId : ''
+        typeof businessData.activeDashboardTemplateId === 'string' && businessData.activeDashboardTemplateId
+          ? businessData.activeDashboardTemplateId
+          : String(dashboardTemplates[0]?.id || '')
       const funnelSteps = Array.isArray(businessData.funnelSteps)
         ? businessData.funnelSteps.map((step) => String(step)).filter(Boolean)
         : ['impressions', 'clicks', 'leads', 'purchases']
@@ -538,6 +544,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
 
   async function handleCreateClient() {
     const selectedAccount = metaAccounts.find((account) => account.id === clientForm.metaAdAccountId)
+    const initialDashboardTemplate = createDashboardTemplate({ name: 'Modelo principal' })
     setCreatingClient(true)
     try {
       const response = await fetch('/api/saas/clients', {
@@ -557,6 +564,8 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
             dashboardEnabled: true,
             dashboardVisibleIntegrationKeys: ['meta_ads', 'agendor'],
             funnelSteps: ['impressions', 'clicks', 'leads', 'purchases'],
+            dashboardTemplates: [initialDashboardTemplate],
+            activeDashboardTemplateId: initialDashboardTemplate.id,
             metaAdAccountId: clientForm.metaAdAccountId,
             agendorAccountId: clientForm.agendorAccountId,
             dashboardButtonColor: clientForm.dashboardButtonColor,
