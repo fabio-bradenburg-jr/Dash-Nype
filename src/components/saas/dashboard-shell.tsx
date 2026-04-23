@@ -219,6 +219,17 @@ function objectiveLabel(objective: string) {
   return map[objective] || objective
 }
 
+function normalizePipelineValues(values: unknown): string[] {
+  if (Array.isArray(values)) {
+    return values.map((item) => String(item || '').trim()).filter(Boolean)
+  }
+
+  return String(values || '')
+    .split(/[\n,;|]+/g)
+    .map((item) => item.trim())
+    .filter(Boolean)
+}
+
 function extractKnowledgeSourcesFromBusinessData(businessData: Record<string, unknown> | undefined): KnowledgeSource[] {
   const rawSources = Array.isArray(businessData?.knowledge_sources) ? businessData.knowledge_sources : []
 
@@ -273,14 +284,16 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
   const [clientForm, setClientForm] = useState({
     name: '',
     company: '',
+    dashboardName: '',
     main_goal: 'leads',
     metaAdAccountId: '',
     agendorToken: '',
-    agendorAccountId: '',
+    agendorAccountIds: [] as string[],
     dashboardButtonColor: currentTheme.primaryColor || '#0f766e',
     dashboardAccentColor: currentTheme.accentColor || '#f97316',
     logoUrl: '',
   })
+  const [clientPipelineDraft, setClientPipelineDraft] = useState('')
   const [knowledgeSources, setKnowledgeSources] = useState<KnowledgeSource[]>(
     extractKnowledgeSourcesFromBusinessData(snapshot.selectedClient.business_data as Record<string, unknown>)
   )
@@ -288,12 +301,20 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
   const [editingClient, setEditingClient] = useState<PlatformSnapshot['clients'][number] | null>(null)
   const [editingClientSaving, setEditingClientSaving] = useState(false)
   const [editingClientForm, setEditingClientForm] = useState({
+    dashboardName: '',
+    logoUrl: '',
     metaAdAccountId: '',
     agendorToken: '',
-    agendorAccountId: '',
+    agendorAccountIds: [] as string[],
   })
+  const [editingPipelineDraft, setEditingPipelineDraft] = useState('')
   const selectedClientIntegrations = clientIntegrations
   const selectedMetaIntegration = selectedClientIntegrations.find((integration) => integration.provider === 'meta_ads')
+  const selectedAgendorPipelines = normalizePipelineValues(
+    selectedClient.business_data?.agendorAccountIds ||
+      selectedClientIntegrations.find((integration) => integration.provider === 'agendor')?.account_name ||
+      selectedClient.business_data?.agendorAccountId
+  )
   const legacyDashboardClients = useMemo(() => {
     return snapshot.clients.map((client) => {
       const clientIntegrations = snapshot.integrations.filter((integration) => integration.client_id === client.id)
@@ -316,7 +337,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
 
       return {
         id: client.id,
-        name: client.name,
+        name: String(businessData.dashboardDisplayName || client.name),
         company: client.company,
         dashboardEnabled: true,
         operationEnabled: false,
@@ -325,8 +346,10 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
         logoUrl: String(businessData.logoUrl || ''),
         dashboardVisibleIntegrationKeys: ['meta_ads', 'rd_station'],
         metaAdAccountId: metaIntegration?.external_account_id || String(businessData.metaAdAccountId || ''),
-        rdStationAccountId: agendorIntegration?.account_name || String(businessData.agendorAccountId || ''),
-        rdPipelineId: String(businessData.agendorAccountId || ''),
+        rdStationAccountId:
+          agendorIntegration?.account_name ||
+          normalizePipelineValues(businessData.agendorAccountIds || businessData.agendorAccountId).join(', '),
+        rdPipelineId: normalizePipelineValues(businessData.agendorAccountIds || businessData.agendorAccountId).join(', '),
         rdStationToken: String(businessIntegrations.agendorToken || ''),
         funnelSteps,
         activeDashboardTemplateId,
@@ -601,6 +624,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
   async function handleCreateClient() {
     const selectedAccount = metaAccounts.find((account) => account.id === clientForm.metaAdAccountId)
     const initialDashboardTemplate = createDashboardTemplate({ name: 'Modelo principal' })
+    const agendorPipelines = normalizePipelineValues(clientForm.agendorAccountIds)
     setCreatingClient(true)
     try {
       const response = await fetch('/api/saas/clients', {
@@ -622,8 +646,10 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
             funnelSteps: ['impressions', 'clicks', 'leads', 'purchases'],
             dashboardTemplates: [initialDashboardTemplate],
             activeDashboardTemplateId: initialDashboardTemplate.id,
+            dashboardDisplayName: clientForm.dashboardName || clientForm.name,
             metaAdAccountId: clientForm.metaAdAccountId,
-            agendorAccountId: clientForm.agendorAccountId,
+            agendorAccountId: agendorPipelines.join(', '),
+            agendorAccountIds: agendorPipelines,
             dashboardButtonColor: clientForm.dashboardButtonColor,
             dashboardAccentColor: clientForm.dashboardAccentColor,
             logoUrl: clientForm.logoUrl,
@@ -662,8 +688,8 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
           body: JSON.stringify({
             client_id: createdClient.id,
             provider: 'agendor',
-            account_name: clientForm.agendorAccountId || `${clientForm.name} Agendor`,
-            external_account_id: clientForm.agendorAccountId || `agendor-${createdClient.id}`,
+            account_name: agendorPipelines.join(', ') || `${clientForm.name} Agendor`,
+            external_account_id: agendorPipelines.join('|') || `agendor-${createdClient.id}`,
             access_token: clientForm.agendorToken,
           }),
         })
@@ -673,14 +699,16 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
       setClientForm({
         name: '',
         company: '',
+        dashboardName: '',
         main_goal: 'leads',
         metaAdAccountId: '',
         agendorToken: '',
-        agendorAccountId: '',
+        agendorAccountIds: [],
         dashboardButtonColor: currentTheme.primaryColor || '#0f766e',
         dashboardAccentColor: currentTheme.accentColor || '#f97316',
         logoUrl: '',
       })
+      setClientPipelineDraft('')
       router.refresh()
     } catch (error) {
       alert(error instanceof Error ? error.message : 'Não foi possível criar o cliente.')
@@ -719,11 +747,17 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
 
     setEditingClient(client)
     setSelectedClientId(client.id)
+    const agendorPipelineValues = normalizePipelineValues(
+      businessData.agendorAccountIds || clientAgendorIntegration?.account_name || businessData.agendorAccountId
+    )
     setEditingClientForm({
+      dashboardName: String(businessData.dashboardDisplayName || client.name || ''),
+      logoUrl: String(businessData.logoUrl || ''),
       metaAdAccountId: clientMetaIntegration?.external_account_id || String(businessData.metaAdAccountId || ''),
       agendorToken: String(((businessData.integrations || {}) as Record<string, unknown>).agendorToken || ''),
-      agendorAccountId: clientAgendorIntegration?.account_name || String(businessData.agendorAccountId || ''),
+      agendorAccountIds: agendorPipelineValues,
     })
+    setEditingPipelineDraft('')
     setSelectedMetaAccountId(clientMetaIntegration?.external_account_id || String(businessData.metaAdAccountId || ''))
     setShowClientEditModal(true)
   }
@@ -731,6 +765,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
   async function handleSaveClientSetup() {
     if (!editingClient) return
 
+    const agendorPipelines = normalizePipelineValues(editingClientForm.agendorAccountIds)
     setEditingClientSaving(true)
     try {
       const response = await fetch(`/api/saas/clients/${editingClient.id}`, {
@@ -738,8 +773,11 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           business_data: {
+            dashboardDisplayName: editingClientForm.dashboardName,
+            logoUrl: editingClientForm.logoUrl,
             metaAdAccountId: editingClientForm.metaAdAccountId,
-            agendorAccountId: editingClientForm.agendorAccountId,
+            agendorAccountId: agendorPipelines.join(', '),
+            agendorAccountIds: agendorPipelines,
             integrations: {
               agendorToken: editingClientForm.agendorToken,
             },
@@ -767,6 +805,20 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
         }
       }
 
+      if (editingClientForm.agendorToken.trim()) {
+        await fetch('/api/saas/integrations', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            client_id: editingClient.id,
+            provider: 'agendor',
+            account_name: agendorPipelines.join(', ') || `${editingClient.name} Agendor`,
+            external_account_id: agendorPipelines.join('|') || `agendor-${editingClient.id}`,
+            access_token: editingClientForm.agendorToken,
+          }),
+        })
+      }
+
       setShowClientEditModal(false)
       setEditingClient(null)
       router.refresh()
@@ -785,6 +837,56 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
       setClientForm((current) => ({ ...current, logoUrl: reader.result?.toString() || '' }))
     }
     reader.readAsDataURL(file)
+  }
+
+  function handleEditingClientLogoUpload(file: File | undefined) {
+    if (!file) return
+
+    const reader = new FileReader()
+    reader.onload = () => {
+      setEditingClientForm((current) => ({ ...current, logoUrl: reader.result?.toString() || '' }))
+    }
+    reader.readAsDataURL(file)
+  }
+
+  function addPipelineToClientForm() {
+    const value = clientPipelineDraft.trim()
+    if (!value) return
+
+    setClientForm((current) => ({
+      ...current,
+      agendorAccountIds: current.agendorAccountIds.includes(value)
+        ? current.agendorAccountIds
+        : [...current.agendorAccountIds, value],
+    }))
+    setClientPipelineDraft('')
+  }
+
+  function removePipelineFromClientForm(pipeline: string) {
+    setClientForm((current) => ({
+      ...current,
+      agendorAccountIds: current.agendorAccountIds.filter((item) => item !== pipeline),
+    }))
+  }
+
+  function addPipelineToEditingForm() {
+    const value = editingPipelineDraft.trim()
+    if (!value) return
+
+    setEditingClientForm((current) => ({
+      ...current,
+      agendorAccountIds: current.agendorAccountIds.includes(value)
+        ? current.agendorAccountIds
+        : [...current.agendorAccountIds, value],
+    }))
+    setEditingPipelineDraft('')
+  }
+
+  function removePipelineFromEditingForm(pipeline: string) {
+    setEditingClientForm((current) => ({
+      ...current,
+      agendorAccountIds: current.agendorAccountIds.filter((item) => item !== pipeline),
+    }))
   }
 
   async function handleSaveMetaApiToken() {
@@ -1010,7 +1112,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
                     </div>
                     <div className="rounded-2xl border border-slate-200/70 bg-white/80 px-4 py-3">
                       <p className="text-xs uppercase tracking-[0.22em] text-slate-400">CRM</p>
-                      <p className="mt-2 font-manrope text-xl font-extrabold">{selectedClientIntegrations.find((integration) => integration.provider === 'agendor')?.account_name || 'Não vinculado'}</p>
+                      <p className="mt-2 font-manrope text-xl font-extrabold">{selectedAgendorPipelines.join(', ') || 'Não vinculado'}</p>
                     </div>
                     <div className="rounded-2xl border border-slate-200/70 bg-white/80 px-4 py-3">
                       <p className="text-xs uppercase tracking-[0.22em] text-slate-400">Vendedor</p>
@@ -1673,6 +1775,53 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
 
             <div className="mt-6 grid gap-5">
               <div className="rounded-[28px] border border-slate-200/80 bg-slate-50/80 p-4">
+                <p className="font-semibold text-slate-900">Identidade do dashboard</p>
+                <p className="mt-1 text-sm leading-6 text-slate-500">
+                  Ajuste o nome exibido no dash e a logo usada na apresentação do cliente.
+                </p>
+                <div className="mt-4 grid gap-4">
+                  <label className="grid gap-2 text-sm font-medium text-slate-600">
+                    Nome exibido no dashboard
+                    <input
+                      className="h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
+                      value={editingClientForm.dashboardName}
+                      onChange={(event) => setEditingClientForm((current) => ({ ...current, dashboardName: event.target.value }))}
+                      placeholder="Ex.: Dashboard Schmidt"
+                    />
+                  </label>
+                  <div className="grid gap-4 md:grid-cols-[96px_1fr] md:items-center">
+                    <div className="grid h-20 w-20 place-items-center overflow-hidden rounded-3xl border border-slate-200 bg-white">
+                      {editingClientForm.logoUrl ? (
+                        <img src={editingClientForm.logoUrl} alt="Logo do dashboard" className="h-full w-full object-contain p-2" />
+                      ) : (
+                        <span className="px-2 text-center text-[11px] font-semibold text-slate-400">Sem logo</span>
+                      )}
+                    </div>
+                    <div className="grid gap-3 md:grid-cols-2">
+                      <label className="grid gap-2 text-sm font-medium text-slate-600">
+                        Logo do dashboard
+                        <input
+                          className="h-12 rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700 shadow-sm"
+                          type="file"
+                          accept="image/*"
+                          onChange={(event) => handleEditingClientLogoUpload(event.target.files?.[0])}
+                        />
+                      </label>
+                      <label className="grid gap-2 text-sm font-medium text-slate-600">
+                        URL da logo
+                        <input
+                          className="h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 shadow-sm outline-none"
+                          value={editingClientForm.logoUrl}
+                          onChange={(event) => setEditingClientForm((current) => ({ ...current, logoUrl: event.target.value }))}
+                          placeholder="https://..."
+                        />
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-[28px] border border-slate-200/80 bg-slate-50/80 p-4">
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <p className="font-semibold text-slate-900">Meta Ads</p>
@@ -1701,7 +1850,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
               <div className="rounded-[28px] border border-slate-200/80 bg-slate-50/80 p-4">
                 <p className="font-semibold text-slate-900">Agendor</p>
                 <p className="mt-1 text-sm leading-6 text-slate-500">
-                  Informe o token/API e a referência da conta ou pipeline comercial deste cliente.
+                  Informe o token/API e adicione quantos pipelines comerciais quiser para este cliente.
                 </p>
                 <div className="mt-4 grid gap-4 md:grid-cols-2">
                   <label className="grid gap-2 text-sm font-medium text-slate-600">
@@ -1714,15 +1863,43 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
                       placeholder="Cole o token do Agendor"
                     />
                   </label>
-                  <label className="grid gap-2 text-sm font-medium text-slate-600">
-                    Conta / Pipeline
-                    <input
-                      className="h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
-                      value={editingClientForm.agendorAccountId}
-                      onChange={(event) => setEditingClientForm((current) => ({ ...current, agendorAccountId: event.target.value }))}
-                      placeholder="ID, nome ou referência"
-                    />
-                  </label>
+                  <div className="grid gap-2 text-sm font-medium text-slate-600">
+                    Pipelines do Agendor
+                    <div className="grid gap-3 md:grid-cols-[1fr_auto]">
+                      <input
+                        className="h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
+                        value={editingPipelineDraft}
+                        onChange={(event) => setEditingPipelineDraft(event.target.value)}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter') {
+                            event.preventDefault()
+                            addPipelineToEditingForm()
+                          }
+                        }}
+                        placeholder="Digite um pipeline e pressione Enter"
+                      />
+                      <Button variant="secondary" onClick={addPipelineToEditingForm} type="button">
+                        Adicionar
+                      </Button>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {editingClientForm.agendorAccountIds.length > 0 ? (
+                        editingClientForm.agendorAccountIds.map((pipeline) => (
+                          <button
+                            key={pipeline}
+                            type="button"
+                            onClick={() => removePipelineFromEditingForm(pipeline)}
+                            className="rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
+                            title="Remover pipeline"
+                          >
+                            {pipeline} ×
+                          </button>
+                        ))
+                      ) : (
+                        <p className="text-sm text-slate-500">Nenhum pipeline adicionado ainda.</p>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1780,6 +1957,15 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
                   />
                 </label>
                 <label className="grid gap-2 text-sm font-medium text-slate-600">
+                  Nome exibido no dashboard
+                  <input
+                    className="h-12 rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-900 outline-none"
+                    value={clientForm.dashboardName}
+                    onChange={(event) => setClientForm((current) => ({ ...current, dashboardName: event.target.value }))}
+                    placeholder="Ex.: Dashboard Clínica Pulse"
+                  />
+                </label>
+                <label className="grid gap-2 text-sm font-medium text-slate-600">
                   Empresa
                   <input
                     className="h-12 rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-900 outline-none"
@@ -1829,16 +2015,16 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
                   </label>
                 </div>
                 <div className="mt-4 grid gap-4 md:grid-cols-[96px_1fr] md:items-center">
-                  <div className="grid h-20 w-20 place-items-center overflow-hidden rounded-3xl border border-slate-200 bg-white">
-                    {clientForm.logoUrl ? (
-                      <img src={clientForm.logoUrl} alt="Logo do cliente" className="h-full w-full object-contain p-2" />
-                    ) : (
+                    <div className="grid h-20 w-20 place-items-center overflow-hidden rounded-3xl border border-slate-200 bg-white">
+                      {clientForm.logoUrl ? (
+                      <img src={clientForm.logoUrl} alt="Logo do dashboard" className="h-full w-full object-contain p-2" />
+                      ) : (
                       <span className="px-2 text-center text-[11px] font-semibold text-slate-400">Sem logo</span>
-                    )}
-                  </div>
-                  <div className="grid gap-3 md:grid-cols-2">
-                    <label className="grid gap-2 text-sm font-medium text-slate-600">
-                      Logo do cliente
+                      )}
+                    </div>
+                    <div className="grid gap-3 md:grid-cols-2">
+                      <label className="grid gap-2 text-sm font-medium text-slate-600">
+                      Logo do dashboard
                       <input
                         className="h-12 rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700 shadow-sm"
                         type="file"
@@ -1890,7 +2076,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
               <div className="rounded-[28px] border border-slate-200/80 bg-slate-50/80 p-4">
                 <p className="font-semibold text-slate-900">Agendor</p>
                 <p className="mt-1 text-sm leading-6 text-slate-500">
-                  Informe a API/token e a referência da conta ou pipeline comercial desse cliente.
+                  Informe a API/token e adicione quantos pipelines comerciais quiser para esse cliente.
                 </p>
                 <div className="mt-4 grid gap-4 md:grid-cols-2">
                   <label className="grid gap-2 text-sm font-medium text-slate-600">
@@ -1903,15 +2089,43 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
                       placeholder="Token do Agendor"
                     />
                   </label>
-                  <label className="grid gap-2 text-sm font-medium text-slate-600">
-                    Conta / Pipeline
-                    <input
-                      className="h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
-                      value={clientForm.agendorAccountId}
-                      onChange={(event) => setClientForm((current) => ({ ...current, agendorAccountId: event.target.value }))}
-                      placeholder="ID, pipeline ou referência"
-                    />
-                  </label>
+                  <div className="grid gap-2 text-sm font-medium text-slate-600">
+                    Pipelines do Agendor
+                    <div className="grid gap-3 md:grid-cols-[1fr_auto]">
+                      <input
+                        className="h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
+                        value={clientPipelineDraft}
+                        onChange={(event) => setClientPipelineDraft(event.target.value)}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter') {
+                            event.preventDefault()
+                            addPipelineToClientForm()
+                          }
+                        }}
+                        placeholder="Digite um pipeline e pressione Enter"
+                      />
+                      <Button variant="secondary" onClick={addPipelineToClientForm} type="button">
+                        Adicionar
+                      </Button>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {clientForm.agendorAccountIds.length > 0 ? (
+                        clientForm.agendorAccountIds.map((pipeline) => (
+                          <button
+                            key={pipeline}
+                            type="button"
+                            onClick={() => removePipelineFromClientForm(pipeline)}
+                            className="rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
+                            title="Remover pipeline"
+                          >
+                            {pipeline} ×
+                          </button>
+                        ))
+                      ) : (
+                        <p className="text-sm text-slate-500">Nenhum pipeline adicionado ainda.</p>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
 
