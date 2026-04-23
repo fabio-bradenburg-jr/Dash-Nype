@@ -1282,40 +1282,56 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
             <Card>
               <CardHeader>
                 <div>
-                  <CardTitle>Tabela de campanhas</CardTitle>
-                  <CardDescription>Colunas do dashboard antigo para leitura de mídia, resultado, receita e eficiência.</CardDescription>
+                  <CardTitle>Clientes cadastrados</CardTitle>
+                  <CardDescription>Selecione um cliente para abrir o perfil, integrações e fontes vinculadas.</CardDescription>
                 </div>
               </CardHeader>
-              <CardContent className="overflow-x-auto">
-                <table className="min-w-full text-left text-sm">
-                  <thead className="text-slate-400">
-                    <tr>
-                      <th className="pb-3 font-medium">Campanha</th>
-                      <th className="pb-3 font-medium">Status</th>
-                      {campaignColumns.map((column) => (
-                        <th key={column.key} className="whitespace-nowrap pb-3 pr-5 font-medium">{column.label}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {clientDashboard.campaigns.map((campaign) => (
-                      <tr key={campaign.campaign_name}>
-                        <td className="py-4">
-                          <div>
-                            <p className="font-semibold text-slate-900">{campaign.campaign_name}</p>
-                            <p className="text-xs capitalize text-slate-400">{campaign.source.replace('_', ' ')}</p>
+              <CardContent>
+                {snapshot.clients.length > 0 ? (
+                  <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                    {snapshot.clients.map((client) => {
+                      const isActiveClient = client.id === selectedClient.id
+                      const clientIntegrationsCount = snapshot.integrations.filter((integration) => integration.client_id === client.id).length
+
+                      return (
+                        <button
+                          key={client.id}
+                          type="button"
+                          onClick={() => setSelectedClientId(client.id)}
+                          className={`group flex min-h-[148px] flex-col justify-between rounded-[28px] border px-5 py-4 text-left transition ${
+                            isActiveClient
+                              ? 'border-[var(--saas-primary)] bg-[linear-gradient(135deg,rgba(15,118,110,0.12),rgba(249,115,22,0.08))] shadow-[0_18px_45px_rgba(15,23,42,0.08)]'
+                              : 'border-slate-200/80 bg-white/90 hover:border-slate-300 hover:bg-white'
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="truncate font-manrope text-xl font-extrabold text-slate-950">{client.name}</p>
+                              <p className="mt-1 truncate text-sm text-slate-500">{client.company}</p>
+                            </div>
+                            <ChevronRight className={`h-5 w-5 flex-none ${isActiveClient ? 'text-[var(--saas-primary)]' : 'text-slate-300 transition group-hover:text-slate-500'}`} />
                           </div>
-                        </td>
-                        <td className="py-4"><Badge tone={campaign.status === 'ACTIVE' ? 'green' : 'yellow'}>{statusLabel(campaign.status.toLowerCase())}</Badge></td>
-                        {campaignColumns.map((column) => (
-                          <td key={column.key} className="whitespace-nowrap py-4 pr-5">
-                            {formatValue(getCampaignValue(campaign, column.key), column.format)}
-                          </td>
-                        ))}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+
+                          <div className="grid gap-3 sm:grid-cols-2">
+                            <div className="rounded-2xl bg-white/80 px-3 py-2">
+                              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">Objetivo</p>
+                              <p className="mt-1 text-sm font-bold text-slate-900 capitalize">{objectiveLabel(client.main_goal)}</p>
+                            </div>
+                            <div className="rounded-2xl bg-white/80 px-3 py-2">
+                              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">Integrações</p>
+                              <p className="mt-1 text-sm font-bold text-slate-900">{clientIntegrationsCount}</p>
+                            </div>
+                          </div>
+                        </button>
+                      )
+                    })}
+                  </div>
+                ) : (
+                  <div className="rounded-[28px] border border-dashed border-slate-200 bg-slate-50/70 px-6 py-10 text-center">
+                    <p className="text-base font-semibold text-slate-900">Nenhum cliente cadastrado ainda.</p>
+                    <p className="mt-2 text-sm text-slate-500">Crie o primeiro cliente para começar a montar os dashboards.</p>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
