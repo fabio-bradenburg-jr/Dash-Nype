@@ -16,7 +16,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
-import { Building2, ChevronRight, Cpu, LayoutDashboard, LineChart, LogOut, ShieldCheck, Settings2, Sparkles, Users } from 'lucide-react'
+import { Building2, ChevronRight, Cpu, LayoutDashboard, LineChart, LogOut, Moon, Settings2, ShieldCheck, Sparkles, Sun, Users } from 'lucide-react'
 
 import { AiAssistantPanel } from '@/components/saas/ai-assistant-panel'
 import { AiIntegrationPanel } from '@/components/saas/ai-integration-panel'
@@ -258,6 +258,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
   const [creatingClient, setCreatingClient] = useState(false)
   const [syncing, setSyncing] = useState(false)
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
+  const [themeModeSaving, setThemeModeSaving] = useState(false)
   const [linkingMeta, setLinkingMeta] = useState(false)
   const [loadingMetaAccounts, setLoadingMetaAccounts] = useState(false)
   const [metaConnectionPending, setMetaConnectionPending] = useState(false)
@@ -569,6 +570,32 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
   async function handleLogout() {
     await fetch('/api/auth/logout', { method: 'POST' })
     window.location.href = '/login'
+  }
+
+  async function handleToggleColorMode() {
+    const nextTheme = {
+      ...currentTheme,
+      darkMode: !currentTheme.darkMode,
+    }
+
+    setCurrentTheme(nextTheme)
+    setThemeModeSaving(true)
+
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(SAAS_THEME_STORAGE_KEY, JSON.stringify(nextTheme))
+    }
+
+    try {
+      await fetch('/api/saas/theme', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(nextTheme),
+      })
+    } catch {
+      return
+    } finally {
+      setThemeModeSaving(false)
+    }
   }
 
   async function handleCreateClient() {
@@ -884,16 +911,29 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
               <p className="mt-2 text-sm leading-6 text-white/60">Cada usuário acessa somente os clientes, dashs e integrações vinculados ao próprio tenant.</p>
             ) : null}
           </div>
-          <button
-            type="button"
-            onClick={handleLogout}
-            className={`mt-3 flex items-center rounded-2xl border border-white/10 bg-white/5 py-3 text-sm font-medium text-white/70 transition hover:bg-white/10 hover:text-white ${isSidebarCollapsed ? 'justify-center px-0' : 'gap-3 px-4'}`}
-            title="Sair"
-            aria-label="Sair"
-          >
-            <LogOut className="h-4 w-4" />
-            {!isSidebarCollapsed ? 'Sair' : null}
-          </button>
+          <div className={`mt-3 flex ${isSidebarCollapsed ? 'flex-col gap-2' : 'items-center gap-2'}`}>
+            <button
+              type="button"
+              onClick={handleToggleColorMode}
+              disabled={themeModeSaving}
+              className={`flex items-center rounded-2xl border border-white/10 bg-white/5 py-3 text-sm font-medium text-white/70 transition hover:bg-white/10 hover:text-white disabled:cursor-wait disabled:opacity-70 ${isSidebarCollapsed ? 'justify-center px-0' : 'flex-1 gap-3 px-4'}`}
+              title={currentTheme.darkMode ? 'Ativar modo claro' : 'Ativar modo escuro'}
+              aria-label={currentTheme.darkMode ? 'Ativar modo claro' : 'Ativar modo escuro'}
+            >
+              {currentTheme.darkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+              {!isSidebarCollapsed ? (themeModeSaving ? 'Salvando...' : currentTheme.darkMode ? 'Modo claro' : 'Modo escuro') : null}
+            </button>
+            <button
+              type="button"
+              onClick={handleLogout}
+              className={`flex items-center rounded-2xl border border-white/10 bg-white/5 py-3 text-sm font-medium text-white/70 transition hover:bg-white/10 hover:text-white ${isSidebarCollapsed ? 'justify-center px-0' : 'gap-3 px-4'}`}
+              title="Sair"
+              aria-label="Sair"
+            >
+              <LogOut className="h-4 w-4" />
+              {!isSidebarCollapsed ? 'Sair' : null}
+            </button>
+          </div>
         </aside>
 
         <main className="min-w-0 flex-1 space-y-6">
