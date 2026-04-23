@@ -1532,25 +1532,6 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader>
-                <div>
-                  <CardTitle>Integrações do dash</CardTitle>
-                  <CardDescription>O cadastro novo fica restrito a Meta Ads e Agendor, seguindo a estrutura de dados do dash antigo.</CardDescription>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {[
-                  'Meta: token global em Configurações e conta de anúncio no cliente.',
-                  'Agendor: API/token e referência da conta/pipeline no cadastro do cliente.',
-                  'Dash: métricas, campanha, funil e resultados preservam a leitura do modelo antigo no visual novo.',
-                ].map((item) => (
-                  <div key={item} className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600">
-                    {item}
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
           </section>
           ) : null}
 
@@ -1566,7 +1547,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
           </section>
           ) : null}
 
-          {showClients || showSettings ? (
+          {showClients ? (
           <section className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
             <Card className="bg-slate-950 text-white">
               <CardHeader>
