@@ -1083,7 +1083,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
               <div className="grid gap-3 xl:min-w-[420px]">
                 <div className="grid gap-3 sm:grid-cols-[1fr_auto_auto_auto]">
                   <select
-                    className="h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 shadow-sm"
+                    className={`h-12 rounded-2xl px-4 text-sm font-medium shadow-sm ${isDarkMode ? 'border border-white/10 bg-slate-950/70 text-white' : 'border border-slate-200 bg-white text-slate-700'}`}
                     disabled={snapshot.clients.length === 0}
                     value={selectedClientId || selectedClient.id}
                     onChange={(event) => setSelectedClientId(event.target.value)}
@@ -1108,37 +1108,37 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
                 </div>
                 {showDashs ? (
                   <div className="grid gap-3 sm:grid-cols-2">
-                    <div className="rounded-2xl border border-slate-200/70 bg-white/80 px-4 py-3">
-                      <p className="text-xs uppercase tracking-[0.22em] text-slate-400">Conta de anúncio</p>
-                      <p className="mt-2 font-manrope text-xl font-extrabold">{selectedMetaIntegration?.external_account_id || selectedMetaIntegration?.account_name || 'Não vinculada'}</p>
+                    <div className={`rounded-2xl px-4 py-3 ${isDarkMode ? 'border border-white/10 bg-white/5' : 'border border-slate-200/70 bg-white/80'}`}>
+                      <p className={`text-xs uppercase tracking-[0.22em] ${isDarkMode ? 'text-white/40' : 'text-slate-400'}`}>Conta de anúncio</p>
+                      <p className={`mt-2 font-manrope text-xl font-extrabold ${isDarkMode ? 'text-white' : 'text-slate-950'}`}>{selectedMetaIntegration?.external_account_id || selectedMetaIntegration?.account_name || 'Não vinculada'}</p>
                     </div>
-                    <div className="rounded-2xl border border-slate-200/70 bg-white/80 px-4 py-3">
-                      <p className="text-xs uppercase tracking-[0.22em] text-slate-400">CRM</p>
-                      <p className="mt-2 font-manrope text-xl font-extrabold">{selectedAgendorPipelines.join(', ') || 'Não vinculado'}</p>
+                    <div className={`rounded-2xl px-4 py-3 ${isDarkMode ? 'border border-white/10 bg-white/5' : 'border border-slate-200/70 bg-white/80'}`}>
+                      <p className={`text-xs uppercase tracking-[0.22em] ${isDarkMode ? 'text-white/40' : 'text-slate-400'}`}>CRM</p>
+                      <p className={`mt-2 font-manrope text-xl font-extrabold ${isDarkMode ? 'text-white' : 'text-slate-950'}`}>{selectedAgendorPipelines.join(', ') || 'Não vinculado'}</p>
                     </div>
-                    <div className="rounded-2xl border border-slate-200/70 bg-white/80 px-4 py-3">
-                      <p className="text-xs uppercase tracking-[0.22em] text-slate-400">Vendedor</p>
-                      <p className="mt-2 font-manrope text-xl font-extrabold">Todos os vendedores</p>
+                    <div className={`rounded-2xl px-4 py-3 ${isDarkMode ? 'border border-white/10 bg-white/5' : 'border border-slate-200/70 bg-white/80'}`}>
+                      <p className={`text-xs uppercase tracking-[0.22em] ${isDarkMode ? 'text-white/40' : 'text-slate-400'}`}>Vendedor</p>
+                      <p className={`mt-2 font-manrope text-xl font-extrabold ${isDarkMode ? 'text-white' : 'text-slate-950'}`}>Todos os vendedores</p>
                     </div>
-                    <div className="rounded-2xl border border-slate-200/70 bg-white/80 px-4 py-3">
-                      <p className="text-xs uppercase tracking-[0.22em] text-slate-400">Demais integrações mapeadas</p>
-                      <p className="mt-2 font-manrope text-xl font-extrabold">{selectedClientIntegrations.length} conta(s) vinculada(s)</p>
+                    <div className={`rounded-2xl px-4 py-3 ${isDarkMode ? 'border border-white/10 bg-white/5' : 'border border-slate-200/70 bg-white/80'}`}>
+                      <p className={`text-xs uppercase tracking-[0.22em] ${isDarkMode ? 'text-white/40' : 'text-slate-400'}`}>Demais integrações mapeadas</p>
+                      <p className={`mt-2 font-manrope text-xl font-extrabold ${isDarkMode ? 'text-white' : 'text-slate-950'}`}>{selectedClientIntegrations.length} conta(s) vinculada(s)</p>
                     </div>
                   </div>
                 ) : (
                   <div className="grid gap-3 sm:grid-cols-2">
-                    <div className="rounded-2xl border border-slate-200/70 bg-white/80 px-4 py-3">
-                      <p className="text-xs uppercase tracking-[0.22em] text-slate-400">Integrações</p>
-                      <p className="mt-2 font-manrope text-2xl font-extrabold">{selectedClientIntegrations.length}</p>
+                    <div className={`rounded-2xl px-4 py-3 ${isDarkMode ? 'border border-white/10 bg-white/5' : 'border border-slate-200/70 bg-white/80'}`}>
+                      <p className={`text-xs uppercase tracking-[0.22em] ${isDarkMode ? 'text-white/40' : 'text-slate-400'}`}>Integrações</p>
+                      <p className={`mt-2 font-manrope text-2xl font-extrabold ${isDarkMode ? 'text-white' : 'text-slate-950'}`}>{selectedClientIntegrations.length}</p>
                     </div>
-                    <div className="rounded-2xl border border-slate-200/70 bg-white/80 px-4 py-3">
-                      <p className="text-xs uppercase tracking-[0.22em] text-slate-400">Objetivo</p>
-                      <p className="mt-2 font-manrope text-xl font-extrabold capitalize">{objectiveLabel(selectedClient.main_goal)}</p>
+                    <div className={`rounded-2xl px-4 py-3 ${isDarkMode ? 'border border-white/10 bg-white/5' : 'border border-slate-200/70 bg-white/80'}`}>
+                      <p className={`text-xs uppercase tracking-[0.22em] ${isDarkMode ? 'text-white/40' : 'text-slate-400'}`}>Objetivo</p>
+                      <p className={`mt-2 font-manrope text-xl font-extrabold capitalize ${isDarkMode ? 'text-white' : 'text-slate-950'}`}>{objectiveLabel(selectedClient.main_goal)}</p>
                     </div>
                   </div>
                 )}
                 {loadingClientContext ? (
-                  <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-700">
+                  <div className={`rounded-2xl px-4 py-3 text-sm font-medium ${isDarkMode ? 'border border-amber-500/30 bg-amber-500/10 text-amber-200' : 'border border-amber-200 bg-amber-50 text-amber-700'}`}>
                     Carregando o contexto completo do cliente selecionado...
                   </div>
                 ) : null}
@@ -1545,11 +1545,11 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
 
           {showClients ? (
           <section className="grid gap-6">
-            <Card>
+            <Card className={isDarkMode ? 'border-white/10 bg-[linear-gradient(180deg,rgba(15,23,42,0.88),rgba(2,6,23,0.92))] text-white shadow-[0_24px_80px_rgba(0,0,0,0.35)]' : ''}>
               <CardHeader>
                 <div>
-                  <CardTitle>Clientes cadastrados</CardTitle>
-                  <CardDescription>Clique em um cliente para abrir a configuração rápida de conta Meta e API do Agendor.</CardDescription>
+                  <CardTitle className={isDarkMode ? 'text-white' : ''}>Clientes cadastrados</CardTitle>
+                  <CardDescription className={isDarkMode ? 'text-white/60' : ''}>Clique em um cliente para abrir a configuração rápida de conta Meta e API do Agendor.</CardDescription>
                 </div>
               </CardHeader>
               <CardContent>
@@ -1567,25 +1567,27 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
                           className={`group flex min-h-[148px] flex-col justify-between rounded-[28px] border px-5 py-4 text-left transition ${
                             isActiveClient
                               ? 'border-[var(--saas-primary)] bg-[linear-gradient(135deg,rgba(15,118,110,0.12),rgba(249,115,22,0.08))] shadow-[0_18px_45px_rgba(15,23,42,0.08)]'
-                              : 'border-slate-200/80 bg-white/90 hover:border-slate-300 hover:bg-white'
+                              : isDarkMode
+                                ? 'border-white/10 bg-white/5 text-white hover:border-white/20 hover:bg-white/10'
+                                : 'border-slate-200/80 bg-white/90 hover:border-slate-300 hover:bg-white'
                           }`}
                         >
                           <div className="flex items-start justify-between gap-3">
                             <div className="min-w-0">
-                              <p className="truncate font-manrope text-xl font-extrabold text-slate-950">{client.name}</p>
-                              <p className="mt-1 truncate text-sm text-slate-500">{client.company}</p>
+                              <p className={`truncate font-manrope text-xl font-extrabold ${isActiveClient || isDarkMode ? 'text-white' : 'text-slate-950'}`}>{client.name}</p>
+                              <p className={`mt-1 truncate text-sm ${isActiveClient ? 'text-white/60' : isDarkMode ? 'text-white/50' : 'text-slate-500'}`}>{client.company}</p>
                             </div>
                             <ChevronRight className={`h-5 w-5 flex-none ${isActiveClient ? 'text-[var(--saas-primary)]' : 'text-slate-300 transition group-hover:text-slate-500'}`} />
                           </div>
 
                           <div className="grid gap-3 sm:grid-cols-2">
-                            <div className="rounded-2xl bg-white/80 px-3 py-2">
-                              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">Objetivo</p>
-                              <p className="mt-1 text-sm font-bold text-slate-900 capitalize">{objectiveLabel(client.main_goal)}</p>
+                            <div className={`rounded-2xl px-3 py-2 ${isDarkMode && !isActiveClient ? 'bg-slate-950/60' : 'bg-white/80'}`}>
+                              <p className={`text-[11px] font-semibold uppercase tracking-[0.2em] ${isDarkMode ? 'text-white/40' : 'text-slate-400'}`}>Objetivo</p>
+                              <p className={`mt-1 text-sm font-bold capitalize ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{objectiveLabel(client.main_goal)}</p>
                             </div>
-                            <div className="rounded-2xl bg-white/80 px-3 py-2">
-                              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">Integrações</p>
-                              <p className="mt-1 text-sm font-bold text-slate-900">{clientIntegrationsCount}</p>
+                            <div className={`rounded-2xl px-3 py-2 ${isDarkMode && !isActiveClient ? 'bg-slate-950/60' : 'bg-white/80'}`}>
+                              <p className={`text-[11px] font-semibold uppercase tracking-[0.2em] ${isDarkMode ? 'text-white/40' : 'text-slate-400'}`}>Integrações</p>
+                              <p className={`mt-1 text-sm font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{clientIntegrationsCount}</p>
                             </div>
                           </div>
                         </button>
@@ -1593,9 +1595,9 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
                     })}
                   </div>
                 ) : (
-                  <div className="rounded-[28px] border border-dashed border-slate-200 bg-slate-50/70 px-6 py-10 text-center">
-                    <p className="text-base font-semibold text-slate-900">Nenhum cliente cadastrado ainda.</p>
-                    <p className="mt-2 text-sm text-slate-500">Crie o primeiro cliente para começar a montar os dashboards.</p>
+                  <div className={`rounded-[28px] px-6 py-10 text-center ${isDarkMode ? 'border border-dashed border-white/10 bg-white/5' : 'border border-dashed border-slate-200 bg-slate-50/70'}`}>
+                    <p className={`text-base font-semibold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Nenhum cliente cadastrado ainda.</p>
+                    <p className={`mt-2 text-sm ${isDarkMode ? 'text-white/60' : 'text-slate-500'}`}>Crie o primeiro cliente para começar a montar os dashboards.</p>
                   </div>
                 )}
               </CardContent>
