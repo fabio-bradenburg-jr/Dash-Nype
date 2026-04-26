@@ -262,6 +262,35 @@ body {
     border-color: color-mix(in srgb, var(--saas-primary, #0f766e) 58%, white);
 }
 
+:root[data-ui-mode='light'] .saas-app-shell main [class*='text-white'] {
+    color: #0f172a !important;
+}
+
+:root:not([data-ui-mode='light']) .saas-app-shell main [class*='text-slate-950'],
+:root:not([data-ui-mode='light']) .saas-app-shell main [class*='text-slate-900'],
+:root:not([data-ui-mode='light']) .saas-app-shell main [class*='text-slate-800'],
+:root:not([data-ui-mode='light']) .saas-app-shell main [class*='text-slate-700'] {
+    color: #f8fafc !important;
+}
+
+:root[data-ui-mode='light'] .saas-legacy-dashboard-frame .main-content [class*='text-white'] {
+    color: #0f172a !important;
+}
+
+:root:not([data-ui-mode='light']) .saas-legacy-dashboard-frame .main-content [class*='text-slate-950'],
+:root:not([data-ui-mode='light']) .saas-legacy-dashboard-frame .main-content [class*='text-slate-900'],
+:root:not([data-ui-mode='light']) .saas-legacy-dashboard-frame .main-content [class*='text-slate-800'],
+:root:not([data-ui-mode='light']) .saas-legacy-dashboard-frame .main-content [class*='text-slate-700'] {
+    color: #f8fafc !important;
+}
+
+:root:not([data-ui-mode='light']) .saas-legacy-dashboard-frame .stage-chip,
+:root:not([data-ui-mode='light']) .saas-legacy-dashboard-frame .stage-chip.active,
+:root:not([data-ui-mode='light']) .saas-legacy-dashboard-frame .stage-chip span,
+:root:not([data-ui-mode='light']) .saas-legacy-dashboard-frame .stage-chip.active span {
+    color: #f8fafc !important;
+}
+
 /* Sidebar */
 .sidebar {
     width: var(--sidebar-width);

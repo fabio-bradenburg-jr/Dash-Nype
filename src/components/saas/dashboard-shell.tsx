@@ -940,7 +940,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
 
   return (
     <div
-      className={`min-h-screen ${isDarkMode ? 'text-white' : 'text-slate-900'}`}
+      className={`saas-app-shell min-h-screen ${isDarkMode ? 'text-white' : 'text-slate-900'}`}
       style={{
         background: isDarkMode
           ? 'radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--saas-primary) 20%, transparent), transparent 28%), radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--saas-accent) 18%, transparent), transparent 24%), radial-gradient(circle at 50% 100%, rgba(148,163,184,0.08), transparent 34%), linear-gradient(180deg,#020617,#0f172a 54%,#020617)'
