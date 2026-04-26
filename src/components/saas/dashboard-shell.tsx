@@ -1183,7 +1183,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="xl:col-span-2">
               <CardHeader>
                 <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                   <div>
