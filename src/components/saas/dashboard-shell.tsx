@@ -210,15 +210,6 @@ function statusLabel(status: string) {
   return map[status] || status.replace('_', ' ')
 }
 
-function objectiveLabel(objective: string) {
-  const map: Record<string, string> = {
-    purchases: 'compras',
-    leads: 'leads',
-    messages: 'mensagens',
-  }
-  return map[objective] || objective
-}
-
 function normalizePipelineValues(values: unknown): string[] {
   if (Array.isArray(values)) {
     return values.map((item) => String(item || '').trim()).filter(Boolean)
@@ -285,7 +276,6 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
     name: '',
     company: '',
     dashboardName: '',
-    main_goal: 'leads',
     metaAdAccountId: '',
     agendorToken: '',
     agendorAccountIds: [] as string[],
@@ -636,7 +626,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
           company: clientForm.company || clientForm.name,
           niche: 'Dashboard',
           average_ticket: 0,
-          main_goal: clientForm.main_goal,
+          main_goal: 'leads',
           ltv: 0,
           start_date: new Date().toISOString().slice(0, 10),
           status: 'active',
@@ -701,7 +691,6 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
         name: '',
         company: '',
         dashboardName: '',
-        main_goal: 'leads',
         metaAdAccountId: '',
         agendorToken: '',
         agendorAccountIds: [],
@@ -1118,14 +1107,10 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
                     </div>
                   </div>
                 ) : (
-                  <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="grid gap-3 sm:grid-cols-1">
                     <div className={`rounded-2xl px-4 py-3 ${isDarkMode ? 'border border-white/10 bg-white/5' : 'border border-slate-200/70 bg-white/80'}`}>
                       <p className={`text-xs uppercase tracking-[0.22em] ${isDarkMode ? 'text-white/40' : 'text-slate-400'}`}>Integrações</p>
                       <p className={`mt-2 font-manrope text-2xl font-extrabold ${isDarkMode ? 'text-white' : 'text-slate-950'}`}>{selectedClientIntegrations.length}</p>
-                    </div>
-                    <div className={`rounded-2xl px-4 py-3 ${isDarkMode ? 'border border-white/10 bg-white/5' : 'border border-slate-200/70 bg-white/80'}`}>
-                      <p className={`text-xs uppercase tracking-[0.22em] ${isDarkMode ? 'text-white/40' : 'text-slate-400'}`}>Objetivo</p>
-                      <p className={`mt-2 font-manrope text-xl font-extrabold capitalize ${isDarkMode ? 'text-white' : 'text-slate-950'}`}>{objectiveLabel(selectedClient.main_goal)}</p>
                     </div>
                   </div>
                 )}
@@ -1573,11 +1558,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
                             <ChevronRight className={`h-5 w-5 flex-none ${isActiveClient ? 'text-[var(--saas-primary)]' : 'text-slate-300 transition group-hover:text-slate-500'}`} />
                           </div>
 
-                          <div className="grid gap-3 sm:grid-cols-2">
-                            <div className={`rounded-2xl px-3 py-2 ${isDarkMode && !isActiveClient ? 'bg-slate-950/60' : 'bg-white/80'}`}>
-                              <p className={`text-[11px] font-semibold uppercase tracking-[0.2em] ${isDarkMode ? 'text-white/40' : 'text-slate-400'}`}>Objetivo</p>
-                              <p className={`mt-1 text-sm font-bold capitalize ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{objectiveLabel(client.main_goal)}</p>
-                            </div>
+                          <div className="grid gap-3 sm:grid-cols-1">
                             <div className={`rounded-2xl px-3 py-2 ${isDarkMode && !isActiveClient ? 'bg-slate-950/60' : 'bg-white/80'}`}>
                               <p className={`text-[11px] font-semibold uppercase tracking-[0.2em] ${isDarkMode ? 'text-white/40' : 'text-slate-400'}`}>Integrações</p>
                               <p className={`mt-1 text-sm font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{clientIntegrationsCount}</p>
@@ -1973,19 +1954,6 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
                   />
                 </label>
               </div>
-
-              <label className="grid gap-2 text-sm font-medium text-slate-600">
-                Objetivo principal do dash
-                <select
-                  className="h-12 rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-900 outline-none"
-                  value={clientForm.main_goal}
-                  onChange={(event) => setClientForm((current) => ({ ...current, main_goal: event.target.value }))}
-                >
-                  <option value="leads">Leads</option>
-                  <option value="sales">Vendas</option>
-                  <option value="messages">Mensagens</option>
-                </select>
-              </label>
 
               <div className="rounded-[28px] border border-slate-200/80 bg-slate-50/80 p-4">
                 <p className="font-semibold text-slate-900">Tema deste dashboard</p>
