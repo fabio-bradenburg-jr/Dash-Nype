@@ -12053,7 +12053,6 @@ export default function DashboardShell({
                 {activeTab === 'clientes' && 'Gerencie sua carteira em uma leitura mais executiva, com health, churn, ROI e contexto operacional por cliente.'}
                 {activeTab === 'operacao' && 'Acompanhe demandas, responsáveis, prioridades e gargalos em uma visão operacional mais clara e moderna.'}
                 {activeTab === 'produtos' && 'Organize ofertas, linhas de receita e pacotes para padronizar a operação comercial da agência.'}
-                {activeTab === 'apresentacao' && 'Uma visão executiva pronta para reunião, consolidando performance, financeiro e sinais críticos do cliente.'}
                 {activeTab === 'contexto' && 'Centralize health score, churn risk, alertas e sinais de desalinhamento para priorizar retenção.'}
                 {activeTab === 'calendar' && 'Acompanhe a agenda operacional e os próximos pontos de contato sem sair do hub principal.'}
                 {activeTab === 'clickup' && 'Monitore filas, responsáveis e execução do ClickUp com leitura consolidada da operação.'}
@@ -16165,9 +16164,6 @@ export default function DashboardShell({
                   {`Dashboard ${activeClient?.name || 'do cliente'}`}
                 </span>
                 <h2>{activeClient?.name || 'Selecione um cliente'}</h2>
-                <p>
-                  A seguir, apresentamos um panorama consolidado do período selecionado, separando os dados por origem para facilitar a leitura executiva da operação.
-                </p>
               </div>
               <div className="hero-meta">
                 {!hasAnyPresentationData ? (
@@ -16177,12 +16173,6 @@ export default function DashboardShell({
                   </div>
                 ) : (
                   <>
-                    {hasMetaConfigured && (
-                      <div className="hero-stat">
-                        <span>Conta de anúncio</span>
-                        <strong>{selectedAdAccount || 'Defina a conta do cliente'}</strong>
-                      </div>
-                    )}
                     {Boolean([
                       activeClientVisibleIntegrationsSet.has('google_ads') ? activeClient?.googleAdsAccountId : '',
                       activeClientVisibleIntegrationsSet.has('tiktok_ads') ? activeClient?.tiktokAdsAccountId : '',
@@ -16287,11 +16277,10 @@ export default function DashboardShell({
                 {hasMetaConfigured && (
                   <section className="source-section">
                     <div className="source-section-header">
-                      <div className="source-section-badge" style={{ color: '#0668E1', borderColor: '#0668E1' }}>
-                        <i className="bx bxl-meta"></i>
-                        <span>Meta Ads</span>
-                      </div>
-                      <p className="source-section-copy">Primeiro bloco de leitura das contas de anúncio e da performance de mídia.</p>
+                    <div className="source-section-badge" style={{ color: '#0668E1', borderColor: '#0668E1' }}>
+                      <i className="bx bxl-meta"></i>
+                      <span>Meta Ads</span>
+                    </div>
                     </div>
                 <section className="glass-panel meta-filter-panel">
                   <div className="meta-filter-panel-head">
