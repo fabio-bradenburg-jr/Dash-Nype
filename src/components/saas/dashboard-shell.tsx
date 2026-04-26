@@ -1589,7 +1589,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
 
             <AiIntegrationPanel />
 
-            <Card>
+            <Card className="xl:col-span-2">
               <CardHeader>
                 <div>
                   <CardTitle>API da Meta</CardTitle>
