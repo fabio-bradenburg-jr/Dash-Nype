@@ -966,7 +966,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
             <button
               type="button"
               onClick={() => setIsSidebarCollapsed((current) => !current)}
-              className={`grid h-10 w-10 place-items-center rounded-2xl border border-white/10 bg-white/5 text-white/70 transition hover:bg-white/10 hover:text-white ${isSidebarCollapsed ? 'absolute left-1/2 top-6 -translate-x-1/2' : 'ml-auto'}`}
+              className={`grid h-10 w-10 place-items-center rounded-2xl border border-white/10 bg-white/5 text-white/70 transition hover:bg-white/10 hover:text-white ${isSidebarCollapsed ? 'absolute right-0 top-1' : 'ml-auto'}`}
               aria-label={isSidebarCollapsed ? 'Expandir menu lateral' : 'Recolher menu lateral'}
               title={isSidebarCollapsed ? 'Expandir menu lateral' : 'Recolher menu lateral'}
             >
