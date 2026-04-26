@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import {
   Area,
@@ -38,6 +38,11 @@ const navigation = [
 ] as const
 
 type NavigationKey = (typeof navigation)[number]['key']
+type AgendorPipelineOption = {
+  id: string
+  name: string
+  label: string
+}
 
 const moduleCopy: Record<NavigationKey, { title: string; description: string }> = {
   overview: {
@@ -221,6 +226,12 @@ function normalizePipelineValues(values: unknown): string[] {
     .filter(Boolean)
 }
 
+function resolveSelectedPipelineNames(selectedIds: string[], options: AgendorPipelineOption[]) {
+  if (!selectedIds.length) return []
+  const optionsById = new Map(options.map((option) => [option.id, option]))
+  return selectedIds.map((id) => optionsById.get(id)?.label || optionsById.get(id)?.name || id)
+}
+
 function extractKnowledgeSourcesFromBusinessData(businessData: Record<string, unknown> | undefined): KnowledgeSource[] {
   const rawSources = Array.isArray(businessData?.knowledge_sources) ? businessData.knowledge_sources : []
 
@@ -283,7 +294,9 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
     dashboardAccentColor: currentTheme.accentColor || '#f97316',
     logoUrl: '',
   })
-  const [clientPipelineDraft, setClientPipelineDraft] = useState('')
+  const [clientAgendorOptions, setClientAgendorOptions] = useState<AgendorPipelineOption[]>([])
+  const [clientAgendorLoading, setClientAgendorLoading] = useState(false)
+  const [clientAgendorError, setClientAgendorError] = useState('')
   const [knowledgeSources, setKnowledgeSources] = useState<KnowledgeSource[]>(
     extractKnowledgeSourcesFromBusinessData(snapshot.selectedClient.business_data as Record<string, unknown>)
   )
@@ -297,11 +310,16 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
     agendorToken: '',
     agendorAccountIds: [] as string[],
   })
-  const [editingPipelineDraft, setEditingPipelineDraft] = useState('')
+  const [editingAgendorOptions, setEditingAgendorOptions] = useState<AgendorPipelineOption[]>([])
+  const [editingAgendorLoading, setEditingAgendorLoading] = useState(false)
+  const [editingAgendorError, setEditingAgendorError] = useState('')
+  const clientAgendorFetchKeyRef = useRef('')
+  const editingAgendorFetchKeyRef = useRef('')
   const selectedClientIntegrations = clientIntegrations
   const selectedMetaIntegration = selectedClientIntegrations.find((integration) => integration.provider === 'meta_ads')
   const selectedAgendorPipelines = normalizePipelineValues(
-    selectedClient.business_data?.agendorAccountIds ||
+    selectedClient.business_data?.agendorPipelineNames ||
+      selectedClient.business_data?.agendorAccountIds ||
       selectedClientIntegrations.find((integration) => integration.provider === 'agendor')?.account_name ||
       selectedClient.business_data?.agendorAccountId
   )
@@ -337,6 +355,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
         dashboardVisibleIntegrationKeys: ['meta_ads', 'rd_station'],
         metaAdAccountId: metaIntegration?.external_account_id || String(businessData.metaAdAccountId || ''),
         rdStationAccountId:
+          normalizePipelineValues(businessData.agendorPipelineNames).join(', ') ||
           agendorIntegration?.account_name ||
           normalizePipelineValues(businessData.agendorAccountIds || businessData.agendorAccountId).join(', '),
         rdPipelineId: normalizePipelineValues(businessData.agendorAccountIds || businessData.agendorAccountId).join(', '),
@@ -397,6 +416,8 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
     { name: 'Cliques sem conversão', value: getMetric('clicksWithoutConversion')?.value || 0, color: '#475569' },
   ]
   const chartHasDistribution = distributionData.some((item) => item.value > 0)
+  const clientSelectedPipelineLabels = resolveSelectedPipelineNames(clientForm.agendorAccountIds, clientAgendorOptions)
+  const editingSelectedPipelineLabels = resolveSelectedPipelineNames(editingClientForm.agendorAccountIds, editingAgendorOptions)
   const funnelStages = clientDashboard.funnel.length
     ? clientDashboard.funnel
     : [
@@ -492,6 +513,26 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
     root.style.setProperty('--accent', currentTheme.accentColor)
     root.dataset.uiMode = currentTheme.darkMode ? 'dark' : 'light'
   }, [currentTheme])
+
+  useEffect(() => {
+    const token = clientForm.agendorToken.trim()
+    if (!showClientForm || token.length < 8) return
+    if (clientAgendorFetchKeyRef.current === token && clientAgendorOptions.length > 0) return
+    const timeout = window.setTimeout(() => {
+      void loadAgendorPipelines(token, 'create')
+    }, 500)
+    return () => window.clearTimeout(timeout)
+  }, [clientForm.agendorToken, showClientForm, clientAgendorOptions.length])
+
+  useEffect(() => {
+    const token = editingClientForm.agendorToken.trim()
+    if (!showClientEditModal || token.length < 8) return
+    if (editingAgendorFetchKeyRef.current === token && editingAgendorOptions.length > 0) return
+    const timeout = window.setTimeout(() => {
+      void loadAgendorPipelines(token, 'edit')
+    }, 500)
+    return () => window.clearTimeout(timeout)
+  }, [editingClientForm.agendorToken, showClientEditModal, editingAgendorOptions.length])
 
   useEffect(() => {
     async function loadSessionUser() {
@@ -616,6 +657,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
     const selectedAccount = metaAccounts.find((account) => account.id === clientForm.metaAdAccountId)
     const initialDashboardTemplate = createDashboardTemplate({ name: 'Modelo principal' })
     const agendorPipelines = normalizePipelineValues(clientForm.agendorAccountIds)
+    const agendorPipelineNames = resolveSelectedPipelineNames(agendorPipelines, clientAgendorOptions)
     setCreatingClient(true)
     try {
       const response = await fetch('/api/saas/clients', {
@@ -641,6 +683,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
             metaAdAccountId: clientForm.metaAdAccountId,
             agendorAccountId: agendorPipelines.join(', '),
             agendorAccountIds: agendorPipelines,
+            agendorPipelineNames,
             dashboardButtonColor: clientForm.dashboardButtonColor,
             dashboardAccentColor: clientForm.dashboardAccentColor,
             logoUrl: clientForm.logoUrl,
@@ -679,7 +722,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
           body: JSON.stringify({
             client_id: createdClient.id,
             provider: 'agendor',
-            account_name: agendorPipelines.join(', ') || `${clientForm.name} Agendor`,
+            account_name: agendorPipelineNames.join(', ') || `${clientForm.name} Agendor`,
             external_account_id: agendorPipelines.join('|') || `agendor-${createdClient.id}`,
             access_token: clientForm.agendorToken,
           }),
@@ -698,7 +741,9 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
         dashboardAccentColor: currentTheme.accentColor || '#f97316',
         logoUrl: '',
       })
-      setClientPipelineDraft('')
+      setClientAgendorOptions([])
+      setClientAgendorError('')
+      clientAgendorFetchKeyRef.current = ''
       router.refresh()
     } catch (error) {
       alert(error instanceof Error ? error.message : 'Não foi possível criar o cliente.')
@@ -747,7 +792,9 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
       agendorToken: String(((businessData.integrations || {}) as Record<string, unknown>).agendorToken || ''),
       agendorAccountIds: agendorPipelineValues,
     })
-    setEditingPipelineDraft('')
+    setEditingAgendorOptions([])
+    setEditingAgendorError('')
+    editingAgendorFetchKeyRef.current = ''
     setSelectedMetaAccountId(clientMetaIntegration?.external_account_id || String(businessData.metaAdAccountId || ''))
     setShowClientEditModal(true)
   }
@@ -756,6 +803,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
     if (!editingClient) return
 
     const agendorPipelines = normalizePipelineValues(editingClientForm.agendorAccountIds)
+    const agendorPipelineNames = resolveSelectedPipelineNames(agendorPipelines, editingAgendorOptions)
     setEditingClientSaving(true)
     try {
       const response = await fetch(`/api/saas/clients/${editingClient.id}`, {
@@ -768,6 +816,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
             metaAdAccountId: editingClientForm.metaAdAccountId,
             agendorAccountId: agendorPipelines.join(', '),
             agendorAccountIds: agendorPipelines,
+            agendorPipelineNames,
             integrations: {
               agendorToken: editingClientForm.agendorToken,
             },
@@ -802,7 +851,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
           body: JSON.stringify({
             client_id: editingClient.id,
             provider: 'agendor',
-            account_name: agendorPipelines.join(', ') || `${editingClient.name} Agendor`,
+            account_name: agendorPipelineNames.join(', ') || `${editingClient.name} Agendor`,
             external_account_id: agendorPipelines.join('|') || `agendor-${editingClient.id}`,
             access_token: editingClientForm.agendorToken,
           }),
@@ -816,6 +865,52 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
       alert(error instanceof Error ? error.message : 'Não foi possível salvar a configuração do cliente.')
     } finally {
       setEditingClientSaving(false)
+    }
+  }
+
+  async function loadAgendorPipelines(token: string, mode: 'create' | 'edit') {
+    const normalizedToken = token.trim()
+    if (!normalizedToken) return
+
+    if (mode === 'create') {
+      setClientAgendorLoading(true)
+      setClientAgendorError('')
+      clientAgendorFetchKeyRef.current = normalizedToken
+    } else {
+      setEditingAgendorLoading(true)
+      setEditingAgendorError('')
+      editingAgendorFetchKeyRef.current = normalizedToken
+    }
+
+    try {
+      const response = await fetch('/api/saas/agendor/pipelines', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: normalizedToken }),
+      })
+      const data = await response.json()
+      if (!response.ok) {
+        throw new Error(data?.error || 'Não foi possível ler os pipelines do Agendor.')
+      }
+      const options = Array.isArray(data?.pipelines) ? (data.pipelines as AgendorPipelineOption[]) : []
+      if (mode === 'create') {
+        setClientAgendorOptions(options)
+      } else {
+        setEditingAgendorOptions(options)
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Não foi possível ler os pipelines do Agendor.'
+      if (mode === 'create') {
+        setClientAgendorError(message)
+      } else {
+        setEditingAgendorError(message)
+      }
+    } finally {
+      if (mode === 'create') {
+        setClientAgendorLoading(false)
+      } else {
+        setEditingAgendorLoading(false)
+      }
     }
   }
 
@@ -839,17 +934,13 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
     reader.readAsDataURL(file)
   }
 
-  function addPipelineToClientForm() {
-    const value = clientPipelineDraft.trim()
-    if (!value) return
-
+  function togglePipelineOnClientForm(value: string) {
     setClientForm((current) => ({
       ...current,
       agendorAccountIds: current.agendorAccountIds.includes(value)
-        ? current.agendorAccountIds
+        ? current.agendorAccountIds.filter((item) => item !== value)
         : [...current.agendorAccountIds, value],
     }))
-    setClientPipelineDraft('')
   }
 
   function removePipelineFromClientForm(pipeline: string) {
@@ -859,17 +950,13 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
     }))
   }
 
-  function addPipelineToEditingForm() {
-    const value = editingPipelineDraft.trim()
-    if (!value) return
-
+  function togglePipelineOnEditingForm(value: string) {
     setEditingClientForm((current) => ({
       ...current,
       agendorAccountIds: current.agendorAccountIds.includes(value)
-        ? current.agendorAccountIds
+        ? current.agendorAccountIds.filter((item) => item !== value)
         : [...current.agendorAccountIds, value],
     }))
-    setEditingPipelineDraft('')
   }
 
   function removePipelineFromEditingForm(pipeline: string) {
@@ -1829,41 +1916,58 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
               <div className="rounded-[28px] border border-slate-200/80 bg-slate-50/80 p-4">
                 <p className="font-semibold text-slate-900">Agendor</p>
                 <p className="mt-1 text-sm leading-6 text-slate-500">
-                  Informe o token/API e adicione quantos pipelines comerciais quiser para este cliente.
+                  Informe o token/API para ler os pipelines disponíveis e selecione quais devem aparecer no dash.
                 </p>
                 <div className="mt-4 grid gap-4 md:grid-cols-2">
                   <label className="grid gap-2 text-sm font-medium text-slate-600">
                     API / Token do Agendor
-                    <input
-                      className="h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
-                      type="password"
-                      value={editingClientForm.agendorToken}
-                      onChange={(event) => setEditingClientForm((current) => ({ ...current, agendorToken: event.target.value }))}
-                      placeholder="Cole o token do Agendor"
-                    />
-                  </label>
-                  <div className="grid gap-2 text-sm font-medium text-slate-600">
-                    Pipelines do Agendor
                     <div className="grid gap-3 md:grid-cols-[1fr_auto]">
                       <input
                         className="h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
-                        value={editingPipelineDraft}
-                        onChange={(event) => setEditingPipelineDraft(event.target.value)}
-                        onKeyDown={(event) => {
-                          if (event.key === 'Enter') {
-                            event.preventDefault()
-                            addPipelineToEditingForm()
-                          }
+                        type="password"
+                        value={editingClientForm.agendorToken}
+                        onChange={(event) => {
+                          const nextToken = event.target.value
+                          setEditingClientForm((current) => ({ ...current, agendorToken: nextToken }))
+                          setEditingAgendorError('')
+                          setEditingAgendorOptions([])
+                          editingAgendorFetchKeyRef.current = ''
                         }}
-                        placeholder="Digite um pipeline e pressione Enter"
+                        placeholder="Cole o token do Agendor"
                       />
-                      <Button variant="secondary" onClick={addPipelineToEditingForm} type="button">
-                        Adicionar
+                      <Button
+                        variant="secondary"
+                        onClick={() => loadAgendorPipelines(editingClientForm.agendorToken, 'edit')}
+                        disabled={editingAgendorLoading || !editingClientForm.agendorToken.trim()}
+                        type="button"
+                      >
+                        {editingAgendorLoading ? 'Lendo...' : 'Ler pipelines'}
                       </Button>
                     </div>
+                  </label>
+                  <div className="grid gap-2 text-sm font-medium text-slate-600">
+                    Pipelines do Agendor
+                    {editingAgendorError ? (
+                      <p className="rounded-2xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">{editingAgendorError}</p>
+                    ) : null}
                     <div className="flex flex-wrap gap-2">
-                      {editingClientForm.agendorAccountIds.length > 0 ? (
-                        editingClientForm.agendorAccountIds.map((pipeline) => (
+                      {editingAgendorOptions.length > 0 ? (
+                        editingAgendorOptions.map((pipeline) => (
+                          <button
+                            key={pipeline.id}
+                            type="button"
+                            onClick={() => togglePipelineOnEditingForm(pipeline.id)}
+                            className={`rounded-full border px-3 py-2 text-xs font-semibold transition ${
+                              editingClientForm.agendorAccountIds.includes(pipeline.id)
+                                ? 'border-emerald-300 bg-emerald-50 text-emerald-800'
+                                : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50'
+                            }`}
+                          >
+                            {pipeline.label}
+                          </button>
+                        ))
+                      ) : editingSelectedPipelineLabels.length > 0 ? (
+                        editingSelectedPipelineLabels.map((pipeline) => (
                           <button
                             key={pipeline}
                             type="button"
@@ -1875,7 +1979,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
                           </button>
                         ))
                       ) : (
-                        <p className="text-sm text-slate-500">Nenhum pipeline adicionado ainda.</p>
+                        <p className="text-sm text-slate-500">Cole o token e clique em “Ler pipelines” para escolher os pipelines do dash.</p>
                       )}
                     </div>
                   </div>
@@ -2042,41 +2146,58 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
               <div className="rounded-[28px] border border-slate-200/80 bg-slate-50/80 p-4">
                 <p className="font-semibold text-slate-900">Agendor</p>
                 <p className="mt-1 text-sm leading-6 text-slate-500">
-                  Informe a API/token e adicione quantos pipelines comerciais quiser para esse cliente.
+                  Informe a API/token para ler os pipelines disponíveis e selecione quais devem aparecer no dash.
                 </p>
                 <div className="mt-4 grid gap-4 md:grid-cols-2">
                   <label className="grid gap-2 text-sm font-medium text-slate-600">
                     API / Token do Agendor
-                    <input
-                      className="h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
-                      type="password"
-                      value={clientForm.agendorToken}
-                      onChange={(event) => setClientForm((current) => ({ ...current, agendorToken: event.target.value }))}
-                      placeholder="Token do Agendor"
-                    />
-                  </label>
-                  <div className="grid gap-2 text-sm font-medium text-slate-600">
-                    Pipelines do Agendor
                     <div className="grid gap-3 md:grid-cols-[1fr_auto]">
                       <input
                         className="h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
-                        value={clientPipelineDraft}
-                        onChange={(event) => setClientPipelineDraft(event.target.value)}
-                        onKeyDown={(event) => {
-                          if (event.key === 'Enter') {
-                            event.preventDefault()
-                            addPipelineToClientForm()
-                          }
+                        type="password"
+                        value={clientForm.agendorToken}
+                        onChange={(event) => {
+                          const nextToken = event.target.value
+                          setClientForm((current) => ({ ...current, agendorToken: nextToken }))
+                          setClientAgendorError('')
+                          setClientAgendorOptions([])
+                          clientAgendorFetchKeyRef.current = ''
                         }}
-                        placeholder="Digite um pipeline e pressione Enter"
+                        placeholder="Token do Agendor"
                       />
-                      <Button variant="secondary" onClick={addPipelineToClientForm} type="button">
-                        Adicionar
+                      <Button
+                        variant="secondary"
+                        onClick={() => loadAgendorPipelines(clientForm.agendorToken, 'create')}
+                        disabled={clientAgendorLoading || !clientForm.agendorToken.trim()}
+                        type="button"
+                      >
+                        {clientAgendorLoading ? 'Lendo...' : 'Ler pipelines'}
                       </Button>
                     </div>
+                  </label>
+                  <div className="grid gap-2 text-sm font-medium text-slate-600">
+                    Pipelines do Agendor
+                    {clientAgendorError ? (
+                      <p className="rounded-2xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">{clientAgendorError}</p>
+                    ) : null}
                     <div className="flex flex-wrap gap-2">
-                      {clientForm.agendorAccountIds.length > 0 ? (
-                        clientForm.agendorAccountIds.map((pipeline) => (
+                      {clientAgendorOptions.length > 0 ? (
+                        clientAgendorOptions.map((pipeline) => (
+                          <button
+                            key={pipeline.id}
+                            type="button"
+                            onClick={() => togglePipelineOnClientForm(pipeline.id)}
+                            className={`rounded-full border px-3 py-2 text-xs font-semibold transition ${
+                              clientForm.agendorAccountIds.includes(pipeline.id)
+                                ? 'border-emerald-300 bg-emerald-50 text-emerald-800'
+                                : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50'
+                            }`}
+                          >
+                            {pipeline.label}
+                          </button>
+                        ))
+                      ) : clientSelectedPipelineLabels.length > 0 ? (
+                        clientSelectedPipelineLabels.map((pipeline) => (
                           <button
                             key={pipeline}
                             type="button"
@@ -2088,7 +2209,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
                           </button>
                         ))
                       ) : (
-                        <p className="text-sm text-slate-500">Nenhum pipeline adicionado ainda.</p>
+                        <p className="text-sm text-slate-500">Cole o token e clique em “Ler pipelines” para escolher os pipelines do dash.</p>
                       )}
                     </div>
                   </div>
