@@ -42,6 +42,8 @@ type AgendorPipelineOption = {
   id: string
   name: string
   label: string
+  pipelineId?: string
+  pipelineName?: string
 }
 
 const moduleCopy: Record<NavigationKey, { title: string; description: string }> = {
@@ -232,6 +234,12 @@ function resolveSelectedPipelineNames(selectedIds: string[], options: AgendorPip
   return selectedIds.map((id) => optionsById.get(id)?.label || optionsById.get(id)?.name || id)
 }
 
+function resolveSelectedStageNames(selectedIds: string[], options: AgendorPipelineOption[]) {
+  if (!selectedIds.length) return []
+  const optionsById = new Map(options.map((option) => [option.id, option]))
+  return selectedIds.map((id) => optionsById.get(id)?.name || optionsById.get(id)?.label || id)
+}
+
 function extractKnowledgeSourcesFromBusinessData(businessData: Record<string, unknown> | undefined): KnowledgeSource[] {
   const rawSources = Array.isArray(businessData?.knowledge_sources) ? businessData.knowledge_sources : []
 
@@ -290,11 +298,13 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
     metaAdAccountId: '',
     agendorToken: '',
     agendorAccountIds: [] as string[],
+    agendorQualifiedStageIds: [] as string[],
     dashboardButtonColor: currentTheme.primaryColor || '#0f766e',
     dashboardAccentColor: currentTheme.accentColor || '#f97316',
     logoUrl: '',
   })
   const [clientAgendorOptions, setClientAgendorOptions] = useState<AgendorPipelineOption[]>([])
+  const [clientAgendorStageOptions, setClientAgendorStageOptions] = useState<AgendorPipelineOption[]>([])
   const [clientAgendorLoading, setClientAgendorLoading] = useState(false)
   const [clientAgendorError, setClientAgendorError] = useState('')
   const [knowledgeSources, setKnowledgeSources] = useState<KnowledgeSource[]>(
@@ -309,8 +319,10 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
     metaAdAccountId: '',
     agendorToken: '',
     agendorAccountIds: [] as string[],
+    agendorQualifiedStageIds: [] as string[],
   })
   const [editingAgendorOptions, setEditingAgendorOptions] = useState<AgendorPipelineOption[]>([])
+  const [editingAgendorStageOptions, setEditingAgendorStageOptions] = useState<AgendorPipelineOption[]>([])
   const [editingAgendorLoading, setEditingAgendorLoading] = useState(false)
   const [editingAgendorError, setEditingAgendorError] = useState('')
   const clientAgendorFetchKeyRef = useRef('')
@@ -358,8 +370,10 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
           normalizePipelineValues(businessData.agendorPipelineNames).join(', ') ||
           agendorIntegration?.account_name ||
           normalizePipelineValues(businessData.agendorAccountIds || businessData.agendorAccountId).join(', '),
-        rdPipelineId: normalizePipelineValues(businessData.agendorAccountIds || businessData.agendorAccountId).join(', '),
+        rdPipelineId: normalizePipelineValues(businessData.agendorPipelineIds || businessData.agendorAccountIds || businessData.agendorAccountId).join(', '),
+        rdQualifiedStages: normalizePipelineValues(businessData.agendorQualifiedStages || businessData.rdQualifiedStages),
         rdStationToken: String(businessIntegrations.agendorToken || ''),
+        crmProvider: 'agendor',
         funnelSteps,
         activeDashboardTemplateId,
         dashboardTemplates,
@@ -418,6 +432,14 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
   const chartHasDistribution = distributionData.some((item) => item.value > 0)
   const clientSelectedPipelineLabels = resolveSelectedPipelineNames(clientForm.agendorAccountIds, clientAgendorOptions)
   const editingSelectedPipelineLabels = resolveSelectedPipelineNames(editingClientForm.agendorAccountIds, editingAgendorOptions)
+  const clientSelectedQualifiedStageLabels = resolveSelectedStageNames(clientForm.agendorQualifiedStageIds, clientAgendorStageOptions)
+  const editingSelectedQualifiedStageLabels = resolveSelectedStageNames(editingClientForm.agendorQualifiedStageIds, editingAgendorStageOptions)
+  const clientVisibleAgendorStages = clientAgendorStageOptions.filter(
+    (stage) => !clientForm.agendorAccountIds.length || clientForm.agendorAccountIds.includes(stage.pipelineId || '')
+  )
+  const editingVisibleAgendorStages = editingAgendorStageOptions.filter(
+    (stage) => !editingClientForm.agendorAccountIds.length || editingClientForm.agendorAccountIds.includes(stage.pipelineId || '')
+  )
   const funnelStages = clientDashboard.funnel.length
     ? clientDashboard.funnel
     : [
@@ -658,6 +680,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
     const initialDashboardTemplate = createDashboardTemplate({ name: 'Modelo principal' })
     const agendorPipelines = normalizePipelineValues(clientForm.agendorAccountIds)
     const agendorPipelineNames = resolveSelectedPipelineNames(agendorPipelines, clientAgendorOptions)
+    const agendorQualifiedStageNames = resolveSelectedStageNames(clientForm.agendorQualifiedStageIds, clientAgendorStageOptions)
     setCreatingClient(true)
     try {
       const response = await fetch('/api/saas/clients', {
@@ -683,7 +706,10 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
             metaAdAccountId: clientForm.metaAdAccountId,
             agendorAccountId: agendorPipelines.join(', '),
             agendorAccountIds: agendorPipelines,
+            agendorPipelineIds: agendorPipelines,
             agendorPipelineNames,
+            agendorQualifiedStageIds: clientForm.agendorQualifiedStageIds,
+            agendorQualifiedStages: agendorQualifiedStageNames,
             dashboardButtonColor: clientForm.dashboardButtonColor,
             dashboardAccentColor: clientForm.dashboardAccentColor,
             logoUrl: clientForm.logoUrl,
@@ -737,11 +763,13 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
         metaAdAccountId: '',
         agendorToken: '',
         agendorAccountIds: [],
+        agendorQualifiedStageIds: [],
         dashboardButtonColor: currentTheme.primaryColor || '#0f766e',
         dashboardAccentColor: currentTheme.accentColor || '#f97316',
         logoUrl: '',
       })
       setClientAgendorOptions([])
+      setClientAgendorStageOptions([])
       setClientAgendorError('')
       clientAgendorFetchKeyRef.current = ''
       router.refresh()
@@ -783,7 +811,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
     setEditingClient(client)
     setSelectedClientId(client.id)
     const agendorPipelineValues = normalizePipelineValues(
-      businessData.agendorAccountIds || clientAgendorIntegration?.account_name || businessData.agendorAccountId
+      businessData.agendorPipelineIds || businessData.agendorAccountIds || clientAgendorIntegration?.account_name || businessData.agendorAccountId
     )
     setEditingClientForm({
       dashboardName: String(businessData.dashboardDisplayName || client.name || ''),
@@ -791,8 +819,10 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
       metaAdAccountId: clientMetaIntegration?.external_account_id || String(businessData.metaAdAccountId || ''),
       agendorToken: String(((businessData.integrations || {}) as Record<string, unknown>).agendorToken || ''),
       agendorAccountIds: agendorPipelineValues,
+      agendorQualifiedStageIds: normalizePipelineValues(businessData.agendorQualifiedStageIds || businessData.agendorQualifiedStages),
     })
     setEditingAgendorOptions([])
+    setEditingAgendorStageOptions([])
     setEditingAgendorError('')
     editingAgendorFetchKeyRef.current = ''
     setSelectedMetaAccountId(clientMetaIntegration?.external_account_id || String(businessData.metaAdAccountId || ''))
@@ -804,6 +834,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
 
     const agendorPipelines = normalizePipelineValues(editingClientForm.agendorAccountIds)
     const agendorPipelineNames = resolveSelectedPipelineNames(agendorPipelines, editingAgendorOptions)
+    const agendorQualifiedStageNames = resolveSelectedStageNames(editingClientForm.agendorQualifiedStageIds, editingAgendorStageOptions)
     setEditingClientSaving(true)
     try {
       const response = await fetch(`/api/saas/clients/${editingClient.id}`, {
@@ -816,7 +847,10 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
             metaAdAccountId: editingClientForm.metaAdAccountId,
             agendorAccountId: agendorPipelines.join(', '),
             agendorAccountIds: agendorPipelines,
+            agendorPipelineIds: agendorPipelines,
             agendorPipelineNames,
+            agendorQualifiedStageIds: editingClientForm.agendorQualifiedStageIds,
+            agendorQualifiedStages: agendorQualifiedStageNames,
             integrations: {
               agendorToken: editingClientForm.agendorToken,
             },
@@ -893,10 +927,13 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
         throw new Error(data?.error || 'Não foi possível ler os pipelines do Agendor.')
       }
       const options = Array.isArray(data?.pipelines) ? (data.pipelines as AgendorPipelineOption[]) : []
+      const stageOptions = Array.isArray(data?.stages) ? (data.stages as AgendorPipelineOption[]) : []
       if (mode === 'create') {
         setClientAgendorOptions(options)
+        setClientAgendorStageOptions(stageOptions)
       } else {
         setEditingAgendorOptions(options)
+        setEditingAgendorStageOptions(stageOptions)
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Não foi possível ler os pipelines do Agendor.'
@@ -940,6 +977,10 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
       agendorAccountIds: current.agendorAccountIds.includes(value)
         ? current.agendorAccountIds.filter((item) => item !== value)
         : [...current.agendorAccountIds, value],
+      agendorQualifiedStageIds: current.agendorQualifiedStageIds.filter((stageId) => {
+        const stage = clientAgendorStageOptions.find((item) => item.id === stageId)
+        return current.agendorAccountIds.includes(value) ? stage?.pipelineId !== value : true
+      }),
     }))
   }
 
@@ -947,6 +988,10 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
     setClientForm((current) => ({
       ...current,
       agendorAccountIds: current.agendorAccountIds.filter((item) => item !== pipeline),
+      agendorQualifiedStageIds: current.agendorQualifiedStageIds.filter((stageId) => {
+        const stage = clientAgendorStageOptions.find((item) => item.id === stageId)
+        return stage?.pipelineId !== pipeline
+      }),
     }))
   }
 
@@ -956,6 +1001,10 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
       agendorAccountIds: current.agendorAccountIds.includes(value)
         ? current.agendorAccountIds.filter((item) => item !== value)
         : [...current.agendorAccountIds, value],
+      agendorQualifiedStageIds: current.agendorQualifiedStageIds.filter((stageId) => {
+        const stage = editingAgendorStageOptions.find((item) => item.id === stageId)
+        return current.agendorAccountIds.includes(value) ? stage?.pipelineId !== value : true
+      }),
     }))
   }
 
@@ -963,6 +1012,28 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
     setEditingClientForm((current) => ({
       ...current,
       agendorAccountIds: current.agendorAccountIds.filter((item) => item !== pipeline),
+      agendorQualifiedStageIds: current.agendorQualifiedStageIds.filter((stageId) => {
+        const stage = editingAgendorStageOptions.find((item) => item.id === stageId)
+        return stage?.pipelineId !== pipeline
+      }),
+    }))
+  }
+
+  function toggleQualifiedStageOnClientForm(value: string) {
+    setClientForm((current) => ({
+      ...current,
+      agendorQualifiedStageIds: current.agendorQualifiedStageIds.includes(value)
+        ? current.agendorQualifiedStageIds.filter((item) => item !== value)
+        : [...current.agendorQualifiedStageIds, value],
+    }))
+  }
+
+  function toggleQualifiedStageOnEditingForm(value: string) {
+    setEditingClientForm((current) => ({
+      ...current,
+      agendorQualifiedStageIds: current.agendorQualifiedStageIds.includes(value)
+        ? current.agendorQualifiedStageIds.filter((item) => item !== value)
+        : [...current.agendorQualifiedStageIds, value],
     }))
   }
 
@@ -1931,6 +2002,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
                           setEditingClientForm((current) => ({ ...current, agendorToken: nextToken }))
                           setEditingAgendorError('')
                           setEditingAgendorOptions([])
+                          setEditingAgendorStageOptions([])
                           editingAgendorFetchKeyRef.current = ''
                         }}
                         placeholder="Cole o token do Agendor"
@@ -1982,6 +2054,38 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
                         <p className="text-sm text-slate-500">Cole o token e clique em “Ler pipelines” para escolher os pipelines do dash.</p>
                       )}
                     </div>
+                  </div>
+                </div>
+                <div className="mt-4 grid gap-2 text-sm font-medium text-slate-600">
+                  Etapas qualificadas do pipeline
+                  <p className="text-sm leading-6 text-slate-500">
+                    Selecione quais colunas do Agendor devem contar como qualificadas no funil e em todas as taxas do dash.
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {editingVisibleAgendorStages.length > 0 ? (
+                      editingVisibleAgendorStages.map((stage) => (
+                        <button
+                          key={stage.id}
+                          type="button"
+                          onClick={() => toggleQualifiedStageOnEditingForm(stage.id)}
+                          className={`rounded-full border px-3 py-2 text-xs font-semibold transition ${
+                            editingClientForm.agendorQualifiedStageIds.includes(stage.id)
+                              ? 'border-sky-300 bg-sky-50 text-sky-900'
+                              : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50'
+                          }`}
+                        >
+                          {stage.label}
+                        </button>
+                      ))
+                    ) : editingSelectedQualifiedStageLabels.length > 0 ? (
+                      editingSelectedQualifiedStageLabels.map((stage) => (
+                        <span key={stage} className="rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700">
+                          {stage}
+                        </span>
+                      ))
+                    ) : (
+                      <p className="text-sm text-slate-500">Escolha os pipelines acima para listar as colunas disponíveis para qualificação.</p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -2161,6 +2265,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
                           setClientForm((current) => ({ ...current, agendorToken: nextToken }))
                           setClientAgendorError('')
                           setClientAgendorOptions([])
+                          setClientAgendorStageOptions([])
                           clientAgendorFetchKeyRef.current = ''
                         }}
                         placeholder="Token do Agendor"
@@ -2212,6 +2317,38 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
                         <p className="text-sm text-slate-500">Cole o token e clique em “Ler pipelines” para escolher os pipelines do dash.</p>
                       )}
                     </div>
+                  </div>
+                </div>
+                <div className="mt-4 grid gap-2 text-sm font-medium text-slate-600">
+                  Etapas qualificadas do pipeline
+                  <p className="text-sm leading-6 text-slate-500">
+                    Marque as colunas que devem ser consideradas qualificadas no funil, nas taxas e nos cards comerciais.
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {clientVisibleAgendorStages.length > 0 ? (
+                      clientVisibleAgendorStages.map((stage) => (
+                        <button
+                          key={stage.id}
+                          type="button"
+                          onClick={() => toggleQualifiedStageOnClientForm(stage.id)}
+                          className={`rounded-full border px-3 py-2 text-xs font-semibold transition ${
+                            clientForm.agendorQualifiedStageIds.includes(stage.id)
+                              ? 'border-sky-300 bg-sky-50 text-sky-900'
+                              : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50'
+                          }`}
+                        >
+                          {stage.label}
+                        </button>
+                      ))
+                    ) : clientSelectedQualifiedStageLabels.length > 0 ? (
+                      clientSelectedQualifiedStageLabels.map((stage) => (
+                        <span key={stage} className="rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700">
+                          {stage}
+                        </span>
+                      ))
+                    ) : (
+                      <p className="text-sm text-slate-500">Selecione os pipelines acima para escolher quais colunas entram como qualificados.</p>
+                    )}
                   </div>
                 </div>
               </div>

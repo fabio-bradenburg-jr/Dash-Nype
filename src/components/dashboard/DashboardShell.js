@@ -3968,6 +3968,7 @@ export default function DashboardShell({
     () => activeClient?.rdQualifiedStages || [],
     [activeClient]
   )
+  const crmSourceLabel = activeClient?.crmProvider === 'agendor' ? 'Agendor CRM' : 'RD Station CRM'
   const activeClientDashboardRgb = useMemo(
     () => parseDashboardColor(activeClient?.dashboardColor || themeColor || 'blue') || hexToRgb(THEMES.blue.main),
     [activeClient?.dashboardColor, themeColor]
@@ -4763,12 +4764,13 @@ export default function DashboardShell({
         const response = await fetch(`/api/rd/pipelines${params.toString() ? `?${params.toString()}` : ''}`, {
           headers: {
             'x-rd-station-token': activeIntegrations.rdStationToken,
+            'x-crm-provider': activeClient?.crmProvider || 'rd_station',
           },
         })
         const data = await response.json()
 
         if (!response.ok) {
-          throw new Error(data.error || 'Não foi possível carregar os funis do RD Station.')
+          throw new Error(data.error || `Não foi possível carregar os funis do ${crmSourceLabel}.`)
         }
 
         if (cancelled) return
@@ -4779,7 +4781,7 @@ export default function DashboardShell({
         if (cancelled) return
         setRdPipelines([])
         setRdPipelineStages([])
-        setErrorMessage(error.message || 'Não foi possível carregar os funis do RD Station.')
+        setErrorMessage(error.message || `Não foi possível carregar os funis do ${crmSourceLabel}.`)
       }
     }
 
@@ -8141,6 +8143,7 @@ export default function DashboardShell({
 
           const rdHeaders = {
             'x-rd-station-token': activeIntegrations.rdStationToken,
+            'x-crm-provider': activeClient?.crmProvider || 'rd_station',
           }
 
           const [rdResponse, previousRdResponse] = await Promise.all([
@@ -8157,7 +8160,7 @@ export default function DashboardShell({
           const rdData = await rdResponse.json()
 
           if (!rdResponse.ok) {
-            rdError = rdData.error || 'Não foi possível carregar os dados do RD Station.'
+            rdError = rdData.error || `Não foi possível carregar os dados do ${crmSourceLabel}.`
             if (!cancelled) {
               setRdSummary(null)
               setPreviousRdSummary(null)
@@ -14721,7 +14724,7 @@ export default function DashboardShell({
                                     })
                                   ) : (
                                     <div className="stage-empty">
-                                      Salve o token do RD e aguarde a leitura do funil para listar automaticamente as etapas do pipeline.
+                                      Salve o token do CRM e aguarde a leitura do funil para listar automaticamente as etapas do pipeline.
                                     </div>
                                   )}
                                 </div>
@@ -17228,7 +17231,7 @@ export default function DashboardShell({
                     <div className="source-section-header">
                       <div className="source-section-badge" style={{ color: '#14b8a6', borderColor: '#14b8a6' }}>
                         <i className="bx bx-signal-5"></i>
-                        <span>RD Station CRM</span>
+                        <span>{crmSourceLabel}</span>
                       </div>
                       <p className="source-section-copy">Em seguida, entram os indicadores comerciais e de CRM vinculados ao cliente.</p>
                     </div>
@@ -17236,7 +17239,7 @@ export default function DashboardShell({
                       <div className="section-header section-header-stack section-header-with-action">
                         <div>
                           <h2>Resumo comercial</h2>
-                          <p className="chart-subtitle">Os indicadores abaixo resumem o desempenho comercial identificado no RD Station para este cliente.</p>
+                          <p className="chart-subtitle">Os indicadores abaixo resumem o desempenho comercial identificado no {crmSourceLabel} para este cliente.</p>
                         </div>
                         {activeDraftDashboardTemplate && (
                           <button

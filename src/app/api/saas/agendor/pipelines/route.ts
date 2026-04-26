@@ -5,6 +5,17 @@ import { PLATFORM_AUTH_COOKIE } from '@/lib/saas/auth'
 
 type UnknownRecord = Record<string, unknown>
 
+type PipelineOption = {
+  id: string
+  name: string
+  label: string
+}
+
+type StageOption = PipelineOption & {
+  pipelineId: string
+  pipelineName: string
+}
+
 function readArrayPayload(payload: unknown): UnknownRecord[] {
   if (Array.isArray(payload)) return payload.filter(Boolean) as UnknownRecord[]
   if (!payload || typeof payload !== 'object') return []
@@ -27,10 +38,17 @@ function readArrayPayload(payload: unknown): UnknownRecord[] {
   return []
 }
 
-function asPipelineOption(item: UnknownRecord) {
-  const id = String(item.id || item.pipelineId || item.stageId || item.dealStageId || '').trim()
-  const name = String(item.name || item.title || item.label || '').trim()
-  const pipelineName = String(
+function readPipelineInfo(item: UnknownRecord) {
+  const id = String(
+    (item.pipeline as UnknownRecord | undefined)?.id ||
+      (item.funnel as UnknownRecord | undefined)?.id ||
+      (item.dealPipeline as UnknownRecord | undefined)?.id ||
+      (item.dealFunnel as UnknownRecord | undefined)?.id ||
+      item.pipelineId ||
+      item.funnelId ||
+      ''
+  ).trim()
+  const name = String(
     (item.pipeline as UnknownRecord | undefined)?.name ||
       (item.funnel as UnknownRecord | undefined)?.name ||
       (item.dealPipeline as UnknownRecord | undefined)?.name ||
@@ -40,30 +58,59 @@ function asPipelineOption(item: UnknownRecord) {
       ''
   ).trim()
 
+  return {
+    id,
+    name,
+  }
+}
+
+function asStageOption(item: UnknownRecord): StageOption | null {
+  const id = String(item.id || item.pipelineId || item.stageId || item.dealStageId || '').trim()
+  const name = String(item.name || item.title || item.label || '').trim()
+  const pipeline = readPipelineInfo(item)
+
   if (!id || !name) return null
 
   return {
     id,
     name,
-    label: pipelineName && pipelineName !== name ? `${pipelineName} • ${name}` : name,
+    label: pipeline.name && pipeline.name !== name ? `${pipeline.name} • ${name}` : name,
+    pipelineId: pipeline.id || `pipeline:${pipeline.name || name}`,
+    pipelineName: pipeline.name || 'Pipeline não identificado',
   }
 }
 
-function extractPipelineOptions(payload: unknown) {
+function extractStageOptions(payload: unknown) {
   const baseItems = readArrayPayload(payload)
-  const directOptions = baseItems.map(asPipelineOption).filter(Boolean) as Array<{ id: string; name: string; label: string }>
+  const directOptions = baseItems.map(asStageOption).filter(Boolean) as StageOption[]
   if (directOptions.length) return directOptions
 
-  const stageMap = new Map<string, { id: string; name: string; label: string }>()
+  const stageMap = new Map<string, StageOption>()
   for (const item of baseItems) {
     const dealStage = item.dealStage
     if (dealStage && typeof dealStage === 'object') {
-      const normalized = asPipelineOption(dealStage as UnknownRecord)
+      const normalized = asStageOption(dealStage as UnknownRecord)
       if (normalized) stageMap.set(normalized.id, normalized)
     }
   }
 
   return Array.from(stageMap.values())
+}
+
+function extractPipelineOptions(stageOptions: StageOption[]) {
+  const pipelineMap = new Map<string, PipelineOption>()
+
+  stageOptions.forEach((stage) => {
+    if (!pipelineMap.has(stage.pipelineId)) {
+      pipelineMap.set(stage.pipelineId, {
+        id: stage.pipelineId,
+        name: stage.pipelineName,
+        label: stage.pipelineName,
+      })
+    }
+  })
+
+  return Array.from(pipelineMap.values()).sort((a, b) => a.label.localeCompare(b.label, 'pt-BR'))
 }
 
 async function fetchAgendorJson(path: string, token: string) {
@@ -103,9 +150,12 @@ export async function POST(request: Request) {
         continue
       }
 
-      const pipelines = extractPipelineOptions(data)
-      if (pipelines.length > 0) {
-        return NextResponse.json({ pipelines })
+      const stages = extractStageOptions(data)
+      if (stages.length > 0) {
+        return NextResponse.json({
+          pipelines: extractPipelineOptions(stages),
+          stages,
+        })
       }
     } catch (error) {
       lastError = error instanceof Error ? error.message : lastError
