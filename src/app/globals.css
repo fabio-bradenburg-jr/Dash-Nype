@@ -263,6 +263,41 @@ body {
     border-color: color-mix(in srgb, var(--saas-primary, #0f766e) 58%, white);
 }
 
+@media (max-width: 1279px) {
+    .saas-legacy-dashboard-frame {
+        border-radius: 28px;
+    }
+
+    .saas-legacy-dashboard-frame .main-content > .header {
+        position: static;
+        flex-wrap: wrap;
+        gap: 12px;
+        padding: 18px !important;
+    }
+}
+
+@media (max-width: 767px) {
+    .saas-legacy-dashboard-frame {
+        border-radius: 24px;
+    }
+
+    .saas-legacy-dashboard-frame .main-content > .header {
+        margin-bottom: 14px !important;
+        padding: 16px !important;
+        border-radius: 22px;
+    }
+
+    .saas-legacy-dashboard-frame .main-content,
+    .saas-legacy-dashboard-frame .main-content-expanded {
+        overflow-x: hidden;
+    }
+
+    .saas-legacy-dashboard-frame .header,
+    .saas-legacy-dashboard-frame .header * {
+        max-width: 100%;
+    }
+}
+
 :root[data-ui-mode='light'] .saas-app-shell main [class*='text-white'] {
     color: #0f172a !important;
 }

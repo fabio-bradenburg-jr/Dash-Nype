@@ -140,7 +140,7 @@ export function AiAssistantPanel({
           {agents.map((agent) => (
             <button
               key={agent.id}
-              className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
+              className={`rounded-full px-4 py-2 text-sm font-semibold transition sm:px-4 ${
                 agentId === agent.id
                   ? 'bg-[var(--saas-primary)] text-[var(--saas-button-text)]'
                   : isDarkMode
@@ -196,7 +196,7 @@ export function AiAssistantPanel({
               className={`flex ${message.role === 'assistant' ? 'justify-start' : 'justify-end'}`}
             >
               <div
-                className={`max-w-[85%] rounded-[24px] px-4 py-3 text-sm leading-7 shadow-sm ${
+                className={`max-w-full rounded-[24px] px-4 py-3 text-sm leading-7 shadow-sm sm:max-w-[85%] ${
                   message.role === 'assistant'
                     ? isDarkMode
                       ? 'border border-white/10 bg-white/5 text-white/80'
@@ -235,7 +235,7 @@ export function AiAssistantPanel({
               onChange={(event) => setInput(event.target.value)}
               placeholder="Pergunte sobre campanhas, CRM, criativos, clientes ou arquivos vinculados..."
             />
-                <Button className="h-auto min-h-[108px] min-w-[180px] rounded-3xl" disabled={loading} onClick={handleSubmit} type="button">
+                <Button className="h-auto min-h-[64px] w-full rounded-3xl md:min-h-[108px] md:min-w-[180px] md:w-auto" disabled={loading} onClick={handleSubmit} type="button">
               <span className="flex items-center gap-2">
                 <SendHorizontal className="h-4 w-4" />
                 Enviar para IA

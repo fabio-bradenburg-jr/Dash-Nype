@@ -1166,7 +1166,69 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
           : 'radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--saas-primary) 18%, transparent), transparent 28%), radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--saas-accent) 22%, transparent), transparent 24%), radial-gradient(circle at 50% 100%, rgba(15,23,42,0.05), transparent 36%), linear-gradient(180deg, color-mix(in srgb, var(--saas-surface) 94%, white), #ffffff)',
       }}
     >
-      <div className="flex min-h-screen w-full gap-4 px-3 py-4 sm:px-4 lg:gap-6 lg:px-6 xl:px-8">
+      <div className="flex min-h-screen w-full flex-col gap-4 px-3 py-4 sm:px-4 lg:flex-row lg:gap-6 lg:px-6 xl:px-8">
+        <section className="lg:hidden">
+          <div className="rounded-[30px] border border-white/80 bg-[linear-gradient(135deg,rgba(255,255,255,0.94),rgba(248,250,252,0.82))] p-4 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur-xl">
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="grid h-12 w-12 place-items-center rounded-2xl bg-[linear-gradient(180deg,#020617,#0f172a)] ring-1 ring-white/15">
+                {currentTheme.logoUrl ? (
+                  <img src={currentTheme.logoUrl} alt={`Logo ${currentTheme.appName || 'Nype Orbit'}`} className="h-full w-full rounded-2xl object-contain p-2" />
+                ) : (
+                  <Sparkles className="h-6 w-6 text-white" />
+                )}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate font-manrope text-lg font-extrabold text-slate-950">{currentTheme.appName || 'Nype Orbit'}</p>
+                <p className="truncate text-xs uppercase tracking-[0.3em] text-slate-400">{currentTheme.appSubtitle || 'Marketing OS'}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleToggleColorMode}
+                  disabled={themeModeSaving}
+                  className="grid h-11 w-11 place-items-center rounded-2xl border border-slate-200 bg-white text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:cursor-wait disabled:opacity-70"
+                  aria-label={currentTheme.darkMode ? 'Ativar modo claro' : 'Ativar modo escuro'}
+                  title={currentTheme.darkMode ? 'Ativar modo claro' : 'Ativar modo escuro'}
+                >
+                  {currentTheme.darkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="grid h-11 w-11 place-items-center rounded-2xl border border-slate-200 bg-white text-slate-700 shadow-sm transition hover:bg-slate-50"
+                  aria-label="Sair"
+                  title="Sair"
+                >
+                  <LogOut className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+            <div className="mt-4 overflow-x-auto pb-1">
+              <div className="flex min-w-max gap-2">
+                {navigation.map((item) => {
+                  const Icon = item.icon
+                  const active = item.key === activeModule
+                  return (
+                    <button
+                      key={`mobile-${item.label}`}
+                      onClick={() => setActiveModule(item.key)}
+                      className={`flex items-center gap-2 rounded-2xl px-4 py-3 text-sm font-medium transition ${
+                        active
+                          ? 'bg-[var(--saas-primary)] text-[var(--saas-button-text)] shadow-[0_12px_30px_rgba(15,23,42,0.12)]'
+                          : 'border border-slate-200 bg-white text-slate-700'
+                      }`}
+                      type="button"
+                    >
+                      <Icon className="h-4 w-4" />
+                      {item.label}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          </div>
+        </section>
+
         <aside className={`relative sticky top-4 hidden h-[calc(100vh-2rem)] flex-none flex-col rounded-[34px] border border-white/10 bg-[linear-gradient(180deg,#020617,#0f172a)] py-7 text-white shadow-[0_30px_100px_rgba(2,6,23,0.36)] transition-all duration-300 lg:flex ${isSidebarCollapsed ? 'w-[92px] px-3' : 'w-[272px] px-6 xl:w-[292px]'}`}>
           <div className={`mb-8 flex items-center ${isSidebarCollapsed ? 'justify-center' : 'gap-3'}`}>
             <div className="grid h-12 w-12 place-items-center rounded-2xl bg-white/10 ring-1 ring-white/15">
@@ -1248,13 +1310,13 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
           </div>
         </aside>
 
-        <main className="min-w-0 flex-1 space-y-6">
+        <main className="min-w-0 flex-1 space-y-6 pb-6">
           {!showDashs ? (
-          <section className={`relative overflow-hidden rounded-[34px] p-5 backdrop-blur-xl ${isDarkMode ? 'border border-white/10 bg-[linear-gradient(135deg,rgba(15,23,42,0.88),rgba(2,6,23,0.94))] shadow-[0_26px_80px_rgba(0,0,0,0.35)]' : 'border border-white/80 bg-[linear-gradient(135deg,rgba(255,255,255,0.92),rgba(248,250,252,0.76))] shadow-[0_26px_80px_rgba(15,23,42,0.08)]'}`}>
-            <div className="pointer-events-none absolute inset-y-0 right-0 w-[38%] bg-[radial-gradient(circle_at_top,rgba(249,115,22,0.15),transparent_46%),radial-gradient(circle_at_bottom,rgba(15,118,110,0.18),transparent_42%)]" />
+          <section className={`relative overflow-hidden rounded-[28px] p-4 backdrop-blur-xl sm:rounded-[34px] sm:p-5 ${isDarkMode ? 'border border-white/10 bg-[linear-gradient(135deg,rgba(15,23,42,0.88),rgba(2,6,23,0.94))] shadow-[0_26px_80px_rgba(0,0,0,0.35)]' : 'border border-white/80 bg-[linear-gradient(135deg,rgba(255,255,255,0.92),rgba(248,250,252,0.76))] shadow-[0_26px_80px_rgba(15,23,42,0.08)]'}`}>
+            <div className="pointer-events-none absolute inset-y-0 right-0 hidden w-[38%] bg-[radial-gradient(circle_at_top,rgba(249,115,22,0.15),transparent_46%),radial-gradient(circle_at_bottom,rgba(15,118,110,0.18),transparent_42%)] lg:block" />
             <div className="relative flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
               <div className="max-w-3xl">
-                <h1 className={`font-manrope text-4xl font-extrabold tracking-[-0.05em] md:text-5xl ${isDarkMode ? 'text-white' : 'text-slate-950'}`}>
+                <h1 className={`font-manrope text-3xl font-extrabold tracking-[-0.05em] sm:text-4xl md:text-5xl ${isDarkMode ? 'text-white' : 'text-slate-950'}`}>
                   {showOverview
                     ? `Boas-vindas, ${currentUserName}`
                     : showDashs
@@ -1280,8 +1342,8 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
                 ) : null}
               </div>
               {showWorkspaceControls ? (
-              <div className="grid gap-3 xl:min-w-[420px]">
-                <div className="grid gap-3 sm:grid-cols-[1fr_auto_auto_auto]">
+              <div className="grid gap-3 xl:min-w-0 xl:max-w-[520px]">
+                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-[1fr_auto_auto_auto]">
                   <select
                     className={`h-12 rounded-2xl px-4 text-sm font-medium shadow-sm ${isDarkMode ? 'border border-white/10 bg-slate-950/70 text-white' : 'border border-slate-200 bg-white text-slate-700'}`}
                     disabled={snapshot.clients.length === 0}
@@ -1340,7 +1402,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
                 ) : null}
               </div>
               ) : (
-                <div className={`rounded-[30px] p-5 shadow-sm xl:min-w-[360px] ${isDarkMode ? 'border border-white/10 bg-white/5' : 'border border-slate-200/80 bg-white/80'}`}>
+                <div className={`rounded-[30px] p-5 shadow-sm xl:min-w-0 xl:max-w-[420px] ${isDarkMode ? 'border border-white/10 bg-white/5' : 'border border-slate-200/80 bg-white/80'}`}>
                   <p className={`text-xs font-semibold uppercase tracking-[0.22em] ${isDarkMode ? 'text-white/40' : 'text-slate-400'}`}>Atalho inteligente</p>
                   <p className={`mt-2 text-sm leading-6 ${isDarkMode ? 'text-white/60' : 'text-slate-600'}`}>
                     Pergunte sobre a carteira inteira ou selecione um cliente para consultar desempenho, campanhas, CRM e arquivos vinculados.
@@ -1923,8 +1985,8 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
       </div>
 
       {showClientEditModal && editingClient ? (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/45 px-4 py-8 backdrop-blur-sm">
-          <div className="max-h-[88vh] w-full max-w-2xl overflow-y-auto rounded-[34px] border border-white/80 bg-white p-6 shadow-[0_40px_120px_rgba(15,23,42,0.28)]">
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/45 px-3 py-4 backdrop-blur-sm sm:px-4 sm:py-8">
+          <div className="mx-auto w-full max-w-3xl rounded-[28px] border border-white/80 bg-white p-4 shadow-[0_40px_120px_rgba(15,23,42,0.28)] sm:rounded-[34px] sm:p-6">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Editar cliente</p>
@@ -1947,7 +2009,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
               </button>
             </div>
 
-            <div className="mt-6 grid gap-5">
+            <div className="mt-6 grid max-h-[calc(100vh-10rem)] gap-5 overflow-y-auto pr-1">
               <div className="rounded-[28px] border border-slate-200/80 bg-slate-50/80 p-4">
                 <p className="font-semibold text-slate-900">Identidade do dashboard</p>
                 <p className="mt-1 text-sm leading-6 text-slate-500">
@@ -2155,7 +2217,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
               </div>
             </div>
 
-            <div className="mt-6 flex justify-end gap-3">
+            <div className="mt-6 flex flex-col-reverse gap-3 border-t border-slate-200/80 pt-4 sm:flex-row sm:justify-end">
               <Button
                 variant="secondary"
                 onClick={() => {
@@ -2175,8 +2237,8 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
       ) : null}
 
       {showClientForm ? (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/45 px-4 py-8 backdrop-blur-sm">
-          <div className="max-h-[88vh] w-full max-w-2xl overflow-y-auto rounded-[34px] border border-white/80 bg-white p-6 shadow-[0_40px_120px_rgba(15,23,42,0.28)]">
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/45 px-3 py-4 backdrop-blur-sm sm:px-4 sm:py-8">
+          <div className="mx-auto w-full max-w-3xl rounded-[28px] border border-white/80 bg-white p-4 shadow-[0_40px_120px_rgba(15,23,42,0.28)] sm:rounded-[34px] sm:p-6">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Novo cliente</p>
@@ -2196,7 +2258,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
               </button>
             </div>
 
-            <div className="mt-6 grid gap-4">
+            <div className="mt-6 grid max-h-[calc(100vh-10rem)] gap-4 overflow-y-auto pr-1">
               <div className="grid gap-4 md:grid-cols-2">
                 <label className="grid gap-2 text-sm font-medium text-slate-600">
                   Nome do cliente
