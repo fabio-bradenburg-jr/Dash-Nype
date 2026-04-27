@@ -417,6 +417,9 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
         rdPipelineId: normalizePipelineValues(businessData.agendorPipelineIds || businessData.agendorAccountIds || businessData.agendorAccountId).join(', '),
         rdQualifiedStages: normalizePipelineValues(businessData.agendorQualifiedStages || businessData.rdQualifiedStages),
         rdStationToken: String(businessIntegrations.agendorToken || ''),
+        integrations: {
+          rdStationToken: String(businessIntegrations.agendorToken || ''),
+        },
         crmProvider: String(businessData.crmMode || '').trim().toLowerCase() === 'manual' ? 'manual' : 'agendor',
         manualCrmSummary: buildManualCrmPayload(parseManualCrmPayload(businessData.manualCrmSummary)),
         funnelSteps,
