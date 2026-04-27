@@ -193,6 +193,27 @@ const FWO_IMPLEMENTATION_CHECKLISTS = {
   ],
 }
 
+async function fetchJsonWithTimeout(resource, options = {}, timeoutMs = 20000) {
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
+
+  try {
+    const response = await fetch(resource, {
+      ...options,
+      signal: controller.signal,
+    })
+    const data = await response.json().catch(() => ({}))
+    return { response, data }
+  } catch (error) {
+    if (error?.name === 'AbortError') {
+      throw new Error('A integração demorou demais para responder. Tente novamente em instantes.')
+    }
+    throw error
+  } finally {
+    clearTimeout(timeoutId)
+  }
+}
+
 const CLIENT_FLAG_OPTIONS = [
   { value: 'ok', label: 'Ok' },
   { value: 'attention', label: 'Atenção' },
@@ -4856,13 +4877,12 @@ export default function DashboardShell({
           params.set('pipeline_id', selectedPipelineId)
         }
 
-        const response = await fetch(`/api/rd/pipelines${params.toString() ? `?${params.toString()}` : ''}`, {
+        const { response, data } = await fetchJsonWithTimeout(`/api/rd/pipelines${params.toString() ? `?${params.toString()}` : ''}`, {
           headers: {
             'x-rd-station-token': activeIntegrations.rdStationToken,
             'x-crm-provider': activeClient?.crmProvider || 'rd_station',
           },
         })
-        const data = await response.json()
 
         if (!response.ok) {
           throw new Error(data.error || `Não foi possível carregar os funis do ${crmSourceLabel}.`)
@@ -8167,14 +8187,15 @@ export default function DashboardShell({
             previousInsightsParams.set('ad_ids', currentMetaFilteredAdIds.join(','))
           }
 
-          const [insightsResponse, previousInsightsResponse] = await Promise.all([
-            fetch(`/api/meta/insights?${insightsParams.toString()}`, { headers: metaRequestHeaders }),
+          const [insightsResult, previousInsightsResult] = await Promise.all([
+            fetchJsonWithTimeout(`/api/meta/insights?${insightsParams.toString()}`, { headers: metaRequestHeaders }),
             previousMetaWindow
-              ? fetch(`/api/meta/insights?${previousInsightsParams.toString()}`, { headers: metaRequestHeaders })
+              ? fetchJsonWithTimeout(`/api/meta/insights?${previousInsightsParams.toString()}`, { headers: metaRequestHeaders })
               : Promise.resolve(null),
           ])
 
-          const insightsData = await insightsResponse.json()
+          const insightsResponse = insightsResult.response
+          const insightsData = insightsResult.data
 
           if (!insightsResponse.ok) {
             const nextMetaError = insightsData.error || 'Não foi possível carregar os indicadores da Meta.'
@@ -8190,8 +8211,9 @@ export default function DashboardShell({
             setDailyData(insightsData.daily || [])
             setDailyCampaignData(insightsData.daily_by_campaign || [])
 
-            if (previousInsightsResponse) {
-              const previousInsightsData = await previousInsightsResponse.json()
+            if (previousInsightsResult) {
+              const previousInsightsResponse = previousInsightsResult.response
+              const previousInsightsData = previousInsightsResult.data
               setPreviousInsights(previousInsightsResponse.ok ? (previousInsightsData.summary || {}) : null)
             } else {
               setPreviousInsights(null)
@@ -8246,18 +8268,19 @@ export default function DashboardShell({
             'x-crm-provider': activeClient?.crmProvider || 'rd_station',
           }
 
-          const [rdResponse, previousRdResponse] = await Promise.all([
-            fetch(`/api/rd/summary${rdParams.toString() ? `?${rdParams.toString()}` : ''}`, {
+          const [rdResult, previousRdResult] = await Promise.all([
+            fetchJsonWithTimeout(`/api/rd/summary${rdParams.toString() ? `?${rdParams.toString()}` : ''}`, {
               headers: rdHeaders,
             }),
             previousRdWindow
-              ? fetch(`/api/rd/summary?${previousRdParams.toString()}`, {
+              ? fetchJsonWithTimeout(`/api/rd/summary?${previousRdParams.toString()}`, {
                   headers: rdHeaders,
                 })
               : Promise.resolve(null),
           ])
 
-          const rdData = await rdResponse.json()
+          const rdResponse = rdResult.response
+          const rdData = rdResult.data
 
           if (!rdResponse.ok) {
             rdError = rdData.error || `Não foi possível carregar os dados do ${crmSourceLabel}.`
@@ -8268,8 +8291,9 @@ export default function DashboardShell({
           } else if (!cancelled) {
             setRdSummary(rdData || null)
 
-            if (previousRdResponse) {
-              const previousRdData = await previousRdResponse.json()
+            if (previousRdResult) {
+              const previousRdResponse = previousRdResult.response
+              const previousRdData = previousRdResult.data
               setPreviousRdSummary(previousRdResponse.ok ? (previousRdData || null) : null)
             } else {
               setPreviousRdSummary(null)

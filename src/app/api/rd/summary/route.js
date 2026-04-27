@@ -20,13 +20,32 @@ function extractNextPageToken(payload) {
   )
 }
 
+async function fetchWithTimeout(resource, options = {}, timeoutMs = 15000) {
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
+
+  try {
+    return await fetch(resource, {
+      ...options,
+      signal: controller.signal,
+    })
+  } catch (error) {
+    if (error?.name === 'AbortError') {
+      throw new Error('A API do Agendor demorou demais para responder.')
+    }
+    throw error
+  } finally {
+    clearTimeout(timeoutId)
+  }
+}
+
 async function fetchPagedRdCollection(baseUrl, preferredKey, errorMessage) {
   const collectedItems = []
   let requestUrl = baseUrl
   let pageCount = 0
 
   while (requestUrl && pageCount < 100) {
-    const response = await fetch(requestUrl)
+    const response = await fetchWithTimeout(requestUrl)
     const payload = await response.json()
 
     if (!response.ok) {
@@ -61,12 +80,12 @@ async function fetchPagedAgendorCollection(path, preferredKey, token, errorMessa
   const collectedItems = []
   let page = 1
 
-  while (page <= 100) {
+  while (page <= 40) {
     const requestUrl = new URL(`https://api.agendor.com.br/v3${path}`)
     if (!requestUrl.searchParams.has('limit')) requestUrl.searchParams.set('limit', '100')
     requestUrl.searchParams.set('page', String(page))
 
-    const response = await fetch(requestUrl.toString(), {
+    const response = await fetchWithTimeout(requestUrl.toString(), {
       headers: {
         Authorization: `Token ${token}`,
         Accept: 'application/json',
