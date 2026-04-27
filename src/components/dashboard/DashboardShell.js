@@ -2783,6 +2783,73 @@ function getSummaryMetricValue(metricKey, summary, customMetrics) {
   }
 }
 
+function safeNumber(value) {
+  const numericValue = Number(value)
+  return Number.isFinite(numericValue) ? numericValue : 0
+}
+
+function calculateRate(partial, total) {
+  const normalizedTotal = safeNumber(total)
+  if (normalizedTotal <= 0) return 0
+  return (safeNumber(partial) / normalizedTotal) * 100
+}
+
+function buildManualCrmSummary(manualCrmSummary, metaSummary = null) {
+  const manual = manualCrmSummary && typeof manualCrmSummary === 'object' ? manualCrmSummary : {}
+  const opportunityCount = safeNumber(manual.opportunityCount)
+  const qualifiedOpportunityCount = safeNumber(manual.qualifiedOpportunityCount)
+  const wonOpportunityCount = safeNumber(manual.wonOpportunityCount)
+  const lostOpportunityCount = safeNumber(manual.lostOpportunityCount)
+  const wonRevenue = safeNumber(manual.wonRevenue)
+  const avgTicketWon = wonOpportunityCount > 0 ? wonRevenue / wonOpportunityCount : 0
+  const spend = safeNumber(metaSummary?.spend)
+
+  return {
+    opportunityCount,
+    qualifiedOpportunityCount,
+    wonOpportunityCount,
+    wonOpportunityRevenue: wonRevenue,
+    avgTicketWonByCreation: avgTicketWon,
+    leadToQualifiedRate: calculateRate(qualifiedOpportunityCount, opportunityCount),
+    qualifiedToWonRate: calculateRate(wonOpportunityCount, qualifiedOpportunityCount),
+    leadToWonRate: calculateRate(wonOpportunityCount, opportunityCount),
+    lostOpportunityCount,
+    wonDeals: wonOpportunityCount,
+    wonDealsFromPreviousCohorts: 0,
+    wonRevenue,
+    avgTicketWon,
+    wonRevenueFromPreviousCohorts: 0,
+    avgTicketWonPreviousCohorts: 0,
+    contacts: opportunityCount,
+    contactsInPeriod: opportunityCount,
+    contactsMoved: qualifiedOpportunityCount,
+    qualifiedDeals: qualifiedOpportunityCount,
+    qualifiedContacts: qualifiedOpportunityCount,
+    closeRate: calculateRate(wonOpportunityCount, wonOpportunityCount + lostOpportunityCount),
+    dealToWonRate: calculateRate(wonOpportunityCount, qualifiedOpportunityCount),
+    leadToDealRate: calculateRate(qualifiedOpportunityCount, opportunityCount),
+    sourceConversionRate: 0,
+    avgLeadToWonDays: 0,
+    avgDealToWonDays: 0,
+    avgLeadToWonDaysFiltered: 0,
+    avgDealToWonDaysFiltered: 0,
+    contactsWithDeals: qualifiedOpportunityCount,
+    contactsWithWonDeals: wonOpportunityCount,
+    lostContacts: lostOpportunityCount,
+    wonRoas: spend > 0 ? wonRevenue / spend : 0,
+    availableSources: [],
+    availablePipelines: [],
+    availableStages: [],
+    sourcePerformance: [],
+    sellerPerformance: [],
+    funnel: [
+      { key: 'opportunities', name: 'Oportunidades', count: opportunityCount, rate: null },
+      { key: 'qualified', name: 'Qualificados', count: qualifiedOpportunityCount, rate: calculateRate(qualifiedOpportunityCount, opportunityCount) },
+      { key: 'won', name: 'Vendas', count: wonOpportunityCount, rate: calculateRate(wonOpportunityCount, qualifiedOpportunityCount) },
+    ],
+  }
+}
+
 function mergeInitialClientRecord(currentClients, initialClientRecord) {
   if (!initialClientRecord || typeof initialClientRecord !== 'object' || !initialClientRecord.id) {
     return Array.isArray(currentClients) ? currentClients : []
@@ -2966,6 +3033,15 @@ export default function DashboardShell({
   const [rankingsError, setRankingsError] = useState('')
   const [rdSummary, setRdSummary] = useState(null)
   const [previousRdSummary, setPreviousRdSummary] = useState(null)
+  const [isManualCrmModalOpen, setIsManualCrmModalOpen] = useState(false)
+  const [isSavingManualCrm, setIsSavingManualCrm] = useState(false)
+  const [manualCrmForm, setManualCrmForm] = useState({
+    opportunityCount: '',
+    qualifiedOpportunityCount: '',
+    wonOpportunityCount: '',
+    lostOpportunityCount: '',
+    wonRevenue: '',
+  })
   const [googleSheetsSummary, setGoogleSheetsSummary] = useState(null)
   const [googleSheetsError, setGoogleSheetsError] = useState('')
   const [clickUpSummary, setClickUpSummary] = useState(null)
@@ -3127,10 +3203,25 @@ export default function DashboardShell({
     () => clients.find((client) => client.id === activeClientId) || null,
     [clients, activeClientId]
   )
+  const activeClientUsesManualCrm = String(activeClient?.crmProvider || '').trim().toLowerCase() === 'manual'
+  const activeClientManualCrmSummary = useMemo(
+    () => buildManualCrmSummary(activeClient?.manualCrmSummary || {}, insights),
+    [activeClient?.manualCrmSummary, insights]
+  )
   const dashboardEligibleClients = useMemo(
     () => clients.filter((client) => client.dashboardEnabled !== false),
     [clients]
   )
+  useEffect(() => {
+    const manual = activeClient?.manualCrmSummary || {}
+    setManualCrmForm({
+      opportunityCount: String(manual.opportunityCount ?? ''),
+      qualifiedOpportunityCount: String(manual.qualifiedOpportunityCount ?? ''),
+      wonOpportunityCount: String(manual.wonOpportunityCount ?? ''),
+      lostOpportunityCount: String(manual.lostOpportunityCount ?? ''),
+      wonRevenue: String(manual.wonRevenue ?? ''),
+    })
+  }, [activeClient?.id, activeClient?.manualCrmSummary])
   const operationEligibleClients = useMemo(
     () => clients.filter((client) => client.operationEnabled !== false),
     [clients]
@@ -3968,7 +4059,11 @@ export default function DashboardShell({
     () => activeClient?.rdQualifiedStages || [],
     [activeClient]
   )
-  const crmSourceLabel = activeClient?.crmProvider === 'agendor' ? 'Agendor CRM' : 'RD Station CRM'
+  const crmSourceLabel = activeClient?.crmProvider === 'agendor'
+    ? 'Agendor CRM'
+    : activeClient?.crmProvider === 'manual'
+      ? 'CRM manual'
+      : 'RD Station CRM'
   const activeClientDashboardRgb = useMemo(
     () => parseDashboardColor(activeClient?.dashboardColor || themeColor || 'blue') || hexToRgb(THEMES.blue.main),
     [activeClient?.dashboardColor, themeColor]
@@ -4031,7 +4126,7 @@ export default function DashboardShell({
   const hasRdConfigured = Boolean(
     isActiveClientDashboardEnabled &&
     activeClientVisibleIntegrationsSet.has('rd_station') &&
-    activeIntegrations.rdStationToken
+    (activeIntegrations.rdStationToken || activeClientUsesManualCrm)
   )
   const hasSheetsConfigured = Boolean(
     isActiveClientDashboardEnabled &&
@@ -4732,7 +4827,7 @@ export default function DashboardShell({
       return
     }
 
-    if (!activeClientId || !activeIntegrations.rdStationToken) {
+    if (!activeClientId || activeClientUsesManualCrm || !activeIntegrations.rdStationToken) {
       lastRdPipelinesFetchKeyRef.current = ''
       setRdPipelines([])
       setRdPipelineStages([])
@@ -4790,7 +4885,7 @@ export default function DashboardShell({
     return () => {
       cancelled = true
     }
-  }, [activeTab, activeClientId, activeClient?.rdPipelineId, activeIntegrations.rdStationToken])
+  }, [activeTab, activeClientId, activeClient?.rdPipelineId, activeIntegrations.rdStationToken, activeClientUsesManualCrm])
 
   useEffect(() => {
     if (!hasLoadedPreferences || userLoading || !user || hasSyncedServerState || hasInitialClientsOverride) return
@@ -8109,7 +8204,12 @@ export default function DashboardShell({
           setDailyCampaignData([])
         }
 
-        if (shouldFetchPresentationData && hasRdConfigured) {
+        if (shouldFetchPresentationData && hasRdConfigured && activeClientUsesManualCrm) {
+          if (!cancelled) {
+            setRdSummary(buildManualCrmSummary(activeClient?.manualCrmSummary || {}, insights))
+            setPreviousRdSummary(null)
+          }
+        } else if (shouldFetchPresentationData && hasRdConfigured) {
           const rdParams = new URLSearchParams()
           if (rdPipelineFilter) {
             rdParams.set('pipeline_id', rdPipelineFilter)
@@ -8365,6 +8465,9 @@ export default function DashboardShell({
     metaCredentialSignature,
     metaRequestHeaders,
     activeIntegrations.rdStationToken,
+    activeClientUsesManualCrm,
+    activeClient?.manualCrmSummary,
+    insights,
     activeClient?.googleSheetsUrl,
     activeClient?.googleSheetsHeaderRow,
     activeClient?.googleSheetsStatusColumn,
@@ -8493,6 +8596,56 @@ export default function DashboardShell({
     await new Promise((resolve) => setTimeout(resolve, 400))
     setIsSavingIntegrations(false)
     alert(`Cliente ${activeClient?.name || ''} salvo neste navegador.`)
+  }
+
+  const handleSaveManualCrm = async (event) => {
+    event.preventDefault()
+    if (!activeClient?.id) return
+
+    const manualCrmSummary = {
+      opportunityCount: safeNumber(manualCrmForm.opportunityCount),
+      qualifiedOpportunityCount: safeNumber(manualCrmForm.qualifiedOpportunityCount),
+      wonOpportunityCount: safeNumber(manualCrmForm.wonOpportunityCount),
+      lostOpportunityCount: safeNumber(manualCrmForm.lostOpportunityCount),
+      wonRevenue: safeNumber(manualCrmForm.wonRevenue),
+    }
+
+    setIsSavingManualCrm(true)
+    try {
+      const response = await fetch(`/api/saas/clients/${activeClient.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          business_data: {
+            crmMode: 'manual',
+            manualCrmSummary,
+          },
+        }),
+      })
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) {
+        throw new Error(data?.error || data?.detail || 'Não foi possível salvar os dados manuais do CRM.')
+      }
+
+      setClients((currentClients) =>
+        currentClients.map((client) =>
+          client.id === activeClient.id
+            ? createClientRecord({
+                ...client,
+                crmProvider: 'manual',
+                manualCrmSummary,
+              })
+            : client
+        )
+      )
+      setRdSummary(buildManualCrmSummary(manualCrmSummary, insights))
+      setPreviousRdSummary(null)
+      setIsManualCrmModalOpen(false)
+    } catch (error) {
+      alert(error?.message || 'Não foi possível salvar os dados manuais do CRM.')
+    } finally {
+      setIsSavingManualCrm(false)
+    }
   }
 
   const handleLogout = async () => {
@@ -9050,6 +9203,7 @@ export default function DashboardShell({
   const rdFinalSalesCount = (rdSummary?.wonOpportunityCount || 0) + (rdSummary?.wonDealsFromPreviousCohorts || 0)
   const rdFinalRevenue = (rdSummary?.wonOpportunityRevenue || 0) + (rdSummary?.wonRevenueFromPreviousCohorts || 0)
   const rdFinalAvgTicket = rdFinalSalesCount > 0 ? rdFinalRevenue / rdFinalSalesCount : 0
+  const rdCommercialRoas = safeNumber(insights?.spend) > 0 ? rdFinalRevenue / safeNumber(insights?.spend) : 0
   const metaGeoRankingTitle = breakdowns.geoScope === 'country'
     ? 'países'
     : breakdowns.geoScope === 'region'
@@ -9822,6 +9976,7 @@ export default function DashboardShell({
       avgTicketWon: rdSummary?.avgTicketWon || 0,
       wonRevenueFromPreviousCohorts: rdSummary?.wonRevenueFromPreviousCohorts || 0,
       avgTicketWonPreviousCohorts: rdSummary?.avgTicketWonPreviousCohorts || 0,
+      wonRoas: rdCommercialRoas,
       rdFinalSalesCount,
       rdFinalRevenue,
       rdFinalAvgTicket,
@@ -9842,11 +9997,12 @@ export default function DashboardShell({
       contactsWithWonDeals: rdSummary?.contactsWithWonDeals || 0,
       lostContacts: rdSummary?.lostContacts || 0,
     }),
-    [rdSummary, rdFinalSalesCount, rdFinalRevenue, rdFinalAvgTicket]
+    [rdSummary, rdFinalSalesCount, rdFinalRevenue, rdFinalAvgTicket, rdCommercialRoas]
   )
   const previousRdFinalSalesCount = (previousRdSummary?.wonOpportunityCount || 0) + (previousRdSummary?.wonDealsFromPreviousCohorts || 0)
   const previousRdFinalRevenue = (previousRdSummary?.wonOpportunityRevenue || 0) + (previousRdSummary?.wonRevenueFromPreviousCohorts || 0)
   const previousRdFinalAvgTicket = previousRdFinalSalesCount > 0 ? previousRdFinalRevenue / previousRdFinalSalesCount : 0
+  const previousRdCommercialRoas = safeNumber(previousInsights?.spend) > 0 ? previousRdFinalRevenue / safeNumber(previousInsights?.spend) : 0
   const previousRdDashboardMetricValues = useMemo(
     () => ({
       opportunityCount: previousRdSummary?.opportunityCount || 0,
@@ -9864,6 +10020,7 @@ export default function DashboardShell({
       avgTicketWon: previousRdSummary?.avgTicketWon || 0,
       wonRevenueFromPreviousCohorts: previousRdSummary?.wonRevenueFromPreviousCohorts || 0,
       avgTicketWonPreviousCohorts: previousRdSummary?.avgTicketWonPreviousCohorts || 0,
+      wonRoas: previousRdCommercialRoas,
       rdFinalSalesCount: previousRdFinalSalesCount,
       rdFinalRevenue: previousRdFinalRevenue,
       rdFinalAvgTicket: previousRdFinalAvgTicket,
@@ -9884,7 +10041,7 @@ export default function DashboardShell({
       contactsWithWonDeals: previousRdSummary?.contactsWithWonDeals || 0,
       lostContacts: previousRdSummary?.lostContacts || 0,
     }),
-    [previousRdSummary, previousRdFinalSalesCount, previousRdFinalRevenue, previousRdFinalAvgTicket]
+    [previousRdSummary, previousRdFinalSalesCount, previousRdFinalRevenue, previousRdFinalAvgTicket, previousRdCommercialRoas]
   )
   const rdDashboardMetricCards = useMemo(
     () =>
@@ -10433,6 +10590,7 @@ export default function DashboardShell({
     { key: 'rdFinalSalesCount', title: 'Vendas totais do resultado final', value: formatNumber(rdFinalSalesCount), rawValue: rdFinalSalesCount, type: 'number', icon: 'bx-trophy', tone: 'emerald' },
     { key: 'rdFinalRevenue', title: 'Faturamento total do resultado final', value: formatCurrency(rdFinalRevenue), rawValue: rdFinalRevenue, type: 'currency', icon: 'bx-wallet-alt', tone: 'orange' },
     { key: 'rdFinalAvgTicket', title: 'Ticket médio do resultado final', value: formatCurrency(rdFinalAvgTicket), rawValue: rdFinalAvgTicket, type: 'currency', icon: 'bx-receipt', tone: 'gold' },
+    { key: 'wonRoas', title: 'ROAS comercial', value: formatMultiplier(rdCommercialRoas), rawValue: rdCommercialRoas, type: 'multiplier', icon: 'bx-line-chart', tone: 'blue' },
   ]
   const metaMediaKpisWithTrend = metaMediaKpis.map((metric) => ({
     ...metric,
@@ -17321,6 +17479,23 @@ export default function DashboardShell({
                           </section>
                         </div>
 
+                        {activeClientUsesManualCrm && (
+                          <div className="crm-manual-actions">
+                            <div>
+                              <strong>Dados comerciais manuais</strong>
+                              <p>Atualize oportunidades, qualificados, vendas, perdidos e faturamento para manter o bloco comercial do dash preenchido.</p>
+                            </div>
+                            <button
+                              type="button"
+                              className="btn btn-secondary"
+                              onClick={() => setIsManualCrmModalOpen(true)}
+                            >
+                              <i className="bx bx-edit-alt"></i>
+                              Imputar dados
+                            </button>
+                          </div>
+                        )}
+
                         {rdExtraDashboardMetricCards.length > 0 && renderDashboardMetricGrid(rdExtraDashboardMetricCards, 'rd')}
 
                         {isRdMetricLibraryOpen && (
@@ -17487,6 +17662,60 @@ export default function DashboardShell({
           >
             Aplicar filtro
           </button>
+        )}
+
+        {activeTab === 'apresentacao' && isManualCrmModalOpen && activeClientUsesManualCrm && typeof document !== 'undefined' && createPortal(
+          <div className="modal-overlay" onClick={() => setIsManualCrmModalOpen(false)}>
+            <div className="modal-card glass-panel" onClick={(event) => event.stopPropagation()}>
+              <div className="modal-header">
+                <div>
+                  <h3>Dados manuais do CRM</h3>
+                  <p>Preencha os números comerciais para este cliente quando o Agendor não estiver conectado.</p>
+                </div>
+                <button type="button" className="modal-close" onClick={() => setIsManualCrmModalOpen(false)} aria-label="Fechar modal de CRM manual">
+                  <i className="bx bx-x"></i>
+                </button>
+              </div>
+
+              <form className="client-editor-card modal-client-editor" onSubmit={handleSaveManualCrm}>
+                <div className="client-form-grid client-form-grid-2">
+                  <div className="input-group">
+                    <label>Oportunidades</label>
+                    <input type="number" min="0" value={manualCrmForm.opportunityCount} onChange={(event) => setManualCrmForm((current) => ({ ...current, opportunityCount: event.target.value }))} placeholder="0" />
+                  </div>
+                  <div className="input-group">
+                    <label>Oportunidades qualificadas</label>
+                    <input type="number" min="0" value={manualCrmForm.qualifiedOpportunityCount} onChange={(event) => setManualCrmForm((current) => ({ ...current, qualifiedOpportunityCount: event.target.value }))} placeholder="0" />
+                  </div>
+                  <div className="input-group">
+                    <label>Vendas</label>
+                    <input type="number" min="0" value={manualCrmForm.wonOpportunityCount} onChange={(event) => setManualCrmForm((current) => ({ ...current, wonOpportunityCount: event.target.value }))} placeholder="0" />
+                  </div>
+                  <div className="input-group">
+                    <label>Perdidos</label>
+                    <input type="number" min="0" value={manualCrmForm.lostOpportunityCount} onChange={(event) => setManualCrmForm((current) => ({ ...current, lostOpportunityCount: event.target.value }))} placeholder="0" />
+                  </div>
+                </div>
+
+                <div className="input-group">
+                  <label>Valor em vendas</label>
+                  <input type="number" min="0" step="0.01" value={manualCrmForm.wonRevenue} onChange={(event) => setManualCrmForm((current) => ({ ...current, wonRevenue: event.target.value }))} placeholder="0,00" />
+                  <span className="field-helper">O ROAS comercial será calculado automaticamente com base no investimento Meta do período selecionado.</span>
+                </div>
+
+                <div className="client-editor-header">
+                  <div>
+                    <h3>Salvar no dashboard</h3>
+                    <p>Esses valores entram no mesmo visual do CRM e recalculam as taxas automaticamente.</p>
+                  </div>
+                  <button type="submit" className="btn btn-primary" disabled={isSavingManualCrm}>
+                    {isSavingManualCrm ? 'Salvando...' : 'Salvar dados manuais'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>,
+          document.body
         )}
 
         {activeTab === 'apresentacao' && isAiInsightsModalOpen && typeof document !== 'undefined' && createPortal(

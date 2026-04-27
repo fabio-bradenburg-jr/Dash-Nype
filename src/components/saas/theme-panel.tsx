@@ -31,6 +31,7 @@ export function ThemePanel({ initialTheme, onThemeChange, onThemeSaved }: ThemeP
     root.style.setProperty('--saas-primary', nextTheme.primaryColor)
     root.style.setProperty('--saas-accent', nextTheme.accentColor)
     root.style.setProperty('--saas-surface', nextTheme.backgroundColor)
+    root.style.setProperty('--saas-button-text', nextTheme.buttonTextColor || '#ffffff')
     root.style.setProperty('--accent-blue', nextTheme.primaryColor)
     root.style.setProperty('--accent-orange', nextTheme.accentColor)
     root.style.setProperty('--main', nextTheme.primaryColor)
@@ -95,6 +96,7 @@ export function ThemePanel({ initialTheme, onThemeChange, onThemeSaved }: ThemeP
           { label: 'Primária', value: theme.primaryColor, key: 'primaryColor' },
           { label: 'Destaque', value: theme.accentColor, key: 'accentColor' },
           { label: 'Fundo', value: theme.backgroundColor, key: 'backgroundColor' },
+          { label: 'Texto dos botões', value: theme.buttonTextColor || '#ffffff', key: 'buttonTextColor' },
         ].map((item) => (
           <label key={item.key} className="grid gap-2 text-sm font-medium text-slate-600">
             <span className="font-semibold text-slate-700">{item.label}</span>

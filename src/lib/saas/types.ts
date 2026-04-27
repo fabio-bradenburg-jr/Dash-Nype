@@ -2,6 +2,7 @@ export type ThemeSettings = {
   primaryColor: string
   accentColor: string
   backgroundColor: string
+  buttonTextColor?: string
   darkMode: boolean
   logoUrl?: string
   appName?: string

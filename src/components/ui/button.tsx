@@ -10,7 +10,7 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: 'bg-[var(--saas-primary)] text-white shadow-lg shadow-[color:color-mix(in_srgb,var(--saas-primary)_28%,transparent)] hover:opacity-95',
+        default: 'bg-[var(--saas-primary)] text-[var(--saas-button-text)] shadow-lg shadow-[color:color-mix(in_srgb,var(--saas-primary)_28%,transparent)] hover:opacity-95',
         secondary: 'border border-slate-200 bg-white text-slate-900 hover:bg-slate-50',
         ghost: 'text-slate-600 hover:bg-slate-100 hover:text-slate-900',
       },

@@ -5,6 +5,7 @@ export const demoPlatformSnapshot: PlatformSnapshot = {
     primaryColor: '#0f766e',
     accentColor: '#f97316',
     backgroundColor: '#f8fafc',
+    buttonTextColor: '#ffffff',
     darkMode: false,
     logoUrl: '',
     appName: 'Nype Orbit',

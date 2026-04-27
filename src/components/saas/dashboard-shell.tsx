@@ -46,6 +46,14 @@ type AgendorPipelineOption = {
   pipelineName?: string
 }
 
+type ManualCrmFormValues = {
+  opportunityCount: string
+  qualifiedOpportunityCount: string
+  wonOpportunityCount: string
+  lostOpportunityCount: string
+  wonRevenue: string
+}
+
 const moduleCopy: Record<NavigationKey, { title: string; description: string }> = {
   overview: {
     title: 'IA inteligente',
@@ -240,6 +248,38 @@ function resolveSelectedStageNames(selectedIds: string[], options: AgendorPipeli
   return selectedIds.map((id) => optionsById.get(id)?.name || optionsById.get(id)?.label || id)
 }
 
+function createEmptyManualCrmForm(): ManualCrmFormValues {
+  return {
+    opportunityCount: '',
+    qualifiedOpportunityCount: '',
+    wonOpportunityCount: '',
+    lostOpportunityCount: '',
+    wonRevenue: '',
+  }
+}
+
+function parseManualCrmPayload(value: unknown): ManualCrmFormValues {
+  const payload = value && typeof value === 'object' ? (value as Record<string, unknown>) : {}
+
+  return {
+    opportunityCount: String(payload.opportunityCount ?? ''),
+    qualifiedOpportunityCount: String(payload.qualifiedOpportunityCount ?? ''),
+    wonOpportunityCount: String(payload.wonOpportunityCount ?? ''),
+    lostOpportunityCount: String(payload.lostOpportunityCount ?? ''),
+    wonRevenue: String(payload.wonRevenue ?? ''),
+  }
+}
+
+function buildManualCrmPayload(form: ManualCrmFormValues) {
+  return {
+    opportunityCount: Number(form.opportunityCount || 0),
+    qualifiedOpportunityCount: Number(form.qualifiedOpportunityCount || 0),
+    wonOpportunityCount: Number(form.wonOpportunityCount || 0),
+    lostOpportunityCount: Number(form.lostOpportunityCount || 0),
+    wonRevenue: Number(form.wonRevenue || 0),
+  }
+}
+
 function extractKnowledgeSourcesFromBusinessData(businessData: Record<string, unknown> | undefined): KnowledgeSource[] {
   const rawSources = Array.isArray(businessData?.knowledge_sources) ? businessData.knowledge_sources : []
 
@@ -296,9 +336,11 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
     company: '',
     dashboardName: '',
     metaAdAccountId: '',
+    crmMode: 'agendor',
     agendorToken: '',
     agendorAccountIds: [] as string[],
     agendorQualifiedStageIds: [] as string[],
+    manualCrm: createEmptyManualCrmForm(),
     dashboardButtonColor: currentTheme.primaryColor || '#0f766e',
     dashboardAccentColor: currentTheme.accentColor || '#f97316',
     logoUrl: '',
@@ -317,9 +359,11 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
     dashboardName: '',
     logoUrl: '',
     metaAdAccountId: '',
+    crmMode: 'agendor',
     agendorToken: '',
     agendorAccountIds: [] as string[],
     agendorQualifiedStageIds: [] as string[],
+    manualCrm: createEmptyManualCrmForm(),
   })
   const [editingAgendorOptions, setEditingAgendorOptions] = useState<AgendorPipelineOption[]>([])
   const [editingAgendorStageOptions, setEditingAgendorStageOptions] = useState<AgendorPipelineOption[]>([])
@@ -373,7 +417,8 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
         rdPipelineId: normalizePipelineValues(businessData.agendorPipelineIds || businessData.agendorAccountIds || businessData.agendorAccountId).join(', '),
         rdQualifiedStages: normalizePipelineValues(businessData.agendorQualifiedStages || businessData.rdQualifiedStages),
         rdStationToken: String(businessIntegrations.agendorToken || ''),
-        crmProvider: 'agendor',
+        crmProvider: String(businessData.crmMode || '').trim().toLowerCase() === 'manual' ? 'manual' : 'agendor',
+        manualCrmSummary: buildManualCrmPayload(parseManualCrmPayload(businessData.manualCrmSummary)),
         funnelSteps,
         activeDashboardTemplateId,
         dashboardTemplates,
@@ -434,6 +479,8 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
   const editingSelectedPipelineLabels = resolveSelectedPipelineNames(editingClientForm.agendorAccountIds, editingAgendorOptions)
   const clientSelectedQualifiedStageLabels = resolveSelectedStageNames(clientForm.agendorQualifiedStageIds, clientAgendorStageOptions)
   const editingSelectedQualifiedStageLabels = resolveSelectedStageNames(editingClientForm.agendorQualifiedStageIds, editingAgendorStageOptions)
+  const clientUsesManualCrm = clientForm.crmMode === 'manual'
+  const editingClientUsesManualCrm = editingClientForm.crmMode === 'manual'
   const clientVisibleAgendorStages = clientAgendorStageOptions.filter(
     (stage) => !clientForm.agendorAccountIds.length || clientForm.agendorAccountIds.includes(stage.pipelineId || '')
   )
@@ -529,6 +576,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
     root.style.setProperty('--saas-primary', currentTheme.primaryColor)
     root.style.setProperty('--saas-accent', currentTheme.accentColor)
     root.style.setProperty('--saas-surface', currentTheme.backgroundColor)
+    root.style.setProperty('--saas-button-text', currentTheme.buttonTextColor || '#ffffff')
     root.style.setProperty('--accent-blue', currentTheme.primaryColor)
     root.style.setProperty('--accent-orange', currentTheme.accentColor)
     root.style.setProperty('--main', currentTheme.primaryColor)
@@ -538,23 +586,23 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
 
   useEffect(() => {
     const token = clientForm.agendorToken.trim()
-    if (!showClientForm || token.length < 8) return
+    if (!showClientForm || clientForm.crmMode === 'manual' || token.length < 8) return
     if (clientAgendorFetchKeyRef.current === token && clientAgendorOptions.length > 0) return
     const timeout = window.setTimeout(() => {
       void loadAgendorPipelines(token, 'create')
     }, 500)
     return () => window.clearTimeout(timeout)
-  }, [clientForm.agendorToken, showClientForm, clientAgendorOptions.length])
+  }, [clientForm.agendorToken, clientForm.crmMode, showClientForm, clientAgendorOptions.length])
 
   useEffect(() => {
     const token = editingClientForm.agendorToken.trim()
-    if (!showClientEditModal || token.length < 8) return
+    if (!showClientEditModal || editingClientForm.crmMode === 'manual' || token.length < 8) return
     if (editingAgendorFetchKeyRef.current === token && editingAgendorOptions.length > 0) return
     const timeout = window.setTimeout(() => {
       void loadAgendorPipelines(token, 'edit')
     }, 500)
     return () => window.clearTimeout(timeout)
-  }, [editingClientForm.agendorToken, showClientEditModal, editingAgendorOptions.length])
+  }, [editingClientForm.agendorToken, editingClientForm.crmMode, showClientEditModal, editingAgendorOptions.length])
 
   useEffect(() => {
     async function loadSessionUser() {
@@ -681,6 +729,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
     const agendorPipelines = normalizePipelineValues(clientForm.agendorAccountIds)
     const agendorPipelineNames = resolveSelectedPipelineNames(agendorPipelines, clientAgendorOptions)
     const agendorQualifiedStageNames = resolveSelectedStageNames(clientForm.agendorQualifiedStageIds, clientAgendorStageOptions)
+    const usesManualCrm = clientForm.crmMode === 'manual'
     setCreatingClient(true)
     try {
       const response = await fetch('/api/saas/clients', {
@@ -703,13 +752,15 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
             dashboardTemplates: [initialDashboardTemplate],
             activeDashboardTemplateId: initialDashboardTemplate.id,
             dashboardDisplayName: clientForm.dashboardName || clientForm.name,
+            crmMode: usesManualCrm ? 'manual' : 'agendor',
             metaAdAccountId: clientForm.metaAdAccountId,
-            agendorAccountId: agendorPipelines.join(', '),
-            agendorAccountIds: agendorPipelines,
-            agendorPipelineIds: agendorPipelines,
-            agendorPipelineNames,
-            agendorQualifiedStageIds: clientForm.agendorQualifiedStageIds,
-            agendorQualifiedStages: agendorQualifiedStageNames,
+            agendorAccountId: usesManualCrm ? '' : agendorPipelines.join(', '),
+            agendorAccountIds: usesManualCrm ? [] : agendorPipelines,
+            agendorPipelineIds: usesManualCrm ? [] : agendorPipelines,
+            agendorPipelineNames: usesManualCrm ? [] : agendorPipelineNames,
+            agendorQualifiedStageIds: usesManualCrm ? [] : clientForm.agendorQualifiedStageIds,
+            agendorQualifiedStages: usesManualCrm ? [] : agendorQualifiedStageNames,
+            manualCrmSummary: buildManualCrmPayload(clientForm.manualCrm),
             dashboardButtonColor: clientForm.dashboardButtonColor,
             dashboardAccentColor: clientForm.dashboardAccentColor,
             logoUrl: clientForm.logoUrl,
@@ -718,7 +769,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
               accentColor: clientForm.dashboardAccentColor,
             },
             integrations: {
-              agendorToken: clientForm.agendorToken,
+              agendorToken: usesManualCrm ? '' : clientForm.agendorToken,
             },
           },
         }),
@@ -741,7 +792,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
         })
       }
 
-      if (clientForm.agendorToken.trim()) {
+      if (!usesManualCrm && clientForm.agendorToken.trim()) {
         await fetch('/api/saas/integrations', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -761,9 +812,11 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
         company: '',
         dashboardName: '',
         metaAdAccountId: '',
+        crmMode: 'agendor',
         agendorToken: '',
         agendorAccountIds: [],
         agendorQualifiedStageIds: [],
+        manualCrm: createEmptyManualCrmForm(),
         dashboardButtonColor: currentTheme.primaryColor || '#0f766e',
         dashboardAccentColor: currentTheme.accentColor || '#f97316',
         logoUrl: '',
@@ -817,9 +870,11 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
       dashboardName: String(businessData.dashboardDisplayName || client.name || ''),
       logoUrl: String(businessData.logoUrl || ''),
       metaAdAccountId: clientMetaIntegration?.external_account_id || String(businessData.metaAdAccountId || ''),
+      crmMode: String(businessData.crmMode || '').trim().toLowerCase() === 'manual' ? 'manual' : 'agendor',
       agendorToken: String(((businessData.integrations || {}) as Record<string, unknown>).agendorToken || ''),
       agendorAccountIds: agendorPipelineValues,
       agendorQualifiedStageIds: normalizePipelineValues(businessData.agendorQualifiedStageIds || businessData.agendorQualifiedStages),
+      manualCrm: parseManualCrmPayload(businessData.manualCrmSummary),
     })
     setEditingAgendorOptions([])
     setEditingAgendorStageOptions([])
@@ -835,6 +890,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
     const agendorPipelines = normalizePipelineValues(editingClientForm.agendorAccountIds)
     const agendorPipelineNames = resolveSelectedPipelineNames(agendorPipelines, editingAgendorOptions)
     const agendorQualifiedStageNames = resolveSelectedStageNames(editingClientForm.agendorQualifiedStageIds, editingAgendorStageOptions)
+    const usesManualCrm = editingClientForm.crmMode === 'manual'
     setEditingClientSaving(true)
     try {
       const response = await fetch(`/api/saas/clients/${editingClient.id}`, {
@@ -844,15 +900,17 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
           business_data: {
             dashboardDisplayName: editingClientForm.dashboardName,
             logoUrl: editingClientForm.logoUrl,
+            crmMode: usesManualCrm ? 'manual' : 'agendor',
             metaAdAccountId: editingClientForm.metaAdAccountId,
-            agendorAccountId: agendorPipelines.join(', '),
-            agendorAccountIds: agendorPipelines,
-            agendorPipelineIds: agendorPipelines,
-            agendorPipelineNames,
-            agendorQualifiedStageIds: editingClientForm.agendorQualifiedStageIds,
-            agendorQualifiedStages: agendorQualifiedStageNames,
+            agendorAccountId: usesManualCrm ? '' : agendorPipelines.join(', '),
+            agendorAccountIds: usesManualCrm ? [] : agendorPipelines,
+            agendorPipelineIds: usesManualCrm ? [] : agendorPipelines,
+            agendorPipelineNames: usesManualCrm ? [] : agendorPipelineNames,
+            agendorQualifiedStageIds: usesManualCrm ? [] : editingClientForm.agendorQualifiedStageIds,
+            agendorQualifiedStages: usesManualCrm ? [] : agendorQualifiedStageNames,
+            manualCrmSummary: buildManualCrmPayload(editingClientForm.manualCrm),
             integrations: {
-              agendorToken: editingClientForm.agendorToken,
+              agendorToken: usesManualCrm ? '' : editingClientForm.agendorToken,
             },
           },
         }),
@@ -878,7 +936,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
         }
       }
 
-      if (editingClientForm.agendorToken.trim()) {
+      if (!usesManualCrm && editingClientForm.agendorToken.trim()) {
         await fetch('/api/saas/integrations', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -1817,65 +1875,41 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
           ) : null}
 
           {showClients ? (
-          <section className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
-            <Card className="bg-slate-950 text-white">
-              <CardHeader>
-                  <div>
-                    <CardTitle className="text-white">Mapa de módulos</CardTitle>
-                    <CardDescription className="text-white/60">A plataforma centraliza clientes, integrações, dashboards e IA contextual.</CardDescription>
-                  </div>
-                </CardHeader>
-              <CardContent className="space-y-3">
-                {[
-                  { label: 'CRM de clientes', icon: Building2, copy: 'CRUD completo, perfil do negócio, integrações vinculadas e escopo por tenant.' },
-                  { label: 'Analytics de marketing', icon: LineChart, copy: 'Métricas unificadas, análise de funil, insights e leitura de ROAS.' },
-                  { label: 'IA contextual', icon: Users, copy: 'Perguntas sobre clientes, campanhas, CRM, dashs e arquivos vinculados ao tenant.' },
-                ].map((item) => {
-                  const Icon = item.icon
-                  return (
-                    <div key={item.label} className="rounded-3xl border border-white/10 bg-white/5 p-4 backdrop-blur">
-                      <div className="flex items-center gap-3">
-                        <Icon className="h-4 w-4 text-white/80" />
-                        <p className="font-semibold">{item.label}</p>
-                      </div>
-                      <p className="mt-2 text-sm text-white/60">{item.copy}</p>
-                    </div>
-                  )
-                })}
-              </CardContent>
-            </Card>
-
+          <section className="grid gap-6">
             <Card>
               <CardHeader>
-                  <div>
-                    <CardTitle>Carteira de clientes</CardTitle>
-                    <CardDescription>Acesso rápido ao estágio e valor das contas dentro do tenant.</CardDescription>
-                  </div>
+                <div>
+                  <CardTitle>Clientes cadastrados</CardTitle>
+                  <CardDescription>Clique em um cliente para editar conta Meta, Agendor ou modo manual do CRM.</CardDescription>
+                </div>
               </CardHeader>
-              <CardContent className="space-y-3">
+              <CardContent>
                 {snapshot.clients.length > 0 ? (
-                  snapshot.clients.map((client) => (
-                    <button
-                      key={client.id}
-                      className={`flex w-full items-center justify-between rounded-3xl border px-4 py-4 text-left transition ${
-                        client.id === selectedClientId
-                          ? 'border-transparent bg-[linear-gradient(135deg,#020617,#0f172a)] text-white shadow-xl'
-                          : 'border-slate-200/80 bg-white text-slate-900 hover:border-slate-300 hover:bg-slate-50/70'
-                      }`}
-                      onClick={() => setSelectedClientId(client.id)}
-                    >
-                      <div>
-                        <p className="font-semibold">{client.name}</p>
-                        <p className={`text-sm ${client.id === selectedClientId ? 'text-white/60' : 'text-slate-500'}`}>
-                          {client.niche} • {formatValue(client.ltv, 'currency')} de LTV
-                        </p>
-                      </div>
-                      <ChevronRight className={`h-4 w-4 ${client.id === selectedClientId ? 'text-white/60' : 'text-slate-400'}`} />
-                    </button>
-                  ))
+                  <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                    {snapshot.clients.map((client) => (
+                      <button
+                        key={client.id}
+                        className={`flex min-h-[132px] flex-col justify-between rounded-3xl border p-5 text-left transition ${
+                          client.id === selectedClientId
+                            ? 'border-[var(--saas-primary)] bg-[color:color-mix(in_srgb,var(--saas-primary)_9%,white)] text-slate-950 shadow-lg'
+                            : 'border-slate-200/80 bg-white text-slate-900 hover:border-slate-300 hover:bg-slate-50/70'
+                        }`}
+                        onClick={() => openClientEditModal(client)}
+                      >
+                        <div>
+                          <p className="font-semibold">{client.name}</p>
+                          <p className="mt-1 text-sm text-slate-500">{client.company}</p>
+                        </div>
+                        <div className="flex items-center justify-between text-sm text-slate-500">
+                          <span>{client.niche}</span>
+                          <ChevronRight className="h-4 w-4" />
+                        </div>
+                      </button>
+                    ))}
+                  </div>
                 ) : (
                   <div className="rounded-3xl border border-dashed border-slate-300 bg-slate-50/80 p-5 text-sm leading-6 text-slate-500">
-                    Nenhum cliente cadastrado ainda. Use “Novo cliente” para criar o primeiro dash com Meta e Agendor.
+                    Nenhum cliente cadastrado ainda. Use “Novo cliente” para criar o primeiro dash com Meta e CRM.
                   </div>
                 )}
               </CardContent>
@@ -1887,7 +1921,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
 
       {showClientEditModal && editingClient ? (
         <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/45 px-4 py-8 backdrop-blur-sm">
-          <div className="w-full max-w-2xl rounded-[34px] border border-white/80 bg-white p-6 shadow-[0_40px_120px_rgba(15,23,42,0.28)]">
+          <div className="max-h-[88vh] w-full max-w-2xl overflow-y-auto rounded-[34px] border border-white/80 bg-white p-6 shadow-[0_40px_120px_rgba(15,23,42,0.28)]">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Editar cliente</p>
@@ -1987,8 +2021,33 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
               <div className="rounded-[28px] border border-slate-200/80 bg-slate-50/80 p-4">
                 <p className="font-semibold text-slate-900">Agendor</p>
                 <p className="mt-1 text-sm leading-6 text-slate-500">
-                  Informe o token/API para ler os pipelines disponíveis e selecione quais devem aparecer no dash.
+                  Se preferir não conectar o Agendor, ative o modo manual para imputar oportunidades, qualificados, vendas, perdidos e faturamento direto no dash.
                 </p>
+                <label className="mt-4 flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700">
+                  <input
+                    type="checkbox"
+                    checked={editingClientUsesManualCrm}
+                    onChange={(event) =>
+                      setEditingClientForm((current) => ({
+                        ...current,
+                        crmMode: event.target.checked ? 'manual' : 'agendor',
+                        agendorToken: event.target.checked ? '' : current.agendorToken,
+                        agendorAccountIds: event.target.checked ? [] : current.agendorAccountIds,
+                        agendorQualifiedStageIds: event.target.checked ? [] : current.agendorQualifiedStageIds,
+                      }))
+                    }
+                  />
+                  Este cliente não vai conectar o Agendor e usará dados comerciais manuais no dash
+                </label>
+                {editingClientUsesManualCrm ? (
+                  <div className="mt-4 rounded-[24px] border border-amber-200 bg-amber-50 p-4">
+                    <p className="font-semibold text-amber-950">Modo manual ativo</p>
+                    <p className="mt-1 text-sm leading-6 text-amber-900">
+                      O dashboard vai abrir normalmente e, ao final da seção comercial, mostrará um botão para imputar os números manualmente.
+                    </p>
+                  </div>
+                ) : (
+                <>
                 <div className="mt-4 grid gap-4 md:grid-cols-2">
                   <label className="grid gap-2 text-sm font-medium text-slate-600">
                     API / Token do Agendor
@@ -2088,6 +2147,8 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
                     )}
                   </div>
                 </div>
+                </>
+                )}
               </div>
             </div>
 
@@ -2112,7 +2173,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
 
       {showClientForm ? (
         <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/45 px-4 py-8 backdrop-blur-sm">
-          <div className="w-full max-w-2xl rounded-[34px] border border-white/80 bg-white p-6 shadow-[0_40px_120px_rgba(15,23,42,0.28)]">
+          <div className="max-h-[88vh] w-full max-w-2xl overflow-y-auto rounded-[34px] border border-white/80 bg-white p-6 shadow-[0_40px_120px_rgba(15,23,42,0.28)]">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Novo cliente</p>
@@ -2250,8 +2311,33 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
               <div className="rounded-[28px] border border-slate-200/80 bg-slate-50/80 p-4">
                 <p className="font-semibold text-slate-900">Agendor</p>
                 <p className="mt-1 text-sm leading-6 text-slate-500">
-                  Informe a API/token para ler os pipelines disponíveis e selecione quais devem aparecer no dash.
+                  Se preferir não conectar o Agendor, ative o modo manual para imputar oportunidades, qualificados, vendas, perdidos e faturamento direto no dash.
                 </p>
+                <label className="mt-4 flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700">
+                  <input
+                    type="checkbox"
+                    checked={clientUsesManualCrm}
+                    onChange={(event) =>
+                      setClientForm((current) => ({
+                        ...current,
+                        crmMode: event.target.checked ? 'manual' : 'agendor',
+                        agendorToken: event.target.checked ? '' : current.agendorToken,
+                        agendorAccountIds: event.target.checked ? [] : current.agendorAccountIds,
+                        agendorQualifiedStageIds: event.target.checked ? [] : current.agendorQualifiedStageIds,
+                      }))
+                    }
+                  />
+                  Este cliente não vai conectar o Agendor e usará dados comerciais manuais no dash
+                </label>
+                {clientUsesManualCrm ? (
+                  <div className="mt-4 rounded-[24px] border border-amber-200 bg-amber-50 p-4">
+                    <p className="font-semibold text-amber-950">Modo manual ativo</p>
+                    <p className="mt-1 text-sm leading-6 text-amber-900">
+                      O dashboard vai abrir normalmente e, ao final da seção comercial, mostrará um botão para imputar os números manualmente.
+                    </p>
+                  </div>
+                ) : (
+                <>
                 <div className="mt-4 grid gap-4 md:grid-cols-2">
                   <label className="grid gap-2 text-sm font-medium text-slate-600">
                     API / Token do Agendor
@@ -2351,6 +2437,8 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
                     )}
                   </div>
                 </div>
+                </>
+                )}
               </div>
 
               <div className="flex flex-col-reverse gap-3 pt-2 md:flex-row md:justify-end">
