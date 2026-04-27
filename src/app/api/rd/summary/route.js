@@ -827,13 +827,48 @@ function normalizeAgendorStage(stage) {
 function normalizeAgendorDeal(deal, stagesById) {
   if (!deal || typeof deal !== 'object') return null
 
-  const rawStageId = `${deal.dealStageId || deal.stageId || deal.deal_stage_id || deal.pipeline_stage_id || ''}`.trim()
+  const dealStageObject = deal.dealStage && typeof deal.dealStage === 'object'
+    ? deal.dealStage
+    : deal.stage && typeof deal.stage === 'object'
+      ? deal.stage
+      : deal.deal_stage && typeof deal.deal_stage === 'object'
+        ? deal.deal_stage
+        : {}
+  const dealStatusObject = deal.dealStatus && typeof deal.dealStatus === 'object'
+    ? deal.dealStatus
+    : deal.status && typeof deal.status === 'object'
+      ? deal.status
+      : deal.deal_status && typeof deal.deal_status === 'object'
+        ? deal.deal_status
+        : {}
+  const rawStageId = `${deal.dealStageId || deal.stageId || deal.deal_stage_id || deal.pipeline_stage_id || dealStageObject.id || dealStageObject.stageId || ''}`.trim()
   const stage = stagesById.get(rawStageId)
-  const rawPipelineId = `${deal.pipelineId || deal.funnelId || stage?.pipelineId || ''}`.trim()
+  const rawPipelineId = `${
+    deal.pipelineId ||
+    deal.funnelId ||
+    deal.dealPipelineId ||
+    dealStageObject.funnel?.id ||
+    dealStageObject.pipeline?.id ||
+    stage?.pipelineId ||
+    ''
+  }`.trim()
+  const rawPipelineName = `${
+    deal.pipelineName ||
+    deal.funnelName ||
+    deal.dealPipelineName ||
+    dealStageObject.funnel?.name ||
+    dealStageObject.pipeline?.name ||
+    stage?.pipelineName ||
+    'Pipeline não identificado'
+  }`.trim()
   const person = deal.person && typeof deal.person === 'object' ? deal.person : deal.contact && typeof deal.contact === 'object' ? deal.contact : {}
-  const company = deal.company && typeof deal.company === 'object' ? deal.company : {}
+  const company = deal.company && typeof deal.company === 'object'
+    ? deal.company
+    : deal.organization && typeof deal.organization === 'object'
+      ? deal.organization
+      : {}
   const owner = deal.owner && typeof deal.owner === 'object' ? deal.owner : deal.user && typeof deal.user === 'object' ? deal.user : {}
-  const rawStatus = `${deal.status || deal.statusLabel || deal.statusName || deal.outcome || deal.result || ''}`.trim()
+  const rawStatus = `${deal.status || deal.statusLabel || deal.statusName || dealStatusObject.name || dealStatusObject.label || deal.outcome || deal.result || ''}`.trim()
   const customFields = Array.isArray(deal.customFields)
     ? deal.customFields
     : Array.isArray(deal.custom_fields)
@@ -843,12 +878,12 @@ function normalizeAgendorDeal(deal, stagesById) {
   return {
     id: `${deal.id || deal.dealId || deal.uuid || ''}`.trim(),
     amount: deal.value ?? deal.amount ?? deal.totalValue ?? deal.total_value ?? 0,
-    created_at: deal.createdAt || deal.created_at || person.createdAt || company.createdAt || '',
-    updated_at: deal.updatedAt || deal.updated_at || deal.lastInteractionAt || '',
+    created_at: deal.createdAt || deal.created_at || deal.startTime || person.createdAt || company.createdAt || '',
+    updated_at: deal.updatedAt || deal.updated_at || deal.lastInteractionAt || deal.endTime || '',
     won_at: deal.wonAt || deal.won_at || '',
-    closed_at: deal.closedAt || deal.closed_at || deal.finishedAt || deal.finished_at || '',
-    won: Boolean(deal.won || normalizeLabel(rawStatus).includes('ganh') || normalizeLabel(rawStatus).includes('vendid')),
-    lost: Boolean(deal.lost || normalizeLabel(rawStatus).includes('perd') || normalizeLabel(rawStatus).includes('lost')),
+    closed_at: deal.closedAt || deal.closed_at || deal.finishedAt || deal.finished_at || deal.endTime || deal.lostAt || '',
+    won: Boolean(deal.won || dealStatusObject.id === 2 || normalizeLabel(rawStatus).includes('ganh') || normalizeLabel(rawStatus).includes('vendid')),
+    lost: Boolean(deal.lost || dealStatusObject.id === 3 || normalizeLabel(rawStatus).includes('perd') || normalizeLabel(rawStatus).includes('lost')),
     status: rawStatus,
     owner: {
       id: `${owner.id || owner.userId || owner.email || ''}`.trim(),
@@ -860,15 +895,15 @@ function normalizeAgendorDeal(deal, stagesById) {
     },
     pipeline: {
       id: rawPipelineId || stage?.pipelineId || 'unknown',
-      name: `${deal.pipelineName || deal.funnelName || stage?.pipelineName || 'Pipeline não identificado'}`.trim(),
+      name: rawPipelineName,
     },
     stage: {
       id: rawStageId || stage?.id || '',
-      name: `${deal.dealStageName || deal.stageName || stage?.name || 'Sem etapa definida'}`.trim(),
-      position: Number(deal.stageOrder ?? stage?.position ?? 0) || 0,
+      name: `${deal.dealStageName || deal.stageName || dealStageObject.name || dealStageObject.label || stage?.name || 'Sem etapa definida'}`.trim(),
+      position: Number(deal.stageOrder ?? dealStageObject.sequence ?? dealStageObject.order ?? stage?.position ?? 0) || 0,
       pipeline_id: rawPipelineId || stage?.pipelineId || 'unknown',
     },
-    deal_stage_name: `${deal.dealStageName || deal.stageName || stage?.name || ''}`.trim(),
+    deal_stage_name: `${deal.dealStageName || deal.stageName || dealStageObject.name || dealStageObject.label || stage?.name || ''}`.trim(),
     deal_stage_id: rawStageId || stage?.id || '',
     contact: {
       id: `${person.id || person.personId || company.id || company.companyId || deal.personId || deal.companyId || deal.id || ''}`.trim(),
