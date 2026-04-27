@@ -24494,7 +24494,7 @@ export default function DashboardShell({
         :root[data-ui-mode='light'] .operations-meta-card,
         :root[data-ui-mode='light'] .operations-filter-card,
         :root[data-ui-mode='light'] .operations-spotlight-card {
-          background: rgba(255, 255, 255, 0.92) !important;
+          background: linear-gradient(180deg, rgba(250, 250, 252, 0.98), rgba(244, 246, 250, 0.98)) !important;
           border-color: rgba(15, 23, 42, 0.08) !important;
         }
 
@@ -24506,6 +24506,11 @@ export default function DashboardShell({
           background: rgba(255, 255, 255, 0.98) !important;
           color: #0f172a !important;
           border-color: rgba(15, 23, 42, 0.08) !important;
+        }
+
+        :root[data-ui-mode='light'] .hero-select option {
+          color: #0f172a !important;
+          background: #ffffff !important;
         }
 
         :root[data-ui-mode='light'] .monday-command-panel h2,
@@ -24529,6 +24534,19 @@ export default function DashboardShell({
         :root[data-ui-mode='light'] .management-stat-card small,
         :root[data-ui-mode='light'] .clients-metric-card small {
           color: #475569 !important;
+        }
+
+        :root[data-ui-mode='light'] .hero-stat span,
+        :root[data-ui-mode='light'] .hero-select,
+        :root[data-ui-mode='light'] .hero-select * {
+          color: #334155 !important;
+        }
+
+        :root:not([data-ui-mode='light']) .hero-stat strong,
+        :root:not([data-ui-mode='light']) .hero-stat span,
+        :root:not([data-ui-mode='light']) .hero-select,
+        :root:not([data-ui-mode='light']) .hero-select option {
+          color: #f8fafc !important;
         }
 
         @media (max-width: 1100px) {
@@ -24612,6 +24630,11 @@ export default function DashboardShell({
           color: var(--text-primary);
           font: inherit;
           outline: none;
+        }
+
+        .hero-select option {
+          color: var(--text-primary);
+          background: #111827;
         }
 
         .feedback-banner,
