@@ -10617,28 +10617,17 @@ export default function DashboardShell({
   const rdQualificationKpis = [
     { key: 'opportunityCount', title: 'Oportunidades', value: formatNumber(rdSummary?.opportunityCount || 0), rawValue: rdSummary?.opportunityCount || 0, type: 'number', icon: 'bx-bulb', tone: 'blue' },
     { key: 'qualifiedOpportunityCount', title: 'Qualificados', value: formatNumber(rdSummary?.qualifiedOpportunityCount || 0), rawValue: rdSummary?.qualifiedOpportunityCount || 0, type: 'number', icon: 'bx-filter-alt', tone: 'emerald' },
-    { key: 'wonOpportunityCount', title: 'Vendas da safra criada e fechada no período', value: formatNumber(rdSummary?.wonOpportunityCount || 0), rawValue: rdSummary?.wonOpportunityCount || 0, type: 'number', icon: 'bx-badge-check', tone: 'emerald' },
-    { key: 'wonOpportunityRevenue', title: 'Faturamento da safra criada e fechada', value: formatCurrency(rdSummary?.wonOpportunityRevenue || 0), rawValue: rdSummary?.wonOpportunityRevenue || 0, type: 'currency', icon: 'bx-wallet-alt', tone: 'orange' },
-    { key: 'avgTicketWonByCreation', title: 'Ticket médio da safra criada e fechada', value: formatCurrency(rdSummary?.avgTicketWonByCreation || 0), rawValue: rdSummary?.avgTicketWonByCreation || 0, type: 'currency', icon: 'bx-receipt', tone: 'gold' },
-    { key: 'leadToQualifiedRate', title: 'Taxa de oportunidade para qualificados', value: formatPercent(rdSummary?.leadToQualifiedRate || 0), rawValue: rdSummary?.leadToQualifiedRate || 0, type: 'percent', icon: 'bx-transfer-alt', tone: 'cyan' },
-    { key: 'qualifiedToWonRate', title: 'Taxa de qualificados para venda', value: formatPercent(rdSummary?.qualifiedToWonRate || 0), rawValue: rdSummary?.qualifiedToWonRate || 0, type: 'percent', icon: 'bx-badge-check', tone: 'emerald' },
-    { key: 'leadToWonRate', title: 'Taxa de oportunidade para venda', value: formatPercent(rdSummary?.leadToWonRate || 0), rawValue: rdSummary?.leadToWonRate || 0, type: 'percent', icon: 'bx-line-chart', tone: 'blue' },
-    { key: 'lostOpportunityCount', title: 'Negócios perdidos', value: formatNumber(rdSummary?.lostOpportunityCount || 0), rawValue: rdSummary?.lostOpportunityCount || 0, type: 'number', icon: 'bx-x-circle', tone: 'pink' },
   ]
-  const rdRevenueKpis = [
-    { key: 'openDeals', title: 'Negociações em aberto', value: formatNumber(rdSummary?.openDeals || 0), rawValue: rdSummary?.openDeals || 0, type: 'number', icon: 'bx-folder-open', tone: 'blue' },
-    { key: 'openPipeline', title: 'Valor em negociação', value: formatCurrency(rdSummary?.openPipeline || 0), rawValue: rdSummary?.openPipeline || 0, type: 'currency', icon: 'bx-briefcase-alt-2', tone: 'orange' },
-    { key: 'wonDeals', title: 'Negociações ganhas fechadas no período', value: formatNumber(rdSummary?.wonDeals || 0), rawValue: rdSummary?.wonDeals || 0, type: 'number', icon: 'bx-calendar-check', tone: 'emerald' },
-    { key: 'wonDealsFromPreviousCohorts', title: 'Negociações ganhas de safras anteriores', value: formatNumber(rdSummary?.wonDealsFromPreviousCohorts || 0), rawValue: rdSummary?.wonDealsFromPreviousCohorts || 0, type: 'number', icon: 'bx-history', tone: 'blue' },
-    { key: 'wonRevenue', title: 'Faturamento das negociações fechadas', value: formatCurrency(rdSummary?.wonRevenue || 0), rawValue: rdSummary?.wonRevenue || 0, type: 'currency', icon: 'bx-wallet-alt', tone: 'orange' },
-    { key: 'avgTicketWon', title: 'Ticket médio das negociações fechadas', value: formatCurrency(rdSummary?.avgTicketWon || 0), rawValue: rdSummary?.avgTicketWon || 0, type: 'currency', icon: 'bx-receipt', tone: 'gold' },
+  const rdCurrentHarvestKpis = [
+    { key: 'wonOpportunityCount', title: 'Conversões da safra atual', value: formatNumber(rdSummary?.wonOpportunityCount || 0), rawValue: rdSummary?.wonOpportunityCount || 0, type: 'number', icon: 'bx-badge-check', tone: 'emerald' },
+    { key: 'wonOpportunityRevenue', title: 'Valor vendido da safra atual', value: formatCurrency(rdSummary?.wonOpportunityRevenue || 0), rawValue: rdSummary?.wonOpportunityRevenue || 0, type: 'currency', icon: 'bx-wallet-alt', tone: 'orange' },
+  ]
+  const rdPreviousHarvestKpis = [
+    { key: 'wonDealsFromPreviousCohorts', title: 'Conversões de safras anteriores', value: formatNumber(rdSummary?.wonDealsFromPreviousCohorts || 0), rawValue: rdSummary?.wonDealsFromPreviousCohorts || 0, type: 'number', icon: 'bx-history', tone: 'blue' },
     { key: 'wonRevenueFromPreviousCohorts', title: 'Faturamento de safras anteriores fechadas', value: formatCurrency(rdSummary?.wonRevenueFromPreviousCohorts || 0), rawValue: rdSummary?.wonRevenueFromPreviousCohorts || 0, type: 'currency', icon: 'bx-coin-stack', tone: 'orange' },
-    { key: 'avgTicketWonPreviousCohorts', title: 'Ticket médio de safras anteriores fechadas', value: formatCurrency(rdSummary?.avgTicketWonPreviousCohorts || 0), rawValue: rdSummary?.avgTicketWonPreviousCohorts || 0, type: 'currency', icon: 'bx-spreadsheet', tone: 'gold' },
   ]
   const rdFinalKpis = [
-    { key: 'rdFinalSalesCount', title: 'Vendas totais do resultado final', value: formatNumber(rdFinalSalesCount), rawValue: rdFinalSalesCount, type: 'number', icon: 'bx-trophy', tone: 'emerald' },
     { key: 'rdFinalRevenue', title: 'Faturamento total do resultado final', value: formatCurrency(rdFinalRevenue), rawValue: rdFinalRevenue, type: 'currency', icon: 'bx-wallet-alt', tone: 'orange' },
-    { key: 'rdFinalAvgTicket', title: 'Ticket médio do resultado final', value: formatCurrency(rdFinalAvgTicket), rawValue: rdFinalAvgTicket, type: 'currency', icon: 'bx-receipt', tone: 'gold' },
     { key: 'wonRoas', title: 'ROAS comercial', value: formatMultiplier(rdCommercialRoas), rawValue: rdCommercialRoas, type: 'multiplier', icon: 'bx-line-chart', tone: 'blue' },
   ]
   const metaMediaKpisWithTrend = metaMediaKpis.map((metric) => ({
@@ -10668,7 +10657,11 @@ export default function DashboardShell({
     ...metric,
     trend: buildMetricTrend(metric.key, metric.rawValue, previousRdDashboardMetricValues[metric.key], metric.type),
   }))
-  const rdRevenueKpisWithTrend = rdRevenueKpis.map((metric) => ({
+  const rdCurrentHarvestKpisWithTrend = rdCurrentHarvestKpis.map((metric) => ({
+    ...metric,
+    trend: buildMetricTrend(metric.key, metric.rawValue, previousRdDashboardMetricValues[metric.key], metric.type),
+  }))
+  const rdPreviousHarvestKpisWithTrend = rdPreviousHarvestKpis.map((metric) => ({
     ...metric,
     trend: buildMetricTrend(metric.key, metric.rawValue, previousRdDashboardMetricValues[metric.key], metric.type),
   }))
@@ -17448,17 +17441,6 @@ export default function DashboardShell({
                           <h2>Resumo comercial</h2>
                           <p className="chart-subtitle">Os indicadores abaixo resumem o desempenho comercial identificado no {crmSourceLabel} para este cliente.</p>
                         </div>
-                        {activeDraftDashboardTemplate && (
-                          <button
-                            type="button"
-                            className="btn btn-secondary"
-                            onClick={() => setIsRdMetricLibraryOpen((current) => !current)}
-                            disabled={!availableRdDashboardMetricOptions.length}
-                          >
-                            <i className="bx bx-plus"></i>
-                            Adicionar métrica
-                          </button>
-                        )}
                       </div>
 
                       <div className="template-metrics-shell">
@@ -17505,24 +17487,32 @@ export default function DashboardShell({
                         <div className="crm-groups-grid">
                           <section className="crm-result-group">
                             <div className="result-group-head">
-                              <h3>Qualificação e conversão</h3>
-                              <p>Leitura da safra criada no período selecionado: oportunidades, qualificação, perdas e vendas da mesma base.</p>
+                              <h3>Base comercial</h3>
+                              <p>Leitura inicial da safra atual com oportunidades geradas e leads já qualificados no período.</p>
                             </div>
                             {renderFixedKpiGrid(rdQualificationKpisWithTrend)}
                           </section>
 
                           <section className="crm-result-group">
                             <div className="result-group-head">
-                              <h3>Fechamento e receita</h3>
-                              <p>Leitura por data de fechamento de todas as negociações ganhas no período, incluindo safras criadas antes do intervalo selecionado.</p>
+                              <h3>Safra atual</h3>
+                              <p>Conversões e valor vendido apenas da safra criada e fechada dentro do período selecionado.</p>
                             </div>
-                            {renderFixedKpiGrid(rdRevenueKpisWithTrend)}
+                            {renderFixedKpiGrid(rdCurrentHarvestKpisWithTrend)}
+                          </section>
+
+                          <section className="crm-result-group">
+                            <div className="result-group-head">
+                              <h3>Safras anteriores</h3>
+                              <p>Conversões e valor vendido de oportunidades criadas antes do período, mas fechadas agora.</p>
+                            </div>
+                            {renderFixedKpiGrid(rdPreviousHarvestKpisWithTrend)}
                           </section>
 
                           <section className="crm-result-group">
                             <div className="result-group-head">
                               <h3>Resultado final</h3>
-                              <p>Consolidado final somando safras criadas no período e safras anteriores fechadas no mesmo intervalo.</p>
+                              <p>Consolidado final com o faturamento total fechado no período e o ROAS comercial sobre o investimento em mídia.</p>
                             </div>
                             {renderFixedKpiGrid(rdFinalKpisWithTrend)}
                           </section>
@@ -17542,34 +17532,6 @@ export default function DashboardShell({
                               <i className="bx bx-edit-alt"></i>
                               Imputar dados
                             </button>
-                          </div>
-                        )}
-
-                        {rdExtraDashboardMetricCards.length > 0 && renderDashboardMetricGrid(rdExtraDashboardMetricCards, 'rd')}
-
-                        {isRdMetricLibraryOpen && (
-                          <div className="metric-library-panel glass-item">
-                            <div>
-                              <strong>Métricas RD disponíveis</strong>
-                              <p>Monte o painel comercial com qualquer card do CRM, mudando ordem e tamanho por modelo.</p>
-                            </div>
-                            <div className="metric-library-list">
-                              {availableRdDashboardMetricOptions.length > 0 ? (
-                                availableRdDashboardMetricOptions.map(([metricKey, metric]) => (
-                                  <button
-                                    key={metricKey}
-                                    type="button"
-                                    className="metric-library-chip"
-                                    onClick={() => handleAddRdDashboardMetric(metricKey)}
-                                  >
-                                    <span>{metric.label}</span>
-                                    <small>{metric.description}</small>
-                                  </button>
-                                ))
-                              ) : (
-                                <div className="metric-library-empty">Todas as métricas do RD já estão visíveis neste modelo.</div>
-                              )}
-                            </div>
                           </div>
                         )}
 
