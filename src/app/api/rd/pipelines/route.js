@@ -96,8 +96,9 @@ function readAgendorCollection(payload, preferredKey) {
 async function fetchPagedAgendorCollection(path, preferredKey, token, errorMessage) {
   const collectedItems = []
   let page = 1
+  let totalCount = null
 
-  while (page <= 40) {
+  while (page <= 200) {
     const requestUrl = new URL(`https://api.agendor.com.br/v3${path}`)
     if (!requestUrl.searchParams.has('limit')) requestUrl.searchParams.set('limit', '100')
     requestUrl.searchParams.set('page', String(page))
@@ -116,10 +117,20 @@ async function fetchPagedAgendorCollection(path, preferredKey, token, errorMessa
     }
 
     const currentItems = readAgendorCollection(payload, preferredKey)
+    const payloadTotalCount = Number(
+      payload?.pagination?.totalCount ??
+      payload?.pagination?.total_count ??
+      payload?.meta?.totalCount ??
+      payload?.meta?.total_count ??
+      0
+    )
+    if (Number.isFinite(payloadTotalCount) && payloadTotalCount > 0) {
+      totalCount = payloadTotalCount
+    }
     if (!currentItems.length) break
 
     collectedItems.push(...currentItems)
-    if (currentItems.length < 100) break
+    if (totalCount !== null && collectedItems.length >= totalCount) break
     page += 1
   }
 
