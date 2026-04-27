@@ -8131,6 +8131,7 @@ export default function DashboardShell({
         let sheetsError = ''
         let clickUpRequestError = ''
         let mondayRequestError = ''
+        let resolvedMetaSummary = null
         const currentMetaFilteredCampaignIds = metaFilteredCampaignIdsRef.current
         const currentMetaFilteredAdsetIds = metaFilteredAdsetIdsRef.current
         const currentMetaFilteredAdIds = metaFilteredAdIdsRef.current
@@ -8200,14 +8201,16 @@ export default function DashboardShell({
           if (!insightsResponse.ok) {
             const nextMetaError = insightsData.error || 'Não foi possível carregar os indicadores da Meta.'
             if (!cancelled) {
-              setInsights(buildMetaSummaryFromCampaigns(campaignsRef.current))
+              resolvedMetaSummary = buildMetaSummaryFromCampaigns(campaignsRef.current)
+              setInsights(resolvedMetaSummary)
               setDailyData([])
               setDailyCampaignData([])
               setPreviousInsights(null)
             }
             metaError = isMetaRateLimitMessage(nextMetaError) ? '' : nextMetaError
           } else if (!cancelled) {
-            setInsights(insightsData.summary || {})
+            resolvedMetaSummary = insightsData.summary || {}
+            setInsights(resolvedMetaSummary)
             setDailyData(insightsData.daily || [])
             setDailyCampaignData(insightsData.daily_by_campaign || [])
 
@@ -8220,6 +8223,7 @@ export default function DashboardShell({
             }
           }
         } else if (!cancelled) {
+          resolvedMetaSummary = null
           setInsights(null)
           setPreviousInsights(null)
           setDailyData([])
@@ -8228,7 +8232,7 @@ export default function DashboardShell({
 
         if (shouldFetchPresentationData && hasRdConfigured && activeClientUsesManualCrm) {
           if (!cancelled) {
-            setRdSummary(buildManualCrmSummary(activeClient?.manualCrmSummary || {}, insights))
+            setRdSummary(buildManualCrmSummary(activeClient?.manualCrmSummary || {}, resolvedMetaSummary))
             setPreviousRdSummary(null)
           }
         } else if (shouldFetchPresentationData && hasRdConfigured) {
@@ -8491,7 +8495,6 @@ export default function DashboardShell({
     activeIntegrations.rdStationToken,
     activeClientUsesManualCrm,
     activeClient?.manualCrmSummary,
-    insights,
     activeClient?.googleSheetsUrl,
     activeClient?.googleSheetsHeaderRow,
     activeClient?.googleSheetsStatusColumn,
