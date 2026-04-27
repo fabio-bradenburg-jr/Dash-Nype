@@ -1196,19 +1196,19 @@ export async function GET(request) {
         const sourceMatchesFilter = !hasLeadSourceFilter || normalizedLeadSources.has(normalizeLabel(sourceLabel))
         const stageLabel = getStageKey(deal)
         const stageSequence = stageSequenceMap.get(normalizeLabel(stageLabel))
-        const createdOpportunityInRange = contactCreatedInRange || dealCreatedInRange
+        const enteredPipelineInRange = dealCreatedInRange || dealMovedInRange
         const createdLeadInRange = contactCreatedInRange && sourceMatchesFilter
         const shouldCountWonByClosingDate = type === 'won' && dealClosedInRange
         const shouldCountWonByCreationDate =
           type === 'won' &&
-          createdLeadInRange &&
+          enteredPipelineInRange &&
+          sourceMatchesFilter &&
           dealClosedInRange
         const shouldCountWonFromPreviousCohort =
           type === 'won' &&
           dealClosedInRange &&
           sourceMatchesFilter &&
-          Boolean(contactCreatedAt) &&
-          !contactCreatedInRange
+          !enteredPipelineInRange
         const shouldCountLostByClosingDate = type === 'lost' && dealClosedInRange
         const shouldCountOpenByMovementDate = type === 'open' && dealMovedInRange
         const hasReachedQualifiedStage = hasQualifiedStageFilter
@@ -1242,7 +1242,7 @@ export async function GET(request) {
           accumulator.stageStats[stageLabel].totalValue += amount
         }
 
-        if ((dealMovedInRange || dealCreatedInRange) && sourceMatchesFilter) {
+        if (enteredPipelineInRange && sourceMatchesFilter) {
           accumulator.createdDeals += 1
 
           if (hasReachedQualifiedStage || type === 'won') {
@@ -1256,7 +1256,7 @@ export async function GET(request) {
           dealCreatedAt?.toISOString?.() || dealClosedAt?.toISOString?.() || stageLabel
         )
 
-        if (createdOpportunityInRange && sourceMatchesFilter && dealKey) {
+        if (enteredPipelineInRange && sourceMatchesFilter && dealKey) {
           accumulator.createdPeriodOpportunityDeals.add(dealKey)
         }
 
@@ -1264,7 +1264,7 @@ export async function GET(request) {
           accumulator.contactsWithQualifiedDeals.add(relatedContactKey)
         }
 
-        if (createdOpportunityInRange && sourceMatchesFilter && (hasReachedQualifiedStage || type === 'won') && dealKey) {
+        if (enteredPipelineInRange && sourceMatchesFilter && (hasReachedQualifiedStage || type === 'won') && dealKey) {
           accumulator.createdPeriodQualifiedDeals.add(dealKey)
         }
 
@@ -1328,7 +1328,7 @@ export async function GET(request) {
           accumulator.closedDeals += 1
         }
 
-        if (type === 'lost' && createdOpportunityInRange && sourceMatchesFilter) {
+        if (type === 'lost' && enteredPipelineInRange && sourceMatchesFilter) {
           if (dealKey) {
             accumulator.createdPeriodLostDeals.add(dealKey)
           }
