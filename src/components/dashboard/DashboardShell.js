@@ -17627,37 +17627,6 @@ export default function DashboardShell({
                       </section>
                     )}
 
-                    {!!rdSummary?.stageRanking?.length && (
-                      <section className="glass-panel grouped-results">
-                        <div className="section-header section-header-stack">
-                          <div>
-                            <h2>Colunas do pipeline</h2>
-                            <p className="chart-subtitle">Quantidade de cards e valor por coluna do pipeline dentro do período selecionado.</p>
-                          </div>
-                        </div>
-
-                        <div className="pipeline-columns-grid">
-                          {rdSummary.stageRanking.map((stage) => (
-                            <div key={stage.label} className="pipeline-column-card glass-item">
-                              <div>
-                                <strong>{stage.label}</strong>
-                                <span>{formatNumber(stage.deals || 0)} card(s)</span>
-                              </div>
-                              <div className="pipeline-column-metrics">
-                                <div>
-                                  <small>Valor na coluna</small>
-                                  <b>{formatCurrency(stage.totalValue || 0)}</b>
-                                </div>
-                                <div>
-                                  <small>Em aberto</small>
-                                  <span>{formatNumber(stage.openDeals || 0)}</span>
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </section>
-                    )}
                   </section>
                 )}
               </>
