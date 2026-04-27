@@ -1256,24 +1256,16 @@ export async function GET(request) {
           dealCreatedAt?.toISOString?.() || dealClosedAt?.toISOString?.() || stageLabel
         )
 
-        if (createdOpportunityInRange && sourceMatchesFilter) {
-          if (relatedContactKey) {
-            accumulator.createdPeriodOpportunityContacts.add(relatedContactKey)
-          } else if (dealKey) {
-            accumulator.createdPeriodOpportunityContacts.add(dealKey)
-          }
+        if (createdOpportunityInRange && sourceMatchesFilter && dealKey) {
+          accumulator.createdPeriodOpportunityDeals.add(dealKey)
         }
 
         if ((dealMovedInRange || dealCreatedInRange) && (contactCreatedInRange || contactMovedInRange) && relatedContactKey && sourceMatchesFilter && (hasReachedQualifiedStage || type === 'won')) {
           accumulator.contactsWithQualifiedDeals.add(relatedContactKey)
         }
 
-        if (createdOpportunityInRange && sourceMatchesFilter && (hasReachedQualifiedStage || type === 'won')) {
-          if (relatedContactKey) {
-            accumulator.createdPeriodQualifiedContacts.add(relatedContactKey)
-          } else if (dealCreatedInRange && dealKey) {
-            accumulator.createdPeriodQualifiedContacts.add(dealKey)
-          }
+        if (createdOpportunityInRange && sourceMatchesFilter && (hasReachedQualifiedStage || type === 'won') && dealKey) {
+          accumulator.createdPeriodQualifiedDeals.add(dealKey)
         }
 
         if ((dealMovedInRange || dealCreatedInRange) && (contactCreatedInRange || contactMovedInRange) && relatedContactKey && sourceMatchesFilter) {
@@ -1285,10 +1277,8 @@ export async function GET(request) {
         }
 
         if (shouldCountWonByCreationDate) {
-          if (relatedContactKey) {
-            accumulator.createdPeriodWonContacts.add(relatedContactKey)
-          } else if (dealKey) {
-            accumulator.createdPeriodWonContacts.add(dealKey)
+          if (dealKey) {
+            accumulator.createdPeriodWonDeals.add(dealKey)
           }
           accumulator.createdPeriodWonRevenue += amount
         }
@@ -1339,10 +1329,8 @@ export async function GET(request) {
         }
 
         if (type === 'lost' && createdOpportunityInRange && sourceMatchesFilter) {
-          if (relatedContactKey) {
-            accumulator.createdPeriodLostContacts.add(relatedContactKey)
-          } else if (dealKey) {
-            accumulator.createdPeriodLostContacts.add(dealKey)
+          if (dealKey) {
+            accumulator.createdPeriodLostDeals.add(dealKey)
           }
         }
 
@@ -1388,26 +1376,20 @@ export async function GET(request) {
         contactsWithDeals: new Set(),
         contactsWithQualifiedDeals: new Set(),
         contactsWithWonDeals: new Set(),
-        createdPeriodOpportunityContacts: new Set(),
-        createdPeriodQualifiedContacts: new Set(),
-        createdPeriodWonContacts: new Set(),
-        createdPeriodLostContacts: new Set(),
+        createdPeriodOpportunityDeals: new Set(),
+        createdPeriodQualifiedDeals: new Set(),
+        createdPeriodWonDeals: new Set(),
+        createdPeriodLostDeals: new Set(),
       }
     )
 
     const leadCount = contactsForSelectedPipeline.length
     const leadCountInPeriod = contactsCreatedInPeriod.length
     const leadCountInPeriodBySource = contactsCreatedInPeriodBySource.length
-    const opportunityKeys = new Set(
-      contactsCreatedInPeriodBySource.map((contact) => getContactKey(contact)).filter(Boolean)
-    )
-    summary.createdPeriodOpportunityContacts.forEach((key) => {
-      opportunityKeys.add(key)
-    })
-    const opportunityCount = opportunityKeys.size
-    const qualifiedOpportunityCount = summary.createdPeriodQualifiedContacts.size
-    const wonOpportunityCount = summary.createdPeriodWonContacts.size
-    const lostOpportunityCount = summary.createdPeriodLostContacts.size
+    const opportunityCount = summary.createdPeriodOpportunityDeals.size
+    const qualifiedOpportunityCount = summary.createdPeriodQualifiedDeals.size
+    const wonOpportunityCount = summary.createdPeriodWonDeals.size
+    const lostOpportunityCount = summary.createdPeriodLostDeals.size
     const leadRateBase = opportunityCount
     const qualifiedRateBase = qualifiedOpportunityCount
     const avgTicketWonByCreation = wonOpportunityCount > 0 ? summary.createdPeriodWonRevenue / wonOpportunityCount : 0

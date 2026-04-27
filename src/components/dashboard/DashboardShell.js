@@ -9243,6 +9243,11 @@ export default function DashboardShell({
 
     return `${formatNumber(allWonInRange)} negociações ganhas reconhecidas no período selecionado.`
   }, [rdSummary])
+  const crmLeadMetaLeads = leads || 0
+  const crmLeadMetaMessages = messages || 0
+  const crmLeadCrmRegistrations = rdSummary?.contactsInPeriod || 0
+  const crmLeadTotal = crmLeadMetaLeads + crmLeadMetaMessages + crmLeadCrmRegistrations
+  const crmLeadBreakdownLabel = `Meta leads ${formatNumber(crmLeadMetaLeads)} • Meta mensagens ${formatNumber(crmLeadMetaMessages)} • CRM ${formatNumber(crmLeadCrmRegistrations)}`
   const rdFinalSalesCount = (rdSummary?.wonOpportunityCount || 0) + (rdSummary?.wonDealsFromPreviousCohorts || 0)
   const rdFinalRevenue = (rdSummary?.wonOpportunityRevenue || 0) + (rdSummary?.wonRevenueFromPreviousCohorts || 0)
   const rdFinalAvgTicket = rdFinalSalesCount > 0 ? rdFinalRevenue / rdFinalSalesCount : 0
@@ -9962,6 +9967,10 @@ export default function DashboardShell({
     }),
     [previousInsights, previousCustomMetrics]
   )
+  const previousCrmLeadTotal =
+    (previousMetaDashboardMetricValues.leads || 0)
+    + (previousMetaDashboardMetricValues.messages || 0)
+    + (previousRdSummary?.contactsInPeriod || 0)
   const metaDashboardMetricCards = useMemo(
     () =>
       draftMetaDashboardMetricLayouts
@@ -10615,20 +10624,59 @@ export default function DashboardShell({
     }
   }, [activeMetaResultDrilldownConfig, metaResultComparisonSeries])
   const rdQualificationKpis = [
-    { key: 'opportunityCount', title: 'Oportunidades', value: formatNumber(rdSummary?.opportunityCount || 0), rawValue: rdSummary?.opportunityCount || 0, type: 'number', icon: 'bx-bulb', tone: 'blue' },
-    { key: 'qualifiedOpportunityCount', title: 'Qualificados', value: formatNumber(rdSummary?.qualifiedOpportunityCount || 0), rawValue: rdSummary?.qualifiedOpportunityCount || 0, type: 'number', icon: 'bx-filter-alt', tone: 'emerald' },
+    {
+      key: 'leadCount',
+      title: 'Leads',
+      value: formatNumber(crmLeadTotal),
+      rawValue: crmLeadTotal,
+      type: 'number',
+      icon: 'bx-user-plus',
+      tone: 'blue',
+      detail: crmLeadBreakdownLabel,
+      trend: buildMetricTrend('leadCount', crmLeadTotal, previousCrmLeadTotal, 'number'),
+    },
+    {
+      key: 'opportunityCount',
+      title: 'Oportunidades',
+      value: formatNumber(rdSummary?.opportunityCount || 0),
+      rawValue: rdSummary?.opportunityCount || 0,
+      type: 'number',
+      icon: 'bx-bulb',
+      tone: 'blue',
+      trend: buildMetricTrend('opportunityCount', rdSummary?.opportunityCount || 0, previousRdDashboardMetricValues.opportunityCount, 'number'),
+    },
+    {
+      key: 'qualifiedOpportunityCount',
+      title: 'Qualificados',
+      value: formatNumber(rdSummary?.qualifiedOpportunityCount || 0),
+      rawValue: rdSummary?.qualifiedOpportunityCount || 0,
+      type: 'number',
+      icon: 'bx-filter-alt',
+      tone: 'emerald',
+      trend: buildMetricTrend('qualifiedOpportunityCount', rdSummary?.qualifiedOpportunityCount || 0, previousRdDashboardMetricValues.qualifiedOpportunityCount, 'number'),
+    },
+    {
+      key: 'rdFinalSalesCount',
+      title: 'Vendas',
+      value: formatNumber(rdFinalSalesCount),
+      rawValue: rdFinalSalesCount,
+      type: 'number',
+      icon: 'bx-badge-check',
+      tone: 'emerald',
+      trend: buildMetricTrend('rdFinalSalesCount', rdFinalSalesCount, previousRdFinalSalesCount, 'number'),
+    },
   ]
   const rdCurrentHarvestKpis = [
-    { key: 'wonOpportunityCount', title: 'Conversões da safra atual', value: formatNumber(rdSummary?.wonOpportunityCount || 0), rawValue: rdSummary?.wonOpportunityCount || 0, type: 'number', icon: 'bx-badge-check', tone: 'emerald' },
-    { key: 'wonOpportunityRevenue', title: 'Valor vendido da safra atual', value: formatCurrency(rdSummary?.wonOpportunityRevenue || 0), rawValue: rdSummary?.wonOpportunityRevenue || 0, type: 'currency', icon: 'bx-wallet-alt', tone: 'orange' },
+    { key: 'wonOpportunityCount', title: 'Conversões da safra atual', value: formatNumber(rdSummary?.wonOpportunityCount || 0), rawValue: rdSummary?.wonOpportunityCount || 0, type: 'number', icon: 'bx-badge-check', tone: 'emerald', trend: buildMetricTrend('wonOpportunityCount', rdSummary?.wonOpportunityCount || 0, previousRdDashboardMetricValues.wonOpportunityCount, 'number') },
+    { key: 'wonOpportunityRevenue', title: 'Valor vendido da safra atual', value: formatCurrency(rdSummary?.wonOpportunityRevenue || 0), rawValue: rdSummary?.wonOpportunityRevenue || 0, type: 'currency', icon: 'bx-wallet-alt', tone: 'orange', trend: buildMetricTrend('wonOpportunityRevenue', rdSummary?.wonOpportunityRevenue || 0, previousRdDashboardMetricValues.wonOpportunityRevenue, 'currency') },
   ]
   const rdPreviousHarvestKpis = [
-    { key: 'wonDealsFromPreviousCohorts', title: 'Conversões de safras anteriores', value: formatNumber(rdSummary?.wonDealsFromPreviousCohorts || 0), rawValue: rdSummary?.wonDealsFromPreviousCohorts || 0, type: 'number', icon: 'bx-history', tone: 'blue' },
-    { key: 'wonRevenueFromPreviousCohorts', title: 'Faturamento de safras anteriores fechadas', value: formatCurrency(rdSummary?.wonRevenueFromPreviousCohorts || 0), rawValue: rdSummary?.wonRevenueFromPreviousCohorts || 0, type: 'currency', icon: 'bx-coin-stack', tone: 'orange' },
+    { key: 'wonDealsFromPreviousCohorts', title: 'Conversões de safras anteriores', value: formatNumber(rdSummary?.wonDealsFromPreviousCohorts || 0), rawValue: rdSummary?.wonDealsFromPreviousCohorts || 0, type: 'number', icon: 'bx-history', tone: 'blue', trend: buildMetricTrend('wonDealsFromPreviousCohorts', rdSummary?.wonDealsFromPreviousCohorts || 0, previousRdDashboardMetricValues.wonDealsFromPreviousCohorts, 'number') },
+    { key: 'wonRevenueFromPreviousCohorts', title: 'Valor vendido de safras anteriores', value: formatCurrency(rdSummary?.wonRevenueFromPreviousCohorts || 0), rawValue: rdSummary?.wonRevenueFromPreviousCohorts || 0, type: 'currency', icon: 'bx-coin-stack', tone: 'orange', trend: buildMetricTrend('wonRevenueFromPreviousCohorts', rdSummary?.wonRevenueFromPreviousCohorts || 0, previousRdDashboardMetricValues.wonRevenueFromPreviousCohorts, 'currency') },
   ]
   const rdFinalKpis = [
-    { key: 'rdFinalRevenue', title: 'Faturamento total do resultado final', value: formatCurrency(rdFinalRevenue), rawValue: rdFinalRevenue, type: 'currency', icon: 'bx-wallet-alt', tone: 'orange' },
-    { key: 'wonRoas', title: 'ROAS comercial', value: formatMultiplier(rdCommercialRoas), rawValue: rdCommercialRoas, type: 'multiplier', icon: 'bx-line-chart', tone: 'blue' },
+    { key: 'rdFinalRevenue', title: 'Faturamento total', value: formatCurrency(rdFinalRevenue), rawValue: rdFinalRevenue, type: 'currency', icon: 'bx-wallet-alt', tone: 'orange', trend: buildMetricTrend('rdFinalRevenue', rdFinalRevenue, previousRdFinalRevenue, 'currency') },
+    { key: 'wonRoas', title: 'ROAS comercial', value: formatMultiplier(rdCommercialRoas), rawValue: rdCommercialRoas, type: 'multiplier', icon: 'bx-line-chart', tone: 'blue', trend: buildMetricTrend('wonRoas', rdCommercialRoas, previousRdCommercialRoas, 'multiplier') },
   ]
   const metaMediaKpisWithTrend = metaMediaKpis.map((metric) => ({
     ...metric,
@@ -10653,22 +10701,6 @@ export default function DashboardShell({
     () => [...metaFixedDashboardMetricCards, ...metaExtraDashboardMetricCards],
     [metaExtraDashboardMetricCards, metaFixedDashboardMetricCards]
   )
-  const rdQualificationKpisWithTrend = rdQualificationKpis.map((metric) => ({
-    ...metric,
-    trend: buildMetricTrend(metric.key, metric.rawValue, previousRdDashboardMetricValues[metric.key], metric.type),
-  }))
-  const rdCurrentHarvestKpisWithTrend = rdCurrentHarvestKpis.map((metric) => ({
-    ...metric,
-    trend: buildMetricTrend(metric.key, metric.rawValue, previousRdDashboardMetricValues[metric.key], metric.type),
-  }))
-  const rdPreviousHarvestKpisWithTrend = rdPreviousHarvestKpis.map((metric) => ({
-    ...metric,
-    trend: buildMetricTrend(metric.key, metric.rawValue, previousRdDashboardMetricValues[metric.key], metric.type),
-  }))
-  const rdFinalKpisWithTrend = rdFinalKpis.map((metric) => ({
-    ...metric,
-    trend: buildMetricTrend(metric.key, metric.rawValue, previousRdDashboardMetricValues[metric.key], metric.type),
-  }))
   const userFirstName = (user?.user_metadata?.full_name || user?.email || 'por aí').split(' ')[0]
   const currentHour = new Date().getHours()
   const assistantGreeting =
@@ -10734,6 +10766,9 @@ export default function DashboardShell({
             </div>
           </div>
           <div className="kpi-value">{metric.value}</div>
+          {metric.detail ? (
+            <div className="kpi-detail-text">{metric.detail}</div>
+          ) : null}
           <div className={`kpi-trend ${metric.trend?.tone || 'neutral'}`}>
             <i className={`bx ${metric.trend?.icon || 'bx-check-circle'}`}></i>
             <span>{metric.trend?.label || 'Atualizado conforme a integração configurada.'}</span>
@@ -17490,7 +17525,7 @@ export default function DashboardShell({
                               <h3>Base comercial</h3>
                               <p>Leitura inicial da safra atual com oportunidades geradas e leads já qualificados no período.</p>
                             </div>
-                            {renderFixedKpiGrid(rdQualificationKpisWithTrend)}
+                            {renderFixedKpiGrid(rdQualificationKpis)}
                           </section>
 
                           <section className="crm-result-group">
@@ -17498,7 +17533,7 @@ export default function DashboardShell({
                               <h3>Safra atual</h3>
                               <p>Conversões e valor vendido apenas da safra criada e fechada dentro do período selecionado.</p>
                             </div>
-                            {renderFixedKpiGrid(rdCurrentHarvestKpisWithTrend)}
+                            {renderFixedKpiGrid(rdCurrentHarvestKpis)}
                           </section>
 
                           <section className="crm-result-group">
@@ -17506,7 +17541,7 @@ export default function DashboardShell({
                               <h3>Safras anteriores</h3>
                               <p>Conversões e valor vendido de oportunidades criadas antes do período, mas fechadas agora.</p>
                             </div>
-                            {renderFixedKpiGrid(rdPreviousHarvestKpisWithTrend)}
+                            {renderFixedKpiGrid(rdPreviousHarvestKpis)}
                           </section>
 
                           <section className="crm-result-group">
@@ -17514,7 +17549,7 @@ export default function DashboardShell({
                               <h3>Resultado final</h3>
                               <p>Consolidado final com o faturamento total fechado no período e o ROAS comercial sobre o investimento em mídia.</p>
                             </div>
-                            {renderFixedKpiGrid(rdFinalKpisWithTrend)}
+                            {renderFixedKpiGrid(rdFinalKpis)}
                           </section>
                         </div>
 

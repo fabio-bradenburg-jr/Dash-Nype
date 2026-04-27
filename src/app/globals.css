@@ -930,6 +930,13 @@ textarea:focus {
     letter-spacing: -0.5px;
 }
 
+.kpi-detail-text {
+    margin: 6px 0 10px;
+    font-size: 12px;
+    line-height: 1.45;
+    color: var(--text-muted);
+}
+
 .kpi-trend {
     font-size: 12px;
     font-weight: 500;
