@@ -137,6 +137,27 @@ async function fetchPagedAgendorCollection(path, preferredKey, token, errorMessa
   return collectedItems
 }
 
+async function fetchAgendorCollectionOnce(path, preferredKey, token, errorMessage) {
+  const requestUrl = new URL(`https://api.agendor.com.br/v3${path}`)
+  requestUrl.searchParams.set('limit', '100')
+  requestUrl.searchParams.set('page', '1')
+
+  const response = await fetchWithTimeout(requestUrl.toString(), {
+    headers: {
+      Authorization: `Token ${token}`,
+      Accept: 'application/json',
+    },
+    cache: 'no-store',
+  })
+
+  const payload = await response.json().catch(() => ({}))
+  if (!response.ok) {
+    throw new Error(payload?.message || payload?.error || errorMessage)
+  }
+
+  return readAgendorCollection(payload, preferredKey)
+}
+
 function getDealPipelineInfo(deal) {
   const pipelineObjects = [
     deal?.pipeline,
@@ -427,7 +448,7 @@ export async function GET(request) {
 
     const deals = provider === 'agendor'
       ? (() => Promise.all([
-        fetchPagedAgendorCollection('/deal_stages', 'dealStages', token, 'Não foi possível consultar as etapas do Agendor.'),
+        fetchAgendorCollectionOnce('/deal_stages', 'dealStages', token, 'Não foi possível consultar as etapas do Agendor.'),
         fetchPagedAgendorCollection('/deals', 'deals', token, 'Não foi possível consultar as negociações do Agendor.'),
       ]).then(([dealStages, rawDeals]) => {
         const stagesById = new Map(dealStages.map(normalizeAgendorStage).filter(Boolean).map((stage) => [stage.id, stage]))

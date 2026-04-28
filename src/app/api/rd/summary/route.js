@@ -120,6 +120,27 @@ async function fetchPagedAgendorCollection(path, preferredKey, token, errorMessa
   return collectedItems
 }
 
+async function fetchAgendorCollectionOnce(path, preferredKey, token, errorMessage) {
+  const requestUrl = new URL(`https://api.agendor.com.br/v3${path}`)
+  requestUrl.searchParams.set('limit', '100')
+  requestUrl.searchParams.set('page', '1')
+
+  const response = await fetchWithTimeout(requestUrl.toString(), {
+    headers: {
+      Authorization: `Token ${token}`,
+      Accept: 'application/json',
+    },
+    cache: 'no-store',
+  })
+
+  const payload = await response.json().catch(() => ({}))
+  if (!response.ok) {
+    throw new Error(payload?.message || payload?.error || errorMessage)
+  }
+
+  return readAgendorCollection(payload, preferredKey)
+}
+
 function getAgendorRawDealActivityDate(rawDeal) {
   const candidates = [
     rawDeal?.updatedAt,
@@ -1050,7 +1071,7 @@ export async function GET(request) {
     const [contacts, deals] = provider === 'agendor'
       ? await Promise.all([
         Promise.all([
-          fetchPagedAgendorCollection('/deal_stages', 'dealStages', token, 'Não foi possível consultar as etapas do Agendor.'),
+          fetchAgendorCollectionOnce('/deal_stages', 'dealStages', token, 'Não foi possível consultar as etapas do Agendor.'),
           fetchAgendorDealsForSummary(token, selectedRange),
         ]).then(([dealStages, rawDeals]) => {
           const contactsMap = new Map()
