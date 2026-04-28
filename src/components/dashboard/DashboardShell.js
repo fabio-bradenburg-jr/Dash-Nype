@@ -16400,18 +16400,7 @@ export default function DashboardShell({
 
         {activeTab === 'apresentacao' && (
           <div ref={dashboardRef}>
-            <section className="glass-panel hero-panel">
-              <div className="hero-copy">
-                {activeClient?.logoUrl && (
-                  <div className="hero-logo-wrap">
-                    <img src={activeClient.logoUrl} alt={`Logo ${activeClient.name}`} className="hero-logo" />
-                  </div>
-                )}
-                <span className="hero-badge" style={{ color: currentTheme.main, borderColor: currentTheme.main }}>
-                  {`Dashboard ${activeClient?.name || 'do cliente'}`}
-                </span>
-                <h2>{activeClient?.name || 'Selecione um cliente'}</h2>
-              </div>
+            <section className="glass-panel hero-panel hero-panel-controls-only">
               <div className="hero-meta">
                 {!hasAnyPresentationData ? (
                   <div className="hero-stat hero-stat-empty">
@@ -23160,6 +23149,10 @@ export default function DashboardShell({
           border-radius: 24px;
         }
 
+        .hero-panel-controls-only {
+          grid-template-columns: 1fr;
+        }
+
         .hero-copy {
           display: flex;
           flex-direction: column;
@@ -24494,7 +24487,7 @@ export default function DashboardShell({
         :root[data-ui-mode='light'] .operations-meta-card,
         :root[data-ui-mode='light'] .operations-filter-card,
         :root[data-ui-mode='light'] .operations-spotlight-card {
-          background: linear-gradient(180deg, rgba(250, 250, 252, 0.98), rgba(244, 246, 250, 0.98)) !important;
+          background: linear-gradient(180deg, rgba(252, 252, 253, 0.99), rgba(247, 249, 252, 0.99)) !important;
           border-color: rgba(15, 23, 42, 0.08) !important;
         }
 
@@ -24540,6 +24533,14 @@ export default function DashboardShell({
         :root[data-ui-mode='light'] .hero-select,
         :root[data-ui-mode='light'] .hero-select * {
           color: #334155 !important;
+        }
+
+        :root[data-ui-mode='light'] .hero-stat {
+          box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04) !important;
+        }
+
+        :root[data-ui-mode='light'] .hero-select {
+          background: rgba(255, 255, 255, 0.985) !important;
         }
 
         :root:not([data-ui-mode='light']) .hero-stat strong,
