@@ -199,6 +199,7 @@ async function fetchJsonWithTimeout(resource, options = {}, timeoutMs = 20000) {
 
   try {
     const response = await fetch(resource, {
+      cache: 'no-store',
       ...options,
       signal: controller.signal,
     })
@@ -2921,6 +2922,7 @@ export default function DashboardShell({
   const lastMetaStructureFetchKeyRef = useRef('')
   const lastRdPipelinesFetchKeyRef = useRef('')
   const lastDashboardFetchKeyRef = useRef('')
+  const lastDashboardFetchAtRef = useRef(0)
   const lastBreakdownsFetchKeyRef = useRef('')
   const lastGoogleSheetsFetchKeyRef = useRef('')
   const selectedQualifiedStagesRef = useRef([])
@@ -4970,6 +4972,8 @@ export default function DashboardShell({
         setClientCustomTabs(Array.isArray(state.clientCustomTabs) ? state.clientCustomTabs : [])
         setClientTabOverrides(Array.isArray(state.clientTabOverrides) ? state.clientTabOverrides : [])
         setTeamProfiles(Array.isArray(state.teamProfiles) ? state.teamProfiles : [])
+        lastDashboardFetchKeyRef.current = ''
+        lastDashboardFetchAtRef.current = 0
         setActiveClientId(initialActiveClientId || initialClientRecord?.id || state.activeClientId || mergedServerClients[0]?.id || '')
       } catch (error) {
         console.error('Erro ao sincronizar estado do servidor:', error)
@@ -8133,11 +8137,16 @@ export default function DashboardShell({
         mondayOwnerFilter,
       })
 
-      if (lastDashboardFetchKeyRef.current === fetchKey) {
+      const now = Date.now()
+      if (
+        lastDashboardFetchKeyRef.current === fetchKey &&
+        now - lastDashboardFetchAtRef.current < 15000
+      ) {
         return
       }
 
       lastDashboardFetchKeyRef.current = fetchKey
+      lastDashboardFetchAtRef.current = now
       setIsLoading(true)
       setErrorMessage('')
 
