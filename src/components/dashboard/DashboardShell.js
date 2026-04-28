@@ -12280,37 +12280,38 @@ export default function DashboardShell({
         )}
 
         <header className="header" style={{ alignItems: 'flex-start' }}>
-          <div className="page-title">
-            <h1>
-              {activeTab === 'home' && 'Agency Hub'}
-              {activeTab === 'clientes' && 'Global Client Dashboard'}
-              {activeTab === 'operacao' && 'Operations Overview'}
-              {activeTab === 'produtos' && 'Offer Portfolio'}
-              {activeTab === 'apresentacao' && `${activeClient?.name || 'Client'} Dashboard`}
-              {activeTab === 'contexto' && 'Retention Intelligence'}
-              {activeTab === 'assistant' && assistantGreeting}
-              {activeTab === 'calendar' && 'Operations Calendar'}
-              {activeTab === 'clickup' && 'ClickUp Operations'}
-              {activeTab === 'monday' && 'Board Operations'}
-              {activeTab === 'usuarios' && (canManageUsers ? 'Team Performance' : 'My Performance')}
-            </h1>
-            {activeTab !== 'assistant' && (
-              <p>
-                {activeTab === 'home' && 'Sua visão principal da agência com alertas, clientes em risco e atalhos para decisões rápidas.'}
-                {activeTab === 'clientes' && 'Gerencie sua carteira em uma leitura mais executiva, com health, churn, ROI e contexto operacional por cliente.'}
-                {activeTab === 'operacao' && 'Acompanhe demandas, responsáveis, prioridades e gargalos em uma visão operacional mais clara e moderna.'}
-                {activeTab === 'produtos' && 'Organize ofertas, linhas de receita e pacotes para padronizar a operação comercial da agência.'}
-                {activeTab === 'contexto' && 'Centralize health score, churn risk, alertas e sinais de desalinhamento para priorizar retenção.'}
-                {activeTab === 'calendar' && 'Acompanhe a agenda operacional e os próximos pontos de contato sem sair do hub principal.'}
-                {activeTab === 'clickup' && 'Monitore filas, responsáveis e execução do ClickUp com leitura consolidada da operação.'}
-                {activeTab === 'monday' && 'Entenda carga, status, throughput e gargalos dos boards em uma leitura executiva da operação.'}
-                {activeTab === 'usuarios' && (canManageUsers ? 'Acompanhe performance, escopo, metas e evolução do time em um dashboard unificado.' : 'Acompanhe sua evolução, metas e contexto operacional dentro do hub da agência.')}
-              </p>
-            )}
-            {activeTab === 'assistant' && (
-              <p className="assistant-header-prompt">{assistantGreetingPrompt}</p>
-            )}
-          </div>
+          {activeTab !== 'apresentacao' && (
+            <div className="page-title">
+              <h1>
+                {activeTab === 'home' && 'Agency Hub'}
+                {activeTab === 'clientes' && 'Global Client Dashboard'}
+                {activeTab === 'operacao' && 'Operations Overview'}
+                {activeTab === 'produtos' && 'Offer Portfolio'}
+                {activeTab === 'contexto' && 'Retention Intelligence'}
+                {activeTab === 'assistant' && assistantGreeting}
+                {activeTab === 'calendar' && 'Operations Calendar'}
+                {activeTab === 'clickup' && 'ClickUp Operations'}
+                {activeTab === 'monday' && 'Board Operations'}
+                {activeTab === 'usuarios' && (canManageUsers ? 'Team Performance' : 'My Performance')}
+              </h1>
+              {activeTab !== 'assistant' && (
+                <p>
+                  {activeTab === 'home' && 'Sua visão principal da agência com alertas, clientes em risco e atalhos para decisões rápidas.'}
+                  {activeTab === 'clientes' && 'Gerencie sua carteira em uma leitura mais executiva, com health, churn, ROI e contexto operacional por cliente.'}
+                  {activeTab === 'operacao' && 'Acompanhe demandas, responsáveis, prioridades e gargalos em uma visão operacional mais clara e moderna.'}
+                  {activeTab === 'produtos' && 'Organize ofertas, linhas de receita e pacotes para padronizar a operação comercial da agência.'}
+                  {activeTab === 'contexto' && 'Centralize health score, churn risk, alertas e sinais de desalinhamento para priorizar retenção.'}
+                  {activeTab === 'calendar' && 'Acompanhe a agenda operacional e os próximos pontos de contato sem sair do hub principal.'}
+                  {activeTab === 'clickup' && 'Monitore filas, responsáveis e execução do ClickUp com leitura consolidada da operação.'}
+                  {activeTab === 'monday' && 'Entenda carga, status, throughput e gargalos dos boards em uma leitura executiva da operação.'}
+                  {activeTab === 'usuarios' && (canManageUsers ? 'Acompanhe performance, escopo, metas e evolução do time em um dashboard unificado.' : 'Acompanhe sua evolução, metas e contexto operacional dentro do hub da agência.')}
+                </p>
+              )}
+              {activeTab === 'assistant' && (
+                <p className="assistant-header-prompt">{assistantGreetingPrompt}</p>
+              )}
+            </div>
+          )}
 
           <div className="header-actions header-actions-wrap">
             {activeTab === 'apresentacao' && (
@@ -16400,7 +16401,18 @@ export default function DashboardShell({
 
         {activeTab === 'apresentacao' && (
           <div ref={dashboardRef}>
-            <section className="glass-panel hero-panel hero-panel-controls-only">
+            <section className="glass-panel hero-panel">
+              <div className="hero-copy">
+                {activeClient?.logoUrl && (
+                  <div className="hero-logo-wrap">
+                    <img src={activeClient.logoUrl} alt={`Logo ${activeClient.name}`} className="hero-logo" />
+                  </div>
+                )}
+                <span className="hero-badge" style={{ color: currentTheme.main, borderColor: currentTheme.main }}>
+                  {`Dashboard ${activeClient?.name || 'do cliente'}`}
+                </span>
+                <h2>{activeClient?.name || 'Selecione um cliente'}</h2>
+              </div>
               <div className="hero-meta">
                 {!hasAnyPresentationData ? (
                   <div className="hero-stat hero-stat-empty">
