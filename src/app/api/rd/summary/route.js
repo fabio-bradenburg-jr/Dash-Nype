@@ -120,6 +120,87 @@ async function fetchPagedAgendorCollection(path, preferredKey, token, errorMessa
   return collectedItems
 }
 
+function getAgendorRawDealActivityDate(rawDeal) {
+  const candidates = [
+    rawDeal?.updatedAt,
+    rawDeal?.updated_at,
+    rawDeal?.endTime,
+    rawDeal?.lastInteractionAt,
+    rawDeal?.finishedAt,
+    rawDeal?.finished_at,
+    rawDeal?.closedAt,
+    rawDeal?.closed_at,
+    rawDeal?.createdAt,
+    rawDeal?.created_at,
+    rawDeal?.startTime,
+  ]
+
+  for (const candidate of candidates) {
+    const parsed = parseDateValue(candidate)
+    if (parsed) return parsed
+  }
+
+  return null
+}
+
+async function fetchAgendorDealsForSummary(token, selectedRange) {
+  const collectedItems = []
+  let page = 1
+  let totalCount = null
+  const rangeStart = selectedRange?.start || null
+
+  while (page <= 200) {
+    const requestUrl = new URL('https://api.agendor.com.br/v3/deals')
+    requestUrl.searchParams.set('limit', '100')
+    requestUrl.searchParams.set('page', String(page))
+
+    const response = await fetchWithTimeout(requestUrl.toString(), {
+      headers: {
+        Authorization: `Token ${token}`,
+        Accept: 'application/json',
+      },
+      cache: 'no-store',
+    })
+
+    const payload = await response.json().catch(() => ({}))
+    if (!response.ok) {
+      throw new Error(payload?.message || payload?.error || 'Não foi possível consultar as negociações do Agendor.')
+    }
+
+    const currentItems = readAgendorCollection(payload, 'deals')
+    const payloadTotalCount = Number(
+      payload?.pagination?.totalCount ??
+      payload?.pagination?.total_count ??
+      payload?.meta?.totalCount ??
+      payload?.meta?.total_count ??
+      0
+    )
+    if (Number.isFinite(payloadTotalCount) && payloadTotalCount > 0) {
+      totalCount = payloadTotalCount
+    }
+    if (!currentItems.length) break
+
+    collectedItems.push(...currentItems)
+
+    if (rangeStart) {
+      const newestActivityOnPage = currentItems.reduce((latest, deal) => {
+        const activityDate = getAgendorRawDealActivityDate(deal)
+        if (!activityDate) return latest
+        return !latest || activityDate > latest ? activityDate : latest
+      }, null)
+
+      if (newestActivityOnPage && newestActivityOnPage < rangeStart) {
+        break
+      }
+    }
+
+    if (totalCount !== null && collectedItems.length >= totalCount) break
+    page += 1
+  }
+
+  return collectedItems
+}
+
 function normalizeCollection(payload, preferredKey) {
   if (Array.isArray(payload)) return payload
   if (Array.isArray(payload?.[preferredKey])) return payload[preferredKey]
@@ -968,34 +1049,33 @@ export async function GET(request) {
 
     const [contacts, deals] = provider === 'agendor'
       ? await Promise.all([
-        fetchPagedAgendorCollection('/deals', 'deals', token, 'Não foi possível consultar as negociações do Agendor.')
-          .then((rawDeals) => {
-            const contactsMap = new Map()
-            rawDeals.forEach((deal) => {
-              const person = deal?.person && typeof deal.person === 'object' ? deal.person : deal?.contact && typeof deal.contact === 'object' ? deal.contact : {}
-              const company = deal?.company && typeof deal.company === 'object' ? deal.company : {}
-              const id = `${person.id || person.personId || company.id || company.companyId || deal.id || ''}`.trim()
-              if (!id) return
-              contactsMap.set(id, {
-                id,
-                name: `${person.name || company.name || deal.title || 'Contato Agendor'}`.trim(),
-                email: `${person.email || ''}`.trim(),
-                created_at: person.createdAt || company.createdAt || deal.createdAt || deal.created_at || '',
-                updated_at: person.updatedAt || company.updatedAt || deal.updatedAt || deal.updated_at || '',
-                custom_fields: Array.isArray(deal.customFields) ? deal.customFields : Array.isArray(deal.custom_fields) ? deal.custom_fields : [],
-                origem: `${deal.source || deal.origin || person.source || company.source || ''}`.trim(),
-              })
-            })
-            return Array.from(contactsMap.values())
-          }),
         Promise.all([
           fetchPagedAgendorCollection('/deal_stages', 'dealStages', token, 'Não foi possível consultar as etapas do Agendor.'),
-          fetchPagedAgendorCollection('/deals', 'deals', token, 'Não foi possível consultar as negociações do Agendor.'),
+          fetchAgendorDealsForSummary(token, selectedRange),
         ]).then(([dealStages, rawDeals]) => {
+          const contactsMap = new Map()
+          rawDeals.forEach((deal) => {
+            const person = deal?.person && typeof deal.person === 'object' ? deal.person : deal?.contact && typeof deal.contact === 'object' ? deal.contact : {}
+            const company = deal?.company && typeof deal.company === 'object' ? deal.company : {}
+            const id = `${person.id || person.personId || company.id || company.companyId || deal.id || ''}`.trim()
+            if (!id) return
+            contactsMap.set(id, {
+              id,
+              name: `${person.name || company.name || deal.title || 'Contato Agendor'}`.trim(),
+              email: `${person.email || ''}`.trim(),
+              created_at: person.createdAt || company.createdAt || deal.createdAt || deal.created_at || '',
+              updated_at: person.updatedAt || company.updatedAt || deal.updatedAt || deal.updated_at || '',
+              custom_fields: Array.isArray(deal.customFields) ? deal.customFields : Array.isArray(deal.custom_fields) ? deal.custom_fields : [],
+              origem: `${deal.source || deal.origin || person.source || company.source || ''}`.trim(),
+            })
+          })
           const stagesById = new Map(dealStages.map(normalizeAgendorStage).filter(Boolean).map((stage) => [stage.id, stage]))
-          return rawDeals.map((deal) => normalizeAgendorDeal(deal, stagesById)).filter(Boolean)
+          return [
+            Array.from(contactsMap.values()),
+            rawDeals.map((deal) => normalizeAgendorDeal(deal, stagesById)).filter(Boolean),
+          ]
         }),
-      ])
+      ]).then(([result]) => result)
       : await Promise.all([
         fetchPagedRdCollection(
           `https://crm.rdstation.com/api/v1/contacts?token=${encodeURIComponent(token)}&limit=200`,
