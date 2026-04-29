@@ -1,12 +1,15 @@
 import { PlatformSnapshot } from '@/lib/saas/types'
+import { LEGACY_THEME_PRESETS } from '@/lib/saas/theme-presets'
+
+const defaultLegacyTheme = LEGACY_THEME_PRESETS[0]
 
 export const demoPlatformSnapshot: PlatformSnapshot = {
   theme: {
-    primaryColor: '#0f766e',
-    accentColor: '#f97316',
-    backgroundColor: '#f8fafc',
-    buttonTextColor: '#ffffff',
-    darkMode: false,
+    primaryColor: defaultLegacyTheme.primaryColor,
+    accentColor: defaultLegacyTheme.accentColor,
+    backgroundColor: defaultLegacyTheme.backgroundColor,
+    buttonTextColor: defaultLegacyTheme.buttonTextColor,
+    darkMode: defaultLegacyTheme.darkMode,
     logoUrl: '',
     appName: 'Nype Orbit',
     appSubtitle: 'Marketing OS',

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { LEGACY_THEME_PRESETS, findLegacyThemePreset } from '@/lib/saas/theme-presets'
 import { ThemeSettings } from '@/lib/saas/types'
 
 const SAAS_THEME_STORAGE_KEY = 'nype-orbit-saas-theme'
@@ -38,6 +39,22 @@ export function ThemePanel({ initialTheme, onThemeChange, onThemeSaved }: ThemeP
     root.style.setProperty('--accent', nextTheme.accentColor)
     root.dataset.uiMode = nextTheme.darkMode ? 'dark' : 'light'
   }
+
+  function applyLegacyPreset(presetKey: string) {
+    const preset = LEGACY_THEME_PRESETS.find((item) => item.key === presetKey)
+    if (!preset) return
+
+    updateTheme({
+      ...theme,
+      primaryColor: preset.primaryColor,
+      accentColor: preset.accentColor,
+      backgroundColor: preset.backgroundColor,
+      buttonTextColor: preset.buttonTextColor,
+      darkMode: preset.darkMode,
+    })
+  }
+
+  const activeLegacyPreset = findLegacyThemePreset(theme.primaryColor)?.key || ''
 
   function handleLogoUpload(file: File | undefined) {
     if (!file) return
@@ -74,6 +91,34 @@ export function ThemePanel({ initialTheme, onThemeChange, onThemeSaved }: ThemeP
         </div>
       </CardHeader>
       <CardContent className="grid gap-4 md:grid-cols-2">
+        <div className="rounded-[28px] border border-slate-200/80 bg-slate-50/80 p-4 md:col-span-2">
+          <div className="mb-3">
+            <p className="font-semibold text-slate-900">Paletas do app antigo</p>
+            <p className="mt-1 text-sm leading-6 text-slate-500">Aplique com um clique as combinações clássicas do sistema anterior.</p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+            {LEGACY_THEME_PRESETS.map((preset) => (
+              <button
+                key={preset.key}
+                type="button"
+                onClick={() => applyLegacyPreset(preset.key)}
+                className={`rounded-[22px] border p-3 text-left transition ${
+                  activeLegacyPreset === preset.key
+                    ? 'border-slate-900 bg-white shadow-[0_14px_30px_rgba(15,23,42,0.08)]'
+                    : 'border-slate-200 bg-white/80 hover:border-slate-300 hover:bg-white'
+                }`}
+              >
+                <div className="mb-3 flex gap-2">
+                  <span className="h-8 w-8 rounded-full border border-slate-200" style={{ background: preset.primaryColor }} />
+                  <span className="h-8 w-8 rounded-full border border-slate-200" style={{ background: preset.accentColor }} />
+                  <span className="h-8 w-8 rounded-full border border-slate-200" style={{ background: preset.backgroundColor }} />
+                </div>
+                <p className="font-semibold text-slate-900">{preset.label}</p>
+                <p className="mt-1 text-xs uppercase tracking-[0.24em] text-slate-400">Tema legado</p>
+              </button>
+            ))}
+          </div>
+        </div>
         <label className="grid gap-2 text-sm font-medium text-slate-600">
           <span className="font-semibold text-slate-700">Nome do app</span>
           <input
