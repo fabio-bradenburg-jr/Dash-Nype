@@ -47,6 +47,7 @@ import { Bar, Doughnut, Line } from 'react-chartjs-2'
 import html2canvas from 'html2canvas'
 import { jsPDF } from 'jspdf'
 import { normalizeAiSettings } from '@/lib/ai-config'
+import { LEGACY_THEME_PRESETS } from '@/lib/saas/theme-presets'
 import {
   buildMetaSummaryFromCampaigns,
   campaignMatchesMetaResultFilters,
@@ -69,21 +70,18 @@ ChartJS.register(
   ArcElement
 )
 
-const THEMES = {
-  blue: { main: '#3b82f6', glow: 'rgba(59, 130, 246, 0.18)', surface: 'rgba(59, 130, 246, 0.10)' },
-  emerald: { main: '#10b981', glow: 'rgba(16, 185, 129, 0.18)', surface: 'rgba(16, 185, 129, 0.10)' },
-  orange: { main: '#f59e0b', glow: 'rgba(245, 158, 11, 0.18)', surface: 'rgba(245, 158, 11, 0.10)' },
-  rose: { main: '#f43f5e', glow: 'rgba(244, 63, 94, 0.18)', surface: 'rgba(244, 63, 94, 0.10)' },
-  slate: { main: '#38bdf8', glow: 'rgba(56, 189, 248, 0.18)', surface: 'rgba(56, 189, 248, 0.10)' },
-}
+const THEMES = Object.fromEntries(
+  LEGACY_THEME_PRESETS.map((preset) => [
+    preset.key,
+    {
+      main: preset.primaryColor,
+      glow: `${preset.primaryColor}2e`,
+      surface: `${preset.primaryColor}1a`,
+    },
+  ])
+)
 
-const THEME_LABELS = {
-  blue: 'Azul',
-  emerald: 'Esmeralda',
-  orange: 'Laranja',
-  rose: 'Rosa',
-  slate: 'Ciano',
-}
+const THEME_LABELS = Object.fromEntries(LEGACY_THEME_PRESETS.map((preset) => [preset.key, preset.label]))
 
 const AI_INSIGHT_TYPE_LABELS = {
   opportunity: 'Oportunidade',
@@ -14460,19 +14458,19 @@ export default function DashboardShell({
                             </label>
                           </div>
                           <div className="dashboard-theme-presets">
-                            {Object.entries(THEMES).map(([themeKey, theme]) => (
+                            {LEGACY_THEME_PRESETS.map((preset) => (
                               <button
-                                key={themeKey}
+                                key={preset.key}
                                 type="button"
-                                className={`dashboard-theme-preset ${activeClient.dashboardColor === themeKey ? 'active' : ''}`}
+                                className={`dashboard-theme-preset ${activeClient.dashboardColor === preset.key ? 'active' : ''}`}
                                 onClick={() => {
-                                  handleClientFieldChange('dashboardColor', themeKey)
-                                  setThemeColor(themeKey)
+                                  handleClientFieldChange('dashboardColor', preset.key)
+                                  setThemeColor(preset.key)
                                 }}
                                 disabled={!canEditActiveClient}
                               >
-                                <span className="dashboard-theme-swatch" style={{ background: theme.main }}></span>
-                                <small>{themeKey}</small>
+                                <span className="dashboard-theme-swatch" style={{ background: preset.primaryColor }}></span>
+                                <small>{preset.label}</small>
                               </button>
                             ))}
                           </div>
@@ -14529,6 +14527,22 @@ export default function DashboardShell({
                                 disabled={!canEditActiveClient}
                               />
                             </label>
+                          </div>
+                          <div className="dashboard-theme-presets">
+                            {LEGACY_THEME_PRESETS.map((preset) => (
+                              <button
+                                key={`accent-${preset.key}`}
+                                type="button"
+                                className={`dashboard-theme-preset ${activeClient.dashboardAccentColor === preset.accentColor ? 'active' : ''}`}
+                                onClick={() => {
+                                  handleClientFieldChange('dashboardAccentColor', preset.accentColor)
+                                }}
+                                disabled={!canEditActiveClient}
+                              >
+                                <span className="dashboard-theme-swatch" style={{ background: preset.accentColor }}></span>
+                                <small>{preset.label}</small>
+                              </button>
+                            ))}
                           </div>
                         </div>
                       </div>
