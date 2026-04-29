@@ -24499,7 +24499,7 @@ export default function DashboardShell({
         :root[data-ui-mode='light'] .operations-meta-card,
         :root[data-ui-mode='light'] .operations-filter-card,
         :root[data-ui-mode='light'] .operations-spotlight-card {
-          background: linear-gradient(180deg, rgba(252, 252, 253, 0.99), rgba(247, 249, 252, 0.99)) !important;
+          background: linear-gradient(180deg, rgba(251, 252, 254, 0.995), rgba(245, 247, 250, 0.985)) !important;
           border-color: rgba(15, 23, 42, 0.08) !important;
         }
 
@@ -24544,7 +24544,7 @@ export default function DashboardShell({
         :root[data-ui-mode='light'] .hero-stat span,
         :root[data-ui-mode='light'] .hero-select,
         :root[data-ui-mode='light'] .hero-select * {
-          color: #334155 !important;
+          color: #475569 !important;
         }
 
         :root[data-ui-mode='light'] .hero-stat {
@@ -24552,7 +24552,8 @@ export default function DashboardShell({
         }
 
         :root[data-ui-mode='light'] .hero-select {
-          background: rgba(255, 255, 255, 0.985) !important;
+          background: rgba(255, 255, 255, 0.995) !important;
+          border-color: rgba(203, 213, 225, 0.9) !important;
         }
 
         :root:not([data-ui-mode='light']) .hero-stat strong,

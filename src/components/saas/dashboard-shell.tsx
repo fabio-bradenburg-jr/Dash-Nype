@@ -1314,23 +1314,18 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
           {!showDashs ? (
           <section className={`relative overflow-hidden rounded-[28px] p-4 backdrop-blur-xl sm:rounded-[34px] sm:p-5 ${isDarkMode ? 'border border-white/10 bg-[linear-gradient(135deg,rgba(15,23,42,0.88),rgba(2,6,23,0.94))] shadow-[0_26px_80px_rgba(0,0,0,0.35)]' : 'border border-white/80 bg-[linear-gradient(135deg,rgba(255,255,255,0.92),rgba(248,250,252,0.76))] shadow-[0_26px_80px_rgba(15,23,42,0.08)]'}`}>
             <div className="pointer-events-none absolute inset-y-0 right-0 hidden w-[38%] bg-[radial-gradient(circle_at_top,rgba(249,115,22,0.15),transparent_46%),radial-gradient(circle_at_bottom,rgba(15,118,110,0.18),transparent_42%)] lg:block" />
-            <div className="relative flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
+            <div className={`relative flex flex-col gap-6 ${showDashs ? 'xl:items-start xl:justify-end' : 'xl:flex-row xl:items-end xl:justify-between'}`}>
+              {!showDashs ? (
               <div className="max-w-3xl">
                 <h1 className={`font-manrope text-3xl font-extrabold tracking-[-0.05em] sm:text-4xl md:text-5xl ${isDarkMode ? 'text-white' : 'text-slate-950'}`}>
-                  {showOverview
-                    ? `Boas-vindas, ${currentUserName}`
-                    : showDashs
-                    ? selectedClient.name || 'Dashboard do cliente'
-                    : currentModule.title}
+                  {showOverview ? `Boas-vindas, ${currentUserName}` : currentModule.title}
                 </h1>
                 <p className={`mt-4 max-w-2xl text-base leading-7 ${isDarkMode ? 'text-white/65' : 'text-slate-600'}`}>
                   {showOverview
                     ? 'Use a IA para consultar clientes, campanhas, dashs, integrações e arquivos vinculados.'
-                    : showDashs
-                    ? 'A seguir, apresentamos um panorama consolidado do período selecionado, separando os dados por origem para facilitar a leitura executiva da operação.'
                     : currentModule.description}
                 </p>
-                {showWorkspaceControls && !showDashs ? (
+                {showWorkspaceControls ? (
                 <div className="mt-6 flex flex-wrap gap-3">
                   {positiveMetrics.map((metric) => (
                     <div key={metric.label} className={`rounded-2xl px-4 py-3 shadow-sm ${isDarkMode ? 'border border-white/10 bg-white/5' : 'border border-slate-200/80 bg-white/90'}`}>
@@ -1341,6 +1336,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
                 </div>
                 ) : null}
               </div>
+              ) : null}
               {showWorkspaceControls ? (
               <div className="grid gap-3 xl:min-w-0 xl:max-w-[520px]">
                 <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-[1fr_auto_auto_auto]">
