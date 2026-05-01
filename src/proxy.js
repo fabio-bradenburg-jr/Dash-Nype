@@ -6,7 +6,6 @@ const legacyPrefixes = [
   '/clientes',
   '/operacao',
   '/dashboard',
-  '/settings',
   '/usuarios',
   '/produtos',
   '/contexto',
