@@ -100,7 +100,7 @@ const PANEL_BACKGROUND_PRESETS: Array<{ label: string; value: string }> = [
 const GLOBAL_INTEGRATION_GROUPS: IntegrationGroup[] = [
   {
     title: 'Google Ads',
-    description: 'Espaço reservado para a credencial central do Google Ads da operação.',
+    description: 'Espaço reservado para a credencial central do Google Ads.',
     icon: 'bxl-google',
     accent: '#f59e0b',
     fields: [
@@ -113,7 +113,7 @@ const GLOBAL_INTEGRATION_GROUPS: IntegrationGroup[] = [
   },
   {
     title: 'TikTok Ads',
-    description: 'Espaço reservado para a credencial central do TikTok Ads da operação.',
+    description: 'Espaço reservado para a credencial central do TikTok Ads.',
     icon: 'bxl-tiktok',
     accent: '#ec4899',
     fields: [
@@ -126,7 +126,7 @@ const GLOBAL_INTEGRATION_GROUPS: IntegrationGroup[] = [
   },
   {
     title: 'LinkedIn Ads',
-    description: 'Espaço reservado para a credencial central do LinkedIn Ads da operação.',
+    description: 'Espaço reservado para a credencial central do LinkedIn Ads.',
     icon: 'bxl-linkedin-square',
     accent: '#22c55e',
     fields: [
@@ -147,42 +147,6 @@ const GLOBAL_INTEGRATION_GROUPS: IntegrationGroup[] = [
         name: 'rdStationToken',
         label: 'Token do RD Station',
         placeholder: 'Cole aqui o token do RD Station',
-      },
-    ],
-  },
-  {
-    title: 'ClickUp',
-    description: 'Espaço reservado para integrações operacionais com gestão de tarefas.',
-    icon: 'bx-task',
-    accent: '#8b5cf6',
-    fields: [
-      {
-        name: 'clickUpToken',
-        label: 'Token do ClickUp',
-        placeholder: 'Cole aqui o token do ClickUp',
-      },
-      {
-        name: 'clickUpListIds',
-        label: 'IDs das listas da operação',
-        placeholder: '123456, 789012',
-      },
-    ],
-  },
-  {
-    title: 'Monday',
-    description: 'Espaço reservado para integrações operacionais com boards, status e responsáveis.',
-    icon: 'bx-columns',
-    accent: '#f59e0b',
-    fields: [
-      {
-        name: 'mondayToken',
-        label: 'Token do Monday',
-        placeholder: 'Cole aqui o token do Monday',
-      },
-      {
-        name: 'mondayBoardIds',
-        label: 'IDs dos boards da operação',
-        placeholder: '987654321, 123456789',
       },
     ],
   },
@@ -214,7 +178,6 @@ const GLOBAL_INTEGRATION_GROUPS: IntegrationGroup[] = [
   },
 ]
 
-const OPERATION_INTEGRATION_TITLES = new Set(['ClickUp', 'Monday'])
 const AD_ACCOUNT_INTEGRATION_TITLES = new Set(['Google Ads', 'TikTok Ads', 'LinkedIn Ads'])
 const CRM_INTEGRATION_TITLES = new Set(['RD Station CRM', 'Salesforce', 'Agendor'])
 
@@ -493,8 +456,7 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
   const metaConnectionMode = globalIntegrations.metaConnectionMode === 'oauth' ? 'oauth' : 'manual'
   const hasMetaManualToken = Boolean(String(globalIntegrations.metaAccessToken || '').trim())
   const hasMetaOauthConnection = Boolean(metaConnection.connected)
-  const generalIntegrationGroups = GLOBAL_INTEGRATION_GROUPS.filter((group) => !OPERATION_INTEGRATION_TITLES.has(group.title))
-  const operationIntegrationGroups = GLOBAL_INTEGRATION_GROUPS.filter((group) => OPERATION_INTEGRATION_TITLES.has(group.title))
+  const generalIntegrationGroups = GLOBAL_INTEGRATION_GROUPS
   const advertisingIntegrationGroups = generalIntegrationGroups.filter((group) => AD_ACCOUNT_INTEGRATION_TITLES.has(group.title))
   const crmIntegrationGroups = generalIntegrationGroups.filter((group) => CRM_INTEGRATION_TITLES.has(group.title))
   const backgroundTintRgb = hexToRgb(panelDraft.backgroundTint)
@@ -550,30 +512,15 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
       }
     }
 
-    if (activeSettingsTab === 'operation') {
-      return {
-        title: 'Estrutura da operação',
-        description: 'Tudo que alimenta o modal e o board operacional fica aqui.',
-        items: [
-          `${operationSettings.lanes.length} coluna(s) do kanban`,
-          `${operationSettings.statuses.length} status de card`,
-          `${(operationSettings.tags || []).length} tag(s) disponíveis`,
-          `${(operationSettings.taskTypes || []).length} tipo(s) de tarefa`,
-          `${(operationSettings.customFields || []).length} campo(s) customizado(s)`,
-        ],
-      }
-    }
-
     return {
-      title: 'Base de clientes',
-      description: 'Ajustes estruturais da base que alimenta clientes e operação.',
-        items: [
-          `${clientImplementationPhases.length} etapa(s) da jornada`,
-          `${clientSystemFields.length} campo(s) de sistema`,
-          `${clientCustomColumns.length} campo(s) customizado(s)`,
-          `${clientCustomTabs.length} aba(s) customizada(s)`,
-        ],
-      }
+      title: 'Integrações gerais',
+      description: 'Credenciais e preferências do app centralizadas por aqui.',
+      items: [
+        `${advertisingIntegrationGroups.length} integrações de mídia`,
+        `${crmIntegrationGroups.length} integrações de CRM`,
+        'Providers e prompt de IA centralizados',
+      ],
+    }
   }, [
     activeSettingsTab,
     advertisingIntegrationGroups.length,
@@ -1158,7 +1105,7 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
 
         const data = await response.json().catch(() => null)
         if (!response.ok) {
-          throw new Error(data?.error || 'Não foi possível salvar a configuração da operação.')
+          throw new Error(data?.error || 'Não foi possível salvar a configuração.')
         }
 
         setServerState(data)
@@ -1732,13 +1679,12 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
     if (canManageClients) {
       try {
         await persistGlobalIntegrations(globalIntegrations)
-        await persistOperationSettings(operationSettings)
-        feedbackMessages.push('Configurações da operação sincronizadas com sucesso.')
+        feedbackMessages.push('Integrações do app sincronizadas com sucesso.')
       } catch (error) {
         setSettingsSaveFeedback(
           error instanceof Error
             ? error.message
-            : 'Não foi possível sincronizar as configurações da operação.'
+            : 'Não foi possível sincronizar as integrações do app.'
         )
         return
       }
@@ -1801,7 +1747,7 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
           <aside className="glass-item settings-section-sidebar">
             <div className="settings-sidebar-title">
               <span>Configuração</span>
-              <strong>Ajustes da operação</strong>
+              <strong>Ajustes do app</strong>
             </div>
 
             <div className="settings-sidebar-nav">
@@ -1853,7 +1799,7 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
           <div className="settings-head">
             <div>
               <h1>Configurações</h1>
-              <p>Centralize aqui a aparência da sua conta e as credenciais globais da operação.</p>
+              <p>Centralize aqui a aparência da sua conta e as credenciais globais do app.</p>
             </div>
             {!embeddedOverride && (
               <Link href="/home" className="btn btn-secondary">
@@ -2031,7 +1977,7 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
                   <div className="settings-section-head">
                     <div>
                       <h2>Integrações globais</h2>
-                      <p>Essas credenciais abastecem a operação inteira. Depois, em cada cliente, você escolhe apenas as contas e funis vinculados.</p>
+                      <p>Essas credenciais abastecem o app inteiro. Depois, em cada cliente, você escolhe apenas as contas e funis vinculados.</p>
                     </div>
                   </div>
 
@@ -2051,7 +1997,7 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
                             </div>
                             <div>
                               <h3>Meta Ads</h3>
-                              <p>Escolha entre token manual ou conta conectada via Meta Login, e use a forma que fizer mais sentido para cada operação.</p>
+                              <p>Escolha entre token manual ou conta conectada via Meta Login.</p>
                             </div>
                           </div>
 
@@ -2097,7 +2043,7 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
                                   <span>
                                     {hasMetaOauthConnection
                                       ? `${metaConnection.userName || 'Usuário Meta'} conectado${metaConnection.expiresAt ? ` até ${new Date(metaConnection.expiresAt).toLocaleDateString('pt-BR')}` : ''}.`
-                                      : 'Conecte sua conta da Meta para vincular a operação por login.'}
+                                      : 'Conecte sua conta da Meta para listar e vincular contas de anúncio.'}
                                   </span>
                                 </div>
                                 <div className="meta-connection-actions">
@@ -2118,7 +2064,7 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
                                   <strong>{hasMetaOauthConnection ? 'Conexão pronta para uso' : 'Conexão ainda pendente'}</strong>
                                   <p>
                                     {hasMetaOauthConnection
-                                      ? 'A conta da Meta já está vinculada a esta operação e pode ser usada para listar contas de anúncio.'
+                                      ? 'A conta da Meta já está vinculada e pode ser usada para listar contas de anúncio.'
                                       : 'Conecte uma conta com acesso ao Business Manager e às contas de anúncio que você quer usar no app.'}
                                   </p>
                                 </div>
@@ -2224,7 +2170,7 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
                     <section className="settings-category-shell">
                       <div className="settings-category-head">
                         <span className="settings-category-kicker">IA</span>
-                        <h3>Configuração da IA da operação</h3>
+                        <h3>Configuração da IA</h3>
                         <p>A área de uso da IA fica na Home, mas a configuração do provider e do prompt continua centralizada aqui.</p>
                       </div>
 
@@ -2368,7 +2314,7 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
                             </div>
                             <div>
                               <h3>Agentes do chat</h3>
-                              <p>Crie agentes com prompts próprios para copy, mídia, operação ou qualquer outro papel que você queira usar no chat.</p>
+                              <p>Crie agentes com prompts próprios para copy, mídia, análise ou qualquer outro papel que você queira usar no chat.</p>
                             </div>
                           </div>
 
@@ -2449,400 +2395,7 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
                 </div>
               )}
 
-              {canManageClients && activeSettingsTab === 'operation' && (
-                <div className="glass-item settings-block settings-block-full">
-                  <div className="settings-section-head">
-                    <div>
-                      <h2>Operação</h2>
-                      <p>Defina aqui as credenciais, colunas do kanban, status e templates de subtarefas da operação.</p>
-                    </div>
-                  </div>
 
-                  <div className="settings-general-layout">
-                    <section className="settings-category-shell">
-                      <div className="settings-category-head">
-                        <span className="settings-category-kicker">Kanban</span>
-                        <h3>Colunas, status e automações de criação</h3>
-                        <p>Controle quais etapas existem no board, as cores visuais e quais subtarefas padrão entram quando um card nasce em cada coluna.</p>
-                      </div>
-
-                      <div className="settings-category-grid">
-                        <div className="integration-block">
-                          <div className="integration-heading">
-                            <div className="integration-icon" style={{ color: '#3b82f6', borderColor: '#3b82f633' }}>
-                              <i className="bx bx-columns"></i>
-                            </div>
-                            <div>
-                              <h3>Colunas do kanban</h3>
-                              <p>Ao criar um card em uma etapa, as subtarefas abaixo entram automaticamente.</p>
-                            </div>
-                          </div>
-
-                          <div className="settings-stack-list">
-                            {operationSettings.lanes.map((lane) => (
-                              <details key={lane.id} className="glass-item settings-stack-card settings-accordion-card" open>
-                                <summary className="settings-accordion-summary">
-                                  <div>
-                                    <strong>{lane.label}</strong>
-                                    <span>{(lane.defaultSubtasks || []).length} subtarefa(s) padrão</span>
-                                  </div>
-                                  <small>{lane.key}</small>
-                                </summary>
-                                <div className="settings-form-grid">
-                                  <div className="input-group">
-                                    <label>Nome da coluna</label>
-                                    <input type="text" value={lane.label} onChange={(event) => handleOperationLaneFieldChange(lane.id, 'label', event.target.value)} />
-                                  </div>
-                                  <div className="input-group">
-                                    <label>Cor</label>
-                                    <input type="color" value={lane.color || '#3b82f6'} onChange={(event) => handleOperationLaneFieldChange(lane.id, 'color', event.target.value)} />
-                                  </div>
-                                  <div className="input-group settings-field-span-2">
-                                    <label>Subtarefas padrão</label>
-                                    <input
-                                      type="text"
-                                      value={(lane.defaultSubtasks || []).join(', ')}
-                                      onChange={(event) => handleOperationLaneFieldChange(lane.id, 'defaultSubtasks', event.target.value)}
-                                      placeholder="Separe por vírgula"
-                                    />
-                                    <small>Essas subtarefas entram ao criar um card nessa coluna, inclusive a partir do cadastro de cliente.</small>
-                                  </div>
-                                </div>
-                                <div className="modal-actions">
-                                  <button type="button" className="btn btn-secondary" onClick={() => handleRemoveOperationLane(lane.id)}>
-                                    Remover coluna
-                                  </button>
-                                </div>
-                              </details>
-                            ))}
-                          </div>
-
-                          <div className="settings-form-grid">
-                            <div className="input-group">
-                              <label>Nova coluna</label>
-                              <input type="text" value={newOperationLaneLabel} onChange={(event) => setNewOperationLaneLabel(event.target.value)} placeholder="Ex.: Produção, Aprovação, QA" />
-                            </div>
-                          </div>
-                          <div className="modal-actions">
-                            <button type="button" className="btn btn-primary" onClick={handleCreateOperationLane}>
-                              Adicionar coluna
-                            </button>
-                          </div>
-                        </div>
-
-                        <div className="integration-block">
-                          <div className="integration-heading">
-                            <div className="integration-icon" style={{ color: '#10b981', borderColor: '#10b98133' }}>
-                              <i className="bx bx-palette"></i>
-                            </div>
-                            <div>
-                              <h3>Status dos cards</h3>
-                              <p>Edite os rótulos e as cores dos status que aparecem nos cards e subtarefas.</p>
-                            </div>
-                          </div>
-
-                          <div className="settings-stack-list">
-                            {operationSettings.statuses.map((status) => (
-                              <details key={status.id} className="glass-item settings-stack-card settings-accordion-card" open>
-                                <summary className="settings-accordion-summary">
-                                  <div>
-                                    <strong>{status.label}</strong>
-                                    <span>{status.key}</span>
-                                  </div>
-                                  <small>{status.color}</small>
-                                </summary>
-                                <div className="settings-form-grid">
-                                  <div className="input-group">
-                                    <label>Nome do status</label>
-                                    <input type="text" value={status.label} onChange={(event) => handleOperationStatusFieldChange(status.id, 'label', event.target.value)} />
-                                  </div>
-                                  <div className="input-group">
-                                    <label>Cor</label>
-                                    <input type="color" value={status.color || '#3b82f6'} onChange={(event) => handleOperationStatusFieldChange(status.id, 'color', event.target.value)} />
-                                  </div>
-                                </div>
-                                <div className="modal-actions">
-                                  <button type="button" className="btn btn-secondary" onClick={() => handleRemoveOperationStatus(status.id)}>
-                                    Remover status
-                                  </button>
-                                </div>
-                              </details>
-                            ))}
-                          </div>
-
-                          <div className="settings-form-grid">
-                            <div className="input-group">
-                              <label>Novo status</label>
-                              <input type="text" value={newOperationStatusLabel} onChange={(event) => setNewOperationStatusLabel(event.target.value)} placeholder="Ex.: Em revisão, Aguardando cliente" />
-                            </div>
-                          </div>
-                          <div className="modal-actions">
-                            <button type="button" className="btn btn-primary" onClick={handleCreateOperationStatus}>
-                              Adicionar status
-                            </button>
-                          </div>
-                        </div>
-
-                        <div className="integration-block">
-                          <div className="integration-heading">
-                            <div className="integration-icon" style={{ color: '#f59e0b', borderColor: '#f59e0b33' }}>
-                              <i className="bx bx-purchase-tag-alt"></i>
-                            </div>
-                            <div>
-                              <h3>Tags dos cards</h3>
-                              <p>Cadastre as tags disponíveis para seleção nos cards operacionais.</p>
-                            </div>
-                          </div>
-
-                          <div className="settings-stack-list">
-                            {(operationSettings.tags || []).length ? (
-                              operationSettings.tags.map((tag) => (
-                                <div key={`operation-tag-${tag}`} className="glass-item settings-stack-card">
-                                  <div className="settings-accordion-summary">
-                                    <div>
-                                      <strong>{tag}</strong>
-                                      <span>Tag disponível no seletor</span>
-                                    </div>
-                                  </div>
-                                  <div className="modal-actions">
-                                    <button type="button" className="btn btn-secondary" onClick={() => handleRemoveOperationTag(tag)}>
-                                      Remover tag
-                                    </button>
-                                  </div>
-                                </div>
-                              ))
-                            ) : (
-                              <div className="glass-item settings-stack-card">
-                                <span>Nenhuma tag cadastrada ainda.</span>
-                              </div>
-                            )}
-                          </div>
-
-                          <div className="settings-form-grid">
-                            <div className="input-group">
-                              <label>Nova tag</label>
-                              <input type="text" value={newOperationTagLabel} onChange={(event) => setNewOperationTagLabel(event.target.value)} placeholder="Ex.: Urgente, Cliente, Aprovação" />
-                            </div>
-                          </div>
-                          <div className="modal-actions">
-                            <button type="button" className="btn btn-primary" onClick={handleCreateOperationTag}>
-                              Adicionar tag
-                            </button>
-                          </div>
-                        </div>
-
-                        <div className="integration-block">
-                          <div className="integration-heading">
-                            <div className="integration-icon" style={{ color: '#8b5cf6', borderColor: '#8b5cf633' }}>
-                              <i className="bx bx-category-alt"></i>
-                            </div>
-                            <div>
-                              <h3>Tipos de tarefa</h3>
-                              <p>Cadastre os tipos que vão aparecer no topo e no seletor dos cards operacionais.</p>
-                            </div>
-                          </div>
-
-                          <div className="settings-stack-list">
-                            {(operationSettings.taskTypes || []).length ? (
-                              operationSettings.taskTypes.map((taskType) => (
-                                <div key={`operation-task-type-${taskType}`} className="glass-item settings-stack-card">
-                                  <div className="settings-accordion-summary">
-                                    <div>
-                                      <strong>{taskType}</strong>
-                                      <span>Tipo disponível no card</span>
-                                    </div>
-                                  </div>
-                                  <div className="modal-actions">
-                                    <button type="button" className="btn btn-secondary" onClick={() => handleRemoveOperationTaskType(taskType)}>
-                                      Remover tipo
-                                    </button>
-                                  </div>
-                                </div>
-                              ))
-                            ) : null}
-                          </div>
-
-                          <div className="settings-form-grid">
-                            <div className="input-group">
-                              <label>Novo tipo</label>
-                              <input type="text" value={newOperationTaskTypeLabel} onChange={(event) => setNewOperationTaskTypeLabel(event.target.value)} placeholder="Ex.: Bug, Ajuste, Entrega, Aprovação" />
-                            </div>
-                          </div>
-                          <div className="modal-actions">
-                            <button type="button" className="btn btn-primary" onClick={handleCreateOperationTaskType}>
-                              Adicionar tipo
-                            </button>
-                          </div>
-                        </div>
-
-                        <div className="integration-block">
-                          <div className="integration-heading">
-                            <div className="integration-icon" style={{ color: '#38bdf8', borderColor: '#38bdf833' }}>
-                              <i className="bx bx-list-plus"></i>
-                            </div>
-                            <div>
-                              <h3>Campos customizados do card</h3>
-                              <p>Crie campos extras para aparecer dentro do card operacional, no estilo ClickUp.</p>
-                            </div>
-                          </div>
-
-                          <div className="settings-stack-list">
-                            {(operationSettings.customFields || []).length ? (
-                              operationSettings.customFields.map((field) => (
-                                <details key={field.id} className="glass-item settings-stack-card settings-accordion-card" open>
-                                  <summary className="settings-accordion-summary">
-                                    <div>
-                                      <strong>{field.label}</strong>
-                                      <span>{field.type}</span>
-                                    </div>
-                                    <small>{field.key}</small>
-                                  </summary>
-                                  <div className="settings-form-grid">
-                                    <div className="input-group">
-                                      <label>Nome do campo</label>
-                                      <input type="text" value={field.label} onChange={(event) => handleOperationCustomFieldChange(field.id, 'label', event.target.value)} />
-                                    </div>
-                                    <div className="input-group">
-                                      <label>Tipo</label>
-                                      <select value={field.type} onChange={(event) => handleOperationCustomFieldChange(field.id, 'type', event.target.value)}>
-                                        <option value="text">Texto</option>
-                                        <option value="select">Dropdown</option>
-                                        <option value="date">Data</option>
-                                        <option value="number">Número</option>
-                                      </select>
-                                    </div>
-                                    <div className="input-group settings-field-span-2">
-                                      <label>Opções</label>
-                                      <input
-                                        type="text"
-                                        value={(field.options || []).join(', ')}
-                                        onChange={(event) => handleOperationCustomFieldChange(field.id, 'options', event.target.value)}
-                                        placeholder="Separe por vírgula"
-                                        disabled={field.type !== 'select'}
-                                      />
-                                    </div>
-                                  </div>
-                                  <div className="modal-actions">
-                                    <button type="button" className="btn btn-secondary" onClick={() => handleRemoveOperationCustomField(field.id)}>
-                                      Remover campo
-                                    </button>
-                                  </div>
-                                </details>
-                              ))
-                            ) : (
-                              <div className="glass-item settings-stack-card">
-                                <span>Nenhum campo customizado criado ainda.</span>
-                              </div>
-                            )}
-                          </div>
-
-                          <div className="settings-form-grid">
-                            <div className="input-group">
-                              <label>Novo campo</label>
-                              <input type="text" value={newOperationCustomFieldLabel} onChange={(event) => setNewOperationCustomFieldLabel(event.target.value)} placeholder="Ex.: Data da reunião, Canal, Story points" />
-                            </div>
-                            <div className="input-group">
-                              <label>Tipo</label>
-                              <select value={newOperationCustomFieldType} onChange={(event) => setNewOperationCustomFieldType(event.target.value as OperationCustomFieldRecord['type'])}>
-                                <option value="text">Texto</option>
-                                <option value="select">Dropdown</option>
-                                <option value="date">Data</option>
-                                <option value="number">Número</option>
-                              </select>
-                            </div>
-                            <div className="input-group settings-field-span-2">
-                              <label>Opções</label>
-                              <input
-                                type="text"
-                                value={newOperationCustomFieldOptions}
-                                onChange={(event) => setNewOperationCustomFieldOptions(event.target.value)}
-                                placeholder="Separe por vírgula"
-                                disabled={newOperationCustomFieldType !== 'select'}
-                              />
-                            </div>
-                          </div>
-                          <div className="modal-actions">
-                            <button type="button" className="btn btn-primary" onClick={handleCreateOperationCustomField}>
-                              Adicionar campo
-                            </button>
-                          </div>
-                        </div>
-
-                        <div className="integration-block">
-                          <div className="integration-heading">
-                            <div className="integration-icon" style={{ color: '#f59e0b', borderColor: '#f59e0b33' }}>
-                              <i className="bx bx-bolt-circle"></i>
-                            </div>
-                            <div>
-                              <h3>Criação automática</h3>
-                              <p>Defina o comportamento padrão ao cadastrar um novo cliente.</p>
-                            </div>
-                          </div>
-
-                          <label className={`stage-chip ${operationSettings.autoCreateCardForNewClient ? 'active' : ''}`}>
-                            <input
-                              type="checkbox"
-                              checked={operationSettings.autoCreateCardForNewClient}
-                              onChange={(event) => {
-                                const nextSettings = {
-                                  ...operationSettings,
-                                  autoCreateCardForNewClient: event.target.checked,
-                                }
-                                setOperationSettings(nextSettings)
-                                void persistOperationSettings(nextSettings)
-                              }}
-                            />
-                            <span>Criar card na operação por padrão ao cadastrar cliente</span>
-                          </label>
-                        </div>
-                      </div>
-                    </section>
-
-                    <section className="settings-category-shell">
-                      <div className="settings-category-head">
-                        <span className="settings-category-kicker">Integrações</span>
-                        <h3>Credenciais operacionais globais</h3>
-                        <p>Essa área continua centralizando ClickUp e Monday no nível da operação.</p>
-                      </div>
-
-                      <div className="settings-integrations-grid settings-integrations-grid-operation">
-                        <div className="settings-callout info settings-operation-callout">
-                          Essa aba centraliza as credenciais globais do ClickUp e Monday usadas nas dashboards operacionais. Os IDs ficam aqui no nível da operação, não dentro dos clientes.
-                        </div>
-
-                        {operationIntegrationGroups.map((group) => (
-                          <div key={group.title} className="integration-block">
-                            <div className="integration-heading">
-                              <div className="integration-icon" style={{ color: group.accent, borderColor: `${group.accent}33` }}>
-                                <i className={`bx ${group.icon}`}></i>
-                              </div>
-                              <div>
-                                <h3>{group.title}</h3>
-                                <p>{group.description}</p>
-                              </div>
-                            </div>
-
-                            {group.fields.map((field) => (
-                              <div key={field.name} className="input-group">
-                                <label>{field.label}</label>
-                                <input
-                                  type={field.name.toLowerCase().includes('token') ? 'password' : 'text'}
-                                  value={String(globalIntegrations[field.name] || '')}
-                                  onChange={(event) => handleGlobalIntegrationChange(field.name, event.target.value)}
-                                  placeholder={field.placeholder}
-                                />
-                                {field.name === 'clickUpListIds' || field.name === 'mondayBoardIds' ? (
-                                  <small className="settings-help-text">Separe múltiplos IDs por vírgula. Esses IDs ficam globais na operação.</small>
-                                ) : null}
-                              </div>
-                            ))}
-                          </div>
-                        ))}
-                      </div>
-                    </section>
-                  </div>
-                </div>
-              )}
 
 
 
@@ -4010,10 +3563,6 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
           color: var(--text-secondary);
         }
 
-        .settings-integrations-grid-operation {
-          align-items: start;
-        }
-
         .integration-block-meta {
           grid-column: 1 / -1;
           display: grid;
@@ -4238,10 +3787,6 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
           background: rgba(59, 130, 246, 0.12);
           border: 1px solid rgba(59, 130, 246, 0.2);
           color: #bfdbfe;
-        }
-
-        .settings-operation-callout {
-          grid-column: 1 / -1;
         }
 
         :root[data-ui-mode='light'] .settings-page-shell {
