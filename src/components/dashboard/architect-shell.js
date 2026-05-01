@@ -7,7 +7,7 @@ const NAV_ITEMS = [
   { key: 'clientes', label: 'Clients', icon: 'domain', href: '/clientes' },
   { key: 'team', label: 'Team', icon: 'groups', href: '#' },
   { key: 'operacao', label: 'Operations', icon: 'analytics', href: '/operacao' },
-  { key: 'settings', label: 'Settings', icon: 'settings', href: '/settings' },
+  { key: 'settings', label: 'Settings', icon: 'settings', href: '/?tab=settings' },
 ]
 
 function NavLink({ item, active }) {
@@ -76,7 +76,7 @@ export function ArchitectShell({
             <button type="button" className={styles.iconButton} aria-label="Theme">
               <span className="material-symbols-outlined">contrast</span>
             </button>
-            <Link href="/settings" className={styles.iconButton} aria-label="Settings">
+            <Link href="/?tab=settings" className={styles.iconButton} aria-label="Settings">
               <span className="material-symbols-outlined">account_circle</span>
             </Link>
           </div>

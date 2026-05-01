@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { createPortal } from 'react-dom'
 import AssistantPage from '@/app/assistant/page'
+import SettingsPage from '@/app/settings/page'
 import { useUser } from '@/lib/contexts/UserContext'
 import { createClient } from '@/lib/supabase/client'
 import {
@@ -12093,9 +12094,9 @@ export default function DashboardShell({
               <i className="bx bxs-user-detail"></i> Team
             </button>
           )}
-          <a href="/settings" data-tooltip="Settings" className="nav-item">
+          <button type="button" data-tooltip="Settings" className={"nav-item nav-button " + (activeTab === "settings" ? "active" : "")} onClick={() => setActiveTab('settings')}>
             <i className="bx bx-cog"></i> Settings
-          </a>
+          </button>
           <a href="/privacy" data-tooltip="Security" className="nav-item" target="_blank" rel="noreferrer">
             <i className="bx bx-shield-quarter"></i> Security
           </a>
@@ -12162,10 +12163,11 @@ export default function DashboardShell({
               >
                 <i className="bx bx-bell"></i>
               </button>
-              <a
-                href="/settings"
+              <button
+                type="button"
                 className="operation-stellar-icon-button"
                 aria-label="Configurações"
+                onClick={() => setActiveTab('settings')}
                 style={
                   isLightAppMode
                     ? {
@@ -12178,7 +12180,7 @@ export default function DashboardShell({
                 }
               >
                 <i className="bx bx-cog"></i>
-              </a>
+              </button>
               <button
                 type="button"
                 className="operation-stellar-icon-button"
@@ -12275,6 +12277,7 @@ export default function DashboardShell({
                 {activeTab === 'clickup' && 'ClickUp Operations'}
                 {activeTab === 'monday' && 'Board Operations'}
                 {activeTab === 'usuarios' && (canManageUsers ? 'Team Performance' : 'My Performance')}
+                {activeTab === 'settings' && 'Settings'}
               </h1>
               {activeTab !== 'assistant' && (
                 <p>
@@ -12286,6 +12289,7 @@ export default function DashboardShell({
                   {activeTab === 'clickup' && 'Monitore filas, responsáveis e execução do ClickUp com leitura consolidada da operação.'}
                   {activeTab === 'monday' && 'Entenda carga, status, throughput e gargalos dos boards em uma leitura executiva da operação.'}
                   {activeTab === 'usuarios' && (canManageUsers ? 'Acompanhe performance, escopo, metas e evolução do time em um dashboard unificado.' : 'Acompanhe sua evolução, metas e contexto operacional dentro do hub da agência.')}
+                  {activeTab === 'settings' && 'Ajuste integrações, IA, aparência, campos de clientes e estrutura operacional sem sair do domínio principal.'}
                 </p>
               )}
               {activeTab === 'assistant' && (
@@ -12460,6 +12464,12 @@ export default function DashboardShell({
         {activeTab === 'assistant' && (
           <section style={{ width: '100%', minHeight: 'calc(100vh - 220px)' }}>
             <AssistantPage embeddedOverride={true} />
+          </section>
+        )}
+
+        {activeTab === 'settings' && (
+          <section style={{ width: '100%' }}>
+            <SettingsPage embeddedOverride={true} />
           </section>
         )}
 

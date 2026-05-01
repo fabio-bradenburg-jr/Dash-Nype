@@ -41,7 +41,7 @@ export function AccountMenu() {
           </div>
 
           <div style={{ display: 'grid', gap: '0.35rem', paddingTop: '0.75rem' }}>
-            <button type="button" onClick={() => router.push('/settings')} style={menuButtonStyle}>
+            <button type="button" onClick={() => router.push('/?tab=settings')} style={menuButtonStyle}>
               <span className="material-symbols-outlined" style={{ fontSize: '1rem' }}>
                 settings
               </span>

@@ -419,7 +419,7 @@ function rgbToHex({ r, g, b }: { r: number; g: number; b: number }): string {
   return `#${[r, g, b].map((channel) => clampRgbChannel(channel).toString(16).padStart(2, '0')).join('')}`
 }
 
-export default function SettingsPage() {
+export default function SettingsPage({ embeddedOverride = false }: { embeddedOverride?: boolean } = {}) {
   const { appearance, updateAppearance, access } = useUser()
   const canManageClients = Boolean(access?.canManageClients)
   const [serverState, setServerState] = useState<SettingsServerState | null>(null)
@@ -1765,7 +1765,8 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="dashboard-container settings-page-shell dashboard-shell-stellar">
+    <div className={embeddedOverride ? "settings-embedded-shell" : "dashboard-container settings-page-shell dashboard-shell-stellar"}>
+      {!embeddedOverride && (
       <aside className="sidebar glass-panel">
         <div className="logo">
           <i className="bx bx-bar-chart-alt-2"></i>
@@ -1790,8 +1791,9 @@ export default function SettingsPage() {
           </span>
         </nav>
       </aside>
+      )}
 
-      <main className="main-content settings-main">
+      <main className={embeddedOverride ? "main-content settings-main settings-main-embedded" : "main-content settings-main"}>
         <div className="settings-workspace">
           <aside className="glass-item settings-section-sidebar">
             <div className="settings-sidebar-title">
@@ -1874,9 +1876,11 @@ export default function SettingsPage() {
               <h1>Configurações</h1>
               <p>Centralize aqui a aparência da sua conta e as credenciais globais da operação.</p>
             </div>
-            <Link href="/home" className="btn btn-secondary">
-              Voltar
-            </Link>
+            {!embeddedOverride && (
+              <Link href="/home" className="btn btn-secondary">
+                Voltar
+              </Link>
+            )}
           </div>
           <div className="settings-section-content">
               {activeSettingsTab === 'panel' && (
@@ -3528,6 +3532,15 @@ export default function SettingsPage() {
           padding-left: 0 !important;
           margin-left: calc(var(--sidebar-width) + 28px) !important;
           padding-top: 14px;
+        }
+
+        .settings-main-embedded {
+          margin-left: 0 !important;
+          padding: 0 !important;
+        }
+
+        .settings-embedded-shell {
+          width: 100%;
         }
 
         .settings-workspace {

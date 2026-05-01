@@ -950,7 +950,7 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
             <i className="bx bx-bot"></i>
             Assistente
           </span>
-          <Link href="/settings" className="nav-item">
+          <Link href="/?tab=settings" className="nav-item">
             <i className="bx bx-cog"></i>
             Configurações
           </Link>
