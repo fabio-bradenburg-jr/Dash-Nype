@@ -2905,14 +2905,14 @@ function mergeInitialClientRecord(currentClients, initialClientRecord) {
 }
 
 export default function DashboardShell({
-  initialTab = 'home',
+  initialTab = 'assistant',
   initialActiveClientId = '',
   initialClientRecord = null,
   initialClientsOverride = null,
   initialAppLogoUrl = '',
   externalAppMode = '',
 }) {
-  const REMOVED_TABS = new Set(['calendar', 'clickup', 'contexto', 'monday'])
+  const REMOVED_TABS = new Set(['calendar', 'clickup', 'contexto', 'home', 'monday'])
   const { user, profile, access, appearance, updateAppearance, loading: userLoading } = useUser()
   const supabase = createClient()
   const dashboardRef = useRef(null)
@@ -2932,7 +2932,7 @@ export default function DashboardShell({
   const hasInitialClientsOverride = Array.isArray(initialClientsOverride)
 
   const [hasLoadedPreferences, setHasLoadedPreferences] = useState(false)
-  const [activeTab, setActiveTab] = useState(initialTab)
+  const [activeTab, setActiveTab] = useState(REMOVED_TABS.has(initialTab) ? 'assistant' : initialTab)
   const [dateRange, setDateRange] = useState('last_7d')
   const [draftDateRange, setDraftDateRange] = useState('last_7d')
   const [customSince, setCustomSince] = useState('')
@@ -3180,12 +3180,12 @@ export default function DashboardShell({
   const canEditActiveClient = activeClientId ? canEditClientRecord(activeClientId) : canManageClients
 
   useEffect(() => {
-    setActiveTab(REMOVED_TABS.has(initialTab) ? 'home' : initialTab)
+    setActiveTab(REMOVED_TABS.has(initialTab) ? 'assistant' : initialTab)
   }, [initialTab])
 
   useEffect(() => {
     if (REMOVED_TABS.has(activeTab)) {
-      setActiveTab('home')
+      setActiveTab('assistant')
     }
   }, [activeTab])
 
@@ -4826,23 +4826,23 @@ export default function DashboardShell({
 
   useEffect(() => {
     if ((activeTab === 'clientes' || activeTab === 'operacao') && !canAccessClientsTab) {
-      setActiveTab('home')
+      setActiveTab('assistant')
     }
 
     if (['operacao', 'clickup', 'calendar'].includes(activeTab)) {
-      setActiveTab('home')
+      setActiveTab('assistant')
     }
 
     if (activeTab === 'produtos' && !canManageClients) {
-      setActiveTab('home')
+      setActiveTab('assistant')
     }
 
     if (activeTab === 'usuarios' && !canAccessTeamTab) {
-      setActiveTab('home')
+      setActiveTab('assistant')
     }
 
     if (activeTab === 'integracoes') {
-      setActiveTab('home')
+      setActiveTab('assistant')
     }
   }, [activeTab, canAccessClientsTab, canManageClients, canAccessTeamTab])
 
@@ -11975,7 +11975,7 @@ export default function DashboardShell({
   }
 
   const handleHomeToolsLauncher = () => {
-    setActiveTab('home')
+    setActiveTab('assistant')
 
     if (isSidebarCollapsed) {
       setIsSidebarCollapsed(false)
@@ -11986,7 +11986,7 @@ export default function DashboardShell({
     setIsHomeToolsExpanded((current) => !current)
   }
 
-  const shouldShowGlobalAppBar = activeTab !== 'home'
+  const shouldShowGlobalAppBar = true
   const appBarPlaceholder = (() => {
     if (activeTab === 'operacao') return 'Search operations...'
     if (activeTab === 'clientes') return 'Buscar clientes...'
@@ -12076,9 +12076,6 @@ export default function DashboardShell({
         <nav className="nav-menu">
           <button type="button" data-tooltip="Search" className={`nav-item nav-button ${activeTab === 'assistant' ? 'active' : ''}`} onClick={() => setActiveTab('assistant')}>
             <i className="bx bx-search-alt"></i> Search
-          </button>
-          <button type="button" data-tooltip="Home" className={`nav-item nav-button ${activeTab === 'home' ? 'active' : ''}`} onClick={() => setActiveTab('home')}>
-            <i className="bx bx-home-alt-2"></i> Home
           </button>
           {canAccessClientsTab && (
             <button type="button" data-tooltip="Clients" className={`nav-item nav-button ${activeTab === 'clientes' ? 'active' : ''}`} onClick={() => setActiveTab('clientes')}>
@@ -12269,7 +12266,6 @@ export default function DashboardShell({
           {activeTab !== 'apresentacao' && (
             <div className="page-title">
               <h1>
-                {activeTab === 'home' && 'Agency Hub'}
                 {activeTab === 'clientes' && 'Global Client Dashboard'}
                 {activeTab === 'operacao' && 'Operations Overview'}
                 {activeTab === 'produtos' && 'Offer Portfolio'}
@@ -12282,7 +12278,6 @@ export default function DashboardShell({
               </h1>
               {activeTab !== 'assistant' && (
                 <p>
-                  {activeTab === 'home' && 'Sua visão principal da agência com alertas, clientes em risco e atalhos para decisões rápidas.'}
                   {activeTab === 'clientes' && 'Gerencie sua carteira em uma leitura mais executiva, com health, churn, ROI e contexto operacional por cliente.'}
                   {activeTab === 'operacao' && 'Acompanhe demandas, responsáveis, prioridades e gargalos em uma visão operacional mais clara e moderna.'}
                   {activeTab === 'produtos' && 'Organize ofertas, linhas de receita e pacotes para padronizar a operação comercial da agência.'}
@@ -12461,7 +12456,6 @@ export default function DashboardShell({
           </div>
         )}
 
-        {activeTab === 'home' && renderHomeHub()}
 
         {activeTab === 'assistant' && (
           <section style={{ width: '100%', minHeight: 'calc(100vh - 220px)' }}>
