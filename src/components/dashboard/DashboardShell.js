@@ -2912,6 +2912,7 @@ export default function DashboardShell({
   initialAppLogoUrl = '',
   externalAppMode = '',
 }) {
+  const REMOVED_TABS = new Set(['calendar', 'clickup', 'contexto', 'monday'])
   const { user, profile, access, appearance, updateAppearance, loading: userLoading } = useUser()
   const supabase = createClient()
   const dashboardRef = useRef(null)
@@ -3179,8 +3180,14 @@ export default function DashboardShell({
   const canEditActiveClient = activeClientId ? canEditClientRecord(activeClientId) : canManageClients
 
   useEffect(() => {
-    setActiveTab(initialTab)
+    setActiveTab(REMOVED_TABS.has(initialTab) ? 'home' : initialTab)
   }, [initialTab])
+
+  useEffect(() => {
+    if (REMOVED_TABS.has(activeTab)) {
+      setActiveTab('home')
+    }
+  }, [activeTab])
 
   useEffect(() => {
     setMondayMetricDrilldown(null)
@@ -3969,8 +3976,6 @@ export default function DashboardShell({
     const items = [
       { key: 'assistant', label: 'AI Search', helper: 'Copiloto da operação', onClick: () => setActiveTab('assistant') },
       { key: 'apresentacao', label: 'Pitch Deck', helper: activeClient ? activeClient.name : 'Leitura executiva', onClick: () => setActiveTab('apresentacao') },
-      { key: 'contexto', label: 'Contexto', helper: activeClient ? `Analise de ${activeClient.name}` : 'Leitura contextual', onClick: () => setActiveTab('contexto') },
-      { key: 'monday', label: 'Monday', helper: mondayBoardsConfigured ? `${formatNumber(mondayBoardsConfigured)} boards` : 'Configuração pendente', onClick: () => setActiveTab('monday') },
     ]
 
     if (canManageClients) {
@@ -3982,7 +3987,7 @@ export default function DashboardShell({
     }
 
     return items
-  }, [activeClient, mondayBoardsConfigured, canManageClients, canManageUsers, canAccessTeamTab, clients.length, usersList.length])
+  }, [activeClient, canManageClients, canManageUsers, canAccessTeamTab, clients.length, usersList.length])
   const activeIntegrations = activeClient?.integrations || DEFAULT_INTEGRATIONS
   const activeClientVisibleIntegrations = useMemo(
     () => normalizeClientDashboardIntegrationKeys(activeClient?.dashboardVisibleIntegrationKeys),
@@ -10906,17 +10911,6 @@ export default function DashboardShell({
         onClick: () => setActiveTab('apresentacao'),
       },
       {
-        key: 'monday',
-        title: 'Monday',
-        description: 'Acompanhe boards, prioridades, atrasos e capacidade em uma leitura operacional.',
-        icon: 'bx bx-columns',
-        tone: 'gold',
-        accent: 'gold',
-        helper: mondayBoardsConfigured ? `${formatNumber(mondayBoardsConfigured)} board(s) monitorado(s) na operação.` : 'Configuração global pendente.',
-        actionLabel: 'Timeline api',
-        onClick: () => setActiveTab('monday'),
-      },
-      {
         key: 'configuracoes',
         title: 'Synthesizer',
         description: 'Ajuste integrações, credenciais globais e preferências da plataforma.',
@@ -12096,12 +12090,6 @@ export default function DashboardShell({
           </button>
           <button type="button" data-tooltip="Operations" className={`nav-item nav-button ${activeTab === 'operacao' ? 'active' : ''}`} onClick={() => setActiveTab('operacao')}>
             <i className="bx bx-briefcase-alt-2"></i> Operations
-          </button>
-          <button type="button" data-tooltip="Intelligence" className={`nav-item nav-button ${activeTab === 'contexto' ? 'active' : ''}`} onClick={() => setActiveTab('contexto')}>
-            <i className="bx bx-pulse"></i> Intelligence
-          </button>
-          <button type="button" data-tooltip="Boards" className={`nav-item nav-button ${activeTab === 'monday' ? 'active' : ''}`} onClick={() => setActiveTab('monday')}>
-            <i className="bx bx-columns"></i> Boards
           </button>
           {canAccessTeamTab && (
             <button type="button" data-tooltip="Team" className={`nav-item nav-button ${activeTab === 'usuarios' ? 'active' : ''}`} onClick={() => setActiveTab('usuarios')}>

@@ -1,7 +1,5 @@
-'use client'
-
-import DashboardShell from '@/components/dashboard/DashboardShell'
+import { redirect } from 'next/navigation'
 
 export default function ContextoPage() {
-  return <DashboardShell initialTab="contexto" />
+  redirect('/home')
 }
