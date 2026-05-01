@@ -1,5 +1,5 @@
-import DashboardShell from '@/components/dashboard/DashboardShell'
+import { redirect } from 'next/navigation'
 
 export default function OperacaoPage() {
-  return <DashboardShell initialTab="operacao" />
+  redirect('/?tab=clientes')
 }

@@ -2913,7 +2913,7 @@ export default function DashboardShell({
   initialAppLogoUrl = '',
   externalAppMode = '',
 }) {
-  const REMOVED_TABS = new Set(['calendar', 'clickup', 'contexto', 'home', 'monday'])
+  const REMOVED_TABS = new Set(['calendar', 'clickup', 'contexto', 'home', 'monday', 'operacao'])
   const { user, profile, access, appearance, updateAppearance, loading: userLoading } = useUser()
   const supabase = createClient()
   const dashboardRef = useRef(null)
@@ -3003,6 +3003,7 @@ export default function DashboardShell({
   const [newClientDashboardIntegrationKeys, setNewClientDashboardIntegrationKeys] = useState(DEFAULT_CLIENT_DASHBOARD_INTEGRATION_KEYS)
   const [newClientOperationLane, setNewClientOperationLane] = useState(resolveOperationLaneFromSalesModel('INSIDE_SALES'))
   const [newClientGroupName, setNewClientGroupName] = useState('')
+  const [newClientMetaAdAccountId, setNewClientMetaAdAccountId] = useState('')
   const [newProductName, setNewProductName] = useState('')
   const [operationViewMode, setOperationViewMode] = useState('kanban')
   const [operationPeriodFilter, setOperationPeriodFilter] = useState('all')
@@ -5353,60 +5354,32 @@ export default function DashboardShell({
     event.preventDefault()
     if (!isMaster) return
     const trimmedName = newClientName.trim()
-    if (!trimmedName || !newClientSalesModel || !newClientStartDate) return
+    if (!trimmedName) return
 
-    const implementationPhase = clientImplementationPhaseMap.has(newClientImplementationPhase)
-      ? newClientImplementationPhase
-      : ''
     const newClient = createClientRecord({
       name: trimmedName,
       cnpj: normalizeCnpjInput(newClientCnpj),
-      operationEnabled: newClientOperationEnabled,
-      dashboardEnabled: newClientDashboardEnabled,
-      dashboardVisibleIntegrationKeys: newClientDashboardIntegrationKeys,
-      salesModel: newClientSalesModel,
-      implementationPhase,
-      implementationObservation: newClientImplementationObservation.trim(),
-      implementationChecklist: createImplementationChecklistForSalesModel(newClientSalesModel),
-      startDate: newClientStartDate,
-      status: 'Onboarding',
+      metaAdAccountId: newClientMetaAdAccountId,
+      operationEnabled: false,
+      dashboardEnabled: true,
+      dashboardVisibleIntegrationKeys: ['meta_ads', 'agendor'],
+      salesModel: '',
+      implementationPhase: '',
+      implementationObservation: '',
+      implementationChecklist: [],
+      startDate: '',
+      status: 'Ativo',
     })
+
     setClients((currentClients) => [...currentClients, newClient])
-    if (newClientOperationEnabled) {
-      const selectedLane = operationLanesByKey.get(newClientOperationLane)
-        ? newClientOperationLane
-        : resolveOperationLaneFromSalesModel(newClientSalesModel)
-      const defaultStatus = operationStatuses[0]?.key || 'aberto'
-      setOperationCards((current) => [
-        createOperationCardRecord({
-          clientId: newClient.id,
-          taskType: operationTaskTypeOptions[0] || 'Tarefa',
-          title: `Onboarding ${newClient.name}`,
-          content: newClientImplementationObservation.trim(),
-          lane: selectedLane,
-          status: defaultStatus,
-          segment: newClient.segment || '',
-          tier: newClient.tier || '',
-          squad: newClient.squad || '',
-          subtasks: (operationLanesByKey.get(selectedLane)?.defaultSubtasks || []).map((title) =>
-            createOperationSubtaskRecord({ title, status: defaultStatus })
-          ),
-        }),
-        ...current,
-      ])
-    }
     setActiveClientId(newClient.id)
     setActiveTab('clientes')
     setNewClientName('')
     setNewClientCnpj('')
-    setNewClientSalesModel('INSIDE_SALES')
-    setNewClientImplementationPhase(IMPLEMENTATION_PHASE_BY_SALES_MODEL.INSIDE_SALES)
-    setNewClientStartDate(getTodayDateInputValue())
-    setNewClientImplementationObservation('')
-    setNewClientOperationEnabled(operationSettings?.autoCreateCardForNewClient !== false)
+    setNewClientMetaAdAccountId('')
+    setNewClientOperationEnabled(false)
     setNewClientDashboardEnabled(true)
-    setNewClientDashboardIntegrationKeys(DEFAULT_CLIENT_DASHBOARD_INTEGRATION_KEYS)
-    setNewClientOperationLane(resolveOperationLaneFromSalesModel('INSIDE_SALES'))
+    setNewClientDashboardIntegrationKeys(['meta_ads', 'agendor'])
     setClientEditSection('geral')
     setIsCreateClientModalOpen(false)
     setIsEditClientModalOpen(true)
@@ -12086,9 +12059,6 @@ export default function DashboardShell({
           <button type="button" data-tooltip="Presentation" className={`nav-item nav-button ${activeTab === 'apresentacao' ? 'active' : ''}`} onClick={() => setActiveTab('apresentacao')}>
             <i className="bx bxs-dashboard"></i> Presentation
           </button>
-          <button type="button" data-tooltip="Operations" className={`nav-item nav-button ${activeTab === 'operacao' ? 'active' : ''}`} onClick={() => setActiveTab('operacao')}>
-            <i className="bx bx-briefcase-alt-2"></i> Operations
-          </button>
           {canAccessTeamTab && (
             <button type="button" data-tooltip="Team" className={`nav-item nav-button ${activeTab === 'usuarios' ? 'active' : ''}`} onClick={() => setActiveTab('usuarios')}>
               <i className="bx bxs-user-detail"></i> Team
@@ -12269,8 +12239,7 @@ export default function DashboardShell({
             <div className="page-title">
               <h1>
                 {activeTab === 'clientes' && 'Global Client Dashboard'}
-                {activeTab === 'operacao' && 'Operations Overview'}
-                {activeTab === 'produtos' && 'Offer Portfolio'}
+                                {activeTab === 'produtos' && 'Offer Portfolio'}
                 {activeTab === 'contexto' && 'Retention Intelligence'}
                 {activeTab === 'assistant' && assistantGreeting}
                 {activeTab === 'calendar' && 'Operations Calendar'}
@@ -12282,7 +12251,6 @@ export default function DashboardShell({
               {activeTab !== 'assistant' && (
                 <p>
                   {activeTab === 'clientes' && 'Gerencie sua carteira em uma leitura mais executiva, com health, churn, ROI e contexto operacional por cliente.'}
-                  {activeTab === 'operacao' && 'Acompanhe demandas, responsáveis, prioridades e gargalos em uma visão operacional mais clara e moderna.'}
                   {activeTab === 'produtos' && 'Organize ofertas, linhas de receita e pacotes para padronizar a operação comercial da agência.'}
                   {activeTab === 'contexto' && 'Centralize health score, churn risk, alertas e sinais de desalinhamento para priorizar retenção.'}
                   {activeTab === 'calendar' && 'Acompanhe a agenda operacional e os próximos pontos de contato sem sair do hub principal.'}
@@ -13344,1503 +13312,140 @@ export default function DashboardShell({
         {activeTab === 'monday' && renderMondayOperationalPanel()}
 
         {activeTab === 'clientes' && (
-          <section className="clients-layout">
+          <section className="clients-layout simple-clients-layout">
             <div className="management-header-row">
               <div className="management-header-copy">
-                <h2>Gestão de Clientes</h2>
-                <p>Controle parceiros, identidade de marca e prontidão operacional dentro do mesmo painel executivo.</p>
+                <h2>Clientes</h2>
+                <p>Cadastro simples para conectar APIs e vincular contas de anúncio disponíveis.</p>
               </div>
-              <button type="button" className="btn btn-secondary management-header-button" onClick={openCreateClientModal}>
+              <button type="button" className="btn btn-primary management-header-button" onClick={openCreateClientModal}>
                 <i className="bx bx-user-plus"></i>
-                Adicionar cliente
+                Novo cliente
               </button>
             </div>
 
-            <div className="clients-hero-strip">
-              <div className="glass-panel management-hero clients-intro clients-hero-main">
-                <div className="management-hero-copy">
-                  <span className="management-hero-kicker">Client control</span>
-                  <h2>Organize clientes, grupos e a identidade visual da operação</h2>
-                  <p>
-                    Centralize aqui a base de clientes do workspace, escolha quais contas entram na leitura executiva e mantenha a apresentação alinhada com cada operação.
-                  </p>
-                </div>
-                <div className="clients-hero-actions">
-                  <button type="button" className="btn btn-primary" onClick={openCreateClientModal}>
-                    Novo cliente
-                  </button>
-                  <button type="button" className="btn btn-secondary" onClick={() => setIsCreateClientGroupModalOpen(true)}>
-                    Novo grupo
-                  </button>
+            <div className="glass-panel users-toolbar-card management-directory-card simple-client-card">
+              <div className="client-registry-controls simple-client-controls">
+                <div className="client-registry-search">
+                  <i className="bx bx-search"></i>
+                  <input
+                    type="text"
+                    value={clientSearch}
+                    onChange={(event) => setClientSearch(event.target.value)}
+                    placeholder="Buscar cliente..."
+                  />
                 </div>
               </div>
 
-              <div className="clients-metric-grid">
-                <div className="clients-metric-card">
-                  <small>Total de clientes</small>
-                  <strong>{formatNumber(clients.length)}</strong>
-                  <span>{`${formatNumber(clientGroups.length)} grupo(s) conectados à base`}</span>
+              <div className="simple-client-list" role="table" aria-label="Clientes cadastrados">
+                <div className="simple-client-row simple-client-row-head" role="row">
+                  <span role="columnheader">Cliente</span>
+                  <span role="columnheader" aria-label="Meta Ads"><i className="bx bxl-meta"></i></span>
+                  <span role="columnheader" aria-label="Agendor"><i className="bx bx-git-branch"></i></span>
+                  <span role="columnheader" aria-label="Google Sheets"><i className="bx bx-spreadsheet"></i></span>
+                  <span role="columnheader">Editar</span>
                 </div>
-                <div className="clients-metric-card clients-metric-card-live">
-                  <small>Ativos agora</small>
-                  <strong>{formatNumber(connectedClientsCount)}</strong>
-                  <span>{connectedClientsCount ? 'Prontos para leitura' : 'Sem contas conectadas'}</span>
-                </div>
-                <div className="clients-metric-card">
-                  <small>Clientes em risco</small>
-                  <strong>{formatNumber(healthRiskClientsCount)}</strong>
-                  <span>{healthRiskClientsCount ? 'Flags exigem revisão' : 'Sem alertas críticos'}</span>
-                </div>
-                <div className="clients-metric-card clients-metric-card-score">
-                  <small>Health médio</small>
-                  <strong>{averageClientHealthScore.toFixed(1)}</strong>
-                  <span>{averageClientHealthScore >= 80 ? 'Base madura' : 'Melhorar entrega, financeiro e CRM'}</span>
-                </div>
-                <div className="clients-metric-card">
-                  <small>Completude média</small>
-                  <strong>{`${averageClientCompleteness}%`}</strong>
-                  <span>{incompleteClientsCount ? `${formatNumber(incompleteClientsCount)} cliente(s) incompletos` : 'Base bem preenchida'}</span>
-                </div>
-              </div>
-            </div>
 
-            <div className="clients-grid clients-grid-single">
-              <div className="glass-panel users-toolbar-card management-directory-card">
-                <div className="user-picker-head client-registry-head">
-                  <div className="client-registry-head-copy">
-                    <span className="management-card-kicker">Client registry</span>
-                    <h3>Clientes cadastrados</h3>
-                    <p>Cadastre contratos, financeiro, links, responsáveis, flags de entregáveis e integrações da operação em uma única base.</p>
-                  </div>
-                  {canManageClients && (
-                    <div className="client-registry-manager-shell">
-                      <div className="client-registry-manager-actions">
+                {clients
+                  .filter((client) => {
+                    const query = clientSearch.trim().toLowerCase()
+                    if (!query) return true
+                    return [client.name, client.cnpj, client.metaAdAccountId, client.agendorAccountId]
+                      .filter(Boolean)
+                      .some((value) => String(value).toLowerCase().includes(query))
+                  })
+                  .map((client) => {
+                    const metaAccount = adAccounts.find((account) => account.id === client.metaAdAccountId)
+                    const hasMeta = Boolean(client.metaAdAccountId)
+                    const hasAgendor = Boolean(client.agendorAccountId || client.integrations?.agendorToken)
+                    const hasSheets = Boolean(client.googleSheetsUrl)
+
+                    return (
+                      <div key={client.id} className="simple-client-row" role="row">
                         <button
                           type="button"
-                          className={`btn btn-secondary ${clientRegistryManagerMode === 'new_tab' ? 'client-registry-manager-btn-active' : ''}`}
-                          onClick={() => openClientRegistryManager('new_tab')}
+                          className="simple-client-name"
+                          onClick={() => {
+                            setActiveClientId(client.id)
+                            setClientEditSection('geral')
+                            setIsEditClientModalOpen(true)
+                          }}
                         >
-                          Nova aba
+                          <strong>{client.name}</strong>
+                          <small>{metaAccount?.name || client.metaAdAccountId || client.cnpj || 'Sem conta de anúncio selecionada'}</small>
                         </button>
-                        <button
-                          type="button"
-                          className={`btn btn-secondary ${clientRegistryManagerMode === 'new_column' ? 'client-registry-manager-btn-active' : ''}`}
-                          onClick={() => openClientRegistryManager('new_column')}
-                        >
-                          Nova coluna
-                        </button>
-                        <button
-                          type="button"
-                          className={`btn btn-secondary ${clientRegistryManagerMode === 'edit_tab' ? 'client-registry-manager-btn-active' : ''}`}
-                          onClick={() => openClientRegistryManager('edit_tab')}
-                        >
-                          Editar aba
-                        </button>
-                      </div>
-
-                      {clientRegistryManagerMode === 'new_tab' && (
-                        <div className="client-registry-manager-panel client-registry-manager-panel-create glass-item">
-                          <div className="client-registry-manager-panel-headline">
-                            <span className="client-registry-manager-kicker">Estrutura</span>
-                            <strong>Nova aba</strong>
-                            <p>Crie uma visualização nova para organizar a base de clientes por frente, squad ou tema.</p>
-                          </div>
-                          <div className="client-structure-form">
-                            <input
-                              type="text"
-                              value={newClientTabLabel}
-                              onChange={(event) => setNewClientTabLabel(event.target.value)}
-                              placeholder="Ex.: Suporte, Comercial, CS..."
-                              disabled={!canManageClients}
-                            />
-                            <button type="button" className="btn btn-primary" onClick={handleCreateClientCustomTab} disabled={!canManageClients || !newClientTabLabel.trim()}>
-                              Criar aba
-                            </button>
-                          </div>
-                        </div>
-                      )}
-
-                      {clientRegistryManagerMode === 'new_column' && (
-                        <div className="client-registry-manager-panel client-registry-manager-panel-create glass-item">
-                          <div className="client-registry-manager-panel-headline">
-                            <span className="client-registry-manager-kicker">Estrutura</span>
-                            <strong>Nova coluna em {activeClientRegistryTabLabel}</strong>
-                            <p>Adicione um campo novo nessa aba para enriquecer a leitura e o cadastro dos clientes.</p>
-                          </div>
-                          <div className="client-structure-form client-structure-form-compact">
-                            <input
-                              type="text"
-                              value={newClientColumnLabel}
-                              onChange={(event) => setNewClientColumnLabel(event.target.value)}
-                              placeholder="Ex.: SLA, Categoria, Ticket..."
-                              disabled={!canManageClients}
-                            />
-                            <select value={newClientColumnType} onChange={(event) => setNewClientColumnType(event.target.value)} disabled={!canManageClients}>
-                              {CLIENT_CUSTOM_COLUMN_TYPE_OPTIONS.map((option) => (
-                                <option key={option.value} value={option.value}>{option.label}</option>
-                              ))}
-                            </select>
-                            <input
-                              type="text"
-                              value={newClientColumnOptions}
-                              onChange={(event) => setNewClientColumnOptions(event.target.value)}
-                              placeholder={newClientColumnType === 'select' ? 'Opções separadas por vírgula' : 'Use para dropdown'}
-                              disabled={!canManageClients || newClientColumnType !== 'select'}
-                            />
-                            <input
-                              type="text"
-                              value={newClientColumnFormula}
-                              onChange={(event) => setNewClientColumnFormula(event.target.value)}
-                              placeholder={newClientColumnType === 'formula' ? 'Ex.: ({fee} * 12) / {mediaInvestment}' : 'Use para fórmulas'}
-                              disabled={!canManageClients || newClientColumnType !== 'formula'}
-                            />
-                            <button type="button" className="btn btn-primary client-registry-manager-submit" onClick={handleCreateClientCustomColumn} disabled={!canManageClients || !newClientColumnLabel.trim()}>
-                              Criar coluna
-                            </button>
-                          </div>
-                        </div>
-                      )}
-
-                      {clientRegistryManagerMode === 'edit_tab' && (
-                        <div className="client-registry-manager-panel glass-item">
-                          <div className="client-registry-manager-panel-head">
-                            <div>
-                              <span className="client-registry-manager-kicker">Editor da aba</span>
-                              <strong>Editar aba atual</strong>
-                              <small>{activeClientRegistryTabLabel}</small>
-                            </div>
-                          </div>
-
-                          <div className="client-structure-form">
-                            <input
-                              type="text"
-                              value={activeClientRegistryTabLabel}
-                              onChange={(event) =>
-                                activeClientRegistryCustomTab
-                                  ? handleClientCustomTabFieldChange(activeClientRegistryCustomTab.id, 'label', event.target.value)
-                                  : handleClientTabOverrideChange(clientRegistryView, event.target.value)
-                              }
-                              placeholder="Nome da aba"
-                              disabled={!canManageClients}
-                            />
-                          </div>
-
-                          <div className="client-registry-manager-columns">
-                            <div className="client-registry-manager-column-group">
-                              <span className="field-helper">Colunas padrão dessa aba</span>
-                              {activeClientRegistrySystemColumns.length ? (
-                                <div className="client-structure-list">
-                                  {activeClientRegistrySystemColumns.map((column) => (
-                                    <div key={`system-column-${column.key}`} className="client-structure-item">
-                                      <input
-                                        type="text"
-                                        value={column.label}
-                                        onChange={(event) => handleClientSystemFieldChange(column.key, 'label', event.target.value)}
-                                        placeholder="Nome da coluna"
-                                        disabled={!canManageClients}
-                                      />
-                                      <select
-                                        value={column.tabKey}
-                                        onChange={(event) => handleClientSystemFieldChange(column.key, 'tabKey', event.target.value)}
-                                        disabled={!canManageClients}
-                                      >
-                                        {clientFieldTabOptions.map((tab) => (
-                                          <option key={`system-${column.key}-${tab.key}`} value={tab.key}>{tab.label}</option>
-                                        ))}
-                                      </select>
-                                      <input type="text" value={column.type} readOnly />
-                                    </div>
-                                  ))}
-                                </div>
-                              ) : (
-                                <p className="field-helper">Nenhuma coluna padrão vinculada a essa aba.</p>
-                              )}
-                            </div>
-
-                            <div className="client-registry-manager-column-group">
-                              <span className="field-helper">Colunas customizadas dessa aba</span>
-                              {activeClientRegistryCustomColumns.length ? (
-                                <div className="client-structure-list">
-                                  {activeClientRegistryCustomColumns.map((column) => (
-                                    <div key={column.id} className="client-structure-item">
-                                      <input
-                                        type="text"
-                                        value={column.label}
-                                        onChange={(event) => handleClientCustomColumnFieldChange(column.id, 'label', event.target.value)}
-                                        placeholder="Nome da coluna"
-                                        disabled={!canManageClients}
-                                      />
-                                      <select
-                                        value={column.type}
-                                        onChange={(event) => handleClientCustomColumnFieldChange(column.id, 'type', event.target.value)}
-                                        disabled={!canManageClients}
-                                      >
-                                        {CLIENT_CUSTOM_COLUMN_TYPE_OPTIONS.map((option) => (
-                                          <option key={`${column.id}-${option.value}`} value={option.value}>{option.label}</option>
-                                        ))}
-                                      </select>
-                                      <select
-                                        value={column.tabKey}
-                                        onChange={(event) => handleClientCustomColumnFieldChange(column.id, 'tabKey', event.target.value)}
-                                        disabled={!canManageClients}
-                                      >
-                                        {clientFieldTabOptions.map((tab) => (
-                                          <option key={`${column.id}-tab-${tab.key}`} value={tab.key}>{tab.label}</option>
-                                        ))}
-                                      </select>
-                                      <button type="button" className="btn btn-secondary" onClick={() => handleRemoveClientCustomColumn(column.key)}>
-                                        Excluir
-                                      </button>
-                                    </div>
-                                  ))}
-                                </div>
-                              ) : (
-                                <p className="field-helper">Nenhuma coluna customizada nessa aba ainda.</p>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                <div className="client-registry-controls">
-                  <div className="client-registry-search">
-                    <i className="bx bx-search"></i>
-                    <input
-                      type="text"
-                      value={clientSearch}
-                      onChange={(event) => setClientSearch(event.target.value)}
-                      placeholder="Buscar cliente, produto, responsável..."
-                    />
-                  </div>
-                  <div className="client-registry-controls-right">
-                    <div className="client-registry-display-toggle" role="tablist" aria-label="Modo de visualização dos clientes">
-                      <button
-                        type="button"
-                        className={`client-registry-display-btn ${clientRegistryDisplayMode === 'table' ? 'active' : ''}`}
-                        onClick={() => setClientRegistryDisplayMode('table')}
-                      >
-                        <i className="bx bx-table"></i>
-                        <span>Tabela</span>
-                      </button>
-                      <button
-                        type="button"
-                        className={`client-registry-display-btn ${clientRegistryDisplayMode === 'kanban' ? 'active' : ''}`}
-                        onClick={() => setClientRegistryDisplayMode('kanban')}
-                      >
-                        <i className="bx bx-columns"></i>
-                        <span>Kanban</span>
-                      </button>
-                    </div>
-                    <div className="client-registry-filter-group">
-                      <select value={clientStatusFilter} onChange={(event) => setClientStatusFilter(event.target.value)}>
-                        <option value="all">Todos os status</option>
-                        <option value="ativo">Ativo</option>
-                        <option value="onboarding">Onboarding</option>
-                        <option value="pausado">Pausado</option>
-                        <option value="risco">Risco</option>
-                        <option value="risk">Health em risco</option>
-                        <option value="incomplete">Cadastro incompleto</option>
-                      </select>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="client-registry-view-tabs">
-                  {allClientRegistryViews.map((view) => (
-                    <button
-                      key={view.key}
-                      type="button"
-                      className={`client-registry-view-tab ${clientRegistryView === view.key ? 'active' : ''}`}
-                      onClick={() => setClientRegistryView(view.key)}
-                    >
-                      {view.label}
-                    </button>
-                  ))}
-                </div>
-
-                {clientRegistryDisplayMode === 'table' ? (
-                  <div className="client-registry-table">
-                    <div
-                      className="client-registry-header"
-                      style={{ gridTemplateColumns: `minmax(220px, 1.8fr) repeat(${Math.max(activeClientRegistryView.columns.length - 1, 0)}, minmax(140px, 1fr)) minmax(150px, 1.1fr)` }}
-                    >
-                      {activeClientRegistryView.columns.map((columnKey) => {
-                        const meta = getResolvedClientColumnMeta(columnKey)
-                        return <span key={columnKey}>{meta.label}</span>
-                      })}
-                      <span>Ações</span>
-                    </div>
-                    <div className="client-registry-body">
-                      {filteredClients.map((client) => {
-                        const linkedGroupsCount = clientGroups.filter((group) => normalizeClientGroupClientIds(group.clientIds).includes(client.id)).length
-                        const completenessScore = getClientCompleteness(client)
-
-                        return (
-                          <div
-                            key={client.id}
-                            className={`client-registry-row glass-item ${client.id === activeClientId ? 'client-registry-row-active' : ''}`}
-                            style={{ gridTemplateColumns: `minmax(220px, 1.8fr) repeat(${Math.max(activeClientRegistryView.columns.length - 1, 0)}, minmax(140px, 1fr)) minmax(150px, 1.1fr)` }}
-                          >
-                            {activeClientRegistryView.columns.map((columnKey) => {
-                              const meta = getResolvedClientColumnMeta(columnKey)
-
-                              if (meta.type === 'name') {
-                                return (
-                                  <div
-                                    key={columnKey}
-                                    className="client-registry-client"
-                                    onMouseEnter={() => setClientRegistryHover({ clientId: client.id, columnKey: 'name' })}
-                                    onMouseLeave={() => setClientRegistryHover((current) => (
-                                      current.clientId === client.id && current.columnKey === 'name' ? { clientId: '', columnKey: '' } : current
-                                    ))}
-                                  >
-                                    <div className="client-avatar-shell client-avatar-shell-sm">
-                                      {client.logoUrl ? (
-                                        <img
-                                          src={client.logoUrl}
-                                          alt={`Logo ${client.name}`}
-                                          className="client-avatar-image"
-                                        />
-                                      ) : (
-                                        <span>{getNameInitials(client.name)}</span>
-                                      )}
-                                    </div>
-                                    <div className="client-registry-client-copy">
-                                    {clientRegistryInlineEdit.clientId === client.id && clientRegistryInlineEdit.columnKey === 'name' ? (
-                                      <input
-                                        autoFocus
-                                        type="text"
-                                        value={client.name || ''}
-                                        onBlur={closeClientRegistryInlineEdit}
-                                        onKeyDown={(event) => {
-                                          if (event.key === 'Escape') closeClientRegistryInlineEdit()
-                                          if (event.key === 'Enter') closeClientRegistryInlineEdit()
-                                        }}
-                                        onChange={(event) => handleClientInlineFieldChange(client.id, 'name', event.target.value)}
-                                        placeholder="Nome do cliente"
-                                      />
-                                    ) : (
-                                      <div className="client-registry-title-row">
-                                        <strong>{client.name || 'Cliente sem nome'}</strong>
-                                        {canEditClientRecord(client.id) && clientRegistryHover.clientId === client.id && clientRegistryHover.columnKey === 'name' && (
-                                          <button
-                                            type="button"
-                                            className="client-registry-edit-trigger"
-                                            onClick={() => openClientRegistryInlineEdit(client.id, 'name')}
-                                            aria-label="Editar nome do cliente"
-                                          >
-                                            <i className="bx bx-pencil"></i>
-                                          </button>
-                                        )}
-                                      </div>
-                                    )}
-                                    <small>
-                                      {client.cnpj ? `CNPJ ${client.cnpj} • ` : ''}
-                                      {linkedGroupsCount ? `${linkedGroupsCount} grupo(s)` : 'Sem grupo vinculado'}
-                                      {completenessScore != null ? ` • ${completenessScore}% completo` : ''}
-                                    </small>
-                                    </div>
-                                  </div>
-                                )
-                              }
-                              return renderClientRegistryField(client, columnKey, 'inline')
-                            })}
-                            <div className="client-registry-actions">
-                              <button
-                                type="button"
-                                className="btn btn-secondary"
-                                onClick={() => {
-                                  setActiveClientId(client.id)
-                                  setClientEditSection(clientRegistryView)
-                                  setIsEditClientModalOpen(true)
-                                }}
-                              >
-                                Editar
-                              </button>
-                              {isMaster && clients.length > 1 && (
-                                <button type="button" className="btn btn-secondary" onClick={() => handleRemoveClient(client.id)}>
-                                  Excluir
-                                </button>
-                              )}
-                            </div>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="client-kanban-board">
-                    {clientKanbanColumns.map((column) => (
-                      <div
-                        key={column.key}
-                        className={`client-kanban-column glass-item ${clientKanbanDropPhaseKey === column.key ? 'client-kanban-column-drop' : ''}`}
-                        onDragOver={(event) => {
-                          if (!clientKanbanDragClientId) return
-                          event.preventDefault()
-                          if (clientKanbanDropPhaseKey !== column.key) {
-                            setClientKanbanDropPhaseKey(column.key)
-                          }
-                        }}
-                        onDragLeave={() => {
-                          if (clientKanbanDropPhaseKey === column.key) {
-                            setClientKanbanDropPhaseKey('')
-                          }
-                        }}
-                        onDrop={(event) => {
-                          event.preventDefault()
-                          handleClientKanbanDrop(column.key)
-                        }}
-                      >
-                        <div className="client-kanban-column-head">
-                          <div>
-                            <strong>{column.label}</strong>
-                            <span>{column.clients.length} cliente(s)</span>
-                          </div>
-                        </div>
-                        <div className="client-kanban-column-body">
-                          {column.clients.length ? (
-                            column.clients.map((client) => {
-                              const completenessScore = getClientCompleteness(client)
-                              const healthScore = calculateClientHealthScore(client)
-                              const productName = productsById.get(client.productId)?.name || client.product || 'Sem produto'
-
-                              return (
-                                <button
-                                  key={`kanban-${column.key}-${client.id}`}
-                                  type="button"
-                                  className={`client-kanban-card ${client.id === activeClientId ? 'active' : ''} ${clientKanbanDragClientId === client.id ? 'dragging' : ''}`}
-                                  draggable={canEditClientRecord(client.id)}
-                                  onDragStart={() => handleClientKanbanDragStart(client.id)}
-                                  onDragEnd={handleClientKanbanDragEnd}
-                                  onClick={() => {
-                                    setActiveClientId(client.id)
-                                    setClientEditSection(clientRegistryView)
-                                    setIsEditClientModalOpen(true)
-                                  }}
-                                >
-                                  <div className="client-kanban-card-head">
-                                    <div className="client-avatar-shell client-avatar-shell-sm">
-                                      {client.logoUrl ? (
-                                        <img
-                                          src={client.logoUrl}
-                                          alt={`Logo ${client.name}`}
-                                          className="client-avatar-image"
-                                        />
-                                      ) : (
-                                        <span>{getNameInitials(client.name)}</span>
-                                      )}
-                                    </div>
-                                    <div className="client-kanban-card-copy">
-                                      <strong>{client.name || 'Cliente sem nome'}</strong>
-                                      <small>{productName}</small>
-                                    </div>
-                                  </div>
-                                  <div className="client-kanban-card-badges">
-                                    <span className={`client-status-badge client-status-${getClientStatusMeta(client).tone}`}>
-                                      {getClientStatusMeta(client).label}
-                                    </span>
-                                    <span className="client-status-badge client-status-info">
-                                      {CLIENT_SALES_MODEL_OPTIONS.find((option) => option.value === client.salesModel)?.label || 'Sem trilha'}
-                                    </span>
-                                  </div>
-                                  <div className="client-kanban-card-metrics">
-                                    <div>
-                                      <span>Início</span>
-                                      <strong>{client.startDate ? formatClientDate(client.startDate) : 'Sem data'}</strong>
-                                    </div>
-                                    <div>
-                                      <span>Health</span>
-                                      <strong>{healthScore != null ? `${Math.round(healthScore)}` : 'N/A'}</strong>
-                                    </div>
-                                    <div>
-                                      <span>Completo</span>
-                                      <strong>{completenessScore != null ? `${completenessScore}%` : 'N/A'}</strong>
-                                    </div>
-                                  </div>
-                                </button>
-                              )
-                            })
-                          ) : (
-                            <div className="client-kanban-empty">
-                              <span>Nenhum cliente nesta fase.</span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {!clients.length && (
-                  <div className="empty-panel glass-item users-empty-state compact-empty-state">
-                    <h3>Nenhum cliente encontrado</h3>
-                    <p>Crie um cliente novo para começar a configurar a operação.</p>
-                  </div>
-                )}
-
-                {!!clients.length && !filteredClients.length && (
-                  <div className="empty-panel glass-item users-empty-state compact-empty-state">
-                    <h3>Nenhum cliente bate com o filtro</h3>
-                    <p>Ajuste a busca ou o status para voltar a ver a base.</p>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <section className="client-command-grid">
-              <div className="glass-panel client-activity-card client-activity-card-large">
-                <div className="client-activity-head">
-                  <div>
-                    <span className="management-card-kicker">Activity summary</span>
-                    <h3>Atividade recente da base</h3>
-                  </div>
-                  <button type="button" className="client-activity-link">Ver auditoria</button>
-                </div>
-                <div className="client-activity-list client-activity-list-extended">
-                  <div className="client-activity-item">
-                    <span className="client-activity-icon client-activity-icon-primary">
-                      <i className="bx bx-key"></i>
-                    </span>
-                    <div>
-                      <strong>{clients[0]?.name ? `${clients[0].name} segue como principal foco de leitura da operação.` : 'Nenhum cliente foi definido como foco principal ainda.'}</strong>
-                      <small>Agora</small>
-                    </div>
-                  </div>
-                  <div className="client-activity-item">
-                    <span className="client-activity-icon client-activity-icon-success">
-                      <i className="bx bx-user-plus"></i>
-                    </span>
-                    <div>
-                      <strong>{`${formatNumber(connectedClientsCount)} cliente(s) já conseguem entrar na leitura com dados conectados.`}</strong>
-                      <small>Conexões ativas</small>
-                    </div>
-                  </div>
-                  <div className="client-activity-item">
-                    <span className="client-activity-icon client-activity-icon-alert">
-                      <i className="bx bx-shield-quarter"></i>
-                    </span>
-                    <div>
-                      <strong>{healthRiskClientsCount ? `${formatNumber(healthRiskClientsCount)} cliente(s) estão com health score em atenção ou risco.` : 'Nenhum cliente em health score crítico no momento.'}</strong>
-                      <small>Fila de revisão</small>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="glass-panel client-security-card">
-                <div className="client-security-head">
-                  <h3>Status estrutural</h3>
-                  <i className="bx bx-shield-quarter"></i>
-                </div>
-                <div className="client-security-meters">
-                  <div className="client-security-meter">
-                    <div>
-                      <span>Integridade da base</span>
-                      <strong>{`${Math.max(0, Math.round(averageClientHealthScore))}%`}</strong>
-                    </div>
-                    <div className="client-security-track">
-                      <div className="client-security-fill client-security-fill-primary" style={{ width: `${Math.max(0, Math.round(averageClientHealthScore))}%` }}></div>
-                    </div>
-                  </div>
-                  <div className="client-security-meter">
-                    <div>
-                      <span>Identidade visual</span>
-                      <strong>{brandedClientsCount ? 'Ativa' : 'Pendente'}</strong>
-                    </div>
-                    <div className="client-security-track">
-                      <div className="client-security-fill client-security-fill-tertiary" style={{ width: `${clients.length ? Math.round((brandedClientsCount / clients.length) * 100) : 0}%` }}></div>
-                    </div>
-                  </div>
-                </div>
-                <div className="client-security-note">
-                  <div className="client-security-note-head">
-                    <i className="bx bx-badge-check"></i>
-                    <span>Varredura operacional</span>
-                  </div>
-                  <p>
-                    {connectedClientsCount
-                      ? 'A base já está pronta para cruzar campanhas, operação e contexto do cliente em leituras executivas.'
-                      : 'Conecte ao menos uma conta Meta para liberar leitura operacional orientada por dados no copiloto.'}
-                  </p>
-                </div>
-              </div>
-            </section>
-
-            <div className="clients-grid clients-grid-single">
-              <div className="glass-panel users-toolbar-card management-directory-card">
-                <div className="user-picker-head">
-                  <div>
-                    <span className="management-card-kicker">Client structure</span>
-                    <h3>Colunas e abas customizadas</h3>
-                    <p>Crie campos extras e monte abas próprias para a visão de clientes. Tudo isso fica salvo direto no Supabase.</p>
-                  </div>
-                </div>
-
-                <div className="client-create-grid">
-                  <form className="glass-panel client-create-bar management-action-card" onSubmit={handleCreateClientCustomColumn}>
-                    <div>
-                      <span className="management-card-kicker">New field</span>
-                      <h3>Novo campo</h3>
-                      <p>Crie um campo no estilo ClickUp e escolha o tipo e a aba onde ele vai aparecer.</p>
-                    </div>
-                    <div className="client-structure-form">
-                      <input
-                        type="text"
-                        value={newClientColumnLabel}
-                        onChange={(event) => setNewClientColumnLabel(event.target.value)}
-                        placeholder="Ex.: SLA, Categoria, Ticket..."
-                        disabled={!canManageClients}
-                      />
-                      <select value={newClientColumnType} onChange={(event) => setNewClientColumnType(event.target.value)} disabled={!canManageClients}>
-                        {CLIENT_CUSTOM_COLUMN_TYPE_OPTIONS.map((option) => (
-                          <option key={option.value} value={option.value}>{option.label}</option>
-                        ))}
-                      </select>
-                      <select value={newClientColumnTab} onChange={(event) => setNewClientColumnTab(event.target.value)} disabled={!canManageClients}>
-                        {clientFieldTabOptions.map((tab) => (
-                          <option key={tab.key} value={tab.key}>{tab.label}</option>
-                        ))}
-                      </select>
-                      <input
-                        type="text"
-                        value={newClientColumnOptions}
-                        onChange={(event) => setNewClientColumnOptions(event.target.value)}
-                        placeholder={newClientColumnType === 'select' ? 'Opções separadas por vírgula' : 'Use para dropdown'}
-                        disabled={!canManageClients || newClientColumnType !== 'select'}
-                      />
-                      <input
-                        type="text"
-                        value={newClientColumnFormula}
-                        onChange={(event) => setNewClientColumnFormula(event.target.value)}
-                        placeholder={newClientColumnType === 'formula' ? 'Ex.: ({fee} * 12) / {mediaInvestment}' : 'Use para fórmulas'}
-                        disabled={!canManageClients || newClientColumnType !== 'formula'}
-                      />
-                      <button type="submit" className="btn btn-primary" disabled={!canManageClients}>Criar coluna</button>
-                    </div>
-                    {newClientColumnType === 'formula' && (
-                      <div className="stage-selector">
-                        {['(', ')', '+', '-', '*', '/'].map((token) => (
-                          <button
-                            key={`formula-token-${token}`}
-                            type="button"
-                            className="stage-chip"
-                            onClick={() => setNewClientColumnFormula((current) => `${current}${token}`)}
-                          >
-                            <span>{token}</span>
-                          </button>
-                        ))}
-                        {clientFormulaReferenceOptions.map((field) => (
-                          <button
-                            key={`formula-field-${field.key}`}
-                            type="button"
-                            className="stage-chip"
-                            onClick={() => setNewClientColumnFormula((current) => `${current}{${field.key}}`)}
-                          >
-                            <span>{field.label}</span>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </form>
-
-                  <form className="glass-panel client-create-bar management-action-card" onSubmit={handleCreateClientCustomTab}>
-                    <div>
-                      <span className="management-card-kicker">New tab</span>
-                      <h3>Nova aba</h3>
-                      <p>Monte uma nova visualização agrupando colunas específicas da base de clientes.</p>
-                    </div>
-                    <div className="client-structure-form">
-                      <input
-                        type="text"
-                        value={newClientTabLabel}
-                        onChange={(event) => setNewClientTabLabel(event.target.value)}
-                        placeholder="Ex.: Suporte, Comercial, CS..."
-                        disabled={!canManageClients}
-                      />
-                      <button type="submit" className="btn btn-primary" disabled={!canManageClients}>Criar aba</button>
-                    </div>
-                  </form>
-                </div>
-
-                <div className="client-structure-grid">
-                  <div className="glass-item client-structure-card">
-                    <h3>Campos customizados</h3>
-                    <div className="client-structure-list">
-                      {clientCustomColumns.map((column) => (
-                        <div key={column.id} className="client-structure-item">
-                          <input
-                            type="text"
-                            value={column.label}
-                            onChange={(event) => handleClientCustomColumnFieldChange(column.id, 'label', event.target.value)}
-                            disabled={!canManageClients}
-                          />
-                          <select
-                            value={column.type}
-                            onChange={(event) => handleClientCustomColumnFieldChange(column.id, 'type', event.target.value)}
-                            disabled={!canManageClients}
-                          >
-                            {CLIENT_CUSTOM_COLUMN_TYPE_OPTIONS.map((option) => (
-                              <option key={option.value} value={option.value}>{option.label}</option>
-                            ))}
-                          </select>
-                          <select
-                            value={column.tabKey || 'geral'}
-                            onChange={(event) => handleClientCustomColumnFieldChange(column.id, 'tabKey', event.target.value)}
-                            disabled={!canManageClients}
-                          >
-                            {clientFieldTabOptions.map((tab) => (
-                              <option key={`${column.id}-${tab.key}`} value={tab.key}>{tab.label}</option>
-                            ))}
-                          </select>
-                          <input
-                            type="text"
-                            value={(column.options || []).join(', ')}
-                            onChange={(event) => handleClientCustomColumnFieldChange(column.id, 'options', event.target.value)}
-                            placeholder={column.type === 'select' ? 'Ex.: Ativo, Pausado, Revisão' : 'Use para colunas dropdown'}
-                            disabled={!canManageClients || column.type !== 'select'}
-                          />
-                          <input
-                            type="text"
-                            value={column.formulaExpression || ''}
-                            onChange={(event) => handleClientCustomColumnFieldChange(column.id, 'formulaExpression', event.target.value)}
-                            placeholder={column.type === 'formula' ? 'Ex.: ({fee} + {monthlyRevenue}) / 2' : 'Use para campos fórmula'}
-                            disabled={!canManageClients || column.type !== 'formula'}
-                          />
-                          {column.type === 'formula' && (
-                            <div className="stage-selector">
-                              {['(', ')', '+', '-', '*', '/'].map((token) => (
-                                <button
-                                  key={`${column.id}-${token}`}
-                                  type="button"
-                                  className="stage-chip"
-                                  disabled={!canManageClients}
-                                  onClick={() => handleClientCustomColumnFieldChange(column.id, 'formulaExpression', `${column.formulaExpression || ''}${token}`)}
-                                >
-                                  <span>{token}</span>
-                                </button>
-                              ))}
-                              {clientFormulaReferenceOptions.map((field) => (
-                                <button
-                                  key={`${column.id}-${field.key}`}
-                                  type="button"
-                                  className="stage-chip"
-                                  disabled={!canManageClients}
-                                  onClick={() => handleClientCustomColumnFieldChange(column.id, 'formulaExpression', `${column.formulaExpression || ''}{${field.key}}`)}
-                                >
-                                  <span>{field.label}</span>
-                                </button>
-                              ))}
-                            </div>
-                          )}
-                          {canManageClients && (
-                            <button type="button" className="btn btn-secondary" onClick={() => handleRemoveClientCustomColumn(column.key)}>Excluir</button>
-                          )}
-                        </div>
-                      ))}
-                      {!clientCustomColumns.length && <p className="field-helper">Nenhum campo customizado criado ainda.</p>}
-                    </div>
-                  </div>
-
-                  <div className="glass-item client-structure-card">
-                    <h3>Abas extras</h3>
-                    <div className="client-structure-list">
-                      {clientCustomTabs.map((tab) => (
-                        <div key={tab.id} className="client-structure-tab-item">
-                          <div className="client-structure-tab-head">
-                            <input
-                              type="text"
-                              value={tab.label}
-                              onChange={(event) => handleClientCustomTabFieldChange(tab.id, 'label', event.target.value)}
-                              disabled={!canManageClients}
-                            />
-                            {canManageClients && (
-                              <button type="button" className="btn btn-secondary" onClick={() => handleRemoveClientCustomTab(tab.id)}>Excluir</button>
-                            )}
-                          </div>
-                          <div className="stage-selector">
-                            {clientCustomColumns.map((column) => {
-                              const checked = (tab.columnKeys || []).includes(column.key)
-                              return (
-                                <label key={`${tab.id}-${column.key}`} className={`stage-chip ${checked ? 'active' : ''}`}>
-                                  <input
-                                    type="checkbox"
-                                    checked={checked}
-                                    disabled={!canManageClients}
-                                    onChange={() => handleClientCustomTabColumnToggle(tab.id, column.key)}
-                                  />
-                                  <span>{column.label}</span>
-                                </label>
-                              )
-                            })}
-                          </div>
-                        </div>
-                      ))}
-                      {!clientCustomTabs.length && <p className="field-helper">Nenhuma aba extra criada ainda.</p>}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="clients-grid clients-grid-single">
-              <div className="glass-panel users-toolbar-card management-directory-card">
-                <div className="user-picker-head">
-                  <div>
-                    <span className="management-card-kicker">Access grouping</span>
-                    <h3>Grupos de clientes</h3>
-                    <p>Escolha os dashboards que pertencem a cada grupo para depois liberar acesso em lote aos usuários.</p>
-                  </div>
-                </div>
-
-                <div className="client-groups-grid">
-                  {clientGroups.map((group) => (
-                    <div key={group.id} className="glass-item client-group-card">
-                      <div className="client-group-head">
-                        <div className="input-group">
-                          <label>Nome do grupo</label>
-                          <input
-                            type="text"
-                            value={group.name}
-                            onChange={(event) => handleClientGroupFieldChange(group.id, 'name', event.target.value)}
-                            placeholder="Nome do grupo"
-                            disabled={!isMaster}
-                          />
-                        </div>
-                        {isMaster && (
-                          <button type="button" className="btn btn-secondary" onClick={() => handleRemoveClientGroup(group.id)}>
-                            Excluir
-                          </button>
-                        )}
-                      </div>
-
-                      <div className="input-group">
-                        <label>Dashboards dentro do grupo</label>
-                        <div className="stage-selector">
-                          {clients.map((client) => {
-                            const hasClient = normalizeClientGroupClientIds(group.clientIds).includes(client.id)
-
-                            return (
-                              <label key={`${group.id}-${client.id}`} className={`stage-chip ${hasClient ? 'active' : ''}`}>
-                                <input
-                                  type="checkbox"
-                                  checked={hasClient}
-                                  onChange={() => handleClientGroupClientToggle(group.id, client.id)}
-                                  disabled={!isMaster}
-                                />
-                                <span>{client.name}</span>
-                              </label>
-                            )
-                          })}
-                        </div>
-                        <span className="field-helper">
-                          {group.clientIds.length} dashboard(s) vinculado(s) a este grupo.
+                        <span className={hasMeta ? 'simple-client-icon active' : 'simple-client-icon'} title={hasMeta ? 'Meta conectada' : 'Meta não conectada'}>
+                          <i className="bx bxl-meta"></i>
                         </span>
+                        <span className={hasAgendor ? 'simple-client-icon active' : 'simple-client-icon'} title={hasAgendor ? 'Agendor cadastrado' : 'Agendor não cadastrado'}>
+                          <i className="bx bx-git-branch"></i>
+                        </span>
+                        <span className={hasSheets ? 'simple-client-icon active' : 'simple-client-icon'} title={hasSheets ? 'Planilha cadastrada' : 'Planilha não cadastrada'}>
+                          <i className="bx bx-spreadsheet"></i>
+                        </span>
+                        <button
+                          type="button"
+                          className="btn btn-secondary simple-client-edit"
+                          onClick={() => {
+                            setActiveClientId(client.id)
+                            setClientEditSection('geral')
+                            setIsEditClientModalOpen(true)
+                          }}
+                        >
+                          Editar
+                        </button>
                       </div>
-                    </div>
-                  ))}
-                </div>
-
-                {!clientGroups.length && (
-                  <div className="empty-panel glass-item users-empty-state compact-empty-state">
-                    <h3>Nenhum grupo criado</h3>
-                    <p>Crie grupos para conceder acesso em lote aos dashboards.</p>
-                  </div>
-                )}
+                    )
+                  })}
               </div>
+
+              {!clients.length && (
+                <div className="empty-panel glass-item users-empty-state compact-empty-state">
+                  <h3>Nenhum cliente cadastrado</h3>
+                  <p>Crie um cliente e selecione a conta de anúncio da Meta para começar.</p>
+                </div>
+              )}
             </div>
-
-            <section className="client-intelligence-grid">
-              <div className="glass-panel client-intelligence-feature">
-                <div className="client-intelligence-kicker">
-                  <i className="bx bx-bulb"></i>
-                  Insight operacional
-                </div>
-                <h3>
-                  {clients.length
-                    ? `${clients.filter((client) => client.metaAdAccountId).length} cliente(s) já estão prontos para leitura com dados conectados.`
-                    : 'Comece cadastrando o primeiro cliente para estruturar a operação.'}
-                </h3>
-                <p>
-                  {clients.filter((client) => client.metaAdAccountId).length
-                    ? 'Priorize agora os clientes com conta Meta ativa e complete a identidade dos demais para deixar a apresentação consistente.'
-                    : 'Assim que o primeiro cliente entrar, você já pode conectar Meta, CRM, planilhas e identidade visual no mesmo fluxo.'}
-                </p>
-                <button type="button" className="btn btn-primary">
-                  Gerar plano de expansão
-                </button>
-              </div>
-
-              <div className="glass-panel client-activity-card">
-                <div className="client-activity-head">
-                  <h3>Atividade recente da base</h3>
-                  <button type="button" className="client-activity-link">Ver auditoria</button>
-                </div>
-                <div className="client-activity-list">
-                  <div className="client-activity-item">
-                    <span className="client-activity-dot client-activity-dot-primary"></span>
-                    <div>
-                      <strong>{clients[0]?.name ? `${clients[0].name} aparece como cliente em foco do workspace.` : 'Nenhum cliente selecionado como principal no momento.'}</strong>
-                      <small>Agora</small>
-                    </div>
-                  </div>
-                  <div className="client-activity-item">
-                    <span className="client-activity-dot client-activity-dot-success"></span>
-                    <div>
-                      <strong>{`${formatNumber(clientGroups.length)} grupo(s) disponíveis para liberar acesso em lote.`}</strong>
-                      <small>Estrutura de acesso</small>
-                    </div>
-                  </div>
-                  <div className="client-activity-item">
-                    <span className="client-activity-dot client-activity-dot-muted"></span>
-                    <div>
-                      <strong>{`${formatNumber(clients.filter((client) => !client.logoUrl).length)} cliente(s) ainda sem logo configurada.`}</strong>
-                      <small>Identidade visual</small>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </section>
           </section>
         )}
 
         {activeTab === 'clientes' && isEditClientModalOpen && activeClient && (
           <div className="modal-overlay" onClick={() => setIsEditClientModalOpen(false)}>
-            <div className="modal-card modal-card-wide glass-panel" onClick={(event) => event.stopPropagation()}>
+            <div className="modal-card modal-card-wide glass-panel modal-client-editor simple-client-modal" onClick={(event) => event.stopPropagation()}>
               <div className="modal-header">
                 <div>
                   <h3>Editar cliente</h3>
-                  <p>Atualize identidade, contas vinculadas e integrações específicas desse cliente.</p>
+                  <p>Configure apenas identificação, APIs e conta de anúncio vinculada.</p>
                 </div>
                 <button type="button" className="modal-close" onClick={() => setIsEditClientModalOpen(false)} aria-label="Fechar edição de cliente">
                   <i className="bx bx-x"></i>
                 </button>
               </div>
 
-              <form className="client-editor-card modal-client-editor" onSubmit={handleSaveIntegrations}>
-                <div className="client-editor-header">
-                  <div>
-                    <h3>Editando: {activeClient.name}</h3>
-                    <p>Qualquer ajuste aqui já define como a dash desse cliente vai abrir.</p>
-                  </div>
-                  <button type="submit" className="btn btn-primary" disabled={isSavingIntegrations || !canEditActiveClient}>
-                    {isSavingIntegrations ? 'Salvando...' : 'Salvar cliente'}
-                  </button>
-                </div>
-
-                <div className="client-edit-section-tabs">
-                  {allClientEditSections.map((section) => (
-                    <button
-                      key={section.key}
-                      type="button"
-                      className={`client-edit-section-tab ${clientEditSection === section.key ? 'active' : ''}`}
-                      onClick={() => setClientEditSection(section.key)}
-                    >
-                      {section.label}
-                    </button>
-                  ))}
-                </div>
-
-                {(clientEditSection === 'geral' || clientEditSection === 'branding') && (
-                <div className="integration-block client-identity-block">
-                  <div className="integration-heading">
-                    <div className="integration-icon" style={{ color: currentTheme.main, borderColor: `${currentTheme.main}33` }}>
-                      <i className="bx bx-id-card"></i>
+              <form className="client-editor-card" onSubmit={handleSaveIntegrations}>
+                <div className="form-grid">
+                  <div className="integration-block client-identity-block">
+                    <div className="integration-heading">
+                      <div className="integration-icon" style={{ color: currentTheme.main, borderColor: currentTheme.main + '33' }}>
+                        <i className="bx bx-id-card"></i>
+                      </div>
+                      <div>
+                        <h3>Cliente</h3>
+                        <p>Dados mínimos para identificar a conta dentro do app.</p>
+                      </div>
                     </div>
-                    <div>
-                      <h3>Identidade do cliente</h3>
-                      <p>Defina nome, cor e logo para organizar a conta e personalizar a apresentação final.</p>
-                    </div>
-                  </div>
-
-                  <div className="client-identity-layout">
-                    <div className="client-identity-main">
+                    <div className="client-form-grid client-form-grid-2">
                       <div className="input-group">
                         <label>Nome do cliente</label>
                         <input type="text" value={activeClient.name} onChange={(event) => handleClientFieldChange('name', event.target.value)} placeholder="Nome do cliente" disabled={!canEditActiveClient} />
                       </div>
-
-                      <div className="client-form-grid client-form-grid-2">
-                        <div className="input-group">
-                          <label>ID interno do cliente</label>
-                          <input type="text" value={activeClient.id || ''} readOnly placeholder="Gerado automaticamente" />
-                        </div>
-                        <div className="input-group">
-                          <label>CNPJ</label>
-                          <input
-                            type="text"
-                            value={activeClient.cnpj || ''}
-                            onChange={(event) => handleClientFieldChange('cnpj', event.target.value)}
-                            placeholder="00.000.000/0000-00"
-                            disabled={!canEditActiveClient}
-                          />
-                          <span className="field-helper">Use o CNPJ como vínculo operacional da conta, mantendo também o ID interno do cliente.</span>
-                        </div>
-                      </div>
-
-                      <div className="branding-grid">
-                        <div className="input-group">
-                          <label>Logo do cliente</label>
-                          <input type="file" accept="image/*" onChange={handleClientLogoUpload} disabled={!canEditActiveClient} />
-                        </div>
-
-                        <div className="input-group">
-                          <label>Ou cole a URL da logo</label>
-                          <input type="text" value={activeClient.logoUrl || ''} onChange={(event) => handleClientFieldChange('logoUrl', event.target.value)} placeholder="https://..." disabled={!canEditActiveClient} />
-                        </div>
-                      </div>
-
-                      <div className="logo-preview">
-                        {activeClient.logoUrl ? <img src={activeClient.logoUrl} alt={`Logo ${activeClient.name}`} /> : <span>Sem logo definida</span>}
-                      </div>
-                    </div>
-
-                    <div className="client-identity-side">
                       <div className="input-group">
-                        <label>Cor dos botões do dash</label>
-                        <div className="dashboard-color-editor">
-                          <div className="dashboard-color-preview-row">
-                            <input
-                              type="color"
-                              value={activeClientDashboardHex}
-                              onChange={(event) => handleClientDashboardHexChange('dashboardColor', event.target.value)}
-                              aria-label="Selecionar cor dos botões do dash"
-                              disabled={!canEditActiveClient}
-                            />
-                            <div className="dashboard-color-code">
-                              <strong>{activeClientDashboardHex.toUpperCase()}</strong>
-                              <span>{`rgb(${activeClientDashboardRgb.r}, ${activeClientDashboardRgb.g}, ${activeClientDashboardRgb.b})`}</span>
-                            </div>
-                          </div>
-                          <div className="dashboard-rgb-grid">
-                            <label className="dashboard-rgb-field">
-                              <span>R</span>
-                              <input
-                                type="number"
-                                min="0"
-                                max="255"
-                                value={activeClientDashboardRgb.r}
-                                onChange={(event) => handleClientDashboardRgbChange('dashboardColor', activeClientDashboardRgb, 'r', event.target.value)}
-                                disabled={!canEditActiveClient}
-                              />
-                            </label>
-                            <label className="dashboard-rgb-field">
-                              <span>G</span>
-                              <input
-                                type="number"
-                                min="0"
-                                max="255"
-                                value={activeClientDashboardRgb.g}
-                                onChange={(event) => handleClientDashboardRgbChange('dashboardColor', activeClientDashboardRgb, 'g', event.target.value)}
-                                disabled={!canEditActiveClient}
-                              />
-                            </label>
-                            <label className="dashboard-rgb-field">
-                              <span>B</span>
-                              <input
-                                type="number"
-                                min="0"
-                                max="255"
-                                value={activeClientDashboardRgb.b}
-                                onChange={(event) => handleClientDashboardRgbChange('dashboardColor', activeClientDashboardRgb, 'b', event.target.value)}
-                                disabled={!canEditActiveClient}
-                              />
-                            </label>
-                          </div>
-                          <div className="dashboard-theme-presets">
-                            {LEGACY_THEME_PRESETS.map((preset) => (
-                              <button
-                                key={preset.key}
-                                type="button"
-                                className={`dashboard-theme-preset ${activeClient.dashboardColor === preset.key ? 'active' : ''}`}
-                                onClick={() => {
-                                  handleClientFieldChange('dashboardColor', preset.key)
-                                  setThemeColor(preset.key)
-                                }}
-                                disabled={!canEditActiveClient}
-                              >
-                                <span className="dashboard-theme-swatch" style={{ background: preset.primaryColor }}></span>
-                                <small>{preset.label}</small>
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="input-group">
-                        <label>Cor complementar do dash</label>
-                        <div className="dashboard-color-editor">
-                          <div className="dashboard-color-preview-row">
-                            <input
-                              type="color"
-                              value={activeClientDashboardAccentHex}
-                              onChange={(event) => handleClientDashboardHexChange('dashboardAccentColor', event.target.value)}
-                              aria-label="Selecionar cor complementar do dash"
-                              disabled={!canEditActiveClient}
-                            />
-                            <div className="dashboard-color-code">
-                              <strong>{activeClientDashboardAccentHex.toUpperCase()}</strong>
-                              <span>{`rgb(${activeClientDashboardAccentRgb.r}, ${activeClientDashboardAccentRgb.g}, ${activeClientDashboardAccentRgb.b})`}</span>
-                            </div>
-                          </div>
-                          <div className="dashboard-rgb-grid">
-                            <label className="dashboard-rgb-field">
-                              <span>R</span>
-                              <input
-                                type="number"
-                                min="0"
-                                max="255"
-                                value={activeClientDashboardAccentRgb.r}
-                                onChange={(event) => handleClientDashboardRgbChange('dashboardAccentColor', activeClientDashboardAccentRgb, 'r', event.target.value)}
-                                disabled={!canEditActiveClient}
-                              />
-                            </label>
-                            <label className="dashboard-rgb-field">
-                              <span>G</span>
-                              <input
-                                type="number"
-                                min="0"
-                                max="255"
-                                value={activeClientDashboardAccentRgb.g}
-                                onChange={(event) => handleClientDashboardRgbChange('dashboardAccentColor', activeClientDashboardAccentRgb, 'g', event.target.value)}
-                                disabled={!canEditActiveClient}
-                              />
-                            </label>
-                            <label className="dashboard-rgb-field">
-                              <span>B</span>
-                              <input
-                                type="number"
-                                min="0"
-                                max="255"
-                                value={activeClientDashboardAccentRgb.b}
-                                onChange={(event) => handleClientDashboardRgbChange('dashboardAccentColor', activeClientDashboardAccentRgb, 'b', event.target.value)}
-                                disabled={!canEditActiveClient}
-                              />
-                            </label>
-                          </div>
-                          <div className="dashboard-theme-presets">
-                            {LEGACY_THEME_PRESETS.map((preset) => (
-                              <button
-                                key={`accent-${preset.key}`}
-                                type="button"
-                                className={`dashboard-theme-preset ${activeClient.dashboardAccentColor === preset.accentColor ? 'active' : ''}`}
-                                onClick={() => {
-                                  handleClientFieldChange('dashboardAccentColor', preset.accentColor)
-                                }}
-                                disabled={!canEditActiveClient}
-                              >
-                                <span className="dashboard-theme-swatch" style={{ background: preset.accentColor }}></span>
-                                <small>{preset.label}</small>
-                              </button>
-                            ))}
-                          </div>
-                        </div>
+                        <label>CNPJ</label>
+                        <input type="text" value={activeClient.cnpj || ''} onChange={(event) => handleClientFieldChange('cnpj', event.target.value)} placeholder="00.000.000/0000-00" disabled={!canEditActiveClient} />
                       </div>
                     </div>
                   </div>
-                </div>
-                )}
 
-                <div className="integration-block">
-                  <div className="integration-heading">
-                    <div className="integration-icon" style={{ color: '#3b82f6', borderColor: '#3b82f633' }}>
-                      <i className="bx bx-layout"></i>
-                    </div>
-                    <div>
-                      <h3>{activeClientEditView?.label || 'Campos da aba'}</h3>
-                      <p>Os campos desta aba seguem a estrutura definida em Configurações e atualizam direto em todos os cards da base.</p>
-                    </div>
-                  </div>
-
-                  <div className="client-form-grid client-form-grid-2 client-editor-section-grid">
-                    {activeClientEditView?.columns
-                      ?.filter((columnKey) => !['name', 'cnpj', 'salesModel', 'implementationPhase', 'implementationObservation', 'startDate'].includes(columnKey))
-                      .map((columnKey) => renderClientRegistryField(activeClient, columnKey, 'editor'))}
-                  </div>
-                </div>
-
-                <div className="integration-block">
-                  <div className="integration-heading">
-                    <div className="integration-icon" style={{ color: '#ef4444', borderColor: '#ef444433' }}>
-                      <i className="bx bx-git-branch"></i>
-                    </div>
-                    <div>
-                      <h3>Jornada do cliente</h3>
-                      <p>Defina a etapa atual, registre o contexto operacional e acompanhe o que precisa acontecer para o cliente avançar na jornada.</p>
-                    </div>
-                  </div>
-
-                  <div className="client-form-grid client-form-grid-2 client-editor-section-grid client-editor-section-grid-fwo">
-                    {renderClientRegistryField(activeClient, 'salesModel', 'editor')}
-                    {renderClientRegistryField(activeClient, 'implementationPhase', 'editor')}
-                    {renderClientRegistryField(activeClient, 'startDate', 'editor')}
-                    {renderClientRegistryField(activeClient, 'implementationObservation', 'editor')}
-                  </div>
-
-                  {(() => {
-                    const activePhase = clientImplementationPhaseMap.get(String(activeClient.implementationPhase || '').trim())
-                    if (!activePhase) return null
-
-                    return (
-                      <div className="client-journey-phase-preview">
-                        <div className="client-journey-phase-preview-head">
-                          <strong>{activePhase.label}</strong>
-                          {!!activePhase.slaDays && <span>{activePhase.slaDays} dia(s) de SLA</span>}
-                        </div>
-                        {!!activePhase.description && <p>{activePhase.description}</p>}
-                        {!!activePhase.objective && (
-                          <div className="client-journey-phase-preview-block">
-                            <small>Objetivo da etapa</small>
-                            <strong>{activePhase.objective}</strong>
-                          </div>
-                        )}
-                        {!!(activePhase.checklist || []).length && (
-                          <div className="client-journey-phase-preview-list">
-                            {(activePhase.checklist || []).map((item) => (
-                              <span key={`${activePhase.id}-${item}`} className="stage-chip">
-                                <i className="bx bx-check-circle"></i>
-                                <span>{item}</span>
-                              </span>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    )
-                  })()}
-
-                  <div className="client-fwo-checklist">
-                    <div className="client-fwo-checklist-head">
-                      <strong>Checklist operacional da etapa</strong>
-                      <span>{activeClient.salesModel ? `Trilha ${activeClient.salesModel}` : 'Escolha um modelo de vendas para liberar os itens'}</span>
-                    </div>
-
-                    {(activeClient.implementationChecklist || []).length ? (
-                      <div className="client-fwo-checklist-grid">
-                        {activeClient.implementationChecklist.map((item) => (
-                          <button
-                            key={item.id}
-                            type="button"
-                            className={`stage-chip client-fwo-chip ${item.completed ? 'active' : ''}`}
-                            onClick={() => handleImplementationChecklistToggle(item.id)}
-                            disabled={!canEditActiveClient}
-                          >
-                            <i className={`bx ${item.completed ? 'bx-check-circle' : 'bx-circle'}`}></i>
-                            <span>{item.label}</span>
-                          </button>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="client-notes-empty">Selecione o modelo de vendas para gerar automaticamente os campos obrigatórios da fase.</div>
-                    )}
-                  </div>
-                </div>
-
-                <div className="form-grid">
-                  <div className="integration-block">
-                    <div className="integration-heading">
-                      <div className="integration-icon" style={{ color: '#22c55e', borderColor: '#22c55e33' }}>
-                        <i className="bx bx-target-lock"></i>
-                      </div>
-                      <div>
-                        <h3>OKRs da conta</h3>
-                        <p>Registre objetivos recorrentes do cliente com período, ciclo e acompanhamento rápido por check.</p>
-                      </div>
-                    </div>
-
-                    <div className="client-okr-create">
-                      <div className="input-group client-okr-title-field">
-                        <label>Novo objetivo</label>
-                        <input
-                          type="text"
-                          value={newClientOkrTitle}
-                          onChange={(event) => setNewClientOkrTitle(event.target.value)}
-                          placeholder="Ex.: Atingir 40 leads qualificados por mês"
-                        />
-                      </div>
-                      <div className="input-group">
-                        <label>Periodicidade</label>
-                        <select value={newClientOkrCadence} onChange={(event) => setNewClientOkrCadence(event.target.value)}>
-                          {CLIENT_OKR_CADENCE_OPTIONS.map((option) => (
-                            <option key={option.value} value={option.value}>{option.label}</option>
-                          ))}
-                        </select>
-                      </div>
-                      {newClientOkrCadence === 'ciclo' && (
-                        <div className="input-group client-okr-cycle-field">
-                          <label>X dias</label>
-                          <input
-                            type="number"
-                            min="1"
-                            value={newClientOkrCycleDays}
-                            onChange={(event) => setNewClientOkrCycleDays(String(event.target.value || '').replace(/\D/g, '').slice(0, 3))}
-                            placeholder="30"
-                          />
-                        </div>
-                      )}
-                      <button type="button" className="btn btn-primary" onClick={handleAddClientOkr} disabled={!canEditActiveClient}>
-                        Adicionar OKR
-                      </button>
-                    </div>
-
-                    <div className="client-okr-list">
-                      {(activeClient.okrs || []).length ? (
-                        activeClient.okrs.map((okr) => (
-                          <div key={okr.id} className={`client-okr-item ${okr.completed ? 'completed' : ''}`}>
-                            <button type="button" className="client-okr-action ok" onClick={() => handleClientOkrToggle(okr.id)} aria-label="Concluir OKR">
-                              <i className={`bx ${okr.completed ? 'bx-check-square' : 'bx-check'}`}></i>
-                            </button>
-                            <div className="client-okr-fields">
-                              <input
-                                type="text"
-                                value={okr.title || ''}
-                                onChange={(event) => handleClientOkrFieldChange(okr.id, 'title', event.target.value)}
-                                placeholder="Nome do objetivo"
-                              />
-                              <div className="client-okr-meta">
-                                <select value={okr.cadence || 'mensal'} onChange={(event) => handleClientOkrFieldChange(okr.id, 'cadence', event.target.value)}>
-                                  {CLIENT_OKR_CADENCE_OPTIONS.map((option) => (
-                                    <option key={`${okr.id}-${option.value}`} value={option.value}>{option.label}</option>
-                                  ))}
-                                </select>
-                                {okr.cadence === 'ciclo' && (
-                                  <input
-                                    type="number"
-                                    min="1"
-                                    value={okr.cycleDays || ''}
-                                    onChange={(event) => handleClientOkrFieldChange(okr.id, 'cycleDays', event.target.value)}
-                                    placeholder="X dias"
-                                  />
-                                )}
-                              </div>
-                            </div>
-                            <button type="button" className="client-okr-action remove" onClick={() => handleRemoveClientOkr(okr.id)} aria-label="Remover OKR">
-                              <i className="bx bx-x"></i>
-                            </button>
-                          </div>
-                        ))
-                      ) : (
-                        <div className="client-notes-empty">Nenhum OKR cadastrado para este cliente ainda.</div>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="integration-block">
-                    <div className="integration-heading">
-                      <div className="integration-icon" style={{ color: '#a855f7', borderColor: '#a855f733' }}>
-                        <i className="bx bx-note"></i>
-                      </div>
-                      <div>
-                        <h3>Notas compartilhadas</h3>
-                        <p>Use este espaço para registrar atualizações, aprendizados de reunião e qualquer contexto importante da conta.</p>
-                      </div>
-                    </div>
-
-                    <div className="input-group">
-                      <label>Nova nota</label>
-                      <textarea
-                        value={newClientNoteBody}
-                        onChange={(event) => setNewClientNoteBody(event.target.value)}
-                        placeholder="Escreva uma atualização importante para a equipe..."
-                        rows={4}
-                      />
-                    </div>
-                    <div className="client-notes-actions">
-                      <button type="button" className="btn btn-primary" onClick={handleAddClientNote} disabled={!canEditActiveClient || !newClientNoteBody.trim()}>
-                        Adicionar nota
-                      </button>
-                    </div>
-
-                    <div className="client-notes-list">
-                      {(activeClient.notes || []).length ? (
-                        activeClient.notes.map((note) => (
-                          <article key={note.id} className="client-note-card">
-                            <div className="client-note-header">
-                              <strong>{note.authorName || 'Equipe'}</strong>
-                              <span>{formatClientDateTime(note.createdAt)}</span>
-                            </div>
-                            <p>{note.body}</p>
-                          </article>
-                        ))
-                      ) : (
-                        <div className="client-notes-empty">Nenhuma nota registrada ainda para este cliente.</div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {(clientEditSection === 'mais' || clientEditSection === 'dados') && (
-                <div className="form-grid">
-                  <div className="integration-block integration-block-governance">
-                    <div className="integration-heading">
-                      <div className="integration-icon" style={{ color: 'var(--accent-blue)', borderColor: 'color-mix(in srgb, var(--accent-blue) 22%, transparent)' }}>
-                        <i className="bx bx-toggle-left"></i>
-                      </div>
-                      <div>
-                        <h3>Governança do cliente</h3>
-                        <p>O cliente passa a ser o controle-mestre da operação e do dashboard.</p>
-                      </div>
-                    </div>
-
-                    <div className="client-governance-switches">
-                      <button
-                        type="button"
-                        className={`ios-toggle-row ${activeClient.operationEnabled !== false ? 'active' : ''}`}
-                        onClick={() => canEditActiveClient && handleClientFieldChange('operationEnabled', !(activeClient.operationEnabled !== false))}
-                        disabled={!canEditActiveClient}
-                        aria-pressed={activeClient.operationEnabled !== false}
-                      >
-                        <div className="ios-toggle-copy">
-                          <strong>Operação</strong>
-                          <span>Mostra esse cliente no board operacional e libera cards vinculados.</span>
-                        </div>
-                        <span className="ios-toggle-switch" aria-hidden="true">
-                          <span className="ios-toggle-knob"></span>
-                        </span>
-                      </button>
-
-                      <button
-                        type="button"
-                        className={`ios-toggle-row ${activeClient.dashboardEnabled !== false ? 'active' : ''}`}
-                        onClick={() => canEditActiveClient && handleClientFieldChange('dashboardEnabled', !(activeClient.dashboardEnabled !== false))}
-                        disabled={!canEditActiveClient}
-                        aria-pressed={activeClient.dashboardEnabled !== false}
-                      >
-                        <div className="ios-toggle-copy">
-                          <strong>Dashboard</strong>
-                          <span>Libera a apresentação executiva e as integrações visíveis para este cliente.</span>
-                        </div>
-                        <span className="ios-toggle-switch" aria-hidden="true">
-                          <span className="ios-toggle-knob"></span>
-                        </span>
-                      </button>
-                    </div>
-
-                    {activeClient.dashboardEnabled !== false && (
-                      <div className="input-group">
-                        <label>Integrações visíveis</label>
-                        <div className="stage-selector">
-                          {CLIENT_DASHBOARD_INTEGRATION_OPTIONS.map((integration) => {
-                            const checked = activeClientVisibleIntegrations.includes(integration.key)
-                            return (
-                              <button
-                                key={`${activeClient.id}-dashboard-integration-${integration.key}`}
-                                type="button"
-                                className={`stage-chip ${checked ? 'active' : ''}`}
-                                disabled={!canEditActiveClient}
-                                onClick={() => handleToggleActiveClientDashboardIntegration(integration.key)}
-                              >
-                                <span>{integration.label}</span>
-                              </button>
-                            )
-                          })}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {isClientDashboardIntegrationVisible(activeClient, 'meta_ads') && (
                   <div className="integration-block">
                     <div className="integration-heading">
                       <div className="integration-icon" style={{ color: '#0668E1', borderColor: '#0668E133' }}>
@@ -14848,151 +13453,68 @@ export default function DashboardShell({
                       </div>
                       <div>
                         <h3>Meta Ads</h3>
-                        <p>Selecione a conta de anúncio deste cliente usando a credencial global cadastrada em Configurações.</p>
+                        <p>Selecione uma das contas de anúncio disponíveis na credencial global.</p>
                       </div>
                     </div>
-
                     <div className="input-group">
-                      <label>Conta do Meta vinculada ao cliente</label>
-                      <select
-                        className="client-select-input"
-                        value={activeClient.metaAdAccountId || ''}
-                        onChange={(event) => handleClientFieldChange('metaAdAccountId', event.target.value)}
-                      >
-                        <option value="">
-                          {hasMetaManualToken || hasMetaOauthConnection
-                            ? 'Selecione uma conta'
-                            : 'Cadastre um token manual ou conecte a Meta em Configurações'}
-                        </option>
+                      <label>Conta de anúncio</label>
+                      <select className="client-select-input" value={activeClient.metaAdAccountId || ''} onChange={(event) => handleClientFieldChange('metaAdAccountId', event.target.value)} disabled={!canEditActiveClient}>
+                        <option value="">{hasMetaManualToken || hasMetaOauthConnection ? 'Selecione uma conta' : 'Conecte a Meta em Configurações'}</option>
                         {adAccounts.map((account) => (
-                          <option key={account.id} value={account.id}>
-                            {account.name ? `${account.name} (${account.id})` : account.id}
-                          </option>
+                          <option key={account.id} value={account.id}>{account.name ? account.name + ' (' + account.id + ')' : account.id}</option>
                         ))}
                       </select>
                     </div>
                   </div>
-                  )}
 
-                  {CLIENT_INTEGRATION_GROUPS.filter((group) => {
-                    const integrationKeyByTitle = {
-                      'Google Ads': 'google_ads',
-                      'TikTok Ads': 'tiktok_ads',
-                      'LinkedIn Ads': 'linkedin_ads',
-                      'Google Sheets': 'google_sheets',
-                      'RD Station': 'rd_station',
-                      Salesforce: 'salesforce',
-                      Agendor: 'agendor',
-                    }
-                    return isClientDashboardIntegrationVisible(activeClient, integrationKeyByTitle[group.title])
-                  }).map((group) => (
-                    <div key={group.title} className="integration-block">
-                      <div className="integration-heading">
-                        <div className="integration-icon" style={{ color: group.accent, borderColor: `${group.accent}33` }}>
-                          <i className={`bx ${group.icon}`}></i>
-                        </div>
-                        <div>
-                          <h3>{group.title}</h3>
-                          <p>{group.description}</p>
-                        </div>
+                  <div className="integration-block">
+                    <div className="integration-heading">
+                      <div className="integration-icon" style={{ color: '#f97316', borderColor: '#f9731633' }}>
+                        <i className="bx bx-git-branch"></i>
                       </div>
-
-                      {group.fields.map((field) => {
-                        const value = field.storage === 'client' ? activeClient[field.name] || '' : activeIntegrations[field.name] || ''
-
-                        return (
-                          <div key={field.name} className="input-group">
-                            <label>{field.label}</label>
-                            <input
-                              type={field.type}
-                              value={value}
-                              onChange={(event) => handleIntegrationChange(field.name, event.target.value, field.storage)}
-                              placeholder={field.placeholder}
-                            />
-                          </div>
-                        )
-                      })}
-
-                      {group.title === 'Google Sheets' && (
-                        <div className="field-helper">
-                          Use uma planilha pública ou publicada em CSV. Cada linha será tratada como um lead ou registro, e a coluna de status será lida como pipeline para contar quantos estão em cada etapa.
-                        </div>
-                      )}
-
-                      {group.title === 'RD Station' && (
-                        <>
-                          <div className="input-group">
-                            <label>Funil do RD para este cliente</label>
-                            <select
-                              value={activeClient?.rdPipelineId || ''}
-                              onChange={(event) => handleClientFieldChange('rdPipelineId', event.target.value)}
-                            >
-                              <option value="">Todos os funis</option>
-                              {rdPipelineOptions.map((pipeline) => (
-                                <option key={pipeline.id} value={pipeline.id}>
-                                  {pipeline.name}
-                                </option>
-                              ))}
-                            </select>
-                            <span className="field-helper">
-                              Escolha o pipeline que este cliente usa no RD. As métricas do CRM passam a considerar só esse funil.
-                            </span>
-                          </div>
-
-                          <div className="qualification-config">
-                            <button
-                              type="button"
-                              className="qualification-toggle"
-                              onClick={() => setIsQualifiedStagesVisible((current) => !current)}
-                            >
-                              <div>
-                                <strong>Etapas qualificadas do pipeline</strong>
-                                <span>Configuração operacional usada nos cálculos de qualificação e taxas do CRM. Não aparece no dashboard final.</span>
-                              </div>
-                              <i className={`bx ${isQualifiedStagesVisible ? 'bx-chevron-up' : 'bx-chevron-down'}`}></i>
-                            </button>
-
-                            {isQualifiedStagesVisible && (
-                              <div className="qualification-panel">
-                                <p className="field-helper">
-                                  Selecione as etapas que você considera qualificadas. Os cálculos em cascata do CRM passam a usar essa definição automaticamente.
-                                </p>
-                                <div className="stage-selector">
-                                  {availableRdStages.length ? (
-                                    availableRdStages.map((stage) => {
-                                      const checked = selectedQualifiedStages.includes(stage)
-
-                                      return (
-                                        <label key={stage} className={`stage-chip ${checked ? 'active' : ''}`}>
-                                          <input
-                                            type="checkbox"
-                                            checked={checked}
-                                            onChange={() => handleQualifiedStageToggle(stage)}
-                                          />
-                                          <span>{stage}</span>
-                                        </label>
-                                      )
-                                    })
-                                  ) : (
-                                    <div className="stage-empty">
-                                      Salve o token do CRM e aguarde a leitura do funil para listar automaticamente as etapas do pipeline.
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        </>
-                      )}
+                      <div>
+                        <h3>Agendor</h3>
+                        <p>Token/API e identificação do funil ou pipeline do cliente.</p>
+                      </div>
                     </div>
-                  ))}
+                    <div className="client-form-grid client-form-grid-2">
+                      <div className="input-group">
+                        <label>Token/API Agendor</label>
+                        <input type="password" value={activeIntegrations.agendorToken || ''} onChange={(event) => handleIntegrationChange('agendorToken', event.target.value, 'integrations')} placeholder="Cole o token do Agendor" disabled={!canEditActiveClient} />
+                      </div>
+                      <div className="input-group">
+                        <label>Pipeline/Funil</label>
+                        <input type="text" value={activeClient.agendorAccountId || ''} onChange={(event) => handleClientFieldChange('agendorAccountId', event.target.value)} placeholder="ID ou nome do pipeline" disabled={!canEditActiveClient} />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="integration-block">
+                    <div className="integration-heading">
+                      <div className="integration-icon" style={{ color: '#22c55e', borderColor: '#22c55e33' }}>
+                        <i className="bx bx-spreadsheet"></i>
+                      </div>
+                      <div>
+                        <h3>Google Sheets</h3>
+                        <p>Opcional: URL publicada da planilha que alimenta dados auxiliares.</p>
+                      </div>
+                    </div>
+                    <div className="input-group">
+                      <label>URL da planilha</label>
+                      <input type="text" value={activeClient.googleSheetsUrl || ''} onChange={(event) => handleClientFieldChange('googleSheetsUrl', event.target.value)} placeholder="https://docs.google.com/spreadsheets/..." disabled={!canEditActiveClient} />
+                    </div>
+                  </div>
                 </div>
-                )}
+
+                <div className="client-create-actions">
+                  {canEditActiveClient && <button type="button" className="btn btn-secondary" onClick={() => handleRemoveClient(activeClient.id)}>Remover cliente</button>}
+                  <button type="button" className="btn btn-secondary" onClick={() => setIsEditClientModalOpen(false)}>Fechar</button>
+                  <button type="submit" className="btn btn-primary" disabled={isSavingIntegrations || !canEditActiveClient}>{isSavingIntegrations ? 'Salvando...' : 'Salvar'}</button>
+                </div>
               </form>
             </div>
           </div>
         )}
-
 
         {activeTab === 'produtos' && canManageClients && (
           <section className="clients-layout">
@@ -15263,11 +13785,11 @@ export default function DashboardShell({
 
         {activeTab === 'clientes' && isCreateClientModalOpen && (
           <div className="modal-overlay" onClick={() => setIsCreateClientModalOpen(false)}>
-            <div className="modal-card glass-panel modal-create-client" onClick={(event) => event.stopPropagation()}>
+            <div className="modal-card glass-panel modal-create-client simple-client-modal" onClick={(event) => event.stopPropagation()}>
               <div className="modal-header">
                 <div>
                   <h3>Novo cliente</h3>
-                  <p>Cadastre o cliente com a trilha, contexto inicial e governança já definidos.</p>
+                  <p>Cadastre o mínimo necessário e selecione uma conta de anúncio, se já estiver disponível.</p>
                 </div>
                 <button type="button" className="modal-close" onClick={() => setIsCreateClientModalOpen(false)} aria-label="Fechar cadastro de cliente">
                   <i className="bx bx-x"></i>
@@ -15276,142 +13798,27 @@ export default function DashboardShell({
 
               <form className="client-create-stack" onSubmit={handleCreateClient}>
                 <div className="client-create-inline">
-                  <input type="text" value={newClientName} onChange={(event) => setNewClientName(event.target.value)} placeholder="Ex.: Clínica X, E-commerce Y..." disabled={!isMaster} />
-                  <input type="text" value={newClientCnpj} onChange={(event) => setNewClientCnpj(normalizeCnpjInput(event.target.value))} placeholder="CNPJ (opcional)" disabled={!isMaster} />
+                  <input type="text" value={newClientName} onChange={(event) => setNewClientName(event.target.value)} placeholder="Nome do cliente" disabled={!isMaster} />
+                  <input type="text" value={newClientCnpj} onChange={(event) => setNewClientCnpj(normalizeCnpjInput(event.target.value))} placeholder="CNPJ opcional" disabled={!isMaster} />
                 </div>
-                <div className="client-create-grid-fields">
-                  <div className="input-group">
-                    <label>Modelo de vendas</label>
-                    <select value={newClientSalesModel} onChange={(event) => setNewClientSalesModel(event.target.value)} disabled={!isMaster}>
-                      {CLIENT_SALES_MODEL_OPTIONS.map((option) => (
-                        <option key={`new-client-modal-${option.value}`} value={option.value}>{option.label}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="input-group">
-                    <label>Etapa da jornada</label>
-                    <select
-                      value={newClientImplementationPhase}
-                      disabled={!isMaster}
-                      onChange={(event) => setNewClientImplementationPhase(event.target.value)}
-                    >
-                      <option value="">Selecione uma fase</option>
-                      {effectiveClientImplementationPhases.map((phase) => (
-                        <option key={`create-phase-${phase.id}`} value={phase.label}>{phase.label}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="input-group">
-                    <label>Data de entrada na jornada</label>
-                    <input type="date" value={newClientStartDate} onChange={(event) => setNewClientStartDate(event.target.value)} disabled={!isMaster} />
-                  </div>
-                </div>
-                {(() => {
-                  const selectedPhase = clientImplementationPhaseMap.get(String(newClientImplementationPhase || '').trim())
-                  if (!selectedPhase) return null
 
-                  return (
-                    <div className="client-journey-phase-preview">
-                      <div className="client-journey-phase-preview-head">
-                        <strong>{selectedPhase.label}</strong>
-                        {!!selectedPhase.slaDays && <span>{selectedPhase.slaDays} dia(s) de SLA</span>}
-                      </div>
-                      {!!selectedPhase.description && <p>{selectedPhase.description}</p>}
-                      {!!selectedPhase.objective && (
-                        <div className="client-journey-phase-preview-block">
-                          <small>Objetivo da etapa</small>
-                          <strong>{selectedPhase.objective}</strong>
-                        </div>
-                      )}
-                    </div>
-                  )
-                })()}
                 <div className="input-group">
-                  <label>Observações da jornada</label>
-                  <textarea
-                    value={newClientImplementationObservation}
-                    onChange={(event) => setNewClientImplementationObservation(event.target.value)}
-                    placeholder="Contexto inicial, riscos, travas, próximos passos e particularidades da jornada..."
-                    rows={4}
-                    disabled={!isMaster}
-                  />
+                  <label>Conta de anúncio da Meta</label>
+                  <select value={newClientMetaAdAccountId} onChange={(event) => setNewClientMetaAdAccountId(event.target.value)} disabled={!isMaster}>
+                    <option value="">
+                      {hasMetaManualToken || hasMetaOauthConnection ? 'Selecionar depois ou escolher agora' : 'Conecte a Meta em Configurações'}
+                    </option>
+                    {adAccounts.map((account) => (
+                      <option key={account.id} value={account.id}>{account.name ? account.name + ' (' + account.id + ')' : account.id}</option>
+                    ))}
+                  </select>
                 </div>
-                <div className="client-create-checklist-preview">
-                  {(FWO_IMPLEMENTATION_CHECKLISTS[newClientSalesModel] || []).map((item) => (
-                    <span key={`preview-modal-${newClientSalesModel}-${item}`} className="stage-chip">
-                      <i className="bx bx-check-circle"></i>
-                      <span>{item}</span>
-                    </span>
-                  ))}
-                </div>
-                <div className="client-governance-card">
-                  <div className="client-governance-head">
-                    <div>
-                      <strong>Governança do cliente</strong>
-                      <span>Defina aqui se esse cliente entra na operação e no dashboard.</span>
-                    </div>
-                  </div>
-                  <div className="client-governance-switches">
-                    <button
-                      type="button"
-                      className={`ios-toggle-row ${newClientOperationEnabled ? 'active' : ''}`}
-                      onClick={() => isMaster && setNewClientOperationEnabled((current) => !current)}
-                      disabled={!isMaster}
-                      aria-pressed={newClientOperationEnabled}
-                    >
-                      <div className="ios-toggle-copy">
-                        <strong>Operação</strong>
-                        <span>Cria e libera o cliente no board operacional.</span>
-                      </div>
-                      <span className="ios-toggle-switch" aria-hidden="true">
-                        <span className="ios-toggle-knob"></span>
-                      </span>
-                    </button>
 
-                    <button
-                      type="button"
-                      className={`ios-toggle-row ${newClientDashboardEnabled ? 'active' : ''}`}
-                      onClick={() => isMaster && setNewClientDashboardEnabled((current) => !current)}
-                      disabled={!isMaster}
-                      aria-pressed={newClientDashboardEnabled}
-                    >
-                      <div className="ios-toggle-copy">
-                        <strong>Dashboard</strong>
-                        <span>Libera a apresentação executiva e as fontes visíveis do cliente.</span>
-                      </div>
-                      <span className="ios-toggle-switch" aria-hidden="true">
-                        <span className="ios-toggle-knob"></span>
-                      </span>
-                    </button>
-                  </div>
-
-                  {newClientDashboardEnabled && (
-                    <div className="input-group">
-                      <label>Integrações visíveis no dashboard</label>
-                      <div className="stage-selector">
-                        {CLIENT_DASHBOARD_INTEGRATION_OPTIONS.map((integration) => {
-                          const checked = newClientDashboardIntegrationKeys.includes(integration.key)
-                          return (
-                            <button
-                              key={`new-client-modal-dashboard-integration-${integration.key}`}
-                              type="button"
-                              className={`stage-chip ${checked ? 'active' : ''}`}
-                              onClick={() => handleToggleNewClientDashboardIntegration(integration.key)}
-                              disabled={!isMaster}
-                            >
-                              <span>{integration.label}</span>
-                            </button>
-                          )
-                        })}
-                      </div>
-                    </div>
-                  )}
-                </div>
                 <div className="client-create-actions">
                   <button type="button" className="btn btn-secondary" onClick={() => setIsCreateClientModalOpen(false)}>
                     Cancelar
                   </button>
-                  <button type="submit" className="btn btn-primary" disabled={!isMaster || !newClientName.trim() || !newClientSalesModel || !newClientStartDate}>
+                  <button type="submit" className="btn btn-primary" disabled={!isMaster || !newClientName.trim()}>
                     Criar cliente
                   </button>
                 </div>
@@ -27069,6 +25476,61 @@ export default function DashboardShell({
           line-height: 1.5;
         }
 
+
+
+        .simple-clients-layout { gap: 22px; }
+        .simple-client-card { padding: 22px; }
+        .simple-client-controls { margin-bottom: 18px; }
+        .simple-client-list { display: grid; gap: 10px; }
+        .simple-client-row {
+          display: grid;
+          grid-template-columns: minmax(220px, 1fr) 72px 72px 72px 110px;
+          align-items: center;
+          gap: 12px;
+          padding: 14px 16px;
+          border: 1px solid rgba(148, 163, 184, 0.18);
+          border-radius: 18px;
+          background: rgba(255, 255, 255, 0.045);
+        }
+        .simple-client-row-head {
+          color: var(--muted-text);
+          font-size: 0.72rem;
+          font-weight: 900;
+          letter-spacing: 0.14em;
+          text-transform: uppercase;
+          background: transparent;
+        }
+        .simple-client-name {
+          appearance: none;
+          border: 0;
+          background: transparent;
+          color: inherit;
+          cursor: pointer;
+          display: grid;
+          gap: 4px;
+          padding: 0;
+          text-align: left;
+        }
+        .simple-client-name strong { font-size: 0.98rem; }
+        .simple-client-name small { color: var(--muted-text); font-size: 0.78rem; }
+        .simple-client-icon {
+          width: 38px;
+          height: 38px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: 14px;
+          border: 1px solid rgba(148, 163, 184, 0.2);
+          color: rgba(148, 163, 184, 0.48);
+          justify-self: center;
+        }
+        .simple-client-icon.active {
+          border-color: rgba(59, 130, 246, 0.34);
+          background: rgba(59, 130, 246, 0.14);
+          color: #60a5fa;
+        }
+        .simple-client-edit { justify-self: end; }
+        .simple-client-modal .form-grid { align-items: start; }
         @media (max-width: 1380px) {
           .operation-stellar-topbar,
           .operation-stellar-hero {

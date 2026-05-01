@@ -825,14 +825,12 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
     const error = params.get('meta_error')
 
     const storedTab = window.localStorage.getItem(SETTINGS_TAB_STORAGE_KEY)
-    const resolvedStoredTab = storedTab === 'panel' || storedTab === 'general' || storedTab === 'operation' || storedTab === 'clients'
+    const resolvedStoredTab = storedTab === 'panel' || storedTab === 'general' || storedTab === 'clients'
       ? storedTab
       : null
 
     if (connected === '1') {
       setActiveSettingsTab('general')
-    } else if (tab === 'operation') {
-      setActiveSettingsTab('operation')
     } else if (tab === 'clients') {
       setActiveSettingsTab('clients')
     } else if (tab === 'ai') {
@@ -1832,18 +1830,6 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
                     <div>
                       <strong>Integrações gerais</strong>
                       <span>Credenciais de mídia, CRM e IA.</span>
-                    </div>
-                  </button>
-
-                  <button
-                    type="button"
-                    className={`settings-sidebar-link ${activeSettingsTab === 'operation' ? 'active' : ''}`}
-                    onClick={() => handleSettingsTabChange('operation')}
-                  >
-                    <i className="bx bx-cog"></i>
-                    <div>
-                      <strong>Operação</strong>
-                      <span>Boards, ferramentas e IDs globais.</span>
                     </div>
                   </button>
 

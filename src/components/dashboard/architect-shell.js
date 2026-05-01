@@ -6,7 +6,6 @@ const NAV_ITEMS = [
   { key: 'home', label: 'Home', icon: 'home', href: '/home' },
   { key: 'clientes', label: 'Clients', icon: 'domain', href: '/clientes' },
   { key: 'team', label: 'Team', icon: 'groups', href: '#' },
-  { key: 'operacao', label: 'Operations', icon: 'analytics', href: '/operacao' },
   { key: 'settings', label: 'Settings', icon: 'settings', href: '/?tab=settings' },
 ]
 
@@ -86,7 +85,7 @@ export function ArchitectShell({
       </main>
 
       <nav className={styles.mobileNav} aria-label="Mobile primary">
-        {NAV_ITEMS.filter((item) => ['home', 'clientes', 'operacao', 'settings'].includes(item.key)).map((item) => {
+        {NAV_ITEMS.filter((item) => ['home', 'clientes', 'settings'].includes(item.key)).map((item) => {
           const active = item.key === activeNav
           return (
             <Link key={item.key} href={item.href} className={active ? `${styles.mobileNavLink} ${styles.mobileNavLinkActive}` : styles.mobileNavLink}>
