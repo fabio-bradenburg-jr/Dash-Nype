@@ -9,8 +9,9 @@ const META_OAUTH_COOKIE = 'meta_oauth'
 const META_SCOPES = ['public_profile', 'ads_read', 'ads_management', 'business_management']
 
 function sanitizeReturnTo(value) {
-  if (!value || typeof value !== 'string') return '/settings'
-  return value.startsWith('/') ? value : '/settings'
+  if (!value || typeof value !== 'string') return '/?tab=settings'
+  if (!value.startsWith('/') || value.startsWith('//')) return '/?tab=settings'
+  return value
 }
 
 function getBaseUrl(request) {

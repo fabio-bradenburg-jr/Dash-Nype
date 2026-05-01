@@ -11,8 +11,19 @@ import {
 } from '@/lib/server/meta-connection'
 import { getDashboardState, saveDashboardState } from '@/lib/server/dashboard-store'
 
+function buildMetaReturnUrl(request, returnTo) {
+  const fallback = new URL('/', request.url)
+  fallback.searchParams.set('tab', 'settings')
+
+  if (!returnTo || typeof returnTo !== 'string' || !returnTo.startsWith('/') || returnTo.startsWith('//')) {
+    return fallback
+  }
+
+  return new URL(returnTo, request.url)
+}
+
 export async function GET(request) {
-  const redirectUrl = new URL('/settings', request.url)
+  let redirectUrl = buildMetaReturnUrl(request)
 
   try {
     const code = request.nextUrl.searchParams.get('code')
@@ -65,7 +76,7 @@ export async function GET(request) {
       })
     }
 
-    redirectUrl.pathname = oauthCookie.returnTo || '/settings'
+    redirectUrl = buildMetaReturnUrl(request, oauthCookie.returnTo)
     redirectUrl.searchParams.set('meta_connected', '1')
 
     const response = NextResponse.redirect(redirectUrl)

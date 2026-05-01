@@ -820,7 +820,7 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
     if (typeof window === 'undefined') return
 
     const params = new URLSearchParams(window.location.search)
-    const tab = params.get('tab')
+    const tab = embeddedOverride ? params.get('settings_tab') : params.get('tab')
     const connected = params.get('meta_connected')
     const error = params.get('meta_error')
 
@@ -829,7 +829,9 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
       ? storedTab
       : null
 
-    if (tab === 'operation') {
+    if (connected === '1') {
+      setActiveSettingsTab('general')
+    } else if (tab === 'operation') {
       setActiveSettingsTab('operation')
     } else if (tab === 'clients') {
       setActiveSettingsTab('clients')
@@ -864,7 +866,7 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
       setMetaConnectionError(error)
       setMetaConnectionNotice('')
     }
-  }, [canManageClients, globalIntegrations, globalIntegrations.metaConnectionMode, persistGlobalIntegrations])
+  }, [canManageClients, embeddedOverride, globalIntegrations, globalIntegrations.metaConnectionMode, persistGlobalIntegrations])
 
   useEffect(() => {
     if (!canManageClients && activeSettingsTab !== 'panel') {
@@ -1759,7 +1761,12 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
 
     if (typeof window === 'undefined') return
     const params = new URLSearchParams(window.location.search)
-    params.set('tab', nextTab)
+    if (embeddedOverride) {
+      params.set('tab', 'settings')
+      params.set('settings_tab', nextTab)
+    } else {
+      params.set('tab', nextTab)
+    }
     const nextQuery = params.toString()
     window.history.replaceState({}, '', `${window.location.pathname}${nextQuery ? `?${nextQuery}` : ''}`)
   }
@@ -2122,7 +2129,7 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
                                   </span>
                                 </div>
                                 <div className="meta-connection-actions">
-                                  <a href="/api/meta/auth/start?return_to=/settings?tab=general" className="btn btn-primary">
+                                  <a href="/api/meta/auth/start?return_to=%2F%3Ftab%3Dsettings%26settings_tab%3Dgeneral" className="btn btn-primary">
                                     {hasMetaOauthConnection ? 'Reconectar Meta' : 'Conectar Meta'}
                                   </a>
                                   {hasMetaOauthConnection && (
