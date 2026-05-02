@@ -612,93 +612,6 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
         ) : (
           <div className="assistant-content">
             <section className="assistant-context-column">
-              <div className="assistant-context-card glass-panel">
-                <div className="assistant-section-head">
-                  <span className="assistant-section-kicker">Contexto da conversa</span>
-                </div>
-
-                <label className="assistant-field">
-                  <span>Foco</span>
-                  <div className="assistant-select-wrap">
-                    <select
-                      value={focusMode}
-                      onChange={(event: ChangeEvent<HTMLSelectElement>) =>
-                        setFocusMode(event.target.value as FocusMode)
-                      }
-                    >
-                      {FOCUS_OPTIONS.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-                    <i className="bx bx-chevron-down"></i>
-                  </div>
-                </label>
-
-                <div className="assistant-context-stats">
-                  <div className="assistant-context-stat">
-                    <div>
-                      <i className="bx bx-group"></i>
-                      <span>Clientes</span>
-                    </div>
-                    <strong>{availableClients.length}</strong>
-                  </div>
-                  <div className="assistant-context-stat">
-                    <div>
-                      <i className="bx bx-sitemap"></i>
-                      <span>Grupos</span>
-                    </div>
-                    <strong>{dashboardState?.clientGroups?.length || 0}</strong>
-                  </div>
-                  <div className="assistant-context-stat assistant-context-stat-provider">
-                    <div>
-                      <i className="bx bx-chip"></i>
-                      <span>Provider</span>
-                    </div>
-                    <strong>{dashboardState?.globalIntegrations?.aiProvider || 'Nao definido'}</strong>
-                    <small>{dashboardState?.globalIntegrations?.aiModel || 'Modelo padrao'}</small>
-                  </div>
-                </div>
-
-                <div className="assistant-chip-group">
-                  <button type="button" className="assistant-chip" onClick={() => setInputValue('Me dê um resumo executivo da operação, com pontos positivos, atenção e urgência.')}>
-                    Resumo executivo
-                  </button>
-                  <button
-                    type="button"
-                    className="assistant-chip"
-                    onClick={() =>
-                      setInputValue(
-                        focusMode === 'clients'
-                          ? 'Quais clientes estão com melhor momento, quais pedem atenção e quais estão em urgência?'
-                          : focusMode === 'general'
-                            ? 'Me dê uma leitura geral do app inteiro, cruzando operação, clientes, campanhas e gargalos.'
-                            : `Como está a operação em foco? Quero leitura por campanha, impacto e depois um resumo com pontos positivos, atenção e urgência.`
-                      )
-                    }
-                  >
-                    {focusMode === 'clients' ? 'Leitura dos clientes' : focusMode === 'general' ? 'Visão geral do app' : 'Campanhas da operação'}
-                  </button>
-                  <button
-                    type="button"
-                    className="assistant-chip"
-                    onClick={() =>
-                      setInputValue(
-                        focusMode === 'clients'
-                          ? 'Quais riscos você vê hoje na base de clientes?'
-                          : focusMode === 'general'
-                            ? 'Quais riscos você vê hoje olhando o app inteiro como um copiloto da operação?'
-                            : 'Quais riscos você vê hoje na operação em foco?'
-                      )
-                    }
-                  >
-                    {focusMode === 'general' ? 'Riscos gerais' : focusMode === 'clients' ? 'Riscos dos clientes' : 'Riscos da operação'}
-                  </button>
-                </div>
-
-              </div>
-
               <div className="assistant-history-card glass-panel">
                 <div className="assistant-section-head assistant-history-head">
                   <span className="assistant-section-kicker">Conversas salvas</span>
@@ -759,19 +672,6 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
                 </div>
               </div>
 
-              <div className="assistant-status-card glass-panel">
-                <div className="assistant-status-head">
-                  <span className="assistant-status-dot"></span>
-                  <span>Status do sistema</span>
-                </div>
-                <p>
-                  Operação pronta para conversa com contexto interno do workspace. A próxima etapa pode conectar busca externa e ações automatizadas.
-                </p>
-                <div className="assistant-access-badge">
-                  <strong>{aiAccessLabel}</strong>
-                  <span>{aiAccessDescription}</span>
-                </div>
-              </div>
             </section>
 
             <section className="assistant-chat-panel glass-panel">
@@ -1015,9 +915,7 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
         }
 
         .assistant-chat-intro p,
-        .assistant-status-card p,
-        .assistant-message p,
-        .assistant-context-card p {
+        .assistant-message p {
           margin: 0;
           color: var(--text-secondary);
           line-height: 1.65;
@@ -1090,8 +988,6 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
           min-height: 0;
         }
 
-        .assistant-context-card,
-        .assistant-status-card,
         .assistant-history-card {
           padding: 24px;
           border-radius: 20px;
@@ -1743,9 +1639,8 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
           height: calc(100vh - 240px);
         }
 
-        .assistant-main-embedded .assistant-context-card,
-        .assistant-main-embedded .assistant-status-card,
-        .assistant-main-embedded .assistant-chat-panel {
+        .assistant-main-embedded .assistant-chat-panel,
+        .assistant-main-embedded .assistant-history-card {
           border-radius: 24px;
         }
 
