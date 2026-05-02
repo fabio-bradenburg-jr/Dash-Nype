@@ -12141,23 +12141,6 @@ export default function DashboardShell({
               <button
                 type="button"
                 className="operation-stellar-icon-button"
-                aria-label="Notificações"
-                style={
-                  isLightAppMode
-                    ? {
-                        border: '1px solid rgba(15, 23, 42, 0.08)',
-                        background: 'rgba(255, 255, 255, 0.84)',
-                        color: '#475569',
-                        boxShadow: '0 10px 24px rgba(15, 23, 42, 0.04)',
-                      }
-                    : undefined
-                }
-              >
-                <i className="bx bx-bell"></i>
-              </button>
-              <button
-                type="button"
-                className="operation-stellar-icon-button"
                 aria-label="Configurações"
                 onClick={() => setActiveTab('settings')}
                 style={
@@ -12172,23 +12155,6 @@ export default function DashboardShell({
                 }
               >
                 <i className="bx bx-cog"></i>
-              </button>
-              <button
-                type="button"
-                className="operation-stellar-icon-button"
-                aria-label="Ajuda"
-                style={
-                  isLightAppMode
-                    ? {
-                        border: '1px solid rgba(15, 23, 42, 0.08)',
-                        background: 'rgba(255, 255, 255, 0.84)',
-                        color: '#475569',
-                        boxShadow: '0 10px 24px rgba(15, 23, 42, 0.04)',
-                      }
-                    : undefined
-                }
-              >
-                <i className="bx bx-help-circle"></i>
               </button>
               <div
                 className="operation-stellar-theme-toggle"
