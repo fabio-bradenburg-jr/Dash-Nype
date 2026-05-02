@@ -8,6 +8,7 @@ export const USER_ROLES = {
 export const AI_ACCESS_LEVELS = {
   MASTER: 'master',
   TEAM: 'team',
+  NONE: 'none',
 }
 
 function isMissingRelationError(error) {
@@ -17,7 +18,7 @@ function isMissingRelationError(error) {
 
 function resolveAiAccessLevel(profileLike, fallbackRole) {
   const explicitValue = String(profileLike?.ai_access_level || '').trim().toLowerCase()
-  if (explicitValue === AI_ACCESS_LEVELS.MASTER || explicitValue === AI_ACCESS_LEVELS.TEAM) {
+  if (explicitValue === AI_ACCESS_LEVELS.MASTER || explicitValue === AI_ACCESS_LEVELS.TEAM || explicitValue === AI_ACCESS_LEVELS.NONE) {
     return explicitValue
   }
 
@@ -205,7 +206,7 @@ export async function getAccessContext(supabase, user, options = {}) {
     canManageClients: role === USER_ROLES.MASTER || role === USER_ROLES.OPERATOR,
     canEditIntegrations: role === USER_ROLES.MASTER || role === USER_ROLES.OPERATOR,
     canViewDashboard: role === USER_ROLES.MASTER || viewableClientIds.size > 0,
-    canUseAi: role === USER_ROLES.MASTER || viewableClientIds.size > 0,
+    canUseAi: aiAccessLevel !== AI_ACCESS_LEVELS.NONE && (role === USER_ROLES.MASTER || viewableClientIds.size > 0),
     isClientRole: role === USER_ROLES.CLIENT,
     viewableClientIds: Array.from(viewableClientIds),
     editableClientIds: Array.from(editableClientIds),

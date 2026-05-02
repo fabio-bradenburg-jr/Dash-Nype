@@ -4583,7 +4583,8 @@ export default function DashboardShell({
   }
   const aiAccessLabels = {
     master: 'IA Master',
-    team: 'IA Time',
+    team: 'IA liberada',
+    none: 'IA bloqueada',
   }
 
   useEffect(() => {
@@ -5350,7 +5351,7 @@ export default function DashboardShell({
     })
   }
 
-  const handleCreateClient = (event) => {
+  const handleCreateClient = async (event) => {
     event.preventDefault()
     if (!isMaster) return
     const trimmedName = newClientName.trim()
@@ -5370,8 +5371,9 @@ export default function DashboardShell({
       startDate: '',
       status: 'Ativo',
     })
+    const nextClients = [...clients, newClient]
 
-    setClients((currentClients) => [...currentClients, newClient])
+    setClients(nextClients)
     setActiveClientId(newClient.id)
     setActiveTab('clientes')
     setNewClientName('')
@@ -5383,21 +5385,34 @@ export default function DashboardShell({
     setClientEditSection('geral')
     setIsCreateClientModalOpen(false)
     setIsEditClientModalOpen(true)
+
+    try {
+      await persistWorkspaceState({ clients: nextClients, activeClientId: newClient.id })
+    } catch (error) {
+      alert(error.message || 'Cliente criado na tela, mas não foi possível salvar no Supabase agora.')
+    }
   }
 
-  const handleRemoveClient = (clientId) => {
+  const handleRemoveClient = async (clientId) => {
     if (!isMaster) return
     const nextClients = clients.filter((client) => client.id !== clientId)
+    const nextActiveClientId = clientId === activeClientId ? nextClients[0]?.id || '' : activeClientId
+    const nextClientGroups = clientGroups.map((group) => ({
+      ...group,
+      clientIds: group.clientIds.filter((currentClientId) => currentClientId !== clientId),
+    }))
+
     setClients(nextClients)
-    setClientGroups((currentGroups) =>
-      currentGroups.map((group) => ({
-        ...group,
-        clientIds: group.clientIds.filter((currentClientId) => currentClientId !== clientId),
-      }))
-    )
+    setClientGroups(nextClientGroups)
 
     if (clientId === activeClientId) {
-      setActiveClientId(nextClients[0]?.id || '')
+      setActiveClientId(nextActiveClientId)
+    }
+
+    try {
+      await persistWorkspaceState({ clients: nextClients, clientGroups: nextClientGroups, activeClientId: nextActiveClientId })
+    } catch (error) {
+      alert(error.message || 'Cliente removido na tela, mas não foi possível atualizar o Supabase agora.')
     }
   }
 
@@ -6469,7 +6484,7 @@ export default function DashboardShell({
   const isMetaRateLimitMessage = (message = '') =>
     /rate limit|request limit|too many calls|too many requests/i.test(message)
 
-  const persistWorkspaceState = async () => {
+  const persistWorkspaceState = async (overrides = {}) => {
     const state = {
       themeColor,
       metric1,
@@ -6484,6 +6499,7 @@ export default function DashboardShell({
       clientCustomColumns,
       clientCustomTabs,
       teamProfiles,
+      ...overrides,
     }
 
     const response = await fetch('/api/dashboard/state', {
@@ -6496,7 +6512,7 @@ export default function DashboardShell({
     const data = await response.json().catch(() => null)
 
     if (!response.ok) {
-      throw new Error(data?.error || 'Não foi possível salvar os grupos e dashboards no Supabase antes de liberar o usuário.')
+      throw new Error(data?.error || 'Não foi possível salvar o workspace no Supabase antes de liberar o usuário.')
     }
 
     return data
@@ -6558,7 +6574,7 @@ export default function DashboardShell({
           role: managedUser.role,
           aiAccessLevel: managedUser.ai_access_level || (managedUser.role === 'master' ? 'master' : 'team'),
           clientIds: (managedUser.clientAccess || []).map((item) => item.client_id),
-          clientGroupIds: (managedUser.clientGroupAccess || []).map((item) => item.group_id),
+          clientGroupIds: [],
         }),
       })
       const data = await response.json()
@@ -8031,7 +8047,7 @@ export default function DashboardShell({
   useEffect(() => {
     const shouldFetchPresentationData = activeTab === 'apresentacao'
     const shouldFetchClickUpData = activeTab === 'clickup'
-    const shouldFetchMondayData = activeTab === 'monday' || activeTab === 'usuarios'
+    const shouldFetchMondayData = activeTab === 'monday'
 
     if (!shouldFetchPresentationData && !shouldFetchClickUpData && !shouldFetchMondayData) return
 
@@ -8622,9 +8638,15 @@ export default function DashboardShell({
   const handleSaveIntegrations = async (event) => {
     event.preventDefault()
     setIsSavingIntegrations(true)
-    await new Promise((resolve) => setTimeout(resolve, 400))
-    setIsSavingIntegrations(false)
-    alert(`Cliente ${activeClient?.name || ''} salvo neste navegador.`)
+
+    try {
+      await persistWorkspaceState({ clients, activeClientId })
+      alert(`Cliente ${activeClient?.name || ''} salvo no Supabase.`)
+    } catch (error) {
+      alert(error.message || 'Não foi possível salvar este cliente no Supabase.')
+    } finally {
+      setIsSavingIntegrations(false)
+    }
   }
 
   const handleSaveManualCrm = async (event) => {
@@ -13867,948 +13889,90 @@ export default function DashboardShell({
 
         {activeTab === 'usuarios' && canAccessTeamTab && (
           canManageUsers ? (
-          <section className="clients-layout users-management-layout">
-            <div className="glass-panel management-hero users-intro-card">
-              <div className="management-hero-copy">
-                <span className="management-hero-kicker">People ops</span>
-                <h2>Gerencie time, acessos, PDI e metas por pessoa</h2>
-                <p>Organize permissões, senioridade, carreira, capacidade e carteira de atendimento de cada colaborador dentro do mesmo workspace.</p>
-              </div>
-              <div className="management-stats-grid">
-                <div className="management-stat-card">
-                  <small>Total de pessoas</small>
-                  <strong>{formatNumber(usersList.length)}</strong>
-                </div>
-                <div className="management-stat-card">
-                  <small>Masters</small>
-                  <strong>{formatNumber(usersList.filter((managedUser) => managedUser.role === 'master').length)}</strong>
-                </div>
-                <div className="management-stat-card">
-                  <small>Clientes na base</small>
-                  <strong>{formatNumber(clients.length)}</strong>
-                </div>
-                <div className="management-stat-card">
-                  <small>Grupos disponíveis</small>
-                  <strong>{formatNumber(clientGroups.length)}</strong>
-                </div>
-                <div className="management-stat-card">
-                  <small>Horas lançadas no Monday</small>
-                  <strong>{formatDurationHours(mondaySummary?.trackedSecondsTotal || 0)}</strong>
-                </div>
-                <div className="management-stat-card">
-                  <small>Pessoas com tempo</small>
-                  <strong>{formatNumber((mondaySummary?.ownerRanking || []).filter((item) => (item.trackedSeconds || 0) > 0).length)}</strong>
-                </div>
-              </div>
-            </div>
-
-            <div className="glass-panel users-toolbar-card management-directory-card">
-              <div className="user-picker-head">
-                <div>
-                  <span className="management-card-kicker">Team registry</span>
-                  <h3>Pessoas cadastradas</h3>
-                  <p>Busque alguém do time para editar acessos, carreira, PDI, OKRs e alocação em clientes sem sair desta área.</p>
-                </div>
-                <div className="users-toolbar-actions">
-                  <button type="button" className="btn btn-primary" onClick={() => setIsCreateUserModalOpen(true)}>
-                    Novo membro
-                  </button>
-                </div>
-              </div>
-
-              <div className="users-search-row">
-                <div className="input-group users-search-field">
-                  <label>Buscar usuário</label>
-                  <input
-                    type="text"
-                    value={userSearch}
-                    onChange={(event) => setUserSearch(event.target.value)}
-                    placeholder="Nome ou e-mail"
-                  />
-                </div>
-              </div>
-
-              {usersLoading ? (
-                <div className="empty-panel glass-item">
-                  <h3>Carregando usuários</h3>
-                  <p>Estamos buscando os acessos liberados neste workspace.</p>
-                </div>
-              ) : (
-                <div className="user-directory-grid">
-                  {filteredUsers.map((managedUser) => (
-                    <div key={`user-list-${managedUser.id}`} className="user-directory-card glass-item">
-                      <div className="user-directory-topline">
-                        <div className="directory-card-icon">
-                          <i className="bx bx-user"></i>
-                        </div>
-                        <span className="user-role-badge">{roleLabels[managedUser.role] || managedUser.role}</span>
-                      </div>
-                      <div className="user-directory-main">
-                        <strong>{managedUser.full_name || managedUser.email}</strong>
-                        <span>{managedUser.email}</span>
-                      </div>
-                      <div className="user-directory-meta">
-                        <span className="user-role-badge">{aiAccessLabels[managedUser.ai_access_level] || 'IA Time'}</span>
-                        <small>
-                          {managedUser.teamProfile?.positionTitle
-                            ? `${managedUser.teamProfile.positionTitle} · ${managedUser.teamProfile.seniority || 'junior'}`
-                            : managedUser.role === 'master'
-                              ? 'Acesso total'
-                              : `${getManagedUserAccessibleClientCount(managedUser)} dashboard(s) liberado(s)`}
-                        </small>
-                      </div>
-                      <div className="user-directory-actions">
-                        <button
-                          type="button"
-                          className="btn btn-secondary"
-                          onClick={() => {
-                            setSelectedUserId(managedUser.id)
-                            setIsEditUserModalOpen(true)
-                          }}
-                        >
-                          Editar
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {!usersLoading && !filteredUsers.length && (
-                <div className="empty-panel glass-item users-empty-state compact-empty-state">
-                  <h3>Nenhum usuário encontrado</h3>
-                  <p>Ajuste a busca ou crie um novo acesso para o workspace.</p>
-                </div>
-              )}
-
-              {hasMondayConfigured && (
-                <div className="glass-panel ranking-card">
-                  <div className="section-header section-header-stack">
-                    <div>
-                      <h2>Performance operacional do time</h2>
-                      <p className="chart-subtitle">Leitura puxada do Monday para entender carga, atraso e tempo lançado por pessoa.</p>
-                    </div>
-                  </div>
-                  <div className="ranking-list">
-                    {teamMemberOperationalRows.length ? (
-                      teamMemberOperationalRows
-                        .slice()
-                        .sort((left, right) => (right.mondayOwnerSummary?.trackedSeconds || 0) - (left.mondayOwnerSummary?.trackedSeconds || 0))
-                        .map((member) => (
-                          <div key={`team-ops-${member.id}`} className="ranking-row ranking-row-rich monday-owner-row">
-                            <div className="ranking-main-column">
-                              <strong>{member.full_name || member.email}</strong>
-                              <span>
-                                {member.teamProfile?.positionTitle || 'Cargo não definido'} · {member.mondayOwnerSummary ? `${formatDurationHours(member.mondayOwnerSummary.trackedSeconds || 0)} no Monday` : 'Sem apontamento no Monday'}
-                              </span>
-                            </div>
-                            <div className="ranking-metrics">
-                              <strong>{formatNumber(member.mondayOwnerSummary?.openItems || 0)} aberto(s)</strong>
-                              <span>{formatNumber(member.mondayOwnerSummary?.overdueCount || 0)} atrasado(s)</span>
-                            </div>
-                          </div>
-                        ))
-                    ) : (
-                      <div className="ranking-empty">Ainda não encontramos dados operacionais suficientes do Monday para montar a leitura por pessoa.</div>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {isCreateUserModalOpen && (
-              <div className="modal-overlay" onClick={() => setIsCreateUserModalOpen(false)}>
-                <div className="modal-card glass-panel" onClick={(event) => event.stopPropagation()}>
-                  <div className="modal-header">
-                    <div>
-                      <h3>Novo usuário</h3>
-                      <p>Cadastre um novo acesso e defina exatamente quais dashboards ele poderá enxergar.</p>
-                    </div>
-                    <button type="button" className="modal-close" onClick={() => setIsCreateUserModalOpen(false)} aria-label="Fechar cadastro de usuário">
-                      <i className="bx bx-x"></i>
-                    </button>
-                  </div>
-
-                  <form onSubmit={handleCreateUser}>
-                    {createUserError && <div className="form-alert">{createUserError}</div>}
-
-                    <div className="form-grid user-admin-grid">
-                      <div className="input-group">
-                        <label>Nome</label>
-                        <input type="text" value={userForm.fullName} onChange={(event) => setUserForm((current) => ({ ...current, fullName: event.target.value }))} placeholder="Nome completo" />
-                      </div>
-                      <div className="input-group">
-                        <label>E-mail</label>
-                        <input type="email" value={userForm.email} onChange={(event) => setUserForm((current) => ({ ...current, email: event.target.value }))} placeholder="usuario@empresa.com" />
-                      </div>
-                      <div className="input-group">
-                        <label>Senha inicial</label>
-                        <input type="password" value={userForm.password} onChange={(event) => setUserForm((current) => ({ ...current, password: event.target.value }))} placeholder="Senha provisória" />
-                      </div>
-                      <div className="input-group">
-                        <label>Nível liberado</label>
-                        <select className="client-select-input" value={userForm.role} onChange={(event) => setUserForm((current) => ({ ...current, role: event.target.value }))}>
-                          <option value="visualizador">Visualizador</option>
-                          <option value="operador">Operador</option>
-                          <option value="cliente">Cliente</option>
-                          <option value="master">Master</option>
-                        </select>
-                      </div>
-                      <div className="input-group">
-                        <label>Liberação da IA</label>
-                        <select
-                          className="client-select-input"
-                          value={userForm.aiAccessLevel}
-                          onChange={(event) => setUserForm((current) => ({ ...current, aiAccessLevel: event.target.value }))}
-                        >
-                          <option value="team">IA Time</option>
-                          <option value="master">IA Master</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    {userForm.role !== 'master' && (
-                      <>
-                        <div className="input-group">
-                          <label>Dashboards liberados</label>
-                          <div className="stage-selector">
-                            {dashboardEligibleClients.map((client) => (
-                              <label key={`new-user-${client.id}`} className={`stage-chip ${userForm.clientIds.includes(client.id) ? 'active' : ''}`}>
-                                <input
-                                  type="checkbox"
-                                  checked={userForm.clientIds.includes(client.id)}
-                                  onChange={() => handleUserClientToggle(client.id)}
-                                />
-                                <span>{client.name}</span>
-                              </label>
-                            ))}
-                          </div>
-                        </div>
-
-                        <div className="input-group">
-                          <label>Grupos liberados</label>
-                          <div className="stage-selector">
-                            {clientGroups.length ? (
-                              clientGroups.map((group) => (
-                                <label key={`new-user-group-${group.id}`} className={`stage-chip ${userForm.clientGroupIds.includes(group.id) ? 'active' : ''}`}>
-                                  <input
-                                    type="checkbox"
-                                    checked={userForm.clientGroupIds.includes(group.id)}
-                                    onChange={() => handleUserClientGroupToggle(group.id)}
-                                  />
-                                  <span>{group.name}</span>
-                                </label>
-                              ))
-                            ) : (
-                              <div className="stage-empty">
-                                Nenhum grupo criado ainda. Crie grupos na aba de clientes para liberar acesso por grupo.
-                              </div>
-                            )}
-                          </div>
-                          {createUserError.includes('grupos de clientes') && (
-                            <span className="field-helper">
-                              O restante do cadastro continua funcionando. Para liberar grupos, aplique a migration do Supabase primeiro.
-                            </span>
-                          )}
-                        </div>
-                      </>
-                    )}
-
-                    <div className="modal-actions">
-                      <button type="button" className="btn btn-secondary" onClick={() => setIsCreateUserModalOpen(false)}>
-                        Cancelar
-                      </button>
-                      <button type="submit" className="btn btn-primary" disabled={savingUser}>
-                        {savingUser ? 'Criando...' : 'Adicionar usuário'}
-                      </button>
-                    </div>
-                  </form>
-                </div>
-              </div>
-            )}
-
-            {isEditUserModalOpen && selectedManagedUser && (
-              <div className="modal-overlay" onClick={() => setIsEditUserModalOpen(false)}>
-                <div className="modal-card glass-panel" onClick={(event) => event.stopPropagation()}>
-                  <div className="modal-header">
-                    <div>
-                      <h3>Editar membro do time</h3>
-                      <p>Ajuste acessos, senioridade, PDI, metas e carteira deste perfil interno.</p>
-                    </div>
-                    <button type="button" className="modal-close" onClick={() => setIsEditUserModalOpen(false)} aria-label="Fechar edição de usuário">
-                      <i className="bx bx-x"></i>
-                    </button>
-                  </div>
-
-                  {editUserError && <div className="form-alert">{editUserError}</div>}
-
-                  <div className="user-admin-head">
-                    <div>
-                      <strong>{selectedManagedUser.full_name || selectedManagedUser.email}</strong>
-                      <span>{selectedManagedUser.email}</span>
-                    </div>
-                    {selectedManagedUser.id !== user?.id && (
-                      <button type="button" className="btn btn-secondary" onClick={() => handleDeleteUser(selectedManagedUser.id)}>
-                        Excluir
-                      </button>
-                    )}
-                  </div>
-
-                  <div className="form-grid user-admin-grid">
-                    <div className="input-group">
-                      <label>Nome</label>
-                      <input
-                        type="text"
-                        value={selectedManagedUser.full_name || ''}
-                        onChange={(event) =>
-                          handleManagedUserChange(selectedManagedUser.id, (item) => ({ ...item, full_name: event.target.value }))
-                        }
-                      />
-                    </div>
-                      <div className="input-group">
-                        <label>Nível</label>
-                        <select
-                          className="client-select-input"
-                        value={selectedManagedUser.role}
-                        onChange={(event) =>
-                          handleManagedUserChange(selectedManagedUser.id, (item) => ({ ...item, role: event.target.value }))
-                        }
-                      >
-                        <option value="visualizador">Visualizador</option>
-                        <option value="operador">Operador</option>
-                        <option value="cliente">Cliente</option>
-                          <option value="master">Master</option>
-                        </select>
-                      </div>
-                      <div className="input-group">
-                        <label>Liberação da IA</label>
-                        <select
-                          className="client-select-input"
-                          value={selectedManagedUser.ai_access_level || (selectedManagedUser.role === 'master' ? 'master' : 'team')}
-                          onChange={(event) =>
-                            handleManagedUserChange(selectedManagedUser.id, (item) => ({ ...item, ai_access_level: event.target.value }))
-                          }
-                        >
-                          <option value="team">IA Time</option>
-                          <option value="master">IA Master</option>
-                        </select>
-                      </div>
-                    </div>
-
-                  <div className="glass-item settings-block settings-block-full">
-                    <div className="settings-section-head">
-                      <div>
-                        <h3>Perfil interno</h3>
-                        <p>Defina cargo, senioridade, capacidade e contexto de carreira desta pessoa.</p>
-                      </div>
-                    </div>
-
-                    <div className="form-grid user-admin-grid">
-                      <div className="input-group">
-                        <label>Cargo</label>
-                        <input
-                          type="text"
-                          value={selectedManagedUserTeamProfile.positionTitle || ''}
-                          onChange={(event) => handleTeamProfileChange(selectedManagedUser.id, { positionTitle: event.target.value })}
-                          placeholder="Ex.: Gestor de Trafego, Designer, CS"
-                        />
-                      </div>
-                      <div className="input-group">
-                        <label>Departamento</label>
-                        <input
-                          type="text"
-                          value={selectedManagedUserTeamProfile.department || ''}
-                          onChange={(event) => handleTeamProfileChange(selectedManagedUser.id, { department: event.target.value })}
-                          placeholder="Ex.: Midia, Criacao, Atendimento"
-                        />
-                      </div>
-                      <div className="input-group">
-                        <label>Senioridade</label>
-                        <select
-                          className="client-select-input"
-                          value={selectedManagedUserTeamProfile.seniority || 'junior'}
-                          onChange={(event) => handleTeamProfileChange(selectedManagedUser.id, { seniority: event.target.value })}
-                        >
-                          <option value="junior">Junior</option>
-                          <option value="pleno">Pleno</option>
-                          <option value="senior">Senior</option>
-                          <option value="expert">Expert</option>
-                        </select>
-                      </div>
-                      <div className="input-group">
-                        <label>Gestor direto</label>
-                        <input
-                          type="text"
-                          value={selectedManagedUserTeamProfile.directManagerName || ''}
-                          onChange={(event) => handleTeamProfileChange(selectedManagedUser.id, { directManagerName: event.target.value })}
-                          placeholder="Nome do gestor"
-                        />
-                      </div>
-                      <div className="input-group">
-                        <label>Data de entrada</label>
-                        <input
-                          type="date"
-                          value={selectedManagedUserTeamProfile.employmentStartDate || ''}
-                          onChange={(event) => handleTeamProfileChange(selectedManagedUser.id, { employmentStartDate: event.target.value })}
-                        />
-                      </div>
-                      <div className="input-group">
-                        <label>Remuneração mensal</label>
-                        <input
-                          type="text"
-                          value={selectedManagedUserTeamProfile.monthlyCompensation || ''}
-                          onChange={(event) => handleTeamProfileChange(selectedManagedUser.id, { monthlyCompensation: event.target.value })}
-                          placeholder="Ex.: R$ 4.500"
-                        />
-                      </div>
-                      <div className="input-group">
-                        <label>Capacidade semanal (h)</label>
-                        <input
-                          type="number"
-                          min="0"
-                          step="1"
-                          value={selectedManagedUserTeamProfile.weeklyCapacityHours || 0}
-                          onChange={(event) => handleTeamProfileChange(selectedManagedUser.id, { weeklyCapacityHours: Number(event.target.value) || 0 })}
-                        />
-                      </div>
-                      <div className="input-group">
-                        <label>Modelo de vínculo</label>
-                        <input
-                          type="text"
-                          value={selectedManagedUserTeamProfile.employmentType || ''}
-                          onChange={(event) => handleTeamProfileChange(selectedManagedUser.id, { employmentType: event.target.value })}
-                          placeholder="Ex.: CLT, PJ"
-                        />
-                      </div>
-                      <div className="input-group settings-field-span-2">
-                        <label>Trilha / foco de carreira</label>
-                        <input
-                          type="text"
-                          value={selectedManagedUserTeamProfile.careerTrack || ''}
-                          onChange={(event) => handleTeamProfileChange(selectedManagedUser.id, { careerTrack: event.target.value })}
-                          placeholder="Ex.: Lideranca de midia, Especialista em criacao"
-                        />
-                      </div>
-                      <div className="input-group settings-field-span-2">
-                        <label>Resumo de performance</label>
-                        <textarea
-                          value={selectedManagedUserTeamProfile.performanceSummary || ''}
-                          onChange={(event) => handleTeamProfileChange(selectedManagedUser.id, { performanceSummary: event.target.value })}
-                          placeholder="Resumo da performance recente, pontos fortes e atencoes."
-                        />
-                      </div>
-                      <div className="input-group settings-field-span-2">
-                        <label>Próximo passo de carreira</label>
-                        <textarea
-                          value={selectedManagedUserTeamProfile.nextCareerStep || ''}
-                          onChange={(event) => handleTeamProfileChange(selectedManagedUser.id, { nextCareerStep: event.target.value })}
-                          placeholder="O que precisa acontecer para evoluir esse perfil no médio prazo."
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {selectedManagedUser.role !== 'master' && (
-                    <>
-                      <div className="input-group">
-                        <label>Dashboards liberados</label>
-                        <div className="stage-selector">
-                          {dashboardEligibleClients.map((client) => {
-                            const currentAccess = selectedManagedUser.clientAccess || []
-                            const hasClient = currentAccess.some((item) => item.client_id === client.id)
-
-                            return (
-                              <label key={`${selectedManagedUser.id}-${client.id}`} className={`stage-chip ${hasClient ? 'active' : ''}`}>
-                                <input
-                                  type="checkbox"
-                                  checked={hasClient}
-                                  onChange={() =>
-                                    handleManagedUserChange(selectedManagedUser.id, (item) => {
-                                      const baseAccess = item.clientAccess || []
-                                      const nextAccess = hasClient
-                                        ? baseAccess.filter((accessItem) => accessItem.client_id !== client.id)
-                                        : [
-                                            ...baseAccess,
-                                            {
-                                              client_id: client.id,
-                                              can_view: true,
-                                              can_edit: item.role === 'operador',
-                                            },
-                                          ]
-
-                                      return { ...item, clientAccess: nextAccess }
-                                    })
-                                  }
-                                />
-                                <span>{client.name}</span>
-                              </label>
-                            )
-                          })}
-                        </div>
-                      </div>
-
-                      <div className="input-group">
-                        <label>Grupos liberados</label>
-                        <div className="stage-selector">
-                          {clientGroups.length ? (
-                            clientGroups.map((group) => {
-                              const currentGroupAccess = selectedManagedUser.clientGroupAccess || []
-                              const hasGroup = currentGroupAccess.some((item) => item.group_id === group.id)
-
-                              return (
-                                <label key={`${selectedManagedUser.id}-group-${group.id}`} className={`stage-chip ${hasGroup ? 'active' : ''}`}>
-                                  <input
-                                    type="checkbox"
-                                    checked={hasGroup}
-                                    onChange={() =>
-                                      handleManagedUserChange(selectedManagedUser.id, (item) => {
-                                        const baseGroupAccess = item.clientGroupAccess || []
-                                        const nextGroupAccess = hasGroup
-                                          ? baseGroupAccess.filter((groupAccess) => groupAccess.group_id !== group.id)
-                                          : [
-                                              ...baseGroupAccess,
-                                              {
-                                                group_id: group.id,
-                                                can_view: true,
-                                                can_edit: item.role === 'operador',
-                                              },
-                                            ]
-
-                                        return { ...item, clientGroupAccess: nextGroupAccess }
-                                      })
-                                    }
-                                  />
-                                  <span>{group.name}</span>
-                                </label>
-                              )
-                            })
-                          ) : (
-                            <div className="stage-empty">
-                              Nenhum grupo criado ainda. Crie grupos na aba de clientes para liberar acesso por grupo.
-                            </div>
-                          )}
-                        </div>
-                        {editUserError.includes('grupos de clientes') && (
-                          <span className="field-helper">
-                            O acesso por dashboard segue funcionando. Para liberar grupos, aplique a migration do Supabase primeiro.
-                          </span>
-                        )}
-                      </div>
-                    </>
-                  )}
-
-                  <div className="glass-item settings-block settings-block-full">
-                    <div className="settings-section-head">
-                      <div>
-                        <h3>Alocação por cliente</h3>
-                        <p>Planeje a dedicação semanal, o papel e o foco principal desta pessoa em cada cliente.</p>
-                      </div>
-                      <button type="button" className="btn btn-secondary" onClick={() => handleAddTeamMemberAllocation(selectedManagedUser.id)}>
-                        Adicionar alocação
-                      </button>
-                    </div>
-
-                    <div className="settings-stack-list">
-                      {(selectedManagedUserTeamProfile.allocations || []).length ? (
-                        selectedManagedUserTeamProfile.allocations.map((allocation) => (
-                          <div key={allocation.id} className="glass-item settings-stack-card">
-                            <div className="form-grid user-admin-grid">
-                              <div className="input-group">
-                                <label>Cliente</label>
-                                <select
-                                  className="client-select-input"
-                                  value={allocation.clientId || ''}
-                                  onChange={(event) => handleUpdateTeamMemberAllocation(selectedManagedUser.id, allocation.id, 'clientId', event.target.value)}
-                                >
-                                  <option value="">Selecione um cliente</option>
-                                  {clients.map((client) => (
-                                    <option key={`${allocation.id}-${client.id}`} value={client.id}>{client.name}</option>
-                                  ))}
-                                </select>
-                              </div>
-                              <div className="input-group">
-                                <label>Papel no cliente</label>
-                                <input
-                                  type="text"
-                                  value={allocation.roleLabel || ''}
-                                  onChange={(event) => handleUpdateTeamMemberAllocation(selectedManagedUser.id, allocation.id, 'roleLabel', event.target.value)}
-                                  placeholder="Ex.: Gestor principal, Designer, CS"
-                                />
-                              </div>
-                              <div className="input-group">
-                                <label>Horas por semana</label>
-                                <input
-                                  type="number"
-                                  min="0"
-                                  step="1"
-                                  value={allocation.weeklyHours || 0}
-                                  onChange={(event) => handleUpdateTeamMemberAllocation(selectedManagedUser.id, allocation.id, 'weeklyHours', Number(event.target.value) || 0)}
-                                />
-                              </div>
-                              <div className="input-group">
-                                <label>Foco principal</label>
-                                <input
-                                  type="text"
-                                  value={allocation.focusLabel || ''}
-                                  onChange={(event) => handleUpdateTeamMemberAllocation(selectedManagedUser.id, allocation.id, 'focusLabel', event.target.value)}
-                                  placeholder="Ex.: Performance, Criativos, Atendimento"
-                                />
-                              </div>
-                            </div>
-                            <div className="modal-actions">
-                              <button type="button" className="btn btn-secondary" onClick={() => handleRemoveTeamMemberAllocation(selectedManagedUser.id, allocation.id)}>
-                                Remover alocação
-                              </button>
-                            </div>
-                          </div>
-                        ))
-                      ) : (
-                        <div className="glass-item settings-stack-card">
-                          <span>Nenhuma alocação registrada ainda.</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {hasMondayConfigured && (
-                    <div className="glass-item settings-block settings-block-full">
-                      <div className="settings-section-head">
-                        <div>
-                          <h3>Leitura operacional do Monday</h3>
-                          <p>Compare a alocação planejada desta pessoa com a carga real puxada dos boards monitorados.</p>
-                        </div>
-                      </div>
-
-                      <div className="management-stats-grid">
-                        <div className="management-stat-card">
-                          <small>Tempo lançado</small>
-                          <strong>{formatDurationHours(selectedManagedUserOperationalSummary?.mondayOwnerSummary?.trackedSeconds || 0)}</strong>
-                        </div>
-                        <div className="management-stat-card">
-                          <small>Itens abertos</small>
-                          <strong>{formatNumber(selectedManagedUserOperationalSummary?.mondayOwnerSummary?.openItems || 0)}</strong>
-                        </div>
-                        <div className="management-stat-card">
-                          <small>Atrasos</small>
-                          <strong>{formatNumber(selectedManagedUserOperationalSummary?.mondayOwnerSummary?.overdueCount || 0)}</strong>
-                        </div>
-                        <div className="management-stat-card">
-                          <small>Horas planejadas</small>
-                          <strong>{formatNumber(selectedManagedUserOperationalSummary?.plannedHours || 0)}h</strong>
-                        </div>
-                      </div>
-
-                      <div className="ranking-list">
-                        {selectedManagedUserOperationalSummary?.mondayTasks?.length ? (
-                          selectedManagedUserOperationalSummary.mondayTasks.slice(0, 6).map((task) => (
-                            <div key={`member-task-${task.id}`} className="ranking-row ranking-row-rich monday-owner-row">
-                              <div className="ranking-main-column">
-                                <strong>{task.name}</strong>
-                                <span>{task.boardName} · {task.groupLabel} · {task.statusLabel}</span>
-                              </div>
-                              <div className="ranking-metrics">
-                                <strong>{formatDurationHours(task.trackedSeconds || 0)}</strong>
-                                <span>{task.isOverdue ? `${formatNumber(task.daysOverdue || 0)} dia(s) de atraso` : (task.dueDate ? formatShortDate(task.dueDate) : 'Sem prazo')}</span>
-                              </div>
-                            </div>
-                          ))
-                        ) : (
-                          <div className="ranking-empty">Nenhuma tarefa desta pessoa apareceu no Monday dentro do recorte atual.</div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="glass-item settings-block settings-block-full">
-                    <div className="settings-section-head">
-                      <div>
-                        <h3>OKRs do colaborador</h3>
-                        <p>Cadastre metas individuais com progresso e prazo para o colaborador acompanhar no próprio painel.</p>
-                      </div>
-                      <button type="button" className="btn btn-secondary" onClick={() => handleAddTeamMemberOkr(selectedManagedUser.id)}>
-                        Adicionar OKR
-                      </button>
-                    </div>
-
-                    <div className="settings-stack-list">
-                      {(selectedManagedUserTeamProfile.okrs || []).length ? (
-                        selectedManagedUserTeamProfile.okrs.map((okr) => (
-                          <div key={okr.id} className="glass-item settings-stack-card">
-                            <div className="form-grid user-admin-grid">
-                              <div className="input-group">
-                                <label>Objetivo</label>
-                                <input type="text" value={okr.title || ''} onChange={(event) => handleUpdateTeamMemberOkr(selectedManagedUser.id, okr.id, 'title', event.target.value)} />
-                              </div>
-                              <div className="input-group">
-                                <label>Métrica</label>
-                                <input type="text" value={okr.metric || ''} onChange={(event) => handleUpdateTeamMemberOkr(selectedManagedUser.id, okr.id, 'metric', event.target.value)} placeholder="Ex.: SLA, criativos entregues, ROI" />
-                              </div>
-                              <div className="input-group">
-                                <label>Atual</label>
-                                <input type="text" value={okr.currentValue || ''} onChange={(event) => handleUpdateTeamMemberOkr(selectedManagedUser.id, okr.id, 'currentValue', event.target.value)} />
-                              </div>
-                              <div className="input-group">
-                                <label>Meta</label>
-                                <input type="text" value={okr.targetValue || ''} onChange={(event) => handleUpdateTeamMemberOkr(selectedManagedUser.id, okr.id, 'targetValue', event.target.value)} />
-                              </div>
-                              <div className="input-group">
-                                <label>Unidade</label>
-                                <input type="text" value={okr.unit || ''} onChange={(event) => handleUpdateTeamMemberOkr(selectedManagedUser.id, okr.id, 'unit', event.target.value)} placeholder="Ex.: %, horas, entregas" />
-                              </div>
-                              <div className="input-group">
-                                <label>Prazo</label>
-                                <input type="date" value={okr.dueDate || ''} onChange={(event) => handleUpdateTeamMemberOkr(selectedManagedUser.id, okr.id, 'dueDate', event.target.value)} />
-                              </div>
-                              <div className="input-group">
-                                <label>Status</label>
-                                <select className="client-select-input" value={okr.status || 'nao_iniciado'} onChange={(event) => handleUpdateTeamMemberOkr(selectedManagedUser.id, okr.id, 'status', event.target.value)}>
-                                  <option value="nao_iniciado">Nao iniciado</option>
-                                  <option value="em_andamento">Em andamento</option>
-                                  <option value="concluido">Concluido</option>
-                                  <option value="atrasado">Atrasado</option>
-                                </select>
-                              </div>
-                            </div>
-                            <div className="modal-actions">
-                              <button type="button" className="btn btn-secondary" onClick={() => handleRemoveTeamMemberOkr(selectedManagedUser.id, okr.id)}>
-                                Remover OKR
-                              </button>
-                            </div>
-                          </div>
-                        ))
-                      ) : (
-                        <div className="glass-item settings-stack-card">
-                          <span>Nenhuma OKR cadastrada ainda.</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="glass-item settings-block settings-block-full">
-                    <div className="settings-section-head">
-                      <div>
-                        <h3>PDI</h3>
-                        <p>Defina frentes de desenvolvimento, plano de ação e checkpoints para a evolução da pessoa.</p>
-                      </div>
-                      <button type="button" className="btn btn-secondary" onClick={() => handleAddTeamMemberPdiItem(selectedManagedUser.id)}>
-                        Adicionar frente
-                      </button>
-                    </div>
-
-                    <div className="settings-stack-list">
-                      {(selectedManagedUserTeamProfile.pdiItems || []).length ? (
-                        selectedManagedUserTeamProfile.pdiItems.map((item) => (
-                          <div key={item.id} className="glass-item settings-stack-card">
-                            <div className="form-grid user-admin-grid">
-                              <div className="input-group">
-                                <label>Título</label>
-                                <input type="text" value={item.title || ''} onChange={(event) => handleUpdateTeamMemberPdiItem(selectedManagedUser.id, item.id, 'title', event.target.value)} />
-                              </div>
-                              <div className="input-group">
-                                <label>Competência</label>
-                                <input type="text" value={item.competency || ''} onChange={(event) => handleUpdateTeamMemberPdiItem(selectedManagedUser.id, item.id, 'competency', event.target.value)} placeholder="Ex.: Lideranca, copy, analise" />
-                              </div>
-                              <div className="input-group">
-                                <label>Prazo</label>
-                                <input type="date" value={item.dueDate || ''} onChange={(event) => handleUpdateTeamMemberPdiItem(selectedManagedUser.id, item.id, 'dueDate', event.target.value)} />
-                              </div>
-                              <div className="input-group">
-                                <label>Status</label>
-                                <select className="client-select-input" value={item.status || 'planejado'} onChange={(event) => handleUpdateTeamMemberPdiItem(selectedManagedUser.id, item.id, 'status', event.target.value)}>
-                                  <option value="planejado">Planejado</option>
-                                  <option value="em_andamento">Em andamento</option>
-                                  <option value="concluido">Concluido</option>
-                                </select>
-                              </div>
-                              <div className="input-group settings-field-span-2">
-                                <label>Plano de ação</label>
-                                <textarea value={item.actionPlan || ''} onChange={(event) => handleUpdateTeamMemberPdiItem(selectedManagedUser.id, item.id, 'actionPlan', event.target.value)} placeholder="Detalhe aqui o plano de desenvolvimento." />
-                              </div>
-                              <div className="input-group settings-field-span-2">
-                                <label>Observações</label>
-                                <textarea value={item.notes || ''} onChange={(event) => handleUpdateTeamMemberPdiItem(selectedManagedUser.id, item.id, 'notes', event.target.value)} placeholder="Evidencias, checkpoints, feedbacks e proximos passos." />
-                              </div>
-                            </div>
-                            <div className="modal-actions">
-                              <button type="button" className="btn btn-secondary" onClick={() => handleRemoveTeamMemberPdiItem(selectedManagedUser.id, item.id)}>
-                                Remover frente
-                              </button>
-                            </div>
-                          </div>
-                        ))
-                      ) : (
-                        <div className="glass-item settings-stack-card">
-                          <span>Nenhuma frente de PDI cadastrada ainda.</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="modal-foot">
-                    <span className="form-note">
-                      {selectedManagedUser.role === 'master' && 'Acesso total: usuários, clientes e integrações.'}
-                      {selectedManagedUser.role === 'operador' && 'Pode editar integrações e clientes liberados.'}
-                      {selectedManagedUser.role === 'visualizador' && 'Pode apenas visualizar os dashboards liberados.'}
-                      {selectedManagedUser.role === 'cliente' && 'Acesso externo focado só nos dashboards atribuídos.'}
-                      {' '}
-                      {(selectedManagedUser.ai_access_level || (selectedManagedUser.role === 'master' ? 'master' : 'team')) === 'master'
-                        ? 'IA Master liberada com acesso completo ao contexto interno.'
-                        : 'IA Time liberada apenas para dados de campanha.'}
-                    </span>
-                    <div className="modal-actions">
-                      <button type="button" className="btn btn-secondary" onClick={() => setIsEditUserModalOpen(false)}>
-                        Cancelar
-                      </button>
-                      <button type="button" className="btn btn-primary" onClick={() => handleUpdateUser(selectedManagedUser)}>
-                        Salvar pessoa
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-          </section>
-          ) : (
-            <section className="clients-layout users-management-layout">
+            <section className="clients-layout users-management-layout simple-team-layout">
               <div className="glass-panel management-hero users-intro-card">
                 <div className="management-hero-copy">
-                  <span className="management-hero-kicker">Career hub</span>
-                  <h2>Seu painel interno de desenvolvimento</h2>
-                  <p>Use esta área para acompanhar sua senioridade, capacidade, clientes sob responsabilidade, OKRs e frentes do seu PDI.</p>
+                  <span className="management-hero-kicker">Team access</span>
+                  <h2>Time e permissões</h2>
+                  <p>Cadastre pessoas, escolha quais dashboards cada uma pode acessar e libere ou bloqueie o uso da IA.</p>
                 </div>
                 <div className="management-stats-grid">
-                  <div className="management-stat-card">
-                    <small>Senioridade</small>
-                    <strong>{currentUserTeamProfile.seniority || 'junior'}</strong>
-                  </div>
-                  <div className="management-stat-card">
-                    <small>Capacidade semanal</small>
-                    <strong>{formatNumber(currentUserTeamProfile.weeklyCapacityHours || 0)}h</strong>
-                  </div>
-                  <div className="management-stat-card">
-                    <small>Clientes no escopo</small>
-                    <strong>{formatNumber((currentUserTeamProfile.allocations || []).filter((item) => item.clientId).length)}</strong>
-                  </div>
-                  <div className="management-stat-card">
-                    <small>OKRs ativas</small>
-                    <strong>{formatNumber((currentUserTeamProfile.okrs || []).filter((item) => item.status !== 'concluido').length)}</strong>
-                  </div>
+                  <div className="management-stat-card"><small>Pessoas cadastradas</small><strong>{formatNumber(usersList.length)}</strong></div>
+                  <div className="management-stat-card"><small>Dashboards disponíveis</small><strong>{formatNumber(dashboardEligibleClients.length)}</strong></div>
+                  <div className="management-stat-card"><small>IA liberada</small><strong>{formatNumber(usersList.filter((managedUser) => (managedUser.ai_access_level || 'team') !== 'none').length)}</strong></div>
                 </div>
               </div>
 
-              <div className="settings-grid" style={{ width: '100%' }}>
-                <div className="glass-panel context-panel">
-                  <span className="management-card-kicker">Perfil</span>
-                  <h3>{currentUserTeamProfile.positionTitle || (profile?.full_name || 'Seu perfil')}</h3>
-                  <div className="context-risk-list">
-                    <div className="context-stack-card">
-                      <div className="context-stack-head">
-                        <strong>Departamento</strong>
-                        <span>{currentUserTeamProfile.department || 'Nao informado'}</span>
-                      </div>
-                      <p>Gestor: {currentUserTeamProfile.directManagerName || 'Nao informado'} · Trilha: {currentUserTeamProfile.careerTrack || 'Nao definida'}</p>
-                    </div>
-                    <div className="context-stack-card">
-                      <div className="context-stack-head">
-                        <strong>Resumo de performance</strong>
-                        <span>{currentUserTeamProfile.nextCareerStep || 'Sem proximo passo definido'}</span>
-                      </div>
-                      <p>{currentUserTeamProfile.performanceSummary || 'Seu gestor ainda nao registrou um resumo recente aqui.'}</p>
-                    </div>
+              <div className="glass-panel users-toolbar-card management-directory-card simple-team-card">
+                <div className="user-picker-head">
+                  <div>
+                    <span className="management-card-kicker">Cadastro simples</span>
+                    <h3>Membros do time</h3>
+                    <p>Lista limpa com acesso aos dashboards e status de IA. Nada de PDI, operação ou métricas internas.</p>
                   </div>
+                  <div className="users-toolbar-actions"><button type="button" className="btn btn-primary" onClick={() => setIsCreateUserModalOpen(true)}>Novo membro</button></div>
                 </div>
 
-                <div className="glass-panel context-panel">
-                  <span className="management-card-kicker">Clientes</span>
-                  <h3>Alocacao planejada</h3>
-                  <div className="context-risk-list">
-                    {(currentUserTeamProfile.allocations || []).filter((item) => item.clientId).length ? (
-                      currentUserTeamProfile.allocations.filter((item) => item.clientId).map((allocation) => (
-                        <div key={allocation.id} className="context-stack-card">
-                          <div className="context-stack-head">
-                            <strong>{clientsById.get(allocation.clientId)?.name || 'Cliente nao encontrado'}</strong>
-                            <span>{formatNumber(allocation.weeklyHours || 0)}h/semana</span>
-                          </div>
-                          <p>{allocation.roleLabel || 'Papel nao definido'} · {allocation.focusLabel || 'Sem foco principal registrado'}</p>
-                        </div>
-                      ))
-                    ) : (
-                      <p className="field-helper">Ainda nao existe alocacao planejada registrada para voce.</p>
-                    )}
-                  </div>
-                </div>
+                <div className="users-search-row"><div className="input-group users-search-field"><label>Buscar membro</label><input type="text" value={userSearch} onChange={(event) => setUserSearch(event.target.value)} placeholder="Nome ou e-mail" /></div></div>
 
-                {hasMondayConfigured && (
-                  <div className="glass-panel context-panel">
-                    <span className="management-card-kicker">Monday</span>
-                    <h3>Leitura operacional pessoal</h3>
-                    <div className="context-risk-list">
-                      <div className="context-stack-card">
-                        <div className="context-stack-head">
-                          <strong>Tempo lançado</strong>
-                          <span>{formatDurationHours(currentUserOperationalSummary?.mondayOwnerSummary?.trackedSeconds || 0)}</span>
+                {usersLoading ? (
+                  <div className="empty-panel glass-item"><h3>Carregando time</h3><p>Buscando os acessos salvos no Supabase.</p></div>
+                ) : (
+                  <div className="simple-client-list simple-team-list" role="table" aria-label="Membros do time">
+                    <div className="simple-client-row simple-client-head" role="row"><span>Membro</span><span>Dashboards</span><span>IA</span><span>Ação</span></div>
+                    {filteredUsers.map((managedUser) => {
+                      const accessCount = getManagedUserAccessibleClientCount(managedUser)
+                      const hasAiAccess = (managedUser.ai_access_level || 'team') !== 'none'
+                      const accessLabel = managedUser.role === 'master' ? 'Todos os dashboards' : accessCount > 0 ? accessCount + ' dashboard(s)' : 'Nenhum dashboard'
+
+                      return (
+                        <div key={'simple-user-' + managedUser.id} className="simple-client-row" role="row">
+                          <div className="simple-client-main"><span className="simple-client-avatar"><i className="bx bx-user"></i></span><div><strong>{managedUser.full_name || managedUser.email}</strong><small>{managedUser.email}</small></div></div>
+                          <span className="simple-client-status-text">{accessLabel}</span>
+                          <span className={'integration-status-icon ' + (hasAiAccess ? 'active' : '')} title={hasAiAccess ? 'IA liberada' : 'IA bloqueada'}><i className={'bx ' + (hasAiAccess ? 'bx-brain' : 'bx-lock-alt')}></i></span>
+                          <button type="button" className="btn btn-secondary" onClick={() => { setSelectedUserId(managedUser.id); setIsEditUserModalOpen(true) }}>Editar</button>
                         </div>
-                        <p>
-                          {formatNumber(currentUserOperationalSummary?.mondayOwnerSummary?.openItems || 0)} item(ns) abertos · {formatNumber(currentUserOperationalSummary?.mondayOwnerSummary?.overdueCount || 0)} atrasado(s)
-                        </p>
-                      </div>
-                      {(currentUserOperationalSummary?.mondayTasks || []).slice(0, 4).map((task) => (
-                        <div key={`my-task-${task.id}`} className="context-stack-card">
-                          <div className="context-stack-head">
-                            <strong>{task.name}</strong>
-                            <span>{formatDurationHours(task.trackedSeconds || 0)}</span>
-                          </div>
-                          <p>{task.boardName} · {task.groupLabel} · {task.statusLabel}</p>
-                        </div>
-                      ))}
-                      {!currentUserOperationalSummary?.mondayTasks?.length && (
-                        <p className="field-helper">Nenhuma tarefa sua apareceu no Monday dentro do recorte atual.</p>
-                      )}
-                    </div>
+                      )
+                    })}
                   </div>
                 )}
 
-                <div className="glass-panel context-panel">
-                  <span className="management-card-kicker">OKRs</span>
-                  <h3>Metas em andamento</h3>
-                  <div className="context-risk-list">
-                    {(currentUserTeamProfile.okrs || []).length ? (
-                      currentUserTeamProfile.okrs.map((okr) => (
-                        <div key={okr.id} className="context-stack-card">
-                          <div className="context-stack-head">
-                            <strong>{okr.title || 'OKR sem titulo'}</strong>
-                            <span>{okr.status.replaceAll('_', ' ')}</span>
-                          </div>
-                          <p>{okr.metric || 'Metrica nao definida'} · {okr.currentValue || '0'} / {okr.targetValue || '0'} {okr.unit || ''}</p>
-                        </div>
-                      ))
-                    ) : (
-                      <p className="field-helper">Nenhuma OKR cadastrada para voce ainda.</p>
-                    )}
-                  </div>
-                </div>
-
-                <div className="glass-panel context-panel">
-                  <span className="management-card-kicker">PDI</span>
-                  <h3>Plano de desenvolvimento</h3>
-                  <div className="context-risk-list">
-                    {(currentUserTeamProfile.pdiItems || []).length ? (
-                      currentUserTeamProfile.pdiItems.map((item) => (
-                        <div key={item.id} className="context-stack-card">
-                          <div className="context-stack-head">
-                            <strong>{item.title || 'Frente sem titulo'}</strong>
-                            <span>{item.status.replaceAll('_', ' ')}</span>
-                          </div>
-                          <p>{item.competency || 'Competencia nao definida'} · {item.actionPlan || 'Sem plano de acao detalhado'}</p>
-                        </div>
-                      ))
-                    ) : (
-                      <p className="field-helper">Seu PDI ainda nao foi preenchido.</p>
-                    )}
-                  </div>
-                </div>
+                {!usersLoading && !filteredUsers.length && <div className="empty-panel glass-item users-empty-state compact-empty-state"><h3>Nenhum membro encontrado</h3><p>Ajuste a busca ou crie um novo acesso para o workspace.</p></div>}
               </div>
+
+              {isCreateUserModalOpen && (
+                <div className="modal-overlay" onClick={() => setIsCreateUserModalOpen(false)}><div className="modal-card glass-panel" onClick={(event) => event.stopPropagation()}>
+                  <div className="modal-header"><div><h3>Novo membro</h3><p>Cadastre o acesso e escolha quais dashboards esta pessoa poderá visualizar.</p></div><button type="button" className="modal-close" onClick={() => setIsCreateUserModalOpen(false)} aria-label="Fechar cadastro de membro"><i className="bx bx-x"></i></button></div>
+                  <form onSubmit={handleCreateUser}>
+                    {createUserError && <div className="form-alert">{createUserError}</div>}
+                    <div className="form-grid user-admin-grid">
+                      <div className="input-group"><label>Nome</label><input type="text" value={userForm.fullName} onChange={(event) => setUserForm((current) => ({ ...current, fullName: event.target.value, role: 'visualizador' }))} placeholder="Nome completo" /></div>
+                      <div className="input-group"><label>E-mail</label><input type="email" value={userForm.email} onChange={(event) => setUserForm((current) => ({ ...current, email: event.target.value, role: 'visualizador' }))} placeholder="usuario@empresa.com" /></div>
+                      <div className="input-group"><label>Senha inicial</label><input type="password" value={userForm.password} onChange={(event) => setUserForm((current) => ({ ...current, password: event.target.value }))} placeholder="Senha provisória" /></div>
+                      <div className="input-group"><label>IA</label><select className="client-select-input" value={userForm.aiAccessLevel} onChange={(event) => setUserForm((current) => ({ ...current, aiAccessLevel: event.target.value }))}><option value="team">Liberada</option><option value="none">Bloqueada</option></select></div>
+                    </div>
+                    <div className="input-group"><label>Dashboards liberados</label><div className="stage-selector">{dashboardEligibleClients.length ? dashboardEligibleClients.map((client) => (<label key={'new-user-' + client.id} className={'stage-chip ' + (userForm.clientIds.includes(client.id) ? 'active' : '')}><input type="checkbox" checked={userForm.clientIds.includes(client.id)} onChange={() => handleUserClientToggle(client.id)} /><span>{client.name}</span></label>)) : <div className="stage-empty">Cadastre clientes antes de liberar dashboards para o time.</div>}</div></div>
+                    <div className="modal-actions"><button type="button" className="btn btn-secondary" onClick={() => setIsCreateUserModalOpen(false)}>Cancelar</button><button type="submit" className="btn btn-primary" disabled={savingUser}>{savingUser ? 'Criando...' : 'Adicionar membro'}</button></div>
+                  </form>
+                </div></div>
+              )}
+
+              {isEditUserModalOpen && selectedManagedUser && (
+                <div className="modal-overlay" onClick={() => setIsEditUserModalOpen(false)}><div className="modal-card glass-panel" onClick={(event) => event.stopPropagation()}>
+                  <div className="modal-header"><div><h3>Editar membro</h3><p>Atualize nome, dashboards liberados e acesso à IA.</p></div><button type="button" className="modal-close" onClick={() => setIsEditUserModalOpen(false)} aria-label="Fechar edição de membro"><i className="bx bx-x"></i></button></div>
+                  {editUserError && <div className="form-alert">{editUserError}</div>}
+                  <div className="user-admin-head"><div><strong>{selectedManagedUser.full_name || selectedManagedUser.email}</strong><span>{selectedManagedUser.email}</span></div>{selectedManagedUser.id !== user?.id && <button type="button" className="btn btn-secondary" onClick={() => handleDeleteUser(selectedManagedUser.id)}>Excluir</button>}</div>
+                  <div className="form-grid user-admin-grid">
+                    <div className="input-group"><label>Nome</label><input type="text" value={selectedManagedUser.full_name || ''} onChange={(event) => handleManagedUserChange(selectedManagedUser.id, (item) => ({ ...item, full_name: event.target.value }))} /></div>
+                    <div className="input-group"><label>IA</label><select className="client-select-input" value={selectedManagedUser.ai_access_level || (selectedManagedUser.role === 'master' ? 'master' : 'team')} onChange={(event) => handleManagedUserChange(selectedManagedUser.id, (item) => ({ ...item, ai_access_level: event.target.value }))}>{selectedManagedUser.role === 'master' && <option value="master">IA Master</option>}<option value="team">Liberada</option><option value="none">Bloqueada</option></select></div>
+                  </div>
+                  {selectedManagedUser.role !== 'master' && <div className="input-group"><label>Dashboards liberados</label><div className="stage-selector">{dashboardEligibleClients.length ? dashboardEligibleClients.map((client) => { const currentAccess = selectedManagedUser.clientAccess || []; const hasClient = currentAccess.some((item) => item.client_id === client.id); return (<label key={selectedManagedUser.id + '-' + client.id} className={'stage-chip ' + (hasClient ? 'active' : '')}><input type="checkbox" checked={hasClient} onChange={() => handleManagedUserChange(selectedManagedUser.id, (item) => { const baseAccess = item.clientAccess || []; const nextAccess = hasClient ? baseAccess.filter((accessItem) => accessItem.client_id !== client.id) : [...baseAccess, { client_id: client.id, can_view: true, can_edit: false }]; return { ...item, clientAccess: nextAccess } })} /><span>{client.name}</span></label>) }) : <div className="stage-empty">Cadastre clientes antes de liberar dashboards para o time.</div>}</div></div>}
+                  <div className="modal-foot"><span className="form-note">Os acessos do time são salvos no Supabase e aplicados no login deste usuário.</span><div className="modal-actions"><button type="button" className="btn btn-secondary" onClick={() => setIsEditUserModalOpen(false)}>Cancelar</button><button type="button" className="btn btn-primary" onClick={() => handleUpdateUser(selectedManagedUser)}>Salvar membro</button></div></div>
+                </div></div>
+              )}
             </section>
+          ) : (
+            <section className="clients-layout users-management-layout simple-team-layout"><div className="empty-panel glass-panel"><h3>Acesso do time</h3><p>Seu usuário tem acesso aos dashboards liberados pelo master. Para alterar permissões, fale com o administrador.</p></div></section>
           )
         )}
 
