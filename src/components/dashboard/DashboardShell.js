@@ -24743,6 +24743,118 @@ export default function DashboardShell({
         .simple-client-modal .client-create-actions .btn {
           min-width: 116px;
         }
+
+        /* Final light-mode contrast pass for simplified SaaS screens. */
+        :root[data-ui-mode='light'] .sidebar-collapsed :global(.nav-item)::after {
+          background: #ffffff !important;
+          color: #0f172a !important;
+          border-color: rgba(15, 23, 42, 0.12) !important;
+          box-shadow: 0 16px 36px rgba(15, 23, 42, 0.14) !important;
+        }
+
+        :root[data-ui-mode='light'] .operation-stellar-search,
+        :root[data-ui-mode='light'] .client-registry-search,
+        :root[data-ui-mode='light'] .users-search-field input {
+          background: rgba(255, 255, 255, 0.96) !important;
+          border-color: rgba(15, 23, 42, 0.1) !important;
+          color: #0f172a !important;
+          box-shadow: 0 12px 26px rgba(15, 23, 42, 0.05) !important;
+        }
+
+        :root[data-ui-mode='light'] .operation-stellar-search input,
+        :root[data-ui-mode='light'] .client-registry-search input,
+        :root[data-ui-mode='light'] .client-registry-filter-group select,
+        :root[data-ui-mode='light'] .users-search-field input {
+          color: #0f172a !important;
+        }
+
+        :root[data-ui-mode='light'] .operation-stellar-search input::placeholder,
+        :root[data-ui-mode='light'] .client-registry-search input::placeholder,
+        :root[data-ui-mode='light'] .users-search-field input::placeholder {
+          color: #64748b !important;
+          opacity: 1 !important;
+        }
+
+        :root[data-ui-mode='light'] .operation-stellar-search i,
+        :root[data-ui-mode='light'] .client-registry-search i {
+          color: #64748b !important;
+        }
+
+        :root[data-ui-mode='light'] .management-header-copy h2,
+        :root[data-ui-mode='light'] .management-hero h2,
+        :root[data-ui-mode='light'] .simple-client-name strong,
+        :root[data-ui-mode='light'] .simple-client-row,
+        :root[data-ui-mode='light'] .simple-client-row-head,
+        :root[data-ui-mode='light'] .simple-client-row-head span {
+          color: #0f172a !important;
+        }
+
+        :root[data-ui-mode='light'] .management-header-copy p,
+        :root[data-ui-mode='light'] .management-hero p,
+        :root[data-ui-mode='light'] .simple-client-name small {
+          color: #475569 !important;
+        }
+
+        :root[data-ui-mode='light'] .simple-client-card,
+        :root[data-ui-mode='light'] .simple-client-row,
+        :root[data-ui-mode='light'] .users-toolbar-card,
+        :root[data-ui-mode='light'] .management-directory-card {
+          background: rgba(255, 255, 255, 0.95) !important;
+          border-color: rgba(15, 23, 42, 0.08) !important;
+        }
+
+        :root[data-ui-mode='light'] .simple-client-row-head {
+          background: rgba(255, 255, 255, 0.72) !important;
+        }
+
+        :root[data-ui-mode='light'] .management-hero,
+        :root[data-ui-mode='light'] .management-stat-card {
+          background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 252, 0.99)) !important;
+          border-color: rgba(15, 23, 42, 0.08) !important;
+          box-shadow: 0 18px 38px rgba(15, 23, 42, 0.06) !important;
+        }
+
+        :root[data-ui-mode='light'] .management-stat-card small {
+          color: #64748b !important;
+        }
+
+        :root[data-ui-mode='light'] .management-stat-card strong {
+          color: #0f172a !important;
+        }
+
+        :root[data-ui-mode='light'] .meta-filter-chip-row .stage-chip,
+        :root[data-ui-mode='light'] .stage-selector .stage-chip {
+          background: rgba(255, 255, 255, 0.9) !important;
+          border-color: rgba(15, 23, 42, 0.12) !important;
+          color: #0f172a !important;
+        }
+
+        :root[data-ui-mode='light'] .meta-filter-chip-row .stage-chip.active,
+        :root[data-ui-mode='light'] .stage-selector .stage-chip.active {
+          background: color-mix(in srgb, var(--accent-blue) 12%, white) !important;
+          border-color: color-mix(in srgb, var(--accent-blue) 35%, rgba(15, 23, 42, 0.12)) !important;
+          color: #0f172a !important;
+        }
+
+        :root[data-ui-mode='light'] .meta-filter-chip-row .stage-chip span,
+        :root[data-ui-mode='light'] .stage-selector .stage-chip span {
+          color: #0f172a !important;
+        }
+
+        .simple-team-list .simple-client-row {
+          grid-template-columns: minmax(260px, 1fr) minmax(160px, 0.45fr) 90px 120px;
+        }
+
+        .simple-team-list .simple-client-row > span,
+        .simple-team-list .simple-client-row > div {
+          min-width: 0;
+        }
+
+        .simple-team-list .simple-client-row-head span:nth-child(3),
+        .simple-team-list .simple-client-row span:nth-child(3) {
+          justify-self: center;
+        }
+
         @media (max-width: 1180px) {
           .simple-client-modal .form-grid {
             grid-template-columns: 1fr;

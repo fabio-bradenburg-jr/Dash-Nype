@@ -3810,6 +3810,62 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
             linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 252, 0.98)) !important;
         }
 
+
+        /* Final light-mode contrast pass for settings controls. */
+        :root[data-ui-mode='light'] .settings-sidebar-link,
+        :root[data-ui-mode='light'] .settings-choice,
+        :root[data-ui-mode='light'] .settings-preset,
+        :root[data-ui-mode='light'] .settings-tab {
+          background: rgba(255, 255, 255, 0.96) !important;
+          border-color: rgba(15, 23, 42, 0.1) !important;
+          color: #0f172a !important;
+          box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04) !important;
+        }
+
+        :root[data-ui-mode='light'] .settings-sidebar-link strong,
+        :root[data-ui-mode='light'] .settings-sidebar-link span,
+        :root[data-ui-mode='light'] .settings-choice,
+        :root[data-ui-mode='light'] .settings-choice span,
+        :root[data-ui-mode='light'] .settings-choice strong,
+        :root[data-ui-mode='light'] .settings-preset,
+        :root[data-ui-mode='light'] .settings-tab {
+          color: #0f172a !important;
+        }
+
+        :root[data-ui-mode='light'] .settings-sidebar-link.active,
+        :root[data-ui-mode='light'] .settings-choice.active,
+        :root[data-ui-mode='light'] .settings-preset.active,
+        :root[data-ui-mode='light'] .settings-tab.active {
+          background: color-mix(in srgb, var(--accent-blue) 12%, white) !important;
+          border-color: color-mix(in srgb, var(--accent-blue) 34%, rgba(15, 23, 42, 0.1)) !important;
+          color: #0f172a !important;
+        }
+
+        :root[data-ui-mode='light'] .settings-action-bar,
+        :root[data-ui-mode='light'] .settings-action-bar-global {
+          background: rgba(255, 255, 255, 0.94) !important;
+          border-color: rgba(15, 23, 42, 0.1) !important;
+          box-shadow: 0 18px 42px rgba(15, 23, 42, 0.12) !important;
+        }
+
+        :root[data-ui-mode='light'] .settings-action-copy strong {
+          color: #0f172a !important;
+        }
+
+        :root[data-ui-mode='light'] .settings-action-copy span {
+          color: #475569 !important;
+        }
+
+        :root[data-ui-mode='light'] .settings-ghost-button {
+          background: rgba(248, 250, 252, 0.98) !important;
+          border-color: rgba(15, 23, 42, 0.1) !important;
+          color: #0f172a !important;
+        }
+
+        :root[data-ui-mode='light'] .settings-ghost-button:disabled {
+          color: #64748b !important;
+        }
+
         @media (max-width: 980px) {
           .settings-workspace {
             grid-template-columns: 1fr;
