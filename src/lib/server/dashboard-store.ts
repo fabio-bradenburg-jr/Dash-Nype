@@ -973,6 +973,14 @@ export async function getDashboardState(
     accessContext
   )
   const preferencePayload = preferenceRow?.payload && typeof preferenceRow.payload === 'object' ? preferenceRow.payload : {}
+  const storedGlobalIntegrations =
+    preferencePayload.globalIntegrations && typeof preferencePayload.globalIntegrations === 'object'
+      ? preferencePayload.globalIntegrations
+      : null
+  const resolvedGlobalIntegrations = normalizeGlobalIntegrations({
+    ...extractGlobalIntegrations(filteredClients),
+    ...(storedGlobalIntegrations || {}),
+  })
   const allTeamProfiles = Array.isArray(preferencePayload.teamProfiles)
     ? preferencePayload.teamProfiles.map(normalizeTeamMemberProfileRecord).filter((item) => item.userId)
     : []
@@ -985,7 +993,7 @@ export async function getDashboardState(
     metric1: preferenceRow?.metric_1 || 'spend',
     metric2: preferenceRow?.metric_2 || 'roas',
     activeClientId: filteredClients[0]?.id || '',
-    globalIntegrations: extractGlobalIntegrations(filteredClients),
+    globalIntegrations: resolvedGlobalIntegrations,
     clients: filteredClients,
     clientGroups,
     products: (isMissingRelationError(productsError) ? [] : productRows || []).map(normalizeProductRecord),
@@ -1105,6 +1113,7 @@ export async function saveDashboardState(
             clientCustomTabs: submittedClientCustomTabs,
             clientTabOverrides: submittedClientTabOverrides,
             teamProfiles: submittedTeamProfiles,
+            globalIntegrations: submittedGlobalIntegrations,
           },
         },
         { onConflict: 'workspace_id' }

@@ -24694,7 +24694,60 @@ export default function DashboardShell({
           color: #60a5fa;
         }
         .simple-client-edit { justify-self: end; }
-        .simple-client-modal .form-grid { align-items: start; }
+        .simple-client-modal {
+          max-height: min(86vh, 920px);
+          overflow-y: auto;
+        }
+        .simple-client-modal .modal-header {
+          padding-bottom: 22px;
+          margin-bottom: 10px;
+        }
+        .simple-client-modal .client-editor-card {
+          gap: 34px;
+          padding: 28px 30px 30px;
+        }
+        .simple-client-modal .form-grid {
+          align-items: start;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 28px 30px;
+        }
+        .simple-client-modal .integration-block {
+          min-width: 0;
+          overflow: hidden;
+          padding: 28px;
+          border-radius: 24px;
+        }
+        .simple-client-modal .client-form-grid,
+        .simple-client-modal .client-form-grid-2 {
+          grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+          min-width: 0;
+        }
+        .simple-client-modal .input-group,
+        .simple-client-modal .input-group input:not([type="checkbox"]):not([type="file"]),
+        .simple-client-modal .input-group select,
+        .simple-client-modal .client-select-input {
+          min-width: 0;
+          max-width: 100%;
+        }
+        .simple-client-modal .input-group input,
+        .simple-client-modal .input-group select {
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        .simple-client-modal .client-create-actions {
+          justify-content: flex-end;
+          gap: 14px;
+          margin-top: 6px;
+          padding-top: 12px;
+        }
+        .simple-client-modal .client-create-actions .btn {
+          min-width: 116px;
+        }
+        @media (max-width: 1180px) {
+          .simple-client-modal .form-grid {
+            grid-template-columns: 1fr;
+          }
+        }
         @media (max-width: 1380px) {
           .operation-stellar-topbar,
           .operation-stellar-hero {
