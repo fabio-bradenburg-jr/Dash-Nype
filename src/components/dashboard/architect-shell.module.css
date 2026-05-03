@@ -8,8 +8,8 @@
   --text-soft: #464555;
   --text-faint: #767587;
   --outline: #c7c4d8;
-  --primary: #4744e5;
-  --primary-soft: #6161ff;
+  --primary: var(--button-primary, var(--accent-blue, #4744e5));
+  --primary-soft: color-mix(in srgb, var(--primary) 72%, white 28%);
   --success: #00864d;
   --warning: #d97706;
   --danger: #ba1a1a;
@@ -393,7 +393,7 @@
 }
 
 .tonePrimary {
-  background: linear-gradient(135deg, #4744e5, #7f7dff);
+  background: linear-gradient(135deg, var(--button-primary, var(--primary)), var(--button-primary-hover, var(--primary-soft)));
 }
 
 .toneSuccess {

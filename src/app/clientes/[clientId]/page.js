@@ -37,7 +37,7 @@ export default async function ClienteDetalhePage({ params }) {
       />
 
       <div style={{ marginBottom: '1.25rem', display: 'flex', justifyContent: 'space-between', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
-        <Link href="/clientes" style={{ color: '#4744e5', fontWeight: 800, fontSize: '0.85rem', textDecoration: 'none' }}>
+        <Link href="/clientes" style={{ color: 'var(--button-primary, var(--accent-blue))', fontWeight: 800, fontSize: '0.85rem', textDecoration: 'none' }}>
           ← Back to clients
         </Link>
 
@@ -48,7 +48,7 @@ export default async function ClienteDetalhePage({ params }) {
             alignItems: 'center',
             gap: '0.5rem',
             borderRadius: '0.95rem',
-            background: 'linear-gradient(135deg, #4744e5, #6161ff)',
+            background: 'linear-gradient(135deg, var(--button-primary, var(--accent-blue)), var(--button-primary-hover, color-mix(in srgb, var(--accent-blue) 78%, #0f172a 22%)))',
             color: '#fff',
             padding: '0.85rem 1rem',
             fontSize: '0.82rem',

@@ -3172,6 +3172,7 @@ export default function DashboardShell({
   })
 
   const currentTheme = useMemo(() => resolveDashboardTheme(themeColor), [themeColor])
+  const appAccentColor = appearance?.accent || currentTheme.main
   const appLogoUrl = initialAppLogoUrl || globalIntegrations.appLogoUrl || ''
   const role = access?.role || profile?.role || 'visualizador'
   const canManageUsers = Boolean(access?.canManageUsers)
@@ -12180,9 +12181,14 @@ export default function DashboardShell({
     <div
       className="dashboard-container dashboard-shell-stellar"
       style={{
-        '--accent-blue': currentTheme.main,
-        '--main': currentTheme.main,
-        '--meta-blue': currentTheme.main,
+        '--accent-blue': appAccentColor,
+        '--saas-primary': appAccentColor,
+        '--saas-accent': appAccentColor,
+        '--button-primary': appAccentColor,
+        '--button-primary-hover': `color-mix(in srgb, ${appAccentColor} 86%, #0f172a 14%)`,
+        '--button-primary-shadow': `color-mix(in srgb, ${appAccentColor} 28%, transparent)`,
+        '--main': appAccentColor,
+        '--meta-blue': appAccentColor,
         '--theme-surface': currentTheme.surface,
         '--accent-orange': `rgb(${activeClientDashboardAccentRgb.r}, ${activeClientDashboardAccentRgb.g}, ${activeClientDashboardAccentRgb.b})`,
         '--accent': `rgb(${activeClientDashboardAccentRgb.r}, ${activeClientDashboardAccentRgb.g}, ${activeClientDashboardAccentRgb.b})`,

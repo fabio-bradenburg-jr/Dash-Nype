@@ -1626,9 +1626,9 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
         }
 
         .assistant-submit {
-          background: linear-gradient(135deg, var(--accent-blue) 0%, #1d4ed8 100%);
-          color: #eef5ff;
-          box-shadow: 0 14px 30px rgba(52, 103, 233, 0.28);
+          background: linear-gradient(135deg, var(--button-primary, var(--accent-blue)) 0%, var(--button-primary-hover, color-mix(in srgb, var(--accent-blue) 82%, #0f172a 18%)) 100%);
+          color: var(--saas-button-text, #eef5ff);
+          box-shadow: 0 14px 30px var(--button-primary-shadow, rgba(52, 103, 233, 0.28));
         }
 
         .assistant-submit:disabled {
@@ -1806,11 +1806,11 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
         :root[data-ui-mode='light'] .assistant-submit {
           background: linear-gradient(
             135deg,
-            var(--accent-blue) 0%,
-            color-mix(in srgb, var(--accent-blue) 72%, #0f172a) 100%
+            var(--button-primary, var(--accent-blue)) 0%,
+            var(--button-primary-hover, color-mix(in srgb, var(--accent-blue) 72%, #0f172a)) 100%
           );
           color: #f8fbff;
-          box-shadow: 0 14px 28px color-mix(in srgb, var(--accent-blue) 18%, transparent);
+          box-shadow: 0 14px 28px var(--button-primary-shadow, color-mix(in srgb, var(--accent-blue) 18%, transparent));
         }
 
         :root[data-ui-mode='light'] .assistant-agent-menu {

@@ -11,6 +11,10 @@
     --saas-accent: #f97316;
     --saas-surface: #f8fafc;
     --saas-button-text: #ffffff;
+    --button-primary: var(--saas-primary);
+    --button-primary-hover: color-mix(in srgb, var(--button-primary) 86%, #0f172a 14%);
+    --button-primary-soft: color-mix(in srgb, var(--button-primary) 14%, transparent);
+    --button-primary-shadow: color-mix(in srgb, var(--button-primary) 28%, transparent);
     /* Colors */
     --bg-dark: #05060a;
     --bg-panel: rgba(15, 15, 17, 0.88);
@@ -715,21 +719,21 @@ body {
 .btn-primary {
     background: linear-gradient(
         135deg,
-        var(--accent-blue) 0%,
-        color-mix(in srgb, var(--accent-blue) 78%, #2c24ce 22%) 100%
+        var(--button-primary) 0%,
+        var(--button-primary-hover) 100%
     );
     color: white;
-    box-shadow: 0 14px 30px var(--glow-blue);
+    box-shadow: 0 14px 30px var(--button-primary-shadow);
 }
 
 .btn-primary:hover {
     background: linear-gradient(
         135deg,
-        color-mix(in srgb, var(--accent-blue) 92%, white 8%) 0%,
-        color-mix(in srgb, var(--accent-blue) 82%, #2c24ce 18%) 100%
+        color-mix(in srgb, var(--button-primary) 92%, white 8%) 0%,
+        color-mix(in srgb, var(--button-primary-hover) 88%, white 12%) 100%
     );
     transform: translateY(-2px);
-    box-shadow: 0 18px 34px var(--glow-blue);
+    box-shadow: 0 18px 34px var(--button-primary-shadow);
 }
 
 .btn-secondary {

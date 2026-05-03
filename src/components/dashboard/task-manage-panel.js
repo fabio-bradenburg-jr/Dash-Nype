@@ -197,7 +197,7 @@ const secondaryButtonStyle = {
 const primaryButtonStyle = {
   border: 0,
   borderRadius: '0.85rem',
-  background: '#4744e5',
+  background: 'var(--button-primary, var(--accent-blue))',
   color: '#fff',
   padding: '0.8rem 1rem',
   fontSize: '0.8rem',

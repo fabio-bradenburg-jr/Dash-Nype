@@ -226,7 +226,7 @@ const secondaryButtonStyle = {
 const primarySubmitStyle = {
   border: 0,
   borderRadius: '0.85rem',
-  background: '#4744e5',
+  background: 'var(--button-primary, var(--accent-blue))',
   color: '#fff',
   padding: '0.8rem 1rem',
   fontSize: '0.8rem',
@@ -236,7 +236,7 @@ const primarySubmitStyle = {
 const primaryButtonStyle = {
   border: 0,
   borderRadius: '0.9rem',
-  background: 'linear-gradient(135deg, #4744e5, #6161ff)',
+  background: 'linear-gradient(135deg, var(--button-primary, var(--accent-blue)), var(--button-primary-hover, color-mix(in srgb, var(--accent-blue) 78%, #0f172a 22%)))',
   color: '#fff',
   padding: '0.8rem 1.2rem',
   fontSize: '0.78rem',

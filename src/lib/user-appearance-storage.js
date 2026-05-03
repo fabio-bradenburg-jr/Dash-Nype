@@ -79,6 +79,12 @@ export function applyUserAppearance(appearance) {
 
   root.dataset.uiMode = normalized.mode
   root.style.setProperty('--accent-blue', normalized.accent)
+  root.style.setProperty('--saas-primary', normalized.accent)
+  root.style.setProperty('--saas-accent', normalized.accent)
+  root.style.setProperty('--button-primary', normalized.accent)
+  root.style.setProperty('--button-primary-hover', `color-mix(in srgb, ${normalized.accent} 86%, #0f172a 14%)`)
+  root.style.setProperty('--button-primary-soft', `rgba(${r}, ${g}, ${b}, 0.14)`)
+  root.style.setProperty('--button-primary-shadow', `rgba(${r}, ${g}, ${b}, 0.28)`)
   root.style.setProperty('--accent-rgb', `${r}, ${g}, ${b}`)
   root.style.setProperty('--glow-blue', `rgba(${r}, ${g}, ${b}, 0.18)`)
   root.style.setProperty('--theme-surface', `rgba(${r}, ${g}, ${b}, 0.10)`)
