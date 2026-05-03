@@ -3017,6 +3017,7 @@ export default function DashboardShell({
   const [newClientOperationLane, setNewClientOperationLane] = useState(resolveOperationLaneFromSalesModel('INSIDE_SALES'))
   const [newClientGroupName, setNewClientGroupName] = useState('')
   const [newClientMetaAdAccountId, setNewClientMetaAdAccountId] = useState('')
+  const [newClientDashboardColor, setNewClientDashboardColor] = useState('#10B981')
   const [newProductName, setNewProductName] = useState('')
   const [operationViewMode, setOperationViewMode] = useState('kanban')
   const [operationPeriodFilter, setOperationPeriodFilter] = useState('all')
@@ -3174,6 +3175,10 @@ export default function DashboardShell({
 
   const currentTheme = useMemo(() => resolveDashboardTheme(themeColor), [themeColor])
   const appAccentColor = appearance?.accent || currentTheme.main
+  const normalizedNewClientDashboardColor = useMemo(() => {
+    const parsedColor = parseDashboardColor(newClientDashboardColor || appAccentColor) || parseDashboardColor(appAccentColor) || hexToRgb('#10B981')
+    return rgbToHex(parsedColor).toUpperCase()
+  }, [newClientDashboardColor, appAccentColor])
   const appLogoUrl = initialAppLogoUrl || globalIntegrations.appLogoUrl || ''
   const role = access?.role || profile?.role || 'visualizador'
   const canManageUsers = Boolean(access?.canManageUsers)
@@ -5126,11 +5131,12 @@ export default function DashboardShell({
 
   const openCreateClientModal = useCallback(() => {
     setCreateClientStep('identity')
+    setNewClientDashboardColor(appAccentColor)
     setIsCreateClientModalOpen(true)
     window.setTimeout(() => {
       document.querySelector('.modal-create-client input')?.focus()
     }, 120)
-  }, [])
+  }, [appAccentColor])
 
   const closeClientRegistryInlineEdit = useCallback(() => {
     setClientRegistryInlineEdit({ clientId: '', columnKey: '' })
@@ -5413,6 +5419,7 @@ export default function DashboardShell({
       name: trimmedName,
       cnpj: normalizeCnpjInput(newClientCnpj),
       metaAdAccountId: newClientMetaAdAccountId,
+      dashboardColor: normalizedNewClientDashboardColor,
       operationEnabled: false,
       dashboardEnabled: true,
       dashboardVisibleIntegrationKeys: normalizeClientDashboardIntegrationKeys(newClientDashboardIntegrationKeys),
@@ -5431,6 +5438,7 @@ export default function DashboardShell({
     setNewClientName('')
     setNewClientCnpj('')
     setNewClientMetaAdAccountId('')
+    setNewClientDashboardColor(appAccentColor)
     setNewClientOperationEnabled(false)
     setNewClientDashboardEnabled(true)
     setNewClientDashboardIntegrationKeys(['meta_ads', 'agendor'])
@@ -13598,6 +13606,23 @@ export default function DashboardShell({
                         <input type="text" value={activeClient.cnpj || ''} onChange={(event) => handleClientFieldChange('cnpj', event.target.value)} placeholder="00.000.000/0000-00" disabled={!canEditActiveClient} />
                       </div>
                     </div>
+
+                    <div className="client-dashboard-color-picker">
+                      <div>
+                        <label>Cor do dashboard</label>
+                        <p>Personalize a cor principal usada no dashboard deste cliente.</p>
+                      </div>
+                      <div className="client-dashboard-color-control">
+                        <input
+                          type="color"
+                          value={activeClientDashboardHex}
+                          onChange={(event) => handleClientDashboardHexChange('dashboardColor', event.target.value)}
+                          disabled={!canEditActiveClient}
+                          aria-label="Cor do dashboard do cliente"
+                        />
+                        <span>{activeClientDashboardHex.toUpperCase()}</span>
+                      </div>
+                    </div>
                   </div>
 
                   <div className="integration-block">
@@ -14011,6 +14036,23 @@ export default function DashboardShell({
                     <div className="client-create-inline client-create-identity-only">
                       <input type="text" value={newClientName} onChange={(event) => setNewClientName(event.target.value)} placeholder="Nome do cliente" disabled={!isMaster} />
                       <input type="text" value={newClientCnpj} onChange={(event) => setNewClientCnpj(normalizeCnpjInput(event.target.value))} placeholder="CNPJ opcional" disabled={!isMaster} />
+                    </div>
+
+                    <div className="client-dashboard-color-picker client-dashboard-color-picker-create">
+                      <div>
+                        <label>Cor do dashboard</label>
+                        <p>Essa cor será usada nos botões, destaques e visual do dashboard deste cliente.</p>
+                      </div>
+                      <div className="client-dashboard-color-control">
+                        <input
+                          type="color"
+                          value={normalizedNewClientDashboardColor}
+                          onChange={(event) => setNewClientDashboardColor(event.target.value.toUpperCase())}
+                          disabled={!isMaster}
+                          aria-label="Cor do dashboard do cliente"
+                        />
+                        <span>{normalizedNewClientDashboardColor}</span>
+                      </div>
                     </div>
 
                     <div className="client-create-actions">
@@ -25064,6 +25106,81 @@ export default function DashboardShell({
           margin-top: 8px;
         }
 
+        .client-dashboard-color-picker {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 18px;
+          margin-top: 20px;
+          padding: 18px;
+          border-radius: 20px;
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          background: rgba(255, 255, 255, 0.035);
+          min-width: 0;
+        }
+
+        .client-dashboard-color-picker-create {
+          margin-top: 18px;
+        }
+
+        .client-dashboard-color-picker label {
+          display: block;
+          margin-bottom: 5px;
+          color: var(--text-primary);
+          font-size: 0.82rem;
+          font-weight: 900;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+        }
+
+        .client-dashboard-color-picker p {
+          margin: 0;
+          color: var(--text-muted);
+          font-size: 0.86rem;
+          line-height: 1.45;
+        }
+
+        .client-dashboard-color-control {
+          display: inline-flex;
+          align-items: center;
+          gap: 12px;
+          flex: 0 0 auto;
+          padding: 8px 10px;
+          border-radius: 16px;
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          background: rgba(0, 0, 0, 0.16);
+        }
+
+        .client-dashboard-color-control input[type="color"] {
+          width: 54px;
+          height: 42px;
+          padding: 0;
+          border: 0;
+          border-radius: 12px;
+          background: transparent;
+          cursor: pointer;
+          appearance: none;
+          -webkit-appearance: none;
+          overflow: hidden;
+        }
+
+        .client-dashboard-color-control input[type="color"]::-webkit-color-swatch-wrapper {
+          padding: 0;
+        }
+
+        .client-dashboard-color-control input[type="color"]::-webkit-color-swatch {
+          border: 0;
+          border-radius: 12px;
+        }
+
+        .client-dashboard-color-control span {
+          color: var(--text-primary);
+          font-size: 0.82rem;
+          font-weight: 900;
+          letter-spacing: 0.08em;
+          min-width: 78px;
+        }
+
         .client-create-integration-panel {
           display: grid;
           grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.25fr);
@@ -25295,6 +25412,25 @@ export default function DashboardShell({
           box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--button-primary, var(--accent-blue)) 26%, rgba(15, 23, 42, 0.08)) !important;
         }
 
+        :root[data-ui-mode='light'] .client-dashboard-color-picker {
+          background: rgba(255, 255, 255, 0.9) !important;
+          border-color: rgba(15, 23, 42, 0.1) !important;
+        }
+
+        :root[data-ui-mode='light'] .client-dashboard-color-picker label,
+        :root[data-ui-mode='light'] .client-dashboard-color-control span {
+          color: #0f172a !important;
+        }
+
+        :root[data-ui-mode='light'] .client-dashboard-color-picker p {
+          color: #475569 !important;
+        }
+
+        :root[data-ui-mode='light'] .client-dashboard-color-control {
+          background: rgba(248, 250, 252, 0.94) !important;
+          border-color: rgba(15, 23, 42, 0.1) !important;
+        }
+
         :root[data-ui-mode='light'] .client-create-integration-option {
           background: rgba(255, 255, 255, 0.92) !important;
           border-color: rgba(15, 23, 42, 0.1) !important;
@@ -25472,6 +25608,16 @@ export default function DashboardShell({
           .client-create-grid-fields,
           .client-create-integration-grid {
             grid-template-columns: 1fr;
+          }
+
+          .client-dashboard-color-picker {
+            align-items: stretch;
+            flex-direction: column;
+          }
+
+          .client-dashboard-color-control {
+            justify-content: space-between;
+            width: 100%;
           }
 
           .client-create-steps {
