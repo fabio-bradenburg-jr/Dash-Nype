@@ -22,7 +22,7 @@ function NavLink({ item, active }) {
 
 export function ArchitectShell({
   activeNav,
-  topTitle = 'Architect',
+  topTitle = 'Assessoria LP',
   topSubtitle,
   headerActions,
   userName = 'Master User',
@@ -33,10 +33,10 @@ export function ArchitectShell({
     <div className={styles.appShell}>
       <aside className={styles.sidebar}>
         <div className={styles.sidebarBrand}>
-          <div className={styles.sidebarLogo}>AH</div>
+          <div className={styles.sidebarLogo} aria-hidden="true"></div>
           <div>
-            <h1>Agency Hub</h1>
-            <p>High Performance</p>
+            <h1>Assessoria LP</h1>
+            <p>Performance Hub</p>
           </div>
         </div>
 

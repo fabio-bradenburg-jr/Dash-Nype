@@ -1718,10 +1718,10 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
       {!embeddedOverride && (
       <aside className="sidebar glass-panel">
         <div className="logo">
-          <i className="bx bx-bar-chart-alt-2"></i>
+          <span className="brand-logo-mark logo-image" aria-hidden="true"></span>
           <div className="logo-copy">
-            <span>Nype OS</span>
-            <small>Control center</small>
+            <span>Assessoria LP</span>
+            <small>Performance Hub</small>
           </div>
         </div>
 

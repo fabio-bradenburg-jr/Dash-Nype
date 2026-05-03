@@ -196,7 +196,7 @@ Observação:
             {
               role: 'system',
               content:
-                'Você é a IA de marketing do Nype Orbit. Responda em português do Brasil, com objetividade e visão executiva. Nunca invente números que não estão no contexto.',
+                'Você é a IA de marketing do Assessoria LP. Responda em português do Brasil, com objetividade e visão executiva. Nunca invente números que não estão no contexto.',
             },
             {
               role: 'system',
@@ -321,7 +321,7 @@ Observação de roteamento:
           {
             role: 'system',
             content:
-              'Você é a IA de marketing do Nype Orbit. Responda em português do Brasil, com objetividade, visão executiva e próximos passos acionáveis. Nunca invente números que não estão no contexto.',
+              'Você é a IA de marketing do Assessoria LP. Responda em português do Brasil, com objetividade, visão executiva e próximos passos acionáveis. Nunca invente números que não estão no contexto.',
           },
           {
             role: 'system',

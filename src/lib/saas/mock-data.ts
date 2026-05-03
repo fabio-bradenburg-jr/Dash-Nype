@@ -11,8 +11,8 @@ export const demoPlatformSnapshot: PlatformSnapshot = {
     buttonTextColor: defaultLegacyTheme.buttonTextColor,
     darkMode: defaultLegacyTheme.darkMode,
     logoUrl: '',
-    appName: 'Nype Orbit',
-    appSubtitle: 'Marketing OS',
+    appName: 'Assessoria LP',
+    appSubtitle: 'Performance Hub',
   },
   clients: [],
   selectedClient: {

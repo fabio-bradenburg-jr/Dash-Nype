@@ -51,9 +51,15 @@
   place-items: center;
   border-radius: 0.875rem;
   background: linear-gradient(135deg, var(--primary), var(--primary-soft));
-  color: #fff;
-  font-size: 0.95rem;
-  font-weight: 800;
+  mask-image: url('/assessoria-lp-logo.png');
+  mask-repeat: no-repeat;
+  mask-position: center;
+  mask-size: contain;
+  -webkit-mask-image: url('/assessoria-lp-logo.png');
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  -webkit-mask-size: contain;
+  filter: drop-shadow(0 10px 18px rgba(71, 68, 229, 0.24));
 }
 
 .sidebarBrand h1 {

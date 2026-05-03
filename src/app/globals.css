@@ -424,6 +424,53 @@ body {
     border: 1px solid rgba(255, 255, 255, 0.12);
 }
 
+.brand-logo-mark {
+    --brand-logo-color: var(--accent-blue, #4744e5);
+    display: block;
+    width: 42px;
+    height: 42px;
+    flex: 0 0 42px;
+    border-radius: 14px;
+    background:
+        linear-gradient(
+            135deg,
+            color-mix(in srgb, var(--brand-logo-color) 100%, white 0%),
+            color-mix(in srgb, var(--brand-logo-color) 78%, #0f172a 22%)
+        );
+    mask-image: url('/assessoria-lp-logo.png');
+    mask-repeat: no-repeat;
+    mask-position: center;
+    mask-size: contain;
+    -webkit-mask-image: url('/assessoria-lp-logo.png');
+    -webkit-mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    -webkit-mask-size: contain;
+    filter: drop-shadow(0 12px 22px color-mix(in srgb, var(--brand-logo-color) 28%, transparent));
+    transition: background 180ms ease, filter 180ms ease, transform 180ms ease;
+}
+
+.logo .brand-logo-mark,
+.logo-image.brand-logo-mark {
+    --brand-logo-color: var(--accent-blue, #4744e5);
+    background: linear-gradient(135deg, var(--brand-logo-color), color-mix(in srgb, var(--brand-logo-color) 74%, white 26%));
+    border: 0;
+    padding: 0;
+}
+
+.saas-brand-logo-mark {
+    --brand-logo-color: var(--saas-accent, var(--accent-blue, #4744e5));
+    width: 30px;
+    height: 30px;
+    flex-basis: 30px;
+}
+
+.brand-logo-preview {
+    --brand-logo-color: var(--saas-accent, var(--accent-blue, #4744e5));
+    width: 64px;
+    height: 64px;
+    flex-basis: 64px;
+}
+
 .nav-menu {
     display: flex;
     flex-direction: column;

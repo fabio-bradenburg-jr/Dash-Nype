@@ -1109,7 +1109,7 @@ function buildAssistantSystemPrompt(aiDashboardPrompt: string): string {
   const dashboardPrompt = resolveAiDashboardPromptText(aiDashboardPrompt)
 
   return [
-    'Voce e o Assistente do Negocio dentro do app Nype.',
+    'Voce e o Assistente do Negocio dentro do app Assessoria LP.',
     'Sua funcao e conversar com o usuario sobre clientes, operacao, marketing, campanhas, funil, CRM e dados internos do workspace.',
     'Priorize respostas objetivas, claras e acionaveis em portugues do Brasil.',
     'Quando fizer sentido, estruture em blocos curtos: diagnostico, causa provavel, impacto e proximo passo.',

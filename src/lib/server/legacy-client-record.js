@@ -98,7 +98,7 @@ function buildClientNotes(detail) {
   const alertNotes = detail.alerts.slice(0, 4).map((alert, index) => ({
     id: `alert-${alert.id || index}`,
     body: `[${alert.severity}] ${alert.title || alert.type}: ${alert.description}`,
-    authorName: 'Architect AI',
+    authorName: 'Assessoria LP AI',
     authorId: 'platform-ai',
     createdAt: now,
   }))
@@ -106,7 +106,7 @@ function buildClientNotes(detail) {
   const taskNotes = detail.tasks.slice(0, 3).map((task, index) => ({
     id: `task-${task.id || index}`,
     body: `Task ${normalizeTaskStatus(task.status)}: ${task.title}${task.dueDate ? ` | due ${toDateInput(task.dueDate)}` : ''}`,
-    authorName: 'Architect Ops',
+    authorName: 'Assessoria LP Ops',
     authorId: 'platform-ops',
     createdAt: now,
   }))

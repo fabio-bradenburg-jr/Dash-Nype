@@ -1172,14 +1172,14 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
             <div className="flex flex-wrap items-center gap-3">
               <div className="grid h-12 w-12 place-items-center rounded-2xl bg-[linear-gradient(180deg,#020617,#0f172a)] ring-1 ring-white/15">
                 {currentTheme.logoUrl ? (
-                  <img src={currentTheme.logoUrl} alt={`Logo ${currentTheme.appName || 'Nype Orbit'}`} className="h-full w-full rounded-2xl object-contain p-2" />
+                  <img src={currentTheme.logoUrl} alt={`Logo ${currentTheme.appName || 'Assessoria LP'}`} className="h-full w-full rounded-2xl object-contain p-2" />
                 ) : (
-                  <Sparkles className="h-6 w-6 text-white" />
+                  <span className="brand-logo-mark saas-brand-logo-mark" aria-hidden="true"></span>
                 )}
               </div>
               <div className="min-w-0 flex-1">
-                <p className="truncate font-manrope text-lg font-extrabold text-slate-950">{currentTheme.appName || 'Nype Orbit'}</p>
-                <p className="truncate text-xs uppercase tracking-[0.3em] text-slate-400">{currentTheme.appSubtitle || 'Marketing OS'}</p>
+                <p className="truncate font-manrope text-lg font-extrabold text-slate-950">{currentTheme.appName || 'Assessoria LP'}</p>
+                <p className="truncate text-xs uppercase tracking-[0.3em] text-slate-400">{currentTheme.appSubtitle || 'Performance Hub'}</p>
               </div>
               <div className="flex items-center gap-2">
                 <button
@@ -1233,15 +1233,15 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
           <div className={`mb-8 flex items-center ${isSidebarCollapsed ? 'justify-center' : 'gap-3'}`}>
             <div className="grid h-12 w-12 place-items-center rounded-2xl bg-white/10 ring-1 ring-white/15">
               {currentTheme.logoUrl ? (
-                <img src={currentTheme.logoUrl} alt={`Logo ${currentTheme.appName || 'Nype Orbit'}`} className="h-full w-full rounded-2xl object-contain p-2" />
+                <img src={currentTheme.logoUrl} alt={`Logo ${currentTheme.appName || 'Assessoria LP'}`} className="h-full w-full rounded-2xl object-contain p-2" />
               ) : (
-                <Sparkles className="h-6 w-6" />
+                <span className="brand-logo-mark saas-brand-logo-mark" aria-hidden="true"></span>
               )}
             </div>
             {!isSidebarCollapsed ? (
             <div>
-              <p className="font-manrope text-lg font-extrabold">{currentTheme.appName || 'Nype Orbit'}</p>
-              <p className="text-xs uppercase tracking-[0.3em] text-white/50">{currentTheme.appSubtitle || 'Marketing OS'}</p>
+              <p className="font-manrope text-lg font-extrabold">{currentTheme.appName || 'Assessoria LP'}</p>
+              <p className="text-xs uppercase tracking-[0.3em] text-white/50">{currentTheme.appSubtitle || 'Performance Hub'}</p>
             </div>
             ) : null}
             <button

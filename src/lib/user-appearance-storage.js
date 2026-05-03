@@ -7,7 +7,7 @@ export const DEFAULT_USER_APPEARANCE = {
 }
 
 export const USER_APPEARANCE_PRESETS = [
-  { label: 'Architect', value: '#4744e5' },
+  { label: 'Assessoria LP', value: '#4744e5' },
   { label: 'Azul', value: '#3b82f6' },
   { label: 'Esmeralda', value: '#10b981' },
   { label: 'Laranja', value: '#f59e0b' },

@@ -12211,15 +12211,11 @@ export default function DashboardShell({
 
         <div className="sidebar-top">
           <div className="logo">
-            {appLogoUrl ? (
-              <img src={appLogoUrl} alt="Logo do app" className="logo-image" />
-            ) : (
-              <i className="bx bx-bar-chart-alt-2"></i>
-            )}
+            <span className="brand-logo-mark logo-image" aria-hidden="true"></span>
             {!isSidebarCollapsed && (
               <div className="logo-copy">
-                <span>Agency Hub</span>
-                <small>High Performance</small>
+                <span>Assessoria LP</span>
+                <small>Performance Hub</small>
               </div>
             )}
           </div>

@@ -125,7 +125,7 @@ export function ThemePanel({ initialTheme, onThemeChange, onThemeSaved }: ThemeP
             className="h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 shadow-sm outline-none"
             value={theme.appName || ''}
             onChange={(event) => updateTheme({ ...theme, appName: event.target.value })}
-            placeholder="Ex.: Nype Orbit"
+            placeholder="Ex.: Assessoria LP"
           />
         </label>
         <label className="grid gap-2 text-sm font-medium text-slate-600">
@@ -134,7 +134,7 @@ export function ThemePanel({ initialTheme, onThemeChange, onThemeSaved }: ThemeP
             className="h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 shadow-sm outline-none"
             value={theme.appSubtitle || ''}
             onChange={(event) => updateTheme({ ...theme, appSubtitle: event.target.value })}
-            placeholder="Ex.: Marketing OS"
+            placeholder="Ex.: Performance Hub"
           />
         </label>
         {[
@@ -164,7 +164,7 @@ export function ThemePanel({ initialTheme, onThemeChange, onThemeSaved }: ThemeP
               {theme.logoUrl ? (
                 <img src={theme.logoUrl} alt="Logo do app" className="h-full w-full object-contain p-3" />
               ) : (
-                <span className="px-3 text-center text-xs font-semibold text-slate-400">Sem logo</span>
+                <span className="brand-logo-mark brand-logo-preview" aria-hidden="true"></span>
               )}
             </div>
             <div className="grid gap-3">

@@ -2,8 +2,8 @@ import { UserProvider } from '@/lib/contexts/UserContext'
 import './globals.css'
 
 export const metadata = {
-  title: 'Nype Orbit',
-  description: 'SaaS platform for marketing metrics, client management, integrations, and operations tracking.',
+  title: 'Assessoria LP',
+  description: 'Assessoria LP: dashboards, integrações e IA para leitura de performance de marketing.',
 }
 
 export default function RootLayout({ children }) {

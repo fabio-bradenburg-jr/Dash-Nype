@@ -76,7 +76,7 @@ export default function LoginPage() {
         <section className="rounded-[36px] border border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.78),rgba(255,255,255,0.6))] p-8 shadow-[0_30px_100px_rgba(15,23,42,0.08)] backdrop-blur-xl md:p-12">
           <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/90 px-4 py-2 text-xs font-semibold uppercase tracking-[0.25em] text-slate-500">
             <Sparkles className="h-3.5 w-3.5 text-[var(--saas-accent)]" />
-            Nype Orbit
+            Assessoria LP
           </div>
           <h1 className="mt-6 font-manrope text-5xl font-extrabold tracking-[-0.05em] text-slate-950">
             Inteligência de marketing com operação de clientes no mesmo sistema.
