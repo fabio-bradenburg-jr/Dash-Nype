@@ -25059,6 +25059,71 @@ export default function DashboardShell({
           color: #0f172a !important;
         }
 
+        :root[data-ui-mode='light'] .modal-card,
+        :root[data-ui-mode='light'] .simple-client-modal,
+        :root[data-ui-mode='light'] .simple-client-modal .integration-block,
+        :root[data-ui-mode='light'] .integration-block {
+          background: rgba(255, 255, 255, 0.96) !important;
+          border-color: rgba(15, 23, 42, 0.08) !important;
+          color: #0f172a !important;
+          box-shadow: 0 22px 48px rgba(15, 23, 42, 0.08) !important;
+        }
+
+        :root[data-ui-mode='light'] .modal-header h3,
+        :root[data-ui-mode='light'] .integration-heading h3,
+        :root[data-ui-mode='light'] .agendor-selection-head label,
+        :root[data-ui-mode='light'] .input-group label {
+          color: #0f172a !important;
+        }
+
+        :root[data-ui-mode='light'] .modal-header p,
+        :root[data-ui-mode='light'] .integration-heading p,
+        :root[data-ui-mode='light'] .agendor-selection-head span,
+        :root[data-ui-mode='light'] .field-helper,
+        :root[data-ui-mode='light'] .stage-empty {
+          color: #475569 !important;
+        }
+
+        :root[data-ui-mode='light'] .input-group input:not([type="checkbox"]):not([type="file"]),
+        :root[data-ui-mode='light'] .input-group select,
+        :root[data-ui-mode='light'] .input-group textarea,
+        :root[data-ui-mode='light'] .client-select-input,
+        :root[data-ui-mode='light'] .input-group input[type="file"] {
+          background: rgba(255, 255, 255, 0.96) !important;
+          border-color: rgba(15, 23, 42, 0.1) !important;
+          color: #0f172a !important;
+          box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9) !important;
+        }
+
+        :root[data-ui-mode='light'] .input-group input::placeholder,
+        :root[data-ui-mode='light'] .input-group textarea::placeholder,
+        :root[data-ui-mode='light'] .client-select-input::placeholder {
+          color: #64748b !important;
+          opacity: 1 !important;
+        }
+
+        :root[data-ui-mode='light'] .stage-empty {
+          background: rgba(248, 250, 252, 0.92) !important;
+          border-color: rgba(15, 23, 42, 0.12) !important;
+        }
+
+        :root[data-ui-mode='light'] .form-alert {
+          background: #fffbeb !important;
+          border-color: rgba(245, 158, 11, 0.34) !important;
+          color: #92400e !important;
+        }
+
+        :root[data-ui-mode='light'] .btn.btn-secondary,
+        :root[data-ui-mode='light'] .modal-close {
+          background: rgba(255, 255, 255, 0.94) !important;
+          border-color: rgba(15, 23, 42, 0.1) !important;
+          color: #0f172a !important;
+        }
+
+        :root[data-ui-mode='light'] .simple-client-modal .client-create-actions {
+          border-top-color: rgba(15, 23, 42, 0.08) !important;
+        }
+
         .simple-team-list .simple-client-row {
           grid-template-columns: minmax(260px, 1fr) minmax(160px, 0.45fr) 90px 120px;
         }

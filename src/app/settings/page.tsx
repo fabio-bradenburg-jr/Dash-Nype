@@ -3843,8 +3843,9 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
 
         :root[data-ui-mode='light'] .settings-action-bar,
         :root[data-ui-mode='light'] .settings-action-bar-global {
-          background: rgba(255, 255, 255, 0.94) !important;
+          background: rgba(255, 255, 255, 0.96) !important;
           border-color: rgba(15, 23, 42, 0.1) !important;
+          color: #0f172a !important;
           box-shadow: 0 18px 42px rgba(15, 23, 42, 0.12) !important;
         }
 
@@ -3864,6 +3865,12 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
 
         :root[data-ui-mode='light'] .settings-ghost-button:disabled {
           color: #64748b !important;
+        }
+
+        :root[data-ui-mode='light'] .settings-action-buttons .btn-secondary {
+          background: rgba(255, 255, 255, 0.94) !important;
+          border-color: rgba(15, 23, 42, 0.1) !important;
+          color: #0f172a !important;
         }
 
         @media (max-width: 980px) {

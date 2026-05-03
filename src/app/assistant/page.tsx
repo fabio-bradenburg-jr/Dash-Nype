@@ -1842,6 +1842,35 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
           border-color: color-mix(in srgb, var(--accent-blue) 20%, rgba(15, 23, 42, 0.08));
         }
 
+        :root[data-ui-mode='light'] .assistant-history-new,
+        :root[data-ui-mode='light'] .assistant-history-collapse,
+        :root[data-ui-mode='light'] .assistant-agent-trigger,
+        :root[data-ui-mode='light'] .assistant-agent-option,
+        :root[data-ui-mode='light'] .assistant-form-signals span,
+        :root[data-ui-mode='light'] .assistant-form-footer > span,
+        :root[data-ui-mode='light'] .assistant-chat-intro h2,
+        :root[data-ui-mode='light'] .assistant-message p {
+          color: #0f172a !important;
+        }
+
+        :root[data-ui-mode='light'] .assistant-chat-intro p,
+        :root[data-ui-mode='light'] .assistant-history-empty,
+        :root[data-ui-mode='light'] .assistant-history-item span,
+        :root[data-ui-mode='light'] .assistant-form-footer {
+          color: #475569 !important;
+        }
+
+        :root[data-ui-mode='light'] .assistant-form-shell,
+        :root[data-ui-mode='light'] .assistant-input {
+          background: rgba(255, 255, 255, 0.96) !important;
+          color: #0f172a !important;
+        }
+
+        :root[data-ui-mode='light'] .assistant-input::placeholder {
+          color: #64748b !important;
+          opacity: 1 !important;
+        }
+
         @media (max-width: 1120px) {
           .assistant-content {
             grid-template-columns: 1fr;
