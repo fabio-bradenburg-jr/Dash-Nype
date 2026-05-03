@@ -3062,6 +3062,7 @@ export default function DashboardShell({
   const [clientStatusFilter, setClientStatusFilter] = useState('all')
   const [clientEditSection, setClientEditSection] = useState('geral')
   const [isCreateClientModalOpen, setIsCreateClientModalOpen] = useState(false)
+  const [createClientStep, setCreateClientStep] = useState('identity')
   const [isCreateClientGroupModalOpen, setIsCreateClientGroupModalOpen] = useState(false)
   const [clientRegistryManagerMode, setClientRegistryManagerMode] = useState('')
   const [clientRegistryInlineEdit, setClientRegistryInlineEdit] = useState({ clientId: '', columnKey: '' })
@@ -5118,7 +5119,13 @@ export default function DashboardShell({
     setIsRdMetricLibraryOpen(false)
   }
 
+  const closeCreateClientModal = useCallback(() => {
+    setIsCreateClientModalOpen(false)
+    setCreateClientStep('identity')
+  }, [])
+
   const openCreateClientModal = useCallback(() => {
+    setCreateClientStep('identity')
     setIsCreateClientModalOpen(true)
     window.setTimeout(() => {
       document.querySelector('.modal-create-client input')?.focus()
@@ -5408,7 +5415,7 @@ export default function DashboardShell({
       metaAdAccountId: newClientMetaAdAccountId,
       operationEnabled: false,
       dashboardEnabled: true,
-      dashboardVisibleIntegrationKeys: ['meta_ads', 'agendor'],
+      dashboardVisibleIntegrationKeys: normalizeClientDashboardIntegrationKeys(newClientDashboardIntegrationKeys),
       salesModel: '',
       implementationPhase: '',
       implementationObservation: '',
@@ -5427,6 +5434,7 @@ export default function DashboardShell({
     setNewClientOperationEnabled(false)
     setNewClientDashboardEnabled(true)
     setNewClientDashboardIntegrationKeys(['meta_ads', 'agendor'])
+    setCreateClientStep('identity')
     setClientEditSection('geral')
     setIsCreateClientModalOpen(false)
     setIsEditClientModalOpen(true)
@@ -13980,44 +13988,103 @@ export default function DashboardShell({
         )}
 
         {activeTab === 'clientes' && isCreateClientModalOpen && (
-          <div className="modal-overlay" onClick={() => setIsCreateClientModalOpen(false)}>
+          <div className="modal-overlay" onClick={closeCreateClientModal}>
             <div className="modal-card glass-panel modal-create-client simple-client-modal" onClick={(event) => event.stopPropagation()}>
               <div className="modal-header">
                 <div>
                   <h3>Novo cliente</h3>
-                  <p>Cadastre o mínimo necessário e selecione uma conta de anúncio, se já estiver disponível.</p>
+                  <p>{createClientStep === 'identity' ? 'Comece apenas com identificação. As integrações vêm no próximo passo.' : 'Agora selecione quais fontes serão usadas no dashboard deste cliente.'}</p>
                 </div>
-                <button type="button" className="modal-close" onClick={() => setIsCreateClientModalOpen(false)} aria-label="Fechar cadastro de cliente">
+                <button type="button" className="modal-close" onClick={closeCreateClientModal} aria-label="Fechar cadastro de cliente">
                   <i className="bx bx-x"></i>
                 </button>
               </div>
 
+              <div className="client-create-steps" aria-label="Etapas do cadastro">
+                <span className={createClientStep === 'identity' ? 'active' : ''}>1. Identificação</span>
+                <span className={createClientStep === 'integrations' ? 'active' : ''}>2. Integrações</span>
+              </div>
+
               <form className="client-create-stack" onSubmit={handleCreateClient}>
-                <div className="client-create-inline">
-                  <input type="text" value={newClientName} onChange={(event) => setNewClientName(event.target.value)} placeholder="Nome do cliente" disabled={!isMaster} />
-                  <input type="text" value={newClientCnpj} onChange={(event) => setNewClientCnpj(normalizeCnpjInput(event.target.value))} placeholder="CNPJ opcional" disabled={!isMaster} />
-                </div>
+                {createClientStep === 'identity' ? (
+                  <>
+                    <div className="client-create-inline client-create-identity-only">
+                      <input type="text" value={newClientName} onChange={(event) => setNewClientName(event.target.value)} placeholder="Nome do cliente" disabled={!isMaster} />
+                      <input type="text" value={newClientCnpj} onChange={(event) => setNewClientCnpj(normalizeCnpjInput(event.target.value))} placeholder="CNPJ opcional" disabled={!isMaster} />
+                    </div>
 
-                <div className="input-group">
-                  <label>Conta de anúncio da Meta</label>
-                  <select value={newClientMetaAdAccountId} onChange={(event) => setNewClientMetaAdAccountId(event.target.value)} disabled={!isMaster}>
-                    <option value="">
-                      {hasMetaManualToken || hasMetaOauthConnection ? 'Selecionar depois ou escolher agora' : 'Conecte a Meta em Configurações'}
-                    </option>
-                    {adAccounts.map((account) => (
-                      <option key={account.id} value={account.id}>{account.name ? account.name + ' (' + account.id + ')' : account.id}</option>
-                    ))}
-                  </select>
-                </div>
+                    <div className="client-create-actions">
+                      <button type="button" className="btn btn-secondary" onClick={closeCreateClientModal}>
+                        Cancelar
+                      </button>
+                      <button type="button" className="btn btn-primary" disabled={!isMaster || !newClientName.trim()} onClick={() => setCreateClientStep('integrations')}>
+                        Avançar
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="client-create-integration-panel">
+                      <div className="integration-block client-create-integration-card">
+                        <div className="integration-heading">
+                          <div className="integration-icon" style={{ color: '#0668E1', borderColor: '#0668E133' }}>
+                            <i className="bx bxl-meta"></i>
+                          </div>
+                          <div>
+                            <h3>Meta Ads</h3>
+                            <p>Selecione a conta de anúncio disponível na credencial global.</p>
+                          </div>
+                        </div>
+                        <div className="input-group">
+                          <label>Conta de anúncio da Meta</label>
+                          <select className="client-select-input" value={newClientMetaAdAccountId} onChange={(event) => setNewClientMetaAdAccountId(event.target.value)} disabled={!isMaster}>
+                            <option value="">
+                              {hasMetaManualToken || hasMetaOauthConnection ? 'Selecionar depois ou escolher agora' : 'Conecte a Meta em Configurações'}
+                            </option>
+                            {adAccounts.map((account) => (
+                              <option key={account.id} value={account.id}>{account.name ? account.name + ' (' + account.id + ')' : account.id}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
 
-                <div className="client-create-actions">
-                  <button type="button" className="btn btn-secondary" onClick={() => setIsCreateClientModalOpen(false)}>
-                    Cancelar
-                  </button>
-                  <button type="submit" className="btn btn-primary" disabled={!isMaster || !newClientName.trim()}>
-                    Criar cliente
-                  </button>
-                </div>
+                      <div className="integration-block client-create-integration-card">
+                        <div className="integration-heading">
+                          <div className="integration-icon" style={{ color: appAccentColor, borderColor: appAccentColor + '33' }}>
+                            <i className="bx bx-plug"></i>
+                          </div>
+                          <div>
+                            <h3>Integrações do dashboard</h3>
+                            <p>Escolha quais fontes aparecerão disponíveis para este cliente.</p>
+                          </div>
+                        </div>
+                        <div className="client-create-integration-grid">
+                          {CLIENT_DASHBOARD_INTEGRATION_OPTIONS.map((integration) => (
+                            <label key={integration.key} className={'client-create-integration-option ' + (newClientDashboardIntegrationKeys.includes(integration.key) ? 'active' : '')}>
+                              <input type="checkbox" checked={newClientDashboardIntegrationKeys.includes(integration.key)} onChange={() => handleToggleNewClientDashboardIntegration(integration.key)} disabled={!isMaster} />
+                              <span>
+                                <strong>{integration.label}</strong>
+                                <small>{integration.description}</small>
+                              </span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="client-create-actions">
+                      <button type="button" className="btn btn-secondary" onClick={() => setCreateClientStep('identity')}>
+                        Voltar
+                      </button>
+                      <button type="button" className="btn btn-secondary" onClick={closeCreateClientModal}>
+                        Cancelar
+                      </button>
+                      <button type="submit" className="btn btn-primary" disabled={!isMaster || !newClientName.trim()}>
+                        Criar cliente
+                      </button>
+                    </div>
+                  </>
+                )}
               </form>
             </div>
           </div>
@@ -24956,12 +25023,116 @@ export default function DashboardShell({
 
         .simple-client-modal .client-create-actions {
           justify-content: flex-end;
-          gap: 14px;
-          margin-top: 6px;
-          padding-top: 12px;
+          gap: 16px;
+          margin-top: 8px;
+          padding-top: 18px;
         }
         .simple-client-modal .client-create-actions .btn {
-          min-width: 116px;
+          min-width: 124px;
+        }
+
+        .client-create-steps {
+          display: inline-flex;
+          gap: 8px;
+          padding: 6px;
+          margin: 0 0 22px;
+          border-radius: 999px;
+          background: rgba(255, 255, 255, 0.05);
+          border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .client-create-steps span {
+          display: inline-flex;
+          align-items: center;
+          min-height: 34px;
+          padding: 0 14px;
+          border-radius: 999px;
+          color: var(--text-muted);
+          font-size: 0.78rem;
+          font-weight: 900;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+        }
+
+        .client-create-steps span.active {
+          background: color-mix(in srgb, var(--button-primary, var(--accent-blue)) 18%, transparent);
+          color: color-mix(in srgb, var(--button-primary, var(--accent-blue)) 82%, white 18%);
+          box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--button-primary, var(--accent-blue)) 28%, transparent);
+        }
+
+        .client-create-identity-only {
+          margin-top: 8px;
+        }
+
+        .client-create-integration-panel {
+          display: grid;
+          grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.25fr);
+          gap: 28px;
+          align-items: stretch;
+          min-width: 0;
+        }
+
+        .simple-client-modal .client-create-integration-card {
+          display: flex;
+          flex-direction: column;
+          gap: 24px;
+          padding: 30px;
+          min-width: 0;
+          overflow: visible;
+        }
+
+        .client-create-integration-grid {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 14px;
+          min-width: 0;
+        }
+
+        .client-create-integration-option {
+          display: grid;
+          grid-template-columns: 18px minmax(0, 1fr);
+          gap: 12px;
+          align-items: start;
+          min-height: 92px;
+          padding: 16px;
+          border-radius: 18px;
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          background: rgba(255, 255, 255, 0.035);
+          cursor: pointer;
+          transition: border-color 180ms ease, background 180ms ease, transform 180ms ease;
+        }
+
+        .client-create-integration-option:hover {
+          transform: translateY(-1px);
+          border-color: color-mix(in srgb, var(--button-primary, var(--accent-blue)) 28%, transparent);
+        }
+
+        .client-create-integration-option.active {
+          background: color-mix(in srgb, var(--button-primary, var(--accent-blue)) 13%, transparent);
+          border-color: color-mix(in srgb, var(--button-primary, var(--accent-blue)) 34%, transparent);
+        }
+
+        .client-create-integration-option input {
+          margin-top: 3px;
+          accent-color: var(--button-primary, var(--accent-blue));
+        }
+
+        .client-create-integration-option span {
+          display: grid;
+          gap: 5px;
+          min-width: 0;
+        }
+
+        .client-create-integration-option strong {
+          color: var(--text-primary);
+          font-size: 0.92rem;
+          line-height: 1.25;
+        }
+
+        .client-create-integration-option small {
+          color: var(--text-muted);
+          font-size: 0.76rem;
+          line-height: 1.35;
         }
 
         /* Final light-mode contrast pass for simplified SaaS screens. */
@@ -25109,6 +25280,39 @@ export default function DashboardShell({
           border-color: rgba(15, 23, 42, 0.12) !important;
         }
 
+        :root[data-ui-mode='light'] .client-create-steps {
+          background: rgba(248, 250, 252, 0.9) !important;
+          border-color: rgba(15, 23, 42, 0.08) !important;
+        }
+
+        :root[data-ui-mode='light'] .client-create-steps span {
+          color: #64748b !important;
+        }
+
+        :root[data-ui-mode='light'] .client-create-steps span.active {
+          background: color-mix(in srgb, var(--button-primary, var(--accent-blue)) 12%, white) !important;
+          color: #0f172a !important;
+          box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--button-primary, var(--accent-blue)) 26%, rgba(15, 23, 42, 0.08)) !important;
+        }
+
+        :root[data-ui-mode='light'] .client-create-integration-option {
+          background: rgba(255, 255, 255, 0.92) !important;
+          border-color: rgba(15, 23, 42, 0.1) !important;
+        }
+
+        :root[data-ui-mode='light'] .client-create-integration-option.active {
+          background: color-mix(in srgb, var(--button-primary, var(--accent-blue)) 10%, white) !important;
+          border-color: color-mix(in srgb, var(--button-primary, var(--accent-blue)) 28%, rgba(15, 23, 42, 0.08)) !important;
+        }
+
+        :root[data-ui-mode='light'] .client-create-integration-option strong {
+          color: #0f172a !important;
+        }
+
+        :root[data-ui-mode='light'] .client-create-integration-option small {
+          color: #475569 !important;
+        }
+
         :root[data-ui-mode='light'] .form-alert {
           background: #fffbeb !important;
           border-color: rgba(245, 158, 11, 0.34) !important;
@@ -25141,7 +25345,8 @@ export default function DashboardShell({
         }
 
         @media (max-width: 1180px) {
-          .simple-client-modal .form-grid {
+          .simple-client-modal .form-grid,
+          .client-create-integration-panel {
             grid-template-columns: 1fr;
           }
         }
@@ -25264,8 +25469,20 @@ export default function DashboardShell({
             align-items: flex-start;
           }
 
-          .client-create-grid-fields {
+          .client-create-grid-fields,
+          .client-create-integration-grid {
             grid-template-columns: 1fr;
+          }
+
+          .client-create-steps {
+            width: 100%;
+            justify-content: stretch;
+          }
+
+          .client-create-steps span {
+            flex: 1;
+            justify-content: center;
+            text-align: center;
           }
 
           .source-section-header {
