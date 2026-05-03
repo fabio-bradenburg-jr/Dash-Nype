@@ -887,6 +887,19 @@ function deriveClientComputedFields(client) {
   }
 }
 
+function normalizeIntegrationList(value) {
+  if (Array.isArray(value)) {
+    return Array.from(new Set(value.map((item) => String(item || '').trim()).filter(Boolean)))
+  }
+
+  return Array.from(new Set(
+    String(value || '')
+      .split(/[|,]/)
+      .map((item) => item.trim())
+      .filter(Boolean)
+  ))
+}
+
 function countClientConnectedSources(client) {
   return [
     client?.metaAdAccountId,
@@ -3093,6 +3106,10 @@ export default function DashboardShell({
   const [expandedMondayGroups, setExpandedMondayGroups] = useState({})
   const [rdPipelines, setRdPipelines] = useState([])
   const [rdPipelineStages, setRdPipelineStages] = useState([])
+  const [agendorPipelineOptions, setAgendorPipelineOptions] = useState([])
+  const [agendorStageOptions, setAgendorStageOptions] = useState([])
+  const [isAgendorPipelinesLoading, setIsAgendorPipelinesLoading] = useState(false)
+  const [agendorPipelinesError, setAgendorPipelinesError] = useState('')
   const [isLoading, setIsLoading] = useState(true)
   const [isMetaStructureReady, setIsMetaStructureReady] = useState(false)
   const [isSavingIntegrations, setIsSavingIntegrations] = useState(false)
@@ -3991,6 +4008,33 @@ export default function DashboardShell({
     return items
   }, [activeClient, canManageClients, canManageUsers, canAccessTeamTab, clients.length, usersList.length])
   const activeIntegrations = activeClient?.integrations || DEFAULT_INTEGRATIONS
+  const activeCrmProvider = activeClientUsesManualCrm
+    ? 'manual'
+    : String(activeClient?.crmProvider || '').trim().toLowerCase() === 'agendor' || String(activeIntegrations.agendorToken || '').trim()
+      ? 'agendor'
+      : 'rd_station'
+  const activeCrmToken = activeCrmProvider === 'agendor'
+    ? String(activeIntegrations.agendorToken || '').trim()
+    : String(activeIntegrations.rdStationToken || '').trim()
+  const selectedAgendorPipelineIds = useMemo(
+    () => normalizeIntegrationList(activeClient?.agendorPipelineIds || activeClient?.agendorAccountId || activeClient?.rdPipelineId),
+    [activeClient?.agendorPipelineIds, activeClient?.agendorAccountId, activeClient?.rdPipelineId]
+  )
+  const selectedAgendorStageNames = useMemo(
+    () => normalizeIntegrationList(activeClient?.agendorQualifiedStages || activeClient?.rdQualifiedStages),
+    [activeClient?.agendorQualifiedStages, activeClient?.rdQualifiedStages]
+  )
+  const visibleAgendorStageOptions = useMemo(
+    () => agendorStageOptions.filter((stage) => !selectedAgendorPipelineIds.length || selectedAgendorPipelineIds.includes(stage.pipelineId || '')),
+    [agendorStageOptions, selectedAgendorPipelineIds]
+  )
+  const selectedAgendorPipelineLabels = useMemo(() => {
+    const savedNames = normalizeIntegrationList(activeClient?.agendorPipelineNames)
+    return selectedAgendorPipelineIds.map((id, index) => {
+      const option = agendorPipelineOptions.find((pipeline) => pipeline.id === id)
+      return option?.label || option?.name || savedNames[index] || id
+    })
+  }, [activeClient?.agendorPipelineNames, agendorPipelineOptions, selectedAgendorPipelineIds])
   const activeClientVisibleIntegrations = useMemo(
     () => normalizeClientDashboardIntegrationKeys(activeClient?.dashboardVisibleIntegrationKeys),
     [activeClient?.dashboardVisibleIntegrationKeys]
@@ -4169,8 +4213,8 @@ export default function DashboardShell({
   )
   const hasRdConfigured = Boolean(
     isActiveClientDashboardEnabled &&
-    activeClientVisibleIntegrationsSet.has('rd_station') &&
-    (activeIntegrations.rdStationToken || activeClientUsesManualCrm)
+    (activeClientVisibleIntegrationsSet.has('rd_station') || activeClientVisibleIntegrationsSet.has('agendor')) &&
+    (activeCrmToken || activeClientUsesManualCrm)
   )
   const hasSheetsConfigured = Boolean(
     isActiveClientDashboardEnabled &&
@@ -4872,7 +4916,7 @@ export default function DashboardShell({
       return
     }
 
-    if (!activeClientId || activeClientUsesManualCrm || !activeIntegrations.rdStationToken) {
+    if (!activeClientId || activeClientUsesManualCrm || !activeCrmToken) {
       lastRdPipelinesFetchKeyRef.current = ''
       setRdPipelines([])
       setRdPipelineStages([])
@@ -4886,7 +4930,7 @@ export default function DashboardShell({
         const selectedPipelineId = activeClient?.rdPipelineId || ''
         const fetchKey = JSON.stringify({
           activeClientId,
-          rdToken: activeIntegrations.rdStationToken,
+          rdToken: activeCrmToken,
           selectedPipelineId,
         })
 
@@ -4903,8 +4947,8 @@ export default function DashboardShell({
 
         const { response, data } = await fetchJsonWithTimeout(`/api/rd/pipelines${params.toString() ? `?${params.toString()}` : ''}`, {
           headers: {
-            'x-rd-station-token': activeIntegrations.rdStationToken,
-            'x-crm-provider': activeClient?.crmProvider || 'rd_station',
+            'x-rd-station-token': activeCrmToken,
+            'x-crm-provider': activeCrmProvider === 'manual' ? 'rd_station' : activeCrmProvider,
           },
         })
 
@@ -4929,7 +4973,7 @@ export default function DashboardShell({
     return () => {
       cancelled = true
     }
-  }, [activeTab, activeClientId, activeClient?.rdPipelineId, activeIntegrations.rdStationToken, activeClientUsesManualCrm])
+  }, [activeTab, activeClientId, activeClient?.rdPipelineId, activeCrmToken, activeCrmProvider, activeClientUsesManualCrm])
 
   useEffect(() => {
     if (!hasLoadedPreferences || userLoading || !user || hasSyncedServerState || hasInitialClientsOverride) return
@@ -7851,6 +7895,105 @@ export default function DashboardShell({
     })
   }
 
+  const ensureAgendorDashboardVisibility = (client) => {
+    const nextKeys = normalizeClientDashboardIntegrationKeys(client.dashboardVisibleIntegrationKeys)
+    return nextKeys.includes('agendor') ? nextKeys : [...nextKeys, 'agendor']
+  }
+
+  const handleLoadAgendorPipelines = async () => {
+    if (!canEditActiveClient) return
+    const token = String(activeIntegrations.agendorToken || '').trim()
+    if (!token) {
+      setAgendorPipelinesError('Cole o token do Agendor antes de ler os pipelines.')
+      return
+    }
+
+    setIsAgendorPipelinesLoading(true)
+    setAgendorPipelinesError('')
+
+    try {
+      const response = await fetch('/api/saas/agendor/pipelines', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token }),
+      })
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) {
+        throw new Error(data?.error || 'Não foi possível ler os pipelines do Agendor.')
+      }
+
+      setAgendorPipelineOptions(Array.isArray(data?.pipelines) ? data.pipelines : [])
+      setAgendorStageOptions(Array.isArray(data?.stages) ? data.stages : [])
+      updateActiveClient((client) => ({
+        ...client,
+        crmProvider: 'agendor',
+        dashboardVisibleIntegrationKeys: ensureAgendorDashboardVisibility(client),
+        integrations: {
+          ...(client.integrations || {}),
+          agendorToken: token,
+        },
+      }))
+    } catch (error) {
+      setAgendorPipelineOptions([])
+      setAgendorStageOptions([])
+      setAgendorPipelinesError(error.message || 'Não foi possível ler os pipelines do Agendor.')
+    } finally {
+      setIsAgendorPipelinesLoading(false)
+    }
+  }
+
+  const handleAgendorPipelineToggle = (pipelineId) => {
+    if (!canEditActiveClient) return
+
+    updateActiveClient((client) => {
+      const currentIds = normalizeIntegrationList(client.agendorPipelineIds || client.agendorAccountId || client.rdPipelineId)
+      const nextIds = currentIds.includes(pipelineId)
+        ? currentIds.filter((id) => id !== pipelineId)
+        : [...currentIds, pipelineId]
+      const nextNames = nextIds.map((id) => {
+        const option = agendorPipelineOptions.find((pipeline) => pipeline.id === id)
+        return option?.label || option?.name || id
+      })
+      const nextQualifiedStages = normalizeIntegrationList(client.agendorQualifiedStages || client.rdQualifiedStages).filter((stageName) => {
+        const stageOption = agendorStageOptions.find((stage) => stage.name === stageName || stage.label === stageName || stage.id === stageName)
+        return !stageOption?.pipelineId || nextIds.includes(stageOption.pipelineId)
+      })
+
+      return {
+        ...client,
+        crmProvider: 'agendor',
+        agendorAccountId: nextIds.join(', '),
+        agendorPipelineIds: nextIds,
+        agendorPipelineNames: nextNames,
+        rdPipelineId: nextIds.join(','),
+        rdQualifiedStages: nextQualifiedStages,
+        agendorQualifiedStages: nextQualifiedStages,
+        dashboardVisibleIntegrationKeys: ensureAgendorDashboardVisibility(client),
+      }
+    })
+  }
+
+  const handleAgendorQualifiedStageToggle = (stage) => {
+    if (!canEditActiveClient) return
+    const stageName = String(stage?.name || stage?.label || stage || '').trim()
+    if (!stageName) return
+
+    updateActiveClient((client) => {
+      const currentStages = normalizeIntegrationList(client.agendorQualifiedStages || client.rdQualifiedStages)
+      const nextStages = currentStages.includes(stageName)
+        ? currentStages.filter((item) => item !== stageName)
+        : [...currentStages, stageName]
+
+      return {
+        ...client,
+        crmProvider: 'agendor',
+        rdQualifiedStages: nextStages,
+        agendorQualifiedStages: nextStages,
+        dashboardVisibleIntegrationKeys: ensureAgendorDashboardVisibility(client),
+      }
+    })
+  }
+
   const handleIntegrationChange = (fieldName, value, storage) => {
     if (!canEditActiveClient) return
     if (storage === 'client') {
@@ -7864,7 +8007,19 @@ export default function DashboardShell({
         ...client.integrations,
         [fieldName]: value,
       },
+      ...(fieldName === 'agendorToken'
+        ? {
+            crmProvider: 'agendor',
+            dashboardVisibleIntegrationKeys: ensureAgendorDashboardVisibility(client),
+          }
+        : {}),
     }))
+
+    if (fieldName === 'agendorToken') {
+      setAgendorPipelineOptions([])
+      setAgendorStageOptions([])
+      setAgendorPipelinesError('')
+    }
   }
 
   const handleClientLogoUpload = (event) => {
@@ -8123,7 +8278,7 @@ export default function DashboardShell({
         hasActiveMetaAdNarrowing,
         isMetaStructureReady,
         metaCredentialSignature,
-        rdToken: activeIntegrations.rdStationToken,
+        rdToken: activeCrmToken,
         googleSheetsUrl: activeClient?.googleSheetsUrl || '',
         googleSheetsHeaderRow: Number(activeClient?.googleSheetsHeaderRow || 1),
         googleSheetsStatusColumn: activeClient?.googleSheetsStatusColumn || '',
@@ -8286,8 +8441,8 @@ export default function DashboardShell({
           }
 
           const rdHeaders = {
-            'x-rd-station-token': activeIntegrations.rdStationToken,
-            'x-crm-provider': activeClient?.crmProvider || 'rd_station',
+            'x-rd-station-token': activeCrmToken,
+            'x-crm-provider': activeCrmProvider === 'manual' ? 'rd_station' : activeCrmProvider,
           }
 
           const [rdResult, previousRdResult] = await Promise.all([
@@ -8510,7 +8665,8 @@ export default function DashboardShell({
     isMetaStructureReady,
     metaCredentialSignature,
     metaRequestHeaders,
-    activeIntegrations.rdStationToken,
+    activeCrmToken,
+    activeCrmProvider,
     activeClientUsesManualCrm,
     activeClient?.manualCrmSummary,
     activeClient?.googleSheetsUrl,
@@ -13465,14 +13621,64 @@ export default function DashboardShell({
                         <p>Token/API e identificação do funil ou pipeline do cliente.</p>
                       </div>
                     </div>
-                    <div className="client-form-grid client-form-grid-2">
+                    <div className="client-form-grid client-form-grid-2 agendor-token-grid">
                       <div className="input-group">
                         <label>Token/API Agendor</label>
                         <input type="password" value={activeIntegrations.agendorToken || ''} onChange={(event) => handleIntegrationChange('agendorToken', event.target.value, 'integrations')} placeholder="Cole o token do Agendor" disabled={!canEditActiveClient} />
                       </div>
-                      <div className="input-group">
-                        <label>Pipeline/Funil</label>
-                        <input type="text" value={activeClient.agendorAccountId || ''} onChange={(event) => handleClientFieldChange('agendorAccountId', event.target.value)} placeholder="ID ou nome do pipeline" disabled={!canEditActiveClient} />
+                      <div className="input-group agendor-load-action">
+                        <label>&nbsp;</label>
+                        <button type="button" className="btn btn-secondary" onClick={handleLoadAgendorPipelines} disabled={!canEditActiveClient || isAgendorPipelinesLoading || !String(activeIntegrations.agendorToken || '').trim()}>
+                          {isAgendorPipelinesLoading ? 'Lendo...' : 'Ler pipelines'}
+                        </button>
+                      </div>
+                    </div>
+
+                    {agendorPipelinesError && <div className="form-alert agendor-inline-alert">{agendorPipelinesError}</div>}
+
+                    <div className="agendor-selection-block">
+                      <div className="agendor-selection-head">
+                        <label>Pipelines para puxar para o dash</label>
+                        <span>Escolha um ou mais funis do Agendor. O dashboard usará apenas os pipelines selecionados.</span>
+                      </div>
+                      <div className="stage-selector agendor-chip-list">
+                        {agendorPipelineOptions.length ? (
+                          agendorPipelineOptions.map((pipeline) => (
+                            <label key={pipeline.id} className={'stage-chip ' + (selectedAgendorPipelineIds.includes(pipeline.id) ? 'active' : '')}>
+                              <input type="checkbox" checked={selectedAgendorPipelineIds.includes(pipeline.id)} onChange={() => handleAgendorPipelineToggle(pipeline.id)} disabled={!canEditActiveClient} />
+                              <span>{pipeline.label || pipeline.name || pipeline.id}</span>
+                            </label>
+                          ))
+                        ) : selectedAgendorPipelineLabels.length ? (
+                          selectedAgendorPipelineLabels.map((pipeline) => <span key={pipeline} className="stage-chip active"><span>{pipeline}</span></span>)
+                        ) : (
+                          <div className="stage-empty">Cole o token e clique em “Ler pipelines” para selecionar os funis disponíveis.</div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="agendor-selection-block">
+                      <div className="agendor-selection-head">
+                        <label>Etapas consideradas qualificadas</label>
+                        <span>Marque quais etapas dos pipelines selecionados contam como qualificado nas taxas comerciais.</span>
+                      </div>
+                      <div className="stage-selector agendor-chip-list">
+                        {visibleAgendorStageOptions.length ? (
+                          visibleAgendorStageOptions.map((stage) => {
+                            const stageName = String(stage.name || stage.label || '').trim()
+                            const checked = selectedAgendorStageNames.includes(stageName)
+                            return (
+                              <label key={stage.id || stage.label} className={'stage-chip ' + (checked ? 'active' : '')}>
+                                <input type="checkbox" checked={checked} onChange={() => handleAgendorQualifiedStageToggle(stage)} disabled={!canEditActiveClient} />
+                                <span>{stage.label || stage.name}</span>
+                              </label>
+                            )
+                          })
+                        ) : selectedAgendorStageNames.length ? (
+                          selectedAgendorStageNames.map((stage) => <span key={stage} className="stage-chip active"><span>{stage}</span></span>)
+                        ) : (
+                          <div className="stage-empty">Depois de selecionar os pipelines, marque as etapas que devem contar como qualificadas.</div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -24700,6 +24906,52 @@ export default function DashboardShell({
           overflow: hidden;
           text-overflow: ellipsis;
         }
+        .agendor-token-grid {
+          align-items: end;
+        }
+
+        .agendor-load-action .btn {
+          width: 100%;
+          min-height: 52px;
+        }
+
+        .agendor-inline-alert {
+          margin: 16px 0 0;
+        }
+
+        .agendor-selection-block {
+          display: grid;
+          gap: 12px;
+          margin-top: 20px;
+          min-width: 0;
+        }
+
+        .agendor-selection-head {
+          display: grid;
+          gap: 4px;
+        }
+
+        .agendor-selection-head label {
+          color: var(--text-primary);
+          font-size: 0.76rem;
+          font-weight: 900;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+        }
+
+        .agendor-selection-head span {
+          color: var(--muted-text);
+          font-size: 0.84rem;
+          line-height: 1.5;
+        }
+
+        .agendor-chip-list {
+          gap: 10px;
+          max-height: 220px;
+          overflow-y: auto;
+          padding-right: 4px;
+        }
+
         .simple-client-modal .client-create-actions {
           justify-content: flex-end;
           gap: 14px;

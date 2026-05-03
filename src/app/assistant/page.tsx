@@ -91,13 +91,11 @@ declare global {
   }
 }
 
-function createWelcomeMessage(clientName = ''): AssistantMessageItem {
+function createWelcomeMessage(): AssistantMessageItem {
   return {
     id: `assistant-welcome-${Date.now()}`,
     role: 'assistant',
-    content: clientName
-      ? `Estou pronto para conversar sobre o negócio. Posso te ajudar com leituras sobre ${clientName}, operação, campanhas, CRM e próximos passos.`
-      : 'Estou pronto para conversar sobre o negócio. Posso te ajudar com clientes, operação, campanhas, CRM e próximos passos.',
+    content: 'Estou pronto para conversar sobre o negócio. Posso te ajudar com campanhas, CRM, gargalos e próximos passos.',
   }
 }
 
@@ -121,6 +119,7 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
   const [inputValue, setInputValue] = useState('')
   const [messages, setMessages] = useState<AssistantMessageItem[]>([])
   const [conversations, setConversations] = useState<AssistantConversationSummary[]>([])
+  const [isHistoryCollapsed, setIsHistoryCollapsed] = useState(false)
   const [selectedConversationId, setSelectedConversationId] = useState('')
   const [selectedAgentId, setSelectedAgentId] = useState('copilot')
   const [isAgentMenuOpen, setIsAgentMenuOpen] = useState(false)
@@ -136,10 +135,6 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
   const availableClients = useMemo(
     () => (Array.isArray(dashboardState?.clients) ? dashboardState.clients : []),
     [dashboardState]
-  )
-  const focusLabel = useMemo(
-    () => FOCUS_OPTIONS.find((option) => option.value === focusMode)?.label || 'Operação',
-    [focusMode]
   )
   const availableAgents = useMemo(
     () => (Array.isArray(dashboardState?.globalIntegrations?.aiAgents) ? dashboardState.globalIntegrations.aiAgents : []),
@@ -327,7 +322,7 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
   }, [])
 
   const applyWelcomeConversation = useCallback(() => {
-    setMessages([createWelcomeMessage(dashboardState?.clients?.[0]?.name || '')])
+    setMessages([createWelcomeMessage()])
   }, [dashboardState?.clients])
 
   const loadConversationDetail = useCallback(
@@ -356,7 +351,7 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
                 role: message.role,
                 content: message.content,
               }))
-            : [createWelcomeMessage(dashboardState?.clients?.[0]?.name || '')]
+            : [createWelcomeMessage()]
         )
       } catch (error) {
         setChatError(
@@ -589,7 +584,7 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
       <header className={`header assistant-page-header ${isEmbedded ? 'assistant-page-header-embedded' : ''}`}>
         <div className="page-title">
           <h1>Assistente de Negócio</h1>
-          <p>Converse com a IA da operação usando o mesmo contexto do app inteiro, sem sair do fluxo principal.</p>
+          <p>Converse com a IA usando o contexto do app inteiro, sem sair do fluxo principal.</p>
         </div>
         <div className="header-actions assistant-header-actions">
           <button type="button" className="btn btn-secondary assistant-header-button" onClick={handleCreateConversation}>
@@ -612,16 +607,21 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
         ) : (
           <div className="assistant-content">
             <section className="assistant-context-column">
-              <div className="assistant-history-card glass-panel">
+              <div className={`assistant-history-card glass-panel ${isHistoryCollapsed ? 'assistant-history-card-collapsed' : ''}`}>
                 <div className="assistant-section-head assistant-history-head">
                   <span className="assistant-section-kicker">Conversas salvas</span>
-                  <button type="button" className="assistant-history-new" onClick={handleCreateConversation}>
-                    <i className="bx bx-plus"></i>
-                    Nova
-                  </button>
+                  <div className="assistant-history-actions">
+                    <button type="button" className="assistant-history-collapse" onClick={() => setIsHistoryCollapsed((current) => !current)} aria-label={isHistoryCollapsed ? 'Mostrar conversas salvas' : 'Ocultar conversas salvas'} title={isHistoryCollapsed ? 'Mostrar' : 'Ocultar'}>
+                      <i className={`bx ${isHistoryCollapsed ? 'bx-chevron-down' : 'bx-chevron-up'}`}></i>
+                    </button>
+                    <button type="button" className="assistant-history-new" onClick={handleCreateConversation}>
+                      <i className="bx bx-plus"></i>
+                      Nova
+                    </button>
+                  </div>
                 </div>
 
-                <div className="assistant-history-list">
+                {!isHistoryCollapsed ? <div className="assistant-history-list">
                   {conversations.length ? (
                     conversations.map((conversation) => (
                       <div
@@ -669,18 +669,18 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
                       {isLoadingConversations ? 'Carregando conversas...' : 'Suas novas conversas vão aparecer aqui.'}
                     </div>
                   )}
-                </div>
+                </div> : null}
               </div>
 
             </section>
 
             <section className="assistant-chat-panel glass-panel">
               <div className={`assistant-chat-intro ${isEmbedded ? 'assistant-chat-intro-embedded' : ''}`}>
-                <h2>{isEmbedded ? 'Vamos organizar a operação?' : 'Assistente de Negócio'}</h2>
+                <h2>{isEmbedded ? 'Vamos organizar o dia?' : 'Assistente de Negócio'}</h2>
                 <p>
                   {isEmbedded
-                    ? 'Use esse espaço como copiloto do dia para cruzar clientes, campanhas, rotina e próximos passos.'
-                    : 'Fale com sua IA para entender clientes, campanhas, gargalos e próximos passos da operação.'}
+                    ? 'Use esse espaço como copiloto do dia para cruzar campanhas, CRM, rotina e próximos passos.'
+                    : 'Fale com sua IA para entender campanhas, CRM, gargalos e próximos passos.'}
                 </p>
               </div>
 
@@ -757,7 +757,7 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
                     onChange={(event: ChangeEvent<HTMLTextAreaElement>) =>
                       setInputValue(event.target.value)
                     }
-                    placeholder="Pergunte sobre clientes, operação, campanhas, CRM, gargalos ou próximos passos..."
+                    placeholder="Pergunte sobre campanhas, CRM, gargalos ou próximos passos..."
                     rows={1}
                   />
                   <div className="assistant-form-actions-inline">
@@ -812,7 +812,6 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
                     ) : null}
                     <span><i className="bx bx-bolt-circle"></i> {dashboardState?.globalIntegrations?.aiModel || 'Modelo configurado'}</span>
                     <span><i className="bx bx-shield-quarter"></i> Contexto interno ativo</span>
-                    <span><i className="bx bx-layout"></i> {focusLabel}</span>
                     <span><i className="bx bx-lock-open-alt"></i> {aiAccessLabel}</span>
                     <span>
                       <i className={`bx ${isListening ? 'bx-loader-circle' : isVoiceSupported ? 'bx-microphone' : 'bx-microphone-off'}`}></i>
@@ -1021,6 +1020,36 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
           letter-spacing: 0.08em;
           text-transform: uppercase;
         }
+        .assistant-history-actions {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .assistant-history-collapse {
+          width: 34px;
+          height: 34px;
+          border-radius: 999px;
+          border: 1px solid var(--border-color);
+          background: rgba(255, 255, 255, 0.04);
+          color: var(--text-primary);
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
+        }
+
+        .assistant-history-collapse:hover {
+          transform: translateY(-1px);
+          border-color: color-mix(in srgb, var(--accent-blue) 26%, transparent);
+          background: color-mix(in srgb, var(--accent-blue) 10%, transparent);
+        }
+
+        .assistant-history-card-collapsed {
+          padding-bottom: 20px;
+        }
+
 
         .assistant-history-list {
           display: grid;
@@ -1791,6 +1820,7 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
         }
 
         :root[data-ui-mode='light'] .assistant-history-new,
+        :root[data-ui-mode='light'] .assistant-history-collapse,
         :root[data-ui-mode='light'] .assistant-history-item {
           background: rgba(255, 255, 255, 0.88);
           border-color: rgba(15, 23, 42, 0.08);
