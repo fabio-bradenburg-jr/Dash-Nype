@@ -472,7 +472,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
   const primaryChartConfig = chartMetricOptions.find((option) => option.key === primaryChartMetric) || chartMetricOptions[0]
   const secondaryChartConfig = chartMetricOptions.find((option) => option.key === secondaryChartMetric) || chartMetricOptions[1]
   const distributionData = [
-    { name: 'Compras', value: getMetric('purchases')?.value || 0, color: '#3b82f6' },
+    { name: 'Compras', value: getMetric('purchases')?.value || 0, color: 'var(--accent-blue)' },
     { name: 'Leads', value: getMetric('leads')?.value || 0, color: '#10b981' },
     { name: 'Mensagens', value: getMetric('messages')?.value || 0, color: '#f59e0b' },
     { name: 'Cliques sem conversão', value: getMetric('clicksWithoutConversion')?.value || 0, color: '#475569' },
@@ -1427,7 +1427,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
               <CardContent className="space-y-5 p-5">
                 <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                   <div>
-                    <div className="inline-flex items-center gap-2 rounded-2xl border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-bold text-blue-700">
+                    <div className="inline-flex items-center gap-2 rounded-2xl border border-[color:color-mix(in_srgb,var(--saas-primary)_28%,rgba(15,23,42,0.08))] bg-[color:color-mix(in_srgb,var(--saas-primary)_10%,white)] px-4 py-2 text-sm font-bold text-[var(--saas-primary)]">
                       <span>∞</span>
                       <span>Meta Ads</span>
                     </div>
@@ -2190,7 +2190,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
                           onClick={() => toggleQualifiedStageOnEditingForm(stage.id)}
                           className={`rounded-full border px-3 py-2 text-xs font-semibold transition ${
                             editingClientForm.agendorQualifiedStageIds.includes(stage.id)
-                              ? 'border-sky-300 bg-sky-50 text-sky-900'
+                              ? 'border-[color:color-mix(in_srgb,var(--saas-primary)_34%,rgba(15,23,42,0.08))] bg-[color:color-mix(in_srgb,var(--saas-primary)_10%,white)] text-[color:color-mix(in_srgb,var(--saas-primary)_72%,#0f172a)]'
                               : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50'
                           }`}
                         >
@@ -2480,7 +2480,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
                           onClick={() => toggleQualifiedStageOnClientForm(stage.id)}
                           className={`rounded-full border px-3 py-2 text-xs font-semibold transition ${
                             clientForm.agendorQualifiedStageIds.includes(stage.id)
-                              ? 'border-sky-300 bg-sky-50 text-sky-900'
+                              ? 'border-[color:color-mix(in_srgb,var(--saas-primary)_34%,rgba(15,23,42,0.08))] bg-[color:color-mix(in_srgb,var(--saas-primary)_10%,white)] text-[color:color-mix(in_srgb,var(--saas-primary)_72%,#0f172a)]'
                               : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50'
                           }`}
                         >

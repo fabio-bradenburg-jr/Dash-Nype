@@ -17647,7 +17647,7 @@ export default function DashboardShell({
           justify-content: center;
           background: linear-gradient(180deg, rgba(78, 137, 255, 0.24), rgba(78, 137, 255, 0.14));
           border: 1px solid rgba(78, 137, 255, 0.36);
-          color: #dbeafe;
+          color: color-mix(in srgb, var(--accent-blue) 64%, white 36%);
           font-size: 11px;
           font-weight: 700;
           letter-spacing: 0.06em;
@@ -17838,7 +17838,7 @@ export default function DashboardShell({
         }
 
         .operation-comment-icon.activity {
-          color: #93c5fd;
+          color: var(--accent-blue);
           background: rgba(78, 137, 255, 0.12);
           border-color: rgba(78, 137, 255, 0.18);
         }
@@ -17861,7 +17861,7 @@ export default function DashboardShell({
         }
 
         .operation-comment-badge.activity {
-          color: #bfdbfe;
+          color: color-mix(in srgb, var(--accent-blue) 72%, white 28%);
           background: rgba(78, 137, 255, 0.12);
           border-color: rgba(78, 137, 255, 0.18);
         }
@@ -19863,7 +19863,7 @@ export default function DashboardShell({
 
         .ai-insights-state i {
           font-size: 28px;
-          color: #93c5fd;
+          color: var(--accent-blue);
         }
 
         .ai-insights-state strong,
@@ -19894,7 +19894,7 @@ export default function DashboardShell({
         }
 
         .ai-insights-kicker {
-          color: #93c5fd;
+          color: var(--accent-blue);
           font-size: 11px;
           font-weight: 700;
           letter-spacing: 0.08em;
@@ -20230,7 +20230,7 @@ export default function DashboardShell({
           display: grid;
           place-items: center;
           background: rgba(59, 130, 246, 0.16);
-          color: #bfdbfe;
+          color: color-mix(in srgb, var(--accent-blue) 72%, white 28%);
           font-size: 13px;
           font-weight: 800;
         }
@@ -20355,7 +20355,7 @@ export default function DashboardShell({
         }
 
         .meta-ranking-detail-kicker {
-          color: #93c5fd;
+          color: var(--accent-blue);
           font-size: 11px;
           font-weight: 700;
           letter-spacing: 0.08em;
@@ -21464,12 +21464,12 @@ export default function DashboardShell({
         :root[data-ui-mode='light'] .sidebar :global(.nav-item:hover) {
           background: linear-gradient(90deg, rgba(239, 238, 255, 0.96), rgba(250, 248, 255, 0.92));
           color: #1a1b20;
-          box-shadow: inset 3px 0 0 rgba(71, 68, 229, 0.72), inset 0 0 0 1px rgba(71, 68, 229, 0.08);
+          box-shadow: inset 3px 0 0 rgba(var(--accent-rgb), 0.72), inset 0 0 0 1px rgba(var(--accent-rgb), 0.08);
         }
 
         :root[data-ui-mode='light'] .sidebar :global(.nav-item.active:hover) {
           background: linear-gradient(90deg, rgba(234, 232, 255, 0.98), rgba(250, 248, 255, 0.94));
-          box-shadow: inset 4px 0 0 rgba(71, 68, 229, 0.9), inset 0 0 0 1px rgba(71, 68, 229, 0.12);
+          box-shadow: inset 4px 0 0 rgba(var(--accent-rgb), 0.9), inset 0 0 0 1px rgba(var(--accent-rgb), 0.12);
         }
 
         :root[data-ui-mode='light'] .sidebar-collapsed :global(.nav-item)::after {
@@ -22889,7 +22889,7 @@ export default function DashboardShell({
           border-radius: 999px;
           border: 1px solid rgba(59, 130, 246, 0.24);
           background: rgba(59, 130, 246, 0.08);
-          color: #bfdbfe;
+          color: color-mix(in srgb, var(--accent-blue) 72%, white 28%);
           display: grid;
           place-items: center;
           flex: 0 0 auto;
@@ -22934,7 +22934,7 @@ export default function DashboardShell({
           margin-bottom: 10px;
           background: rgba(59, 130, 246, 0.12);
           border: 1px solid rgba(96, 165, 250, 0.24);
-          color: #bfdbfe;
+          color: color-mix(in srgb, var(--accent-blue) 72%, white 28%);
           font-size: 22px;
         }
 
@@ -22974,7 +22974,7 @@ export default function DashboardShell({
         .meta-filter-kicker {
           display: inline-block;
           margin-bottom: 8px;
-          color: #60a5fa;
+          color: var(--accent-blue);
           font-size: 11px;
           font-weight: 700;
           letter-spacing: 0.08em;
@@ -23073,7 +23073,7 @@ export default function DashboardShell({
           border-radius: 12px;
           border: 1px solid rgba(255, 255, 255, 0.06);
           background: rgba(255, 255, 255, 0.04);
-          color: #dbeafe;
+          color: color-mix(in srgb, var(--accent-blue) 64%, white 36%);
           flex-shrink: 0;
         }
 
@@ -23400,7 +23400,7 @@ export default function DashboardShell({
         }
 
         .meta-result-preview-kicker {
-          color: #93c5fd;
+          color: var(--accent-blue);
           font-size: 11px;
           font-weight: 700;
           letter-spacing: 0.08em;
@@ -23987,7 +23987,7 @@ export default function DashboardShell({
         }
 
         .ranking-metrics small {
-          color: #93c5fd;
+          color: var(--accent-blue);
           font-size: 11px;
           font-weight: 600;
         }
@@ -24024,7 +24024,7 @@ export default function DashboardShell({
           justify-content: center;
           background: rgba(59, 130, 246, 0.1);
           border: 1px solid rgba(96, 165, 250, 0.2);
-          color: #dbeafe;
+          color: color-mix(in srgb, var(--accent-blue) 64%, white 36%);
           font-size: 14px;
           font-weight: 800;
           flex-shrink: 0;
@@ -24065,7 +24065,7 @@ export default function DashboardShell({
           border-radius: 999px;
           background: rgba(59, 130, 246, 0.08);
           border: 1px solid rgba(96, 165, 250, 0.14);
-          color: #bfdbfe;
+          color: color-mix(in srgb, var(--accent-blue) 72%, white 28%);
           font-size: 11px;
           font-weight: 700;
           letter-spacing: 0.04em;
@@ -24932,7 +24932,7 @@ export default function DashboardShell({
         .simple-client-icon.active {
           border-color: rgba(59, 130, 246, 0.34);
           background: rgba(59, 130, 246, 0.14);
-          color: #60a5fa;
+          color: var(--accent-blue);
         }
         .simple-client-edit { justify-self: end; }
         .simple-client-modal {

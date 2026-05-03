@@ -241,5 +241,5 @@ const primaryButtonStyle = {
   padding: '0.8rem 1.2rem',
   fontSize: '0.78rem',
   fontWeight: 800,
-  boxShadow: '0 16px 30px rgba(71, 68, 229, 0.18)',
+  boxShadow: '0 16px 30px rgba(var(--accent-rgb), 0.18)',
 }

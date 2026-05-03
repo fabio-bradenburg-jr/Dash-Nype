@@ -1153,7 +1153,7 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
         }
 
         .assistant-access-badge strong {
-          color: #dbeafe;
+          color: color-mix(in srgb, var(--accent-blue) 64%, white 36%);
           font-size: 12px;
           font-weight: 800;
           letter-spacing: 0.12em;
@@ -1171,7 +1171,7 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
           font-size: 11px;
           text-transform: uppercase;
           letter-spacing: 0.16em;
-          color: #93c5fd;
+          color: var(--accent-blue);
           font-weight: 800;
         }
 
@@ -1246,7 +1246,7 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
         }
 
         .assistant-context-stat i {
-          color: #93c5fd;
+          color: var(--accent-blue);
           font-size: 18px;
         }
 
@@ -1301,7 +1301,7 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
         .assistant-agent-trigger:hover,
         .assistant-agent-trigger.active {
           border-color: color-mix(in srgb, var(--accent-blue) 36%, transparent);
-          color: #cfe2ff;
+          color: color-mix(in srgb, var(--accent-blue) 68%, white 32%);
           background: rgba(59, 130, 246, 0.08);
         }
 
@@ -1319,7 +1319,7 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
 
         .assistant-agent-chevron.open {
           transform: rotate(180deg);
-          color: #93c5fd;
+          color: var(--accent-blue);
         }
 
         .assistant-agent-menu {
@@ -1392,7 +1392,7 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
         }
 
         .assistant-chip:hover {
-          color: #93c5fd;
+          color: var(--accent-blue);
           border-color: color-mix(in srgb, var(--accent-blue) 36%, transparent);
         }
 
@@ -1493,7 +1493,7 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
 
         .assistant-avatar-bot {
           background: color-mix(in srgb, var(--accent-blue) 14%, transparent);
-          color: #93c5fd;
+          color: var(--accent-blue);
           box-shadow: 0 0 24px rgba(59, 110, 228, 0.12);
         }
 
@@ -1549,7 +1549,7 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
         }
 
         .assistant-message-actions button:hover {
-          color: #93c5fd;
+          color: var(--accent-blue);
         }
 
         .assistant-message-copy {
@@ -1610,11 +1610,11 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
         }
 
         .assistant-form-icon:hover {
-          color: #93c5fd;
+          color: var(--accent-blue);
         }
 
         .assistant-form-icon-active {
-          color: #93c5fd;
+          color: var(--accent-blue);
           background: rgba(59, 130, 246, 0.14);
           box-shadow: inset 0 0 0 1px rgba(147, 197, 253, 0.24);
         }

@@ -1169,7 +1169,7 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
         ...operationSettings.lanes,
         createOperationLaneRecord({
           label: newOperationLaneLabel.trim(),
-          color: '#3b82f6',
+          color: 'var(--accent-blue)',
           defaultSubtasks: [],
         }),
       ],
@@ -1219,7 +1219,7 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
         ...operationSettings.statuses,
         createOperationStatusRecord({
           label: newOperationStatusLabel.trim(),
-          color: '#3b82f6',
+          color: 'var(--accent-blue)',
         }),
       ],
     }
@@ -1992,7 +1992,7 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
                       <div className="settings-integrations-grid settings-category-grid">
                         <div className="integration-block integration-block-meta">
                           <div className="integration-heading">
-                            <div className="integration-icon" style={{ color: '#3b82f6', borderColor: '#3b82f633' }}>
+                            <div className="integration-icon" style={{ color: 'var(--accent-blue)', borderColor: 'color-mix(in srgb, var(--accent-blue) 30%, transparent)' }}>
                               <i className="bx bxl-meta"></i>
                             </div>
                             <div>
@@ -2309,7 +2309,7 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
 
                         <div className="integration-block integration-block-meta">
                           <div className="integration-heading">
-                            <div className="integration-icon" style={{ color: '#38bdf8', borderColor: '#38bdf833' }}>
+                            <div className="integration-icon" style={{ color: 'var(--accent-blue)', borderColor: 'color-mix(in srgb, var(--accent-blue) 30%, transparent)' }}>
                               <i className="bx bx-cog"></i>
                             </div>
                             <div>
@@ -3427,7 +3427,7 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
         }
 
         .settings-category-kicker {
-          color: #93c5fd;
+          color: var(--accent-blue);
           font-size: 11px;
           font-weight: 700;
           letter-spacing: 0.08em;
@@ -3515,7 +3515,7 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
           border-radius: 12px;
           border: 1px solid rgba(59, 130, 246, 0.2);
           background: color-mix(in srgb, var(--accent-blue) 12%, transparent);
-          color: #93c5fd;
+          color: var(--accent-blue);
         }
 
         .settings-inline-remove {
@@ -3727,7 +3727,7 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
         }
 
         .meta-connection-guide-kicker {
-          color: #93c5fd;
+          color: var(--accent-blue);
           font-size: 11px;
           font-weight: 800;
           letter-spacing: 0.08em;
@@ -3786,7 +3786,7 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
         .settings-callout.info {
           background: rgba(59, 130, 246, 0.12);
           border: 1px solid rgba(59, 130, 246, 0.2);
-          color: #bfdbfe;
+          color: color-mix(in srgb, var(--accent-blue) 72%, white 28%);
         }
 
         :root[data-ui-mode='light'] .settings-page-shell {

@@ -54,7 +54,7 @@ export default async function ClienteDetalhePage({ params }) {
             fontSize: '0.82rem',
             fontWeight: 900,
             textDecoration: 'none',
-            boxShadow: '0 16px 30px rgba(71, 68, 229, 0.18)',
+            boxShadow: '0 16px 30px rgba(var(--accent-rgb), 0.18)',
           }}
         >
           <span className="material-symbols-outlined" style={{ fontSize: '1rem' }}>
