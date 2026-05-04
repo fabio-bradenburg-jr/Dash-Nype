@@ -9534,6 +9534,21 @@ export default function DashboardShell({
           resultKey,
           resultConfig,
           resultLabel,
+          states: {
+            key: 'states',
+            title: `Top 5 por estados de ${resultLabel}`,
+            description: `Estados com maior volume de ${resultLabel} no período selecionado.`,
+            emptyMessage: `Sem dados por estado de ${resultLabel} para o período.`,
+            resultLabel: resultConfig.resultLabel,
+            costLabel: resultConfig.costLabel,
+            resultMetricKey: resultConfig.resultMetricKey,
+            accent: '#38bdf8',
+            resultTone: '#22c55e',
+            costTone: '#f59e0b',
+            previewKicker: 'Estado',
+            detailDescription: `Compare o estado selecionado com foco em ${resultLabel} para entender volume, eficiência e investimento.`,
+            items: topStateItems,
+          },
           cities: {
             key: 'cities',
             title: `Top 5 por ${metaGeoRankingTitle} de ${resultLabel}`,
@@ -14797,130 +14812,91 @@ export default function DashboardShell({
                   <div className="glass-panel ranking-card meta-ranking-card">
                     <div className="section-header section-header-stack">
                       <div>
-                        <h2>Mapa de estados e cidades</h2>
-                        <p className="chart-subtitle">Camadas territoriais separadas pelo resultado ativo do topo do dashboard.</p>
+                        <h2>Top 5 por estados e cidades</h2>
+                        <p className="chart-subtitle">Rankings territoriais separados pelo tipo de resultado ativo no topo do dashboard.</p>
                       </div>
                     </div>
-                    <div className="geo-map-panel">
+                    <div className="meta-ranking-layer-stack">
                       {isRankingsLoading ? (
-                        <div className="ranking-empty">Carregando ranking de cidades...</div>
+                        <div className="ranking-empty">Carregando ranking territorial...</div>
                       ) : rankingsError ? (
                         <div className="ranking-empty">{rankingsError}</div>
-                      ) : (breakdowns.errors?.states && breakdowns.errors?.cities && !metaRankingLayers.some((layer) => layer.map.stateItems.length || layer.map.cityItems.length)) ? (
+                      ) : (breakdowns.errors?.states && breakdowns.errors?.cities && !metaRankingLayers.some((layer) => layer.states.items.length || layer.cities.items.length)) ? (
                         <div className="ranking-empty">{breakdowns.errors.states || breakdowns.errors.cities}</div>
-                      ) : !metaRankingLayers.some((layer) => layer.map.stateItems.length || layer.map.cityItems.length) ? (
-                        <div className="ranking-empty">Sem dados geográficos suficientes para montar o mapa por resultado no período.</div>
+                      ) : !metaRankingLayers.some((layer) => layer.states.items.length || layer.cities.items.length) ? (
+                        <div className="ranking-empty">Sem dados geográficos suficientes para montar o ranking por resultado no período.</div>
                       ) : (
-                        <div className="meta-ranking-layer-stack">
-                          {metaRankingLayers.map((layer) => (
-                            <div key={`geo-layer-${layer.resultKey}`} className="meta-ranking-layer-section">
-                              <div className="meta-ranking-layer-head">
-                                <h3>{layer.cities.title}</h3>
-                                <p>{layer.cities.description}</p>
-                              </div>
-                              {(!layer.map.stateItems.length && !layer.map.cityItems.length) ? (
-                                <div className="ranking-empty">{layer.cities.emptyMessage}</div>
-                              ) : (
-                                <div className="brazil-map-shell">
-                                  <div
-                                    className="brazil-map-stage"
-                                    style={{
-                                      '--client-accent-rgb': `${activeClientDashboardRgb.r}, ${activeClientDashboardRgb.g}, ${activeClientDashboardRgb.b}`,
-                                    }}
-                                  >
-                                    <svg viewBox="0 0 140 145" className="brazil-map-silhouette" aria-hidden="true">
-                                      <path d={BRAZIL_MAP_SILHOUETTE_PATH}></path>
-                                    </svg>
-
-                                    {layer.map.stateItems.map((item) => {
-                                      const intensity = Math.max(0.22, (item.conversions || 0) / layer.map.maxConversions)
-                                      return (
-                                        <button
-                                          key={`state-map-${layer.resultKey}-${item.uf}`}
-                                          type="button"
-                                          className={`brazil-state-node ${layer.map.topStateItem?.uf === item.uf ? 'is-top-performer' : ''}`}
-                                          style={{
-                                            left: `${item.x}%`,
-                                            top: `${item.y}%`,
-                                            '--state-intensity': intensity,
-                                          }}
-                                          title={`${item.name}: ${formatNumber(item.conversions)} ${layer.resultLabel} · ${formatCurrency(item.averageCost)} por resultado`}
-                                        >
-                                          <span>{item.uf}</span>
-                                        </button>
-                                      )
-                                    })}
-
-                                    {layer.map.cityItems.map((item, index) => {
-                                      const cityIntensity = Math.max(0.28, (item.conversions || 0) / layer.map.maxConversions)
-                                      return (
-                                        <button
-                                          key={`city-map-${layer.resultKey}-${item.label}-${index}`}
-                                          type="button"
-                                          className="brazil-city-node"
-                                          style={{
-                                            left: `${item.x}%`,
-                                            top: `${item.y}%`,
-                                            '--city-intensity': cityIntensity,
-                                          }}
-                                          title={`${item.label}: ${formatNumber(item.conversions)} ${layer.resultLabel} · ${formatCurrency(item.averageCost)} por resultado`}
-                                          onClick={() => setMetaRankingDrilldown({ type: 'cities', item, resultKey: layer.resultKey })}
-                                        >
-                                          <span>{item.label}</span>
-                                        </button>
-                                      )
-                                    })}
-                                  </div>
-
-                                  <div className="brazil-map-legend">
-                                    <div className="brazil-map-legend-card glass-item">
-                                      <strong>{`Top estados de ${layer.resultLabel}`}</strong>
-                                      <div className="brazil-map-legend-list">
-                                        {layer.map.topStateItems.length ? (
-                                          layer.map.topStateItems.map((item) => (
-                                            <div
-                                              key={`state-legend-${layer.resultKey}-${item.uf}`}
-                                              className={`brazil-map-legend-row ${layer.map.topStateItem?.uf === item.uf ? 'is-top-performer' : ''}`}
-                                              style={layer.map.topStateItem?.uf === item.uf
-                                                ? { '--client-accent-rgb': `${activeClientDashboardRgb.r}, ${activeClientDashboardRgb.g}, ${activeClientDashboardRgb.b}` }
-                                                : undefined}
-                                            >
-                                              <span>{item.name}</span>
-                                              <b>{formatNumber(item.conversions)}</b>
-                                            </div>
-                                          ))
-                                        ) : (
-                                          <div className="ranking-inline-note">Sem leitura estadual disponível.</div>
-                                        )}
-                                      </div>
-                                    </div>
-
-                                    <div className="brazil-map-legend-card glass-item">
-                                      <strong>{layer.cities.title}</strong>
-                                      <div className="brazil-map-legend-list">
-                                        {layer.cities.items.length ? (
-                                          layer.cities.items.map((item, index) => (
-                                            <button
-                                              key={`${layer.resultKey}-${item.label}-${index}`}
-                                              type="button"
-                                              className="brazil-map-legend-row brazil-map-legend-row-action"
-                                              onClick={() => setMetaRankingDrilldown({ type: 'cities', item, resultKey: layer.resultKey })}
-                                            >
-                                              <span>{item.label}</span>
-                                              <b>{formatNumber(item.conversions)}</b>
-                                            </button>
-                                          ))
-                                        ) : (
-                                          <div className="ranking-inline-note">Sem leitura territorial neste recorte.</div>
-                                        )}
-                                      </div>
-                                    </div>
-                                  </div>
-                                </div>
-                              )}
+                        metaRankingLayers.map((layer) => (
+                          <div key={`geo-layer-${layer.resultKey}`} className="meta-ranking-layer-section">
+                            <div className="meta-ranking-layer-head">
+                              <h3>{`Top 5 territorial de ${layer.resultLabel}`}</h3>
+                              <p>Estados e {metaGeoRankingTitle} com melhor volume de resultado no período selecionado.</p>
                             </div>
-                          ))}
-                        </div>
+                            <div className="geo-ranking-list-grid">
+                              <div className="geo-ranking-list-card glass-item">
+                                <strong>{layer.states.title}</strong>
+                                <div className="ranking-list">
+                                  {layer.states.items.length === 0 ? (
+                                    <div className="ranking-empty">{layer.states.emptyMessage}</div>
+                                  ) : (
+                                    layer.states.items.slice(0, 5).map((item, index) => (
+                                      <button
+                                        key={`${layer.resultKey}-state-${item.uf || item.label}-${index}`}
+                                        type="button"
+                                        className="ranking-row ranking-row-action meta-ranking-row geo-ranking-row"
+                                        onClick={() => setMetaRankingDrilldown({ type: 'states', item, resultKey: layer.resultKey })}
+                                      >
+                                        <div className="age-ranking-main">
+                                          <div className="age-ranking-position">#{index + 1}</div>
+                                          <div className="ranking-main-column meta-ranking-main-column">
+                                            <strong>{item.name || item.label}</strong>
+                                            <span>{formatNumber(item.conversions)} {layer.resultLabel}</span>
+                                          </div>
+                                        </div>
+                                        <div className="ranking-metrics meta-ranking-metrics">
+                                          <b>{formatCurrency(item.averageCost)} / resultado</b>
+                                          <span>{item.uf ? `UF ${item.uf}` : 'Estado'}</span>
+                                          <small>Toque para comparar</small>
+                                        </div>
+                                      </button>
+                                    ))
+                                  )}
+                                </div>
+                              </div>
+
+                              <div className="geo-ranking-list-card glass-item">
+                                <strong>{layer.cities.title}</strong>
+                                <div className="ranking-list">
+                                  {layer.cities.items.length === 0 ? (
+                                    <div className="ranking-empty">{layer.cities.emptyMessage}</div>
+                                  ) : (
+                                    layer.cities.items.slice(0, 5).map((item, index) => (
+                                      <button
+                                        key={`${layer.resultKey}-city-${item.label}-${index}`}
+                                        type="button"
+                                        className="ranking-row ranking-row-action meta-ranking-row geo-ranking-row"
+                                        onClick={() => setMetaRankingDrilldown({ type: 'cities', item, resultKey: layer.resultKey })}
+                                      >
+                                        <div className="age-ranking-main">
+                                          <div className="age-ranking-position">#{index + 1}</div>
+                                          <div className="ranking-main-column meta-ranking-main-column">
+                                            <strong>{item.label}</strong>
+                                            <span>{formatNumber(item.conversions)} {layer.resultLabel}</span>
+                                          </div>
+                                        </div>
+                                        <div className="ranking-metrics meta-ranking-metrics">
+                                          <b>{formatCurrency(item.averageCost)} / resultado</b>
+                                          <span>{formatCurrency(item.spend)} investidos</span>
+                                          <small>Toque para comparar</small>
+                                        </div>
+                                      </button>
+                                    ))
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ))
                       )}
                     </div>
                   </div>
@@ -23659,6 +23635,27 @@ export default function DashboardShell({
           margin-top: 14px;
         }
 
+        .geo-ranking-list-grid {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 16px;
+        }
+
+        .geo-ranking-list-card {
+          display: grid;
+          gap: 12px;
+          padding: 18px;
+        }
+
+        .geo-ranking-list-card > strong {
+          font-size: 16px;
+          line-height: 1.25;
+        }
+
+        .geo-ranking-row {
+          min-height: 82px;
+        }
+
         .brazil-map-shell {
           display: grid;
           grid-template-columns: minmax(0, 1.2fr) minmax(260px, 0.7fr);
@@ -25835,6 +25832,7 @@ export default function DashboardShell({
             grid-template-columns: 1fr;
           }
 
+          .geo-ranking-list-grid,
           .brazil-map-shell {
             grid-template-columns: 1fr;
           }
