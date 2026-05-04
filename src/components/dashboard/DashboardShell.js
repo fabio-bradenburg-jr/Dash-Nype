@@ -14812,8 +14812,8 @@ export default function DashboardShell({
                   <div className="glass-panel ranking-card meta-ranking-card">
                     <div className="section-header section-header-stack">
                       <div>
-                        <h2>Top 5 por estados e cidades</h2>
-                        <p className="chart-subtitle">Rankings territoriais separados pelo tipo de resultado ativo no topo do dashboard.</p>
+                        <h2>Top 5 por estados</h2>
+                        <p className="chart-subtitle">Ranking estadual separado pelo tipo de resultado ativo no topo do dashboard.</p>
                       </div>
                     </div>
                     <div className="meta-ranking-layer-stack">
@@ -14821,18 +14821,18 @@ export default function DashboardShell({
                         <div className="ranking-empty">Carregando ranking territorial...</div>
                       ) : rankingsError ? (
                         <div className="ranking-empty">{rankingsError}</div>
-                      ) : (breakdowns.errors?.states && breakdowns.errors?.cities && !metaRankingLayers.some((layer) => layer.states.items.length || layer.cities.items.length)) ? (
+                      ) : (breakdowns.errors?.states && breakdowns.errors?.cities && !metaRankingLayers.some((layer) => layer.states.items.length)) ? (
                         <div className="ranking-empty">{breakdowns.errors.states || breakdowns.errors.cities}</div>
-                      ) : !metaRankingLayers.some((layer) => layer.states.items.length || layer.cities.items.length) ? (
-                        <div className="ranking-empty">Sem dados geográficos suficientes para montar o ranking por resultado no período.</div>
+                      ) : !metaRankingLayers.some((layer) => layer.states.items.length) ? (
+                        <div className="ranking-empty">Sem dados por estado suficientes para montar o ranking por resultado no período.</div>
                       ) : (
                         metaRankingLayers.map((layer) => (
                           <div key={`geo-layer-${layer.resultKey}`} className="meta-ranking-layer-section">
                             <div className="meta-ranking-layer-head">
-                              <h3>{`Top 5 territorial de ${layer.resultLabel}`}</h3>
-                              <p>Estados e {metaGeoRankingTitle} com melhor volume de resultado no período selecionado.</p>
+                              <h3>{layer.states.title}</h3>
+                              <p>{layer.states.description}</p>
                             </div>
-                            <div className="geo-ranking-list-grid">
+                            <div className="geo-ranking-list-grid geo-ranking-list-grid-single">
                               <div className="geo-ranking-list-card glass-item">
                                 <strong>{layer.states.title}</strong>
                                 <div className="ranking-list">
@@ -14856,37 +14856,6 @@ export default function DashboardShell({
                                         <div className="ranking-metrics meta-ranking-metrics">
                                           <b>{formatCurrency(item.averageCost)} / resultado</b>
                                           <span>{item.uf ? `UF ${item.uf}` : 'Estado'}</span>
-                                          <small>Toque para comparar</small>
-                                        </div>
-                                      </button>
-                                    ))
-                                  )}
-                                </div>
-                              </div>
-
-                              <div className="geo-ranking-list-card glass-item">
-                                <strong>{layer.cities.title}</strong>
-                                <div className="ranking-list">
-                                  {layer.cities.items.length === 0 ? (
-                                    <div className="ranking-empty">{layer.cities.emptyMessage}</div>
-                                  ) : (
-                                    layer.cities.items.slice(0, 5).map((item, index) => (
-                                      <button
-                                        key={`${layer.resultKey}-city-${item.label}-${index}`}
-                                        type="button"
-                                        className="ranking-row ranking-row-action meta-ranking-row geo-ranking-row"
-                                        onClick={() => setMetaRankingDrilldown({ type: 'cities', item, resultKey: layer.resultKey })}
-                                      >
-                                        <div className="age-ranking-main">
-                                          <div className="age-ranking-position">#{index + 1}</div>
-                                          <div className="ranking-main-column meta-ranking-main-column">
-                                            <strong>{item.label}</strong>
-                                            <span>{formatNumber(item.conversions)} {layer.resultLabel}</span>
-                                          </div>
-                                        </div>
-                                        <div className="ranking-metrics meta-ranking-metrics">
-                                          <b>{formatCurrency(item.averageCost)} / resultado</b>
-                                          <span>{formatCurrency(item.spend)} investidos</span>
                                           <small>Toque para comparar</small>
                                         </div>
                                       </button>
@@ -23639,6 +23608,10 @@ export default function DashboardShell({
           display: grid;
           grid-template-columns: repeat(2, minmax(0, 1fr));
           gap: 16px;
+        }
+
+        .geo-ranking-list-grid-single {
+          grid-template-columns: 1fr;
         }
 
         .geo-ranking-list-card {
