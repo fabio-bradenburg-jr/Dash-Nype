@@ -20277,7 +20277,8 @@ export default function DashboardShell({
         }
 
         .meta-ranking-modal {
-          width: min(100%, 1180px);
+          width: min(96vw, 1640px);
+          max-height: min(94vh, 1100px);
           gap: 18px;
         }
 
@@ -20361,7 +20362,7 @@ export default function DashboardShell({
         }
 
         .meta-ranking-body-creative {
-          grid-template-columns: minmax(0, 1.05fr) minmax(340px, 0.95fr);
+          grid-template-columns: minmax(0, 0.9fr) minmax(520px, 1.1fr);
         }
 
         .meta-ranking-chart-wrapper {
@@ -20402,11 +20403,10 @@ export default function DashboardShell({
 
         .meta-ranking-preview-frame {
           width: 100%;
-          min-height: 280px;
-          min-height: 360px;
-          max-height: 460px;
+          min-height: min(760px, 72vh);
+          max-height: min(860px, 78vh);
           border-radius: 24px;
-          overflow: hidden;
+          overflow: auto;
           border: 1px solid rgba(255, 255, 255, 0.06);
           background: rgba(255, 255, 255, 0.03);
           display: grid;
@@ -20427,8 +20427,8 @@ export default function DashboardShell({
 
         .meta-ranking-preview-frame iframe {
           width: 100%;
-          min-height: 620px;
-          height: 100%;
+          min-height: min(820px, 76vh);
+          height: min(920px, 80vh);
           border: 0;
           background: #fff;
         }
@@ -25941,6 +25941,20 @@ export default function DashboardShell({
 
           .meta-result-chart-wrapper {
             min-height: 300px;
+          }
+
+          .meta-ranking-body-creative {
+            grid-template-columns: 1fr;
+          }
+
+          .meta-ranking-preview-frame {
+            min-height: min(680px, 70vh);
+            max-height: min(760px, 76vh);
+          }
+
+          .meta-ranking-preview-frame iframe {
+            min-height: min(720px, 72vh);
+            height: min(820px, 76vh);
           }
 
           .meta-ranking-chart-wrapper {
