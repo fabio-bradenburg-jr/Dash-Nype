@@ -3093,7 +3093,7 @@ export default function DashboardShell({
   const [metaRankingDetailDailyLoading, setMetaRankingDetailDailyLoading] = useState(false)
   const [metaRankingDetailDailyError, setMetaRankingDetailDailyError] = useState('')
   const [metaResultPreviewKey, setMetaResultPreviewKey] = useState('purchases')
-  const [metaResultGrouping, setMetaResultGrouping] = useState('week')
+  const [metaResultGrouping, setMetaResultGrouping] = useState('day')
   const [isRankingsLoading, setIsRankingsLoading] = useState(false)
   const [rankingsError, setRankingsError] = useState('')
   const [rdSummary, setRdSummary] = useState(null)
