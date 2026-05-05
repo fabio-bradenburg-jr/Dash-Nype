@@ -2956,6 +2956,7 @@ export default function DashboardShell({
   const hasInitialClientsOverride = Array.isArray(initialClientsOverride)
 
   const [hasLoadedPreferences, setHasLoadedPreferences] = useState(false)
+  const [isLoggingOut, setIsLoggingOut] = useState(false)
   const [activeTab, setActiveTab] = useState(REMOVED_TABS.has(initialTab) ? 'assistant' : initialTab)
   const [dateRange, setDateRange] = useState('last_7d')
   const [draftDateRange, setDraftDateRange] = useState('last_7d')
@@ -8892,6 +8893,8 @@ export default function DashboardShell({
   }
 
   const handleLogout = async () => {
+    setIsLoggingOut(true)
+
     try {
       await fetch('/api/auth/logout', { method: 'POST' })
     } catch {
@@ -12226,6 +12229,10 @@ export default function DashboardShell({
 
       </section>
     )
+  }
+
+  if (isLoggingOut) {
+    return <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', background: '#05070d', color: 'white', fontFamily: 'Inter, sans-serif' }}>Saindo...</div>
   }
 
   if (userLoading || !hasLoadedPreferences) {
