@@ -1715,6 +1715,13 @@ const RD_TEMPLATE_METRIC_OPTIONS = {
     tone: 'pink',
     description: 'Oportunidades perdidas dentro da leitura da safra.',
   },
+  lostOpportunityValue: {
+    label: 'Valor perdido',
+    type: 'currency',
+    icon: 'bx-money-withdraw',
+    tone: 'pink',
+    description: 'Valor potencial das oportunidades perdidas na safra criada no período.',
+  },
   openDeals: {
     label: 'Negociações em aberto',
     type: 'number',
@@ -1916,6 +1923,7 @@ const FIXED_RD_METRIC_KEYS = new Set([
   'qualifiedToWonRate',
   'leadToWonRate',
   'lostOpportunityCount',
+  'lostOpportunityValue',
   'openDeals',
   'openPipeline',
   'wonDeals',
@@ -1944,6 +1952,7 @@ const LOWER_IS_BETTER_METRIC_KEYS = new Set([
   'avgLeadToWonDaysFiltered',
   'avgDealToWonDaysFiltered',
   'lostOpportunityCount',
+  'lostOpportunityValue',
   'lostContacts',
 ])
 
@@ -10218,6 +10227,7 @@ export default function DashboardShell({
       qualifiedToWonRate: rdSummary?.qualifiedToWonRate || 0,
       leadToWonRate: rdSummary?.leadToWonRate || 0,
       lostOpportunityCount: rdSummary?.lostOpportunityCount || 0,
+      lostOpportunityValue: rdSummary?.lostOpportunityValue || 0,
       openDeals: rdSummary?.openDeals || 0,
       openPipeline: rdSummary?.openPipeline || 0,
       wonDeals: rdSummary?.wonDeals || 0,
@@ -10264,6 +10274,7 @@ export default function DashboardShell({
       qualifiedToWonRate: previousRdSummary?.qualifiedToWonRate || 0,
       leadToWonRate: previousRdSummary?.leadToWonRate || 0,
       lostOpportunityCount: previousRdSummary?.lostOpportunityCount || 0,
+      lostOpportunityValue: previousRdSummary?.lostOpportunityValue || 0,
       openDeals: previousRdSummary?.openDeals || 0,
       openPipeline: previousRdSummary?.openPipeline || 0,
       wonDeals: previousRdSummary?.wonDeals || 0,
@@ -10819,60 +10830,100 @@ export default function DashboardShell({
       points: metaResultComparisonSeries.length,
     }
   }, [activeMetaResultDrilldownConfig, metaResultComparisonSeries])
-  const rdQualificationKpis = [
+  const previousCrmMetaLeadTotal = previousMetaDashboardMetricValues.leads || 0
+  const metaLeadToQualifiedRate = crmLeadMetaLeads > 0 ? ((rdSummary?.qualifiedOpportunityCount || 0) / crmLeadMetaLeads) * 100 : 0
+  const previousMetaLeadToQualifiedRate = previousCrmMetaLeadTotal > 0
+    ? ((previousRdSummary?.qualifiedOpportunityCount || 0) / previousCrmMetaLeadTotal) * 100
+    : 0
+  const rdAgendorFunnelKpis = [
     {
-      key: 'leadCount',
-      title: 'Leads',
-      value: formatNumber(crmLeadTotal),
-      rawValue: crmLeadTotal,
-      type: 'number',
-      icon: 'bx-user-plus',
-      tone: 'blue',
-      detail: crmLeadBreakdownLabel,
-      trend: buildMetricTrend('leadCount', crmLeadTotal, previousCrmLeadTotal, 'number'),
+      key: "metaLeadCount",
+      title: "Leads Meta",
+      value: formatNumber(crmLeadMetaLeads),
+      rawValue: crmLeadMetaLeads,
+      type: "number",
+      icon: "bx-user-plus",
+      tone: "blue",
+      detail: "Leads gerados no Meta no período selecionado.",
+      trend: buildMetricTrend("metaLeadCount", crmLeadMetaLeads, previousCrmMetaLeadTotal, "number"),
     },
     {
-      key: 'opportunityCount',
-      title: 'Oportunidades',
-      value: formatNumber(rdSummary?.opportunityCount || 0),
-      rawValue: rdSummary?.opportunityCount || 0,
-      type: 'number',
-      icon: 'bx-bulb',
-      tone: 'blue',
-      trend: buildMetricTrend('opportunityCount', rdSummary?.opportunityCount || 0, previousRdDashboardMetricValues.opportunityCount, 'number'),
-    },
-    {
-      key: 'qualifiedOpportunityCount',
-      title: 'Qualificados',
+      key: "qualifiedOpportunityCount",
+      title: "Leads qualificados",
       value: formatNumber(rdSummary?.qualifiedOpportunityCount || 0),
       rawValue: rdSummary?.qualifiedOpportunityCount || 0,
-      type: 'number',
-      icon: 'bx-filter-alt',
-      tone: 'emerald',
-      trend: buildMetricTrend('qualifiedOpportunityCount', rdSummary?.qualifiedOpportunityCount || 0, previousRdDashboardMetricValues.qualifiedOpportunityCount, 'number'),
+      type: "number",
+      icon: "bx-filter-alt",
+      tone: "emerald",
+      detail: "Negócios criados no período que chegaram às etapas qualificadas selecionadas.",
+      trend: buildMetricTrend("qualifiedOpportunityCount", rdSummary?.qualifiedOpportunityCount || 0, previousRdDashboardMetricValues.qualifiedOpportunityCount, "number"),
     },
     {
-      key: 'rdFinalSalesCount',
-      title: 'Vendas',
-      value: formatNumber(rdFinalSalesCount),
-      rawValue: rdFinalSalesCount,
-      type: 'number',
-      icon: 'bx-badge-check',
-      tone: 'emerald',
-      trend: buildMetricTrend('rdFinalSalesCount', rdFinalSalesCount, previousRdFinalSalesCount, 'number'),
+      key: "metaLeadToQualifiedRate",
+      title: "Taxa de qualificação",
+      value: formatPercent(metaLeadToQualifiedRate),
+      rawValue: metaLeadToQualifiedRate,
+      type: "percent",
+      icon: "bx-transfer-alt",
+      tone: "cyan",
+      detail: "Qualificados Agendor divididos pelos leads gerados no Meta.",
+      trend: buildMetricTrend("metaLeadToQualifiedRate", metaLeadToQualifiedRate, previousMetaLeadToQualifiedRate, "percent"),
     },
-  ]
-  const rdCurrentHarvestKpis = [
-    { key: 'wonOpportunityCount', title: 'Conversões da safra atual', value: formatNumber(rdSummary?.wonOpportunityCount || 0), rawValue: rdSummary?.wonOpportunityCount || 0, type: 'number', icon: 'bx-badge-check', tone: 'emerald', trend: buildMetricTrend('wonOpportunityCount', rdSummary?.wonOpportunityCount || 0, previousRdDashboardMetricValues.wonOpportunityCount, 'number') },
-    { key: 'wonOpportunityRevenue', title: 'Valor vendido da safra atual', value: formatCurrency(rdSummary?.wonOpportunityRevenue || 0), rawValue: rdSummary?.wonOpportunityRevenue || 0, type: 'currency', icon: 'bx-wallet-alt', tone: 'orange', trend: buildMetricTrend('wonOpportunityRevenue', rdSummary?.wonOpportunityRevenue || 0, previousRdDashboardMetricValues.wonOpportunityRevenue, 'currency') },
-  ]
-  const rdPreviousHarvestKpis = [
-    { key: 'wonDealsFromPreviousCohorts', title: 'Conversões de safras anteriores', value: formatNumber(rdSummary?.wonDealsFromPreviousCohorts || 0), rawValue: rdSummary?.wonDealsFromPreviousCohorts || 0, type: 'number', icon: 'bx-history', tone: 'blue', trend: buildMetricTrend('wonDealsFromPreviousCohorts', rdSummary?.wonDealsFromPreviousCohorts || 0, previousRdDashboardMetricValues.wonDealsFromPreviousCohorts, 'number') },
-    { key: 'wonRevenueFromPreviousCohorts', title: 'Valor vendido de safras anteriores', value: formatCurrency(rdSummary?.wonRevenueFromPreviousCohorts || 0), rawValue: rdSummary?.wonRevenueFromPreviousCohorts || 0, type: 'currency', icon: 'bx-coin-stack', tone: 'orange', trend: buildMetricTrend('wonRevenueFromPreviousCohorts', rdSummary?.wonRevenueFromPreviousCohorts || 0, previousRdDashboardMetricValues.wonRevenueFromPreviousCohorts, 'currency') },
-  ]
-  const rdFinalKpis = [
-    { key: 'rdFinalRevenue', title: 'Faturamento total', value: formatCurrency(rdFinalRevenue), rawValue: rdFinalRevenue, type: 'currency', icon: 'bx-wallet-alt', tone: 'orange', trend: buildMetricTrend('rdFinalRevenue', rdFinalRevenue, previousRdFinalRevenue, 'currency') },
-    { key: 'wonRoas', title: 'ROAS comercial', value: formatMultiplier(rdCommercialRoas), rawValue: rdCommercialRoas, type: 'multiplier', icon: 'bx-line-chart', tone: 'blue', trend: buildMetricTrend('wonRoas', rdCommercialRoas, previousRdCommercialRoas, 'multiplier') },
+    {
+      key: "wonOpportunityCount",
+      title: "Vendas",
+      value: formatNumber(rdSummary?.wonOpportunityCount || 0),
+      rawValue: rdSummary?.wonOpportunityCount || 0,
+      type: "number",
+      icon: "bx-badge-check",
+      tone: "emerald",
+      detail: "Negócios criados no período que estão como vendidos.",
+      trend: buildMetricTrend("wonOpportunityCount", rdSummary?.wonOpportunityCount || 0, previousRdDashboardMetricValues.wonOpportunityCount, "number"),
+    },
+    {
+      key: "wonOpportunityRevenue",
+      title: "Faturamento",
+      value: formatCurrency(rdSummary?.wonOpportunityRevenue || 0),
+      rawValue: rdSummary?.wonOpportunityRevenue || 0,
+      type: "currency",
+      icon: "bx-wallet-alt",
+      tone: "orange",
+      detail: "Valor vendido dos negócios criados no período.",
+      trend: buildMetricTrend("wonOpportunityRevenue", rdSummary?.wonOpportunityRevenue || 0, previousRdDashboardMetricValues.wonOpportunityRevenue, "currency"),
+    },
+    {
+      key: "qualifiedToWonRate",
+      title: "Taxa de venda",
+      value: formatPercent(rdSummary?.qualifiedToWonRate || 0),
+      rawValue: rdSummary?.qualifiedToWonRate || 0,
+      type: "percent",
+      icon: "bx-line-chart",
+      tone: "blue",
+      detail: "Vendas divididas pelos leads qualificados.",
+      trend: buildMetricTrend("qualifiedToWonRate", rdSummary?.qualifiedToWonRate || 0, previousRdDashboardMetricValues.qualifiedToWonRate, "percent"),
+    },
+    {
+      key: "lostOpportunityCount",
+      title: "Perdidos",
+      value: formatNumber(rdSummary?.lostOpportunityCount || 0),
+      rawValue: rdSummary?.lostOpportunityCount || 0,
+      type: "number",
+      icon: "bx-x-circle",
+      tone: "pink",
+      detail: "Negócios criados no período que foram marcados como perdidos.",
+      trend: buildMetricTrend("lostOpportunityCount", rdSummary?.lostOpportunityCount || 0, previousRdDashboardMetricValues.lostOpportunityCount, "number"),
+    },
+    {
+      key: "lostOpportunityValue",
+      title: "Valor perdido",
+      value: formatCurrency(rdSummary?.lostOpportunityValue || 0),
+      rawValue: rdSummary?.lostOpportunityValue || 0,
+      type: "currency",
+      icon: "bx-money-withdraw",
+      tone: "pink",
+      detail: "Valor potencial dos negócios perdidos criados no período.",
+      trend: buildMetricTrend("lostOpportunityValue", rdSummary?.lostOpportunityValue || 0, previousRdDashboardMetricValues.lostOpportunityValue, "currency"),
+    },
   ]
   const metaMediaKpisWithTrend = metaMediaKpis.map((metric) => ({
     ...metric,
@@ -15335,36 +15386,12 @@ export default function DashboardShell({
                         )}
 
                         <div className="crm-groups-grid">
-                          <section className="crm-result-group">
+                          <section className="crm-result-group crm-result-group-wide">
                             <div className="result-group-head">
-                              <h3>Base comercial</h3>
-                              <p>Leitura inicial da safra atual com oportunidades geradas e leads já qualificados no período.</p>
+                              <h3>Funil Meta + Agendor</h3>
+                              <p>Leitura por safra: leads gerados no Meta e negócios criados no Agendor dentro do mesmo período selecionado.</p>
                             </div>
-                            {renderFixedKpiGrid(rdQualificationKpis)}
-                          </section>
-
-                          <section className="crm-result-group">
-                            <div className="result-group-head">
-                              <h3>Safra atual</h3>
-                              <p>Conversões e valor vendido apenas da safra criada e fechada dentro do período selecionado.</p>
-                            </div>
-                            {renderFixedKpiGrid(rdCurrentHarvestKpis)}
-                          </section>
-
-                          <section className="crm-result-group">
-                            <div className="result-group-head">
-                              <h3>Safras anteriores</h3>
-                              <p>Conversões e valor vendido de oportunidades criadas antes do período, mas fechadas agora.</p>
-                            </div>
-                            {renderFixedKpiGrid(rdPreviousHarvestKpis)}
-                          </section>
-
-                          <section className="crm-result-group">
-                            <div className="result-group-head">
-                              <h3>Resultado final</h3>
-                              <p>Consolidado final com o faturamento total fechado no período e o ROAS comercial sobre o investimento em mídia.</p>
-                            </div>
-                            {renderFixedKpiGrid(rdFinalKpis)}
+                            {renderFixedKpiGrid(rdAgendorFunnelKpis)}
                           </section>
                         </div>
 
