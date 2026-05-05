@@ -1637,6 +1637,7 @@ const META_CAMPAIGN_TABLE_COLUMN_OPTIONS = {
   totalConversions: { label: 'Conversões', type: 'number', description: 'Total consolidado de compras, leads e mensagens.' },
   purchases: { label: 'Compras', type: 'number', description: 'Compras atribuídas à campanha.' },
   leads: { label: 'Leads', type: 'number', description: 'Leads atribuídos à campanha.' },
+  cost_per_lead: { label: 'CPL', type: 'currency', description: 'Custo por lead da campanha.' },
   messages: { label: 'Mensagens', type: 'number', description: 'Mensagens iniciadas atribuídas à campanha.' },
   cpa: { label: 'CPA', type: 'currency', description: 'Custo médio por resultado consolidado.' },
   roas: { label: 'ROAS', type: 'multiplier', description: 'Retorno sobre investimento da campanha.' },
@@ -9165,6 +9166,8 @@ export default function DashboardShell({
         return metrics.purchases
       case 'leads':
         return metrics.leads
+      case 'cost_per_lead':
+        return metrics.cost_per_lead
       case 'messages':
         return metrics.messages
       case 'cpa':
