@@ -4160,8 +4160,10 @@ export default function DashboardShell({
       }))
   }, [aiStructuredSummary, aiInsightsResult])
   const selectedQualifiedStages = useMemo(
-    () => activeClient?.rdQualifiedStages || [],
-    [activeClient]
+    () => activeCrmProvider === 'agendor'
+      ? normalizeIntegrationList(activeClient?.agendorQualifiedStages || activeClient?.rdQualifiedStages)
+      : normalizeIntegrationList(activeClient?.rdQualifiedStages),
+    [activeCrmProvider, activeClient?.agendorQualifiedStages, activeClient?.rdQualifiedStages]
   )
   const crmSourceLabel = activeClient?.crmProvider === 'agendor'
     ? 'Agendor CRM'
@@ -4229,7 +4231,7 @@ export default function DashboardShell({
   )
   const hasRdConfigured = Boolean(
     isActiveClientDashboardEnabled &&
-    (activeClientVisibleIntegrationsSet.has('rd_station') || activeClientVisibleIntegrationsSet.has('agendor')) &&
+    (activeClientVisibleIntegrationsSet.has('rd_station') || activeClientVisibleIntegrationsSet.has('agendor') || activeCrmProvider === 'agendor') &&
     (activeCrmToken || activeClientUsesManualCrm)
   )
   const hasSheetsConfigured = Boolean(
@@ -4787,11 +4789,18 @@ export default function DashboardShell({
     selectedQualifiedStagesRef.current = selectedQualifiedStages
   }, [selectedQualifiedStages])
 
+  const selectedAgendorPipelineFilter = useMemo(
+    () => selectedAgendorPipelineIds.join(','),
+    [selectedAgendorPipelineIds]
+  )
+
   useEffect(() => {
-    const nextPipelineId = activeClient?.rdPipelineId || ''
+    const nextPipelineId = activeCrmProvider === 'agendor'
+      ? selectedAgendorPipelineFilter
+      : activeClient?.rdPipelineId || ''
     setRdPipelineFilter(nextPipelineId)
     setDraftRdPipelineFilter(nextPipelineId)
-  }, [activeClientId, activeClient?.rdPipelineId])
+  }, [activeClientId, activeCrmProvider, activeClient?.rdPipelineId, selectedAgendorPipelineFilter])
 
   useEffect(() => {
     rdLeadSourceFiltersRef.current = rdLeadSourceFilters
@@ -4943,7 +4952,7 @@ export default function DashboardShell({
 
     const loadRdPipelines = async () => {
       try {
-        const selectedPipelineId = activeClient?.rdPipelineId || ''
+        const selectedPipelineId = activeCrmProvider === 'agendor' ? selectedAgendorPipelineFilter : activeClient?.rdPipelineId || ''
         const fetchKey = JSON.stringify({
           activeClientId,
           rdToken: activeCrmToken,
@@ -4989,7 +4998,7 @@ export default function DashboardShell({
     return () => {
       cancelled = true
     }
-  }, [activeTab, activeClientId, activeClient?.rdPipelineId, activeCrmToken, activeCrmProvider, activeClientUsesManualCrm])
+  }, [activeTab, activeClientId, activeClient?.rdPipelineId, selectedAgendorPipelineFilter, activeCrmToken, activeCrmProvider, activeClientUsesManualCrm])
 
   useEffect(() => {
     if (!hasLoadedPreferences || userLoading || !user || hasSyncedServerState || hasInitialClientsOverride) return
