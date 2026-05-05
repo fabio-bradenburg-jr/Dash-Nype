@@ -2,6 +2,8 @@ import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 
 import { PLATFORM_AUTH_COOKIE } from '@/lib/saas/auth'
+import { createClient } from '@/lib/supabase/server'
+import { verifyLocalAccessToken } from '@/lib/server/platform-auth-fallback'
 
 type UnknownRecord = Record<string, unknown>
 
@@ -128,10 +130,26 @@ async function fetchAgendorJson(path: string, token: string) {
 
 const CANDIDATE_ENDPOINTS = ['/deal_stages', '/dealStages', '/pipelines', '/funnels', '/deals?limit=100']
 
-export async function POST(request: Request) {
+async function hasAuthenticatedSession() {
   const sessionToken = (await cookies()).get(PLATFORM_AUTH_COOKIE)?.value
-  if (!sessionToken) {
-    return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 })
+  if (sessionToken) {
+    try {
+      await verifyLocalAccessToken(sessionToken)
+      return true
+    } catch {
+      // Fall through to the Supabase session used by the main dashboard.
+    }
+  }
+
+  const supabase = await createClient()
+  const { data, error } = await supabase.auth.getUser()
+  return Boolean(data?.user && !error)
+}
+
+export async function POST(request: Request) {
+  const isAuthenticated = await hasAuthenticatedSession()
+  if (!isAuthenticated) {
+    return NextResponse.json({ error: 'Sessão expirada. Atualize a página e tente ler os pipelines novamente.' }, { status: 401 })
   }
 
   const payload = await request.json().catch(() => ({}))
