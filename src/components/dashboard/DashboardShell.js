@@ -8892,8 +8892,19 @@ export default function DashboardShell({
   }
 
   const handleLogout = async () => {
-    await supabase.auth.signOut()
-    window.location.reload()
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' })
+    } catch {
+      // Continua o logout local mesmo se a chamada do servidor falhar.
+    }
+
+    try {
+      await supabase.auth.signOut()
+    } catch {
+      // A sessão do Supabase pode já estar encerrada.
+    }
+
+    window.location.replace('/login')
   }
 
   const exportPDF = async () => {

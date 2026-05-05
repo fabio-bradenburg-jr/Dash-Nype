@@ -62,14 +62,6 @@ export default function LoginPage() {
     }
   }
 
-  function handleFacebookLogin() {
-    const nextPath =
-      typeof window === 'undefined'
-        ? '/'
-        : new URLSearchParams(window.location.search).get('next') || '/'
-    window.location.href = `/api/auth/facebook/start?next=${encodeURIComponent(nextPath)}`
-  }
-
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(15,118,110,0.18),transparent_24%),radial-gradient(circle_at_top_right,rgba(249,115,22,0.16),transparent_22%),linear-gradient(180deg,#eff6ff,#ffffff)] px-4 py-8">
       <div className="mx-auto grid min-h-[calc(100vh-4rem)] max-w-6xl items-center gap-8 lg:grid-cols-[1.15fr_0.85fr]">
@@ -227,17 +219,6 @@ export default function LoginPage() {
                   ? 'Entrar na plataforma'
                   : 'Criar conta e entrar'}
             </Button>
-
-            <button
-              className="flex w-full items-center justify-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-800 shadow-sm transition hover:bg-slate-50"
-              onClick={handleFacebookLogin}
-              type="button"
-            >
-              <span className="grid h-6 w-6 place-items-center rounded-full bg-[#1877f2] font-manrope text-sm font-extrabold text-white">
-                f
-              </span>
-              Entrar com Facebook
-            </button>
           </form>
         </section>
       </div>
