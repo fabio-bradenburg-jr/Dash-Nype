@@ -8,6 +8,7 @@ import {
   hasLocalDatabaseConfig,
   registerWithLocalDatabase,
 } from '@/lib/server/platform-auth-fallback'
+import { isPrimaryAdminEmail, USER_ROLES } from '@/lib/server/access-control'
 
 const API_URL = getPlatformApiUrl()
 
@@ -22,8 +23,10 @@ async function registerWithLegacySupabase(body: {
   const supabase = await createClient()
   const fullName = String(body.full_name || '').trim()
   const companyName = String(body.company_name || '').trim()
+  const email = String(body.email || '').trim().toLowerCase()
+  const role = isPrimaryAdminEmail(email) ? USER_ROLES.MASTER : USER_ROLES.VIEWER
   const { data, error } = await supabase.auth.signUp({
-    email: String(body.email || '').trim(),
+    email,
     password: String(body.password || '').trim(),
     options: {
       data: {
@@ -45,7 +48,7 @@ async function registerWithLegacySupabase(body: {
     tenant_name: companyName || 'Workspace principal',
     email: data.user.email || body.email || '',
     full_name: fullName || data.user.user_metadata?.full_name || data.user.email || '',
-    role: 'admin',
+    role,
   })
   const token = await createLocalAccessToken({
     sub: platformUser.user_id,

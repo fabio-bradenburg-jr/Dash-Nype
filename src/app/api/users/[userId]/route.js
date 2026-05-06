@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/server/supabase-admin'
-import { AI_ACCESS_LEVELS, getAccessContext, USER_ROLES } from '@/lib/server/access-control'
+import { AI_ACCESS_LEVELS, getAccessContext, isPrimaryAdminEmail, USER_ROLES } from '@/lib/server/access-control'
 
 function isMissingRelationError(error) {
   const message = String(error?.message || '').toLowerCase()
@@ -93,7 +93,25 @@ export async function PATCH(request, context) {
       return NextResponse.json({ error: 'A conta master não pode remover o próprio nível master.' }, { status: 400 })
     }
 
-    const role = Object.values(USER_ROLES).includes(body.role) ? body.role : USER_ROLES.VIEWER
+    const { data: targetProfile, error: targetProfileError } = await adminSupabase
+      .from('profiles')
+      .select('email')
+      .eq('id', userId)
+      .maybeSingle()
+
+    if (targetProfileError) throw targetProfileError
+
+    const targetEmail = targetProfile?.email || ''
+    let role = Object.values(USER_ROLES).includes(body.role) ? body.role : USER_ROLES.VIEWER
+
+    if (role === USER_ROLES.MASTER && !isPrimaryAdminEmail(targetEmail)) {
+      return NextResponse.json({ error: 'Apenas a conta administradora principal pode ter perfil master.' }, { status: 403 })
+    }
+
+    if (isPrimaryAdminEmail(targetEmail)) {
+      role = USER_ROLES.MASTER
+    }
+
     const aiAccessLevel = Object.values(AI_ACCESS_LEVELS).includes(body.aiAccessLevel)
       ? body.aiAccessLevel
       : role === USER_ROLES.MASTER

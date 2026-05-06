@@ -3,6 +3,12 @@ import { randomUUID, pbkdf2Sync, randomBytes } from 'crypto'
 import { SignJWT, jwtVerify } from 'jose'
 import { Pool } from 'pg'
 
+const PRIMARY_ADMIN_EMAIL = 'fabiobrandenburgjr@gmail.com'
+
+function isPrimaryAdminEmail(email: string) {
+  return email.trim().toLowerCase() === PRIMARY_ADMIN_EMAIL
+}
+
 type UserRow = {
   id: string
   tenant_id: string
@@ -83,7 +89,8 @@ export async function ensurePlatformUserForSupabase(input: {
   const tenantName = String(input.tenant_name || 'Workspace principal').trim() || 'Workspace principal'
   const email = String(input.email || '').trim().toLowerCase()
   const fullName = String(input.full_name || email || 'Usuário').trim()
-  const role = roleForPlatformDatabase(String(input.role || 'operator'))
+  const requestedRole = roleForPlatformDatabase(String(input.role || 'operator'))
+  const role = isPrimaryAdminEmail(email) ? 'ADMIN' : requestedRole === 'ADMIN' ? 'VIEWER' : requestedRole
 
   await db.query('begin')
   try {
@@ -209,6 +216,7 @@ export async function registerWithLocalDatabase(input: {
 
   const tenantId = randomUUID()
   const userId = randomUUID()
+  const role = isPrimaryAdminEmail(email) ? 'ADMIN' : 'VIEWER'
 
   await db.query('begin')
   try {
@@ -220,8 +228,8 @@ export async function registerWithLocalDatabase(input: {
 
     await db.query(
       `insert into users (id, tenant_id, email, full_name, password_hash, role, is_active, created_at)
-       values ($1, $2, $3, $4, $5, 'ADMIN', true, now())`,
-      [userId, tenantId, email, fullName, hashPassword(password)]
+       values ($1, $2, $3, $4, $5, $6, true, now())`,
+      [userId, tenantId, email, fullName, hashPassword(password), role]
     )
     await db.query('commit')
   } catch (error) {
@@ -229,7 +237,7 @@ export async function registerWithLocalDatabase(input: {
     throw error
   }
 
-  return createLocalAccessToken({ sub: userId, tenant_id: tenantId, role: 'admin' })
+  return createLocalAccessToken({ sub: userId, tenant_id: tenantId, role: role.toLowerCase(), email, full_name: fullName })
 }
 
 export async function loginWithLocalDatabase(input: { email: string; password: string }) {

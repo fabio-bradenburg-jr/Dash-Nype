@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/server/supabase-admin'
-import { AI_ACCESS_LEVELS, getAccessContext, USER_ROLES } from '@/lib/server/access-control'
+import { AI_ACCESS_LEVELS, getAccessContext, isPrimaryAdminEmail, USER_ROLES } from '@/lib/server/access-control'
 
 function isMissingRelationError(error) {
   const message = String(error?.message || '').toLowerCase()
@@ -156,7 +156,16 @@ export async function POST(request) {
     const email = String(body.email || '').trim().toLowerCase()
     const password = String(body.password || '').trim()
     const fullName = String(body.fullName || '').trim()
-    const role = Object.values(USER_ROLES).includes(body.role) ? body.role : USER_ROLES.VIEWER
+    let role = Object.values(USER_ROLES).includes(body.role) ? body.role : USER_ROLES.VIEWER
+
+    if (role === USER_ROLES.MASTER && !isPrimaryAdminEmail(email)) {
+      return NextResponse.json({ error: 'Apenas a conta administradora principal pode ter perfil master.' }, { status: 403 })
+    }
+
+    if (isPrimaryAdminEmail(email)) {
+      role = USER_ROLES.MASTER
+    }
+
     const aiAccessLevel = Object.values(AI_ACCESS_LEVELS).includes(body.aiAccessLevel)
       ? body.aiAccessLevel
       : role === USER_ROLES.MASTER

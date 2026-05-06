@@ -11,6 +11,16 @@ export const AI_ACCESS_LEVELS = {
   NONE: 'none',
 }
 
+export const PRIMARY_ADMIN_EMAIL = 'fabiobrandenburgjr@gmail.com'
+
+export function normalizeEmail(email) {
+  return String(email || '').trim().toLowerCase()
+}
+
+export function isPrimaryAdminEmail(email) {
+  return normalizeEmail(email) === PRIMARY_ADMIN_EMAIL
+}
+
 function isMissingRelationError(error) {
   const message = String(error?.message || '').toLowerCase()
   return error?.code === 'PGRST205' || message.includes('schema cache') || message.includes('could not find the table')
@@ -26,13 +36,15 @@ function resolveAiAccessLevel(profileLike, fallbackRole) {
 }
 
 function buildProfilePayload(user, role, workspaceId) {
+  const resolvedRole = isPrimaryAdminEmail(user.email) ? USER_ROLES.MASTER : role === USER_ROLES.MASTER ? USER_ROLES.VIEWER : role
+
   return {
     id: user.id,
     email: user.email || '',
     full_name: user.user_metadata?.full_name || user.user_metadata?.name || '',
     avatar_url: user.user_metadata?.avatar_url || '',
-    role,
-    ai_access_level: role === USER_ROLES.MASTER ? AI_ACCESS_LEVELS.MASTER : AI_ACCESS_LEVELS.TEAM,
+    role: resolvedRole,
+    ai_access_level: resolvedRole === USER_ROLES.MASTER ? AI_ACCESS_LEVELS.MASTER : AI_ACCESS_LEVELS.TEAM,
     workspace_id: workspaceId,
   }
 }
@@ -87,8 +99,8 @@ export async function ensureUserProfile(adminSupabase, user) {
     if (workspaceError) throw workspaceError
 
     workspaceId = createdWorkspace.id
-    role = USER_ROLES.MASTER
-  } else if (!masterCount) {
+    role = isPrimaryAdminEmail(user.email) ? USER_ROLES.MASTER : USER_ROLES.VIEWER
+  } else if (!masterCount && isPrimaryAdminEmail(user.email)) {
     workspaceId = firstWorkspace?.id || null
     role = USER_ROLES.MASTER
 
@@ -136,15 +148,35 @@ export async function getAccessContext(supabase, user, options = {}) {
     throw new Error('Perfil do usuário não encontrado.')
   }
 
-  const role = profile.role || USER_ROLES.VIEWER
-  const aiAccessLevel = resolveAiAccessLevel(profile, role)
-  const workspaceId = profile.workspace_id || null
+  const isPrimaryAdmin = isPrimaryAdminEmail(profile.email || user.email)
+  const role = isPrimaryAdmin ? USER_ROLES.MASTER : profile.role === USER_ROLES.MASTER ? USER_ROLES.VIEWER : profile.role || USER_ROLES.VIEWER
+  const aiAccessLevel = isPrimaryAdmin ? AI_ACCESS_LEVELS.MASTER : resolveAiAccessLevel(profile, role)
+  let workspaceId = profile.workspace_id || null
+
+  if (isPrimaryAdmin && !workspaceId && adminSupabase) {
+    const { data: firstWorkspace, error: firstWorkspaceError } = await adminSupabase
+      .from('workspaces')
+      .select('id')
+      .order('created_at', { ascending: true })
+      .limit(1)
+      .maybeSingle()
+
+    if (firstWorkspaceError) throw firstWorkspaceError
+    workspaceId = firstWorkspace?.id || null
+
+    if (workspaceId) {
+      await adminSupabase
+        .from('profiles')
+        .update({ role: USER_ROLES.MASTER, workspace_id: workspaceId, ai_access_level: AI_ACCESS_LEVELS.MASTER })
+        .eq('id', profile.id)
+    }
+  }
 
   let accessRows = []
   let groupAccessRows = []
   let groupMemberRows = []
 
-  if (workspaceId && role !== USER_ROLES.MASTER) {
+  if (workspaceId && !isPrimaryAdmin) {
     const [
       { data: directAccessData, error: directAccessError },
       { data: groupAccessData, error: groupAccessError },
@@ -202,11 +234,11 @@ export async function getAccessContext(supabase, user, options = {}) {
     role,
     aiAccessLevel,
     workspaceId,
-    canManageUsers: role === USER_ROLES.MASTER,
-    canManageClients: role === USER_ROLES.MASTER || role === USER_ROLES.OPERATOR,
-    canEditIntegrations: role === USER_ROLES.MASTER || role === USER_ROLES.OPERATOR,
-    canViewDashboard: role === USER_ROLES.MASTER || viewableClientIds.size > 0,
-    canUseAi: aiAccessLevel !== AI_ACCESS_LEVELS.NONE && (role === USER_ROLES.MASTER || viewableClientIds.size > 0),
+    canManageUsers: isPrimaryAdmin,
+    canManageClients: isPrimaryAdmin || role === USER_ROLES.OPERATOR,
+    canEditIntegrations: isPrimaryAdmin || role === USER_ROLES.OPERATOR,
+    canViewDashboard: isPrimaryAdmin || viewableClientIds.size > 0,
+    canUseAi: aiAccessLevel !== AI_ACCESS_LEVELS.NONE && (isPrimaryAdmin || viewableClientIds.size > 0),
     isClientRole: role === USER_ROLES.CLIENT,
     viewableClientIds: Array.from(viewableClientIds),
     editableClientIds: Array.from(editableClientIds),

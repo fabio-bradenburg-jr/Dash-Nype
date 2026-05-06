@@ -32,13 +32,23 @@ interface PlatformSessionResponse {
 
 const UserContext = createContext<UserContextValue | undefined>(undefined)
 const defaultAppearance = DEFAULT_USER_APPEARANCE as UserAppearance
+const PRIMARY_ADMIN_EMAIL = 'fabiobrandenburgjr@gmail.com'
 
 function normalizePlatformRole(role?: string | null) {
   return String(role || 'operator').trim().toLowerCase()
 }
 
+function normalizeEmail(email?: string | null) {
+  return String(email || '').trim().toLowerCase()
+}
+
+function isPrimaryAdminEmail(email?: string | null) {
+  return normalizeEmail(email) === PRIMARY_ADMIN_EMAIL
+}
+
 function buildPlatformProfile(platformUser: PlatformSessionUser): UserProfile {
-  const role = normalizePlatformRole(platformUser.role)
+  const isPrimaryAdmin = isPrimaryAdminEmail(platformUser.email)
+  const role = isPrimaryAdmin ? 'master' : normalizePlatformRole(platformUser.role) === 'master' ? 'visualizador' : normalizePlatformRole(platformUser.role)
 
   return {
     id: platformUser.id,
@@ -46,7 +56,7 @@ function buildPlatformProfile(platformUser: PlatformSessionUser): UserProfile {
     full_name: platformUser.full_name || platformUser.email || 'Usuário',
     avatar_url: '',
     role,
-    ai_access_level: 'team',
+    ai_access_level: isPrimaryAdmin ? 'master' : 'team',
     workspace_id: platformUser.tenant_id || null,
   }
 }
@@ -54,18 +64,18 @@ function buildPlatformProfile(platformUser: PlatformSessionUser): UserProfile {
 function buildPlatformAccess(profile: UserProfile): AccessContextValue {
   const role = normalizePlatformRole(profile.role)
   const isClientRole = role === 'client' || role === 'cliente'
-  const isAdminRole = role === 'admin' || role === 'master'
+  const isPrimaryAdmin = isPrimaryAdminEmail(profile.email)
 
   return {
     profile,
     role,
     workspaceId: profile.workspace_id,
-    canManageUsers: isAdminRole,
-    canManageClients: !isClientRole,
-    canEditIntegrations: !isClientRole,
-    canViewDashboard: true,
-    canUseAi: !isClientRole,
-    aiAccessLevel: 'team',
+    canManageUsers: isPrimaryAdmin,
+    canManageClients: isPrimaryAdmin,
+    canEditIntegrations: isPrimaryAdmin,
+    canViewDashboard: isPrimaryAdmin,
+    canUseAi: isPrimaryAdmin && !isClientRole,
+    aiAccessLevel: isPrimaryAdmin ? 'master' : 'team',
     isClientRole,
     viewableClientIds: [],
     editableClientIds: [],
