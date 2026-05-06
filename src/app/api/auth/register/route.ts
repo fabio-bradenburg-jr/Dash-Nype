@@ -17,20 +17,18 @@ async function registerWithLegacySupabase(body: {
   email: string
   password: string
 }) {
-  const [{ createClient }, { createAdminClient }, { getAccessContext }] = await Promise.all([
-    import('@/lib/supabase/server'),
-    import('@/lib/server/supabase-admin'),
-    import('@/lib/server/access-control'),
-  ])
+  const { createClient } = await import('@/lib/supabase/server')
 
   const supabase = await createClient()
+  const fullName = String(body.full_name || '').trim()
+  const companyName = String(body.company_name || '').trim()
   const { data, error } = await supabase.auth.signUp({
     email: String(body.email || '').trim(),
     password: String(body.password || '').trim(),
     options: {
       data: {
-        full_name: String(body.full_name || '').trim(),
-        company_name: String(body.company_name || '').trim(),
+        full_name: fullName,
+        company_name: companyName,
       },
     },
   })
@@ -39,36 +37,26 @@ async function registerWithLegacySupabase(body: {
     throw new Error(error?.message || 'Não foi possível criar a conta no login antigo.')
   }
 
-  if (!data.session) {
-    return {
-      token: '',
-      pendingConfirmation: true,
-    }
-  }
-
-  const adminSupabase = createAdminClient()
-  const accessContext = await getAccessContext(supabase, data.user, { adminSupabase })
+  // O Supabase antigo pode exigir confirmação de e-mail e não devolver session.
+  // Para este app, a sessão principal é o cookie da plataforma, então criamos o acesso local imediatamente.
   const platformUser = await ensurePlatformUserForSupabase({
     user_id: data.user.id,
-    tenant_id: accessContext.workspaceId || data.user.id,
-    tenant_name: String(body.company_name || '').trim() || 'Workspace principal',
-    email: data.user.email || '',
-    full_name: accessContext.profile?.full_name || data.user.user_metadata?.full_name || data.user.email || '',
-    role: accessContext.role || 'operator',
+    tenant_id: data.user.id,
+    tenant_name: companyName || 'Workspace principal',
+    email: data.user.email || body.email || '',
+    full_name: fullName || data.user.user_metadata?.full_name || data.user.email || '',
+    role: 'admin',
   })
   const token = await createLocalAccessToken({
     sub: platformUser.user_id,
     tenant_id: platformUser.tenant_id,
     role: platformUser.role,
-    email: data.user.email || '',
-    full_name: accessContext.profile?.full_name || data.user.user_metadata?.full_name || data.user.email || '',
+    email: data.user.email || body.email || '',
+    full_name: fullName || data.user.user_metadata?.full_name || data.user.email || '',
     provider: 'supabase',
   })
 
-  return {
-    token,
-    pendingConfirmation: false,
-  }
+  return { token }
 }
 
 export async function POST(request: Request) {
@@ -76,13 +64,6 @@ export async function POST(request: Request) {
 
   try {
     const legacyResult = await registerWithLegacySupabase(body)
-
-    if (legacyResult.pendingConfirmation) {
-      return NextResponse.json(
-        { error: 'Conta criada no login antigo. Confirme seu e-mail antes de entrar.' },
-        { status: 409 }
-      )
-    }
 
     const nextResponse = NextResponse.json({ ok: true, provider: 'supabase' })
     nextResponse.cookies.set({
