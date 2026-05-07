@@ -2848,6 +2848,20 @@ function safeNumber(value) {
   return Number.isFinite(numericValue) ? numericValue : 0
 }
 
+function hasManualCrmValue(manualCrmSummary, key) {
+  if (!manualCrmSummary || typeof manualCrmSummary !== 'object') return false
+  const value = manualCrmSummary[key]
+  if (value === null || value === undefined) return false
+  return String(value).trim() !== ''
+}
+
+function normalizeManualCrmInput(value) {
+  const stringValue = String(value ?? '').trim()
+  if (!stringValue) return null
+  const numericValue = Number(stringValue.replace(',', '.'))
+  return Number.isFinite(numericValue) ? numericValue : null
+}
+
 function calculateRate(partial, total) {
   const normalizedTotal = safeNumber(total)
   if (normalizedTotal <= 0) return 0
@@ -2861,6 +2875,7 @@ function buildManualCrmSummary(manualCrmSummary, metaSummary = null) {
   const wonOpportunityCount = safeNumber(manual.wonOpportunityCount)
   const lostOpportunityCount = safeNumber(manual.lostOpportunityCount)
   const wonRevenue = safeNumber(manual.wonRevenue)
+  const lostOpportunityValue = safeNumber(manual.lostOpportunityValue)
   const avgTicketWon = wonOpportunityCount > 0 ? wonRevenue / wonOpportunityCount : 0
   const spend = safeNumber(metaSummary?.spend)
 
@@ -2874,6 +2889,7 @@ function buildManualCrmSummary(manualCrmSummary, metaSummary = null) {
     qualifiedToWonRate: calculateRate(wonOpportunityCount, qualifiedOpportunityCount),
     leadToWonRate: calculateRate(wonOpportunityCount, opportunityCount),
     lostOpportunityCount,
+    lostOpportunityValue,
     wonDeals: wonOpportunityCount,
     wonDealsFromPreviousCohorts: 0,
     wonRevenue,
@@ -3025,6 +3041,7 @@ export default function DashboardShell({
   const [newClientOperationEnabled, setNewClientOperationEnabled] = useState(true)
   const [newClientDashboardEnabled, setNewClientDashboardEnabled] = useState(true)
   const [newClientDashboardIntegrationKeys, setNewClientDashboardIntegrationKeys] = useState(DEFAULT_CLIENT_DASHBOARD_INTEGRATION_KEYS)
+  const [newClientManualCrmEnabled, setNewClientManualCrmEnabled] = useState(false)
   const [newClientOperationLane, setNewClientOperationLane] = useState(resolveOperationLaneFromSalesModel('INSIDE_SALES'))
   const [newClientGroupName, setNewClientGroupName] = useState('')
   const [newClientMetaAdAccountId, setNewClientMetaAdAccountId] = useState('')
@@ -4233,7 +4250,7 @@ export default function DashboardShell({
   )
   const hasRdConfigured = Boolean(
     isActiveClientDashboardEnabled &&
-    (activeClientVisibleIntegrationsSet.has('rd_station') || activeClientVisibleIntegrationsSet.has('agendor') || activeCrmProvider === 'agendor') &&
+    (activeClientVisibleIntegrationsSet.has('rd_station') || activeClientVisibleIntegrationsSet.has('agendor') || activeCrmProvider === 'agendor' || activeClientUsesManualCrm) &&
     (activeCrmToken || activeClientUsesManualCrm)
   )
   const hasSheetsConfigured = Boolean(
@@ -5147,11 +5164,13 @@ export default function DashboardShell({
   const closeCreateClientModal = useCallback(() => {
     setIsCreateClientModalOpen(false)
     setCreateClientStep('identity')
+    setNewClientManualCrmEnabled(false)
   }, [])
 
   const openCreateClientModal = useCallback(() => {
     setCreateClientStep('identity')
     setNewClientDashboardColor(appAccentColor)
+    setNewClientManualCrmEnabled(false)
     setIsCreateClientModalOpen(true)
     window.setTimeout(() => {
       document.querySelector('.modal-create-client input')?.focus()
@@ -5413,6 +5432,24 @@ export default function DashboardShell({
     })
   }
 
+  const handleToggleManualCrmForActiveClient = (enabled) => {
+    if (!canEditActiveClient) return
+
+    updateActiveClient((client) => {
+      const dashboardVisibleIntegrationKeys = enabled
+        ? ensureAgendorDashboardVisibility(client)
+        : normalizeClientDashboardIntegrationKeys(client.dashboardVisibleIntegrationKeys)
+      const hasAgendorConfigured = String(client?.integrations?.agendorToken || '').trim() || normalizeIntegrationList(client.agendorPipelineIds || client.agendorAccountId || client.rdPipelineId).length > 0
+
+      return {
+        ...client,
+        crmProvider: enabled ? 'manual' : (hasAgendorConfigured ? 'agendor' : ''),
+        manualCrmSummary: client.manualCrmSummary || {},
+        dashboardVisibleIntegrationKeys,
+      }
+    })
+  }
+
   const handleToggleActiveClientDashboardIntegration = (integrationKey) => {
     if (!canEditActiveClient) return
 
@@ -5435,6 +5472,11 @@ export default function DashboardShell({
     const trimmedName = newClientName.trim()
     if (!trimmedName) return
 
+    const normalizedDashboardIntegrationKeys = normalizeClientDashboardIntegrationKeys(
+      newClientManualCrmEnabled
+        ? [...new Set([...newClientDashboardIntegrationKeys, 'agendor'])]
+        : newClientDashboardIntegrationKeys
+    )
     const newClient = createClientRecord({
       name: trimmedName,
       cnpj: normalizeCnpjInput(newClientCnpj),
@@ -5442,7 +5484,9 @@ export default function DashboardShell({
       dashboardColor: normalizedNewClientDashboardColor,
       operationEnabled: false,
       dashboardEnabled: true,
-      dashboardVisibleIntegrationKeys: normalizeClientDashboardIntegrationKeys(newClientDashboardIntegrationKeys),
+      crmProvider: newClientManualCrmEnabled ? 'manual' : '',
+      manualCrmSummary: newClientManualCrmEnabled ? {} : undefined,
+      dashboardVisibleIntegrationKeys: normalizedDashboardIntegrationKeys,
       salesModel: '',
       implementationPhase: '',
       implementationObservation: '',
@@ -5459,6 +5503,7 @@ export default function DashboardShell({
     setNewClientCnpj('')
     setNewClientMetaAdAccountId('')
     setNewClientDashboardColor(appAccentColor)
+    setNewClientManualCrmEnabled(false)
     setNewClientOperationEnabled(false)
     setNewClientDashboardEnabled(true)
     setNewClientDashboardIntegrationKeys(['meta_ads', 'agendor'])
@@ -8847,11 +8892,11 @@ export default function DashboardShell({
     if (!activeClient?.id) return
 
     const manualCrmSummary = {
-      opportunityCount: safeNumber(manualCrmForm.opportunityCount),
-      qualifiedOpportunityCount: safeNumber(manualCrmForm.qualifiedOpportunityCount),
-      wonOpportunityCount: safeNumber(manualCrmForm.wonOpportunityCount),
-      lostOpportunityCount: safeNumber(manualCrmForm.lostOpportunityCount),
-      wonRevenue: safeNumber(manualCrmForm.wonRevenue),
+      opportunityCount: normalizeManualCrmInput(manualCrmForm.opportunityCount),
+      qualifiedOpportunityCount: normalizeManualCrmInput(manualCrmForm.qualifiedOpportunityCount),
+      wonOpportunityCount: normalizeManualCrmInput(manualCrmForm.wonOpportunityCount),
+      lostOpportunityCount: normalizeManualCrmInput(manualCrmForm.lostOpportunityCount),
+      wonRevenue: normalizeManualCrmInput(manualCrmForm.wonRevenue),
     }
 
     setIsSavingManualCrm(true)
@@ -10861,83 +10906,114 @@ export default function DashboardShell({
   const previousMetaLeadToQualifiedRate = previousCrmMetaLeadTotal > 0
     ? ((previousRdSummary?.qualifiedOpportunityCount || 0) / previousCrmMetaLeadTotal) * 100
     : 0
+  const activeManualCrmValues = activeClient?.manualCrmSummary || {}
+  const manualCrmCardClick = activeClientUsesManualCrm ? () => setIsManualCrmModalOpen(true) : undefined
+  const hasManualOpportunityCount = hasManualCrmValue(activeManualCrmValues, 'opportunityCount')
+  const hasManualQualifiedCount = hasManualCrmValue(activeManualCrmValues, 'qualifiedOpportunityCount')
+  const hasManualWonCount = hasManualCrmValue(activeManualCrmValues, 'wonOpportunityCount')
+  const hasManualWonRevenue = hasManualCrmValue(activeManualCrmValues, 'wonRevenue')
+  const hasManualLostCount = hasManualCrmValue(activeManualCrmValues, 'lostOpportunityCount')
+  const manualQualifiedRate = calculateRate(rdSummary?.qualifiedOpportunityCount || 0, rdSummary?.opportunityCount || 0)
+  const manualSalesRate = calculateRate(rdSummary?.wonOpportunityCount || 0, rdSummary?.opportunityCount || 0)
+  const manualCommercialRoas = safeNumber(insights?.spend) > 0 ? safeNumber(rdSummary?.wonOpportunityRevenue || rdSummary?.wonRevenue) / safeNumber(insights?.spend) : 0
+  const displayManualKpiValue = (hasValue, formattedValue, extraCondition = true) => (hasValue && extraCondition ? formattedValue : '-')
   const rdAgendorFunnelKpis = [
     {
-      key: "metaLeadCount",
-      title: "Leads Meta",
-      value: formatNumber(crmLeadMetaLeads),
-      rawValue: crmLeadMetaLeads,
+      key: activeClientUsesManualCrm ? "manualOpportunityCount" : "metaLeadCount",
+      title: activeClientUsesManualCrm ? "Oportunidades" : "Leads Meta",
+      value: activeClientUsesManualCrm ? displayManualKpiValue(hasManualOpportunityCount, formatNumber(rdSummary?.opportunityCount || 0)) : formatNumber(crmLeadMetaLeads),
+      rawValue: activeClientUsesManualCrm ? rdSummary?.opportunityCount || 0 : crmLeadMetaLeads,
       type: "number",
       icon: "bx-user-plus",
       tone: "blue",
-      detail: "Leads gerados no Meta no período selecionado.",
-      trend: buildMetricTrend("metaLeadCount", crmLeadMetaLeads, previousCrmMetaLeadTotal, "number"),
+      detail: activeClientUsesManualCrm ? "Clique para adicionar ou editar oportunidades manuais." : "Leads gerados no Meta no período selecionado.",
+      trend: activeClientUsesManualCrm ? null : buildMetricTrend("metaLeadCount", crmLeadMetaLeads, previousCrmMetaLeadTotal, "number"),
+      onClick: manualCrmCardClick,
     },
     {
       key: "qualifiedOpportunityCount",
-      title: "Leads qualificados",
-      value: formatNumber(rdSummary?.qualifiedOpportunityCount || 0),
+      title: "Qualificados",
+      value: activeClientUsesManualCrm ? displayManualKpiValue(hasManualQualifiedCount, formatNumber(rdSummary?.qualifiedOpportunityCount || 0)) : formatNumber(rdSummary?.qualifiedOpportunityCount || 0),
       rawValue: rdSummary?.qualifiedOpportunityCount || 0,
       type: "number",
       icon: "bx-filter-alt",
       tone: "emerald",
-      detail: "Negócios criados no período que chegaram às etapas qualificadas selecionadas.",
-      trend: buildMetricTrend("qualifiedOpportunityCount", rdSummary?.qualifiedOpportunityCount || 0, previousRdDashboardMetricValues.qualifiedOpportunityCount, "number"),
+      detail: activeClientUsesManualCrm ? "Clique para adicionar ou editar qualificados." : "Negócios criados no período que chegaram às etapas qualificadas selecionadas.",
+      trend: activeClientUsesManualCrm ? null : buildMetricTrend("qualifiedOpportunityCount", rdSummary?.qualifiedOpportunityCount || 0, previousRdDashboardMetricValues.qualifiedOpportunityCount, "number"),
+      onClick: manualCrmCardClick,
     },
     {
-      key: "metaLeadToQualifiedRate",
+      key: "manualLeadToQualifiedRate",
       title: "Taxa de qualificação",
-      value: formatPercent(metaLeadToQualifiedRate),
-      rawValue: metaLeadToQualifiedRate,
+      value: activeClientUsesManualCrm ? displayManualKpiValue(hasManualOpportunityCount && hasManualQualifiedCount, formatPercent(manualQualifiedRate), safeNumber(rdSummary?.opportunityCount) > 0) : formatPercent(metaLeadToQualifiedRate),
+      rawValue: activeClientUsesManualCrm ? manualQualifiedRate : metaLeadToQualifiedRate,
       type: "percent",
       icon: "bx-transfer-alt",
       tone: "cyan",
-      detail: "Qualificados Agendor divididos pelos leads gerados no Meta.",
-      trend: buildMetricTrend("metaLeadToQualifiedRate", metaLeadToQualifiedRate, previousMetaLeadToQualifiedRate, "percent"),
+      detail: activeClientUsesManualCrm ? "Qualificados divididos pelas oportunidades." : "Qualificados Agendor divididos pelos leads gerados no Meta.",
+      trend: activeClientUsesManualCrm ? null : buildMetricTrend("metaLeadToQualifiedRate", metaLeadToQualifiedRate, previousMetaLeadToQualifiedRate, "percent"),
+      onClick: manualCrmCardClick,
     },
     {
       key: "wonOpportunityCount",
       title: "Vendas",
-      value: formatNumber(rdSummary?.wonOpportunityCount || 0),
+      value: activeClientUsesManualCrm ? displayManualKpiValue(hasManualWonCount, formatNumber(rdSummary?.wonOpportunityCount || 0)) : formatNumber(rdSummary?.wonOpportunityCount || 0),
       rawValue: rdSummary?.wonOpportunityCount || 0,
       type: "number",
       icon: "bx-badge-check",
       tone: "emerald",
-      detail: "Negócios criados no período que estão como vendidos.",
-      trend: buildMetricTrend("wonOpportunityCount", rdSummary?.wonOpportunityCount || 0, previousRdDashboardMetricValues.wonOpportunityCount, "number"),
+      detail: activeClientUsesManualCrm ? "Clique para adicionar ou editar vendas." : "Negócios criados no período que estão como vendidos.",
+      trend: activeClientUsesManualCrm ? null : buildMetricTrend("wonOpportunityCount", rdSummary?.wonOpportunityCount || 0, previousRdDashboardMetricValues.wonOpportunityCount, "number"),
+      onClick: manualCrmCardClick,
     },
     {
       key: "wonOpportunityRevenue",
-      title: "Faturamento",
-      value: formatCurrency(rdSummary?.wonOpportunityRevenue || 0),
+      title: "Valor vendido",
+      value: activeClientUsesManualCrm ? displayManualKpiValue(hasManualWonRevenue, formatCurrency(rdSummary?.wonOpportunityRevenue || 0)) : formatCurrency(rdSummary?.wonOpportunityRevenue || 0),
       rawValue: rdSummary?.wonOpportunityRevenue || 0,
       type: "currency",
       icon: "bx-wallet-alt",
       tone: "orange",
-      detail: "Valor vendido dos negócios criados no período.",
-      trend: buildMetricTrend("wonOpportunityRevenue", rdSummary?.wonOpportunityRevenue || 0, previousRdDashboardMetricValues.wonOpportunityRevenue, "currency"),
+      detail: activeClientUsesManualCrm ? "Clique para adicionar ou editar o faturamento vendido." : "Valor vendido dos negócios criados no período.",
+      trend: activeClientUsesManualCrm ? null : buildMetricTrend("wonOpportunityRevenue", rdSummary?.wonOpportunityRevenue || 0, previousRdDashboardMetricValues.wonOpportunityRevenue, "currency"),
+      onClick: manualCrmCardClick,
+    },
+    {
+      key: "manualCommercialRoas",
+      title: "ROAS comercial",
+      value: activeClientUsesManualCrm ? displayManualKpiValue(hasManualWonRevenue, formatMultiplier(manualCommercialRoas), safeNumber(insights?.spend) > 0) : formatMultiplier(rdCommercialRoas),
+      rawValue: activeClientUsesManualCrm ? manualCommercialRoas : rdCommercialRoas,
+      type: "multiplier",
+      icon: "bx-rocket",
+      tone: "blue",
+      detail: "Valor vendido dividido pelo investimento Meta do período.",
+      trend: activeClientUsesManualCrm ? null : buildMetricTrend("wonRoas", rdCommercialRoas, previousRdCommercialRoas, "multiplier"),
+      onClick: manualCrmCardClick,
     },
     {
       key: "qualifiedToWonRate",
       title: "Taxa de venda",
-      value: formatPercent(rdSummary?.qualifiedToWonRate || 0),
-      rawValue: rdSummary?.qualifiedToWonRate || 0,
+      value: activeClientUsesManualCrm ? displayManualKpiValue(hasManualOpportunityCount && hasManualWonCount, formatPercent(manualSalesRate), safeNumber(rdSummary?.opportunityCount) > 0) : formatPercent(rdSummary?.qualifiedToWonRate || 0),
+      rawValue: activeClientUsesManualCrm ? manualSalesRate : rdSummary?.qualifiedToWonRate || 0,
       type: "percent",
       icon: "bx-line-chart",
       tone: "blue",
-      detail: "Vendas divididas pelos leads qualificados.",
-      trend: buildMetricTrend("qualifiedToWonRate", rdSummary?.qualifiedToWonRate || 0, previousRdDashboardMetricValues.qualifiedToWonRate, "percent"),
+      detail: activeClientUsesManualCrm ? "Vendas divididas pelas oportunidades." : "Vendas divididas pelos leads qualificados.",
+      trend: activeClientUsesManualCrm ? null : buildMetricTrend("qualifiedToWonRate", rdSummary?.qualifiedToWonRate || 0, previousRdDashboardMetricValues.qualifiedToWonRate, "percent"),
+      onClick: manualCrmCardClick,
     },
     {
       key: "lostOpportunityCount",
       title: "Perdidos",
-      value: formatNumber(rdSummary?.lostOpportunityCount || 0),
+      value: activeClientUsesManualCrm ? displayManualKpiValue(hasManualLostCount, formatNumber(rdSummary?.lostOpportunityCount || 0)) : formatNumber(rdSummary?.lostOpportunityCount || 0),
       rawValue: rdSummary?.lostOpportunityCount || 0,
       type: "number",
       icon: "bx-x-circle",
       tone: "pink",
-      detail: "Negócios criados no período que foram marcados como perdidos.",
-      trend: buildMetricTrend("lostOpportunityCount", rdSummary?.lostOpportunityCount || 0, previousRdDashboardMetricValues.lostOpportunityCount, "number"),
+      detail: activeClientUsesManualCrm ? "Campo opcional para perdas manuais." : "Negócios criados no período que foram marcados como perdidos.",
+      trend: activeClientUsesManualCrm ? null : buildMetricTrend("lostOpportunityCount", rdSummary?.lostOpportunityCount || 0, previousRdDashboardMetricValues.lostOpportunityCount, "number"),
+      onClick: manualCrmCardClick,
+      hidden: activeClientUsesManualCrm,
     },
     {
       key: "lostOpportunityValue",
@@ -10949,6 +11025,7 @@ export default function DashboardShell({
       tone: "pink",
       detail: "Valor potencial dos negócios perdidos criados no período.",
       trend: buildMetricTrend("lostOpportunityValue", rdSummary?.lostOpportunityValue || 0, previousRdDashboardMetricValues.lostOpportunityValue, "currency"),
+      hidden: activeClientUsesManualCrm,
     },
   ]
   const metaMediaKpisWithTrend = metaMediaKpis.map((metric) => ({
@@ -11030,24 +11107,32 @@ export default function DashboardShell({
 
   const renderFixedKpiGrid = (items) => (
     <div className="kpi-grid compact-kpi-grid">
-      {items.map((metric) => (
-        <article key={metric.key} className="kpi-card glass-panel">
-          <div className="kpi-header">
-            <span className="kpi-title">{metric.title}</span>
-            <div className={`icon-box ${metric.tone}`}>
-              <i className={`bx ${metric.icon}`}></i>
+      {items.filter((metric) => !metric.hidden).map((metric) => {
+        const CardTag = metric.onClick ? 'button' : 'article'
+        return (
+          <CardTag
+            key={metric.key}
+            type={metric.onClick ? 'button' : undefined}
+            className={`kpi-card glass-panel ${metric.onClick ? 'kpi-card-action' : ''}`}
+            onClick={metric.onClick}
+          >
+            <div className="kpi-header">
+              <span className="kpi-title">{metric.title}</span>
+              <div className={`icon-box ${metric.tone}`}>
+                <i className={`bx ${metric.icon}`}></i>
+              </div>
             </div>
-          </div>
-          <div className="kpi-value">{metric.value}</div>
-          {metric.detail ? (
-            <div className="kpi-detail-text">{metric.detail}</div>
-          ) : null}
-          <div className={`kpi-trend ${metric.trend?.tone || 'neutral'}`}>
-            <i className={`bx ${metric.trend?.icon || 'bx-check-circle'}`}></i>
-            <span>{metric.trend?.label || 'Atualizado conforme a integração configurada.'}</span>
-          </div>
-        </article>
-      ))}
+            <div className={`kpi-value ${metric.value === '-' ? 'kpi-empty-value' : ''}`}>{metric.value}</div>
+            {metric.detail ? (
+              <div className="kpi-detail-text">{metric.detail}</div>
+            ) : null}
+            <div className={`kpi-trend ${metric.trend?.tone || 'neutral'}`}>
+              <i className={`bx ${metric.trend?.icon || (metric.onClick ? 'bx-edit-alt' : 'bx-check-circle')}`}></i>
+              <span>{metric.trend?.label || (metric.onClick ? 'Clique para adicionar ou editar.' : 'Atualizado conforme a integração configurada.')}</span>
+            </div>
+          </CardTag>
+        )
+      })}
     </div>
   )
 
@@ -13742,6 +13827,17 @@ export default function DashboardShell({
                     </div>
                   </div>
 
+                  <div className="integration-block manual-crm-toggle-block">
+                    <label className={'manual-crm-toggle ' + (activeClientUsesManualCrm ? 'active' : '')}>
+                      <input type="checkbox" checked={activeClientUsesManualCrm} onChange={(event) => handleToggleManualCrmForActiveClient(event.target.checked)} disabled={!canEditActiveClient} />
+                      <span className="manual-crm-switch" aria-hidden="true"></span>
+                      <span>
+                        <strong>Preencher CRM manualmente</strong>
+                        <small>Ative para digitar oportunidades, qualificados, vendas e valor vendido diretamente nos cards do dashboard.</small>
+                      </span>
+                    </label>
+                  </div>
+
                   <div className="integration-block">
                     <div className="integration-heading">
                       <div className="integration-icon" style={{ color: '#f97316', borderColor: '#f9731633' }}>
@@ -14184,6 +14280,17 @@ export default function DashboardShell({
                             ))}
                           </select>
                         </div>
+                      </div>
+
+                      <div className="integration-block client-create-integration-card manual-crm-create-card">
+                        <label className={'manual-crm-toggle ' + (newClientManualCrmEnabled ? 'active' : '')}>
+                          <input type="checkbox" checked={newClientManualCrmEnabled} onChange={(event) => setNewClientManualCrmEnabled(event.target.checked)} disabled={!isMaster} />
+                          <span className="manual-crm-switch" aria-hidden="true"></span>
+                          <span>
+                            <strong>CRM manual</strong>
+                            <small>Ligue para preencher oportunidades, qualificados, vendas e valor vendido nos cards do dashboard.</small>
+                          </span>
+                        </label>
                       </div>
 
                       <div className="integration-block client-create-integration-card">
@@ -15571,21 +15678,17 @@ export default function DashboardShell({
                     <input type="number" min="0" value={manualCrmForm.opportunityCount} onChange={(event) => setManualCrmForm((current) => ({ ...current, opportunityCount: event.target.value }))} placeholder="0" />
                   </div>
                   <div className="input-group">
-                    <label>Oportunidades qualificadas</label>
+                    <label>Qualificados</label>
                     <input type="number" min="0" value={manualCrmForm.qualifiedOpportunityCount} onChange={(event) => setManualCrmForm((current) => ({ ...current, qualifiedOpportunityCount: event.target.value }))} placeholder="0" />
                   </div>
                   <div className="input-group">
                     <label>Vendas</label>
                     <input type="number" min="0" value={manualCrmForm.wonOpportunityCount} onChange={(event) => setManualCrmForm((current) => ({ ...current, wonOpportunityCount: event.target.value }))} placeholder="0" />
                   </div>
-                  <div className="input-group">
-                    <label>Perdidos</label>
-                    <input type="number" min="0" value={manualCrmForm.lostOpportunityCount} onChange={(event) => setManualCrmForm((current) => ({ ...current, lostOpportunityCount: event.target.value }))} placeholder="0" />
-                  </div>
                 </div>
 
                 <div className="input-group">
-                  <label>Valor em vendas</label>
+                  <label>Valor vendido</label>
                   <input type="number" min="0" step="0.01" value={manualCrmForm.wonRevenue} onChange={(event) => setManualCrmForm((current) => ({ ...current, wonRevenue: event.target.value }))} placeholder="0,00" />
                   <span className="field-helper">O ROAS comercial será calculado automaticamente com base no investimento Meta do período selecionado.</span>
                 </div>
@@ -23179,6 +23282,30 @@ export default function DashboardShell({
           margin-bottom: 0;
         }
 
+        .kpi-card-action {
+          width: 100%;
+          min-height: 0;
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          color: inherit;
+          text-align: left;
+          cursor: pointer;
+          appearance: none;
+          -webkit-appearance: none;
+          transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .kpi-card-action:hover {
+          transform: translateY(-2px);
+          border-color: color-mix(in srgb, var(--client-dashboard-accent, var(--button-primary, var(--accent-blue))) 45%, transparent);
+          background: color-mix(in srgb, var(--client-dashboard-accent, var(--button-primary, var(--accent-blue))) 10%, rgba(255, 255, 255, 0.03));
+          box-shadow: 0 18px 45px color-mix(in srgb, var(--client-dashboard-accent, var(--button-primary, var(--accent-blue))) 14%, transparent);
+        }
+
+        .kpi-empty-value {
+          color: var(--text-muted);
+          letter-spacing: 0;
+        }
+
         .layout-save-message {
           display: inline-flex;
           align-items: center;
@@ -25195,6 +25322,87 @@ export default function DashboardShell({
           padding: 0;
         }
 
+        .manual-crm-toggle-block {
+          display: flex;
+          align-items: stretch;
+        }
+
+        .manual-crm-toggle {
+          width: 100%;
+          display: grid;
+          grid-template-columns: 46px 1fr;
+          align-items: center;
+          gap: 16px;
+          padding: 18px;
+          border-radius: 22px;
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          background: rgba(255, 255, 255, 0.035);
+          color: var(--text-primary);
+          cursor: pointer;
+          transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .manual-crm-toggle input {
+          position: absolute;
+          opacity: 0;
+          pointer-events: none;
+        }
+
+        .manual-crm-switch {
+          width: 46px;
+          height: 26px;
+          border-radius: 999px;
+          border: 1px solid rgba(255, 255, 255, 0.14);
+          background: rgba(255, 255, 255, 0.08);
+          position: relative;
+          box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.12);
+        }
+
+        .manual-crm-switch::after {
+          content: '';
+          position: absolute;
+          top: 4px;
+          left: 4px;
+          width: 16px;
+          height: 16px;
+          border-radius: 50%;
+          background: rgba(255, 255, 255, 0.92);
+          transition: transform 0.2s ease, background 0.2s ease;
+        }
+
+        .manual-crm-toggle strong {
+          display: block;
+          margin-bottom: 4px;
+          color: var(--text-primary);
+          font-size: 0.98rem;
+        }
+
+        .manual-crm-toggle small {
+          display: block;
+          color: var(--text-muted);
+          line-height: 1.45;
+        }
+
+        .manual-crm-toggle.active {
+          border-color: color-mix(in srgb, var(--client-dashboard-accent, var(--button-primary, var(--accent-blue))) 42%, transparent);
+          background: color-mix(in srgb, var(--client-dashboard-accent, var(--button-primary, var(--accent-blue))) 10%, rgba(255, 255, 255, 0.04));
+          box-shadow: 0 16px 40px color-mix(in srgb, var(--client-dashboard-accent, var(--button-primary, var(--accent-blue))) 10%, transparent);
+        }
+
+        .manual-crm-toggle.active .manual-crm-switch {
+          border-color: color-mix(in srgb, var(--client-dashboard-accent, var(--button-primary, var(--accent-blue))) 65%, transparent);
+          background: var(--client-dashboard-accent, var(--button-primary, var(--accent-blue)));
+        }
+
+        .manual-crm-toggle.active .manual-crm-switch::after {
+          transform: translateX(20px);
+          background: #fff;
+        }
+
+        .manual-crm-create-card {
+          min-height: 0;
+        }
+
         .client-dashboard-color-control input[type="color"]::-webkit-color-swatch {
           border: 0;
           border-radius: 12px;
@@ -25374,6 +25582,31 @@ export default function DashboardShell({
         :root[data-ui-mode='light'] .meta-filter-chip-row .stage-chip span,
         :root[data-ui-mode='light'] .stage-selector .stage-chip span {
           color: #0f172a !important;
+        }
+
+        :root[data-ui-mode='light'] .kpi-card-action {
+          background: rgba(255, 255, 255, 0.94) !important;
+          border-color: rgba(15, 23, 42, 0.08) !important;
+          color: #0f172a !important;
+        }
+
+        :root[data-ui-mode='light'] .manual-crm-toggle {
+          background: rgba(255, 255, 255, 0.92) !important;
+          border-color: rgba(15, 23, 42, 0.1) !important;
+          color: #0f172a !important;
+        }
+
+        :root[data-ui-mode='light'] .manual-crm-toggle strong {
+          color: #0f172a !important;
+        }
+
+        :root[data-ui-mode='light'] .manual-crm-toggle small {
+          color: #64748b !important;
+        }
+
+        :root[data-ui-mode='light'] .manual-crm-switch {
+          background: rgba(148, 163, 184, 0.28) !important;
+          border-color: rgba(15, 23, 42, 0.12) !important;
         }
 
         :root[data-ui-mode='light'] .modal-card,
