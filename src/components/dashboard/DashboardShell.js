@@ -23158,22 +23158,19 @@ export default function DashboardShell({
 
         .floating-filter-apply {
           position: fixed;
-          top: 72%;
           right: 24px;
-          transform: translateY(-50%);
+          bottom: 50px;
           z-index: 220;
           min-width: 168px;
           display: inline-flex;
           align-items: center;
           justify-content: center;
           padding: 14px 18px;
-          border: 1px solid rgba(59, 130, 246, 0.34);
+          border: 1px solid color-mix(in srgb, var(--client-dashboard-accent, var(--button-primary, var(--accent-blue))) 45%, transparent);
           border-radius: 999px;
-          background:
-            linear-gradient(180deg, rgba(59, 130, 246, 0.18), rgba(15, 23, 42, 0.94)),
-            rgba(15, 23, 42, 0.96);
-          box-shadow: 0 18px 42px rgba(2, 8, 23, 0.45);
-          color: #eff6ff;
+          background: linear-gradient(180deg, color-mix(in srgb, var(--client-dashboard-accent, var(--button-primary, var(--accent-blue))) 88%, #ffffff 12%), color-mix(in srgb, var(--client-dashboard-accent, var(--button-primary, var(--accent-blue))) 72%, #020617 28%));
+          box-shadow: 0 18px 42px color-mix(in srgb, var(--client-dashboard-accent, var(--button-primary, var(--accent-blue))) 32%, rgba(2, 8, 23, 0.48));
+          color: #ffffff;
           font-size: 15px;
           font-weight: 700;
           text-align: center;
@@ -23181,8 +23178,8 @@ export default function DashboardShell({
         }
 
         .floating-filter-apply:hover:not(:disabled) {
-          transform: translateY(calc(-50% - 2px));
-          box-shadow: 0 22px 48px rgba(2, 8, 23, 0.52);
+          transform: translateY(-2px);
+          box-shadow: 0 22px 48px color-mix(in srgb, var(--client-dashboard-accent, var(--button-primary, var(--accent-blue))) 38%, rgba(2, 8, 23, 0.52));
         }
 
         .floating-filter-apply:disabled {
@@ -25965,7 +25962,7 @@ export default function DashboardShell({
           .floating-filter-apply {
             top: auto;
             right: 16px;
-            bottom: 16px;
+            bottom: 50px;
             left: 16px;
             min-width: 0;
             transform: none;
