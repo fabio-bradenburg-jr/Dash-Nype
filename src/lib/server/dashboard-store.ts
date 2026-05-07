@@ -594,6 +594,11 @@ function normalizeClientDashboardIntegrationKeys(items: unknown): string[] {
 
 function normalizeClientRecord(client: LooseRecord): ClientRecord {
   const payload = client?.payload && typeof client.payload === 'object' ? client.payload : client || {}
+  const businessData = payload.business_data && typeof payload.business_data === 'object' ? payload.business_data : {}
+  const manualCrmSummary = payload.manualCrmSummary && typeof payload.manualCrmSummary === 'object'
+    ? payload.manualCrmSummary
+    : (businessData.manualCrmSummary && typeof businessData.manualCrmSummary === 'object' ? businessData.manualCrmSummary : {})
+  const crmProvider = String(payload.crmProvider || payload.crmMode || businessData.crmProvider || businessData.crmMode || '').trim()
   const { dashboardTemplates, activeDashboardTemplateId } = normalizeClientDashboardTemplates(payload)
   const normalizedAiSettings = normalizeAiSettings(payload.integrations || {})
 
@@ -604,6 +609,8 @@ function normalizeClientRecord(client: LooseRecord): ClientRecord {
     operationEnabled: payload.operationEnabled !== false,
     dashboardEnabled: payload.dashboardEnabled !== false,
     dashboardVisibleIntegrationKeys: normalizeClientDashboardIntegrationKeys(payload.dashboardVisibleIntegrationKeys),
+    crmProvider: crmProvider.toLowerCase() === 'manual' ? 'manual' : crmProvider,
+    manualCrmSummary,
     segment: payload.segment || '',
     subsegment: payload.subsegment || '',
     tier: payload.tier || '',

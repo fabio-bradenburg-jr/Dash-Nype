@@ -243,6 +243,8 @@ export interface ClientRecord {
   operationEnabled: boolean
   dashboardEnabled: boolean
   dashboardVisibleIntegrationKeys: string[]
+  crmProvider: string
+  manualCrmSummary: Record<string, number | null>
   segment: string
   subsegment: string
   tier: string

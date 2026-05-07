@@ -8905,7 +8905,11 @@ export default function DashboardShell({
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          crmProvider: 'manual',
+          crmMode: 'manual',
+          manualCrmSummary,
           business_data: {
+            crmProvider: 'manual',
             crmMode: 'manual',
             manualCrmSummary,
           },

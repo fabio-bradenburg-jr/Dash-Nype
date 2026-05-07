@@ -800,6 +800,8 @@ export function createClientRecord(overrides: ClientRecordOverrides = {}): Clien
     operationEnabled: overrides.operationEnabled !== false,
     dashboardEnabled: overrides.dashboardEnabled !== false,
     dashboardVisibleIntegrationKeys: normalizeClientDashboardIntegrationKeys(overrides.dashboardVisibleIntegrationKeys),
+    crmProvider: '',
+    manualCrmSummary: {},
     status: 'Ativo',
     productId: '',
     product: '',
