@@ -16474,6 +16474,16 @@ export default function DashboardShell({
           box-shadow: inset 0 0 0 1px rgba(175, 198, 255, 0.12);
         }
 
+        .sidebar :global(.nav-item:hover i) {
+          color: var(--button-primary, var(--accent-blue));
+        }
+
+        .sidebar-collapsed :global(.nav-item:hover) {
+          background: color-mix(in srgb, var(--button-primary, var(--accent-blue)) 14%, transparent);
+          box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--button-primary, var(--accent-blue)) 28%, transparent);
+        }
+
+
         .nav-tools-group {
           display: grid;
           gap: 10px;
