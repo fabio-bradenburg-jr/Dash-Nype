@@ -25538,6 +25538,27 @@ export default function DashboardShell({
           box-shadow: 0 16px 36px rgba(15, 23, 42, 0.14) !important;
         }
 
+        .dashboard-light-mode .simple-clients-layout .management-header-copy h2,
+        .dashboard-light-mode .simple-clients-layout .management-header-copy p {
+          color: #0f172a !important;
+        }
+
+        .dashboard-light-mode .simple-clients-layout .client-registry-search {
+          background: #D3D3D3 !important;
+          border-color: #D3D3D3 !important;
+          box-shadow: none !important;
+        }
+
+        .dashboard-light-mode .simple-clients-layout .client-registry-search input {
+          color: #0f172a !important;
+        }
+
+        .dashboard-light-mode .simple-clients-layout .client-registry-search input::placeholder,
+        .dashboard-light-mode .simple-clients-layout .client-registry-search i {
+          color: #475569 !important;
+          opacity: 1 !important;
+        }
+
         :root[data-ui-mode='light'] .sidebar-collapsed :global(.nav-item)::after {
           background: #ffffff !important;
           color: #0f172a !important;
