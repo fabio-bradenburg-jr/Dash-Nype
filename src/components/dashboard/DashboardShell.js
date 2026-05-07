@@ -14511,8 +14511,9 @@ export default function DashboardShell({
                 </span>
                 <h2>{activeClient?.name || 'Selecione um cliente'}</h2>
               </div>
-              <div className="hero-meta">
-                {!hasAnyPresentationData ? (
+              {!activeClientUsesManualCrm && (
+                <div className="hero-meta">
+                  {!hasAnyPresentationData ? (
                   <div className="hero-stat hero-stat-empty">
                     <span>Nenhuma integração ativa</span>
                     <strong>Cadastre uma integração do cliente ou da operação</strong>
@@ -14574,8 +14575,9 @@ export default function DashboardShell({
                       </>
                     )}
                   </>
-                )}
-              </div>
+                  )}
+                </div>
+              )}
             </section>
 
             {errorMessage && (
