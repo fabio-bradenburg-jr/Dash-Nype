@@ -11140,8 +11140,8 @@ export default function DashboardShell({
     )
   }
 
-  const renderFixedKpiGrid = (items) => (
-    <div className="kpi-grid compact-kpi-grid">
+  const renderFixedKpiGrid = (items, { threeColumns = false } = {}) => (
+    <div className={threeColumns ? "kpi-grid compact-kpi-grid compact-kpi-grid-3" : "kpi-grid compact-kpi-grid"}>
       {items.filter((metric) => !metric.hidden).map((metric) => {
         const CardTag = metric.onClick ? 'button' : 'article'
         return (
@@ -15563,26 +15563,9 @@ export default function DashboardShell({
                               <h3>Funil Meta + Agendor</h3>
                               <p>Leitura por safra: leads gerados no Meta e negócios criados no Agendor dentro do mesmo período selecionado.</p>
                             </div>
-                            {renderFixedKpiGrid(rdAgendorFunnelKpis)}
+                            {renderFixedKpiGrid(rdAgendorFunnelKpis, { threeColumns: true })}
                           </section>
                         </div>
-
-                        {activeClientUsesManualCrm && (
-                          <div className="crm-manual-actions">
-                            <div>
-                              <strong>Dados comerciais manuais</strong>
-                              <p>Atualize oportunidades, qualificados, vendas, perdidos e faturamento para manter o bloco comercial do dash preenchido.</p>
-                            </div>
-                            <button
-                              type="button"
-                              className="btn btn-secondary"
-                              onClick={() => setIsManualCrmModalOpen(true)}
-                            >
-                              <i className="bx bx-edit-alt"></i>
-                              Imputar dados
-                            </button>
-                          </div>
-                        )}
 
                         {rdSummary?.diagnostics && (
                           <div className="meta-campaign-filter-collapsible rd-diagnostics-collapsible">
@@ -23315,6 +23298,22 @@ export default function DashboardShell({
 
         .compact-kpi-grid {
           margin-bottom: 0;
+        }
+
+        .kpi-grid.compact-kpi-grid-3 {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+
+        @media (max-width: 1100px) {
+          .kpi-grid.compact-kpi-grid-3 {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
+        }
+
+        @media (max-width: 720px) {
+          .kpi-grid.compact-kpi-grid-3 {
+            grid-template-columns: 1fr;
+          }
         }
 
         .kpi-card-action {
