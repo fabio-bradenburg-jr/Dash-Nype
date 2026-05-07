@@ -12411,7 +12411,7 @@ export default function DashboardShell({
 
   return (
     <div
-      className="dashboard-container dashboard-shell-stellar"
+      className={`dashboard-container dashboard-shell-stellar ${isLightAppMode ? "dashboard-light-mode" : ""}`}
       style={{
         '--accent-blue': appAccentColor,
         '--saas-primary': appAccentColor,
@@ -25521,6 +25521,13 @@ export default function DashboardShell({
         }
 
         /* Final light-mode contrast pass for simplified SaaS screens. */
+        .dashboard-light-mode .sidebar-collapsed :global(.nav-item)::after {
+          background: linear-gradient(180deg, #ffffff, #f8fafc) !important;
+          color: #0f172a !important;
+          border-color: rgba(15, 23, 42, 0.12) !important;
+          box-shadow: 0 16px 36px rgba(15, 23, 42, 0.14) !important;
+        }
+
         :root[data-ui-mode='light'] .sidebar-collapsed :global(.nav-item)::after {
           background: #ffffff !important;
           color: #0f172a !important;
