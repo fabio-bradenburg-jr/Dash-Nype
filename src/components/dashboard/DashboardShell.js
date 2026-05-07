@@ -5432,22 +5432,53 @@ export default function DashboardShell({
     })
   }
 
-  const handleToggleManualCrmForActiveClient = (enabled) => {
-    if (!canEditActiveClient) return
+  const handleToggleManualCrmForActiveClient = async (enabled) => {
+    if (!canEditActiveClient || !activeClient?.id) return
+
+    const hasAgendorConfigured = String(activeClient?.integrations?.agendorToken || '').trim() || normalizeIntegrationList(activeClient.agendorPipelineIds || activeClient.agendorAccountId || activeClient.rdPipelineId).length > 0
+    const nextCrmProvider = enabled ? 'manual' : (hasAgendorConfigured ? 'agendor' : '')
+    const nextCrmMode = enabled ? 'manual' : nextCrmProvider
+    const manualCrmSummary = activeClient.manualCrmSummary || {}
 
     updateActiveClient((client) => {
       const dashboardVisibleIntegrationKeys = enabled
         ? ensureAgendorDashboardVisibility(client)
         : normalizeClientDashboardIntegrationKeys(client.dashboardVisibleIntegrationKeys)
-      const hasAgendorConfigured = String(client?.integrations?.agendorToken || '').trim() || normalizeIntegrationList(client.agendorPipelineIds || client.agendorAccountId || client.rdPipelineId).length > 0
 
       return {
         ...client,
-        crmProvider: enabled ? 'manual' : (hasAgendorConfigured ? 'agendor' : ''),
-        manualCrmSummary: client.manualCrmSummary || {},
+        crmProvider: nextCrmProvider,
+        crmMode: nextCrmMode,
+        manualCrmSummary,
         dashboardVisibleIntegrationKeys,
       }
     })
+
+    setIsSavingIntegrations(true)
+    try {
+      const response = await fetch(`/api/saas/clients/${activeClient.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          crmProvider: nextCrmProvider,
+          crmMode: nextCrmMode,
+          manualCrmSummary,
+          business_data: {
+            crmProvider: nextCrmProvider,
+            crmMode: nextCrmMode,
+            manualCrmSummary,
+          },
+        }),
+      })
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) {
+        throw new Error(data?.error || data?.detail || 'Não foi possível salvar o modo de CRM deste cliente.')
+      }
+    } catch (error) {
+      alert(error?.message || 'Não foi possível salvar o modo de CRM deste cliente.')
+    } finally {
+      setIsSavingIntegrations(false)
+    }
   }
 
   const handleToggleActiveClientDashboardIntegration = (integrationKey) => {
