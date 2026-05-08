@@ -1632,6 +1632,8 @@ const FUNNEL_LIBRARY_EXCLUDED_KEYS = new Set([
   'roas',
 ])
 
+const LEGACY_DEFAULT_META_CAMPAIGN_TABLE_COLUMN_KEYS = ['spend', 'totalConversions', 'cost_per_lead', 'cpa', 'roas']
+
 const META_CAMPAIGN_TABLE_COLUMN_OPTIONS = {
   spend: { label: 'Investimento', type: 'currency', description: 'Valor investido no período filtrado.' },
   totalConversions: { label: 'Conversões', type: 'number', description: 'Total consolidado de compras, leads e mensagens.' },
@@ -2040,6 +2042,14 @@ function resolveBrazilCityMeta(item) {
 
 function getMetaBreakdownConversions(item) {
   return Number(item?.custom_metrics?.totalConversions || 0)
+}
+
+function getMetaCampaignResultValue(metrics, resultMetricKey = 'totalConversions') {
+  if (resultMetricKey === 'reachResults') {
+    return Number(metrics?.reachResults || metrics?.reach || 0)
+  }
+
+  return Number(metrics?.[resultMetricKey] || 0)
 }
 
 function getMetaBreakdownResultValue(item, resultMetricKey = 'totalConversions') {
@@ -2458,6 +2468,11 @@ function normalizeMetaCampaignTableColumnKeys(columnKeys) {
     ? Array.from(new Set(columnKeys.filter((columnKey) => typeof columnKey === 'string' && META_CAMPAIGN_TABLE_COLUMN_OPTIONS[columnKey])))
     : []
 
+  const isLegacyDefault =
+    normalized.length === LEGACY_DEFAULT_META_CAMPAIGN_TABLE_COLUMN_KEYS.length &&
+    normalized.every((columnKey, index) => columnKey === LEGACY_DEFAULT_META_CAMPAIGN_TABLE_COLUMN_KEYS[index])
+
+  if (isLegacyDefault) return [...DEFAULT_META_CAMPAIGN_TABLE_COLUMN_KEYS]
   return normalized.length ? normalized : [...DEFAULT_META_CAMPAIGN_TABLE_COLUMN_KEYS]
 }
 
@@ -9256,6 +9271,8 @@ export default function DashboardShell({
     return [...baseOptions, ...appendedOptions]
   }, [selectedMetaCampaignTableColumns])
 
+  const campaignTableConversionResultMetricKey = META_RESULT_COMPARISON_OPTIONS[metaResultPreviewKey]?.resultMetricKey || 'totalConversions'
+
   const getCampaignMetricValue = useCallback((campaign, metricKey) => {
     const metrics = extractMetaCampaignMetrics(campaign)
 
@@ -9292,12 +9309,14 @@ export default function DashboardShell({
         return metrics.cpm
       case 'frequency':
         return metrics.frequency
-      case 'conversionRate':
-        return metrics.conversionRate
+      case 'conversionRate': {
+        const resultValue = getMetaCampaignResultValue(metrics, campaignTableConversionResultMetricKey)
+        return metrics.clicks > 0 ? (resultValue / metrics.clicks) * 100 : 0
+      }
       default:
         return 0
     }
-  }, [])
+  }, [campaignTableConversionResultMetricKey])
 
   const formatCampaignMetricValue = useCallback((metricKey, metricValue) => {
     const metric = META_CAMPAIGN_TABLE_COLUMN_OPTIONS[metricKey]

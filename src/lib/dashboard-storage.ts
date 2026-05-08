@@ -574,7 +574,8 @@ export const DEFAULT_PREFERENCES: DashboardPreferences = {
 export const DEFAULT_DASHBOARD_TEMPLATE_NAME = 'Principal'
 const DEFAULT_META_DASHBOARD_METRIC_KEYS: string[] = []
 const DEFAULT_META_DASHBOARD_METRIC_LAYOUTS: DashboardMetricLayout[] = []
-export const DEFAULT_META_CAMPAIGN_TABLE_COLUMN_KEYS = ['spend', 'totalConversions', 'cost_per_lead', 'cpa', 'roas']
+export const DEFAULT_META_CAMPAIGN_TABLE_COLUMN_KEYS = ['spend', 'reach', 'clicks', 'leads', 'cost_per_lead', 'conversionRate']
+const LEGACY_DEFAULT_META_CAMPAIGN_TABLE_COLUMN_KEYS = ['spend', 'totalConversions', 'cost_per_lead', 'cpa', 'roas']
 const DEFAULT_RD_DASHBOARD_METRIC_KEYS: string[] = []
 const DEFAULT_RD_DASHBOARD_METRIC_LAYOUTS: DashboardMetricLayout[] = []
 const DEFAULT_SHEETS_DASHBOARD_METRIC_KEYS: string[] = []
@@ -591,6 +592,11 @@ function normalizeTemplateMetricKeys(metricKeys: unknown): string[] {
 
 function normalizeMetaCampaignTableColumnKeys(columnKeys: unknown): string[] {
   const normalized = normalizeTemplateMetricKeys(columnKeys)
+  const isLegacyDefault =
+    normalized.length === LEGACY_DEFAULT_META_CAMPAIGN_TABLE_COLUMN_KEYS.length &&
+    normalized.every((columnKey, index) => columnKey === LEGACY_DEFAULT_META_CAMPAIGN_TABLE_COLUMN_KEYS[index])
+
+  if (isLegacyDefault) return [...DEFAULT_META_CAMPAIGN_TABLE_COLUMN_KEYS]
   return normalized.length ? normalized : [...DEFAULT_META_CAMPAIGN_TABLE_COLUMN_KEYS]
 }
 
