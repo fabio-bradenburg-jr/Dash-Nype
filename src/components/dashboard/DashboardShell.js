@@ -3079,6 +3079,7 @@ export default function DashboardShell({
   const [newClientGroupName, setNewClientGroupName] = useState('')
   const [newClientMetaAdAccountId, setNewClientMetaAdAccountId] = useState('')
   const [newClientDashboardColor, setNewClientDashboardColor] = useState('#10B981')
+  const [newClientLogoUrl, setNewClientLogoUrl] = useState('')
   const [newProductName, setNewProductName] = useState('')
   const [operationViewMode, setOperationViewMode] = useState('kanban')
   const [operationPeriodFilter, setOperationPeriodFilter] = useState('all')
@@ -5198,11 +5199,13 @@ export default function DashboardShell({
     setIsCreateClientModalOpen(false)
     setCreateClientStep('identity')
     setNewClientManualCrmEnabled(false)
+    setNewClientLogoUrl('')
   }, [])
 
   const openCreateClientModal = useCallback(() => {
     setCreateClientStep('identity')
     setNewClientDashboardColor(appAccentColor)
+    setNewClientLogoUrl('')
     setNewClientManualCrmEnabled(false)
     setIsCreateClientModalOpen(true)
     window.setTimeout(() => {
@@ -5544,6 +5547,7 @@ export default function DashboardShell({
     const newClient = createClientRecord({
       name: trimmedName,
       cnpj: normalizeCnpjInput(newClientCnpj),
+      logoUrl: newClientLogoUrl,
       metaAdAccountId: newClientMetaAdAccountId,
       dashboardColor: normalizedNewClientDashboardColor,
       operationEnabled: false,
@@ -5567,6 +5571,7 @@ export default function DashboardShell({
     setNewClientCnpj('')
     setNewClientMetaAdAccountId('')
     setNewClientDashboardColor(appAccentColor)
+    setNewClientLogoUrl('')
     setNewClientManualCrmEnabled(false)
     setNewClientOperationEnabled(false)
     setNewClientDashboardEnabled(true)
@@ -8175,16 +8180,34 @@ export default function DashboardShell({
     }
   }
 
+  const readClientLogoFile = (file, onLoad) => {
+    if (!file) return
+    if (!String(file.type || '').startsWith('image/')) {
+      alert('Envie uma imagem válida para a logo do cliente.')
+      return
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      alert('A logo precisa ter até 2MB para salvar com segurança no cadastro.')
+      return
+    }
+
+    const reader = new FileReader()
+    reader.onload = () => onLoad(reader.result?.toString() || '')
+    reader.readAsDataURL(file)
+  }
+
+  const handleNewClientLogoUpload = (event) => {
+    if (!isMaster) return
+    const file = event.target.files?.[0]
+    readClientLogoFile(file, (logoUrl) => setNewClientLogoUrl(logoUrl))
+    event.target.value = ''
+  }
+
   const handleClientLogoUpload = (event) => {
     if (!canEditActiveClient) return
     const file = event.target.files?.[0]
-    if (!file) return
-
-    const reader = new FileReader()
-    reader.onload = () => {
-      handleClientFieldChange('logoUrl', reader.result?.toString() || '')
-    }
-    reader.readAsDataURL(file)
+    readClientLogoFile(file, (logoUrl) => handleClientFieldChange('logoUrl', logoUrl))
+    event.target.value = ''
   }
 
   useEffect(() => {
@@ -13780,8 +13803,13 @@ export default function DashboardShell({
                             setIsEditClientModalOpen(true)
                           }}
                         >
-                          <strong>{client.name}</strong>
-                          <small>{metaAccount?.name || client.metaAdAccountId || client.cnpj || 'Sem conta de anúncio selecionada'}</small>
+                          <span className="simple-client-logo" aria-hidden="true">
+                            {client.logoUrl ? <img src={client.logoUrl} alt="" /> : <i className="bx bx-building-house"></i>}
+                          </span>
+                          <span className="simple-client-copy">
+                            <strong>{client.name}</strong>
+                            <small>{metaAccount?.name || client.metaAdAccountId || client.cnpj || 'Sem conta de anúncio selecionada'}</small>
+                          </span>
                         </button>
                         <span className={hasMeta ? 'simple-client-icon active' : 'simple-client-icon'} title={hasMeta ? 'Meta conectada' : 'Meta não conectada'}>
                           <i className="bx bxl-meta"></i>
@@ -13851,6 +13879,27 @@ export default function DashboardShell({
                       <div className="input-group">
                         <label>CNPJ</label>
                         <input type="text" value={activeClient.cnpj || ''} onChange={(event) => handleClientFieldChange('cnpj', event.target.value)} placeholder="00.000.000/0000-00" disabled={!canEditActiveClient} />
+                      </div>
+                    </div>
+
+                    <div className="client-logo-uploader">
+                      <div className="client-logo-preview">
+                        {activeClient.logoUrl ? <img src={activeClient.logoUrl} alt={`Logo ${activeClient.name}`} /> : <i className="bx bx-image-add"></i>}
+                      </div>
+                      <div className="client-logo-copy">
+                        <label>Logo do cliente</label>
+                        <p>Essa imagem aparece no topo do dashboard e ajuda a deixar a apresentação com a marca do cliente.</p>
+                        <div className="client-logo-actions">
+                          <label className="btn btn-secondary client-logo-upload-button">
+                            <input type="file" accept="image/*" onChange={handleClientLogoUpload} disabled={!canEditActiveClient} />
+                            {activeClient.logoUrl ? 'Trocar logo' : 'Subir logo'}
+                          </label>
+                          {activeClient.logoUrl && (
+                            <button type="button" className="btn btn-secondary" onClick={() => handleClientFieldChange('logoUrl', '')} disabled={!canEditActiveClient}>
+                              Remover
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
 
@@ -14294,6 +14343,27 @@ export default function DashboardShell({
                     <div className="client-create-inline client-create-identity-only">
                       <input type="text" value={newClientName} onChange={(event) => setNewClientName(event.target.value)} placeholder="Nome do cliente" disabled={!isMaster} />
                       <input type="text" value={newClientCnpj} onChange={(event) => setNewClientCnpj(normalizeCnpjInput(event.target.value))} placeholder="CNPJ opcional" disabled={!isMaster} />
+                    </div>
+
+                    <div className="client-logo-uploader client-logo-uploader-create">
+                      <div className="client-logo-preview">
+                        {newClientLogoUrl ? <img src={newClientLogoUrl} alt="Preview da logo do cliente" /> : <i className="bx bx-image-add"></i>}
+                      </div>
+                      <div className="client-logo-copy">
+                        <label>Logo do cliente</label>
+                        <p>Opcional: suba a marca agora para ela aparecer no dashboard do cliente.</p>
+                        <div className="client-logo-actions">
+                          <label className="btn btn-secondary client-logo-upload-button">
+                            <input type="file" accept="image/*" onChange={handleNewClientLogoUpload} disabled={!isMaster} />
+                            {newClientLogoUrl ? 'Trocar logo' : 'Subir logo'}
+                          </label>
+                          {newClientLogoUrl && (
+                            <button type="button" className="btn btn-secondary" onClick={() => setNewClientLogoUrl('')} disabled={!isMaster}>
+                              Remover
+                            </button>
+                          )}
+                        </div>
+                      </div>
                     </div>
 
                     <div className="client-dashboard-color-picker client-dashboard-color-picker-create">
@@ -25183,10 +25253,36 @@ export default function DashboardShell({
           background: transparent;
           color: inherit;
           cursor: pointer;
-          display: grid;
-          gap: 4px;
+          display: flex;
+          align-items: center;
+          gap: 12px;
           padding: 0;
           text-align: left;
+          min-width: 0;
+        }
+        .simple-client-logo {
+          width: 42px;
+          height: 42px;
+          flex: 0 0 42px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: 14px;
+          border: 1px solid rgba(148, 163, 184, 0.2);
+          background: rgba(255, 255, 255, 0.055);
+          color: var(--accent-blue);
+          overflow: hidden;
+        }
+        .simple-client-logo img {
+          width: 100%;
+          height: 100%;
+          object-fit: contain;
+          padding: 6px;
+        }
+        .simple-client-copy {
+          display: grid;
+          gap: 4px;
+          min-width: 0;
         }
         .simple-client-name strong { font-size: 0.98rem; }
         .simple-client-name small { color: var(--muted-text); font-size: 0.78rem; }
@@ -25334,6 +25430,87 @@ export default function DashboardShell({
 
         .client-create-identity-only {
           margin-top: 8px;
+        }
+
+        .client-logo-uploader {
+          display: grid;
+          grid-template-columns: 96px minmax(0, 1fr);
+          align-items: center;
+          gap: 18px;
+          margin-top: 20px;
+          padding: 18px;
+          border-radius: 20px;
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          background: rgba(255, 255, 255, 0.035);
+          min-width: 0;
+        }
+
+        .client-logo-uploader-create {
+          margin-top: 18px;
+        }
+
+        .client-logo-preview {
+          width: 96px;
+          height: 96px;
+          border-radius: 24px;
+          border: 1px dashed rgba(255, 255, 255, 0.16);
+          background: rgba(0, 0, 0, 0.18);
+          display: grid;
+          place-items: center;
+          color: var(--accent-blue);
+          overflow: hidden;
+        }
+
+        .client-logo-preview img {
+          width: 100%;
+          height: 100%;
+          object-fit: contain;
+          padding: 10px;
+        }
+
+        .client-logo-preview i {
+          font-size: 1.8rem;
+        }
+
+        .client-logo-copy {
+          display: grid;
+          gap: 8px;
+          min-width: 0;
+        }
+
+        .client-logo-copy label {
+          color: var(--text-primary);
+          font-size: 0.82rem;
+          font-weight: 900;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+        }
+
+        .client-logo-copy p {
+          margin: 0;
+          color: var(--text-muted);
+          font-size: 0.86rem;
+          line-height: 1.45;
+        }
+
+        .client-logo-actions {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 10px;
+          margin-top: 6px;
+        }
+
+        .client-logo-upload-button {
+          position: relative;
+          overflow: hidden;
+          cursor: pointer;
+        }
+
+        .client-logo-upload-button input {
+          position: absolute;
+          inset: 0;
+          opacity: 0;
+          pointer-events: none;
         }
 
         .client-dashboard-color-picker {
@@ -25797,16 +25974,21 @@ export default function DashboardShell({
           box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--button-primary, var(--accent-blue)) 26%, rgba(15, 23, 42, 0.08)) !important;
         }
 
+        :root[data-ui-mode='light'] .simple-client-logo,
+        :root[data-ui-mode='light'] .client-logo-uploader,
+        :root[data-ui-mode='light'] .client-logo-preview,
         :root[data-ui-mode='light'] .client-dashboard-color-picker {
           background: rgba(255, 255, 255, 0.9) !important;
           border-color: rgba(15, 23, 42, 0.1) !important;
         }
 
+        :root[data-ui-mode='light'] .client-logo-copy label,
         :root[data-ui-mode='light'] .client-dashboard-color-picker label,
         :root[data-ui-mode='light'] .client-dashboard-color-control span {
           color: #0f172a !important;
         }
 
+        :root[data-ui-mode='light'] .client-logo-copy p,
         :root[data-ui-mode='light'] .client-dashboard-color-picker p {
           color: #475569 !important;
         }
