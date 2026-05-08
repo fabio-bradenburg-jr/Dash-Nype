@@ -3859,6 +3859,22 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
           color: #0f172a !important;
         }
 
+        :root[data-ui-mode='light'] .settings-sidebar-link,
+        :root[data-ui-mode='light'] .settings-sidebar-link:hover,
+        :root[data-ui-mode='light'] .settings-sidebar-link.active {
+          background: #D3D3D3 !important;
+          border-color: rgba(15, 23, 42, 0.12) !important;
+          color: #000000 !important;
+        }
+
+        :root[data-ui-mode='light'] .settings-sidebar-link strong,
+        :root[data-ui-mode='light'] .settings-sidebar-link span,
+        :root[data-ui-mode='light'] .settings-sidebar-link.active strong,
+        :root[data-ui-mode='light'] .settings-sidebar-link.active span {
+          color: #000000 !important;
+          opacity: 1;
+        }
+
         :root[data-ui-mode='light'] .settings-action-bar,
         :root[data-ui-mode='light'] .settings-action-bar-global {
           background: rgba(255, 255, 255, 0.96) !important;
