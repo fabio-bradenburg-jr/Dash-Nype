@@ -3006,6 +3006,7 @@ export default function DashboardShell({
   const [isMetaCampaignFilterOpen, setIsMetaCampaignFilterOpen] = useState(false)
   const [isMetaAdsetFilterOpen, setIsMetaAdsetFilterOpen] = useState(false)
   const [isMetaAdFilterOpen, setIsMetaAdFilterOpen] = useState(false)
+  const [isFunnelSectionOpen, setIsFunnelSectionOpen] = useState(false)
   const [isRdDiagnosticsOpen, setIsRdDiagnosticsOpen] = useState(false)
   const [isRdSourceFilterOpen, setIsRdSourceFilterOpen] = useState(false)
   const currentAppMode = externalAppMode === 'light' || externalAppMode === 'dark'
@@ -4865,12 +4866,12 @@ export default function DashboardShell({
     const nextCampaignSelection =
       matchedCampaignIds.length === availableCampaignIds.length ? [] : matchedCampaignIds
 
-    if (haveSameSelection(draftMetaCampaignFilters, nextCampaignSelection)) return
-
-    setDraftMetaCampaignFilters(nextCampaignSelection)
-    setDraftMetaAdsetFilters([])
-    setDraftMetaAdFilters([])
-  }, [normalizedDraftMetaResultFilters, availableMetaCampaignOptions, draftMetaResultMatchedCampaignIds, draftMetaCampaignFilters])
+    setDraftMetaCampaignFilters((current) =>
+      haveSameSelection(current, nextCampaignSelection) ? current : nextCampaignSelection
+    )
+    setDraftMetaAdsetFilters((current) => (current.length ? [] : current))
+    setDraftMetaAdFilters((current) => (current.length ? [] : current))
+  }, [normalizedDraftMetaResultFilters, availableMetaCampaignOptions, draftMetaResultMatchedCampaignIds])
 
   useEffect(() => {
     setDraftMondayDateRange(mondayDateRange)
@@ -6511,15 +6512,22 @@ export default function DashboardShell({
       const normalizedCurrent = current.length > 0
         ? current.filter((currentId) => availableIds.includes(currentId))
         : availableIds
+      const isAllSelected = normalizedCurrent.length === availableIds.length
+
+      if (isAllSelected) {
+        return [campaignId]
+      }
 
       if (normalizedCurrent.includes(campaignId)) {
         const nextFilters = normalizedCurrent.filter((currentId) => currentId !== campaignId)
-        return nextFilters.length > 0 ? nextFilters : normalizedCurrent
+        return nextFilters.length > 0 ? nextFilters : []
       }
 
       const nextFilters = [...normalizedCurrent, campaignId]
       return nextFilters.length === availableIds.length ? [] : nextFilters
     })
+    setDraftMetaAdsetFilters([])
+    setDraftMetaAdFilters([])
   }
 
   const handleApplyDashboardFilters = () => {
@@ -14964,14 +14972,23 @@ export default function DashboardShell({
                 </section>
 
                 <section className="glass-panel funnel-section">
-                  <div className="section-header section-header-stack">
+                  <div className="section-header section-header-stack section-header-with-action">
                     <div>
                       <h2>Funil de métricas</h2>
                       <p className="chart-subtitle">Arraste as métricas para montar a jornada manualmente. O sistema calcula a taxa de uma etapa para outra automaticamente.</p>
                     </div>
+                    <button
+                      type="button"
+                      className="btn btn-secondary funnel-toggle-button"
+                      onClick={() => setIsFunnelSectionOpen((current) => !current)}
+                    >
+                      <i className={"bx " + (isFunnelSectionOpen ? "bx-chevron-up" : "bx-chevron-down")}></i>
+                      {isFunnelSectionOpen ? "Ocultar funil" : "Mostrar funil"}
+                    </button>
                   </div>
 
-                  <div className="funnel-builder">
+                  {isFunnelSectionOpen && (
+                    <div className="funnel-builder">
                     <div className="funnel-library">
                       <h3>Métricas disponíveis</h3>
                       <div className="funnel-chip-list">
@@ -15031,6 +15048,7 @@ export default function DashboardShell({
                       )}
                     </div>
                   </div>
+                  )}
                 </section>
 
                 <section className="rankings-grid meta-rankings-stack">
