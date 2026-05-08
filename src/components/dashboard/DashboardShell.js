@@ -5574,7 +5574,7 @@ export default function DashboardShell({
     setCreateClientStep('identity')
     setClientEditSection('geral')
     setIsCreateClientModalOpen(false)
-    setIsEditClientModalOpen(true)
+    setIsEditClientModalOpen(false)
 
     try {
       await persistWorkspaceState({ clients: nextClients, activeClientId: newClient.id })
