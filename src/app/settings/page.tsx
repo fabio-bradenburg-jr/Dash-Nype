@@ -3907,6 +3907,29 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
           color: #0f172a !important;
         }
 
+        :root[data-ui-mode='light'] .settings-action-bar-global {
+          background: rgba(25, 28, 34, 0.88) !important;
+          border-color: rgba(255, 255, 255, 0.12) !important;
+          color: #ffffff !important;
+        }
+
+        :root[data-ui-mode='light'] .settings-action-bar-global .settings-action-copy strong,
+        :root[data-ui-mode='light'] .settings-action-bar-global .settings-action-copy span {
+          color: #ffffff !important;
+        }
+
+        :root[data-ui-mode='light'] .settings-action-bar-global .settings-ghost-button,
+        :root[data-ui-mode='light'] .settings-action-bar-global .settings-action-buttons .btn-secondary {
+          background: rgba(255, 255, 255, 0.08) !important;
+          border-color: rgba(255, 255, 255, 0.14) !important;
+          color: #ffffff !important;
+        }
+
+        :root[data-ui-mode='light'] .settings-action-bar-global .settings-ghost-button:disabled {
+          color: #ffffff !important;
+          opacity: 0.5;
+        }
+
         @media (max-width: 980px) {
           .settings-workspace {
             grid-template-columns: 1fr;
