@@ -1633,6 +1633,7 @@ const FUNNEL_LIBRARY_EXCLUDED_KEYS = new Set([
 ])
 
 const LEGACY_DEFAULT_META_CAMPAIGN_TABLE_COLUMN_KEYS = ['spend', 'totalConversions', 'cost_per_lead', 'cpa', 'roas']
+const LEGACY_DEFAULT_META_CAMPAIGN_TABLE_COLUMN_SET = new Set(LEGACY_DEFAULT_META_CAMPAIGN_TABLE_COLUMN_KEYS)
 
 const META_CAMPAIGN_TABLE_COLUMN_OPTIONS = {
   spend: { label: 'Investimento', type: 'currency', description: 'Valor investido no período filtrado.' },
@@ -2468,12 +2469,28 @@ function normalizeMetaCampaignTableColumnKeys(columnKeys) {
     ? Array.from(new Set(columnKeys.filter((columnKey) => typeof columnKey === 'string' && META_CAMPAIGN_TABLE_COLUMN_OPTIONS[columnKey])))
     : []
 
+  if (shouldUseDefaultMetaCampaignTableColumns(normalized)) return [...DEFAULT_META_CAMPAIGN_TABLE_COLUMN_KEYS]
+  return normalized
+}
+
+function shouldUseDefaultMetaCampaignTableColumns(normalized) {
+  if (!normalized.length) return true
+
   const isLegacyDefault =
     normalized.length === LEGACY_DEFAULT_META_CAMPAIGN_TABLE_COLUMN_KEYS.length &&
     normalized.every((columnKey, index) => columnKey === LEGACY_DEFAULT_META_CAMPAIGN_TABLE_COLUMN_KEYS[index])
 
-  if (isLegacyDefault) return [...DEFAULT_META_CAMPAIGN_TABLE_COLUMN_KEYS]
-  return normalized.length ? normalized : [...DEFAULT_META_CAMPAIGN_TABLE_COLUMN_KEYS]
+  if (isLegacyDefault) return true
+
+  const legacyMatchCount = normalized.filter((columnKey) => LEGACY_DEFAULT_META_CAMPAIGN_TABLE_COLUMN_SET.has(columnKey)).length
+  const missingCurrentDefaultCount = DEFAULT_META_CAMPAIGN_TABLE_COLUMN_KEYS.filter((columnKey) => !normalized.includes(columnKey)).length
+  const hasLegacyFingerprint =
+    normalized.includes('totalConversions') ||
+    normalized.includes('cpa') ||
+    normalized.includes('roas') ||
+    legacyMatchCount >= 3
+
+  return hasLegacyFingerprint && (missingCurrentDefaultCount >= 2 || normalized.length > DEFAULT_META_CAMPAIGN_TABLE_COLUMN_KEYS.length + 2)
 }
 
 function cloneDashboardTemplates(templates = []) {

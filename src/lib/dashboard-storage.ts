@@ -576,6 +576,7 @@ const DEFAULT_META_DASHBOARD_METRIC_KEYS: string[] = []
 const DEFAULT_META_DASHBOARD_METRIC_LAYOUTS: DashboardMetricLayout[] = []
 export const DEFAULT_META_CAMPAIGN_TABLE_COLUMN_KEYS = ['spend', 'reach', 'clicks', 'leads', 'cost_per_lead', 'conversionRate']
 const LEGACY_DEFAULT_META_CAMPAIGN_TABLE_COLUMN_KEYS = ['spend', 'totalConversions', 'cost_per_lead', 'cpa', 'roas']
+const LEGACY_DEFAULT_META_CAMPAIGN_TABLE_COLUMN_SET = new Set(LEGACY_DEFAULT_META_CAMPAIGN_TABLE_COLUMN_KEYS)
 const DEFAULT_RD_DASHBOARD_METRIC_KEYS: string[] = []
 const DEFAULT_RD_DASHBOARD_METRIC_LAYOUTS: DashboardMetricLayout[] = []
 const DEFAULT_SHEETS_DASHBOARD_METRIC_KEYS: string[] = []
@@ -590,14 +591,31 @@ function normalizeTemplateMetricKeys(metricKeys: unknown): string[] {
   return Array.from(new Set(metricKeys.filter((metricKey) => typeof metricKey === 'string' && metricKey.trim())))
 }
 
-function normalizeMetaCampaignTableColumnKeys(columnKeys: unknown): string[] {
-  const normalized = normalizeTemplateMetricKeys(columnKeys)
+function shouldUseDefaultMetaCampaignTableColumns(normalized: string[]): boolean {
+  if (!normalized.length) return true
+
   const isLegacyDefault =
     normalized.length === LEGACY_DEFAULT_META_CAMPAIGN_TABLE_COLUMN_KEYS.length &&
     normalized.every((columnKey, index) => columnKey === LEGACY_DEFAULT_META_CAMPAIGN_TABLE_COLUMN_KEYS[index])
 
-  if (isLegacyDefault) return [...DEFAULT_META_CAMPAIGN_TABLE_COLUMN_KEYS]
-  return normalized.length ? normalized : [...DEFAULT_META_CAMPAIGN_TABLE_COLUMN_KEYS]
+  if (isLegacyDefault) return true
+
+  const legacyMatchCount = normalized.filter((columnKey) => LEGACY_DEFAULT_META_CAMPAIGN_TABLE_COLUMN_SET.has(columnKey)).length
+  const missingCurrentDefaultCount = DEFAULT_META_CAMPAIGN_TABLE_COLUMN_KEYS.filter((columnKey) => !normalized.includes(columnKey)).length
+  const hasLegacyFingerprint =
+    normalized.includes('totalConversions') ||
+    normalized.includes('cpa') ||
+    normalized.includes('roas') ||
+    legacyMatchCount >= 3
+
+  return hasLegacyFingerprint && (missingCurrentDefaultCount >= 2 || normalized.length > DEFAULT_META_CAMPAIGN_TABLE_COLUMN_KEYS.length + 2)
+}
+
+function normalizeMetaCampaignTableColumnKeys(columnKeys: unknown): string[] {
+  const normalized = normalizeTemplateMetricKeys(columnKeys)
+
+  if (shouldUseDefaultMetaCampaignTableColumns(normalized)) return [...DEFAULT_META_CAMPAIGN_TABLE_COLUMN_KEYS]
+  return normalized
 }
 
 function createDashboardMetricLayout(
