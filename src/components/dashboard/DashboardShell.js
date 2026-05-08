@@ -11215,7 +11215,7 @@ export default function DashboardShell({
     )
   }
 
-  const renderMetaSummaryMetricGrid = (cards, canAddMore) => (
+  const renderMetaSummaryMetricGrid = (cards) => (
     <div className="kpi-grid compact-kpi-grid meta-summary-grid">
       {cards.map((metric) => (
         <article
@@ -11249,19 +11249,6 @@ export default function DashboardShell({
         </article>
       ))}
 
-      {activeDraftDashboardTemplate && canAddMore ? (
-        <button
-          type="button"
-          className="kpi-card glass-panel meta-summary-add-card"
-          onClick={() => setIsMetaMetricLibraryOpen((current) => !current)}
-        >
-          <div className="meta-summary-add-card-icon">
-            <i className={`bx ${isMetaMetricLibraryOpen ? 'bx-x' : 'bx-plus'}`}></i>
-          </div>
-          <strong>{isMetaMetricLibraryOpen ? 'Fechar biblioteca' : 'Adicionar métrica'}</strong>
-          <span>{isMetaMetricLibraryOpen ? 'Ocultar métricas disponíveis.' : 'Criar um novo card nessa sequência.'}</span>
-        </button>
-      ) : null}
     </div>
   )
 
@@ -14774,35 +14761,7 @@ export default function DashboardShell({
                       <h2>Resumo de resultados</h2>
                       <p className="chart-subtitle">Os indicadores abaixo consideram somente as campanhas enquadradas no filtro de resultado ativo.</p>
                     </div>
-                    {activeDraftDashboardTemplate && (
-                      <div className="metric-library-anchor metric-library-inline-trigger">
-                        <button
-                          type="button"
-                          className="btn btn-secondary"
-                          onClick={() => setIsMetaMetricLibraryOpen((current) => !current)}
-                          disabled={!availableMetaDashboardMetricOptions.length}
-                        >
-                          <i className="bx bx-plus"></i>
-                          Adicionar métrica
-                        </button>
-                      </div>
-                    )}
                   </div>
-
-                  {activeDraftDashboardTemplate && isMetaMetricLibraryOpen && (
-                    <div className="metric-library-panel glass-item metric-library-inline-panel">
-                      <div>
-                        <strong>Métricas Meta disponíveis</strong>
-                        <p>Adicione novos cards usando o mesmo layout visual das métricas já existentes no dashboard.</p>
-                      </div>
-                      {renderMetricLibraryGrid(
-                        availableMetaDashboardMetricOptions,
-                        metaDashboardMetricValues,
-                        handleAddMetaDashboardMetric,
-                        { compact: true }
-                      )}
-                    </div>
-                  )}
 
                   <div className="template-metrics-shell">
                     <div className="result-group">
@@ -14810,10 +14769,7 @@ export default function DashboardShell({
                         <h3>Mídia e distribuição</h3>
                         <p>Visão geral do investimento e da entrega da campanha.</p>
                       </div>
-                      {renderMetaSummaryMetricGrid(
-                        metaSummaryDashboardMetricCards,
-                        availableMetaDashboardMetricOptions.length > 0
-                      )}
+                      {renderMetaSummaryMetricGrid(metaSummaryDashboardMetricCards)}
                     </div>
 
                     <div className="conversion-groups-grid">
@@ -23092,11 +23048,34 @@ export default function DashboardShell({
 
         .meta-summary-grid {
           align-items: stretch;
-          grid-template-columns: 1fr;
+          grid-template-columns: repeat(5, minmax(0, 1fr));
         }
 
-        .meta-summary-card,
-        .meta-summary-add-card {
+        @media (max-width: 1500px) {
+          .meta-summary-grid {
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+          }
+        }
+
+        @media (max-width: 1180px) {
+          .meta-summary-grid {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+          }
+        }
+
+        @media (max-width: 860px) {
+          .meta-summary-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
+        }
+
+        @media (max-width: 560px) {
+          .meta-summary-grid {
+            grid-template-columns: 1fr;
+          }
+        }
+
+        .meta-summary-card {
           min-height: 210px;
         }
 

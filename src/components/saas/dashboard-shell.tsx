@@ -1467,7 +1467,6 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
                     <CardTitle>Resumo de resultados</CardTitle>
                     <CardDescription>Os indicadores abaixo consideram somente as campanhas enquadradas no filtro de resultado ativo.</CardDescription>
                   </div>
-                  <Button variant="secondary">+ Adicionar métrica</Button>
                 </div>
               </CardHeader>
               <CardContent className="space-y-5">
@@ -1475,7 +1474,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
                   <h3 className="font-manrope text-xl font-extrabold text-slate-950">Mídia e distribuição</h3>
                   <p className="mt-1 text-sm text-slate-500">Visão geral do investimento e da entrega da campanha.</p>
                 </div>
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5">
                   {fixedLegacyMetrics.map((metric) => (
                     <div key={metric.key || metric.label} className="rounded-3xl border border-slate-200/70 bg-white/85 p-5 shadow-sm">
                       <div className="flex items-start justify-between gap-3">
@@ -1492,13 +1491,6 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
                       </p>
                     </div>
                   ))}
-                  <div className="grid min-h-[150px] place-items-center rounded-3xl border border-dashed border-slate-200/90 bg-slate-50/60 p-5 text-center text-sm text-slate-400">
-                    <div>
-                      <p className="text-lg font-semibold text-slate-500">+</p>
-                      <p className="font-semibold">Adicionar métrica</p>
-                      <p className="mt-1">Criar um novo card nessa sequência.</p>
-                    </div>
-                  </div>
                 </div>
               </CardContent>
             </Card>
