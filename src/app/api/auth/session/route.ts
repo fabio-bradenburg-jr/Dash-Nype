@@ -7,11 +7,25 @@ import { getLocalSessionUser } from '@/lib/server/platform-auth-fallback'
 
 const API_URL = getPlatformApiUrl()
 
+function unauthenticatedResponse() {
+  const response = NextResponse.json({ authenticated: false }, { status: 401 })
+  response.cookies.set({
+    name: PLATFORM_AUTH_COOKIE,
+    value: '',
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production',
+    path: '/',
+    maxAge: 0,
+  })
+  return response
+}
+
 export async function GET() {
   const token = (await cookies()).get(PLATFORM_AUTH_COOKIE)?.value
 
   if (!token) {
-    return NextResponse.json({ authenticated: false }, { status: 401 })
+    return unauthenticatedResponse()
   }
 
   try {
@@ -31,7 +45,7 @@ export async function GET() {
       const user = await getLocalSessionUser(token)
       return NextResponse.json({ authenticated: true, user, fallback: true })
     } catch {
-      return NextResponse.json({ authenticated: false }, { status: 401 })
+      return unauthenticatedResponse()
     }
   }
 }

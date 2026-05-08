@@ -22,6 +22,29 @@ export default function LoginPage() {
     }
   }, [])
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    let isMounted = true
+    const nextPath = new URLSearchParams(window.location.search).get('next') || '/'
+
+    fetch('/api/auth/session', { cache: 'no-store' })
+      .then(async (response) => {
+        if (!isMounted || !response.ok) return
+        const data = await response.json()
+        if (data?.authenticated) {
+          window.location.replace(nextPath)
+        }
+      })
+      .catch(() => {
+        // Sessão ausente ou expirada: mantém o usuário na tela de login.
+      })
+
+    return () => {
+      isMounted = false
+    }
+  }, [])
+
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setLoading(true)

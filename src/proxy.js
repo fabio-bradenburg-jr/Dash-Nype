@@ -24,11 +24,8 @@ export function proxy(request) {
   const hasAuthCookie = Boolean(request.cookies.get(PLATFORM_AUTH_COOKIE)?.value)
 
   if (pathname === '/login') {
-    if (hasAuthCookie) {
-      const url = request.nextUrl.clone()
-      url.pathname = '/'
-      return NextResponse.redirect(url)
-    }
+    // A tela de login valida a sessão no client. Não redirecionamos só por cookie,
+    // porque um token expirado aqui causaria loop entre /login e /.
     return NextResponse.next()
   }
 
