@@ -57,6 +57,80 @@ async function validateClientGroups(adminSupabase, workspaceId, clientGroupIds) 
   }
 }
 
+
+function getAuthUserFullName(authUser) {
+  return String(
+    authUser?.user_metadata?.full_name ||
+    authUser?.user_metadata?.name ||
+    authUser?.user_metadata?.company_name ||
+    authUser?.email ||
+    ''
+  ).trim()
+}
+
+async function syncRegisteredAuthProfiles(adminSupabase, workspaceId) {
+  if (!workspaceId) return
+
+  const { data: authUsersPayload, error: authUsersError } = await adminSupabase.auth.admin.listUsers({ page: 1, perPage: 1000 })
+  if (authUsersError) throw authUsersError
+
+  const authUsers = (authUsersPayload?.users || []).filter((authUser) => authUser?.id && authUser?.email)
+  if (!authUsers.length) return
+
+  const authUserIds = authUsers.map((authUser) => authUser.id)
+  const { data: existingProfiles, error: existingProfilesError } = await adminSupabase
+    .from('profiles')
+    .select('id, email, full_name, avatar_url, role, ai_access_level, workspace_id')
+    .in('id', authUserIds)
+
+  if (existingProfilesError) throw existingProfilesError
+
+  const profilesById = new Map((existingProfiles || []).map((profile) => [profile.id, profile]))
+  const profilesToUpsert = authUsers
+    .map((authUser) => {
+      const existingProfile = profilesById.get(authUser.id) || null
+      const email = String(authUser.email || existingProfile?.email || '').trim().toLowerCase()
+      if (!email) return null
+
+      const isPrimaryAdmin = isPrimaryAdminEmail(email)
+      const role = isPrimaryAdmin
+        ? USER_ROLES.MASTER
+        : existingProfile?.role === USER_ROLES.MASTER
+          ? USER_ROLES.VIEWER
+          : existingProfile?.role || USER_ROLES.VIEWER
+      const aiAccessLevel = isPrimaryAdmin
+        ? AI_ACCESS_LEVELS.MASTER
+        : existingProfile?.ai_access_level || AI_ACCESS_LEVELS.NONE
+      const shouldSync =
+        !existingProfile ||
+        existingProfile.workspace_id !== workspaceId ||
+        existingProfile.email !== email ||
+        existingProfile.role !== role ||
+        !existingProfile.ai_access_level
+
+      if (!shouldSync) return null
+
+      return {
+        id: authUser.id,
+        email,
+        full_name: existingProfile?.full_name || getAuthUserFullName(authUser),
+        avatar_url: existingProfile?.avatar_url || authUser?.user_metadata?.avatar_url || '',
+        role,
+        ai_access_level: aiAccessLevel,
+        workspace_id: workspaceId,
+      }
+    })
+    .filter(Boolean)
+
+  if (!profilesToUpsert.length) return
+
+  const { error: upsertError } = await adminSupabase
+    .from('profiles')
+    .upsert(profilesToUpsert, { onConflict: 'id' })
+
+  if (upsertError) throw upsertError
+}
+
 async function getAuthorizedContext(options = {}) {
   const requireManageUsers = options.requireManageUsers !== false
   const supabase = await createClient()
@@ -93,6 +167,11 @@ export async function GET() {
     if (authorized.errorResponse) return authorized.errorResponse
 
     const { supabase, adminSupabase, accessContext } = authorized
+
+    if (accessContext.canManageUsers) {
+      await syncRegisteredAuthProfiles(adminSupabase, accessContext.workspaceId)
+    }
+
     const profilesClient = accessContext.canManageUsers ? adminSupabase : supabase
     const accessRowsClient = accessContext.canManageUsers ? adminSupabase : supabase
 
