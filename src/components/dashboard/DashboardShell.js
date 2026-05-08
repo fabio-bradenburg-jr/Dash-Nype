@@ -25559,6 +25559,27 @@ export default function DashboardShell({
           opacity: 1 !important;
         }
 
+        .dashboard-light-mode .meta-filter-panel h2,
+        .dashboard-light-mode .meta-filter-panel h3,
+        .dashboard-light-mode .meta-filter-panel p,
+        .dashboard-light-mode .meta-campaign-filter-trigger h3,
+        .dashboard-light-mode .meta-campaign-filter-trigger p,
+        .dashboard-light-mode .meta-campaign-filter-note {
+          color: #0f172a !important;
+        }
+
+        .dashboard-light-mode .meta-filter-chip-row .stage-chip,
+        .dashboard-light-mode .meta-filter-chip-row .stage-chip.active,
+        .dashboard-light-mode .meta-filter-chip-row .stage-chip span,
+        .dashboard-light-mode .meta-filter-chip-row .stage-chip.active span {
+          color: #0f172a !important;
+        }
+
+        .dashboard-light-mode .meta-filter-chip-row .stage-chip.active {
+          background: color-mix(in srgb, var(--accent-blue) 12%, #ffffff) !important;
+          border-color: color-mix(in srgb, var(--accent-blue) 38%, rgba(15, 23, 42, 0.12)) !important;
+        }
+
         :root[data-ui-mode='light'] .sidebar-collapsed :global(.nav-item)::after {
           background: #ffffff !important;
           color: #0f172a !important;
