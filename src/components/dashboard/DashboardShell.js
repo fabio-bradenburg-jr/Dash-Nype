@@ -1191,6 +1191,8 @@ const META_RESULT_PERIOD_OPTIONS = [
   { value: 'year', label: 'Ano' },
 ]
 
+const META_RANKING_SPEND_TONE = '#60a5fa'
+
 const META_RESULT_COMPARISON_OPTIONS = {
   purchases: {
     key: 'purchases',
@@ -10196,6 +10198,21 @@ export default function DashboardShell({
           tension: 0.34,
           yAxisID: 'y1',
         },
+        {
+          type: 'line',
+          label: 'Investimento',
+          data: metaRankingDetailDailySeries.map((item) => item.spend),
+          borderColor: META_RANKING_SPEND_TONE,
+          backgroundColor: `${META_RANKING_SPEND_TONE}1f`,
+          borderWidth: 3,
+          pointRadius: 4,
+          pointHoverRadius: 6,
+          pointBackgroundColor: '#0b0f19',
+          pointBorderColor: META_RANKING_SPEND_TONE,
+          pointBorderWidth: 2,
+          tension: 0.34,
+          yAxisID: 'y1',
+        },
       ],
     }
   }, [activeMetaRankingDrilldownConfig, activeMetaRankingDrilldownItem, isCreativeRankingDrilldown, metaRankingDetailDailySeries, metaRankingDrilldown])
@@ -16230,7 +16247,7 @@ export default function DashboardShell({
                       <div className="meta-result-chart-head">
                         <div>
                           <strong>Resultado diario do criativo</strong>
-                          <p className="chart-subtitle">Eixo X por dia, com conversoes e custo por conversao do proprio criativo dentro do periodo filtrado.</p>
+                          <p className="chart-subtitle">Eixo X por dia, com conversões, custo por conversão e investimento do próprio criativo dentro do período filtrado.</p>
                         </div>
                         <div className="meta-result-legend">
                           <span className="legend-item">
@@ -16240,6 +16257,10 @@ export default function DashboardShell({
                           <span className="legend-item">
                             <span className="dot" style={{ background: activeMetaRankingDrilldownConfig.costTone, boxShadow: `0 0 8px ${activeMetaRankingDrilldownConfig.costTone}` }}></span>
                             Custo por conversão
+                          </span>
+                          <span className="legend-item">
+                            <span className="dot" style={{ background: META_RANKING_SPEND_TONE, boxShadow: `0 0 8px ${META_RANKING_SPEND_TONE}` }}></span>
+                            Investimento
                           </span>
                         </div>
                       </div>
@@ -16261,7 +16282,7 @@ export default function DashboardShell({
                     <div className="meta-result-chart-head">
                       <div>
                         <strong>Evolução diária do item selecionado</strong>
-                        <p className="chart-subtitle">Eixo X por dia, com volume de resultados e custo por resultado do item escolhido dentro do período filtrado.</p>
+                        <p className="chart-subtitle">Eixo X por dia, com volume de resultados, custo por resultado e investimento do item escolhido dentro do período filtrado.</p>
                       </div>
                       <div className="meta-result-legend">
                         <span className="legend-item">
@@ -16271,6 +16292,10 @@ export default function DashboardShell({
                         <span className="legend-item">
                           <span className="dot" style={{ background: activeMetaRankingDrilldownConfig.costTone, boxShadow: `0 0 8px ${activeMetaRankingDrilldownConfig.costTone}` }}></span>
                           {activeMetaRankingDrilldownConfig.costLabel}
+                        </span>
+                        <span className="legend-item">
+                          <span className="dot" style={{ background: META_RANKING_SPEND_TONE, boxShadow: `0 0 8px ${META_RANKING_SPEND_TONE}` }}></span>
+                          Investimento
                         </span>
                       </div>
                     </div>
