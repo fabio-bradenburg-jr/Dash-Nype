@@ -3379,6 +3379,19 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
           box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
         }
 
+        :root[data-ui-mode='light'] .settings-color-code-row input {
+          background: #ffffff;
+          color: var(--accent-blue);
+          border-color: rgba(15, 23, 42, 0.1);
+          box-shadow: 0 10px 24px rgba(15, 23, 42, 0.035);
+        }
+
+        :root[data-ui-mode='light'] .settings-copy-button {
+          background: #ffffff;
+          color: #475569;
+          border-color: rgba(15, 23, 42, 0.1);
+        }
+
         :root[data-ui-mode='light'] .settings-copy-button:hover {
           color: var(--accent-blue);
           background: color-mix(in srgb, var(--accent-blue) 5%, white);
