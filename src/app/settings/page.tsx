@@ -2866,7 +2866,11 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
         }
 
         .settings-grid-obsidian {
-          grid-template-columns: minmax(320px, 0.9fr) minmax(0, 1.1fr);
+          grid-template-columns: minmax(0, 1fr);
+        }
+
+        .settings-grid-obsidian > .settings-block {
+          width: 100%;
         }
 
         .settings-choice-row {
@@ -3047,6 +3051,7 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
           display: grid;
           gap: 16px;
           align-content: start;
+          min-width: 0;
         }
 
         .settings-rgb-grid {
