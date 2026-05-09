@@ -14,6 +14,7 @@ export interface UserProfile {
   avatar_url: string
   role: string
   ai_access_level?: AssistantAiAccessLevel
+  can_edit_integrations?: boolean
   workspace_id: string | null
 }
 

@@ -80,7 +80,7 @@ async function syncRegisteredAuthProfiles(adminSupabase, workspaceId) {
   const authUserIds = authUsers.map((authUser) => authUser.id)
   const { data: existingProfiles, error: existingProfilesError } = await adminSupabase
     .from('profiles')
-    .select('id, email, full_name, avatar_url, role, ai_access_level, workspace_id')
+    .select('id, email, full_name, avatar_url, role, ai_access_level, can_edit_integrations, workspace_id')
     .in('id', authUserIds)
 
   if (existingProfilesError) throw existingProfilesError
@@ -101,11 +101,13 @@ async function syncRegisteredAuthProfiles(adminSupabase, workspaceId) {
       const aiAccessLevel = isPrimaryAdmin
         ? AI_ACCESS_LEVELS.MASTER
         : existingProfile?.ai_access_level || AI_ACCESS_LEVELS.NONE
+      const canEditIntegrations = isPrimaryAdmin ? true : Boolean(existingProfile?.can_edit_integrations)
       const shouldSync =
         !existingProfile ||
         existingProfile.workspace_id !== workspaceId ||
         existingProfile.email !== email ||
         existingProfile.role !== role ||
+        existingProfile.can_edit_integrations !== canEditIntegrations ||
         !existingProfile.ai_access_level
 
       if (!shouldSync) return null
@@ -117,6 +119,7 @@ async function syncRegisteredAuthProfiles(adminSupabase, workspaceId) {
         avatar_url: existingProfile?.avatar_url || authUser?.user_metadata?.avatar_url || '',
         role,
         ai_access_level: aiAccessLevel,
+        can_edit_integrations: canEditIntegrations,
         workspace_id: workspaceId,
       }
     })
@@ -182,7 +185,7 @@ export async function GET() {
     ] = await Promise.all([
       profilesClient
         .from('profiles')
-        .select('id, email, full_name, avatar_url, role, ai_access_level, workspace_id, created_at')
+        .select('id, email, full_name, avatar_url, role, ai_access_level, can_edit_integrations, workspace_id, created_at')
         .eq('workspace_id', accessContext.workspaceId)
         .order('created_at', { ascending: true }),
       accessRowsClient
@@ -250,6 +253,7 @@ export async function POST(request) {
       : role === USER_ROLES.MASTER
         ? AI_ACCESS_LEVELS.MASTER
         : AI_ACCESS_LEVELS.TEAM
+    const canEditIntegrations = role === USER_ROLES.MASTER || body.canEditIntegrations === true
     const clientIds = Array.isArray(body.clientIds) ? body.clientIds.filter(Boolean) : []
     const clientGroupIds = Array.isArray(body.clientGroupIds) ? body.clientGroupIds.filter(Boolean) : []
 
@@ -279,6 +283,7 @@ export async function POST(request) {
           full_name: fullName,
           role,
           ai_access_level: aiAccessLevel,
+          can_edit_integrations: canEditIntegrations,
           workspace_id: accessContext.workspaceId,
         },
         { onConflict: 'id' }

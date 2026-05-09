@@ -139,6 +139,7 @@ async function registerWithLegacySupabase(body: {
     email: data.user.email || body.email || '',
     full_name: profile?.full_name || fullName || data.user.user_metadata?.full_name || data.user.email || '',
     provider: 'supabase',
+    can_edit_integrations: isPrimaryAdminEmail(data.user.email || body.email || ''),
   })
 
   return { token }

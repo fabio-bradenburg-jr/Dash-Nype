@@ -95,7 +95,7 @@ export async function PATCH(request, context) {
 
     const { data: targetProfile, error: targetProfileError } = await adminSupabase
       .from('profiles')
-      .select('email')
+      .select('email, can_edit_integrations')
       .eq('id', userId)
       .maybeSingle()
 
@@ -117,6 +117,7 @@ export async function PATCH(request, context) {
       : role === USER_ROLES.MASTER
         ? AI_ACCESS_LEVELS.MASTER
         : AI_ACCESS_LEVELS.TEAM
+    const canEditIntegrations = role === USER_ROLES.MASTER || body.canEditIntegrations === true
     const clientIds = Array.isArray(body.clientIds) ? body.clientIds.filter(Boolean) : []
     const clientGroupIds = Array.isArray(body.clientGroupIds) ? body.clientGroupIds.filter(Boolean) : []
 
@@ -126,6 +127,7 @@ export async function PATCH(request, context) {
         full_name: String(body.fullName || '').trim(),
         role,
         ai_access_level: aiAccessLevel,
+        can_edit_integrations: canEditIntegrations,
         workspace_id: accessContext.workspaceId,
       })
       .eq('id', userId)

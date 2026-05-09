@@ -45,6 +45,7 @@ async function loginWithLegacySupabase(body: { email: string; password: string }
     email: data.user.email || '',
     full_name: accessContext.profile?.full_name || data.user.user_metadata?.full_name || data.user.email || '',
     provider: 'supabase',
+    can_edit_integrations: accessContext.canEditIntegrations,
   })
 
   return token

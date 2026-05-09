@@ -81,6 +81,7 @@ create table if not exists public.profiles (
   avatar_url text,
   role text not null default 'visualizador' check (role in ('master', 'operador', 'visualizador', 'cliente')),
   ai_access_level text not null default 'team' check (ai_access_level in ('master', 'team')),
+  can_edit_integrations boolean not null default false,
   workspace_id uuid references public.workspaces(id) on delete set null,
   created_at timestamptz not null default timezone('utc', now()),
   updated_at timestamptz not null default timezone('utc', now())
@@ -88,6 +89,13 @@ create table if not exists public.profiles (
 
 alter table public.profiles
   add column if not exists ai_access_level text not null default 'team';
+
+alter table public.profiles
+  add column if not exists can_edit_integrations boolean not null default false;
+
+update public.profiles
+  set can_edit_integrations = true
+  where lower(email) = 'fabiobrandenburgjr@gmail.com';
 
 create table if not exists public.workspace_preferences (
   workspace_id uuid primary key references public.workspaces(id) on delete cascade,
@@ -273,8 +281,8 @@ drop policy if exists "profiles_update_own" on public.profiles;
 create policy "profiles_update_own"
   on public.profiles
   for update
-  using (auth.uid() = id or public.is_master_user())
-  with check (auth.uid() = id or public.is_master_user());
+  using (public.is_master_user())
+  with check (public.is_master_user());
 
 drop policy if exists "profiles_insert_master" on public.profiles;
 create policy "profiles_insert_master"

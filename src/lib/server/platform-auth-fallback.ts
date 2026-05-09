@@ -153,6 +153,7 @@ export async function createLocalAccessToken(payload: {
   email?: string
   full_name?: string
   provider?: string
+  can_edit_integrations?: boolean
 }) {
   return new SignJWT({
     role: payload.role,
@@ -160,6 +161,7 @@ export async function createLocalAccessToken(payload: {
     email: payload.email,
     full_name: payload.full_name,
     provider: payload.provider,
+    can_edit_integrations: Boolean(payload.can_edit_integrations),
   })
     .setProtectedHeader({ alg: 'HS256' })
     .setSubject(payload.sub)
@@ -272,6 +274,7 @@ export async function getLocalSessionUser(token: string) {
       full_name: 'Acesso Preview',
       role: String(payload.role || 'admin'),
       tenant_id: String(payload.tenant_id || 'tenant-demo'),
+      can_edit_integrations: true,
     }
   }
 
@@ -282,6 +285,7 @@ export async function getLocalSessionUser(token: string) {
       full_name: String(payload.full_name || 'Usuário'),
       role: String(payload.role || 'operator').toLowerCase(),
       tenant_id: String(payload.tenant_id || ''),
+      can_edit_integrations: Boolean(payload.can_edit_integrations),
     }
   }
 

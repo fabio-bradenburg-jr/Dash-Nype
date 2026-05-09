@@ -3222,6 +3222,7 @@ export default function DashboardShell({
     password: '',
     role: 'visualizador',
     aiAccessLevel: 'team',
+    canEditIntegrations: false,
     clientIds: [],
     clientGroupIds: [],
   })
@@ -6750,6 +6751,7 @@ export default function DashboardShell({
         password: '',
         role: 'visualizador',
         aiAccessLevel: 'team',
+        canEditIntegrations: false,
         clientIds: [],
         clientGroupIds: [],
       })
@@ -6777,6 +6779,7 @@ export default function DashboardShell({
           fullName: managedUser.full_name || '',
           role: managedUser.role,
           aiAccessLevel: managedUser.ai_access_level || (managedUser.role === 'master' ? 'master' : 'team'),
+          canEditIntegrations: managedUser.role === 'master' || Boolean(managedUser.can_edit_integrations),
           clientIds: (managedUser.clientAccess || []).map((item) => item.client_id),
           clientGroupIds: [],
         }),
@@ -12550,9 +12553,6 @@ export default function DashboardShell({
           <button type="button" data-tooltip="Settings" className={"nav-item nav-button " + (activeTab === "settings" ? "active" : "")} onClick={() => setActiveTab('settings')}>
             <i className="bx bx-cog"></i> Settings
           </button>
-          <a href="/privacy" data-tooltip="Security" className="nav-item" target="_blank" rel="noreferrer">
-            <i className="bx bx-shield-quarter"></i> Security
-          </a>
         </nav>
 
         {!isSidebarCollapsed && activeTab === 'apresentacao' && (
@@ -14533,12 +14533,13 @@ export default function DashboardShell({
                 <div className="management-hero-copy">
                   <span className="management-hero-kicker">Team access</span>
                   <h2>Time e permissões</h2>
-                  <p>Cadastre pessoas, escolha quais dashboards cada uma pode acessar e libere ou bloqueie o uso da IA.</p>
+                  <p>Cadastre pessoas, escolha quais dashboards cada uma pode acessar e libere ou bloqueie IA e integrações.</p>
                 </div>
                 <div className="management-stats-grid">
                   <div className="management-stat-card"><small>Pessoas cadastradas</small><strong>{formatNumber(usersList.length)}</strong></div>
                   <div className="management-stat-card"><small>Dashboards disponíveis</small><strong>{formatNumber(dashboardEligibleClients.length)}</strong></div>
                   <div className="management-stat-card"><small>IA liberada</small><strong>{formatNumber(usersList.filter((managedUser) => (managedUser.ai_access_level || 'team') !== 'none').length)}</strong></div>
+                  <div className="management-stat-card"><small>Integrações liberadas</small><strong>{formatNumber(usersList.filter((managedUser) => managedUser.role === 'master' || managedUser.can_edit_integrations).length)}</strong></div>
                 </div>
               </div>
 
@@ -14547,7 +14548,7 @@ export default function DashboardShell({
                   <div>
                     <span className="management-card-kicker">Cadastro simples</span>
                     <h3>Membros do time</h3>
-                    <p>Lista limpa com acesso aos dashboards e status de IA. Nada de PDI, operação ou métricas internas.</p>
+                    <p>Lista limpa com acesso aos dashboards, IA e integrações. Nada de PDI, operação ou métricas internas.</p>
                   </div>
                   <div className="users-toolbar-actions"><button type="button" className="btn btn-primary" onClick={() => setIsCreateUserModalOpen(true)}>Novo membro</button></div>
                 </div>
@@ -14558,10 +14559,11 @@ export default function DashboardShell({
                   <div className="empty-panel glass-item"><h3>Carregando time</h3><p>Buscando os acessos salvos no Supabase.</p></div>
                 ) : (
                   <div className="simple-client-list simple-team-list" role="table" aria-label="Membros do time">
-                    <div className="simple-client-row simple-client-head" role="row"><span>Membro</span><span>Dashboards</span><span>IA</span><span>Ação</span></div>
+                    <div className="simple-client-row simple-client-head" role="row"><span>Membro</span><span>Dashboards</span><span>IA</span><span>Integrações</span><span>Ação</span></div>
                     {filteredUsers.map((managedUser) => {
                       const accessCount = getManagedUserAccessibleClientCount(managedUser)
                       const hasAiAccess = (managedUser.ai_access_level || 'team') !== 'none'
+                      const hasIntegrationAccess = managedUser.role === 'master' || Boolean(managedUser.can_edit_integrations)
                       const accessLabel = managedUser.role === 'master' ? 'Todos os dashboards' : accessCount > 0 ? accessCount + ' dashboard(s)' : 'Nenhum dashboard'
 
                       return (
@@ -14569,6 +14571,7 @@ export default function DashboardShell({
                           <div className="simple-client-main"><span className="simple-client-avatar"><i className="bx bx-user"></i></span><div><strong>{managedUser.full_name || managedUser.email}</strong><small>{managedUser.email}</small></div></div>
                           <span className="simple-client-status-text">{accessLabel}</span>
                           <span className={'integration-status-icon ' + (hasAiAccess ? 'active' : '')} title={hasAiAccess ? 'IA liberada' : 'IA bloqueada'}><i className={'bx ' + (hasAiAccess ? 'bx-brain' : 'bx-lock-alt')}></i></span>
+                          <span className={'integration-status-icon ' + (hasIntegrationAccess ? 'active' : '')} title={hasIntegrationAccess ? 'Integrações liberadas' : 'Integrações bloqueadas'}><i className={'bx ' + (hasIntegrationAccess ? 'bx-plug' : 'bx-lock-alt')}></i></span>
                           <button type="button" className="btn btn-secondary" onClick={() => { setSelectedUserId(managedUser.id); setIsEditUserModalOpen(true) }}>Editar</button>
                         </div>
                       )
@@ -14581,7 +14584,7 @@ export default function DashboardShell({
 
               {isCreateUserModalOpen && (
                 <div className="modal-overlay" onClick={() => setIsCreateUserModalOpen(false)}><div className="modal-card glass-panel" onClick={(event) => event.stopPropagation()}>
-                  <div className="modal-header"><div><h3>Novo membro</h3><p>Cadastre o acesso e escolha quais dashboards esta pessoa poderá visualizar.</p></div><button type="button" className="modal-close" onClick={() => setIsCreateUserModalOpen(false)} aria-label="Fechar cadastro de membro"><i className="bx bx-x"></i></button></div>
+                  <div className="modal-header"><div><h3>Novo membro</h3><p>Cadastre o acesso, dashboards, IA e permissão de integrações.</p></div><button type="button" className="modal-close" onClick={() => setIsCreateUserModalOpen(false)} aria-label="Fechar cadastro de membro"><i className="bx bx-x"></i></button></div>
                   <form onSubmit={handleCreateUser}>
                     {createUserError && <div className="form-alert">{createUserError}</div>}
                     <div className="form-grid user-admin-grid">
@@ -14589,6 +14592,7 @@ export default function DashboardShell({
                       <div className="input-group"><label>E-mail</label><input type="email" value={userForm.email} onChange={(event) => setUserForm((current) => ({ ...current, email: event.target.value, role: 'visualizador' }))} placeholder="usuario@empresa.com" /></div>
                       <div className="input-group"><label>Senha inicial</label><input type="password" value={userForm.password} onChange={(event) => setUserForm((current) => ({ ...current, password: event.target.value }))} placeholder="Senha provisória" /></div>
                       <div className="input-group"><label>IA</label><select className="client-select-input" value={userForm.aiAccessLevel} onChange={(event) => setUserForm((current) => ({ ...current, aiAccessLevel: event.target.value }))}><option value="team">Liberada</option><option value="none">Bloqueada</option></select></div>
+                      <div className="input-group"><label>Integrações</label><select className="client-select-input" value={userForm.canEditIntegrations ? 'enabled' : 'disabled'} onChange={(event) => setUserForm((current) => ({ ...current, canEditIntegrations: event.target.value === 'enabled' }))}><option value="disabled">Bloqueadas</option><option value="enabled">Liberadas</option></select></div>
                     </div>
                     <div className="input-group"><label>Dashboards liberados</label><div className="stage-selector">{dashboardEligibleClients.length ? dashboardEligibleClients.map((client) => (<label key={'new-user-' + client.id} className={'stage-chip ' + (userForm.clientIds.includes(client.id) ? 'active' : '')}><input type="checkbox" checked={userForm.clientIds.includes(client.id)} onChange={() => handleUserClientToggle(client.id)} /><span>{client.name}</span></label>)) : <div className="stage-empty">Cadastre clientes antes de liberar dashboards para o time.</div>}</div></div>
                     <div className="modal-actions"><button type="button" className="btn btn-secondary" onClick={() => setIsCreateUserModalOpen(false)}>Cancelar</button><button type="submit" className="btn btn-primary" disabled={savingUser}>{savingUser ? 'Criando...' : 'Adicionar membro'}</button></div>
@@ -14598,12 +14602,13 @@ export default function DashboardShell({
 
               {isEditUserModalOpen && selectedManagedUser && (
                 <div className="modal-overlay" onClick={() => setIsEditUserModalOpen(false)}><div className="modal-card glass-panel" onClick={(event) => event.stopPropagation()}>
-                  <div className="modal-header"><div><h3>Editar membro</h3><p>Atualize nome, dashboards liberados e acesso à IA.</p></div><button type="button" className="modal-close" onClick={() => setIsEditUserModalOpen(false)} aria-label="Fechar edição de membro"><i className="bx bx-x"></i></button></div>
+                  <div className="modal-header"><div><h3>Editar membro</h3><p>Atualize nome, dashboards liberados, IA e integrações.</p></div><button type="button" className="modal-close" onClick={() => setIsEditUserModalOpen(false)} aria-label="Fechar edição de membro"><i className="bx bx-x"></i></button></div>
                   {editUserError && <div className="form-alert">{editUserError}</div>}
                   <div className="user-admin-head"><div><strong>{selectedManagedUser.full_name || selectedManagedUser.email}</strong><span>{selectedManagedUser.email}</span></div>{selectedManagedUser.id !== user?.id && <button type="button" className="btn btn-secondary" onClick={() => handleDeleteUser(selectedManagedUser.id)}>Excluir</button>}</div>
                   <div className="form-grid user-admin-grid">
                     <div className="input-group"><label>Nome</label><input type="text" value={selectedManagedUser.full_name || ''} onChange={(event) => handleManagedUserChange(selectedManagedUser.id, (item) => ({ ...item, full_name: event.target.value }))} /></div>
                     <div className="input-group"><label>IA</label><select className="client-select-input" value={selectedManagedUser.ai_access_level || (selectedManagedUser.role === 'master' ? 'master' : 'team')} onChange={(event) => handleManagedUserChange(selectedManagedUser.id, (item) => ({ ...item, ai_access_level: event.target.value }))}>{selectedManagedUser.role === 'master' && <option value="master">IA Master</option>}<option value="team">Liberada</option><option value="none">Bloqueada</option></select></div>
+                    <div className="input-group"><label>Integrações</label><select className="client-select-input" value={(selectedManagedUser.role === 'master' || selectedManagedUser.can_edit_integrations) ? 'enabled' : 'disabled'} disabled={selectedManagedUser.role === 'master'} onChange={(event) => handleManagedUserChange(selectedManagedUser.id, (item) => ({ ...item, can_edit_integrations: event.target.value === 'enabled' }))}><option value="disabled">Bloqueadas</option><option value="enabled">Liberadas</option></select></div>
                   </div>
                   {selectedManagedUser.role !== 'master' && <div className="input-group"><label>Dashboards liberados</label><div className="stage-selector">{dashboardEligibleClients.length ? dashboardEligibleClients.map((client) => { const currentAccess = selectedManagedUser.clientAccess || []; const hasClient = currentAccess.some((item) => item.client_id === client.id); return (<label key={selectedManagedUser.id + '-' + client.id} className={'stage-chip ' + (hasClient ? 'active' : '')}><input type="checkbox" checked={hasClient} onChange={() => handleManagedUserChange(selectedManagedUser.id, (item) => { const baseAccess = item.clientAccess || []; const nextAccess = hasClient ? baseAccess.filter((accessItem) => accessItem.client_id !== client.id) : [...baseAccess, { client_id: client.id, can_view: true, can_edit: false }]; return { ...item, clientAccess: nextAccess } })} /><span>{client.name}</span></label>) }) : <div className="stage-empty">Cadastre clientes antes de liberar dashboards para o time.</div>}</div></div>}
                   <div className="modal-foot"><span className="form-note">Os acessos do time são salvos no Supabase e aplicados no login deste usuário.</span><div className="modal-actions"><button type="button" className="btn btn-secondary" onClick={() => setIsEditUserModalOpen(false)}>Cancelar</button><button type="button" className="btn btn-primary" onClick={() => handleUpdateUser(selectedManagedUser)}>Salvar membro</button></div></div>
@@ -26059,7 +26064,7 @@ export default function DashboardShell({
         }
 
         .simple-team-list .simple-client-row {
-          grid-template-columns: minmax(260px, 1fr) minmax(160px, 0.45fr) 90px 120px;
+          grid-template-columns: minmax(260px, 1fr) minmax(160px, 0.45fr) 90px 110px 120px;
         }
 
         .simple-team-list .simple-client-row > span,
@@ -26068,7 +26073,9 @@ export default function DashboardShell({
         }
 
         .simple-team-list .simple-client-row-head span:nth-child(3),
-        .simple-team-list .simple-client-row span:nth-child(3) {
+        .simple-team-list .simple-client-row span:nth-child(3),
+        .simple-team-list .simple-client-row-head span:nth-child(4),
+        .simple-team-list .simple-client-row span:nth-child(4) {
           justify-self: center;
         }
 

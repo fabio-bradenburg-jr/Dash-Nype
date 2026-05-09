@@ -161,7 +161,7 @@ export async function getPlatformMetaConnectionContext({ requireEdit = false } =
     throw new Error('Workspace não encontrado na sessão do SaaS.')
   }
 
-  const canEditIntegrations = ['admin', 'master', 'operator', 'operador'].includes(String(payload.role || '').toLowerCase())
+  const canEditIntegrations = String(payload.email || '').trim().toLowerCase() === 'fabiobrandenburgjr@gmail.com' || Boolean(payload.can_edit_integrations)
 
   if (requireEdit && !canEditIntegrations) {
     throw new Error('Sem permissão para gerenciar a conexão da Meta.')

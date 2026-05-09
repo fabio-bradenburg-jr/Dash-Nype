@@ -1062,8 +1062,11 @@ export async function saveDashboardState(
     throw new Error('Usuario sem workspace vinculado.')
   }
 
-  if (!accessContext.canManageClients && !(Array.isArray(accessContext.editableClientIds) && accessContext.editableClientIds.length > 0)) {
-    throw new Error('Seu usuario nao tem permissao para editar os clientes.')
+  const canEditSomeClient = Array.isArray(accessContext.editableClientIds) && accessContext.editableClientIds.length > 0
+  const canEditIntegrations = Boolean(accessContext.canEditIntegrations)
+
+  if (!accessContext.canManageClients && !canEditSomeClient && !canEditIntegrations) {
+    throw new Error('Seu usuario nao tem permissao para editar os clientes ou integrações.')
   }
 
   const submittedClients = Array.isArray(state.clients) ? state.clients.map(normalizeClientRecord) : []
@@ -1096,6 +1099,41 @@ export async function saveDashboardState(
     ? state.teamProfiles.map(normalizeTeamMemberProfileRecord).filter((item) => item.userId)
     : []
   const submittedGlobalIntegrations = normalizeGlobalIntegrations(state.globalIntegrations)
+
+  if (!accessContext.canManageClients && !canEditSomeClient && canEditIntegrations) {
+    const { data: currentPreference, error: currentPreferenceError } = await adminSupabase
+      .from('workspace_preferences')
+      .select('theme_color, metric_1, metric_2, payload')
+      .eq('workspace_id', accessContext.workspaceId)
+      .maybeSingle()
+
+    if (currentPreferenceError) throw currentPreferenceError
+
+    const currentPayload =
+      currentPreference?.payload && typeof currentPreference.payload === 'object'
+        ? currentPreference.payload
+        : {}
+
+    const { error: preferenceError } = await adminSupabase
+      .from('workspace_preferences')
+      .upsert(
+        {
+          workspace_id: accessContext.workspaceId,
+          theme_color: currentPreference?.theme_color || state.themeColor || 'blue',
+          metric_1: currentPreference?.metric_1 || state.metric1 || 'spend',
+          metric_2: currentPreference?.metric_2 || state.metric2 || 'roas',
+          payload: {
+            ...currentPayload,
+            globalIntegrations: submittedGlobalIntegrations,
+          },
+        },
+        { onConflict: 'workspace_id' }
+      )
+
+    if (preferenceError) throw preferenceError
+
+    return getDashboardState(adminSupabase, accessContext)
+  }
 
   if (accessContext.role === USER_ROLES.MASTER) {
     const [

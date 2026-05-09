@@ -23,6 +23,7 @@ interface PlatformSessionUser {
   full_name?: string
   role?: string
   tenant_id?: string
+  can_edit_integrations?: boolean
 }
 
 interface PlatformSessionResponse {
@@ -57,6 +58,7 @@ function buildPlatformProfile(platformUser: PlatformSessionUser): UserProfile {
     avatar_url: '',
     role,
     ai_access_level: isPrimaryAdmin ? 'master' : 'team',
+    can_edit_integrations: isPrimaryAdmin || Boolean(platformUser.can_edit_integrations),
     workspace_id: platformUser.tenant_id || null,
   }
 }
@@ -72,7 +74,7 @@ function buildPlatformAccess(profile: UserProfile): AccessContextValue {
     workspaceId: profile.workspace_id,
     canManageUsers: isPrimaryAdmin,
     canManageClients: isPrimaryAdmin,
-    canEditIntegrations: isPrimaryAdmin,
+    canEditIntegrations: isPrimaryAdmin || Boolean(profile.can_edit_integrations),
     canViewDashboard: isPrimaryAdmin,
     canUseAi: isPrimaryAdmin && !isClientRole,
     aiAccessLevel: isPrimaryAdmin ? 'master' : 'team',

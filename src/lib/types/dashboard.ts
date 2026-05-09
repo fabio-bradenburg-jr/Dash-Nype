@@ -365,6 +365,7 @@ export interface AccessContextLike {
   profile?: { id?: string | null } | null
   canManageClients?: boolean
   canManageUsers?: boolean
+  canEditIntegrations?: boolean
   viewableClientIds?: string[]
   editableClientIds?: string[]
 }

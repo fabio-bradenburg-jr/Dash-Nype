@@ -385,6 +385,8 @@ function rgbToHex({ r, g, b }: { r: number; g: number; b: number }): string {
 export default function SettingsPage({ embeddedOverride = false }: { embeddedOverride?: boolean } = {}) {
   const { appearance, updateAppearance, access } = useUser()
   const canManageClients = Boolean(access?.canManageClients)
+  const canEditIntegrations = Boolean(access?.canEditIntegrations)
+  const canLoadServerSettings = canManageClients || canEditIntegrations
   const [serverState, setServerState] = useState<SettingsServerState | null>(null)
   const [globalIntegrations, setGlobalIntegrations] = useState<GlobalIntegrationsState>(() => {
     const preferences = loadDashboardPreferences()
@@ -628,7 +630,7 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
         globalIntegrations: nextIntegrations,
       })
 
-      if (canManageClients && serverState) {
+      if (canEditIntegrations && serverState) {
         const response = await fetch('/api/dashboard/state', {
           method: 'PUT',
           headers: {
@@ -648,11 +650,11 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
         setServerState(data)
       }
     },
-    [canManageClients, serverState]
+    [canEditIntegrations, serverState]
   )
 
   useEffect(() => {
-    if (!canManageClients) return
+    if (!canLoadServerSettings) return
 
     let cancelled = false
 
@@ -700,10 +702,10 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
     return () => {
       cancelled = true
     }
-  }, [canManageClients])
+  }, [canLoadServerSettings])
 
   useEffect(() => {
-    if (!canManageClients) return
+    if (!canEditIntegrations) return
 
     let cancelled = false
 
@@ -761,7 +763,7 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
     return () => {
       cancelled = true
     }
-  }, [canManageClients])
+  }, [canEditIntegrations])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -776,17 +778,17 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
       ? storedTab
       : null
 
-    if (connected === '1') {
+    if (connected === '1' && canEditIntegrations) {
       setActiveSettingsTab('general')
-    } else if (tab === 'ai') {
+    } else if (tab === 'ai' && canEditIntegrations) {
       setActiveSettingsTab('general')
-    } else if (tab === 'general') {
+    } else if (tab === 'general' && canEditIntegrations) {
       setActiveSettingsTab('general')
     } else if (tab === 'panel') {
       setActiveSettingsTab('panel')
-    } else if (canManageClients && resolvedStoredTab) {
+    } else if (canEditIntegrations && resolvedStoredTab) {
       setActiveSettingsTab(resolvedStoredTab)
-    } else if (canManageClients) {
+    } else if (canEditIntegrations) {
       setActiveSettingsTab('general')
     } else if (resolvedStoredTab === 'panel') {
       setActiveSettingsTab('panel')
@@ -809,13 +811,13 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
       setMetaConnectionError(error)
       setMetaConnectionNotice('')
     }
-  }, [canManageClients, embeddedOverride, globalIntegrations, globalIntegrations.metaConnectionMode, persistGlobalIntegrations])
+  }, [canEditIntegrations, embeddedOverride, globalIntegrations, globalIntegrations.metaConnectionMode, persistGlobalIntegrations])
 
   useEffect(() => {
-    if (!canManageClients && activeSettingsTab !== 'panel') {
+    if (!canEditIntegrations && activeSettingsTab !== 'panel') {
       setActiveSettingsTab('panel')
     }
-  }, [activeSettingsTab, canManageClients])
+  }, [activeSettingsTab, canEditIntegrations])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -829,6 +831,11 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
   }, [availableAiAgents, selectedAiAgentId])
 
   const handleGlobalIntegrationChange = (fieldName: string, value: unknown) => {
+    if (!canEditIntegrations) {
+      setSettingsSaveFeedback('Sem permissão para alterar integrações. Peça liberação ao administrador.')
+      return
+    }
+
     setGlobalIntegrations((current) => {
       const nextIntegrations = {
         ...current,
@@ -844,6 +851,11 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
   }
 
   const handleAiProviderChange = (providerValue: string) => {
+    if (!canEditIntegrations) {
+      setSettingsSaveFeedback('Sem permissão para alterar integrações. Peça liberação ao administrador.')
+      return
+    }
+
     const providerOption = getAiProviderOption(providerValue)
 
     setGlobalIntegrations((current) => {
@@ -883,6 +895,11 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
     fieldName: keyof AiProviderConfig,
     value: string
   ) => {
+    if (!canEditIntegrations) {
+      setSettingsSaveFeedback('Sem permissão para alterar integrações. Peça liberação ao administrador.')
+      return
+    }
+
     setGlobalIntegrations((current) => {
       const providerKey = getAiProviderOption(current.aiProvider).value
       const nextProviders = {
@@ -966,6 +983,11 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
   }
 
   const handleMetaDisconnect = async () => {
+    if (!canEditIntegrations) {
+      setMetaConnectionError('Sem permissão para desconectar a Meta.')
+      return
+    }
+
     setMetaConnectionError('')
     setMetaConnectionNotice('')
 
@@ -1676,7 +1698,7 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
       feedbackMessages.push('Preferências visuais salvas e aplicadas neste navegador.')
     }
 
-    if (canManageClients) {
+    if (canEditIntegrations) {
       try {
         await persistGlobalIntegrations(globalIntegrations)
         feedbackMessages.push('Integrações do app sincronizadas com sucesso.')
@@ -1730,10 +1752,6 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
             <i className="bx bxs-home-heart"></i>
             Home
           </Link>
-          <Link href="/privacy" className="nav-item" target="_blank" rel="noreferrer">
-            <i className="bx bx-shield-quarter"></i>
-            Política e Privacidade
-          </Link>
           <span className="nav-item active">
             <i className="bx bx-cog"></i>
             Configurações
@@ -1763,7 +1781,7 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
                 </div>
               </button>
 
-              {canManageClients && (
+              {canEditIntegrations && (
                 <>
                   <button
                     type="button"
@@ -1972,7 +1990,7 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
                 </div>
               )}
 
-              {canManageClients && activeSettingsTab === 'general' && (
+              {canEditIntegrations && activeSettingsTab === 'general' && (
                 <div className="glass-item settings-block settings-block-full">
                   <div className="settings-section-head">
                     <div>

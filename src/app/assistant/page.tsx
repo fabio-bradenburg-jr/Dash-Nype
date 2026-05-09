@@ -853,10 +853,6 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
             <i className="bx bx-cog"></i>
             Configurações
           </Link>
-          <Link href="/privacy" className="nav-item" target="_blank" rel="noreferrer">
-            <i className="bx bx-shield-quarter"></i>
-            Política e Privacidade
-          </Link>
         </nav>
 
         <div className="user-profile assistant-user-profile">

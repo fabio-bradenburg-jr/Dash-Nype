@@ -45,6 +45,7 @@ function buildProfilePayload(user, role, workspaceId) {
     avatar_url: user.user_metadata?.avatar_url || '',
     role: resolvedRole,
     ai_access_level: resolvedRole === USER_ROLES.MASTER ? AI_ACCESS_LEVELS.MASTER : AI_ACCESS_LEVELS.TEAM,
+    can_edit_integrations: resolvedRole === USER_ROLES.MASTER,
     workspace_id: workspaceId,
   }
 }
@@ -167,7 +168,7 @@ export async function getAccessContext(supabase, user, options = {}) {
     if (workspaceId) {
       await adminSupabase
         .from('profiles')
-        .update({ role: USER_ROLES.MASTER, workspace_id: workspaceId, ai_access_level: AI_ACCESS_LEVELS.MASTER })
+        .update({ role: USER_ROLES.MASTER, workspace_id: workspaceId, ai_access_level: AI_ACCESS_LEVELS.MASTER, can_edit_integrations: true })
         .eq('id', profile.id)
     }
   }
@@ -236,7 +237,7 @@ export async function getAccessContext(supabase, user, options = {}) {
     workspaceId,
     canManageUsers: isPrimaryAdmin,
     canManageClients: isPrimaryAdmin || role === USER_ROLES.OPERATOR,
-    canEditIntegrations: isPrimaryAdmin || role === USER_ROLES.OPERATOR,
+    canEditIntegrations: isPrimaryAdmin || Boolean(profile.can_edit_integrations),
     canViewDashboard: isPrimaryAdmin || viewableClientIds.size > 0,
     canUseAi: aiAccessLevel !== AI_ACCESS_LEVELS.NONE && (isPrimaryAdmin || viewableClientIds.size > 0),
     isClientRole: role === USER_ROLES.CLIENT,
