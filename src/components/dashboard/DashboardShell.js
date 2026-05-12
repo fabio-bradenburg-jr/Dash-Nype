@@ -9066,10 +9066,12 @@ export default function DashboardShell({
 
     const element = dashboardRef.current
     const previousPdfMarker = element.getAttribute('data-pdf-export-root')
+    const previousDocumentPdfMode = document.documentElement.getAttribute('data-pdf-exporting')
 
     try {
       setIsExporting(true)
       element.setAttribute('data-pdf-export-root', 'true')
+      document.documentElement.setAttribute('data-pdf-exporting', 'true')
 
       if (document.fonts?.ready) {
         await document.fonts.ready.catch(() => null)
@@ -9105,7 +9107,7 @@ export default function DashboardShell({
             image.loading = 'eager'
           })
 
-          clonedDocument.querySelectorAll('.modal-overlay, .floating-save-bar').forEach((node) => node.remove())
+          clonedDocument.querySelectorAll('aside.sidebar, .operation-stellar-topbar, .header, .modal-overlay, .floating-save-bar, .header-actions, .meta-filter-panel, .source-section-header').forEach((node) => node.remove())
 
           const style = clonedDocument.createElement('style')
           style.textContent = `
@@ -9113,6 +9115,12 @@ export default function DashboardShell({
               animation: none !important;
               transition: none !important;
               caret-color: transparent !important;
+            }
+            .pdf-export-mode {
+              width: 100% !important;
+              max-width: none !important;
+              margin: 0 !important;
+              padding: 0 !important;
             }
             .pdf-export-mode input,
             .pdf-export-mode textarea,
@@ -9165,6 +9173,8 @@ export default function DashboardShell({
     } finally {
       if (previousPdfMarker === null) element.removeAttribute('data-pdf-export-root')
       else element.setAttribute('data-pdf-export-root', previousPdfMarker)
+      if (previousDocumentPdfMode === null) document.documentElement.removeAttribute('data-pdf-exporting')
+      else document.documentElement.setAttribute('data-pdf-exporting', previousDocumentPdfMode)
       setIsExporting(false)
     }
   }
@@ -14689,7 +14699,7 @@ export default function DashboardShell({
         )}
 
         {activeTab === 'apresentacao' && (
-          <div ref={dashboardRef}>
+          <div ref={dashboardRef} className="dashboard-pdf-export-area" data-dashboard-pdf-area="true">
             <section className="glass-panel hero-panel">
               <div className="hero-copy">
                 {activeClient?.logoUrl && (
@@ -26153,6 +26163,37 @@ export default function DashboardShell({
             grid-template-columns: 1fr;
           }
         }
+        @media print {
+          body {
+            background: #fff !important;
+          }
+
+          .sidebar,
+          .operation-stellar-topbar,
+          .header,
+          .modal-overlay,
+          .floating-save-bar {
+            display: none !important;
+          }
+
+          .dashboard-container,
+          .main-content,
+          .main-content-expanded {
+            width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            background: #fff !important;
+          }
+
+          .dashboard-pdf-export-area {
+            display: block !important;
+            width: 100% !important;
+            max-width: none !important;
+            margin: 0 !important;
+            padding: 0 !important;
+          }
+        }
+
         @media (max-width: 1380px) {
           .operation-stellar-topbar,
           .operation-stellar-hero {
