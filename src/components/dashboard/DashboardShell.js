@@ -26094,7 +26094,14 @@ export default function DashboardShell({
           .operation-stellar-topbar,
           .header,
           .modal-overlay,
-          .floating-save-bar {
+          .floating-save-bar,
+          .meta-filter-panel,
+          .metric-library-panel,
+          .campaign-filters,
+          .source-section-header,
+          .floating-filter-apply,
+          .metric-library-anchor,
+          .btn {
             display: none !important;
           }
 
@@ -26104,6 +26111,7 @@ export default function DashboardShell({
             width: 100% !important;
             margin: 0 !important;
             padding: 0 !important;
+            overflow: visible !important;
           }
 
           .dashboard-pdf-export-area {
@@ -26112,13 +26120,24 @@ export default function DashboardShell({
             max-width: none !important;
             margin: 0 !important;
             padding: 0 !important;
+            overflow: visible !important;
           }
 
-          .dashboard-pdf-export-area .glass-panel,
-          .dashboard-pdf-export-area .glass-item,
-          .dashboard-pdf-export-area section,
-          .dashboard-pdf-export-area article {
-            break-inside: avoid;
+          .dashboard-pdf-export-area .hero-panel,
+          .dashboard-pdf-export-area .kpi-card,
+          .dashboard-pdf-export-area .meta-summary-card,
+          .dashboard-pdf-export-area .ranking-card,
+          .dashboard-pdf-export-area .campaigns-section,
+          .dashboard-pdf-export-area .chart-container {
+            break-inside: avoid-page;
+            page-break-inside: avoid;
+          }
+
+          .dashboard-pdf-export-area .source-section,
+          .dashboard-pdf-export-area .grouped-results,
+          .dashboard-pdf-export-area .funnel-section {
+            break-inside: auto !important;
+            page-break-inside: auto !important;
           }
         }
 
