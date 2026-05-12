@@ -45,8 +45,6 @@ import {
   Tooltip,
 } from 'chart.js'
 import { Bar, Doughnut, Line } from 'react-chartjs-2'
-import html2canvas from 'html2canvas'
-import { jsPDF } from 'jspdf'
 import { normalizeAiSettings } from '@/lib/ai-config'
 import { LEGACY_THEME_PRESETS } from '@/lib/saas/theme-presets'
 import {
@@ -9077,105 +9075,19 @@ export default function DashboardShell({
         await document.fonts.ready.catch(() => null)
       }
 
-      const maxCanvasSide = 14000
-      const canvasScale = Math.max(
-        0.25,
-        Math.min(
-          1.5,
-          maxCanvasSide / Math.max(element.scrollHeight || element.clientHeight || 1, 1),
-          maxCanvasSide / Math.max(element.scrollWidth || element.clientWidth || 1, 1)
-        )
-      )
-
-      const renderPromise = html2canvas(element, {
-        scale: canvasScale,
-        useCORS: true,
-        allowTaint: false,
-        imageTimeout: 12000,
-        logging: false,
-        backgroundColor: isLightAppMode ? '#f8fafc' : '#0b0f19',
-        scrollX: 0,
-        scrollY: -window.scrollY,
-        windowWidth: Math.max(element.scrollWidth, element.clientWidth, window.innerWidth),
-        windowHeight: Math.max(element.scrollHeight, element.clientHeight, window.innerHeight),
-        onclone: (clonedDocument) => {
-          const clonedRoot = clonedDocument.querySelector('[data-pdf-export-root="true"]')
-          clonedRoot?.classList.add('pdf-export-mode')
-
-          clonedDocument.querySelectorAll('img').forEach((image) => {
-            image.crossOrigin = 'anonymous'
-            image.loading = 'eager'
-          })
-
-          clonedDocument.querySelectorAll('aside.sidebar, .operation-stellar-topbar, .header, .modal-overlay, .floating-save-bar, .header-actions, .meta-filter-panel, .source-section-header').forEach((node) => node.remove())
-
-          const style = clonedDocument.createElement('style')
-          style.textContent = `
-            .pdf-export-mode, .pdf-export-mode * {
-              animation: none !important;
-              transition: none !important;
-              caret-color: transparent !important;
-            }
-            .pdf-export-mode {
-              width: 100% !important;
-              max-width: none !important;
-              margin: 0 !important;
-              padding: 0 !important;
-            }
-            .pdf-export-mode input,
-            .pdf-export-mode textarea,
-            .pdf-export-mode select,
-            .pdf-export-mode button {
-              box-shadow: none !important;
-            }
-          `
-          clonedDocument.head.appendChild(style)
-        },
-      })
-
-      const canvas = await Promise.race([
-        renderPromise,
-        new Promise((_, reject) => {
-          window.setTimeout(() => reject(new Error('Tempo limite ao preparar o PDF.')), 45000)
-        }),
-      ])
-
-      const imgData = canvas.toDataURL('image/png')
-      const pdf = new jsPDF('p', 'mm', 'a4')
-      const pdfWidth = pdf.internal.pageSize.getWidth()
-      const pdfPageHeight = pdf.internal.pageSize.getHeight()
-      const scaledImageHeight = (canvas.height * pdfWidth) / canvas.width
-
-      let remainingHeight = scaledImageHeight
-      let currentOffset = 0
-
-      pdf.addImage(imgData, 'PNG', 0, currentOffset, pdfWidth, scaledImageHeight)
-      remainingHeight -= pdfPageHeight
-
-      while (remainingHeight > 0) {
-        currentOffset = remainingHeight - scaledImageHeight
-        pdf.addPage()
-        pdf.addImage(imgData, 'PNG', 0, currentOffset, pdfWidth, scaledImageHeight)
-        remainingHeight -= pdfPageHeight
-      }
-
-      const safeClientName = String(activeClient?.name || 'cliente')
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .replace(/[^a-z0-9_-]+/gi, '-')
-        .replace(/^-+|-+$/g, '') || 'cliente'
-
-      pdf.save(`dashboard-${safeClientName}.pdf`)
+      await new Promise((resolve) => window.requestAnimationFrame(() => window.requestAnimationFrame(resolve)))
+      window.print()
     } catch (error) {
-      console.error('Erro ao exportar PDF:', error)
-      const shouldPrint = window.confirm('Não consegui gerar o PDF automático agora. Quer abrir a tela de impressão para salvar como PDF?')
-      if (shouldPrint) window.print()
+      console.error('Erro ao preparar PDF:', error)
+      alert('Não foi possível preparar o PDF agora.')
     } finally {
-      if (previousPdfMarker === null) element.removeAttribute('data-pdf-export-root')
-      else element.setAttribute('data-pdf-export-root', previousPdfMarker)
-      if (previousDocumentPdfMode === null) document.documentElement.removeAttribute('data-pdf-exporting')
-      else document.documentElement.setAttribute('data-pdf-exporting', previousDocumentPdfMode)
-      setIsExporting(false)
+      window.setTimeout(() => {
+        if (previousPdfMarker === null) element.removeAttribute('data-pdf-export-root')
+        else element.setAttribute('data-pdf-export-root', previousPdfMarker)
+        if (previousDocumentPdfMode === null) document.documentElement.removeAttribute('data-pdf-exporting')
+        else document.documentElement.setAttribute('data-pdf-exporting', previousDocumentPdfMode)
+        setIsExporting(false)
+      }, 800)
     }
   }
 
