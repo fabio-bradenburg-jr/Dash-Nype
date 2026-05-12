@@ -10753,10 +10753,11 @@ export default function DashboardShell({
       ],
     },
   ]
-  const activeMetaComparisonGroups = useMemo(
-    () => metaConversionGroups.filter((group) => normalizedMetaResultFilters.includes(group.key)),
+  const visibleMetaConversionGroups = useMemo(
+    () => metaConversionGroups.filter((group) => normalizedMetaResultFilters.includes(group.key) && Number(group.resultValue || 0) > 0),
     [metaConversionGroups, normalizedMetaResultFilters]
   )
+  const activeMetaComparisonGroups = visibleMetaConversionGroups
   useEffect(() => {
     const rankedOptions = activeMetaComparisonGroups
       .map((group) => ({ key: group.key, value: group.resultValue || 0 }))
@@ -14891,7 +14892,7 @@ export default function DashboardShell({
                     </div>
 
                     <div className="conversion-groups-grid">
-                      {metaConversionGroups.map((group) => (
+                      {visibleMetaConversionGroups.map((group) => (
                         <article
                           key={group.key}
                           className={`conversion-group-card glass-panel ${group.resultValue > 0 ? 'conversion-group-card-active' : 'conversion-group-card-muted'}`}
@@ -14929,6 +14930,7 @@ export default function DashboardShell({
                       ))}
                     </div>
 
+                    {activeMetaComparisonGroups.length > 0 && (
                     <div className="glass-panel meta-result-preview-panel">
                       <div className="meta-result-preview-head">
                         <div>
@@ -14997,6 +14999,7 @@ export default function DashboardShell({
                         <div className="ranking-empty">Sem histórico suficiente para montar esse comparativo no período atual.</div>
                       )}
                     </div>
+                    )}
                   </div>
 
                 </section>
