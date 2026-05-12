@@ -2382,8 +2382,8 @@ function buildMetricTrend(metricKey, currentValue, previousValue, type) {
 
   return {
     tone: isPositive ? 'positive' : 'negative',
-    icon: isPositive ? 'bx-up-arrow-alt' : 'bx-down-arrow-alt',
-    label: `${isPositive ? 'Movimento positivo' : 'Movimento negativo'} de ${formatTrendChange(delta, type)}`,
+    icon: movedUp ? 'bx-up-arrow-alt' : 'bx-down-arrow-alt',
+    label: `${movedUp ? 'Subiu' : 'Caiu'} ${formatTrendChange(delta, type)} - ${isPositive ? 'movimento positivo' : 'movimento negativo'}`,
   }
 }
 
