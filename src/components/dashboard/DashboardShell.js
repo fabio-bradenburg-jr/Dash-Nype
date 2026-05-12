@@ -26075,9 +26075,19 @@ export default function DashboardShell({
             grid-template-columns: 1fr;
           }
         }
+        @page {
+          size: A4 landscape;
+          margin: 8mm;
+        }
+
         @media print {
-          body {
-            background: #fff !important;
+          html,
+          body,
+          .dashboard-container,
+          .dashboard-container * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            color-adjust: exact !important;
           }
 
           .sidebar,
@@ -26094,7 +26104,6 @@ export default function DashboardShell({
             width: 100% !important;
             margin: 0 !important;
             padding: 0 !important;
-            background: #fff !important;
           }
 
           .dashboard-pdf-export-area {
@@ -26103,6 +26112,13 @@ export default function DashboardShell({
             max-width: none !important;
             margin: 0 !important;
             padding: 0 !important;
+          }
+
+          .dashboard-pdf-export-area .glass-panel,
+          .dashboard-pdf-export-area .glass-item,
+          .dashboard-pdf-export-area section,
+          .dashboard-pdf-export-area article {
+            break-inside: avoid;
           }
         }
 
