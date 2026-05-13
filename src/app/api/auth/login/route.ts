@@ -11,7 +11,38 @@ import {
 
 const API_URL = getPlatformApiUrl()
 
+function getSupabaseAuthConfig() {
+  const missing: string[] = []
+
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL) missing.push('NEXT_PUBLIC_SUPABASE_URL')
+  if (!process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY && !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    missing.push('NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY')
+  }
+
+  return { enabled: missing.length === 0, missing }
+}
+
+function formatMissingSupabaseConfig(missing: string[]) {
+  return `O login pelo Supabase não está disponível neste ambiente. Configure ${missing
+    .map((item) => `\`${item}\``)
+    .join(', ')} na Vercel e publique novamente.`
+}
+
+function getAuthErrorStatus(error: unknown) {
+  if (!(error instanceof Error)) return 500
+  const message = error.message.toLowerCase()
+
+  if (message.includes('invalid login credentials') || message.includes('credenciais')) return 401
+  if (message.includes('email not confirmed') || message.includes('confirme')) return 403
+  return 500
+}
+
 async function loginWithLegacySupabase(body: { email: string; password: string }) {
+  const supabaseConfig = getSupabaseAuthConfig()
+  if (!supabaseConfig.enabled) {
+    throw new Error(formatMissingSupabaseConfig(supabaseConfig.missing))
+  }
+
   const [{ createClient }, { createAdminClient }, { getAccessContext }] = await Promise.all([
     import('@/lib/supabase/server'),
     import('@/lib/server/supabase-admin'),
@@ -28,8 +59,20 @@ async function loginWithLegacySupabase(body: { email: string; password: string }
     throw new Error(error?.message || 'Credenciais inválidas.')
   }
 
-  const adminSupabase = createAdminClient()
-  const accessContext = await getAccessContext(supabase, data.user, { adminSupabase })
+  const adminSupabase = process.env.SUPABASE_SERVICE_ROLE_KEY ? createAdminClient() : null
+  let accessContext
+
+  try {
+    accessContext = await getAccessContext(supabase, data.user, adminSupabase ? { adminSupabase } : {})
+  } catch (accessError) {
+    if (!adminSupabase) {
+      throw new Error(
+        'Login validado, mas falta configurar `SUPABASE_SERVICE_ROLE_KEY` no servidor para liberar o acesso deste usuário.'
+      )
+    }
+
+    throw accessError
+  }
   const platformUser = await ensurePlatformUserForSupabase({
     user_id: data.user.id,
     tenant_id: accessContext.workspaceId || data.user.id,
@@ -68,8 +111,15 @@ export async function POST(request: Request) {
     })
 
     return nextResponse
-  } catch {
-    // Se o login antigo não estiver disponível, seguimos para o backend novo.
+  } catch (legacyError) {
+    const supabaseConfig = getSupabaseAuthConfig()
+
+    if (supabaseConfig.enabled) {
+      const message = legacyError instanceof Error ? legacyError.message : 'Não foi possível entrar.'
+      return NextResponse.json({ error: message }, { status: getAuthErrorStatus(legacyError) })
+    }
+
+    // Se o Supabase não estiver configurado, seguimos para o backend novo/fallback local.
   }
 
   try {

@@ -12,6 +12,31 @@ import { isPrimaryAdminEmail, USER_ROLES } from '@/lib/server/access-control'
 
 const API_URL = getPlatformApiUrl()
 
+function getSupabaseAuthConfig() {
+  const missing: string[] = []
+
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL) missing.push('NEXT_PUBLIC_SUPABASE_URL')
+  if (!process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY && !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    missing.push('NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY')
+  }
+
+  return { enabled: missing.length === 0, missing }
+}
+
+function formatMissingSupabaseConfig(missing: string[]) {
+  return `O cadastro pelo Supabase não está disponível neste ambiente. Configure ${missing
+    .map((item) => `\`${item}\``)
+    .join(', ')} na Vercel e publique novamente.`
+}
+
+function getAuthErrorStatus(error: unknown) {
+  if (!(error instanceof Error)) return 500
+  const message = error.message.toLowerCase()
+
+  if (message.includes('already') || message.includes('registered') || message.includes('já')) return 409
+  if (message.includes('password') || message.includes('senha')) return 400
+  return 500
+}
 
 async function ensureSupabaseProfileForRegistration(input: {
   user: { id: string; email?: string | null; user_metadata?: Record<string, unknown> | null }
@@ -94,6 +119,17 @@ async function registerWithLegacySupabase(body: {
   email: string
   password: string
 }) {
+  const supabaseConfig = getSupabaseAuthConfig()
+  if (!supabaseConfig.enabled) {
+    throw new Error(formatMissingSupabaseConfig(supabaseConfig.missing))
+  }
+
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    throw new Error(
+      'Falta configurar `SUPABASE_SERVICE_ROLE_KEY` no servidor para criar o perfil e liberar acessos do usuário.'
+    )
+  }
+
   const { createClient } = await import('@/lib/supabase/server')
 
   const supabase = await createClient()
@@ -163,8 +199,15 @@ export async function POST(request: Request) {
     })
 
     return nextResponse
-  } catch {
-    // Se o cadastro antigo não estiver disponível, seguimos para o backend novo.
+  } catch (legacyError) {
+    const supabaseConfig = getSupabaseAuthConfig()
+
+    if (supabaseConfig.enabled) {
+      const message = legacyError instanceof Error ? legacyError.message : 'Não foi possível criar a conta.'
+      return NextResponse.json({ error: message }, { status: getAuthErrorStatus(legacyError) })
+    }
+
+    // Se o Supabase não estiver configurado, seguimos para o backend novo/fallback local.
   }
 
   try {
