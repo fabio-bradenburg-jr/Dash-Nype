@@ -9080,8 +9080,41 @@ export default function DashboardShell({
       const [{ default: html2canvas }, jsPdfModule] = await Promise.all([import('html2canvas'), import('jspdf')])
       const JsPDF = jsPdfModule.default || jsPdfModule.jsPDF
       const rect = element.getBoundingClientRect()
+      const getVisibleExportHeight = () => {
+        const ignoredSelector = [
+          '.sidebar',
+          '.operation-stellar-topbar',
+          '.header',
+          '.modal-overlay',
+          '.floating-save-bar',
+          '.meta-filter-panel',
+          '.metric-library-panel',
+          '.campaign-filters',
+          '.source-section-header',
+          '.floating-filter-apply',
+          '.metric-library-anchor',
+          '.btn',
+          'button',
+          '[data-no-pdf]',
+        ].join(',')
+        let bottom = rect.bottom
+
+        element.querySelectorAll('*').forEach((node) => {
+          if (!(node instanceof HTMLElement)) return
+          if (node.matches(ignoredSelector) || node.closest(ignoredSelector)) return
+
+          const style = window.getComputedStyle(node)
+          if (style.display === 'none' || style.visibility === 'hidden' || Number(style.opacity || 1) === 0) return
+
+          const bounds = node.getBoundingClientRect()
+          if (bounds.width <= 1 || bounds.height <= 1) return
+          if (bounds.bottom > bottom) bottom = bounds.bottom
+        })
+
+        return Math.ceil(Math.max(rect.height, bottom - rect.top + 32))
+      }
       const exportWidth = Math.ceil(Math.max(element.scrollWidth, rect.width, 1440))
-      const exportHeight = Math.ceil(Math.max(element.scrollHeight, rect.height))
+      const exportHeight = Math.ceil(Math.min(Math.max(getVisibleExportHeight(), rect.height), element.scrollHeight || rect.height))
       const preferredScale = Math.min(1.35, Math.max(1, window.devicePixelRatio || 1))
       const maxCanvasPixels = 28000000
       const safeScale = Math.sqrt(maxCanvasPixels / Math.max(exportWidth * exportHeight, 1))
@@ -9153,6 +9186,17 @@ export default function DashboardShell({
           if (clonedExportRoot) {
             clonedExportRoot.querySelectorAll('button, [data-no-pdf], .btn, .floating-filter-apply, .metric-library-anchor').forEach((node) => {
               node.remove()
+            })
+
+            clonedExportRoot.querySelectorAll('.ranking-card, .meta-result-preview-panel, .chart-container, .source-section').forEach((node) => {
+              const hasEmptyState = Boolean(node.querySelector('.ranking-empty, .funnel-empty, .metric-library-empty'))
+              const hasDataRows = Boolean(node.querySelector('.ranking-row, .geo-ranking-row, .data-table tbody tr:not(:only-child), canvas, img'))
+              const text = String(node.textContent || '').toLowerCase()
+              const isExplicitNoData = /sem dados|sem histórico|sem historico|nenhum resultado|nenhuma campanha|carregando ranking|sem base suficiente/.test(text)
+
+              if ((hasEmptyState || isExplicitNoData) && !hasDataRows) {
+                node.remove()
+              }
             })
           }
         },
