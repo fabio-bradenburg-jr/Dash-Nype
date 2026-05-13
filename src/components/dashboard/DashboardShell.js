@@ -9120,6 +9120,41 @@ export default function DashboardShell({
       const safeScale = Math.sqrt(maxCanvasPixels / Math.max(exportWidth * exportHeight, 1))
       const captureScale = Math.max(0.72, Math.min(preferredScale, safeScale))
       const backgroundColor = window.getComputedStyle(document.body).backgroundColor || '#ffffff'
+      const collectSafeBreakPoints = () => {
+        const selector = [
+          '.hero-panel',
+          '.kpi-card',
+          '.meta-summary-card',
+          '.conversion-group-card',
+          '.meta-result-preview-panel',
+          '.chart-container',
+          '.funnel-section',
+          '.ranking-card',
+          '.meta-ranking-layer-section',
+          '.ranking-row',
+          '.campaigns-section',
+          '.data-table tr',
+          '.manual-crm-card',
+          '.source-section',
+        ].join(',')
+        const maxCanvasY = exportHeight * captureScale
+        const points = []
+
+        element.querySelectorAll(selector).forEach((node) => {
+          if (!(node instanceof HTMLElement)) return
+          const style = window.getComputedStyle(node)
+          if (style.display === 'none' || style.visibility === 'hidden') return
+
+          const bounds = node.getBoundingClientRect()
+          if (bounds.width <= 1 || bounds.height <= 1) return
+
+          const bottom = Math.round((bounds.bottom - rect.top) * captureScale)
+          if (bottom > 40 && bottom < maxCanvasY - 12) points.push(bottom)
+        })
+
+        return [...new Set(points)].sort((a, b) => a - b)
+      }
+      const safeBreakPoints = collectSafeBreakPoints()
 
       const canvas = await html2canvas(element, {
         backgroundColor,
@@ -9216,6 +9251,21 @@ export default function DashboardShell({
         throw new Error('Não foi possível preparar a imagem do PDF.')
       }
       const pageSliceHeight = Math.floor((usableHeight * canvas.width) / renderWidth)
+      const minSliceHeight = Math.floor(pageSliceHeight * 0.58)
+      const safeBreakGap = Math.max(18, Math.floor(24 * captureScale))
+      const findSafeSliceHeight = (currentY) => {
+        const remainingHeight = canvas.height - currentY
+        if (remainingHeight <= pageSliceHeight) return remainingHeight
+
+        const targetY = currentY + pageSliceHeight
+        const minY = currentY + minSliceHeight
+        const maxY = targetY - safeBreakGap
+        const safePoint = [...safeBreakPoints]
+          .reverse()
+          .find((point) => point > minY && point < maxY)
+
+        return Math.max(minSliceHeight, Math.min(pageSliceHeight, (safePoint || targetY) - currentY))
+      }
       let sourceY = 0
       let pageIndex = 0
 
@@ -9223,8 +9273,7 @@ export default function DashboardShell({
       pageCanvas.height = Math.min(pageSliceHeight, canvas.height)
 
       while (sourceY < canvas.height) {
-        const remainingHeight = canvas.height - sourceY
-        const sliceHeight = Math.min(pageSliceHeight, remainingHeight)
+        const sliceHeight = findSafeSliceHeight(sourceY)
         pageCanvas.height = sliceHeight
         pageContext.clearRect(0, 0, pageCanvas.width, pageCanvas.height)
         pageContext.drawImage(canvas, 0, sourceY, canvas.width, sliceHeight, 0, 0, canvas.width, sliceHeight)
