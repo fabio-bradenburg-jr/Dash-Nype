@@ -9063,172 +9063,152 @@ export default function DashboardShell({
     }
 
     const element = dashboardRef.current
-    const printWindow = window.open('', 'assessoria-lp-pdf-export', 'popup,width=1440,height=960')
-
-    if (!printWindow) {
-      alert('O navegador bloqueou a janela de exportação. Libere pop-ups para salvar o PDF.')
-      return
-    }
-
-    const root = document.documentElement
-    const body = document.body
-    const rootStyle = window.getComputedStyle(root)
-    const bodyStyle = window.getComputedStyle(body)
-    const cssVariables = Array.from(rootStyle)
-      .filter((property) => property.startsWith('--'))
-      .map((property) => `${property}: ${rootStyle.getPropertyValue(property)};`)
-      .join('\n')
-    const styleTags = Array.from(document.querySelectorAll('style, link[rel="stylesheet"]'))
-      .map((node) => node.outerHTML)
-      .join('\n')
-    const exportClone = element.cloneNode(true)
-
-    exportClone.setAttribute('data-pdf-export-root', 'true')
-    exportClone.querySelectorAll('button, [data-no-pdf], .btn, .floating-filter-apply, .metric-library-anchor').forEach((node) => {
-      node.remove()
-    })
-
-    const cleanup = () => {
-      window.setTimeout(() => {
-        try {
-          printWindow.close()
-        } catch {
-          // A janela pode já ter sido fechada pelo navegador.
-        }
-        setIsExporting(false)
-      }, 500)
-    }
+    const previousPdfMarker = element.getAttribute('data-pdf-export-root')
+    const previousExportMode = document.documentElement.getAttribute('data-pdf-exporting')
 
     try {
       setIsExporting(true)
+      element.setAttribute('data-pdf-export-root', 'true')
+      document.documentElement.setAttribute('data-pdf-exporting', 'true')
 
-      printWindow.document.open()
-      printWindow.document.write(`<!doctype html>
-<html class="${root.className}" data-ui-mode="${root.getAttribute('data-ui-mode') || ''}" data-theme-mode="${root.getAttribute('data-theme-mode') || ''}" data-pdf-exporting="true">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>${activeClient?.name || 'Dashboard'} - Assessoria LP</title>
-  ${styleTags}
-  <style>
-    :root {
-      ${cssVariables}
-    }
-
-    html, body {
-      width: 100%;
-      min-height: 100%;
-      margin: 0;
-      background: ${bodyStyle.backgroundColor || '#ffffff'} !important;
-      color: ${bodyStyle.color || '#0f172a'} !important;
-      overflow: visible !important;
-      -webkit-print-color-adjust: exact !important;
-      print-color-adjust: exact !important;
-    }
-
-    body {
-      padding: 0 !important;
-    }
-
-    .pdf-export-shell {
-      width: 100%;
-      min-height: 100%;
-      background: inherit;
-      color: inherit;
-    }
-
-    .pdf-export-shell .dashboard-pdf-export-area {
-      width: 100% !important;
-      max-width: none !important;
-      margin: 0 !important;
-      padding: 0 !important;
-      overflow: visible !important;
-    }
-
-    .sidebar,
-    .operation-stellar-topbar,
-    .header,
-    .modal-overlay,
-    .floating-save-bar,
-    .meta-filter-panel,
-    .metric-library-panel,
-    .campaign-filters,
-    .source-section-header,
-    .floating-filter-apply,
-    .metric-library-anchor,
-    .btn,
-    button {
-      display: none !important;
-    }
-
-    .dashboard-pdf-export-area .hero-panel,
-    .dashboard-pdf-export-area .kpi-card,
-    .dashboard-pdf-export-area .meta-summary-card,
-    .dashboard-pdf-export-area .ranking-card,
-    .dashboard-pdf-export-area .campaigns-section,
-    .dashboard-pdf-export-area .chart-container {
-      break-inside: avoid-page;
-      page-break-inside: avoid;
-    }
-
-    .dashboard-pdf-export-area .source-section,
-    .dashboard-pdf-export-area .grouped-results,
-    .dashboard-pdf-export-area .funnel-section {
-      break-inside: auto !important;
-      page-break-inside: auto !important;
-    }
-
-    @page {
-      size: A4 landscape;
-      margin: 8mm;
-    }
-
-    @media print {
-      html, body, .pdf-export-shell, .pdf-export-shell * {
-        -webkit-print-color-adjust: exact !important;
-        print-color-adjust: exact !important;
-        color-adjust: exact !important;
+      if (document.fonts?.ready) {
+        await document.fonts.ready.catch(() => null)
       }
 
-      .pdf-export-shell {
-        zoom: 0.78;
+      await new Promise((resolve) => window.requestAnimationFrame(() => window.requestAnimationFrame(resolve)))
+
+      const [{ default: html2canvas }, jsPdfModule] = await Promise.all([import('html2canvas'), import('jspdf')])
+      const JsPDF = jsPdfModule.default || jsPdfModule.jsPDF
+      const rect = element.getBoundingClientRect()
+      const exportWidth = Math.ceil(Math.max(element.scrollWidth, rect.width, 1440))
+      const exportHeight = Math.ceil(Math.max(element.scrollHeight, rect.height))
+      const preferredScale = Math.min(1.35, Math.max(1, window.devicePixelRatio || 1))
+      const maxCanvasPixels = 28000000
+      const safeScale = Math.sqrt(maxCanvasPixels / Math.max(exportWidth * exportHeight, 1))
+      const captureScale = Math.max(0.72, Math.min(preferredScale, safeScale))
+      const backgroundColor = window.getComputedStyle(document.body).backgroundColor || '#ffffff'
+
+      const canvas = await html2canvas(element, {
+        backgroundColor,
+        scale: captureScale,
+        useCORS: true,
+        allowTaint: false,
+        imageTimeout: 15000,
+        logging: false,
+        width: exportWidth,
+        height: exportHeight,
+        windowWidth: exportWidth,
+        windowHeight: exportHeight,
+        scrollX: 0,
+        scrollY: -window.scrollY,
+        onclone: (clonedDocument) => {
+          const clonedRoot = clonedDocument.documentElement
+          const clonedExportRoot = clonedDocument.querySelector('[data-pdf-export-root="true"]')
+          clonedRoot.setAttribute('data-pdf-exporting', 'true')
+
+          const style = clonedDocument.createElement('style')
+          style.textContent = `
+            html,
+            body,
+            [data-pdf-export-root="true"],
+            [data-pdf-export-root="true"] * {
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+              color-adjust: exact !important;
+            }
+
+            html,
+            body {
+              overflow: visible !important;
+            }
+
+            .sidebar,
+            .operation-stellar-topbar,
+            .header,
+            .modal-overlay,
+            .floating-save-bar,
+            .meta-filter-panel,
+            .metric-library-panel,
+            .campaign-filters,
+            .source-section-header,
+            .floating-filter-apply,
+            .metric-library-anchor,
+            .btn,
+            button,
+            [data-no-pdf] {
+              display: none !important;
+            }
+
+            [data-pdf-export-root="true"] {
+              width: ${exportWidth}px !important;
+              max-width: none !important;
+              margin: 0 !important;
+              padding: 0 !important;
+              overflow: visible !important;
+              transform: none !important;
+            }
+          `
+          clonedDocument.head.appendChild(style)
+
+          if (clonedExportRoot) {
+            clonedExportRoot.querySelectorAll('button, [data-no-pdf], .btn, .floating-filter-apply, .metric-library-anchor').forEach((node) => {
+              node.remove()
+            })
+          }
+        },
+      })
+
+      const pdf = new JsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4', compress: true })
+      const pageWidth = pdf.internal.pageSize.getWidth()
+      const pageHeight = pdf.internal.pageSize.getHeight()
+      const margin = 18
+      const usableWidth = pageWidth - margin * 2
+      const usableHeight = pageHeight - margin * 2
+      const renderWidth = usableWidth
+      const pageCanvas = document.createElement('canvas')
+      const pageContext = pageCanvas.getContext('2d')
+
+      if (!pageContext) {
+        throw new Error('Não foi possível preparar a imagem do PDF.')
       }
-    }
-  </style>
-</head>
-<body class="${body.className}">
-  <main class="pdf-export-shell">
-    ${exportClone.outerHTML}
-  </main>
-</body>
-</html>`)
-      printWindow.document.close()
+      const pageSliceHeight = Math.floor((usableHeight * canvas.width) / renderWidth)
+      let sourceY = 0
+      let pageIndex = 0
 
-      await new Promise((resolve) => printWindow.setTimeout(resolve, 250))
+      pageCanvas.width = canvas.width
+      pageCanvas.height = Math.min(pageSliceHeight, canvas.height)
 
-      if (printWindow.document.fonts?.ready) {
-        await printWindow.document.fonts.ready.catch(() => null)
+      while (sourceY < canvas.height) {
+        const remainingHeight = canvas.height - sourceY
+        const sliceHeight = Math.min(pageSliceHeight, remainingHeight)
+        pageCanvas.height = sliceHeight
+        pageContext.clearRect(0, 0, pageCanvas.width, pageCanvas.height)
+        pageContext.drawImage(canvas, 0, sourceY, canvas.width, sliceHeight, 0, 0, canvas.width, sliceHeight)
+
+        if (pageIndex > 0) pdf.addPage()
+
+        const sliceRenderHeight = (sliceHeight * renderWidth) / canvas.width
+        pdf.addImage(pageCanvas.toDataURL('image/jpeg', 0.92), 'JPEG', margin, margin, renderWidth, Math.min(sliceRenderHeight, usableHeight))
+        sourceY += sliceHeight
+        pageIndex += 1
       }
 
-      const images = Array.from(printWindow.document.images || [])
-      await Promise.all(
-        images.map((image) => {
-          if (image.complete) return Promise.resolve()
-          return new Promise((resolve) => {
-            image.onload = resolve
-            image.onerror = resolve
-          })
-        })
-      )
-
-      printWindow.onafterprint = cleanup
-      printWindow.focus()
-      printWindow.print()
-      window.setTimeout(cleanup, 15000)
+      const safeClientName = String(activeClient?.name || 'dashboard')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9]+/gi, '-')
+        .replace(/^-+|-+$/g, '')
+        .toLowerCase()
+      pdf.save(`${safeClientName || 'dashboard'}-assessoria-lp.pdf`)
     } catch (error) {
       console.error('Erro ao preparar PDF:', error)
-      cleanup()
-      alert('Não foi possível preparar o PDF agora.')
+      alert('Não foi possível gerar o PDF agora. Se o dashboard tiver imagens externas bloqueadas, tente atualizar a página e exportar novamente.')
+    } finally {
+      if (previousPdfMarker === null) element.removeAttribute('data-pdf-export-root')
+      else element.setAttribute('data-pdf-export-root', previousPdfMarker)
+      if (previousExportMode === null) document.documentElement.removeAttribute('data-pdf-exporting')
+      else document.documentElement.setAttribute('data-pdf-exporting', previousExportMode)
+      setIsExporting(false)
     }
   }
 
