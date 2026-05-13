@@ -9063,31 +9063,172 @@ export default function DashboardShell({
     }
 
     const element = dashboardRef.current
-    const previousPdfMarker = element.getAttribute('data-pdf-export-root')
-    const previousDocumentPdfMode = document.documentElement.getAttribute('data-pdf-exporting')
+    const printWindow = window.open('', 'assessoria-lp-pdf-export', 'popup,width=1440,height=960')
+
+    if (!printWindow) {
+      alert('O navegador bloqueou a janela de exportação. Libere pop-ups para salvar o PDF.')
+      return
+    }
+
+    const root = document.documentElement
+    const body = document.body
+    const rootStyle = window.getComputedStyle(root)
+    const bodyStyle = window.getComputedStyle(body)
+    const cssVariables = Array.from(rootStyle)
+      .filter((property) => property.startsWith('--'))
+      .map((property) => `${property}: ${rootStyle.getPropertyValue(property)};`)
+      .join('\n')
+    const styleTags = Array.from(document.querySelectorAll('style, link[rel="stylesheet"]'))
+      .map((node) => node.outerHTML)
+      .join('\n')
+    const exportClone = element.cloneNode(true)
+
+    exportClone.setAttribute('data-pdf-export-root', 'true')
+    exportClone.querySelectorAll('button, [data-no-pdf], .btn, .floating-filter-apply, .metric-library-anchor').forEach((node) => {
+      node.remove()
+    })
+
+    const cleanup = () => {
+      window.setTimeout(() => {
+        try {
+          printWindow.close()
+        } catch {
+          // A janela pode já ter sido fechada pelo navegador.
+        }
+        setIsExporting(false)
+      }, 500)
+    }
 
     try {
       setIsExporting(true)
-      element.setAttribute('data-pdf-export-root', 'true')
-      document.documentElement.setAttribute('data-pdf-exporting', 'true')
 
-      if (document.fonts?.ready) {
-        await document.fonts.ready.catch(() => null)
+      printWindow.document.open()
+      printWindow.document.write(`<!doctype html>
+<html class="${root.className}" data-ui-mode="${root.getAttribute('data-ui-mode') || ''}" data-theme-mode="${root.getAttribute('data-theme-mode') || ''}" data-pdf-exporting="true">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>${activeClient?.name || 'Dashboard'} - Assessoria LP</title>
+  ${styleTags}
+  <style>
+    :root {
+      ${cssVariables}
+    }
+
+    html, body {
+      width: 100%;
+      min-height: 100%;
+      margin: 0;
+      background: ${bodyStyle.backgroundColor || '#ffffff'} !important;
+      color: ${bodyStyle.color || '#0f172a'} !important;
+      overflow: visible !important;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+
+    body {
+      padding: 0 !important;
+    }
+
+    .pdf-export-shell {
+      width: 100%;
+      min-height: 100%;
+      background: inherit;
+      color: inherit;
+    }
+
+    .pdf-export-shell .dashboard-pdf-export-area {
+      width: 100% !important;
+      max-width: none !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      overflow: visible !important;
+    }
+
+    .sidebar,
+    .operation-stellar-topbar,
+    .header,
+    .modal-overlay,
+    .floating-save-bar,
+    .meta-filter-panel,
+    .metric-library-panel,
+    .campaign-filters,
+    .source-section-header,
+    .floating-filter-apply,
+    .metric-library-anchor,
+    .btn,
+    button {
+      display: none !important;
+    }
+
+    .dashboard-pdf-export-area .hero-panel,
+    .dashboard-pdf-export-area .kpi-card,
+    .dashboard-pdf-export-area .meta-summary-card,
+    .dashboard-pdf-export-area .ranking-card,
+    .dashboard-pdf-export-area .campaigns-section,
+    .dashboard-pdf-export-area .chart-container {
+      break-inside: avoid-page;
+      page-break-inside: avoid;
+    }
+
+    .dashboard-pdf-export-area .source-section,
+    .dashboard-pdf-export-area .grouped-results,
+    .dashboard-pdf-export-area .funnel-section {
+      break-inside: auto !important;
+      page-break-inside: auto !important;
+    }
+
+    @page {
+      size: A4 landscape;
+      margin: 8mm;
+    }
+
+    @media print {
+      html, body, .pdf-export-shell, .pdf-export-shell * {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        color-adjust: exact !important;
       }
 
-      await new Promise((resolve) => window.requestAnimationFrame(() => window.requestAnimationFrame(resolve)))
-      window.print()
+      .pdf-export-shell {
+        zoom: 0.78;
+      }
+    }
+  </style>
+</head>
+<body class="${body.className}">
+  <main class="pdf-export-shell">
+    ${exportClone.outerHTML}
+  </main>
+</body>
+</html>`)
+      printWindow.document.close()
+
+      await new Promise((resolve) => printWindow.setTimeout(resolve, 250))
+
+      if (printWindow.document.fonts?.ready) {
+        await printWindow.document.fonts.ready.catch(() => null)
+      }
+
+      const images = Array.from(printWindow.document.images || [])
+      await Promise.all(
+        images.map((image) => {
+          if (image.complete) return Promise.resolve()
+          return new Promise((resolve) => {
+            image.onload = resolve
+            image.onerror = resolve
+          })
+        })
+      )
+
+      printWindow.onafterprint = cleanup
+      printWindow.focus()
+      printWindow.print()
+      window.setTimeout(cleanup, 15000)
     } catch (error) {
       console.error('Erro ao preparar PDF:', error)
+      cleanup()
       alert('Não foi possível preparar o PDF agora.')
-    } finally {
-      window.setTimeout(() => {
-        if (previousPdfMarker === null) element.removeAttribute('data-pdf-export-root')
-        else element.setAttribute('data-pdf-export-root', previousPdfMarker)
-        if (previousDocumentPdfMode === null) document.documentElement.removeAttribute('data-pdf-exporting')
-        else document.documentElement.setAttribute('data-pdf-exporting', previousDocumentPdfMode)
-        setIsExporting(false)
-      }, 800)
     }
   }
 
