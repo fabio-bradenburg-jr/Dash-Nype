@@ -9120,27 +9120,50 @@ export default function DashboardShell({
       const safeScale = Math.sqrt(maxCanvasPixels / Math.max(exportWidth * exportHeight, 1))
       const captureScale = Math.max(0.72, Math.min(preferredScale, safeScale))
       const backgroundColor = window.getComputedStyle(document.body).backgroundColor || '#ffffff'
+      const protectedBlockSelector = [
+        '.hero-panel',
+        '.kpi-card',
+        '.meta-summary-card',
+        '.conversion-group-card',
+        '.meta-result-preview-panel',
+        '.chart-container',
+        '.funnel-section',
+        '.ranking-card',
+        '.meta-ranking-layer-section',
+        '.ranking-row',
+        '.campaigns-section',
+        '.data-table tr',
+        '.manual-crm-card',
+        '.source-section',
+      ].join(',')
+      const collectProtectedBlocks = () => {
+        const maxCanvasY = exportHeight * captureScale
+        const blocks = []
+
+        element.querySelectorAll(protectedBlockSelector).forEach((node) => {
+          if (!(node instanceof HTMLElement)) return
+          const style = window.getComputedStyle(node)
+          if (style.display === 'none' || style.visibility === 'hidden') return
+
+          const bounds = node.getBoundingClientRect()
+          if (bounds.width <= 1 || bounds.height <= 1) return
+
+          const top = Math.round((bounds.top - rect.top) * captureScale)
+          const bottom = Math.round((bounds.bottom - rect.top) * captureScale)
+          const height = bottom - top
+
+          if (bottom > 40 && top < maxCanvasY - 12 && height > 24) {
+            blocks.push({ top: Math.max(0, top), bottom: Math.min(maxCanvasY, bottom), height })
+          }
+        })
+
+        return blocks.sort((a, b) => a.top - b.top)
+      }
       const collectSafeBreakPoints = () => {
-        const selector = [
-          '.hero-panel',
-          '.kpi-card',
-          '.meta-summary-card',
-          '.conversion-group-card',
-          '.meta-result-preview-panel',
-          '.chart-container',
-          '.funnel-section',
-          '.ranking-card',
-          '.meta-ranking-layer-section',
-          '.ranking-row',
-          '.campaigns-section',
-          '.data-table tr',
-          '.manual-crm-card',
-          '.source-section',
-        ].join(',')
         const maxCanvasY = exportHeight * captureScale
         const points = []
 
-        element.querySelectorAll(selector).forEach((node) => {
+        element.querySelectorAll(protectedBlockSelector).forEach((node) => {
           if (!(node instanceof HTMLElement)) return
           const style = window.getComputedStyle(node)
           if (style.display === 'none' || style.visibility === 'hidden') return
@@ -9154,6 +9177,7 @@ export default function DashboardShell({
 
         return [...new Set(points)].sort((a, b) => a - b)
       }
+      const protectedBlocks = collectProtectedBlocks()
       const safeBreakPoints = collectSafeBreakPoints()
 
       const canvas = await html2canvas(element, {
@@ -9253,6 +9277,7 @@ export default function DashboardShell({
       const pageSliceHeight = Math.floor((usableHeight * canvas.width) / renderWidth)
       const minSliceHeight = Math.floor(pageSliceHeight * 0.58)
       const safeBreakGap = Math.max(18, Math.floor(24 * captureScale))
+      const blockStartGap = Math.max(24, Math.floor(32 * captureScale))
       const findSafeSliceHeight = (currentY) => {
         const remainingHeight = canvas.height - currentY
         if (remainingHeight <= pageSliceHeight) return remainingHeight
@@ -9260,6 +9285,18 @@ export default function DashboardShell({
         const targetY = currentY + pageSliceHeight
         const minY = currentY + minSliceHeight
         const maxY = targetY - safeBreakGap
+        const minBlockStartY = currentY + Math.max(96, safeBreakGap * 3)
+        const blockingBlock = protectedBlocks.find((block) => {
+          const startsInsidePage = block.top > minBlockStartY && block.top < maxY
+          const crossesPageBreak = block.bottom > maxY
+          const fitsOnFreshPage = block.height < pageSliceHeight - safeBreakGap * 2
+          return startsInsidePage && crossesPageBreak && fitsOnFreshPage
+        })
+
+        if (blockingBlock) {
+          return Math.max(96, Math.min(pageSliceHeight, blockingBlock.top - currentY - blockStartGap))
+        }
+
         const safePoint = [...safeBreakPoints]
           .reverse()
           .find((point) => point > minY && point < maxY)
