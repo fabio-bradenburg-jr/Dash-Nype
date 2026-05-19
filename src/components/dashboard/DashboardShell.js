@@ -190,6 +190,11 @@ const FWO_IMPLEMENTATION_CHECKLISTS = {
   ],
 }
 
+
+function normalizeMetaAdAccountIdForCompare(value) {
+  return String(value || '').trim().replace(/^act_/i, '')
+}
+
 async function fetchJsonWithTimeout(resource, options = {}, timeoutMs = 20000) {
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
@@ -6485,6 +6490,22 @@ export default function DashboardShell({
     metaFilteredAdIdsRef.current = metaFilteredAdIds
   }, [metaFilteredAdIds])
 
+  useEffect(() => {
+    lastDashboardFetchKeyRef.current = ''
+    lastMetaStructureFetchKeyRef.current = ''
+    lastBreakdownsFetchKeyRef.current = ''
+    setInsights(null)
+    setPreviousInsights(null)
+    setDailyData([])
+    setDailyCampaignData([])
+    setCampaigns([])
+    setMetaHierarchy([])
+    setBreakdowns(EMPTY_META_BREAKDOWNS)
+    setMetaRankingDrilldown(null)
+    setMetaRankingDetailDailyData([])
+    setRankingsError('')
+  }, [activeClientId, selectedAdAccount])
+
   const handleUserClientToggle = (clientId) => {
     setUserForm((current) => ({
       ...current,
@@ -8561,6 +8582,10 @@ export default function DashboardShell({
             }
             metaError = isMetaRateLimitMessage(nextMetaError) ? '' : nextMetaError
           } else if (!cancelled) {
+            const responseAdAccount = normalizeMetaAdAccountIdForCompare(insightsData.ad_account_id || selectedAdAccount)
+            const currentAdAccount = normalizeMetaAdAccountIdForCompare(selectedAdAccount)
+            if (responseAdAccount !== currentAdAccount) return
+
             resolvedMetaSummary = insightsData.summary || {}
             setInsights(resolvedMetaSummary)
             setDailyData(insightsData.daily || [])
@@ -8879,6 +8904,8 @@ export default function DashboardShell({
       return
     }
 
+    let cancelled = false
+
     const fetchRankings = async () => {
       const fetchKey = JSON.stringify({
         activeClientId,
@@ -8902,6 +8929,9 @@ export default function DashboardShell({
       }
 
       lastBreakdownsFetchKeyRef.current = fetchKey
+      setBreakdowns(EMPTY_META_BREAKDOWNS)
+      setMetaRankingDrilldown(null)
+      setMetaRankingDetailDailyData([])
       setIsRankingsLoading(true)
       setRankingsError('')
 
@@ -8941,16 +8971,29 @@ export default function DashboardShell({
           throw new Error(data.error || 'Os rankings detalhados não responderam agora.')
         }
 
+        if (cancelled || lastBreakdownsFetchKeyRef.current !== fetchKey) return
+
+        const responseAdAccount = normalizeMetaAdAccountIdForCompare(data?.ad_account_id || selectedAdAccount)
+        const currentAdAccount = normalizeMetaAdAccountIdForCompare(selectedAdAccount)
+        if (responseAdAccount !== currentAdAccount) return
+
         setBreakdowns(data || EMPTY_META_BREAKDOWNS)
       } catch (error) {
+        if (cancelled) return
         setBreakdowns(EMPTY_META_BREAKDOWNS)
         setRankingsError(error.message || 'Os rankings detalhados não responderam agora.')
       } finally {
-        setIsRankingsLoading(false)
+        if (!cancelled) {
+          setIsRankingsLoading(false)
+        }
       }
     }
 
     fetchRankings()
+
+    return () => {
+      cancelled = true
+    }
   }, [
     activeClientId,
     selectedAdAccount,

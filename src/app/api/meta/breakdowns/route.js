@@ -393,6 +393,7 @@ export async function GET(request) {
     )
 
     return NextResponse.json({
+      ad_account_id: adAccountId,
       ages: normalizeBreakdownRows(ageResult.data?.data || [], 'age', { limit: Number.MAX_SAFE_INTEGER }),
       states: normalizeBreakdownRows(stateResult.data?.data || [], 'region', { limit: Number.MAX_SAFE_INTEGER }),
       cities: normalizeBreakdownRows(cityRows, cityLabelKey, { limit: 100 }),

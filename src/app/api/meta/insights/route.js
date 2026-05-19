@@ -162,6 +162,7 @@ export async function GET(request) {
     } : null
       
     return NextResponse.json({
+      ad_account_id: adAccountId,
       summary: formatInsightsWithConversions(summaryRaw),
       daily: rawDailyRows.map(formatInsightsWithConversions),
       daily_by_campaign: (dailyCampaignData.data || []).map(formatInsightsWithConversions),
