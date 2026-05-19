@@ -26584,6 +26584,404 @@ export default function DashboardShell({
           line-height: 1.35;
         }
 
+
+
+        .weekly-dashboard-panel {
+          width: 100%;
+          display: flex;
+          flex-direction: column;
+          gap: 28px;
+          --weekly-accent: var(--client-dashboard-accent, var(--button-primary, var(--accent-blue)));
+        }
+
+        .weekly-hero,
+        .weekly-form-card,
+        .weekly-chart-card,
+        .weekly-records-card,
+        .weekly-kpi-card {
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          background:
+            linear-gradient(145deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.018)),
+            radial-gradient(circle at 12% 0%, color-mix(in srgb, var(--weekly-accent) 12%, transparent), transparent 34%),
+            rgba(18, 18, 20, 0.86);
+          box-shadow: 0 28px 70px rgba(0, 0, 0, 0.28);
+          backdrop-filter: blur(18px);
+        }
+
+        .weekly-hero {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) minmax(340px, 0.62fr);
+          gap: 28px;
+          align-items: end;
+          padding: 34px;
+          border-radius: 30px;
+          overflow: hidden;
+        }
+
+        .weekly-hero h2,
+        .weekly-form-card h2,
+        .weekly-chart-card h2,
+        .weekly-records-card h2 {
+          margin: 0;
+          color: var(--text-primary);
+          font-size: clamp(1.45rem, 2vw, 2.2rem);
+          letter-spacing: -0.04em;
+        }
+
+        .weekly-hero p,
+        .weekly-form-card .chart-subtitle,
+        .weekly-chart-card .chart-subtitle,
+        .weekly-records-card .chart-subtitle {
+          margin: 9px 0 0;
+          color: var(--text-muted);
+          line-height: 1.5;
+        }
+
+        .weekly-hero-controls {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 14px;
+          align-items: end;
+        }
+
+        .weekly-hero-controls label,
+        .weekly-form-card .input-group {
+          display: flex;
+          min-width: 0;
+          flex-direction: column;
+          gap: 9px;
+        }
+
+        .weekly-hero-controls label > span,
+        .weekly-form-card .input-group > span,
+        .weekly-action-input > span {
+          color: var(--text-muted);
+          font-size: 0.72rem;
+          font-weight: 900;
+          letter-spacing: 0.12em;
+          text-transform: uppercase;
+        }
+
+        .weekly-hero-controls select,
+        .weekly-hero-controls input,
+        .weekly-form-card select,
+        .weekly-form-card input,
+        .weekly-form-card textarea {
+          width: 100%;
+          min-height: 56px;
+          border: 1px solid rgba(148, 163, 184, 0.16);
+          border-radius: 18px;
+          background: rgba(6, 10, 18, 0.72);
+          color: var(--text-primary);
+          outline: none;
+          padding: 0 18px;
+          font: inherit;
+          box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+          transition: border-color 180ms ease, box-shadow 180ms ease, background 180ms ease;
+        }
+
+        .weekly-form-card textarea {
+          min-height: 152px;
+          padding: 16px 18px;
+          resize: vertical;
+          line-height: 1.45;
+        }
+
+        .weekly-hero-controls select:focus,
+        .weekly-hero-controls input:focus,
+        .weekly-form-card select:focus,
+        .weekly-form-card input:focus,
+        .weekly-form-card textarea:focus {
+          border-color: color-mix(in srgb, var(--weekly-accent) 62%, transparent);
+          box-shadow: 0 0 0 4px color-mix(in srgb, var(--weekly-accent) 14%, transparent);
+        }
+
+        .weekly-range-pill {
+          grid-column: 1 / -1;
+          min-height: 48px;
+          border: 1px solid;
+          border-radius: 999px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          padding: 10px 16px;
+          font-size: 0.86rem;
+          font-weight: 900;
+          background: color-mix(in srgb, var(--weekly-accent) 9%, rgba(255, 255, 255, 0.03));
+        }
+
+        .weekly-content-grid {
+          display: grid;
+          grid-template-columns: minmax(0, 1.28fr) minmax(330px, 0.72fr);
+          gap: 28px;
+          align-items: stretch;
+        }
+
+        .weekly-form-card,
+        .weekly-chart-card,
+        .weekly-records-card {
+          padding: 30px;
+          border-radius: 30px;
+        }
+
+        .weekly-form-card .section-header {
+          display: flex;
+          justify-content: space-between;
+          gap: 24px;
+          align-items: flex-start;
+          margin-bottom: 24px;
+        }
+
+        .weekly-form-card .btn-primary {
+          min-height: 56px;
+          padding-inline: 24px;
+          border-radius: 18px;
+          box-shadow: 0 20px 46px color-mix(in srgb, var(--weekly-accent) 28%, transparent);
+        }
+
+        .weekly-form-grid {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 18px;
+        }
+
+        .weekly-computed-field {
+          min-height: 96px;
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          gap: 10px;
+          border: 1px solid rgba(148, 163, 184, 0.13);
+          border-radius: 22px;
+          background: rgba(255, 255, 255, 0.04);
+          padding: 18px;
+        }
+
+        .weekly-computed-field span,
+        .weekly-kpi-card span,
+        .weekly-record-metrics span {
+          color: var(--text-muted);
+          font-size: 0.72rem;
+          font-weight: 900;
+          letter-spacing: 0.1em;
+          text-transform: uppercase;
+        }
+
+        .weekly-computed-field strong,
+        .weekly-kpi-card strong,
+        .weekly-record-metrics strong {
+          color: var(--text-primary);
+          font-size: clamp(1.3rem, 2vw, 2rem);
+          letter-spacing: -0.04em;
+        }
+
+        .weekly-health-options {
+          display: grid;
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+          gap: 14px;
+          margin-top: 20px;
+        }
+
+        .weekly-health-option {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 10px;
+          min-height: 58px;
+          border: 1px solid rgba(148, 163, 184, 0.14);
+          border-radius: 18px;
+          background: rgba(255, 255, 255, 0.04);
+          color: var(--text-primary);
+          font-weight: 900;
+          cursor: pointer;
+          transition: all 180ms ease;
+        }
+
+        .weekly-health-option:hover {
+          transform: translateY(-1px);
+          border-color: color-mix(in srgb, var(--weekly-accent) 34%, transparent);
+        }
+
+        .weekly-health-option span {
+          width: 10px;
+          height: 10px;
+          border-radius: 999px;
+          box-shadow: 0 0 18px currentColor;
+        }
+
+        .weekly-action-input {
+          margin-top: 20px;
+        }
+
+        .weekly-action-input small {
+          color: var(--text-muted);
+          font-size: 0.82rem;
+        }
+
+        .weekly-kpi-grid {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 16px;
+          height: 100%;
+        }
+
+        .weekly-kpi-card {
+          min-height: 136px;
+          border-radius: 26px;
+          display: flex;
+          flex-direction: column;
+          justify-content: space-between;
+          padding: 22px;
+        }
+
+        .weekly-chart-grid {
+          display: grid;
+          grid-template-columns: minmax(0, 1.38fr) minmax(340px, 0.62fr);
+          gap: 28px;
+        }
+
+        .weekly-chart-body {
+          height: 370px;
+          margin-top: 22px;
+          border: 1px solid rgba(148, 163, 184, 0.1);
+          border-radius: 24px;
+          background: rgba(0, 0, 0, 0.1);
+          padding: 18px;
+        }
+
+        .weekly-chart-body-small {
+          height: 330px;
+        }
+
+        .weekly-loading-pill {
+          align-self: flex-start;
+          border: 1px solid rgba(148, 163, 184, 0.18);
+          border-radius: 999px;
+          color: var(--text-muted);
+          padding: 8px 12px;
+          font-size: 0.78rem;
+          font-weight: 900;
+        }
+
+        .weekly-record-list {
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+          margin-top: 22px;
+        }
+
+        .weekly-record-row {
+          display: grid;
+          grid-template-columns: minmax(190px, 0.7fr) minmax(0, 1.25fr) minmax(240px, 0.85fr);
+          gap: 20px;
+          align-items: center;
+          border: 1px solid rgba(148, 163, 184, 0.12);
+          border-radius: 24px;
+          background: rgba(255, 255, 255, 0.035);
+          padding: 20px;
+        }
+
+        .weekly-record-main {
+          display: flex;
+          flex-direction: column;
+          gap: 5px;
+        }
+
+        .weekly-record-main span,
+        .weekly-record-main small {
+          color: var(--text-muted);
+          font-size: 0.84rem;
+          font-weight: 800;
+        }
+
+        .weekly-record-main strong {
+          color: var(--text-primary);
+          font-size: 1.08rem;
+        }
+
+        .weekly-record-metrics {
+          display: grid;
+          grid-template-columns: repeat(5, minmax(0, 1fr));
+          gap: 10px;
+        }
+
+        .weekly-record-metrics div {
+          border-radius: 16px;
+          background: rgba(255, 255, 255, 0.04);
+          padding: 12px;
+        }
+
+        .weekly-record-metrics strong {
+          display: block;
+          margin-top: 7px;
+          font-size: 0.95rem;
+        }
+
+        .weekly-action-list {
+          margin: 0;
+          padding-left: 18px;
+          color: var(--text-muted);
+          line-height: 1.45;
+        }
+
+        .weekly-action-list li + li {
+          margin-top: 6px;
+        }
+
+        .dashboard-light-mode .weekly-hero,
+        .dashboard-light-mode .weekly-form-card,
+        .dashboard-light-mode .weekly-chart-card,
+        .dashboard-light-mode .weekly-records-card,
+        .dashboard-light-mode .weekly-kpi-card {
+          background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.96));
+          border-color: rgba(15, 23, 42, 0.08);
+          box-shadow: 0 24px 60px rgba(15, 23, 42, 0.08);
+        }
+
+        .dashboard-light-mode .weekly-hero-controls select,
+        .dashboard-light-mode .weekly-hero-controls input,
+        .dashboard-light-mode .weekly-form-card select,
+        .dashboard-light-mode .weekly-form-card input,
+        .dashboard-light-mode .weekly-form-card textarea,
+        .dashboard-light-mode .weekly-computed-field,
+        .dashboard-light-mode .weekly-health-option,
+        .dashboard-light-mode .weekly-record-row,
+        .dashboard-light-mode .weekly-record-metrics div,
+        .dashboard-light-mode .weekly-chart-body {
+          background: #ffffff;
+          border-color: rgba(15, 23, 42, 0.08);
+          color: #0f172a;
+        }
+
+        .dashboard-light-mode .weekly-hero h2,
+        .dashboard-light-mode .weekly-form-card h2,
+        .dashboard-light-mode .weekly-chart-card h2,
+        .dashboard-light-mode .weekly-records-card h2,
+        .dashboard-light-mode .weekly-computed-field strong,
+        .dashboard-light-mode .weekly-kpi-card strong,
+        .dashboard-light-mode .weekly-record-metrics strong,
+        .dashboard-light-mode .weekly-record-main strong,
+        .dashboard-light-mode .weekly-health-option {
+          color: #0f172a;
+        }
+
+        .dashboard-light-mode .weekly-hero p,
+        .dashboard-light-mode .weekly-form-card .chart-subtitle,
+        .dashboard-light-mode .weekly-chart-card .chart-subtitle,
+        .dashboard-light-mode .weekly-records-card .chart-subtitle,
+        .dashboard-light-mode .weekly-computed-field span,
+        .dashboard-light-mode .weekly-kpi-card span,
+        .dashboard-light-mode .weekly-record-metrics span,
+        .dashboard-light-mode .weekly-record-main span,
+        .dashboard-light-mode .weekly-action-list,
+        .dashboard-light-mode .weekly-action-input small,
+        .dashboard-light-mode .weekly-form-card .input-group > span,
+        .dashboard-light-mode .weekly-action-input > span,
+        .dashboard-light-mode .weekly-hero-controls label > span {
+          color: #475569;
+        }
+
+
         /* Final light-mode contrast pass for simplified SaaS screens. */
         .dashboard-light-mode .sidebar-collapsed :global(.nav-item)::after {
           background: linear-gradient(180deg, #ffffff, #f8fafc) !important;
