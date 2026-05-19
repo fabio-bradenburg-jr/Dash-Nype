@@ -195,6 +195,59 @@ function normalizeMetaAdAccountIdForCompare(value) {
   return String(value || '').trim().replace(/^act_/i, '')
 }
 
+
+const WEEKLY_HEALTH_OPTIONS = [
+  { key: 'critical', label: 'Crítico', score: 1, color: '#ef4444' },
+  { key: 'attention', label: 'Atenção', score: 2, color: '#f59e0b' },
+  { key: 'healthy', label: 'Saudável', score: 3, color: '#22c55e' },
+  { key: 'with_result', label: 'Com resultado', score: 4, color: '#10b981' },
+]
+
+const WEEKLY_HEALTH_BY_KEY = Object.fromEntries(WEEKLY_HEALTH_OPTIONS.map((item) => [item.key, item]))
+
+function getMondayDateInputValue(value = new Date()) {
+  const source = value instanceof Date ? new Date(value) : new Date(`${value}T00:00:00`)
+  if (Number.isNaN(source.getTime())) return getMondayDateInputValue(new Date())
+  const day = source.getDay()
+  const diff = day === 0 ? -6 : 1 - day
+  source.setDate(source.getDate() + diff)
+  return `${source.getFullYear()}-${String(source.getMonth() + 1).padStart(2, '0')}-${String(source.getDate()).padStart(2, '0')}`
+}
+
+function getWeekEndDateInputValue(weekStart) {
+  const [year, month, day] = String(weekStart || getMondayDateInputValue()).split('-').map(Number)
+  const date = new Date(year, month - 1, day)
+  date.setDate(date.getDate() + 6)
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+}
+
+function formatWeekRangeLabel(weekStart, weekEnd) {
+  const start = formatShortDate(weekStart)
+  const end = formatShortDate(weekEnd || getWeekEndDateInputValue(weekStart))
+  return `${start} até ${end}`
+}
+
+function normalizeWeeklyNumber(value) {
+  const parsed = Number(String(value ?? '').replace(',', '.'))
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0
+}
+
+function normalizeWeeklyInteger(value) {
+  return Math.max(0, Math.round(normalizeWeeklyNumber(value)))
+}
+
+function getWeeklyHealthAverageLabel(score) {
+  if (!score) return 'Sem dados'
+  const nearest = WEEKLY_HEALTH_OPTIONS.reduce((best, option) => (
+    Math.abs(option.score - score) < Math.abs(best.score - score) ? option : best
+  ), WEEKLY_HEALTH_OPTIONS[0])
+  return nearest.label
+}
+
+function getWeeklyHealthColor(status) {
+  return WEEKLY_HEALTH_BY_KEY[status]?.color || '#94a3b8'
+}
+
 async function fetchJsonWithTimeout(resource, options = {}, timeoutMs = 20000) {
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
@@ -3043,6 +3096,20 @@ export default function DashboardShell({
   const [isMetaCampaignFilterOpen, setIsMetaCampaignFilterOpen] = useState(false)
   const [isMetaAdsetFilterOpen, setIsMetaAdsetFilterOpen] = useState(false)
   const [isMetaAdFilterOpen, setIsMetaAdFilterOpen] = useState(false)
+  const [weeklyRecords, setWeeklyRecords] = useState([])
+  const [isWeeklyLoading, setIsWeeklyLoading] = useState(false)
+  const [isSavingWeeklyRecord, setIsSavingWeeklyRecord] = useState(false)
+  const [weeklyError, setWeeklyError] = useState('')
+  const [weeklyClientFilter, setWeeklyClientFilter] = useState('all')
+  const [weeklyWeekStart, setWeeklyWeekStart] = useState(() => getMondayDateInputValue())
+  const [weeklyForm, setWeeklyForm] = useState({
+    clientId: '',
+    investment: '',
+    leads: '',
+    sql: '',
+    healthStatus: 'attention',
+    actionItemsText: '',
+  })
   const [isFunnelSectionOpen, setIsFunnelSectionOpen] = useState(false)
   const [isRdDiagnosticsOpen, setIsRdDiagnosticsOpen] = useState(false)
   const [isRdSourceFilterOpen, setIsRdSourceFilterOpen] = useState(false)
@@ -3350,6 +3417,102 @@ export default function DashboardShell({
     () => clients.filter((client) => client.dashboardEnabled !== false),
     [clients]
   )
+  const weeklyWeekEnd = useMemo(() => getWeekEndDateInputValue(weeklyWeekStart), [weeklyWeekStart])
+
+  useEffect(() => {
+    if (!dashboardEligibleClients.length) return
+    setWeeklyForm((current) => {
+      if (current.clientId && dashboardEligibleClients.some((client) => client.id === current.clientId)) return current
+      const fallbackClientId = activeClientId && dashboardEligibleClients.some((client) => client.id === activeClientId)
+        ? activeClientId
+        : dashboardEligibleClients[0]?.id || ''
+      return { ...current, clientId: fallbackClientId }
+    })
+  }, [dashboardEligibleClients, activeClientId])
+
+  const loadWeeklyRecords = useCallback(async () => {
+    if (!hasLoadedPreferences) return
+    if (activeTab !== 'semanal') return
+
+    setIsWeeklyLoading(true)
+    setWeeklyError('')
+
+    try {
+      const params = new URLSearchParams()
+      if (weeklyClientFilter !== 'all') params.set('clientId', weeklyClientFilter)
+      const response = await fetch(`/api/client-weekly${params.toString() ? `?${params.toString()}` : ''}`, { cache: 'no-store' })
+      const data = await response.json().catch(() => ({}))
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Não foi possível carregar o acompanhamento semanal.')
+      }
+
+      setWeeklyRecords(Array.isArray(data.records) ? data.records : [])
+    } catch (error) {
+      setWeeklyRecords([])
+      setWeeklyError(error.message || 'Não foi possível carregar o acompanhamento semanal.')
+    } finally {
+      setIsWeeklyLoading(false)
+    }
+  }, [activeTab, hasLoadedPreferences, weeklyClientFilter])
+
+  useEffect(() => {
+    loadWeeklyRecords()
+  }, [loadWeeklyRecords])
+
+  useEffect(() => {
+    if (!weeklyForm.clientId) return
+    const existingRecord = weeklyRecords.find((record) => record.clientId === weeklyForm.clientId && record.weekStart === weeklyWeekStart)
+
+    setWeeklyForm((current) => ({
+      ...current,
+      investment: existingRecord ? String(existingRecord.investment || '') : '',
+      leads: existingRecord ? String(existingRecord.leads || '') : '',
+      sql: existingRecord ? String(existingRecord.sql || '') : '',
+      healthStatus: existingRecord?.healthStatus || 'attention',
+      actionItemsText: existingRecord && Array.isArray(existingRecord.actionItems) ? existingRecord.actionItems.join('\n') : '',
+    }))
+  }, [weeklyRecords, weeklyForm.clientId, weeklyWeekStart])
+
+  const handleSaveWeeklyRecord = async (event) => {
+    event.preventDefault()
+    if (!weeklyForm.clientId) {
+      setWeeklyError('Selecione um cliente para salvar a semana.')
+      return
+    }
+
+    setIsSavingWeeklyRecord(true)
+    setWeeklyError('')
+
+    try {
+      const response = await fetch('/api/client-weekly', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          clientId: weeklyForm.clientId,
+          weekStart: weeklyWeekStart,
+          investment: normalizeWeeklyNumber(weeklyForm.investment),
+          leads: normalizeWeeklyInteger(weeklyForm.leads),
+          sql: normalizeWeeklyInteger(weeklyForm.sql),
+          healthStatus: weeklyForm.healthStatus,
+          actionItems: weeklyForm.actionItemsText.split('\n').map((item) => item.trim()).filter(Boolean).slice(0, 5),
+        }),
+      })
+      const data = await response.json().catch(() => ({}))
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Não foi possível salvar o acompanhamento semanal.')
+      }
+
+      await loadWeeklyRecords()
+    } catch (error) {
+      setWeeklyError(error.message || 'Não foi possível salvar o acompanhamento semanal.')
+    } finally {
+      setIsSavingWeeklyRecord(false)
+    }
+  }
+
+
   useEffect(() => {
     const manual = activeClient?.manualCrmSummary || {}
     setManualCrmForm({
@@ -4245,6 +4408,176 @@ export default function DashboardShell({
     () => rgbToHex(activeClientDashboardRgb),
     [activeClientDashboardRgb]
   )
+  const weeklySearchTerm = useMemo(() => shellSearch.trim().toLowerCase(), [shellSearch])
+  const weeklyVisibleRecords = useMemo(() => {
+    return weeklyRecords.filter((record) => {
+      const client = clientsById.get(record.clientId)
+      const matchesClient = weeklyClientFilter === 'all' || record.clientId === weeklyClientFilter
+      const matchesSearch = !weeklySearchTerm || [
+        client?.name,
+        client?.company,
+        record.weekStart,
+        record.weekEnd,
+        WEEKLY_HEALTH_BY_KEY[record.healthStatus]?.label,
+      ].some((value) => String(value || '').toLowerCase().includes(weeklySearchTerm))
+      return matchesClient && matchesSearch
+    })
+  }, [weeklyRecords, weeklyClientFilter, weeklySearchTerm, clientsById])
+
+  const weeklyCurrentInvestment = normalizeWeeklyNumber(weeklyForm.investment)
+  const weeklyCurrentLeads = normalizeWeeklyInteger(weeklyForm.leads)
+  const weeklyCurrentSql = normalizeWeeklyInteger(weeklyForm.sql)
+  const weeklyCurrentCpl = weeklyCurrentLeads > 0 ? weeklyCurrentInvestment / weeklyCurrentLeads : 0
+  const weeklyCurrentCostPerSql = weeklyCurrentSql > 0 ? weeklyCurrentInvestment / weeklyCurrentSql : 0
+
+  const weeklySummary = useMemo(() => {
+    const totals = weeklyVisibleRecords.reduce((acc, record) => {
+      const health = WEEKLY_HEALTH_BY_KEY[record.healthStatus]
+      acc.investment += Number(record.investment || 0)
+      acc.leads += Number(record.leads || 0)
+      acc.sql += Number(record.sql || 0)
+      if (health) {
+        acc.healthScore += health.score
+        acc.healthCount += 1
+      }
+      return acc
+    }, { investment: 0, leads: 0, sql: 0, healthScore: 0, healthCount: 0 })
+
+    const averageHealth = totals.healthCount ? totals.healthScore / totals.healthCount : 0
+    return {
+      ...totals,
+      cpl: totals.leads > 0 ? totals.investment / totals.leads : 0,
+      costPerSql: totals.sql > 0 ? totals.investment / totals.sql : 0,
+      averageHealth,
+      averageHealthLabel: getWeeklyHealthAverageLabel(averageHealth),
+    }
+  }, [weeklyVisibleRecords])
+
+  const weeklyLineChartData = useMemo(() => {
+    const byWeek = new Map()
+    weeklyVisibleRecords.forEach((record) => {
+      const current = byWeek.get(record.weekStart) || { weekStart: record.weekStart, weekEnd: record.weekEnd, investment: 0, leads: 0, sql: 0 }
+      current.investment += Number(record.investment || 0)
+      current.leads += Number(record.leads || 0)
+      current.sql += Number(record.sql || 0)
+      byWeek.set(record.weekStart, current)
+    })
+
+    const rows = Array.from(byWeek.values()).sort((left, right) => String(left.weekStart).localeCompare(String(right.weekStart)))
+    return {
+      labels: rows.map((row) => formatWeekRangeLabel(row.weekStart, row.weekEnd)),
+      datasets: [
+        {
+          label: 'Investimento',
+          data: rows.map((row) => row.investment),
+          borderColor: activeClientDashboardHex,
+          backgroundColor: `${activeClientDashboardHex}22`,
+          tension: 0.35,
+          fill: true,
+          yAxisID: 'money',
+        },
+        {
+          label: 'Leads',
+          data: rows.map((row) => row.leads),
+          borderColor: '#38bdf8',
+          backgroundColor: 'rgba(56, 189, 248, 0.12)',
+          borderDash: [6, 6],
+          tension: 0.35,
+          yAxisID: 'volume',
+        },
+        {
+          label: 'SQL',
+          data: rows.map((row) => row.sql),
+          borderColor: '#f59e0b',
+          backgroundColor: 'rgba(245, 158, 11, 0.12)',
+          tension: 0.35,
+          yAxisID: 'volume',
+        },
+      ],
+    }
+  }, [weeklyVisibleRecords, activeClientDashboardHex])
+
+  const weeklyHealthChartData = useMemo(() => {
+    const counts = WEEKLY_HEALTH_OPTIONS.map((option) => weeklyVisibleRecords.filter((record) => record.healthStatus === option.key).length)
+    return {
+      labels: WEEKLY_HEALTH_OPTIONS.map((option) => option.label),
+      datasets: [
+        {
+          data: counts,
+          backgroundColor: WEEKLY_HEALTH_OPTIONS.map((option) => option.color),
+          borderColor: isLightAppMode ? '#ffffff' : '#111318',
+          borderWidth: 3,
+        },
+      ],
+    }
+  }, [weeklyVisibleRecords, isLightAppMode])
+
+  const weeklyChartOptions = useMemo(() => ({
+    responsive: true,
+    maintainAspectRatio: false,
+    interaction: { mode: 'index', intersect: false },
+    plugins: {
+      legend: {
+        labels: {
+          color: isLightAppMode ? '#0f172a' : '#f8fafc',
+          usePointStyle: true,
+          boxWidth: 8,
+        },
+      },
+      tooltip: {
+        callbacks: {
+          label: (context) => context.dataset.yAxisID === 'money'
+            ? `${context.dataset.label}: ${formatCurrency(context.parsed.y || 0)}`
+            : `${context.dataset.label}: ${formatNumber(context.parsed.y || 0)}`,
+        },
+      },
+    },
+    scales: {
+      x: {
+        ticks: { color: isLightAppMode ? '#64748b' : '#94a3b8' },
+        grid: { color: isLightAppMode ? 'rgba(15, 23, 42, 0.08)' : 'rgba(148, 163, 184, 0.08)' },
+      },
+      money: {
+        type: 'linear',
+        position: 'left',
+        ticks: { color: isLightAppMode ? '#64748b' : '#94a3b8', callback: (value) => formatCurrency(value) },
+        grid: { color: isLightAppMode ? 'rgba(15, 23, 42, 0.08)' : 'rgba(148, 163, 184, 0.08)' },
+      },
+      volume: {
+        type: 'linear',
+        position: 'right',
+        ticks: { color: isLightAppMode ? '#64748b' : '#94a3b8', precision: 0 },
+        grid: { drawOnChartArea: false },
+      },
+    },
+  }), [isLightAppMode])
+
+  const weeklyDoughnutOptions = useMemo(() => ({
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: 'bottom',
+        labels: {
+          color: isLightAppMode ? '#0f172a' : '#f8fafc',
+          usePointStyle: true,
+          boxWidth: 8,
+        },
+      },
+    },
+    cutout: '62%',
+  }), [isLightAppMode])
+
+  const weeklyLatestRecords = useMemo(() => {
+    return [...weeklyVisibleRecords].sort((left, right) => {
+      const dateCompare = String(right.weekStart).localeCompare(String(left.weekStart))
+      if (dateCompare) return dateCompare
+      const leftClient = clientsById.get(left.clientId)?.name || ''
+      const rightClient = clientsById.get(right.clientId)?.name || ''
+      return leftClient.localeCompare(rightClient)
+    })
+  }, [weeklyVisibleRecords, clientsById])
+
   const activeClientDashboardAccentHex = useMemo(
     () => rgbToHex(activeClientDashboardAccentRgb),
     [activeClientDashboardAccentRgb]
@@ -11616,6 +11949,191 @@ export default function DashboardShell({
     </div>
   )
 
+
+  const renderWeeklyClientPanel = () => (
+    <section className="weekly-dashboard-panel">
+      <div className="weekly-hero glass-panel">
+        <div>
+          <span className="eyebrow">ritmo semanal</span>
+          <h2>Controle de saúde e plano de ação</h2>
+          <p>Registre o que aconteceu de segunda a domingo, acompanhe a evolução por cliente e veja rapidamente onde o time precisa agir.</p>
+        </div>
+        <div className="weekly-hero-controls">
+          <label>
+            <span>Visualizar</span>
+            <select value={weeklyClientFilter} onChange={(event) => setWeeklyClientFilter(event.target.value)}>
+              <option value="all">Todos os clientes</option>
+              {dashboardEligibleClients.map((client) => (
+                <option key={`weekly-filter-${client.id}`} value={client.id}>{client.name}</option>
+              ))}
+            </select>
+          </label>
+          <label>
+            <span>Semana</span>
+            <input type="date" value={weeklyWeekStart} onChange={(event) => setWeeklyWeekStart(getMondayDateInputValue(event.target.value))} />
+          </label>
+          <div className="weekly-range-pill" style={{ borderColor: `${activeClientDashboardHex}66`, color: activeClientDashboardHex }}>
+            {formatWeekRangeLabel(weeklyWeekStart, weeklyWeekEnd)}
+          </div>
+        </div>
+      </div>
+
+      {weeklyError && <div className="form-error weekly-error">{weeklyError}</div>}
+
+      <div className="weekly-content-grid">
+        <form className="weekly-form-card glass-panel" onSubmit={handleSaveWeeklyRecord}>
+          <div className="section-header section-header-stack">
+            <div>
+              <span className="eyebrow">imputação</span>
+              <h2>Dados da semana</h2>
+              <p className="chart-subtitle">Escolha o cliente, preencha os números acompanhados com o time e limite o plano de ação a 5 tópicos.</p>
+            </div>
+            <button type="submit" className="btn btn-primary" disabled={isSavingWeeklyRecord || !weeklyForm.clientId} style={{ background: activeClientDashboardHex, borderColor: activeClientDashboardHex }}>
+              <i className="bx bx-save"></i>
+              {isSavingWeeklyRecord ? 'Salvando...' : 'Salvar semana'}
+            </button>
+          </div>
+
+          <div className="weekly-form-grid">
+            <label className="input-group">
+              <span>Cliente</span>
+              <select value={weeklyForm.clientId} onChange={(event) => setWeeklyForm((current) => ({ ...current, clientId: event.target.value }))}>
+                <option value="">Selecione</option>
+                {dashboardEligibleClients.map((client) => (
+                  <option key={`weekly-form-client-${client.id}`} value={client.id}>{client.name}</option>
+                ))}
+              </select>
+            </label>
+            <label className="input-group">
+              <span>Investimento</span>
+              <input type="number" min="0" step="0.01" value={weeklyForm.investment} onChange={(event) => setWeeklyForm((current) => ({ ...current, investment: event.target.value }))} placeholder="0,00" />
+            </label>
+            <label className="input-group">
+              <span>Leads gerados</span>
+              <input type="number" min="0" step="1" value={weeklyForm.leads} onChange={(event) => setWeeklyForm((current) => ({ ...current, leads: event.target.value }))} placeholder="0" />
+            </label>
+            <label className="input-group">
+              <span>SQL</span>
+              <input type="number" min="0" step="1" value={weeklyForm.sql} onChange={(event) => setWeeklyForm((current) => ({ ...current, sql: event.target.value }))} placeholder="0" />
+            </label>
+            <div className="weekly-computed-field">
+              <span>CPL automático</span>
+              <strong>{weeklyCurrentLeads > 0 ? formatCurrency(weeklyCurrentCpl) : '-'}</strong>
+            </div>
+            <div className="weekly-computed-field">
+              <span>Custo SQL automático</span>
+              <strong>{weeklyCurrentSql > 0 ? formatCurrency(weeklyCurrentCostPerSql) : '-'}</strong>
+            </div>
+          </div>
+
+          <div className="weekly-health-options" role="group" aria-label="Saúde do cliente">
+            {WEEKLY_HEALTH_OPTIONS.map((option) => (
+              <button
+                key={`weekly-health-${option.key}`}
+                type="button"
+                className={`weekly-health-option ${weeklyForm.healthStatus === option.key ? 'active' : ''}`}
+                onClick={() => setWeeklyForm((current) => ({ ...current, healthStatus: option.key }))}
+                style={weeklyForm.healthStatus === option.key ? { borderColor: option.color, color: option.color, boxShadow: `0 0 0 1px ${option.color}44, 0 16px 40px ${option.color}18` } : undefined}
+              >
+                <span style={{ background: option.color }}></span>
+                {option.label}
+              </button>
+            ))}
+          </div>
+
+          <label className="input-group weekly-action-input">
+            <span>Plano de ação, até 5 tópicos</span>
+            <textarea
+              value={weeklyForm.actionItemsText}
+              onChange={(event) => setWeeklyForm((current) => ({ ...current, actionItemsText: event.target.value.split('\n').slice(0, 5).join('\n') }))}
+              placeholder={'1. Ajustar campanha de leads\n2. Revisar follow-up comercial\n3. Marcar reunião de alinhamento'}
+              rows={6}
+            />
+            <small>{weeklyForm.actionItemsText.split('\n').filter((item) => item.trim()).length}/5 tópicos preenchidos</small>
+          </label>
+        </form>
+
+        <div className="weekly-summary-column">
+          <div className="weekly-kpi-grid">
+            <div className="weekly-kpi-card glass-panel"><span>Investimento</span><strong>{formatCurrency(weeklySummary.investment)}</strong></div>
+            <div className="weekly-kpi-card glass-panel"><span>Leads</span><strong>{formatNumber(weeklySummary.leads)}</strong></div>
+            <div className="weekly-kpi-card glass-panel"><span>SQL</span><strong>{formatNumber(weeklySummary.sql)}</strong></div>
+            <div className="weekly-kpi-card glass-panel"><span>CPL médio</span><strong>{weeklySummary.leads > 0 ? formatCurrency(weeklySummary.cpl) : '-'}</strong></div>
+            <div className="weekly-kpi-card glass-panel"><span>Custo SQL</span><strong>{weeklySummary.sql > 0 ? formatCurrency(weeklySummary.costPerSql) : '-'}</strong></div>
+            <div className="weekly-kpi-card glass-panel"><span>Saúde média</span><strong>{weeklySummary.averageHealthLabel}</strong></div>
+          </div>
+        </div>
+      </div>
+
+      <div className="weekly-chart-grid">
+        <div className="weekly-chart-card glass-panel">
+          <div className="section-header section-header-stack">
+            <div>
+              <span className="eyebrow">evolução</span>
+              <h2>Investimento, leads e SQL por semana</h2>
+              <p className="chart-subtitle">Linha fracionada por semanas fechadas de segunda a domingo.</p>
+            </div>
+          </div>
+          <div className="weekly-chart-body">
+            {weeklyVisibleRecords.length ? <Line data={weeklyLineChartData} options={weeklyChartOptions} /> : <div className="ranking-empty">Salve a primeira semana para liberar o gráfico de linha.</div>}
+          </div>
+        </div>
+        <div className="weekly-chart-card glass-panel">
+          <div className="section-header section-header-stack">
+            <div>
+              <span className="eyebrow">saúde</span>
+              <h2>Distribuição da saúde</h2>
+              <p className="chart-subtitle">Proporção de semanas/clientes em Crítico, Atenção, Saudável e Com resultado.</p>
+            </div>
+          </div>
+          <div className="weekly-chart-body weekly-chart-body-small">
+            {weeklyVisibleRecords.length ? <Doughnut data={weeklyHealthChartData} options={weeklyDoughnutOptions} /> : <div className="ranking-empty">Sem saúde registrada ainda.</div>}
+          </div>
+        </div>
+      </div>
+
+      <div className="weekly-records-card glass-panel">
+        <div className="section-header section-header-stack">
+          <div>
+            <span className="eyebrow">histórico</span>
+            <h2>Semanas registradas</h2>
+            <p className="chart-subtitle">Cada linha fica salva no Supabase e pode ser reaberta editando o mesmo cliente e semana.</p>
+          </div>
+          {isWeeklyLoading && <span className="weekly-loading-pill">Carregando...</span>}
+        </div>
+        {weeklyLatestRecords.length ? (
+          <div className="weekly-record-list">
+            {weeklyLatestRecords.map((record) => {
+              const client = clientsById.get(record.clientId)
+              const health = WEEKLY_HEALTH_BY_KEY[record.healthStatus] || WEEKLY_HEALTH_BY_KEY.attention
+              return (
+                <article key={record.id} className="weekly-record-row">
+                  <div className="weekly-record-main">
+                    <span>{formatWeekRangeLabel(record.weekStart, record.weekEnd)}</span>
+                    <strong>{client?.name || 'Cliente removido'}</strong>
+                    <small style={{ color: health.color }}>{health.label}</small>
+                  </div>
+                  <div className="weekly-record-metrics">
+                    <div><span>Invest.</span><strong>{formatCurrency(record.investment || 0)}</strong></div>
+                    <div><span>Leads</span><strong>{formatNumber(record.leads || 0)}</strong></div>
+                    <div><span>CPL</span><strong>{record.leads > 0 ? formatCurrency(record.cpl || 0) : '-'}</strong></div>
+                    <div><span>SQL</span><strong>{formatNumber(record.sql || 0)}</strong></div>
+                    <div><span>Custo SQL</span><strong>{record.sql > 0 ? formatCurrency(record.costPerSql || 0) : '-'}</strong></div>
+                  </div>
+                  <ol className="weekly-action-list">
+                    {(record.actionItems || []).length ? record.actionItems.map((item, index) => <li key={`${record.id}-action-${index}`}>{item}</li>) : <li>Sem plano de ação registrado.</li>}
+                  </ol>
+                </article>
+              )
+            })}
+          </div>
+        ) : (
+          <div className="ranking-empty">Nenhuma semana encontrada para o filtro atual.</div>
+        )}
+      </div>
+    </section>
+  )
+
   const renderHomeHub = () => {
     const reportsPreview = [
       {
@@ -12735,6 +13253,7 @@ export default function DashboardShell({
     if (activeTab === 'operacao') return 'Search operations...'
     if (activeTab === 'clientes') return 'Buscar clientes...'
     if (activeTab === 'usuarios') return canManageUsers ? 'Buscar pessoas...' : 'Buscar metas, clientes e desenvolvimento...'
+    if (activeTab === 'semanal') return 'Buscar cliente, operação ou semana...'
     if (activeTab === 'produtos') return 'Buscar produtos...'
     if (activeTab === 'apresentacao') return 'Buscar dashboards e campanhas...'
     if (activeTab === 'assistant') return 'Buscar conversas e prompts...'
@@ -12829,6 +13348,9 @@ export default function DashboardShell({
           )}
           <button type="button" data-tooltip="Presentation" className={`nav-item nav-button ${activeTab === 'apresentacao' ? 'active' : ''}`} onClick={() => setActiveTab('apresentacao')}>
             <i className="bx bxs-dashboard"></i> Presentation
+          </button>
+          <button type="button" data-tooltip="Controle da Operação" className={`nav-item nav-button ${activeTab === 'semanal' ? 'active' : ''}`} onClick={() => setActiveTab('semanal')}>
+            <i className="bx bx-heart-circle"></i> Controle da Operação
           </button>
           {canAccessTeamTab && (
             <button type="button" data-tooltip="Team" className={`nav-item nav-button ${activeTab === 'usuarios' ? 'active' : ''}`} onClick={() => setActiveTab('usuarios')}>
@@ -12980,6 +13502,7 @@ export default function DashboardShell({
                 {activeTab === 'clickup' && 'ClickUp Operations'}
                 {activeTab === 'monday' && 'Board Operations'}
                 {activeTab === 'usuarios' && (canManageUsers ? 'Team Performance' : 'My Performance')}
+                {activeTab === 'semanal' && 'Controle da Operação'}
                 {activeTab === 'settings' && 'Settings'}
               </h1>
               {activeTab !== 'assistant' && (
@@ -12991,6 +13514,7 @@ export default function DashboardShell({
                   {activeTab === 'clickup' && 'Monitore filas, responsáveis e execução do ClickUp com leitura consolidada da operação.'}
                   {activeTab === 'monday' && 'Entenda carga, status, throughput e gargalos dos boards em uma leitura executiva da operação.'}
                   {activeTab === 'usuarios' && (canManageUsers ? 'Acompanhe performance, escopo, metas e evolução do time em um dashboard unificado.' : 'Acompanhe sua evolução, metas e contexto operacional dentro do hub da agência.')}
+                  {activeTab === 'semanal' && 'Registre investimento, leads, SQL, saúde e plano de ação por semana, de segunda a domingo.'}
                   {activeTab === 'settings' && 'Ajuste integrações, IA, aparência, campos de clientes e estrutura operacional sem sair do domínio principal.'}
                 </p>
               )}
@@ -13174,6 +13698,9 @@ export default function DashboardShell({
             <SettingsPage embeddedOverride={true} />
           </section>
         )}
+
+
+        {activeTab === 'semanal' && renderWeeklyClientPanel()}
 
         {activeTab === 'operacao' && isOperationCreateModalOpen && canPersistClientChanges && (
           <div className="modal-overlay" onClick={() => setIsOperationCreateModalOpen(false)}>
@@ -26803,6 +27330,29 @@ export default function DashboardShell({
           }
 
           .metric-library-grid {
+            grid-template-columns: 1fr;
+          }
+        }
+
+
+        @media (max-width: 1180px) {
+          .weekly-hero,
+          .weekly-content-grid,
+          .weekly-chart-grid,
+          .weekly-record-row {
+            grid-template-columns: 1fr;
+          }
+
+          .weekly-record-metrics {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
+        }
+
+        @media (max-width: 760px) {
+          .weekly-hero-controls,
+          .weekly-form-grid,
+          .weekly-health-options,
+          .weekly-kpi-grid {
             grid-template-columns: 1fr;
           }
         }
