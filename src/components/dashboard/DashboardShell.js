@@ -17360,6 +17360,291 @@ export default function DashboardShell({
         )}
       </main>
 
+
+      <style jsx global>{`
+        .weekly-dashboard-panel {
+          width: 100% !important;
+          display: flex !important;
+          flex-direction: column !important;
+          gap: 32px !important;
+          padding-bottom: 42px !important;
+        }
+
+        .weekly-dashboard-panel .weekly-hero,
+        .weekly-dashboard-panel .weekly-form-card,
+        .weekly-dashboard-panel .weekly-chart-card,
+        .weekly-dashboard-panel .weekly-records-card,
+        .weekly-dashboard-panel .weekly-kpi-card {
+          border: 1px solid rgba(255,255,255,.08) !important;
+          background: linear-gradient(145deg, rgba(255,255,255,.06), rgba(255,255,255,.02)), rgba(18,18,20,.9) !important;
+          border-radius: 32px !important;
+          box-shadow: 0 28px 70px rgba(0,0,0,.28) !important;
+          backdrop-filter: blur(18px) !important;
+        }
+
+        .weekly-dashboard-panel .weekly-hero {
+          display: grid !important;
+          grid-template-columns: minmax(0, 1fr) minmax(360px, .55fr) !important;
+          align-items: end !important;
+          gap: 32px !important;
+          padding: 36px !important;
+        }
+
+        .weekly-dashboard-panel .weekly-hero-controls {
+          display: grid !important;
+          grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+          gap: 16px !important;
+        }
+
+        .weekly-dashboard-panel .weekly-hero-controls label,
+        .weekly-dashboard-panel .weekly-form-card .input-group {
+          display: flex !important;
+          flex-direction: column !important;
+          gap: 10px !important;
+          min-width: 0 !important;
+        }
+
+        .weekly-dashboard-panel .weekly-hero-controls label > span,
+        .weekly-dashboard-panel .weekly-form-card .input-group > span,
+        .weekly-dashboard-panel .weekly-action-input > span {
+          display: block !important;
+          color: rgba(255,255,255,.58) !important;
+          font-size: .72rem !important;
+          font-weight: 900 !important;
+          letter-spacing: .12em !important;
+          text-transform: uppercase !important;
+        }
+
+        .weekly-dashboard-panel select,
+        .weekly-dashboard-panel input,
+        .weekly-dashboard-panel textarea {
+          width: 100% !important;
+          min-height: 58px !important;
+          border: 1px solid rgba(148,163,184,.16) !important;
+          border-radius: 20px !important;
+          background: rgba(7, 12, 22, .78) !important;
+          color: #f8fafc !important;
+          padding: 0 18px !important;
+          font: inherit !important;
+          outline: none !important;
+        }
+
+        .weekly-dashboard-panel textarea {
+          min-height: 170px !important;
+          padding: 18px !important;
+          line-height: 1.5 !important;
+        }
+
+        .weekly-dashboard-panel .weekly-range-pill {
+          grid-column: 1 / -1 !important;
+          min-height: 48px !important;
+          display: inline-flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          border-radius: 999px !important;
+          background: rgba(255,255,255,.04) !important;
+          font-weight: 900 !important;
+        }
+
+        .weekly-dashboard-panel .weekly-content-grid {
+          display: grid !important;
+          grid-template-columns: minmax(0, 1.22fr) minmax(360px, .78fr) !important;
+          gap: 32px !important;
+          align-items: stretch !important;
+        }
+
+        .weekly-dashboard-panel .weekly-form-card,
+        .weekly-dashboard-panel .weekly-chart-card,
+        .weekly-dashboard-panel .weekly-records-card {
+          padding: 34px !important;
+        }
+
+        .weekly-dashboard-panel .weekly-form-card .section-header {
+          display: flex !important;
+          align-items: flex-start !important;
+          justify-content: space-between !important;
+          gap: 28px !important;
+          margin-bottom: 28px !important;
+        }
+
+        .weekly-dashboard-panel .weekly-form-grid {
+          display: grid !important;
+          grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+          gap: 20px !important;
+          margin-top: 0 !important;
+        }
+
+        .weekly-dashboard-panel .weekly-computed-field {
+          min-height: 104px !important;
+          display: flex !important;
+          flex-direction: column !important;
+          justify-content: center !important;
+          gap: 12px !important;
+          border: 1px solid rgba(148,163,184,.14) !important;
+          border-radius: 24px !important;
+          background: rgba(255,255,255,.045) !important;
+          padding: 20px !important;
+        }
+
+        .weekly-dashboard-panel .weekly-health-options {
+          display: grid !important;
+          grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+          gap: 16px !important;
+          margin-top: 22px !important;
+        }
+
+        .weekly-dashboard-panel .weekly-health-option {
+          min-height: 60px !important;
+          display: inline-flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          gap: 10px !important;
+          border-radius: 20px !important;
+          border: 1px solid rgba(148,163,184,.16) !important;
+          background: rgba(255,255,255,.045) !important;
+          color: #f8fafc !important;
+          font-weight: 900 !important;
+        }
+
+        .weekly-dashboard-panel .weekly-action-input {
+          margin-top: 22px !important;
+        }
+
+        .weekly-dashboard-panel .weekly-action-input small {
+          color: rgba(255,255,255,.55) !important;
+          margin-top: 8px !important;
+        }
+
+        .weekly-dashboard-panel .weekly-kpi-grid {
+          display: grid !important;
+          grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+          gap: 18px !important;
+          height: 100% !important;
+        }
+
+        .weekly-dashboard-panel .weekly-kpi-card {
+          min-height: 148px !important;
+          display: flex !important;
+          flex-direction: column !important;
+          justify-content: space-between !important;
+          padding: 24px !important;
+        }
+
+        .weekly-dashboard-panel .weekly-chart-grid {
+          display: grid !important;
+          grid-template-columns: minmax(0, 1.35fr) minmax(360px, .65fr) !important;
+          gap: 32px !important;
+        }
+
+        .weekly-dashboard-panel .weekly-chart-body {
+          height: 380px !important;
+          margin-top: 24px !important;
+          border: 1px solid rgba(148,163,184,.12) !important;
+          border-radius: 26px !important;
+          background: rgba(0,0,0,.12) !important;
+          padding: 20px !important;
+        }
+
+        .weekly-dashboard-panel .weekly-chart-body-small {
+          height: 340px !important;
+        }
+
+        .weekly-dashboard-panel .weekly-record-list {
+          display: flex !important;
+          flex-direction: column !important;
+          gap: 18px !important;
+          margin-top: 24px !important;
+        }
+
+        .weekly-dashboard-panel .weekly-record-row {
+          display: grid !important;
+          grid-template-columns: minmax(200px, .72fr) minmax(0, 1.24fr) minmax(260px, .9fr) !important;
+          gap: 22px !important;
+          align-items: center !important;
+          border: 1px solid rgba(148,163,184,.12) !important;
+          border-radius: 26px !important;
+          background: rgba(255,255,255,.04) !important;
+          padding: 22px !important;
+        }
+
+        .weekly-dashboard-panel .weekly-record-metrics {
+          display: grid !important;
+          grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+          gap: 10px !important;
+        }
+
+        .weekly-dashboard-panel .weekly-record-metrics div {
+          border-radius: 16px !important;
+          background: rgba(255,255,255,.045) !important;
+          padding: 12px !important;
+        }
+
+        .weekly-dashboard-panel .weekly-computed-field span,
+        .weekly-dashboard-panel .weekly-kpi-card span,
+        .weekly-dashboard-panel .weekly-record-metrics span {
+          color: rgba(255,255,255,.55) !important;
+          font-size: .72rem !important;
+          font-weight: 900 !important;
+          letter-spacing: .1em !important;
+          text-transform: uppercase !important;
+        }
+
+        .weekly-dashboard-panel .weekly-computed-field strong,
+        .weekly-dashboard-panel .weekly-kpi-card strong,
+        .weekly-dashboard-panel .weekly-record-metrics strong {
+          color: #f8fafc !important;
+          font-size: clamp(1.25rem, 2vw, 2rem) !important;
+        }
+
+        .dashboard-light-mode .weekly-dashboard-panel .weekly-hero,
+        .dashboard-light-mode .weekly-dashboard-panel .weekly-form-card,
+        .dashboard-light-mode .weekly-dashboard-panel .weekly-chart-card,
+        .dashboard-light-mode .weekly-dashboard-panel .weekly-records-card,
+        .dashboard-light-mode .weekly-dashboard-panel .weekly-kpi-card {
+          background: linear-gradient(180deg, rgba(255,255,255,.99), rgba(248,250,252,.97)) !important;
+          border-color: rgba(15,23,42,.08) !important;
+          box-shadow: 0 24px 60px rgba(15,23,42,.08) !important;
+        }
+
+        .dashboard-light-mode .weekly-dashboard-panel select,
+        .dashboard-light-mode .weekly-dashboard-panel input,
+        .dashboard-light-mode .weekly-dashboard-panel textarea,
+        .dashboard-light-mode .weekly-dashboard-panel .weekly-computed-field,
+        .dashboard-light-mode .weekly-dashboard-panel .weekly-health-option,
+        .dashboard-light-mode .weekly-dashboard-panel .weekly-chart-body,
+        .dashboard-light-mode .weekly-dashboard-panel .weekly-record-row,
+        .dashboard-light-mode .weekly-dashboard-panel .weekly-record-metrics div {
+          background: #fff !important;
+          border-color: rgba(15,23,42,.08) !important;
+          color: #0f172a !important;
+        }
+
+        .dashboard-light-mode .weekly-dashboard-panel .weekly-hero-controls label > span,
+        .dashboard-light-mode .weekly-dashboard-panel .weekly-form-card .input-group > span,
+        .dashboard-light-mode .weekly-dashboard-panel .weekly-action-input > span,
+        .dashboard-light-mode .weekly-dashboard-panel .weekly-computed-field span,
+        .dashboard-light-mode .weekly-dashboard-panel .weekly-kpi-card span,
+        .dashboard-light-mode .weekly-dashboard-panel .weekly-record-metrics span {
+          color: #475569 !important;
+        }
+
+        .dashboard-light-mode .weekly-dashboard-panel .weekly-computed-field strong,
+        .dashboard-light-mode .weekly-dashboard-panel .weekly-kpi-card strong,
+        .dashboard-light-mode .weekly-dashboard-panel .weekly-record-metrics strong,
+        .dashboard-light-mode .weekly-dashboard-panel .weekly-health-option {
+          color: #0f172a !important;
+        }
+
+        @media (max-width: 1180px) {
+          .weekly-dashboard-panel .weekly-hero,
+          .weekly-dashboard-panel .weekly-content-grid,
+          .weekly-dashboard-panel .weekly-chart-grid,
+          .weekly-dashboard-panel .weekly-record-row {
+            grid-template-columns: 1fr !important;
+          }
+        }
+      `}</style>
+
       <style jsx>{`
         .sidebar-top {
           display: flex;

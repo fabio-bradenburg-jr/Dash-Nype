@@ -8,14 +8,26 @@ import { getAccessContext } from '@/lib/server/access-control'
 let pool
 let ensured = false
 
+function getDatabaseUrl() {
+  return (
+    process.env.DATABASE_URL ||
+    process.env.POSTGRES_URL ||
+    process.env.POSTGRES_PRISMA_URL ||
+    process.env.POSTGRES_URL_NON_POOLING ||
+    process.env.SUPABASE_DB_URL ||
+    ''
+  )
+}
+
 function getPool() {
   if (!pool) {
-    if (!process.env.DATABASE_URL) {
-      throw new Error('DATABASE_URL não configurada para salvar acompanhamento semanal.')
+    const databaseUrl = getDatabaseUrl()
+    if (!databaseUrl) {
+      throw new Error('Conexão do banco não configurada para salvar acompanhamento semanal.')
     }
 
     pool = new Pool({
-      connectionString: process.env.DATABASE_URL.replace(/^postgresql\+psycopg:\/\//, 'postgresql://'),
+      connectionString: databaseUrl.replace(/^postgresql\+psycopg:\/\//, 'postgresql://'),
     })
   }
 
