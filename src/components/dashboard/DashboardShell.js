@@ -13350,7 +13350,7 @@ export default function DashboardShell({
             <i className="bx bxs-dashboard"></i> Presentation
           </button>
           <button type="button" data-tooltip="Controle da Operação" className={`nav-item nav-button ${activeTab === 'semanal' ? 'active' : ''}`} onClick={() => setActiveTab('semanal')}>
-            <i className="bx bx-heart-circle"></i> Controle da Operação
+            <i className="bx bx-pulse"></i> Controle da Operação
           </button>
           {canAccessTeamTab && (
             <button type="button" data-tooltip="Team" className={`nav-item nav-button ${activeTab === 'usuarios' ? 'active' : ''}`} onClick={() => setActiveTab('usuarios')}>
