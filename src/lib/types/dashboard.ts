@@ -152,6 +152,7 @@ export interface OperationSettingsRecord {
   taskTypes: string[]
   customFields: OperationCustomFieldRecord[]
   autoCreateCardForNewClient: boolean
+  healthRiskTargetPercent: number
 }
 
 export interface OperationCardRecord {

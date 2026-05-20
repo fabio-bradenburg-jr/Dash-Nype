@@ -514,13 +514,25 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
       }
     }
 
+    if (activeSettingsTab === 'operation') {
+      return {
+        title: 'Controle da operação',
+        description: 'Meta de risco e regras da leitura semanal da carteira.',
+        items: [
+          `Meta Crítico + Atenção: ${operationSettings.healthRiskTargetPercent}%`,
+          'Semanas de segunda a domingo',
+          'Saúde média semanal e mensal',
+        ],
+      }
+    }
+
     return {
-      title: 'Integrações gerais',
-      description: 'Credenciais e preferências do app centralizadas por aqui.',
+      title: 'Controle da operação',
+      description: 'Preferências operacionais centralizadas por aqui.',
       items: [
-        `${advertisingIntegrationGroups.length} integrações de mídia`,
-        `${crmIntegrationGroups.length} integrações de CRM`,
-        'Providers e prompt de IA centralizados',
+        `Meta Crítico + Atenção: ${operationSettings.healthRiskTargetPercent}%`,
+        'Indicadores semanais salvos no Supabase',
+        'Plano de ação com até 5 tópicos',
       ],
     }
   }, [
@@ -774,7 +786,7 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
     const error = params.get('meta_error')
 
     const storedTab = window.localStorage.getItem(SETTINGS_TAB_STORAGE_KEY)
-    const resolvedStoredTab = storedTab === 'panel' || storedTab === 'general'
+    const resolvedStoredTab = storedTab === 'panel' || storedTab === 'general' || storedTab === 'operation'
       ? storedTab
       : null
 
@@ -784,6 +796,8 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
       setActiveSettingsTab('general')
     } else if (tab === 'general' && canEditIntegrations) {
       setActiveSettingsTab('general')
+    } else if (tab === 'operation' && canManageClients) {
+      setActiveSettingsTab('operation')
     } else if (tab === 'panel') {
       setActiveSettingsTab('panel')
     } else if (canEditIntegrations && resolvedStoredTab) {
@@ -814,10 +828,15 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
   }, [canEditIntegrations, embeddedOverride, globalIntegrations, globalIntegrations.metaConnectionMode, persistGlobalIntegrations])
 
   useEffect(() => {
-    if (!canEditIntegrations && activeSettingsTab !== 'panel') {
+    if (activeSettingsTab === 'operation' && !canManageClients) {
+      setActiveSettingsTab(canEditIntegrations ? 'general' : 'panel')
+      return
+    }
+
+    if (activeSettingsTab === 'general' && !canEditIntegrations) {
       setActiveSettingsTab('panel')
     }
-  }, [activeSettingsTab, canEditIntegrations])
+  }, [activeSettingsTab, canEditIntegrations, canManageClients])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -1135,6 +1154,15 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
     },
     [canManageClients, serverState]
   )
+
+  const handleOperationRiskTargetChange = (value: string) => {
+    const parsed = Number(value)
+    const nextSettings = {
+      ...operationSettings,
+      healthRiskTargetPercent: Number.isFinite(parsed) ? Math.min(100, Math.max(0, parsed)) : 20,
+    }
+    setOperationSettings(nextSettings)
+  }
 
   const handleCreateClientCustomColumn = () => {
     if (!canManageClients) return
@@ -1698,7 +1726,19 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
       feedbackMessages.push('Preferências visuais salvas e aplicadas neste navegador.')
     }
 
-    if (canEditIntegrations) {
+    if (activeSettingsTab === 'operation') {
+      try {
+        await persistOperationSettings(operationSettings)
+        feedbackMessages.push('Meta operacional sincronizada com sucesso.')
+      } catch (error) {
+        setSettingsSaveFeedback(
+          error instanceof Error
+            ? error.message
+            : 'Não foi possível sincronizar a configuração operacional.'
+        )
+        return
+      }
+    } else if (canEditIntegrations) {
       try {
         await persistGlobalIntegrations(globalIntegrations)
         feedbackMessages.push('Integrações do app sincronizadas com sucesso.')
@@ -1795,6 +1835,20 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
                     </div>
                   </button>
                 </>
+              )}
+
+              {canManageClients && (
+                <button
+                  type="button"
+                  className={`settings-sidebar-link ${activeSettingsTab === 'operation' ? 'active' : ''}`}
+                  onClick={() => handleSettingsTabChange('operation')}
+                >
+                  <i className="bx bx-pulse"></i>
+                  <div>
+                    <strong>Operação</strong>
+                    <span>Meta de risco e saúde semanal dos clientes.</span>
+                  </div>
+                </button>
               )}
             </div>
 
@@ -2417,6 +2471,39 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
 
 
 
+              {canManageClients && activeSettingsTab === 'operation' && (
+                <div className="settings-panel-layout settings-panel-layout-obsidian">
+                  <div className="glass-item settings-block settings-block-full settings-block-hero">
+                    <div className="settings-section-head">
+                      <div>
+                        <span className="settings-hero-kicker">controle operacional</span>
+                        <h2>Meta de saúde da carteira</h2>
+                        <p>Defina o limite máximo de clientes em Crítico + Atenção. O painel compara a semana selecionada contra essa meta.</p>
+                      </div>
+                    </div>
+
+                    <div className="settings-operation-grid">
+                      <div className="glass-item settings-operation-card">
+                        <span>Alvo permitido</span>
+                        <strong>{operationSettings.healthRiskTargetPercent}%</strong>
+                        <p>Percentual máximo de clientes em Crítico e Atenção juntos.</p>
+                      </div>
+                      <label className="settings-operation-field">
+                        <span>Meta Crítico + Atenção</span>
+                        <input
+                          type="number"
+                          min="0"
+                          max="100"
+                          value={operationSettings.healthRiskTargetPercent}
+                          onChange={(event) => handleOperationRiskTargetChange(event.target.value)}
+                        />
+                        <small>Hoje o objetivo padrão do time é 20%.</small>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div className="settings-action-bar settings-action-bar-global">
                 <div className="settings-action-copy">
                   <strong>Configuração pronta para aplicar</strong>
@@ -2425,7 +2512,9 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
                       panelFeedback ||
                       (activeSettingsTab === 'panel'
                         ? 'Ajuste aparência, modo e atmosfera. Salve quando quiser aplicar o tema em todo o app.'
-                        : 'As integrações do app já sincronizam em tempo real, mas você pode usar este botão para confirmar e reaplicar a configuração atual.')}
+                        : activeSettingsTab === 'operation'
+                          ? 'Salve a meta operacional para aplicar no Controle da Operação.'
+                          : 'As integrações do app já sincronizam em tempo real, mas você pode usar este botão para confirmar e reaplicar a configuração atual.')}
                   </span>
                 </div>
                 <div className="settings-action-buttons">
@@ -3156,6 +3245,86 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
           border-color: var(--accent-blue);
           background: rgba(59, 130, 246, 0.12);
           color: var(--text-primary);
+        }
+
+        .settings-operation-grid {
+          display: grid;
+          grid-template-columns: minmax(0, 0.55fr) minmax(0, 1fr);
+          gap: 24px;
+          margin-top: 28px;
+          align-items: stretch;
+        }
+
+        .settings-operation-card,
+        .settings-operation-field {
+          border: 1px solid rgba(148, 163, 184, 0.14);
+          border-radius: 28px;
+          background: rgba(255, 255, 255, 0.04);
+          padding: 26px;
+        }
+
+        .settings-operation-card {
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          gap: 12px;
+        }
+
+        .settings-operation-card span,
+        .settings-operation-field span {
+          color: var(--text-muted);
+          font-size: 0.76rem;
+          font-weight: 900;
+          letter-spacing: 0.12em;
+          text-transform: uppercase;
+        }
+
+        .settings-operation-card strong {
+          color: var(--text-primary);
+          font-size: clamp(2.4rem, 5vw, 4.4rem);
+          line-height: 1;
+        }
+
+        .settings-operation-card p,
+        .settings-operation-field small {
+          color: var(--text-muted);
+          line-height: 1.5;
+        }
+
+        .settings-operation-field {
+          display: flex;
+          flex-direction: column;
+          gap: 14px;
+        }
+
+        .settings-operation-field input {
+          min-height: 68px;
+          border: 1px solid rgba(148, 163, 184, 0.16);
+          border-radius: 22px;
+          background: rgba(6, 10, 18, 0.72);
+          color: var(--text-primary);
+          padding: 0 20px;
+          font-size: 1.7rem;
+          font-weight: 900;
+          outline: none;
+        }
+
+        :root[data-ui-mode='light'] .settings-operation-card,
+        :root[data-ui-mode='light'] .settings-operation-field,
+        :root[data-ui-mode='light'] .settings-operation-field input {
+          background: #ffffff;
+          border-color: rgba(15, 23, 42, 0.08);
+          color: #0f172a;
+        }
+
+        :root[data-ui-mode='light'] .settings-operation-card strong {
+          color: #0f172a;
+        }
+
+        @media (max-width: 900px) {
+          .settings-operation-grid {
+            grid-template-columns: 1fr;
+          }
         }
 
         .settings-action-bar {

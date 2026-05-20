@@ -476,6 +476,7 @@ export function createOperationSettingsRecord(
       ? overrides.customFields.map((field) => createOperationCustomFieldRecord(field))
       : [...DEFAULT_OPERATION_CUSTOM_FIELDS],
     autoCreateCardForNewClient: overrides.autoCreateCardForNewClient !== false,
+    healthRiskTargetPercent: Number.isFinite(Number(overrides.healthRiskTargetPercent)) ? Math.min(100, Math.max(0, Number(overrides.healthRiskTargetPercent))) : 20,
   }
 }
 

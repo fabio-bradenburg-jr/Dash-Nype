@@ -447,6 +447,7 @@ function normalizeOperationSettingsRecord(settings: LooseRecord | null | undefin
       ? settings.customFields.map(normalizeOperationCustomFieldRecord)
       : [...DEFAULT_OPERATION_CUSTOM_FIELDS],
     autoCreateCardForNewClient: settings?.autoCreateCardForNewClient !== false,
+    healthRiskTargetPercent: Number.isFinite(Number(settings?.healthRiskTargetPercent)) ? Math.min(100, Math.max(0, Number(settings?.healthRiskTargetPercent))) : 20,
   }
 }
 

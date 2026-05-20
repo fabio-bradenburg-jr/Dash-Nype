@@ -197,10 +197,38 @@ function normalizeMetaAdAccountIdForCompare(value) {
 
 
 const WEEKLY_HEALTH_OPTIONS = [
-  { key: 'critical', label: 'Crítico', score: 1, color: '#ef4444' },
-  { key: 'attention', label: 'Atenção', score: 2, color: '#f59e0b' },
-  { key: 'healthy', label: 'Saudável', score: 3, color: '#22c55e' },
-  { key: 'with_result', label: 'Com resultado', score: 4, color: '#10b981' },
+  {
+    key: 'critical',
+    label: 'Crítico',
+    score: 1,
+    color: '#ef4444',
+    softColor: '#fee2e2',
+    criteria: 'Resultado negativo há 3+ semanas, baixa satisfação ou falta de atividade recorrente.',
+  },
+  {
+    key: 'attention',
+    label: 'Atenção',
+    score: 2,
+    color: '#f59e0b',
+    softColor: '#ffedd5',
+    criteria: 'Resultado abaixo do esperado por até 3 semanas, com cliente ainda engajado.',
+  },
+  {
+    key: 'healthy',
+    label: 'Saudável',
+    score: 3,
+    color: '#22c55e',
+    softColor: '#dcfce7',
+    criteria: 'Meta atingida, feedbacks claros, sem riscos ou inconsistências no acompanhamento.',
+  },
+  {
+    key: 'with_result',
+    label: 'Com resultado',
+    score: 4,
+    color: '#1d8fff',
+    softColor: '#dbeafe',
+    criteria: 'Resultado acima da meta, cliente satisfeito e engajado com expansão.',
+  },
 ]
 
 const WEEKLY_HEALTH_BY_KEY = Object.fromEntries(WEEKLY_HEALTH_OPTIONS.map((item) => [item.key, item]))
@@ -3102,6 +3130,7 @@ export default function DashboardShell({
   const [weeklyError, setWeeklyError] = useState('')
   const [weeklyClientFilter, setWeeklyClientFilter] = useState('all')
   const [weeklyWeekStart, setWeeklyWeekStart] = useState(() => getMondayDateInputValue())
+  const [isWeeklyEntryModalOpen, setIsWeeklyEntryModalOpen] = useState(false)
   const [weeklyForm, setWeeklyForm] = useState({
     clientId: '',
     investment: '',
@@ -3505,6 +3534,7 @@ export default function DashboardShell({
       }
 
       await loadWeeklyRecords()
+      setIsWeeklyEntryModalOpen(false)
     } catch (error) {
       setWeeklyError(error.message || 'Não foi possível salvar o acompanhamento semanal.')
     } finally {
@@ -4430,28 +4460,51 @@ export default function DashboardShell({
   const weeklyCurrentCpl = weeklyCurrentLeads > 0 ? weeklyCurrentInvestment / weeklyCurrentLeads : 0
   const weeklyCurrentCostPerSql = weeklyCurrentSql > 0 ? weeklyCurrentInvestment / weeklyCurrentSql : 0
 
-  const weeklySummary = useMemo(() => {
-    const totals = weeklyVisibleRecords.reduce((acc, record) => {
+  const weeklySelectedDate = useMemo(() => new Date(String(weeklyWeekStart || getMondayDateInputValue()) + 'T00:00:00'), [weeklyWeekStart])
+  const weeklySelectedMonthKey = useMemo(() => {
+    if (Number.isNaN(weeklySelectedDate.getTime())) return ''
+    return String(weeklySelectedDate.getFullYear()) + '-' + String(weeklySelectedDate.getMonth() + 1).padStart(2, '0')
+  }, [weeklySelectedDate])
+  const weeklySelectedWeekRecords = useMemo(
+    () => weeklyVisibleRecords.filter((record) => record.weekStart === weeklyWeekStart),
+    [weeklyVisibleRecords, weeklyWeekStart]
+  )
+  const weeklySelectedMonthRecords = useMemo(
+    () => weeklyVisibleRecords.filter((record) => String(record.weekStart || '').startsWith(weeklySelectedMonthKey)),
+    [weeklyVisibleRecords, weeklySelectedMonthKey]
+  )
+  const weeklyHealthRiskTarget = Number.isFinite(Number(operationSettings?.healthRiskTargetPercent))
+    ? Math.min(100, Math.max(0, Number(operationSettings.healthRiskTargetPercent)))
+    : 20
+  const summarizeWeeklyRecords = useCallback((records) => {
+    const totals = records.reduce((acc, record) => {
       const health = WEEKLY_HEALTH_BY_KEY[record.healthStatus]
       acc.investment += Number(record.investment || 0)
       acc.leads += Number(record.leads || 0)
       acc.sql += Number(record.sql || 0)
+      if (record.healthStatus === 'critical' || record.healthStatus === 'attention') acc.riskCount += 1
       if (health) {
         acc.healthScore += health.score
         acc.healthCount += 1
       }
       return acc
-    }, { investment: 0, leads: 0, sql: 0, healthScore: 0, healthCount: 0 })
+    }, { investment: 0, leads: 0, sql: 0, healthScore: 0, healthCount: 0, riskCount: 0 })
 
     const averageHealth = totals.healthCount ? totals.healthScore / totals.healthCount : 0
+    const riskPercent = totals.healthCount ? (totals.riskCount / totals.healthCount) * 100 : 0
     return {
       ...totals,
       cpl: totals.leads > 0 ? totals.investment / totals.leads : 0,
       costPerSql: totals.sql > 0 ? totals.investment / totals.sql : 0,
       averageHealth,
       averageHealthLabel: getWeeklyHealthAverageLabel(averageHealth),
+      riskPercent,
+      withinRiskTarget: totals.healthCount ? riskPercent <= weeklyHealthRiskTarget : false,
     }
-  }, [weeklyVisibleRecords])
+  }, [weeklyHealthRiskTarget])
+
+  const weeklySummary = useMemo(() => summarizeWeeklyRecords(weeklySelectedWeekRecords), [summarizeWeeklyRecords, weeklySelectedWeekRecords])
+  const weeklyMonthSummary = useMemo(() => summarizeWeeklyRecords(weeklySelectedMonthRecords), [summarizeWeeklyRecords, weeklySelectedMonthRecords])
 
   const weeklyLineChartData = useMemo(() => {
     const byWeek = new Map()
@@ -4471,9 +4524,27 @@ export default function DashboardShell({
           label: 'Investimento',
           data: rows.map((row) => row.investment),
           borderColor: activeClientDashboardHex,
-          backgroundColor: `${activeClientDashboardHex}22`,
+          backgroundColor: activeClientDashboardHex + '22',
           tension: 0.35,
           fill: true,
+          yAxisID: 'money',
+        },
+        {
+          label: 'CPL',
+          data: rows.map((row) => row.leads > 0 ? row.investment / row.leads : 0),
+          borderColor: '#f59e0b',
+          backgroundColor: 'rgba(245, 158, 11, 0.12)',
+          borderDash: [6, 6],
+          tension: 0.35,
+          yAxisID: 'money',
+        },
+        {
+          label: 'Custo SQL',
+          data: rows.map((row) => row.sql > 0 ? row.investment / row.sql : 0),
+          borderColor: '#ef4444',
+          backgroundColor: 'rgba(239, 68, 68, 0.12)',
+          borderDash: [3, 6],
+          tension: 0.35,
           yAxisID: 'money',
         },
         {
@@ -4481,15 +4552,14 @@ export default function DashboardShell({
           data: rows.map((row) => row.leads),
           borderColor: '#38bdf8',
           backgroundColor: 'rgba(56, 189, 248, 0.12)',
-          borderDash: [6, 6],
           tension: 0.35,
           yAxisID: 'volume',
         },
         {
           label: 'SQL',
           data: rows.map((row) => row.sql),
-          borderColor: '#f59e0b',
-          backgroundColor: 'rgba(245, 158, 11, 0.12)',
+          borderColor: '#22c55e',
+          backgroundColor: 'rgba(34, 197, 94, 0.12)',
           tension: 0.35,
           yAxisID: 'volume',
         },
@@ -4498,19 +4568,39 @@ export default function DashboardShell({
   }, [weeklyVisibleRecords, activeClientDashboardHex])
 
   const weeklyHealthChartData = useMemo(() => {
-    const counts = WEEKLY_HEALTH_OPTIONS.map((option) => weeklyVisibleRecords.filter((record) => record.healthStatus === option.key).length)
+    const records = weeklySelectedWeekRecords.length ? weeklySelectedWeekRecords : weeklyVisibleRecords
+    if (weeklyClientFilter !== 'all') {
+      const rows = [...weeklyVisibleRecords].sort((left, right) => String(left.weekStart).localeCompare(String(right.weekStart)))
+      return {
+        labels: rows.map((row) => formatWeekRangeLabel(row.weekStart, row.weekEnd)),
+        datasets: [
+          {
+            label: 'Saúde do cliente',
+            data: rows.map((row) => WEEKLY_HEALTH_BY_KEY[row.healthStatus]?.score || 0),
+            backgroundColor: rows.map((row) => getWeeklyHealthColor(row.healthStatus)),
+            borderColor: rows.map((row) => getWeeklyHealthColor(row.healthStatus)),
+            borderWidth: 1,
+            borderRadius: 14,
+          },
+        ],
+      }
+    }
+
+    const counts = WEEKLY_HEALTH_OPTIONS.map((option) => records.filter((record) => record.healthStatus === option.key).length)
     return {
       labels: WEEKLY_HEALTH_OPTIONS.map((option) => option.label),
       datasets: [
         {
+          label: 'Clientes por saúde',
           data: counts,
           backgroundColor: WEEKLY_HEALTH_OPTIONS.map((option) => option.color),
-          borderColor: isLightAppMode ? '#ffffff' : '#111318',
-          borderWidth: 3,
+          borderColor: WEEKLY_HEALTH_OPTIONS.map((option) => option.color),
+          borderWidth: 1,
+          borderRadius: 14,
         },
       ],
     }
-  }, [weeklyVisibleRecords, isLightAppMode])
+  }, [weeklySelectedWeekRecords, weeklyVisibleRecords, weeklyClientFilter])
 
   const weeklyChartOptions = useMemo(() => ({
     responsive: true,
@@ -4552,21 +4642,32 @@ export default function DashboardShell({
     },
   }), [isLightAppMode])
 
-  const weeklyDoughnutOptions = useMemo(() => ({
+  const weeklyBarOptions = useMemo(() => ({
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
-      legend: {
-        position: 'bottom',
-        labels: {
-          color: isLightAppMode ? '#0f172a' : '#f8fafc',
-          usePointStyle: true,
-          boxWidth: 8,
+      legend: { display: false },
+      tooltip: {
+        callbacks: {
+          label: (context) => weeklyClientFilter === 'all'
+            ? `${context.label}: ${formatNumber(context.parsed.y || 0)} cliente(s)`
+            : `${context.label}: ${getWeeklyHealthAverageLabel(context.parsed.y || 0)}`,
         },
       },
     },
-    cutout: '62%',
-  }), [isLightAppMode])
+    scales: {
+      x: {
+        ticks: { color: isLightAppMode ? '#64748b' : '#94a3b8' },
+        grid: { display: false },
+      },
+      y: {
+        beginAtZero: true,
+        max: weeklyClientFilter === 'all' ? undefined : 4,
+        ticks: { color: isLightAppMode ? '#64748b' : '#94a3b8', precision: 0 },
+        grid: { color: isLightAppMode ? 'rgba(15, 23, 42, 0.08)' : 'rgba(148, 163, 184, 0.08)' },
+      },
+    },
+  }), [isLightAppMode, weeklyClientFilter])
 
   const weeklyLatestRecords = useMemo(() => {
     return [...weeklyVisibleRecords].sort((left, right) => {
@@ -11950,13 +12051,88 @@ export default function DashboardShell({
   )
 
 
+  const weeklyFormContent = (
+    <form className="weekly-form-card glass-panel" onSubmit={handleSaveWeeklyRecord}>
+      <div className="section-header section-header-stack">
+        <div>
+          <span className="eyebrow">imputação</span>
+          <h2>Dados da semana</h2>
+          <p className="chart-subtitle">Escolha o cliente, preencha os números acompanhados com o time e limite o plano de ação a 5 tópicos.</p>
+        </div>
+        <button type="submit" className="btn btn-primary" disabled={isSavingWeeklyRecord || !weeklyForm.clientId} style={{ background: activeClientDashboardHex, borderColor: activeClientDashboardHex }}>
+          <i className="bx bx-save"></i>
+          {isSavingWeeklyRecord ? 'Salvando...' : 'Salvar semana'}
+        </button>
+      </div>
+
+      <div className="weekly-form-grid">
+        <label className="input-group">
+          <span>Cliente</span>
+          <select value={weeklyForm.clientId} onChange={(event) => setWeeklyForm((current) => ({ ...current, clientId: event.target.value }))}>
+            <option value="">Selecione</option>
+            {dashboardEligibleClients.map((client) => (
+              <option key={'weekly-form-client-' + client.id} value={client.id}>{client.name}</option>
+            ))}
+          </select>
+        </label>
+        <label className="input-group">
+          <span>Investimento</span>
+          <input type="number" min="0" step="0.01" value={weeklyForm.investment} onChange={(event) => setWeeklyForm((current) => ({ ...current, investment: event.target.value }))} placeholder="0,00" />
+        </label>
+        <label className="input-group">
+          <span>Leads gerados</span>
+          <input type="number" min="0" step="1" value={weeklyForm.leads} onChange={(event) => setWeeklyForm((current) => ({ ...current, leads: event.target.value }))} placeholder="0" />
+        </label>
+        <label className="input-group">
+          <span>SQL</span>
+          <input type="number" min="0" step="1" value={weeklyForm.sql} onChange={(event) => setWeeklyForm((current) => ({ ...current, sql: event.target.value }))} placeholder="0" />
+        </label>
+        <div className="weekly-computed-field">
+          <span>CPL automático</span>
+          <strong>{weeklyCurrentLeads > 0 ? formatCurrency(weeklyCurrentCpl) : '-'}</strong>
+        </div>
+        <div className="weekly-computed-field">
+          <span>Custo SQL automático</span>
+          <strong>{weeklyCurrentSql > 0 ? formatCurrency(weeklyCurrentCostPerSql) : '-'}</strong>
+        </div>
+      </div>
+
+      <div className="weekly-health-options" role="group" aria-label="Saúde do cliente">
+        {WEEKLY_HEALTH_OPTIONS.map((option) => (
+          <button
+            key={'weekly-health-' + option.key}
+            type="button"
+            className={'weekly-health-option ' + (weeklyForm.healthStatus === option.key ? 'active' : '')}
+            onClick={() => setWeeklyForm((current) => ({ ...current, healthStatus: option.key }))}
+            style={weeklyForm.healthStatus === option.key ? { borderColor: option.color, color: option.color, boxShadow: '0 0 0 1px ' + option.color + '44, 0 16px 40px ' + option.color + '18' } : undefined}
+          >
+            <span style={{ background: option.color }}></span>
+            <strong>{option.label}</strong>
+            <small>{option.criteria}</small>
+          </button>
+        ))}
+      </div>
+
+      <label className="input-group weekly-action-input">
+        <span>Plano de ação interno, até 5 tópicos</span>
+        <textarea
+          value={weeklyForm.actionItemsText}
+          onChange={(event) => setWeeklyForm((current) => ({ ...current, actionItemsText: event.target.value.split('\n').slice(0, 5).join('\n') }))}
+          placeholder={'1. Ajustar campanha de leads\n2. Revisar follow-up comercial\n3. Marcar reunião de alinhamento'}
+          rows={6}
+        />
+        <small>{weeklyForm.actionItemsText.split('\n').filter((item) => item.trim()).length}/5 tópicos preenchidos</small>
+      </label>
+    </form>
+  )
+
   const renderWeeklyClientPanel = () => (
     <section className="weekly-dashboard-panel">
       <div className="weekly-hero glass-panel">
         <div>
           <span className="eyebrow">ritmo semanal</span>
-          <h2>Controle de saúde e plano de ação</h2>
-          <p>Registre o que aconteceu de segunda a domingo, acompanhe a evolução por cliente e veja rapidamente onde o time precisa agir.</p>
+          <h2>Controle da Operação</h2>
+          <p>Registre investimento, leads, SQL, saúde e plano de ação por semana, sempre de segunda a domingo.</p>
         </div>
         <div className="weekly-hero-controls">
           <label>
@@ -11964,7 +12140,7 @@ export default function DashboardShell({
             <select value={weeklyClientFilter} onChange={(event) => setWeeklyClientFilter(event.target.value)}>
               <option value="all">Todos os clientes</option>
               {dashboardEligibleClients.map((client) => (
-                <option key={`weekly-filter-${client.id}`} value={client.id}>{client.name}</option>
+                <option key={'weekly-filter-' + client.id} value={client.id}>{client.name}</option>
               ))}
             </select>
           </label>
@@ -11972,97 +12148,39 @@ export default function DashboardShell({
             <span>Semana</span>
             <input type="date" value={weeklyWeekStart} onChange={(event) => setWeeklyWeekStart(getMondayDateInputValue(event.target.value))} />
           </label>
-          <div className="weekly-range-pill" style={{ borderColor: `${activeClientDashboardHex}66`, color: activeClientDashboardHex }}>
+          <div className="weekly-range-pill" style={{ borderColor: activeClientDashboardHex + '66', color: activeClientDashboardHex }}>
             {formatWeekRangeLabel(weeklyWeekStart, weeklyWeekEnd)}
           </div>
+          <button type="button" className="weekly-entry-button" onClick={() => setIsWeeklyEntryModalOpen(true)} style={{ background: activeClientDashboardHex, borderColor: activeClientDashboardHex }}>
+            <i className="bx bx-plus"></i>
+            Imputar dados da semana
+          </button>
         </div>
       </div>
 
       {weeklyError && <div className="form-error weekly-error">{weeklyError}</div>}
 
-      <div className="weekly-content-grid">
-        <form className="weekly-form-card glass-panel" onSubmit={handleSaveWeeklyRecord}>
-          <div className="section-header section-header-stack">
-            <div>
-              <span className="eyebrow">imputação</span>
-              <h2>Dados da semana</h2>
-              <p className="chart-subtitle">Escolha o cliente, preencha os números acompanhados com o time e limite o plano de ação a 5 tópicos.</p>
-            </div>
-            <button type="submit" className="btn btn-primary" disabled={isSavingWeeklyRecord || !weeklyForm.clientId} style={{ background: activeClientDashboardHex, borderColor: activeClientDashboardHex }}>
-              <i className="bx bx-save"></i>
-              {isSavingWeeklyRecord ? 'Salvando...' : 'Salvar semana'}
-            </button>
-          </div>
-
-          <div className="weekly-form-grid">
-            <label className="input-group">
-              <span>Cliente</span>
-              <select value={weeklyForm.clientId} onChange={(event) => setWeeklyForm((current) => ({ ...current, clientId: event.target.value }))}>
-                <option value="">Selecione</option>
-                {dashboardEligibleClients.map((client) => (
-                  <option key={`weekly-form-client-${client.id}`} value={client.id}>{client.name}</option>
-                ))}
-              </select>
-            </label>
-            <label className="input-group">
-              <span>Investimento</span>
-              <input type="number" min="0" step="0.01" value={weeklyForm.investment} onChange={(event) => setWeeklyForm((current) => ({ ...current, investment: event.target.value }))} placeholder="0,00" />
-            </label>
-            <label className="input-group">
-              <span>Leads gerados</span>
-              <input type="number" min="0" step="1" value={weeklyForm.leads} onChange={(event) => setWeeklyForm((current) => ({ ...current, leads: event.target.value }))} placeholder="0" />
-            </label>
-            <label className="input-group">
-              <span>SQL</span>
-              <input type="number" min="0" step="1" value={weeklyForm.sql} onChange={(event) => setWeeklyForm((current) => ({ ...current, sql: event.target.value }))} placeholder="0" />
-            </label>
-            <div className="weekly-computed-field">
-              <span>CPL automático</span>
-              <strong>{weeklyCurrentLeads > 0 ? formatCurrency(weeklyCurrentCpl) : '-'}</strong>
-            </div>
-            <div className="weekly-computed-field">
-              <span>Custo SQL automático</span>
-              <strong>{weeklyCurrentSql > 0 ? formatCurrency(weeklyCurrentCostPerSql) : '-'}</strong>
-            </div>
-          </div>
-
-          <div className="weekly-health-options" role="group" aria-label="Saúde do cliente">
-            {WEEKLY_HEALTH_OPTIONS.map((option) => (
-              <button
-                key={`weekly-health-${option.key}`}
-                type="button"
-                className={`weekly-health-option ${weeklyForm.healthStatus === option.key ? 'active' : ''}`}
-                onClick={() => setWeeklyForm((current) => ({ ...current, healthStatus: option.key }))}
-                style={weeklyForm.healthStatus === option.key ? { borderColor: option.color, color: option.color, boxShadow: `0 0 0 1px ${option.color}44, 0 16px 40px ${option.color}18` } : undefined}
-              >
-                <span style={{ background: option.color }}></span>
-                {option.label}
-              </button>
-            ))}
-          </div>
-
-          <label className="input-group weekly-action-input">
-            <span>Plano de ação, até 5 tópicos</span>
-            <textarea
-              value={weeklyForm.actionItemsText}
-              onChange={(event) => setWeeklyForm((current) => ({ ...current, actionItemsText: event.target.value.split('\n').slice(0, 5).join('\n') }))}
-              placeholder={'1. Ajustar campanha de leads\n2. Revisar follow-up comercial\n3. Marcar reunião de alinhamento'}
-              rows={6}
-            />
-            <small>{weeklyForm.actionItemsText.split('\n').filter((item) => item.trim()).length}/5 tópicos preenchidos</small>
-          </label>
-        </form>
-
-        <div className="weekly-summary-column">
-          <div className="weekly-kpi-grid">
-            <div className="weekly-kpi-card glass-panel"><span>Investimento</span><strong>{formatCurrency(weeklySummary.investment)}</strong></div>
-            <div className="weekly-kpi-card glass-panel"><span>Leads</span><strong>{formatNumber(weeklySummary.leads)}</strong></div>
-            <div className="weekly-kpi-card glass-panel"><span>SQL</span><strong>{formatNumber(weeklySummary.sql)}</strong></div>
-            <div className="weekly-kpi-card glass-panel"><span>CPL médio</span><strong>{weeklySummary.leads > 0 ? formatCurrency(weeklySummary.cpl) : '-'}</strong></div>
-            <div className="weekly-kpi-card glass-panel"><span>Custo SQL</span><strong>{weeklySummary.sql > 0 ? formatCurrency(weeklySummary.costPerSql) : '-'}</strong></div>
-            <div className="weekly-kpi-card glass-panel"><span>Saúde média</span><strong>{weeklySummary.averageHealthLabel}</strong></div>
-          </div>
+      <div className="weekly-focus-strip glass-panel">
+        <div>
+          <span className="eyebrow">meta operacional</span>
+          <h2>{weeklyClientFilter === 'all' ? 'Visão consolidada da carteira' : clientsById.get(weeklyClientFilter)?.name || 'Cliente selecionado'}</h2>
+          <p>O objetivo do time é manter Crítico + Atenção em até {formatNumber(weeklyHealthRiskTarget)}% da carteira. Ajuste essa meta nas configurações.</p>
         </div>
+        <div className={'weekly-risk-badge ' + (weeklySummary.withinRiskTarget ? 'healthy' : 'critical')}>
+          <span>Crítico + Atenção</span>
+          <strong>{weeklySummary.healthCount ? formatNumber(weeklySummary.riskPercent) + '%' : '-'}</strong>
+          <small>{weeklySummary.healthCount ? (weeklySummary.withinRiskTarget ? 'Dentro da meta' : 'Acima da meta') : 'Sem dados na semana'}</small>
+        </div>
+      </div>
+
+      <div className="weekly-kpi-grid weekly-kpi-grid-wide">
+        <div className="weekly-kpi-card glass-panel"><span>Saúde média da semana</span><strong>{weeklySummary.averageHealthLabel}</strong></div>
+        <div className="weekly-kpi-card glass-panel"><span>Saúde média do mês</span><strong>{weeklyMonthSummary.averageHealthLabel}</strong></div>
+        <div className="weekly-kpi-card glass-panel"><span>Investimento</span><strong>{formatCurrency(weeklySummary.investment)}</strong></div>
+        <div className="weekly-kpi-card glass-panel"><span>Leads</span><strong>{formatNumber(weeklySummary.leads)}</strong></div>
+        <div className="weekly-kpi-card glass-panel"><span>CPL médio</span><strong>{weeklySummary.leads > 0 ? formatCurrency(weeklySummary.cpl) : '-'}</strong></div>
+        <div className="weekly-kpi-card glass-panel"><span>SQL</span><strong>{formatNumber(weeklySummary.sql)}</strong></div>
+        <div className="weekly-kpi-card glass-panel"><span>Custo SQL</span><strong>{weeklySummary.sql > 0 ? formatCurrency(weeklySummary.costPerSql) : '-'}</strong></div>
       </div>
 
       <div className="weekly-chart-grid">
@@ -12070,7 +12188,7 @@ export default function DashboardShell({
           <div className="section-header section-header-stack">
             <div>
               <span className="eyebrow">evolução</span>
-              <h2>Investimento, leads e SQL por semana</h2>
+              <h2>Investimento, leads, CPL, SQL e custo SQL</h2>
               <p className="chart-subtitle">Linha fracionada por semanas fechadas de segunda a domingo.</p>
             </div>
           </div>
@@ -12082,12 +12200,12 @@ export default function DashboardShell({
           <div className="section-header section-header-stack">
             <div>
               <span className="eyebrow">saúde</span>
-              <h2>Distribuição da saúde</h2>
-              <p className="chart-subtitle">Proporção de semanas/clientes em Crítico, Atenção, Saudável e Com resultado.</p>
+              <h2>{weeklyClientFilter === 'all' ? 'Distribuição da saúde' : 'Mudança de saúde do cliente'}</h2>
+              <p className="chart-subtitle">{weeklyClientFilter === 'all' ? 'Barras por status na semana selecionada.' : 'Barras por semana para acompanhar a evolução do cliente.'}</p>
             </div>
           </div>
           <div className="weekly-chart-body weekly-chart-body-small">
-            {weeklyVisibleRecords.length ? <Doughnut data={weeklyHealthChartData} options={weeklyDoughnutOptions} /> : <div className="ranking-empty">Sem saúde registrada ainda.</div>}
+            {weeklyVisibleRecords.length ? <Bar data={weeklyHealthChartData} options={weeklyBarOptions} /> : <div className="ranking-empty">Sem saúde registrada ainda.</div>}
           </div>
         </div>
       </div>
@@ -12121,7 +12239,7 @@ export default function DashboardShell({
                     <div><span>Custo SQL</span><strong>{record.sql > 0 ? formatCurrency(record.costPerSql || 0) : '-'}</strong></div>
                   </div>
                   <ol className="weekly-action-list">
-                    {(record.actionItems || []).length ? record.actionItems.map((item, index) => <li key={`${record.id}-action-${index}`}>{item}</li>) : <li>Sem plano de ação registrado.</li>}
+                    {(record.actionItems || []).length ? record.actionItems.map((item, index) => <li key={record.id + '-action-' + index}>{item}</li>) : <li>Sem plano de ação registrado.</li>}
                   </ol>
                 </article>
               )
@@ -12131,6 +12249,18 @@ export default function DashboardShell({
           <div className="ranking-empty">Nenhuma semana encontrada para o filtro atual.</div>
         )}
       </div>
+
+      {isWeeklyEntryModalOpen && createPortal(
+        <div className="modal-backdrop weekly-modal-backdrop" role="presentation" onClick={() => setIsWeeklyEntryModalOpen(false)}>
+          <div className="client-modal weekly-entry-modal" role="dialog" aria-modal="true" aria-label="Imputar dados da semana" onClick={(event) => event.stopPropagation()}>
+            <button type="button" className="modal-close" onClick={() => setIsWeeklyEntryModalOpen(false)} aria-label="Fechar">
+              <i className="bx bx-x"></i>
+            </button>
+            {weeklyFormContent}
+          </div>
+        </div>,
+        document.body
+      )}
     </section>
   )
 
@@ -26880,6 +27010,7 @@ export default function DashboardShell({
         }
 
         .weekly-hero,
+        .weekly-focus-strip,
         .weekly-form-card,
         .weekly-chart-card,
         .weekly-records-card,
@@ -26893,7 +27024,8 @@ export default function DashboardShell({
           backdrop-filter: blur(18px);
         }
 
-        .weekly-hero {
+        .weekly-hero,
+        .weekly-focus-strip {
           display: grid;
           grid-template-columns: minmax(0, 1fr) minmax(340px, 0.62fr);
           gap: 28px;
@@ -26904,6 +27036,7 @@ export default function DashboardShell({
         }
 
         .weekly-hero h2,
+        .weekly-focus-strip h2,
         .weekly-form-card h2,
         .weekly-chart-card h2,
         .weekly-records-card h2 {
@@ -26914,6 +27047,7 @@ export default function DashboardShell({
         }
 
         .weekly-hero p,
+        .weekly-focus-strip p,
         .weekly-form-card .chart-subtitle,
         .weekly-chart-card .chart-subtitle,
         .weekly-records-card .chart-subtitle {
@@ -26981,25 +27115,63 @@ export default function DashboardShell({
           box-shadow: 0 0 0 4px color-mix(in srgb, var(--weekly-accent) 14%, transparent);
         }
 
-        .weekly-range-pill {
+        .weekly-range-pill,
+        .weekly-entry-button {
           grid-column: 1 / -1;
-          min-height: 48px;
+          min-height: 50px;
           border: 1px solid;
           border-radius: 999px;
           display: inline-flex;
           align-items: center;
           justify-content: center;
-          padding: 10px 16px;
+          gap: 10px;
+          padding: 11px 18px;
           font-size: 0.86rem;
           font-weight: 900;
           background: color-mix(in srgb, var(--weekly-accent) 9%, rgba(255, 255, 255, 0.03));
         }
 
-        .weekly-content-grid {
-          display: grid;
-          grid-template-columns: minmax(0, 1.28fr) minmax(330px, 0.72fr);
-          gap: 28px;
-          align-items: stretch;
+        .weekly-entry-button {
+          color: #ffffff;
+          cursor: pointer;
+          box-shadow: 0 18px 42px color-mix(in srgb, var(--weekly-accent) 28%, transparent);
+        }
+
+        .weekly-risk-badge {
+          min-height: 128px;
+          border: 1px solid rgba(148, 163, 184, 0.14);
+          border-radius: 28px;
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          gap: 8px;
+          padding: 22px;
+          background: rgba(255, 255, 255, 0.04);
+        }
+
+        .weekly-risk-badge span,
+        .weekly-risk-badge small {
+          color: var(--text-muted);
+          font-size: 0.75rem;
+          font-weight: 900;
+          letter-spacing: 0.1em;
+          text-transform: uppercase;
+        }
+
+        .weekly-risk-badge strong {
+          color: var(--text-primary);
+          font-size: clamp(2rem, 4vw, 3.2rem);
+          line-height: 1;
+        }
+
+        .weekly-risk-badge.healthy {
+          border-color: rgba(34, 197, 94, 0.28);
+          background: rgba(34, 197, 94, 0.08);
+        }
+
+        .weekly-risk-badge.critical {
+          border-color: rgba(239, 68, 68, 0.28);
+          background: rgba(239, 68, 68, 0.08);
         }
 
         .weekly-form-card,
@@ -27068,17 +27240,20 @@ export default function DashboardShell({
         }
 
         .weekly-health-option {
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          gap: 10px;
-          min-height: 58px;
+          display: flex;
+          min-height: 118px;
+          align-items: flex-start;
+          justify-content: flex-start;
+          flex-direction: column;
+          gap: 8px;
           border: 1px solid rgba(148, 163, 184, 0.14);
-          border-radius: 18px;
+          border-radius: 20px;
           background: rgba(255, 255, 255, 0.04);
           color: var(--text-primary);
           font-weight: 900;
           cursor: pointer;
+          padding: 16px;
+          text-align: left;
           transition: all 180ms ease;
         }
 
@@ -27092,6 +27267,18 @@ export default function DashboardShell({
           height: 10px;
           border-radius: 999px;
           box-shadow: 0 0 18px currentColor;
+        }
+
+        .weekly-health-option strong {
+          color: inherit;
+          font-size: 0.96rem;
+        }
+
+        .weekly-health-option small {
+          color: var(--text-muted);
+          font-size: 0.72rem;
+          font-weight: 700;
+          line-height: 1.35;
         }
 
         .weekly-action-input {
@@ -27110,6 +27297,10 @@ export default function DashboardShell({
           height: 100%;
         }
 
+        .weekly-kpi-grid-wide {
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+        }
+
         .weekly-kpi-card {
           min-height: 136px;
           border-radius: 26px;
@@ -27121,12 +27312,12 @@ export default function DashboardShell({
 
         .weekly-chart-grid {
           display: grid;
-          grid-template-columns: minmax(0, 1.38fr) minmax(340px, 0.62fr);
+          grid-template-columns: minmax(0, 1.35fr) minmax(360px, 0.65fr);
           gap: 28px;
         }
 
         .weekly-chart-body {
-          height: 370px;
+          height: 390px;
           margin-top: 22px;
           border: 1px solid rgba(148, 163, 184, 0.1);
           border-radius: 24px;
@@ -27135,7 +27326,7 @@ export default function DashboardShell({
         }
 
         .weekly-chart-body-small {
-          height: 330px;
+          height: 390px;
         }
 
         .weekly-loading-pill {
@@ -27213,7 +27404,22 @@ export default function DashboardShell({
           margin-top: 6px;
         }
 
+        .weekly-entry-modal {
+          width: min(1080px, calc(100vw - 40px));
+          max-height: min(88vh, 920px);
+          overflow: auto;
+          padding: 0;
+        }
+
+        .weekly-entry-modal .weekly-form-card {
+          border: 0;
+          border-radius: 0;
+          box-shadow: none;
+          background: transparent;
+        }
+
         .dashboard-light-mode .weekly-hero,
+        .dashboard-light-mode .weekly-focus-strip,
         .dashboard-light-mode .weekly-form-card,
         .dashboard-light-mode .weekly-chart-card,
         .dashboard-light-mode .weekly-records-card,
@@ -27230,6 +27436,7 @@ export default function DashboardShell({
         .dashboard-light-mode .weekly-form-card textarea,
         .dashboard-light-mode .weekly-computed-field,
         .dashboard-light-mode .weekly-health-option,
+        .dashboard-light-mode .weekly-risk-badge,
         .dashboard-light-mode .weekly-record-row,
         .dashboard-light-mode .weekly-record-metrics div,
         .dashboard-light-mode .weekly-chart-body {
@@ -27239,11 +27446,13 @@ export default function DashboardShell({
         }
 
         .dashboard-light-mode .weekly-hero h2,
+        .dashboard-light-mode .weekly-focus-strip h2,
         .dashboard-light-mode .weekly-form-card h2,
         .dashboard-light-mode .weekly-chart-card h2,
         .dashboard-light-mode .weekly-records-card h2,
         .dashboard-light-mode .weekly-computed-field strong,
         .dashboard-light-mode .weekly-kpi-card strong,
+        .dashboard-light-mode .weekly-risk-badge strong,
         .dashboard-light-mode .weekly-record-metrics strong,
         .dashboard-light-mode .weekly-record-main strong,
         .dashboard-light-mode .weekly-health-option {
@@ -27251,21 +27460,58 @@ export default function DashboardShell({
         }
 
         .dashboard-light-mode .weekly-hero p,
+        .dashboard-light-mode .weekly-focus-strip p,
         .dashboard-light-mode .weekly-form-card .chart-subtitle,
         .dashboard-light-mode .weekly-chart-card .chart-subtitle,
         .dashboard-light-mode .weekly-records-card .chart-subtitle,
         .dashboard-light-mode .weekly-computed-field span,
         .dashboard-light-mode .weekly-kpi-card span,
+        .dashboard-light-mode .weekly-risk-badge span,
+        .dashboard-light-mode .weekly-risk-badge small,
         .dashboard-light-mode .weekly-record-metrics span,
         .dashboard-light-mode .weekly-record-main span,
         .dashboard-light-mode .weekly-action-list,
         .dashboard-light-mode .weekly-action-input small,
         .dashboard-light-mode .weekly-form-card .input-group > span,
         .dashboard-light-mode .weekly-action-input > span,
-        .dashboard-light-mode .weekly-hero-controls label > span {
+        .dashboard-light-mode .weekly-hero-controls label > span,
+        .dashboard-light-mode .weekly-health-option small {
           color: #475569;
         }
 
+        @media (max-width: 1180px) {
+          .weekly-hero,
+          .weekly-focus-strip,
+          .weekly-chart-grid,
+          .weekly-record-row {
+            grid-template-columns: 1fr;
+          }
+
+          .weekly-form-grid,
+          .weekly-health-options,
+          .weekly-kpi-grid-wide {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
+        }
+
+        @media (max-width: 720px) {
+          .weekly-hero,
+          .weekly-focus-strip,
+          .weekly-form-card,
+          .weekly-chart-card,
+          .weekly-records-card {
+            padding: 22px;
+          }
+
+          .weekly-hero-controls,
+          .weekly-form-grid,
+          .weekly-health-options,
+          .weekly-kpi-grid,
+          .weekly-kpi-grid-wide,
+          .weekly-record-metrics {
+            grid-template-columns: 1fr;
+          }
+        }
 
         /* Final light-mode contrast pass for simplified SaaS screens. */
         .dashboard-light-mode .sidebar-collapsed :global(.nav-item)::after {
