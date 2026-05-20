@@ -12274,7 +12274,7 @@ export default function DashboardShell({
     <form className="weekly-entry-form" style={weeklyEntryFormStyle} onSubmit={handleSaveWeeklyRecord}>
       <div className="section-header section-header-stack" style={weeklyEntryHeaderStyle}>
         <div>
-          <span className="eyebrow">imputação</span>
+          <span className="eyebrow">Imputação</span>
           <h2>Dados da semana</h2>
           <p className="chart-subtitle">Escolha o cliente, preencha os números acompanhados com o time e limite o plano de ação a 5 tópicos.</p>
         </div>
@@ -12362,7 +12362,7 @@ export default function DashboardShell({
     <section className="weekly-dashboard-panel">
       <div className="weekly-hero glass-panel">
         <div>
-          <span className="eyebrow">ritmo semanal</span>
+          <span className="eyebrow">Ritmo semanal</span>
           <h2>Controle da Operação</h2>
           <p>Registre investimento, leads, SQL, saúde e plano de ação por semana, sempre de segunda a domingo.</p>
         </div>
@@ -12430,7 +12430,7 @@ export default function DashboardShell({
 
       <div className="weekly-focus-strip glass-panel">
         <div>
-          <span className="eyebrow">meta operacional</span>
+          <span className="eyebrow">Meta operacional</span>
           <h2>{weeklyClientFilter === 'all' ? 'Visão consolidada da carteira' : clientsById.get(weeklyClientFilter)?.name || 'Cliente selecionado'}</h2>
           <p>O objetivo do time é manter Crítico + Atenção em até {formatNumber(weeklyHealthRiskTarget)}% da carteira. Ajuste essa meta nas configurações.</p>
         </div>
@@ -12455,7 +12455,7 @@ export default function DashboardShell({
         <div className="weekly-chart-card glass-panel">
           <div className="section-header section-header-stack">
             <div>
-              <span className="eyebrow">evolução</span>
+              <span className="eyebrow">Evolução</span>
               <h2>Investimento, leads, CPL, SQL e custo SQL</h2>
               <p className="chart-subtitle">Linha fracionada por semanas fechadas de segunda a domingo.</p>
             </div>
@@ -12467,7 +12467,7 @@ export default function DashboardShell({
         <div className="weekly-chart-card glass-panel">
           <div className="section-header section-header-stack">
             <div>
-              <span className="eyebrow">saúde</span>
+              <span className="eyebrow">Saúde</span>
               <h2>{weeklyClientFilter === 'all' ? 'Distribuição da saúde' : 'Mudança de saúde do cliente'}</h2>
               <p className="chart-subtitle">{weeklyClientFilter === 'all' ? 'Barras por status na semana selecionada.' : 'Barras por semana para acompanhar a evolução do cliente.'}</p>
             </div>
@@ -12481,7 +12481,7 @@ export default function DashboardShell({
       <div className="weekly-records-card glass-panel">
         <div className="section-header section-header-stack">
           <div>
-            <span className="eyebrow">histórico</span>
+            <span className="eyebrow">Histórico</span>
             <h2>Semanas registradas</h2>
             <p className="chart-subtitle">Cada linha fica salva no Supabase e pode ser reaberta editando o mesmo cliente e semana.</p>
           </div>
@@ -12628,7 +12628,7 @@ export default function DashboardShell({
             <div className="home-hub-metric glass-item">
               <span>Active groups</span>
               <strong>{formatNumber(clientGroups.length || 0)}</strong>
-              <small>grupos operacionais em leitura</small>
+              <small>Grupos operacionais em leitura</small>
             </div>
             <div className="home-hub-metric glass-item">
               <span>Operational boards</span>
@@ -13978,7 +13978,7 @@ export default function DashboardShell({
                 {draftDateRange === 'custom' && (
                   <div className="date-picker glass-item custom-range">
                     <input type="date" value={draftCustomSince} onChange={(event) => setDraftCustomSince(event.target.value)} />
-                    <span>até</span>
+                    <span>Até</span>
                     <input type="date" value={draftCustomUntil} onChange={(event) => setDraftCustomUntil(event.target.value)} />
                   </div>
                 )}
@@ -14016,7 +14016,7 @@ export default function DashboardShell({
                 {draftMondayDateRange === 'custom' && (
                   <div className="date-picker glass-item custom-range">
                     <input type="date" value={draftMondayCustomSince} onChange={(event) => setDraftMondayCustomSince(event.target.value)} />
-                    <span>até</span>
+                    <span>Até</span>
                     <input type="date" value={draftMondayCustomUntil} onChange={(event) => setDraftMondayCustomUntil(event.target.value)} />
                   </div>
                 )}
@@ -17301,7 +17301,7 @@ export default function DashboardShell({
 
               <div className="meta-secondary-result-summary glass-item">
                 <strong>{formatNumber(activeMetaSecondaryResultInsights.campaignCount)}</strong>
-                <span>campanha(s) desse objetivo no recorte selecionado</span>
+                <span>Campanha(s) desse objetivo no recorte selecionado</span>
               </div>
 
               {activeMetaSecondaryResultInsights.items.length ? (
