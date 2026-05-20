@@ -12052,17 +12052,13 @@ export default function DashboardShell({
 
 
   const weeklyFormContent = (
-    <form className="weekly-form-card glass-panel" onSubmit={handleSaveWeeklyRecord}>
+    <form className="weekly-entry-form" onSubmit={handleSaveWeeklyRecord}>
       <div className="section-header section-header-stack">
         <div>
           <span className="eyebrow">imputação</span>
           <h2>Dados da semana</h2>
           <p className="chart-subtitle">Escolha o cliente, preencha os números acompanhados com o time e limite o plano de ação a 5 tópicos.</p>
         </div>
-        <button type="submit" className="btn btn-primary" disabled={isSavingWeeklyRecord || !weeklyForm.clientId} style={{ background: activeClientDashboardHex, borderColor: activeClientDashboardHex }}>
-          <i className="bx bx-save"></i>
-          {isSavingWeeklyRecord ? 'Salvando...' : 'Salvar semana'}
-        </button>
       </div>
 
       <div className="weekly-form-grid">
@@ -12123,6 +12119,14 @@ export default function DashboardShell({
         />
         <small>{weeklyForm.actionItemsText.split('\n').filter((item) => item.trim()).length}/5 tópicos preenchidos</small>
       </label>
+
+      <div className="client-create-actions weekly-entry-actions">
+        <button type="button" className="btn btn-secondary" onClick={() => setIsWeeklyEntryModalOpen(false)}>Cancelar</button>
+        <button type="submit" className="btn btn-primary" disabled={isSavingWeeklyRecord || !weeklyForm.clientId} style={{ background: activeClientDashboardHex, borderColor: activeClientDashboardHex }}>
+          <i className="bx bx-save"></i>
+          {isSavingWeeklyRecord ? 'Salvando...' : 'Salvar semana'}
+        </button>
+      </div>
     </form>
   )
 
@@ -12250,9 +12254,9 @@ export default function DashboardShell({
         )}
       </div>
 
-      {isWeeklyEntryModalOpen && createPortal(
+      {isWeeklyEntryModalOpen && typeof document !== 'undefined' && createPortal(
         <div className="modal-overlay weekly-modal-overlay" role="presentation" onClick={() => setIsWeeklyEntryModalOpen(false)}>
-          <div className="modal-card glass-panel simple-client-modal weekly-entry-modal" role="dialog" aria-modal="true" aria-label="Cadastrar dados da semana" onClick={(event) => event.stopPropagation()}>
+          <div className="modal-card glass-panel simple-client-modal weekly-entry-modal" role="dialog" aria-modal="true" aria-label="Cadastrar dados da semana" onClick={(event) => event.stopPropagation()} style={{ maxWidth: 1120, width: 'calc(100vw - 48px)', maxHeight: 'calc(100vh - 48px)' }}>
             <button type="button" className="modal-close" onClick={() => setIsWeeklyEntryModalOpen(false)} aria-label="Fechar">
               <i className="bx bx-x"></i>
             </button>
@@ -27417,20 +27421,168 @@ export default function DashboardShell({
           justify-items: center;
         }
 
-        .weekly-entry-modal {
-          width: min(100%, 1120px);
-          max-height: min(88vh, 920px);
-          overflow: auto;
-          padding: 30px;
-          border-radius: 32px;
+        .weekly-modal-overlay {
+          position: fixed !important;
+          inset: 0 !important;
+          display: grid !important;
+          place-items: center !important;
+          padding: 24px !important;
+          background: rgba(4, 9, 18, 0.72) !important;
+          backdrop-filter: blur(14px) !important;
+          z-index: 9999 !important;
         }
 
-        .weekly-entry-modal .weekly-form-card {
-          border: 0;
-          border-radius: 0;
-          box-shadow: none;
-          background: transparent;
-          padding: 0;
+        .weekly-entry-modal {
+          width: min(1120px, calc(100vw - 48px)) !important;
+          max-height: calc(100vh - 48px) !important;
+          overflow: hidden !important;
+          padding: 30px !important;
+          border-radius: 32px !important;
+          background:
+            linear-gradient(145deg, rgba(255, 255, 255, 0.065), rgba(255, 255, 255, 0.02)),
+            radial-gradient(circle at 8% 0%, color-mix(in srgb, var(--weekly-accent) 16%, transparent), transparent 38%),
+            rgba(18, 18, 20, 0.96) !important;
+          border: 1px solid rgba(255, 255, 255, 0.1) !important;
+          box-shadow: 0 34px 100px rgba(0, 0, 0, 0.48) !important;
+          display: block !important;
+        }
+
+        .weekly-entry-modal .modal-close {
+          position: absolute;
+          top: 22px;
+          right: 22px;
+          z-index: 2;
+        }
+
+        .weekly-entry-form {
+          display: grid;
+          gap: 24px;
+          max-height: calc(100vh - 108px);
+          overflow-y: auto;
+          padding: 4px 4px 2px;
+        }
+
+        .weekly-entry-form .section-header {
+          display: flex;
+          justify-content: space-between;
+          gap: 24px;
+          align-items: flex-start;
+          padding: 0 56px 4px 0;
+          margin: 0;
+        }
+
+        .weekly-entry-form h2 {
+          margin: 0;
+          color: var(--text-primary);
+          font-size: clamp(1.9rem, 3vw, 2.65rem);
+          letter-spacing: -0.05em;
+        }
+
+        .weekly-entry-form .chart-subtitle {
+          margin: 8px 0 0;
+          color: var(--text-muted);
+          line-height: 1.5;
+        }
+
+        .weekly-entry-form .input-group {
+          display: flex;
+          min-width: 0;
+          flex-direction: column;
+          gap: 10px;
+        }
+
+        .weekly-entry-form .input-group > span,
+        .weekly-entry-form .weekly-action-input > span {
+          color: var(--text-muted);
+          font-size: 0.72rem;
+          font-weight: 900;
+          letter-spacing: 0.12em;
+          text-transform: uppercase;
+        }
+
+        .weekly-entry-form select,
+        .weekly-entry-form input,
+        .weekly-entry-form textarea {
+          width: 100%;
+          min-height: 56px;
+          border: 1px solid rgba(148, 163, 184, 0.16);
+          border-radius: 18px;
+          background: rgba(6, 10, 18, 0.72);
+          color: var(--text-primary);
+          outline: none;
+          padding: 0 18px;
+          font: inherit;
+          box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+        }
+
+        .weekly-entry-form textarea {
+          min-height: 156px;
+          padding: 16px 18px;
+          resize: vertical;
+          line-height: 1.45;
+        }
+
+        .weekly-entry-form select:focus,
+        .weekly-entry-form input:focus,
+        .weekly-entry-form textarea:focus {
+          border-color: color-mix(in srgb, var(--weekly-accent) 62%, transparent);
+          box-shadow: 0 0 0 4px color-mix(in srgb, var(--weekly-accent) 14%, transparent);
+        }
+
+        .weekly-entry-actions {
+          position: sticky;
+          bottom: 0;
+          display: flex;
+          justify-content: flex-end;
+          gap: 14px;
+          padding-top: 18px;
+          border-top: 1px solid rgba(148, 163, 184, 0.12);
+          background: linear-gradient(180deg, transparent, rgba(18, 18, 20, 0.96) 18%);
+        }
+
+        .weekly-entry-actions .btn {
+          min-width: 148px;
+          min-height: 56px;
+          border-radius: 18px;
+        }
+
+        .weekly-entry-button {
+          min-height: 56px;
+          border-radius: 18px;
+          padding-inline: 24px;
+          box-shadow: 0 18px 42px color-mix(in srgb, var(--weekly-accent) 28%, transparent);
+        }
+
+        :root[data-ui-mode='light'] .weekly-entry-modal {
+          background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.98)) !important;
+          border-color: rgba(15, 23, 42, 0.08) !important;
+          box-shadow: 0 34px 100px rgba(15, 23, 42, 0.2) !important;
+        }
+
+        :root[data-ui-mode='light'] .weekly-entry-form h2,
+        :root[data-ui-mode='light'] .weekly-entry-form .input-group > span,
+        :root[data-ui-mode='light'] .weekly-entry-form .weekly-action-input > span {
+          color: #0f172a !important;
+        }
+
+        :root[data-ui-mode='light'] .weekly-entry-form .chart-subtitle,
+        :root[data-ui-mode='light'] .weekly-entry-form .weekly-action-input small {
+          color: #475569 !important;
+        }
+
+        :root[data-ui-mode='light'] .weekly-entry-form select,
+        :root[data-ui-mode='light'] .weekly-entry-form input,
+        :root[data-ui-mode='light'] .weekly-entry-form textarea,
+        :root[data-ui-mode='light'] .weekly-entry-form .weekly-computed-field,
+        :root[data-ui-mode='light'] .weekly-entry-form .weekly-health-option {
+          background: #ffffff !important;
+          border-color: rgba(15, 23, 42, 0.1) !important;
+          color: #0f172a !important;
+        }
+
+        :root[data-ui-mode='light'] .weekly-entry-actions {
+          border-top-color: rgba(15, 23, 42, 0.08) !important;
+          background: linear-gradient(180deg, transparent, rgba(255, 255, 255, 0.98) 18%) !important;
         }
 
         .dashboard-light-mode .weekly-hero,
