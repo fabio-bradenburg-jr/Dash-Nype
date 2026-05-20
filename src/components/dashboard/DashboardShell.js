@@ -3191,6 +3191,8 @@ export default function DashboardShell({
   const [weeklyPeriodPreset, setWeeklyPeriodPreset] = useState('current_week')
   const [weeklyCustomSince, setWeeklyCustomSince] = useState(() => getMondayDateInputValue())
   const [weeklyCustomUntil, setWeeklyCustomUntil] = useState(() => getWeekEndDateInputValue(getMondayDateInputValue()))
+  const [weeklyTableClientFilter, setWeeklyTableClientFilter] = useState('all')
+  const [weeklyTableHealthFilter, setWeeklyTableHealthFilter] = useState('all')
   const [weeklyWeekStart, setWeeklyWeekStart] = useState(() => getMondayDateInputValue())
   const [isWeeklyEntryModalOpen, setIsWeeklyEntryModalOpen] = useState(false)
   const [weeklyForm, setWeeklyForm] = useState({
@@ -4754,6 +4756,14 @@ export default function DashboardShell({
       return leftClient.localeCompare(rightClient)
     })
   }, [weeklyVisibleRecords, clientsById])
+
+  const weeklyTableRecords = useMemo(() => {
+    return weeklyLatestRecords.filter((record) => {
+      const matchesClient = weeklyClientFilter !== 'all' || weeklyTableClientFilter === 'all' || record.clientId === weeklyTableClientFilter
+      const matchesHealth = weeklyTableHealthFilter === 'all' || record.healthStatus === weeklyTableHealthFilter
+      return matchesClient && matchesHealth
+    })
+  }, [weeklyLatestRecords, weeklyClientFilter, weeklyTableClientFilter, weeklyTableHealthFilter])
 
   const activeClientDashboardAccentHex = useMemo(
     () => rgbToHex(activeClientDashboardAccentRgb),
@@ -12478,6 +12488,76 @@ export default function DashboardShell({
         </div>
       </div>
 
+      <div className="weekly-records-card glass-panel weekly-table-card">
+        <div className="section-header weekly-table-header">
+          <div>
+            <span className="eyebrow">Dados selecionados</span>
+            <h2>Tabela de acompanhamento</h2>
+            <p className="chart-subtitle">Visualize exatamente o que foi imputado no período selecionado, com filtro por cliente e saúde.</p>
+          </div>
+          <div className="weekly-table-filters">
+            <label>
+              <span>Cliente</span>
+              <select value={weeklyTableClientFilter} onChange={(event) => setWeeklyTableClientFilter(event.target.value)} disabled={weeklyClientFilter !== 'all'}>
+                <option value="all">Todos os clientes</option>
+                {dashboardEligibleClients.map((client) => (
+                  <option key={'weekly-table-client-' + client.id} value={client.id}>{client.name}</option>
+                ))}
+              </select>
+            </label>
+            <label>
+              <span>Saúde</span>
+              <select value={weeklyTableHealthFilter} onChange={(event) => setWeeklyTableHealthFilter(event.target.value)}>
+                <option value="all">Todas as saúdes</option>
+                {WEEKLY_HEALTH_OPTIONS.map((option) => (
+                  <option key={'weekly-table-health-' + option.key} value={option.key}>{option.label}</option>
+                ))}
+              </select>
+            </label>
+          </div>
+        </div>
+        {weeklyTableRecords.length ? (
+          <div className="weekly-table-scroll">
+            <table className="weekly-data-table">
+              <thead>
+                <tr>
+                  <th>Data</th>
+                  <th>Cliente</th>
+                  <th>Saúde</th>
+                  <th>Investimento</th>
+                  <th>Leads</th>
+                  <th>CPL</th>
+                  <th>SQL</th>
+                  <th>Custo SQL</th>
+                  <th>Plano de ação</th>
+                </tr>
+              </thead>
+              <tbody>
+                {weeklyTableRecords.map((record) => {
+                  const client = clientsById.get(record.clientId)
+                  const health = WEEKLY_HEALTH_BY_KEY[record.healthStatus] || WEEKLY_HEALTH_BY_KEY.attention
+                  return (
+                    <tr key={'weekly-table-' + record.id}>
+                      <td>{formatWeekRangeLabel(record.weekStart, record.weekEnd)}</td>
+                      <td><strong>{client?.name || 'Cliente removido'}</strong></td>
+                      <td><span className="weekly-health-pill" style={{ borderColor: health.color + '66', color: health.color, background: health.color + '14' }}>{health.label}</span></td>
+                      <td>{formatCurrency(record.investment || 0)}</td>
+                      <td>{formatNumber(record.leads || 0)}</td>
+                      <td>{record.leads > 0 ? formatCurrency(record.cpl || 0) : '-'}</td>
+                      <td>{formatNumber(record.sql || 0)}</td>
+                      <td>{record.sql > 0 ? formatCurrency(record.costPerSql || 0) : '-'}</td>
+                      <td>{(record.actionItems || []).length ? record.actionItems.join(' | ') : 'Sem plano de ação'}</td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="ranking-empty">Nenhum registro encontrado para os filtros da tabela.</div>
+        )}
+      </div>
+
       <div className="weekly-records-card glass-panel">
         <div className="section-header section-header-stack">
           <div>
@@ -18031,6 +18111,18 @@ export default function DashboardShell({
         .dashboard-light-mode .weekly-dashboard-panel .weekly-record-metrics strong,
         .dashboard-light-mode .weekly-dashboard-panel .weekly-health-option {
           color: #0f172a !important;
+        }
+
+        .dashboard-light-mode .weekly-data-table td {
+          color: #334155;
+        }
+
+        .dashboard-light-mode .weekly-data-table td strong {
+          color: #0f172a;
+        }
+
+        .dashboard-light-mode .weekly-data-table th {
+          background: rgba(15, 23, 42, 0.025);
         }
 
         @media (max-width: 1180px) {
@@ -27615,6 +27707,109 @@ export default function DashboardShell({
           font-weight: 900;
         }
 
+        .weekly-table-header {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 24px;
+        }
+
+        .weekly-table-filters {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(180px, 1fr));
+          gap: 14px;
+          min-width: min(480px, 100%);
+        }
+
+        .weekly-table-filters label {
+          display: flex;
+          flex-direction: column;
+          gap: 9px;
+        }
+
+        .weekly-table-filters span {
+          color: var(--text-muted);
+          font-size: 0.72rem;
+          font-weight: 900;
+          letter-spacing: 0.12em;
+          text-transform: uppercase;
+        }
+
+        .weekly-table-filters select {
+          width: 100%;
+          min-height: 52px;
+          border: 1px solid rgba(148, 163, 184, 0.16);
+          border-radius: 16px;
+          background: rgba(6, 10, 18, 0.72);
+          color: var(--text-primary);
+          outline: none;
+          padding: 0 16px;
+          font: inherit;
+        }
+
+        .weekly-table-filters select:disabled {
+          opacity: 0.58;
+          cursor: not-allowed;
+        }
+
+        .weekly-table-scroll {
+          margin-top: 24px;
+          overflow-x: auto;
+          border: 1px solid rgba(148, 163, 184, 0.12);
+          border-radius: 24px;
+          background: rgba(255, 255, 255, 0.025);
+        }
+
+        .weekly-data-table {
+          width: 100%;
+          min-width: 1120px;
+          border-collapse: collapse;
+          color: var(--text-primary);
+        }
+
+        .weekly-data-table th,
+        .weekly-data-table td {
+          padding: 18px 20px;
+          text-align: left;
+          border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+          vertical-align: top;
+        }
+
+        .weekly-data-table th {
+          color: var(--text-muted);
+          font-size: 0.72rem;
+          font-weight: 900;
+          letter-spacing: 0.12em;
+          text-transform: uppercase;
+          background: rgba(255, 255, 255, 0.025);
+        }
+
+        .weekly-data-table tbody tr:last-child td {
+          border-bottom: 0;
+        }
+
+        .weekly-data-table td {
+          color: var(--text-secondary);
+          font-size: 0.92rem;
+        }
+
+        .weekly-data-table td strong {
+          color: var(--text-primary);
+        }
+
+        .weekly-health-pill {
+          display: inline-flex;
+          min-height: 32px;
+          align-items: center;
+          justify-content: center;
+          border: 1px solid;
+          border-radius: 999px;
+          padding: 0 12px;
+          font-size: 0.78rem;
+          font-weight: 900;
+          white-space: nowrap;
+        }
+
         .weekly-record-list {
           display: flex;
           flex-direction: column;
@@ -27865,6 +28060,8 @@ export default function DashboardShell({
         .dashboard-light-mode .weekly-form-card select,
         .dashboard-light-mode .weekly-form-card input,
         .dashboard-light-mode .weekly-form-card textarea,
+        .dashboard-light-mode .weekly-table-filters select,
+        .dashboard-light-mode .weekly-table-scroll,
         .dashboard-light-mode .weekly-computed-field,
         .dashboard-light-mode .weekly-health-option,
         .dashboard-light-mode .weekly-risk-badge,
@@ -27906,6 +28103,8 @@ export default function DashboardShell({
         .dashboard-light-mode .weekly-form-card .input-group > span,
         .dashboard-light-mode .weekly-action-input > span,
         .dashboard-light-mode .weekly-hero-controls label > span,
+        .dashboard-light-mode .weekly-table-filters span,
+        .dashboard-light-mode .weekly-data-table th,
         .dashboard-light-mode .weekly-health-option small {
           color: #475569;
         }
