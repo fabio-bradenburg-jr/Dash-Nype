@@ -142,6 +142,37 @@ function createRecordId(prefix: string): string {
   return globalThis.crypto?.randomUUID?.() || `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2, 10)}`
 }
 
+function createClientUidSeed(value: string): string {
+  const normalized = String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 32)
+
+  return normalized || 'cliente'
+}
+
+function createClientUid(name: string, clientId: string): string {
+  const suffix = String(clientId || createRecordId('client')).replace(/[^a-zA-Z0-9]/g, '').slice(0, 10).toLowerCase()
+  return `cl_${createClientUidSeed(name)}_${suffix || Date.now().toString(36)}`
+}
+
+function getStoredClientUid(source: LooseRecord | null | undefined): string {
+  if (!source || typeof source !== 'object') return ''
+
+  return String(
+    source.clientUid ||
+      source.client_uid ||
+      source.customClientId ||
+      source.custom_client_id ||
+      source.publicClientId ||
+      source.public_client_id ||
+      ''
+  ).trim()
+}
+
 function createOperationTaskCode(): string {
   const timestamp = Date.now().toString(36).toUpperCase()
   const randomPart = Math.random().toString(36).slice(2, 6).toUpperCase()
@@ -627,9 +658,14 @@ function normalizeClientRecord(client: LooseRecord): ClientRecord {
   const { dashboardTemplates, activeDashboardTemplateId } = normalizeClientDashboardTemplates(payload)
   const normalizedAiSettings = normalizeAiSettings(payload.integrations || {})
 
+  const clientId = String(client?.id || payload.id || '').trim()
+  const clientName = String(client?.name || payload.name || 'Novo cliente').trim()
+  const customClientId = getStoredClientUid(payload) || getStoredClientUid(businessData) || createClientUid(clientName, clientId)
+
   return {
-    id: client?.id || payload.id || '',
-    name: client?.name || payload.name || 'Novo cliente',
+    id: clientId,
+    customClientId,
+    name: clientName || 'Novo cliente',
     cnpj: client?.cnpj || payload.cnpj || '',
     operationEnabled: payload.operationEnabled !== false,
     dashboardEnabled: payload.dashboardEnabled !== false,

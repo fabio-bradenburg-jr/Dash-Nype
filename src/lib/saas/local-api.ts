@@ -77,6 +77,48 @@ function enumName(value: string | null | undefined, fallback: string) {
   return String(value || fallback).trim().toUpperCase()
 }
 
+function createClientUidSeed(value: string) {
+  const normalized = String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 32)
+
+  return normalized || 'cliente'
+}
+
+function createClientUid(name: string, clientId: string) {
+  const seed = createClientUidSeed(name)
+  const suffix = String(clientId || randomUUID()).replace(/[^a-zA-Z0-9]/g, '').slice(0, 10).toLowerCase()
+  return `cl_${seed}_${suffix || Date.now().toString(36)}`
+}
+
+function getStoredClientUid(source: Record<string, unknown> | null | undefined) {
+  if (!source || typeof source !== 'object') return ''
+
+  return String(
+    source.clientUid ||
+      source.client_uid ||
+      source.customClientId ||
+      source.custom_client_id ||
+      source.publicClientId ||
+      source.public_client_id ||
+      ''
+  ).trim()
+}
+
+function ensureClientIdentity<T extends Record<string, unknown>>(businessData: T, name: string, clientId: string) {
+  const clientUid = getStoredClientUid(businessData) || createClientUid(name, clientId)
+
+  return {
+    ...businessData,
+    clientUid,
+    customClientId: clientUid,
+  }
+}
+
 function serializeClient(row: LocalClientRow): ClientSummary {
   return {
     id: row.id,
@@ -90,7 +132,8 @@ function serializeClient(row: LocalClientRow): ClientSummary {
     start_date: asIsoDate(row.start_date),
     status: enumValue(row.status),
     target_roas: asNumber(row.target_roas),
-    business_data: row.business_data || {},
+    customClientId: getStoredClientUid(row.business_data) || createClientUid(row.name, row.id),
+    business_data: ensureClientIdentity(row.business_data || {}, row.name, row.id),
     last_sync_at: row.last_sync_at ? new Date(row.last_sync_at).toISOString() : null,
   }
 }
@@ -109,7 +152,9 @@ function serializeIntegration(row: LocalIntegrationRow): PlatformSnapshot['integ
 
 function serializeWorkspaceClient(row: WorkspaceClientRow, workspaceId: string): ClientSummary {
   const payload = row.payload || {}
-  const businessData = (payload.business_data || payload.businessData || {}) as Record<string, unknown>
+  const rawBusinessData = (payload.business_data || payload.businessData || {}) as Record<string, unknown>
+  const clientUid = getStoredClientUid(payload) || getStoredClientUid(rawBusinessData) || createClientUid(row.name, row.id)
+  const businessData = ensureClientIdentity(rawBusinessData, row.name, row.id)
 
   return {
     id: row.id,
@@ -123,7 +168,12 @@ function serializeWorkspaceClient(row: WorkspaceClientRow, workspaceId: string):
     start_date: String(payload.start_date || '').slice(0, 10),
     status: enumValue(String(payload.status || 'active')),
     target_roas: asNumber(payload.target_roas as number) || 2.5,
-    business_data: businessData,
+    customClientId: clientUid,
+    business_data: {
+      ...businessData,
+      clientUid,
+      customClientId: clientUid,
+    },
     last_sync_at: row.updated_at ? new Date(row.updated_at).toISOString() : null,
   }
 }
@@ -190,13 +240,20 @@ async function createWorkspaceClient(token: string, payload: Record<string, unkn
   const id = randomUUID()
   const name = String(payload.name || '').trim()
   const company = String(payload.company || name).trim()
+  const clientUid = createClientUid(name, id)
 
   if (!name || !company) {
     throw new Error('Nome do cliente e empresa são obrigatórios.')
   }
 
-  const businessData = payload.business_data && typeof payload.business_data === 'object' ? payload.business_data : {}
+  const businessData = ensureClientIdentity(
+    payload.business_data && typeof payload.business_data === 'object' ? (payload.business_data as Record<string, unknown>) : {},
+    name,
+    id
+  )
   const clientPayload = {
+    clientUid,
+    customClientId: clientUid,
     company,
     niche: String(payload.niche || 'Dashboard'),
     average_ticket: asNumber(payload.average_ticket as number),
@@ -205,7 +262,11 @@ async function createWorkspaceClient(token: string, payload: Record<string, unkn
     start_date: String(payload.start_date || new Date().toISOString().slice(0, 10)),
     status: enumValue(String(payload.status || 'active')),
     target_roas: asNumber(payload.target_roas as number) || 2.5,
-    business_data: businessData,
+    business_data: {
+      ...businessData,
+      clientUid,
+      customClientId: clientUid,
+    },
     saas_integrations: [],
   }
 
@@ -269,10 +330,16 @@ async function createWorkspaceIntegration(token: string, payload: Record<string,
   if (!client) throw new Error('Cliente não encontrado.')
 
   const currentPayload = ((client as WorkspaceClientRow).payload || {}) as Record<string, unknown>
+  const currentBusinessData = currentPayload.business_data && typeof currentPayload.business_data === 'object'
+    ? (currentPayload.business_data as Record<string, unknown>)
+    : {}
+  const clientUid = getStoredClientUid(currentPayload) || getStoredClientUid(currentBusinessData) || createClientUid(String((client as WorkspaceClientRow).name || 'cliente'), clientId)
   const currentIntegrations = Array.isArray(currentPayload.saas_integrations) ? currentPayload.saas_integrations : []
   const integration = {
     id: randomUUID(),
     client_id: clientId,
+    client_uid: clientUid,
+    customClientId: clientUid,
     provider,
     status: 'connected',
     account_name: accountName,
@@ -293,6 +360,13 @@ async function createWorkspaceIntegration(token: string, payload: Record<string,
     .update({
       payload: {
         ...currentPayload,
+        clientUid,
+        customClientId: clientUid,
+        business_data: {
+          ...currentBusinessData,
+          clientUid,
+          customClientId: clientUid,
+        },
         saas_integrations: nextIntegrations,
       },
     })
@@ -345,6 +419,7 @@ export async function createLocalSaasClient(token: string, payload: Record<strin
   const id = randomUUID()
   const name = String(payload.name || '').trim()
   const company = String(payload.company || name).trim()
+  const clientUid = createClientUid(name, id)
 
   if (!name || !company) {
     throw new Error('Nome do cliente e empresa são obrigatórios.')
@@ -394,7 +469,15 @@ export async function createLocalSaasClient(token: string, payload: Record<strin
       String(payload.start_date || new Date().toISOString().slice(0, 10)),
       enumName(payload.status as string, 'ACTIVE'),
       asNumber(payload.target_roas as number) || 2.5,
-      JSON.stringify(payload.business_data && typeof payload.business_data === 'object' ? payload.business_data : {}),
+      JSON.stringify({
+        ...ensureClientIdentity(
+          payload.business_data && typeof payload.business_data === 'object' ? (payload.business_data as Record<string, unknown>) : {},
+          name,
+          id
+        ),
+        clientUid,
+        customClientId: clientUid,
+      }),
     ]
   )
 
@@ -426,15 +509,25 @@ export async function updateLocalSaasClient(token: string, clientId: string, pay
       currentPayload.business_data && typeof currentPayload.business_data === 'object'
         ? (currentPayload.business_data as Record<string, unknown>)
         : {}
-    const nextBusinessData =
+    const clientUid = getStoredClientUid(currentPayload) || getStoredClientUid(currentBusinessData) || createClientUid(String((client as WorkspaceClientRow).name || 'cliente'), normalizedClientId)
+    const nextBusinessData = ensureClientIdentity(
       payload.business_data && typeof payload.business_data === 'object'
         ? { ...currentBusinessData, ...(payload.business_data as Record<string, unknown>) }
-        : currentBusinessData
+        : currentBusinessData,
+      String(payload.name || (client as WorkspaceClientRow).name || 'cliente'),
+      normalizedClientId
+    )
 
     const nextPayload = {
       ...currentPayload,
       ...payload,
-      business_data: nextBusinessData,
+      clientUid,
+      customClientId: clientUid,
+      business_data: {
+        ...nextBusinessData,
+        clientUid,
+        customClientId: clientUid,
+      },
     }
     delete (nextPayload as Record<string, unknown>).clientId
     delete (nextPayload as Record<string, unknown>).client_id
@@ -461,10 +554,13 @@ export async function updateLocalSaasClient(token: string, clientId: string, pay
   }
 
   const currentRow = current.rows[0]
-  const businessData =
+  const businessData = ensureClientIdentity(
     payload.business_data && typeof payload.business_data === 'object'
       ? { ...(currentRow.business_data || {}), ...(payload.business_data as Record<string, unknown>) }
-      : currentRow.business_data || {}
+      : currentRow.business_data || {},
+    String(payload.name || currentRow.name),
+    normalizedClientId
+  )
 
   const result = await getPool().query<LocalClientRow>(
     `update clients
@@ -543,11 +639,16 @@ export async function updateLocalSaasClientDashboardLayout(token: string, payloa
         ? (currentPayload.business_data as Record<string, unknown>)
         : {}
 
+    const clientUid = getStoredClientUid(currentPayload) || getStoredClientUid(currentBusinessData) || createClientUid(String((client as WorkspaceClientRow).name || 'cliente'), clientId)
     const nextPayload = {
       ...currentPayload,
+      clientUid,
+      customClientId: clientUid,
       business_data: {
         ...currentBusinessData,
         ...layoutData,
+        clientUid,
+        customClientId: clientUid,
       },
     }
 
@@ -573,10 +674,14 @@ export async function updateLocalSaasClientDashboardLayout(token: string, payloa
   }
 
   const currentBusinessData = current.rows[0].business_data || {}
-  const nextBusinessData = {
-    ...currentBusinessData,
-    ...layoutData,
-  }
+  const nextBusinessData = ensureClientIdentity(
+    {
+      ...currentBusinessData,
+      ...layoutData,
+    },
+    current.rows[0].name,
+    clientId
+  )
 
   const result = await getPool().query<LocalClientRow>(
     `update clients

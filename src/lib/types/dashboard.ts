@@ -239,6 +239,7 @@ export type DashboardIntegrations = AiSettings & {
 
 export interface ClientRecord {
   id: string
+  customClientId: string
   name: string
   cnpj: string
   operationEnabled: boolean

@@ -17,6 +17,7 @@ export const demoPlatformSnapshot: PlatformSnapshot = {
   clients: [],
   selectedClient: {
     id: '',
+    customClientId: 'cl_demo_empty',
     tenant_id: 'tenant-demo',
     name: 'Nenhum cliente cadastrado',
     company: 'Cadastre um cliente para iniciar',

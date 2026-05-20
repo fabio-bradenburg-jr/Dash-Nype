@@ -64,6 +64,7 @@ export type CampaignRow = {
 
 export type ClientSummary = {
   id: string
+  customClientId: string
   tenant_id: string
   name: string
   company: string

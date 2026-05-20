@@ -587,6 +587,35 @@ function createRecordId(prefix: string): string {
   return globalThis.crypto?.randomUUID?.() || `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2, 10)}`
 }
 
+function createClientUidSeed(value: string): string {
+  const normalized = String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 32)
+
+  return normalized || 'cliente'
+}
+
+function createClientUid(name: string, clientId: string): string {
+  const suffix = String(clientId || createRecordId('client')).replace(/[^a-zA-Z0-9]/g, '').slice(0, 10).toLowerCase()
+  return `cl_${createClientUidSeed(name)}_${suffix || Date.now().toString(36)}`
+}
+
+function resolveClientUid(overrides: ClientRecordOverrides, clientId: string): string {
+  const businessData = overrides.customFieldValues && typeof overrides.customFieldValues === 'object' ? overrides.customFieldValues : {}
+  return String(
+    overrides.customClientId ||
+      (overrides as Record<string, unknown>).clientUid ||
+      (overrides as Record<string, unknown>).client_uid ||
+      (businessData as Record<string, unknown>).customClientId ||
+      (businessData as Record<string, unknown>).clientUid ||
+      ''
+  ).trim() || createClientUid(String(overrides.name || 'Novo cliente'), clientId)
+}
+
 function normalizeTemplateMetricKeys(metricKeys: unknown): string[] {
   if (!Array.isArray(metricKeys)) return []
   return Array.from(new Set(metricKeys.filter((metricKey) => typeof metricKey === 'string' && metricKey.trim())))
@@ -818,9 +847,12 @@ function normalizeClientDashboardTemplates(client: ClientRecordOverrides) {
 export function createClientRecord(overrides: ClientRecordOverrides = {}): ClientRecord {
   const { dashboardTemplates, activeDashboardTemplateId } = normalizeClientDashboardTemplates(overrides)
   const normalizedAiSettings = normalizeAiSettings(overrides.integrations || {})
+  const clientId = overrides.id || createRecordId('client')
+  const customClientId = resolveClientUid(overrides, clientId)
 
   return {
-    id: overrides.id || createRecordId('client'),
+    id: clientId,
+    customClientId,
     name: 'Novo cliente',
     operationEnabled: overrides.operationEnabled !== false,
     dashboardEnabled: overrides.dashboardEnabled !== false,
