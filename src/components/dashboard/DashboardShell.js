@@ -233,6 +233,16 @@ const WEEKLY_HEALTH_OPTIONS = [
 
 const WEEKLY_HEALTH_BY_KEY = Object.fromEntries(WEEKLY_HEALTH_OPTIONS.map((item) => [item.key, item]))
 
+const WEEKLY_PERIOD_OPTIONS = [
+  { value: 'current_week', label: 'Semana atual' },
+  { value: 'previous_week', label: 'Semana anterior' },
+  { value: 'month', label: 'Mês inteiro' },
+  { value: 'quarter', label: 'Último trimestre' },
+  { value: 'year', label: '1 ano' },
+  { value: 'custom', label: 'Personalizado' },
+]
+
+
 function getMondayDateInputValue(value = new Date()) {
   const source = value instanceof Date ? new Date(value) : new Date(`${value}T00:00:00`)
   if (Number.isNaN(source.getTime())) return getMondayDateInputValue(new Date())
@@ -253,6 +263,54 @@ function formatWeekRangeLabel(weekStart, weekEnd) {
   const start = formatShortDate(weekStart)
   const end = formatShortDate(weekEnd || getWeekEndDateInputValue(weekStart))
   return `${start} até ${end}`
+}
+
+
+function getWeeklyPeriodWindow(preset, customSince, customUntil) {
+  const today = new Date()
+  const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+  const currentWeekStartValue = getMondayDateInputValue(todayStart)
+  const currentWeekStart = parseLocalDateInput(currentWeekStartValue) || todayStart
+  const currentWeekEnd = parseLocalDateInput(getWeekEndDateInputValue(currentWeekStartValue)) || todayStart
+
+  if (preset === 'custom') {
+    const start = parseLocalDateInput(customSince)
+    const end = parseLocalDateInput(customUntil)
+    if (!start || !end) return { start: currentWeekStart, end: currentWeekEnd, label: formatWeekRangeLabel(currentWeekStartValue) }
+    return { start, end, label: `${formatShortDate(customSince)} até ${formatShortDate(customUntil)}` }
+  }
+
+  if (preset === 'previous_week') {
+    const start = shiftLocalDays(currentWeekStart, -7)
+    const end = shiftLocalDays(currentWeekEnd, -7)
+    return { start, end, label: `${formatShortDate(formatLocalDateInput(start))} até ${formatShortDate(formatLocalDateInput(end))}` }
+  }
+
+  if (preset === 'month') {
+    const start = new Date(todayStart.getFullYear(), todayStart.getMonth(), 1)
+    const end = todayStart
+    return { start, end, label: `${formatShortDate(formatLocalDateInput(start))} até ${formatShortDate(formatLocalDateInput(end))}` }
+  }
+
+  if (preset === 'quarter') {
+    const start = shiftLocalDays(todayStart, -89)
+    return { start, end: todayStart, label: `${formatShortDate(formatLocalDateInput(start))} até ${formatShortDate(formatLocalDateInput(todayStart))}` }
+  }
+
+  if (preset === 'year') {
+    const start = shiftLocalDays(todayStart, -364)
+    return { start, end: todayStart, label: `${formatShortDate(formatLocalDateInput(start))} até ${formatShortDate(formatLocalDateInput(todayStart))}` }
+  }
+
+  return { start: currentWeekStart, end: currentWeekEnd, label: formatWeekRangeLabel(currentWeekStartValue) }
+}
+
+function isWeeklyRecordInsideWindow(record, windowRange) {
+  if (!windowRange?.start || !windowRange?.end) return true
+  const recordStart = parseLocalDateInput(record.weekStart)
+  const recordEnd = parseLocalDateInput(record.weekEnd || getWeekEndDateInputValue(record.weekStart)) || recordStart
+  if (!recordStart) return false
+  return recordStart <= windowRange.end && recordEnd >= windowRange.start
 }
 
 function normalizeWeeklyNumber(value) {
@@ -3130,6 +3188,9 @@ export default function DashboardShell({
   const [weeklyError, setWeeklyError] = useState('')
   const [weeklySuccessMessage, setWeeklySuccessMessage] = useState('')
   const [weeklyClientFilter, setWeeklyClientFilter] = useState('all')
+  const [weeklyPeriodPreset, setWeeklyPeriodPreset] = useState('current_week')
+  const [weeklyCustomSince, setWeeklyCustomSince] = useState(() => getMondayDateInputValue())
+  const [weeklyCustomUntil, setWeeklyCustomUntil] = useState(() => getWeekEndDateInputValue(getMondayDateInputValue()))
   const [weeklyWeekStart, setWeeklyWeekStart] = useState(() => getMondayDateInputValue())
   const [isWeeklyEntryModalOpen, setIsWeeklyEntryModalOpen] = useState(false)
   const [weeklyForm, setWeeklyForm] = useState({
@@ -3448,6 +3509,10 @@ export default function DashboardShell({
     [clients]
   )
   const weeklyWeekEnd = useMemo(() => getWeekEndDateInputValue(weeklyWeekStart), [weeklyWeekStart])
+  const weeklyPeriodWindow = useMemo(
+    () => getWeeklyPeriodWindow(weeklyPeriodPreset, weeklyCustomSince, weeklyCustomUntil),
+    [weeklyPeriodPreset, weeklyCustomSince, weeklyCustomUntil]
+  )
 
   useEffect(() => {
     if (!weeklySuccessMessage) return undefined
@@ -4449,7 +4514,7 @@ export default function DashboardShell({
     [activeClientDashboardRgb]
   )
   const weeklySearchTerm = useMemo(() => shellSearch.trim().toLowerCase(), [shellSearch])
-  const weeklyVisibleRecords = useMemo(() => {
+  const weeklyBaseVisibleRecords = useMemo(() => {
     return weeklyRecords.filter((record) => {
       const client = clientsById.get(record.clientId)
       const matchesClient = weeklyClientFilter === 'all' || record.clientId === weeklyClientFilter
@@ -4464,6 +4529,11 @@ export default function DashboardShell({
     })
   }, [weeklyRecords, weeklyClientFilter, weeklySearchTerm, clientsById])
 
+  const weeklyVisibleRecords = useMemo(
+    () => weeklyBaseVisibleRecords.filter((record) => isWeeklyRecordInsideWindow(record, weeklyPeriodWindow)),
+    [weeklyBaseVisibleRecords, weeklyPeriodWindow]
+  )
+
   const weeklyCurrentInvestment = normalizeWeeklyNumber(weeklyForm.investment)
   const weeklyCurrentLeads = normalizeWeeklyInteger(weeklyForm.leads)
   const weeklyCurrentSql = normalizeWeeklyInteger(weeklyForm.sql)
@@ -4475,13 +4545,9 @@ export default function DashboardShell({
     if (Number.isNaN(weeklySelectedDate.getTime())) return ''
     return String(weeklySelectedDate.getFullYear()) + '-' + String(weeklySelectedDate.getMonth() + 1).padStart(2, '0')
   }, [weeklySelectedDate])
-  const weeklySelectedWeekRecords = useMemo(
-    () => weeklyVisibleRecords.filter((record) => record.weekStart === weeklyWeekStart),
-    [weeklyVisibleRecords, weeklyWeekStart]
-  )
-  const weeklySelectedMonthRecords = useMemo(
-    () => weeklyVisibleRecords.filter((record) => String(record.weekStart || '').startsWith(weeklySelectedMonthKey)),
-    [weeklyVisibleRecords, weeklySelectedMonthKey]
+  const weeklyMonthRecords = useMemo(
+    () => weeklyBaseVisibleRecords.filter((record) => String(record.weekStart || '').startsWith(weeklySelectedMonthKey)),
+    [weeklyBaseVisibleRecords, weeklySelectedMonthKey]
   )
   const weeklyHealthRiskTarget = Number.isFinite(Number(operationSettings?.healthRiskTargetPercent))
     ? Math.min(100, Math.max(0, Number(operationSettings.healthRiskTargetPercent)))
@@ -4513,8 +4579,8 @@ export default function DashboardShell({
     }
   }, [weeklyHealthRiskTarget])
 
-  const weeklySummary = useMemo(() => summarizeWeeklyRecords(weeklySelectedWeekRecords), [summarizeWeeklyRecords, weeklySelectedWeekRecords])
-  const weeklyMonthSummary = useMemo(() => summarizeWeeklyRecords(weeklySelectedMonthRecords), [summarizeWeeklyRecords, weeklySelectedMonthRecords])
+  const weeklySummary = useMemo(() => summarizeWeeklyRecords(weeklyVisibleRecords), [summarizeWeeklyRecords, weeklyVisibleRecords])
+  const weeklyMonthSummary = useMemo(() => summarizeWeeklyRecords(weeklyMonthRecords), [summarizeWeeklyRecords, weeklyMonthRecords])
 
   const weeklyLineChartData = useMemo(() => {
     const byWeek = new Map()
@@ -4578,7 +4644,7 @@ export default function DashboardShell({
   }, [weeklyVisibleRecords, activeClientDashboardHex])
 
   const weeklyHealthChartData = useMemo(() => {
-    const records = weeklySelectedWeekRecords.length ? weeklySelectedWeekRecords : weeklyVisibleRecords
+    const records = weeklyVisibleRecords
     if (weeklyClientFilter !== 'all') {
       const rows = [...weeklyVisibleRecords].sort((left, right) => String(left.weekStart).localeCompare(String(right.weekStart)))
       return {
@@ -4610,7 +4676,7 @@ export default function DashboardShell({
         },
       ],
     }
-  }, [weeklySelectedWeekRecords, weeklyVisibleRecords, weeklyClientFilter])
+  }, [weeklyVisibleRecords, weeklyClientFilter])
 
   const weeklyChartOptions = useMemo(() => ({
     responsive: true,
@@ -12311,11 +12377,27 @@ export default function DashboardShell({
             </select>
           </label>
           <label>
-            <span>Semana</span>
-            <input type="date" value={weeklyWeekStart} onChange={(event) => setWeeklyWeekStart(getMondayDateInputValue(event.target.value))} />
+            <span>Período</span>
+            <select value={weeklyPeriodPreset} onChange={(event) => setWeeklyPeriodPreset(event.target.value)}>
+              {WEEKLY_PERIOD_OPTIONS.map((option) => (
+                <option key={'weekly-period-' + option.value} value={option.value}>{option.label}</option>
+              ))}
+            </select>
           </label>
+          {weeklyPeriodPreset === 'custom' && (
+            <div className="weekly-custom-range-fields">
+              <label>
+                <span>Início</span>
+                <input type="date" value={weeklyCustomSince} onChange={(event) => setWeeklyCustomSince(event.target.value)} />
+              </label>
+              <label>
+                <span>Fim</span>
+                <input type="date" value={weeklyCustomUntil} onChange={(event) => setWeeklyCustomUntil(event.target.value)} />
+              </label>
+            </div>
+          )}
           <div className="weekly-range-pill" style={{ borderColor: activeClientDashboardHex + '66', color: activeClientDashboardHex }}>
-            {formatWeekRangeLabel(weeklyWeekStart, weeklyWeekEnd)}
+            {weeklyPeriodWindow.label}
           </div>
           <button type="button" className="btn btn-primary weekly-entry-button" onClick={() => { setWeeklySuccessMessage(''); setIsWeeklyEntryModalOpen(true) }} style={{ background: activeClientDashboardHex, borderColor: activeClientDashboardHex }}>
             <i className="bx bx-plus"></i>
@@ -12355,12 +12437,12 @@ export default function DashboardShell({
         <div className={'weekly-risk-badge ' + (weeklySummary.withinRiskTarget ? 'healthy' : 'critical')}>
           <span>Crítico + Atenção</span>
           <strong>{weeklySummary.healthCount ? formatNumber(weeklySummary.riskPercent) + '%' : '-'}</strong>
-          <small>{weeklySummary.healthCount ? (weeklySummary.withinRiskTarget ? 'Dentro da meta' : 'Acima da meta') : 'Sem dados na semana'}</small>
+          <small>{weeklySummary.healthCount ? (weeklySummary.withinRiskTarget ? 'Dentro da meta' : 'Acima da meta') : 'Sem dados no período'}</small>
         </div>
       </div>
 
       <div className="weekly-kpi-grid weekly-kpi-grid-wide">
-        <div className="weekly-kpi-card glass-panel"><span>Saúde média da semana</span><strong>{weeklySummary.averageHealthLabel}</strong></div>
+        <div className="weekly-kpi-card glass-panel"><span>Saúde média do período</span><strong>{weeklySummary.averageHealthLabel}</strong></div>
         <div className="weekly-kpi-card glass-panel"><span>Saúde média do mês</span><strong>{weeklyMonthSummary.averageHealthLabel}</strong></div>
         <div className="weekly-kpi-card glass-panel"><span>Investimento</span><strong>{formatCurrency(weeklySummary.investment)}</strong></div>
         <div className="weekly-kpi-card glass-panel"><span>Leads</span><strong>{formatNumber(weeklySummary.leads)}</strong></div>
