@@ -12225,6 +12225,11 @@ export default function DashboardShell({
           </select>
         </label>
         <label className="input-group" style={weeklyFieldStyle}>
+          <span>Semana</span>
+          <input style={weeklyControlStyle} type="date" value={weeklyWeekStart} onChange={(event) => setWeeklyWeekStart(getMondayDateInputValue(event.target.value))} />
+          <small style={{ color: activeClientDashboardHex, fontWeight: 800 }}>{formatWeekRangeLabel(weeklyWeekStart, weeklyWeekEnd)}</small>
+        </label>
+        <label className="input-group" style={weeklyFieldStyle}>
           <span>Investimento</span>
           <input style={weeklyControlStyle} type="number" min="0" step="0.01" value={weeklyForm.investment} onChange={(event) => setWeeklyForm((current) => ({ ...current, investment: event.target.value }))} placeholder="0,00" />
         </label>
