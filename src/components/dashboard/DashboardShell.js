@@ -12051,9 +12051,152 @@ export default function DashboardShell({
   )
 
 
+  const weeklyModalOverlayStyle = {
+    position: 'fixed',
+    inset: 0,
+    zIndex: 9999,
+    display: 'grid',
+    placeItems: 'center',
+    padding: 24,
+    background: 'rgba(4, 9, 18, 0.78)',
+    backdropFilter: 'blur(16px)',
+    WebkitBackdropFilter: 'blur(16px)',
+    boxSizing: 'border-box',
+  }
+
+  const weeklyModalCardStyle = {
+    position: 'relative',
+    width: 'min(1120px, calc(100vw - 48px))',
+    maxHeight: 'calc(100vh - 48px)',
+    overflow: 'hidden',
+    padding: 30,
+    borderRadius: 32,
+    background: `linear-gradient(145deg, rgba(255,255,255,.07), rgba(255,255,255,.025)), radial-gradient(circle at 10% 0%, ${activeClientDashboardHex}29, transparent 38%), rgba(18,18,20,.97)`,
+    border: '1px solid rgba(255,255,255,.12)',
+    boxShadow: '0 34px 100px rgba(0,0,0,.52)',
+    boxSizing: 'border-box',
+  }
+
+  const weeklyModalCloseStyle = {
+    position: 'absolute',
+    top: 22,
+    right: 22,
+    width: 44,
+    height: 44,
+    borderRadius: 999,
+    border: '1px solid rgba(255,255,255,.12)',
+    background: 'rgba(255,255,255,.07)',
+    color: '#fff',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: 24,
+    cursor: 'pointer',
+    zIndex: 2,
+  }
+
+  const weeklyEntryFormStyle = {
+    display: 'grid',
+    gap: 24,
+    maxHeight: 'calc(100vh - 108px)',
+    overflowY: 'auto',
+    padding: '4px 4px 2px',
+    boxSizing: 'border-box',
+  }
+
+  const weeklyEntryHeaderStyle = {
+    display: 'flex',
+    justifyContent: 'space-between',
+    gap: 24,
+    alignItems: 'flex-start',
+    padding: '0 56px 4px 0',
+    margin: 0,
+  }
+
+  const weeklyFormGridStyle = {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+    gap: 18,
+  }
+
+  const weeklyFieldStyle = {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 10,
+    minWidth: 0,
+    color: 'var(--text-primary)',
+  }
+
+  const weeklyControlStyle = {
+    width: '100%',
+    minHeight: 56,
+    border: '1px solid rgba(148,163,184,.18)',
+    borderRadius: 18,
+    background: 'rgba(6,10,18,.72)',
+    color: 'var(--text-primary)',
+    padding: '0 18px',
+    font: 'inherit',
+    outline: 'none',
+    boxSizing: 'border-box',
+  }
+
+  const weeklyTextareaStyle = {
+    ...weeklyControlStyle,
+    minHeight: 156,
+    padding: '18px',
+    resize: 'vertical',
+    lineHeight: 1.5,
+  }
+
+  const weeklyComputedStyle = {
+    minHeight: 96,
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: 'center',
+    gap: 10,
+    border: '1px solid rgba(148,163,184,.14)',
+    borderRadius: 22,
+    background: 'rgba(255,255,255,.045)',
+    padding: 18,
+    boxSizing: 'border-box',
+  }
+
+  const weeklyHealthGridStyle = {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
+    gap: 14,
+  }
+
+  const weeklyHealthOptionBaseStyle = {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 8,
+    minHeight: 122,
+    padding: 16,
+    borderRadius: 20,
+    border: '1px solid rgba(148,163,184,.15)',
+    background: 'rgba(255,255,255,.045)',
+    color: 'var(--text-primary)',
+    textAlign: 'left',
+    cursor: 'pointer',
+    boxSizing: 'border-box',
+  }
+
+  const weeklyActionsStyle = {
+    position: 'sticky',
+    bottom: 0,
+    zIndex: 1,
+    display: 'flex',
+    justifyContent: 'flex-end',
+    gap: 14,
+    paddingTop: 18,
+    borderTop: '1px solid rgba(148,163,184,.12)',
+    background: 'linear-gradient(180deg, transparent, rgba(18,18,20,.98) 20%)',
+  }
+
   const weeklyFormContent = (
-    <form className="weekly-entry-form" onSubmit={handleSaveWeeklyRecord}>
-      <div className="section-header section-header-stack">
+    <form className="weekly-entry-form" style={weeklyEntryFormStyle} onSubmit={handleSaveWeeklyRecord}>
+      <div className="section-header section-header-stack" style={weeklyEntryHeaderStyle}>
         <div>
           <span className="eyebrow">imputação</span>
           <h2>Dados da semana</h2>
@@ -12061,57 +12204,61 @@ export default function DashboardShell({
         </div>
       </div>
 
-      <div className="weekly-form-grid">
-        <label className="input-group">
+      <div className="weekly-form-grid" style={weeklyFormGridStyle}>
+        <label className="input-group" style={weeklyFieldStyle}>
           <span>Cliente</span>
-          <select value={weeklyForm.clientId} onChange={(event) => setWeeklyForm((current) => ({ ...current, clientId: event.target.value }))}>
+          <select style={weeklyControlStyle} value={weeklyForm.clientId} onChange={(event) => setWeeklyForm((current) => ({ ...current, clientId: event.target.value }))}>
             <option value="">Selecione</option>
             {dashboardEligibleClients.map((client) => (
               <option key={'weekly-form-client-' + client.id} value={client.id}>{client.name}</option>
             ))}
           </select>
         </label>
-        <label className="input-group">
+        <label className="input-group" style={weeklyFieldStyle}>
           <span>Investimento</span>
-          <input type="number" min="0" step="0.01" value={weeklyForm.investment} onChange={(event) => setWeeklyForm((current) => ({ ...current, investment: event.target.value }))} placeholder="0,00" />
+          <input style={weeklyControlStyle} type="number" min="0" step="0.01" value={weeklyForm.investment} onChange={(event) => setWeeklyForm((current) => ({ ...current, investment: event.target.value }))} placeholder="0,00" />
         </label>
-        <label className="input-group">
+        <label className="input-group" style={weeklyFieldStyle}>
           <span>Leads gerados</span>
-          <input type="number" min="0" step="1" value={weeklyForm.leads} onChange={(event) => setWeeklyForm((current) => ({ ...current, leads: event.target.value }))} placeholder="0" />
+          <input style={weeklyControlStyle} type="number" min="0" step="1" value={weeklyForm.leads} onChange={(event) => setWeeklyForm((current) => ({ ...current, leads: event.target.value }))} placeholder="0" />
         </label>
-        <label className="input-group">
+        <label className="input-group" style={weeklyFieldStyle}>
           <span>SQL</span>
-          <input type="number" min="0" step="1" value={weeklyForm.sql} onChange={(event) => setWeeklyForm((current) => ({ ...current, sql: event.target.value }))} placeholder="0" />
+          <input style={weeklyControlStyle} type="number" min="0" step="1" value={weeklyForm.sql} onChange={(event) => setWeeklyForm((current) => ({ ...current, sql: event.target.value }))} placeholder="0" />
         </label>
-        <div className="weekly-computed-field">
+        <div className="weekly-computed-field" style={weeklyComputedStyle}>
           <span>CPL automático</span>
           <strong>{weeklyCurrentLeads > 0 ? formatCurrency(weeklyCurrentCpl) : '-'}</strong>
         </div>
-        <div className="weekly-computed-field">
+        <div className="weekly-computed-field" style={weeklyComputedStyle}>
           <span>Custo SQL automático</span>
           <strong>{weeklyCurrentSql > 0 ? formatCurrency(weeklyCurrentCostPerSql) : '-'}</strong>
         </div>
       </div>
 
-      <div className="weekly-health-options" role="group" aria-label="Saúde do cliente">
-        {WEEKLY_HEALTH_OPTIONS.map((option) => (
-          <button
-            key={'weekly-health-' + option.key}
-            type="button"
-            className={'weekly-health-option ' + (weeklyForm.healthStatus === option.key ? 'active' : '')}
-            onClick={() => setWeeklyForm((current) => ({ ...current, healthStatus: option.key }))}
-            style={weeklyForm.healthStatus === option.key ? { borderColor: option.color, color: option.color, boxShadow: '0 0 0 1px ' + option.color + '44, 0 16px 40px ' + option.color + '18' } : undefined}
-          >
-            <span style={{ background: option.color }}></span>
-            <strong>{option.label}</strong>
-            <small>{option.criteria}</small>
-          </button>
-        ))}
+      <div className="weekly-health-options" style={weeklyHealthGridStyle} role="group" aria-label="Saúde do cliente">
+        {WEEKLY_HEALTH_OPTIONS.map((option) => {
+          const isActive = weeklyForm.healthStatus === option.key
+          return (
+            <button
+              key={'weekly-health-' + option.key}
+              type="button"
+              className={'weekly-health-option ' + (isActive ? 'active' : '')}
+              onClick={() => setWeeklyForm((current) => ({ ...current, healthStatus: option.key }))}
+              style={isActive ? { ...weeklyHealthOptionBaseStyle, borderColor: option.color, color: option.color, boxShadow: '0 0 0 1px ' + option.color + '44, 0 16px 40px ' + option.color + '18' } : weeklyHealthOptionBaseStyle}
+            >
+              <span style={{ width: 12, height: 12, borderRadius: 999, background: option.color }}></span>
+              <strong>{option.label}</strong>
+              <small>{option.criteria}</small>
+            </button>
+          )
+        })}
       </div>
 
-      <label className="input-group weekly-action-input">
+      <label className="input-group weekly-action-input" style={weeklyFieldStyle}>
         <span>Plano de ação interno, até 5 tópicos</span>
         <textarea
+          style={weeklyTextareaStyle}
           value={weeklyForm.actionItemsText}
           onChange={(event) => setWeeklyForm((current) => ({ ...current, actionItemsText: event.target.value.split('\n').slice(0, 5).join('\n') }))}
           placeholder={'1. Ajustar campanha de leads\n2. Revisar follow-up comercial\n3. Marcar reunião de alinhamento'}
@@ -12120,7 +12267,7 @@ export default function DashboardShell({
         <small>{weeklyForm.actionItemsText.split('\n').filter((item) => item.trim()).length}/5 tópicos preenchidos</small>
       </label>
 
-      <div className="client-create-actions weekly-entry-actions">
+      <div className="client-create-actions weekly-entry-actions" style={weeklyActionsStyle}>
         <button type="button" className="btn btn-secondary" onClick={() => setIsWeeklyEntryModalOpen(false)}>Cancelar</button>
         <button type="submit" className="btn btn-primary" disabled={isSavingWeeklyRecord || !weeklyForm.clientId} style={{ background: activeClientDashboardHex, borderColor: activeClientDashboardHex }}>
           <i className="bx bx-save"></i>
@@ -12255,9 +12402,9 @@ export default function DashboardShell({
       </div>
 
       {isWeeklyEntryModalOpen && typeof document !== 'undefined' && createPortal(
-        <div className="modal-overlay weekly-modal-overlay" role="presentation" onClick={() => setIsWeeklyEntryModalOpen(false)}>
-          <div className="modal-card glass-panel simple-client-modal weekly-entry-modal" role="dialog" aria-modal="true" aria-label="Cadastrar dados da semana" onClick={(event) => event.stopPropagation()} style={{ maxWidth: 1120, width: 'calc(100vw - 48px)', maxHeight: 'calc(100vh - 48px)' }}>
-            <button type="button" className="modal-close" onClick={() => setIsWeeklyEntryModalOpen(false)} aria-label="Fechar">
+        <div className="modal-overlay weekly-modal-overlay" style={weeklyModalOverlayStyle} role="presentation" onClick={() => setIsWeeklyEntryModalOpen(false)}>
+          <div className="modal-card glass-panel simple-client-modal weekly-entry-modal" role="dialog" aria-modal="true" aria-label="Cadastrar dados da semana" onClick={(event) => event.stopPropagation()} style={weeklyModalCardStyle}>
+            <button type="button" className="modal-close" style={weeklyModalCloseStyle} onClick={() => setIsWeeklyEntryModalOpen(false)} aria-label="Fechar">
               <i className="bx bx-x"></i>
             </button>
             {weeklyFormContent}
