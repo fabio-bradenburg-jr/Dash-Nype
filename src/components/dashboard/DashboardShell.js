@@ -3128,6 +3128,7 @@ export default function DashboardShell({
   const [isWeeklyLoading, setIsWeeklyLoading] = useState(false)
   const [isSavingWeeklyRecord, setIsSavingWeeklyRecord] = useState(false)
   const [weeklyError, setWeeklyError] = useState('')
+  const [weeklySuccessMessage, setWeeklySuccessMessage] = useState('')
   const [weeklyClientFilter, setWeeklyClientFilter] = useState('all')
   const [weeklyWeekStart, setWeeklyWeekStart] = useState(() => getMondayDateInputValue())
   const [isWeeklyEntryModalOpen, setIsWeeklyEntryModalOpen] = useState(false)
@@ -3449,6 +3450,12 @@ export default function DashboardShell({
   const weeklyWeekEnd = useMemo(() => getWeekEndDateInputValue(weeklyWeekStart), [weeklyWeekStart])
 
   useEffect(() => {
+    if (!weeklySuccessMessage) return undefined
+    const timerId = window.setTimeout(() => setWeeklySuccessMessage(''), 4500)
+    return () => window.clearTimeout(timerId)
+  }, [weeklySuccessMessage])
+
+  useEffect(() => {
     if (!dashboardEligibleClients.length) return
     setWeeklyForm((current) => {
       if (current.clientId && dashboardEligibleClients.some((client) => client.id === current.clientId)) return current
@@ -3512,6 +3519,7 @@ export default function DashboardShell({
 
     setIsSavingWeeklyRecord(true)
     setWeeklyError('')
+    setWeeklySuccessMessage('')
 
     try {
       const response = await fetch('/api/client-weekly', {
@@ -3534,6 +3542,8 @@ export default function DashboardShell({
       }
 
       await loadWeeklyRecords()
+      const savedClientName = dashboardEligibleClients.find((client) => client.id === weeklyForm.clientId)?.name || 'cliente'
+      setWeeklySuccessMessage(`Semana de ${savedClientName} salva com sucesso.`)
       setIsWeeklyEntryModalOpen(false)
     } catch (error) {
       setWeeklyError(error.message || 'Não foi possível salvar o acompanhamento semanal.')
@@ -12302,7 +12312,7 @@ export default function DashboardShell({
           <div className="weekly-range-pill" style={{ borderColor: activeClientDashboardHex + '66', color: activeClientDashboardHex }}>
             {formatWeekRangeLabel(weeklyWeekStart, weeklyWeekEnd)}
           </div>
-          <button type="button" className="btn btn-primary weekly-entry-button" onClick={() => setIsWeeklyEntryModalOpen(true)} style={{ background: activeClientDashboardHex, borderColor: activeClientDashboardHex }}>
+          <button type="button" className="btn btn-primary weekly-entry-button" onClick={() => { setWeeklySuccessMessage(''); setIsWeeklyEntryModalOpen(true) }} style={{ background: activeClientDashboardHex, borderColor: activeClientDashboardHex }}>
             <i className="bx bx-plus"></i>
             Cadastrar dados
           </button>
@@ -12310,6 +12320,26 @@ export default function DashboardShell({
       </div>
 
       {weeklyError && <div className="form-error weekly-error">{weeklyError}</div>}
+      {weeklySuccessMessage && (
+        <div
+          className="form-success weekly-success"
+          role="status"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+            padding: '16px 18px',
+            borderRadius: 18,
+            border: '1px solid ' + activeClientDashboardHex + '66',
+            background: activeClientDashboardHex + '18',
+            color: 'var(--text-primary)',
+            boxShadow: '0 18px 50px rgba(0,0,0,.18)',
+          }}
+        >
+          <i className="bx bx-check-circle" style={{ color: activeClientDashboardHex, fontSize: 22 }}></i>
+          <strong>{weeklySuccessMessage}</strong>
+        </div>
+      )}
 
       <div className="weekly-focus-strip glass-panel">
         <div>
