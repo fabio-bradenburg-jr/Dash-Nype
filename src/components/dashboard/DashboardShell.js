@@ -12151,9 +12151,9 @@ export default function DashboardShell({
           <div className="weekly-range-pill" style={{ borderColor: activeClientDashboardHex + '66', color: activeClientDashboardHex }}>
             {formatWeekRangeLabel(weeklyWeekStart, weeklyWeekEnd)}
           </div>
-          <button type="button" className="weekly-entry-button" onClick={() => setIsWeeklyEntryModalOpen(true)} style={{ background: activeClientDashboardHex, borderColor: activeClientDashboardHex }}>
+          <button type="button" className="btn btn-primary weekly-entry-button" onClick={() => setIsWeeklyEntryModalOpen(true)} style={{ background: activeClientDashboardHex, borderColor: activeClientDashboardHex }}>
             <i className="bx bx-plus"></i>
-            Imputar dados da semana
+            Cadastrar dados
           </button>
         </div>
       </div>
@@ -12251,8 +12251,8 @@ export default function DashboardShell({
       </div>
 
       {isWeeklyEntryModalOpen && createPortal(
-        <div className="modal-backdrop weekly-modal-backdrop" role="presentation" onClick={() => setIsWeeklyEntryModalOpen(false)}>
-          <div className="client-modal weekly-entry-modal" role="dialog" aria-modal="true" aria-label="Imputar dados da semana" onClick={(event) => event.stopPropagation()}>
+        <div className="modal-overlay weekly-modal-overlay" role="presentation" onClick={() => setIsWeeklyEntryModalOpen(false)}>
+          <div className="modal-card glass-panel simple-client-modal weekly-entry-modal" role="dialog" aria-modal="true" aria-label="Cadastrar dados da semana" onClick={(event) => event.stopPropagation()}>
             <button type="button" className="modal-close" onClick={() => setIsWeeklyEntryModalOpen(false)} aria-label="Fechar">
               <i className="bx bx-x"></i>
             </button>
@@ -27115,8 +27115,7 @@ export default function DashboardShell({
           box-shadow: 0 0 0 4px color-mix(in srgb, var(--weekly-accent) 14%, transparent);
         }
 
-        .weekly-range-pill,
-        .weekly-entry-button {
+        .weekly-range-pill {
           grid-column: 1 / -1;
           min-height: 50px;
           border: 1px solid;
@@ -27132,9 +27131,18 @@ export default function DashboardShell({
         }
 
         .weekly-entry-button {
+          min-height: 54px;
+          border-radius: 18px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 10px;
+          padding: 0 22px;
           color: #ffffff;
           cursor: pointer;
+          font-weight: 900;
           box-shadow: 0 18px 42px color-mix(in srgb, var(--weekly-accent) 28%, transparent);
+          white-space: nowrap;
         }
 
         .weekly-risk-badge {
@@ -27404,11 +27412,17 @@ export default function DashboardShell({
           margin-top: 6px;
         }
 
+        .weekly-modal-overlay {
+          align-items: center;
+          justify-items: center;
+        }
+
         .weekly-entry-modal {
-          width: min(1080px, calc(100vw - 40px));
+          width: min(100%, 1120px);
           max-height: min(88vh, 920px);
           overflow: auto;
-          padding: 0;
+          padding: 30px;
+          border-radius: 32px;
         }
 
         .weekly-entry-modal .weekly-form-card {
@@ -27416,6 +27430,7 @@ export default function DashboardShell({
           border-radius: 0;
           box-shadow: none;
           background: transparent;
+          padding: 0;
         }
 
         .dashboard-light-mode .weekly-hero,
