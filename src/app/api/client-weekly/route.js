@@ -1,74 +1,8 @@
 import { NextResponse } from 'next/server'
-import { Pool } from 'pg'
 
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/server/supabase-admin'
 import { getAccessContext } from '@/lib/server/access-control'
-
-let pool
-let ensured = false
-
-function getDatabaseUrl() {
-  return (
-    process.env.DATABASE_URL ||
-    process.env.POSTGRES_URL ||
-    process.env.POSTGRES_PRISMA_URL ||
-    process.env.POSTGRES_URL_NON_POOLING ||
-    process.env.SUPABASE_DB_URL ||
-    ''
-  )
-}
-
-function getPool() {
-  if (!pool) {
-    const databaseUrl = getDatabaseUrl()
-    if (!databaseUrl) {
-      throw new Error('Conexão do banco não configurada para salvar acompanhamento semanal.')
-    }
-
-    pool = new Pool({
-      connectionString: databaseUrl.replace(/^postgresql\+psycopg:\/\//, 'postgresql://'),
-    })
-  }
-
-  return pool
-}
-
-async function ensureWeeklyTable() {
-  if (ensured) return
-
-  await getPool().query(`
-    create table if not exists public.client_weekly_snapshots (
-      id text primary key default gen_random_uuid()::text,
-      workspace_id text not null,
-      client_id text not null,
-      week_start date not null,
-      week_end date not null,
-      investment numeric(14,2) not null default 0,
-      leads integer not null default 0,
-      sql_count integer not null default 0,
-      health_status text not null default 'attention',
-      action_items jsonb not null default '[]'::jsonb,
-      created_by text,
-      updated_by text,
-      created_at timestamptz not null default now(),
-      updated_at timestamptz not null default now(),
-      constraint client_weekly_snapshots_health_status_check
-        check (health_status in ('critical', 'attention', 'healthy', 'with_result')),
-      constraint client_weekly_snapshots_unique_week unique (workspace_id, client_id, week_start)
-    );
-
-    create index if not exists client_weekly_snapshots_workspace_week_idx
-      on public.client_weekly_snapshots (workspace_id, week_start desc);
-
-    create index if not exists client_weekly_snapshots_client_week_idx
-      on public.client_weekly_snapshots (client_id, week_start desc);
-
-    alter table public.client_weekly_snapshots enable row level security;
-  `)
-
-  ensured = true
-}
 
 function normalizeDateInput(value) {
   const raw = String(value || '').slice(0, 10)
@@ -108,11 +42,24 @@ function normalizeHealthStatus(value) {
 }
 
 function normalizeActionItems(value) {
-  const items = Array.isArray(value) ? value : String(value || '').split('\n')
+  const items = Array.isArray(value) ? value : String(value || '').split('\\n')
   return items
     .map((item) => String(item || '').trim())
     .filter(Boolean)
     .slice(0, 5)
+}
+
+function normalizeJsonArray(value) {
+  if (Array.isArray(value)) return value
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value)
+      return Array.isArray(parsed) ? parsed : []
+    } catch {
+      return []
+    }
+  }
+  return []
 }
 
 function serializeRow(row) {
@@ -132,7 +79,7 @@ function serializeRow(row) {
     sql: sqlCount,
     costPerSql: sqlCount > 0 ? investment / sqlCount : 0,
     healthStatus: row.health_status || 'attention',
-    actionItems: Array.isArray(row.action_items) ? row.action_items : [],
+    actionItems: normalizeJsonArray(row.action_items),
     updatedAt: row.updated_at ? new Date(row.updated_at).toISOString() : null,
   }
 }
@@ -166,12 +113,21 @@ async function getAuthenticatedContext() {
     return { error: NextResponse.json({ error: 'Usuário sem workspace vinculado.' }, { status: 403 }) }
   }
 
-  return { user, accessContext }
+  return { user, accessContext, adminSupabase }
+}
+
+function buildBaseWeeklyQuery(adminSupabase, workspaceId) {
+  return adminSupabase
+    .from('client_weekly_snapshots')
+    .select('*')
+    .eq('workspace_id', workspaceId)
+    .order('week_start', { ascending: false })
+    .order('client_id', { ascending: true })
+    .limit(260)
 }
 
 export async function GET(request) {
   try {
-    await ensureWeeklyTable()
     const context = await getAuthenticatedContext()
     if (context.error) return context.error
 
@@ -183,29 +139,20 @@ export async function GET(request) {
       return NextResponse.json({ error: 'Sem acesso a este cliente.' }, { status: 403 })
     }
 
-    const values = [context.accessContext.workspaceId]
-    const clauses = ['workspace_id = $1']
+    let query = buildBaseWeeklyQuery(context.adminSupabase, context.accessContext.workspaceId)
 
     if (clientId) {
-      values.push(clientId)
-      clauses.push(`client_id = $${values.length}`)
+      query = query.eq('client_id', clientId)
     } else if (readableClientIds) {
       const ids = Array.from(readableClientIds)
       if (!ids.length) return NextResponse.json({ records: [] })
-      values.push(ids)
-      clauses.push(`client_id = any($${values.length})`)
+      query = query.in('client_id', ids)
     }
 
-    const result = await getPool().query(
-      `select *
-       from public.client_weekly_snapshots
-       where ${clauses.join(' and ')}
-       order by week_start desc, client_id asc
-       limit 260`,
-      values
-    )
+    const { data, error } = await query
+    if (error) throw error
 
-    return NextResponse.json({ records: result.rows.map(serializeRow) })
+    return NextResponse.json({ records: (data || []).map(serializeRow) })
   } catch (error) {
     console.error('Client weekly GET error:', error)
     return NextResponse.json({ error: error.message || 'Não foi possível carregar o acompanhamento semanal.' }, { status: 500 })
@@ -214,7 +161,6 @@ export async function GET(request) {
 
 export async function POST(request) {
   try {
-    await ensureWeeklyTable()
     const context = await getAuthenticatedContext()
     if (context.error) return context.error
 
@@ -235,48 +181,33 @@ export async function POST(request) {
     const sqlCount = normalizeInteger(body.sql || body.sqlCount || body.sql_count)
     const healthStatus = normalizeHealthStatus(body.healthStatus || body.health_status)
     const actionItems = normalizeActionItems(body.actionItems || body.action_items)
+    const now = new Date().toISOString()
 
-    const result = await getPool().query(
-      `insert into public.client_weekly_snapshots (
-         workspace_id,
-         client_id,
-         week_start,
-         week_end,
-         investment,
-         leads,
-         sql_count,
-         health_status,
-         action_items,
-         created_by,
-         updated_by,
-         created_at,
-         updated_at
-       ) values ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10, $10, now(), now())
-       on conflict (workspace_id, client_id, week_start) do update set
-         week_end = excluded.week_end,
-         investment = excluded.investment,
-         leads = excluded.leads,
-         sql_count = excluded.sql_count,
-         health_status = excluded.health_status,
-         action_items = excluded.action_items,
-         updated_by = excluded.updated_by,
-         updated_at = now()
-       returning *`,
-      [
-        context.accessContext.workspaceId,
-        clientId,
-        weekStart,
-        weekEnd,
-        investment,
-        leads,
-        sqlCount,
-        healthStatus,
-        JSON.stringify(actionItems),
-        context.user.id,
-      ]
-    )
+    const { data, error } = await context.adminSupabase
+      .from('client_weekly_snapshots')
+      .upsert(
+        {
+          workspace_id: context.accessContext.workspaceId,
+          client_id: clientId,
+          week_start: weekStart,
+          week_end: weekEnd,
+          investment,
+          leads,
+          sql_count: sqlCount,
+          health_status: healthStatus,
+          action_items: actionItems,
+          created_by: context.user.id,
+          updated_by: context.user.id,
+          updated_at: now,
+        },
+        { onConflict: 'workspace_id,client_id,week_start' }
+      )
+      .select('*')
+      .single()
 
-    return NextResponse.json({ record: serializeRow(result.rows[0]) })
+    if (error) throw error
+
+    return NextResponse.json({ record: serializeRow(data) })
   } catch (error) {
     console.error('Client weekly POST error:', error)
     return NextResponse.json({ error: error.message || 'Não foi possível salvar o acompanhamento semanal.' }, { status: 500 })
