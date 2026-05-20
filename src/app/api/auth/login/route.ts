@@ -72,53 +72,68 @@ async function loginWithLegacySupabase(body: { email: string; password: string }
     throw new Error(error?.message || 'Credenciais inválidas.')
   }
 
+  const email = String(data.user.email || body.email || '').trim().toLowerCase()
+  const isPrimaryAdmin = email === 'fabiobrandenburgjr@gmail.com'
+  const fallbackAccessContext = {
+    profile: {
+      full_name: data.user.user_metadata?.full_name || data.user.email || 'Usuário',
+      company_name: 'Assessoria LP',
+    },
+    workspaceId: data.user.id,
+    role: isPrimaryAdmin ? 'master' : 'visualizador',
+    canEditIntegrations: isPrimaryAdmin,
+  }
   const adminSupabase = process.env.SUPABASE_SERVICE_ROLE_KEY ? createAdminClient() : null
-  let accessContext
+  let accessContext: any = fallbackAccessContext
 
   try {
     accessContext = await getAccessContext(supabase, data.user, adminSupabase ? { adminSupabase } : {})
   } catch (accessError) {
-    if (!isRecoverableLoginError(accessError)) {
-      if (!adminSupabase) {
-        throw new Error(
-          'Login validado, mas falta configurar `SUPABASE_SERVICE_ROLE_KEY` no servidor para liberar o acesso deste usuário.'
-        )
-      }
+    if (!isRecoverableLoginError(accessError) && !adminSupabase) {
+      throw new Error(
+        'Login validado, mas falta configurar `SUPABASE_SERVICE_ROLE_KEY` no servidor para liberar o acesso deste usuário.'
+      )
+    }
 
+    if (!isRecoverableLoginError(accessError) && !isPrimaryAdmin) {
       throw accessError
     }
-
-    const email = String(data.user.email || body.email || '').trim().toLowerCase()
-    const isPrimaryAdmin = email === 'fabiobrandenburgjr@gmail.com'
-    accessContext = {
-      profile: {
-        full_name: data.user.user_metadata?.full_name || data.user.email || 'Usuário',
-        company_name: 'Assessoria LP',
-      },
-      workspaceId: data.user.id,
-      role: isPrimaryAdmin ? 'master' : 'visualizador',
-      canEditIntegrations: isPrimaryAdmin,
-    }
   }
-  const platformUser = await ensurePlatformUserForSupabase({
-    user_id: data.user.id,
-    tenant_id: accessContext.workspaceId || data.user.id,
-    tenant_name: accessContext.profile?.workspace?.name || accessContext.profile?.company_name || 'Workspace principal',
-    email: data.user.email || '',
-    full_name: accessContext.profile?.full_name || data.user.user_metadata?.full_name || data.user.email || '',
-    role: accessContext.role || 'operator',
-  })
-  const token = await createLocalAccessToken({
-    sub: platformUser.user_id,
-    tenant_id: platformUser.tenant_id,
-    role: platformUser.role,
-    email: data.user.email || '',
-    full_name: accessContext.profile?.full_name || data.user.user_metadata?.full_name || data.user.email || '',
-    provider: 'supabase',
-    can_edit_integrations: accessContext.canEditIntegrations,
-  })
 
-  return token
+  try {
+    const platformUser = await ensurePlatformUserForSupabase({
+      user_id: data.user.id,
+      tenant_id: accessContext.workspaceId || data.user.id,
+      tenant_name: accessContext.profile?.workspace?.name || accessContext.profile?.company_name || 'Workspace principal',
+      email: data.user.email || '',
+      full_name: accessContext.profile?.full_name || data.user.user_metadata?.full_name || data.user.email || '',
+      role: accessContext.role || 'operator',
+    })
+
+    return createLocalAccessToken({
+      sub: platformUser.user_id,
+      tenant_id: platformUser.tenant_id,
+      role: platformUser.role,
+      email: data.user.email || '',
+      full_name: accessContext.profile?.full_name || data.user.user_metadata?.full_name || data.user.email || '',
+      provider: 'supabase',
+      can_edit_integrations: accessContext.canEditIntegrations || isPrimaryAdmin,
+    })
+  } catch (platformError) {
+    if (!isPrimaryAdmin && !isRecoverableLoginError(platformError)) {
+      throw platformError
+    }
+
+    return createLocalAccessToken({
+      sub: `supabase:${data.user.id}`,
+      tenant_id: accessContext.workspaceId || data.user.id,
+      role: isPrimaryAdmin ? 'master' : String(accessContext.role || 'visualizador'),
+      email: data.user.email || '',
+      full_name: accessContext.profile?.full_name || data.user.user_metadata?.full_name || data.user.email || '',
+      provider: 'supabase',
+      can_edit_integrations: isPrimaryAdmin || Boolean(accessContext.canEditIntegrations),
+    })
+  }
 }
 
 export async function POST(request: Request) {
