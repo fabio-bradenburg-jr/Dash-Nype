@@ -68,6 +68,29 @@ function roleForPlatformDatabase(role: string) {
   return 'OPERATOR'
 }
 
+function isRecoverablePlatformDatabaseError(error: unknown) {
+  const message = error instanceof Error ? error.message.toLowerCase() : String(error || '').toLowerCase()
+  return (
+    message.includes('tenant or user not found') ||
+    message.includes('database_url não configurada') ||
+    message.includes('password authentication failed') ||
+    message.includes('connection terminated') ||
+    message.includes('econnrefused') ||
+    message.includes('enotfound') ||
+    message.includes('timeout')
+  )
+}
+
+function buildSupabaseOnlyPlatformUser(input: { user_id: string; tenant_id: string; email?: string | null; role?: string | null }) {
+  const email = String(input.email || '').trim().toLowerCase()
+  const requestedRole = String(input.role || 'operator').toLowerCase()
+  return {
+    user_id: `supabase:${input.user_id}`,
+    tenant_id: input.tenant_id || input.user_id,
+    role: isPrimaryAdminEmail(email) ? 'master' : requestedRole === 'master' || requestedRole === 'admin' ? 'viewer' : requestedRole,
+  }
+}
+
 export async function ensurePlatformUserForSupabase(input: {
   user_id: string
   tenant_id: string
@@ -77,14 +100,18 @@ export async function ensurePlatformUserForSupabase(input: {
   role?: string | null
 }) {
   if (!hasLocalDatabaseConfig()) {
-    return {
-      user_id: `supabase:${input.user_id}`,
-      tenant_id: input.tenant_id,
-      role: String(input.role || 'operator').toLowerCase(),
-    }
+    return buildSupabaseOnlyPlatformUser(input)
   }
 
-  const db = getPool()
+  let db: Pool
+  try {
+    db = getPool()
+  } catch (error) {
+    if (isRecoverablePlatformDatabaseError(error)) {
+      return buildSupabaseOnlyPlatformUser(input)
+    }
+    throw error
+  }
   const tenantId = input.tenant_id || input.user_id
   const tenantName = String(input.tenant_name || 'Workspace principal').trim() || 'Workspace principal'
   const email = String(input.email || '').trim().toLowerCase()
@@ -141,7 +168,17 @@ export async function ensurePlatformUserForSupabase(input: {
       role: role.toLowerCase(),
     }
   } catch (error) {
-    await db.query('rollback')
+    try {
+      await db.query('rollback')
+    } catch {
+      // A conexão local pode falhar antes da transação abrir. Nesse caso,
+      // mantemos o login Supabase vivo e seguimos com um usuário derivado da sessão.
+    }
+
+    if (isRecoverablePlatformDatabaseError(error)) {
+      return buildSupabaseOnlyPlatformUser(input)
+    }
+
     throw error
   }
 }
@@ -257,7 +294,7 @@ export async function loginWithLocalDatabase(input: { email: string; password: s
     throw new Error('Credenciais inválidas')
   }
 
-  return createLocalAccessToken({ sub: user.id, tenant_id: user.tenant_id, role: user.role.toLowerCase() })
+  return createLocalAccessToken({ sub: user.id, tenant_id: user.tenant_id, role: user.role.toLowerCase(), email: user.email, full_name: user.full_name })
 }
 
 export async function getLocalSessionUser(token: string) {
