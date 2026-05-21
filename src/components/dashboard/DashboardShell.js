@@ -18111,16 +18111,34 @@ export default function DashboardShell({
 
         .weekly-dashboard-panel .weekly-hero {
           display: grid !important;
-          grid-template-columns: minmax(0, 1fr) minmax(360px, .55fr) !important;
+          grid-template-columns: minmax(0, 1fr) minmax(680px, 0.78fr) !important;
           align-items: end !important;
           gap: 32px !important;
           padding: 36px !important;
         }
 
         .weekly-dashboard-panel .weekly-hero-controls {
-          display: grid !important;
-          grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+          display: flex !important;
+          flex-wrap: wrap !important;
+          align-items: flex-end !important;
+          justify-content: flex-end !important;
           gap: 16px !important;
+        }
+
+        .weekly-dashboard-panel .weekly-hero-controls > label {
+          flex: 1 1 190px !important;
+          max-width: 300px !important;
+        }
+
+        .weekly-dashboard-panel .weekly-custom-range-fields {
+          display: flex !important;
+          flex: 2 1 360px !important;
+          gap: 16px !important;
+          min-width: min(100%, 360px) !important;
+        }
+
+        .weekly-dashboard-panel .weekly-custom-range-fields label {
+          flex: 1 1 0 !important;
         }
 
         .weekly-dashboard-panel .weekly-hero-controls label,
@@ -18163,14 +18181,16 @@ export default function DashboardShell({
         }
 
         .weekly-dashboard-panel .weekly-range-pill {
-          grid-column: 1 / -1 !important;
-          min-height: 48px !important;
+          flex: 1 1 220px !important;
+          max-width: 100% !important;
+          min-height: 50px !important;
           display: inline-flex !important;
           align-items: center !important;
           justify-content: center !important;
           border-radius: 999px !important;
           background: rgba(255,255,255,.04) !important;
           font-weight: 900 !important;
+          white-space: nowrap !important;
         }
 
         .weekly-dashboard-panel .weekly-content-grid {
@@ -27636,7 +27656,7 @@ export default function DashboardShell({
         .weekly-hero,
         .weekly-focus-strip {
           display: grid;
-          grid-template-columns: minmax(0, 1fr) minmax(340px, 0.62fr);
+          grid-template-columns: minmax(0, 1fr) minmax(680px, 0.78fr);
           gap: 28px;
           align-items: end;
           padding: 34px;
@@ -27666,10 +27686,27 @@ export default function DashboardShell({
         }
 
         .weekly-hero-controls {
-          display: grid;
-          grid-template-columns: repeat(2, minmax(0, 1fr));
+          display: flex;
+          flex-wrap: wrap;
           gap: 14px;
-          align-items: end;
+          align-items: flex-end;
+          justify-content: flex-end;
+        }
+
+        .weekly-hero-controls > label {
+          flex: 1 1 190px;
+          max-width: 300px;
+        }
+
+        .weekly-custom-range-fields {
+          display: flex;
+          flex: 2 1 340px;
+          gap: 14px;
+          min-width: min(100%, 340px);
+        }
+
+        .weekly-custom-range-fields label {
+          flex: 1 1 0;
         }
 
         .weekly-hero-controls label,
@@ -27725,7 +27762,7 @@ export default function DashboardShell({
         }
 
         .weekly-range-pill {
-          grid-column: 1 / -1;
+          flex: 1 1 220px;
           min-height: 50px;
           border: 1px solid;
           border-radius: 999px;
@@ -27736,6 +27773,7 @@ export default function DashboardShell({
           padding: 11px 18px;
           font-size: 0.86rem;
           font-weight: 900;
+          white-space: nowrap;
           background: color-mix(in srgb, var(--weekly-accent) 9%, rgba(255, 255, 255, 0.03));
         }
 
@@ -29334,6 +29372,19 @@ export default function DashboardShell({
           .weekly-health-options,
           .weekly-kpi-grid {
             grid-template-columns: 1fr;
+          }
+
+          .weekly-hero-controls,
+          .weekly-custom-range-fields {
+            flex-direction: column;
+            align-items: stretch;
+          }
+
+          .weekly-hero-controls > label,
+          .weekly-range-pill,
+          .weekly-entry-button {
+            max-width: none;
+            width: 100%;
           }
         }
 
