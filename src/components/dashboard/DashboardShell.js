@@ -3193,6 +3193,7 @@ export default function DashboardShell({
   const [weeklyCustomUntil, setWeeklyCustomUntil] = useState(() => getWeekEndDateInputValue(getMondayDateInputValue()))
   const [weeklyTableClientFilter, setWeeklyTableClientFilter] = useState('all')
   const [weeklyTableHealthFilter, setWeeklyTableHealthFilter] = useState('all')
+  const [isWeeklyExportMenuOpen, setIsWeeklyExportMenuOpen] = useState(false)
   const [weeklyWeekStart, setWeeklyWeekStart] = useState(() => getMondayDateInputValue())
   const [isWeeklyEntryModalOpen, setIsWeeklyEntryModalOpen] = useState(false)
   const [weeklyForm, setWeeklyForm] = useState({
@@ -4765,10 +4766,153 @@ export default function DashboardShell({
     })
   }, [weeklyLatestRecords, weeklyClientFilter, weeklyTableClientFilter, weeklyTableHealthFilter])
 
-  const activeClientDashboardAccentHex = useMemo(
-    () => rgbToHex(activeClientDashboardAccentRgb),
-    [activeClientDashboardAccentRgb]
-  )
+  const weeklyTableExportRows = useMemo(() => {
+    return weeklyTableRecords.map((record) => {
+      const client = clientsById.get(record.clientId)
+      const health = WEEKLY_HEALTH_BY_KEY[record.healthStatus] || WEEKLY_HEALTH_BY_KEY.attention
+      return {
+        Data: formatWeekRangeLabel(record.weekStart, record.weekEnd),
+        Cliente: client?.name || 'Cliente removido',
+        Saúde: health.label,
+        Investimento: formatCurrency(record.investment || 0),
+        Leads: formatNumber(record.leads || 0),
+        CPL: record.leads > 0 ? formatCurrency(record.cpl || 0) : '-',
+        SQL: formatNumber(record.sql || 0),
+        'Custo SQL': record.sql > 0 ? formatCurrency(record.costPerSql || 0) : '-',
+        'Plano de ação': (record.actionItems || []).length ? record.actionItems.join(' | ') : 'Sem plano de ação',
+      }
+    })
+  }, [weeklyTableRecords, clientsById])
+
+  const weeklyTableExportFileName = useMemo(() => {
+    const clientName = weeklyClientFilter === 'all'
+      ? 'todos-clientes'
+      : clientsById.get(weeklyClientFilter)?.name || 'cliente'
+    const periodName = weeklyPeriodWindow.label || 'periodo'
+    const normalize = (value) => String(value || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]+/gi, '-')
+      .replace(/^-+|-+$/g, '')
+      .toLowerCase() || 'exportacao'
+    return `controle-operacao-${normalize(clientName)}-${normalize(periodName)}`
+  }, [weeklyClientFilter, clientsById, weeklyPeriodWindow.label])
+
+  const handleExportWeeklyTable = useCallback(async (format) => {
+    setIsWeeklyExportMenuOpen(false)
+
+    if (!weeklyTableExportRows.length) {
+      window.alert('Nenhum registro encontrado para exportar com os filtros atuais.')
+      return
+    }
+
+    const columns = ['Data', 'Cliente', 'Saúde', 'Investimento', 'Leads', 'CPL', 'SQL', 'Custo SQL', 'Plano de ação']
+
+    if (format === 'csv') {
+      const escapeCsvCell = (value) => {
+        const text = String(value ?? '')
+        const escaped = text.replace(/"/g, '""')
+        return /[";\n\r]/.test(escaped) ? `"${escaped}"` : escaped
+      }
+      const csv = '\ufeff' + [
+        columns.join(';'),
+        ...weeklyTableExportRows.map((row) => columns.map((column) => escapeCsvCell(row[column])).join(';')),
+      ].join('\n')
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+      const url = URL.createObjectURL(blob)
+      const anchor = document.createElement('a')
+      anchor.href = url
+      anchor.download = `${weeklyTableExportFileName}.csv`
+      document.body.appendChild(anchor)
+      anchor.click()
+      anchor.remove()
+      URL.revokeObjectURL(url)
+      return
+    }
+
+    try {
+      const jsPdfModule = await import('jspdf')
+      const JsPDF = jsPdfModule.default || jsPdfModule.jsPDF
+      const pdf = new JsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' })
+      const pageWidth = pdf.internal.pageSize.getWidth()
+      const pageHeight = pdf.internal.pageSize.getHeight()
+      const margin = 32
+      const accent = activeClientDashboardHex || '#10b981'
+      const tableColumns = [
+        { key: 'Data', label: 'Data', width: 86 },
+        { key: 'Cliente', label: 'Cliente', width: 110 },
+        { key: 'Saúde', label: 'Saúde', width: 82 },
+        { key: 'Investimento', label: 'Investimento', width: 82 },
+        { key: 'Leads', label: 'Leads', width: 46 },
+        { key: 'CPL', label: 'CPL', width: 66 },
+        { key: 'SQL', label: 'SQL', width: 42 },
+        { key: 'Custo SQL', label: 'Custo SQL', width: 72 },
+        { key: 'Plano de ação', label: 'Plano de ação', width: 190 },
+      ]
+      const rowHeight = 42
+      let cursorY = 52
+
+      const drawTitle = () => {
+        pdf.setFont('helvetica', 'bold')
+        pdf.setFontSize(18)
+        pdf.setTextColor('#0f172a')
+        pdf.text('Tabela de acompanhamento', margin, cursorY)
+        cursorY += 22
+        pdf.setFont('helvetica', 'normal')
+        pdf.setFontSize(10)
+        pdf.setTextColor('#64748b')
+        pdf.text(`Controle da Operação • ${weeklyPeriodWindow.label || 'Período selecionado'}`, margin, cursorY)
+        cursorY += 28
+      }
+
+      const drawHeader = () => {
+        let x = margin
+        pdf.setFillColor(accent)
+        pdf.roundedRect(margin, cursorY, pageWidth - margin * 2, 28, 8, 8, 'F')
+        pdf.setFont('helvetica', 'bold')
+        pdf.setFontSize(8)
+        pdf.setTextColor('#ffffff')
+        tableColumns.forEach((column) => {
+          pdf.text(column.label.toUpperCase(), x + 6, cursorY + 18)
+          x += column.width
+        })
+        cursorY += 30
+      }
+
+      drawTitle()
+      drawHeader()
+
+      weeklyTableExportRows.forEach((row, rowIndex) => {
+        if (cursorY + rowHeight > pageHeight - margin) {
+          pdf.addPage('a4', 'landscape')
+          cursorY = 44
+          drawHeader()
+        }
+
+        let x = margin
+        pdf.setFillColor(rowIndex % 2 === 0 ? '#f8fafc' : '#ffffff')
+        pdf.roundedRect(margin, cursorY, pageWidth - margin * 2, rowHeight, 6, 6, 'F')
+        pdf.setDrawColor('#e2e8f0')
+        pdf.line(margin, cursorY + rowHeight, pageWidth - margin, cursorY + rowHeight)
+        tableColumns.forEach((column) => {
+          const value = String(row[column.key] ?? '-')
+          const lines = pdf.splitTextToSize(value, column.width - 12).slice(0, column.key === 'Plano de ação' ? 2 : 1)
+          pdf.setFont('helvetica', column.key === 'Cliente' ? 'bold' : 'normal')
+          pdf.setFontSize(8.5)
+          pdf.setTextColor(column.key === 'Saúde' ? accent : '#0f172a')
+          pdf.text(lines, x + 6, cursorY + 15)
+          x += column.width
+        })
+        cursorY += rowHeight
+      })
+
+      pdf.save(`${weeklyTableExportFileName}.pdf`)
+    } catch (error) {
+      console.error('Erro ao exportar tabela semanal em PDF', error)
+      window.alert('Não consegui gerar o PDF agora. Tente exportar como CSV ou recarregar a página.')
+    }
+  }, [weeklyTableExportRows, weeklyTableExportFileName, weeklyPeriodWindow.label, activeClientDashboardHex])
+
   const selectedQualifiedStagesKey = useMemo(
     () => JSON.stringify([...selectedQualifiedStages].sort()),
     [selectedQualifiedStages]
@@ -12495,25 +12639,44 @@ export default function DashboardShell({
             <h2>Tabela de acompanhamento</h2>
             <p className="chart-subtitle">Visualize exatamente o que foi imputado no período selecionado, com filtro por cliente e saúde.</p>
           </div>
-          <div className="weekly-table-filters">
-            <label>
-              <span>Cliente</span>
-              <select value={weeklyTableClientFilter} onChange={(event) => setWeeklyTableClientFilter(event.target.value)} disabled={weeklyClientFilter !== 'all'}>
-                <option value="all">Todos os clientes</option>
-                {dashboardEligibleClients.map((client) => (
-                  <option key={'weekly-table-client-' + client.id} value={client.id}>{client.name}</option>
-                ))}
-              </select>
-            </label>
-            <label>
-              <span>Saúde</span>
-              <select value={weeklyTableHealthFilter} onChange={(event) => setWeeklyTableHealthFilter(event.target.value)}>
-                <option value="all">Todas as saúdes</option>
-                {WEEKLY_HEALTH_OPTIONS.map((option) => (
-                  <option key={'weekly-table-health-' + option.key} value={option.key}>{option.label}</option>
-                ))}
-              </select>
-            </label>
+          <div className="weekly-table-actions">
+            <div className="weekly-table-filters">
+              <label>
+                <span>Cliente</span>
+                <select value={weeklyTableClientFilter} onChange={(event) => setWeeklyTableClientFilter(event.target.value)} disabled={weeklyClientFilter !== 'all'}>
+                  <option value="all">Todos os clientes</option>
+                  {dashboardEligibleClients.map((client) => (
+                    <option key={'weekly-table-client-' + client.id} value={client.id}>{client.name}</option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span>Saúde</span>
+                <select value={weeklyTableHealthFilter} onChange={(event) => setWeeklyTableHealthFilter(event.target.value)}>
+                  <option value="all">Todas as saúdes</option>
+                  {WEEKLY_HEALTH_OPTIONS.map((option) => (
+                    <option key={'weekly-table-health-' + option.key} value={option.key}>{option.label}</option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            <div className="weekly-export-actions">
+              <button
+                type="button"
+                className="weekly-export-button"
+                onClick={() => setIsWeeklyExportMenuOpen((current) => !current)}
+                disabled={!weeklyTableRecords.length}
+              >
+                <i className="bx bx-download"></i>
+                Exportar
+              </button>
+              {isWeeklyExportMenuOpen && (
+                <div className="weekly-export-menu" role="menu" aria-label="Escolha o formato da exportação">
+                  <button type="button" onClick={() => handleExportWeeklyTable('pdf')}>Exportar PDF</button>
+                  <button type="button" onClick={() => handleExportWeeklyTable('csv')}>Exportar CSV</button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
         {weeklyTableRecords.length ? (
@@ -27714,11 +27877,78 @@ export default function DashboardShell({
           gap: 24px;
         }
 
+        .weekly-table-actions {
+          display: flex;
+          align-items: flex-end;
+          justify-content: flex-end;
+          gap: 14px;
+          flex-wrap: wrap;
+        }
+
         .weekly-table-filters {
           display: grid;
           grid-template-columns: repeat(2, minmax(180px, 1fr));
           gap: 14px;
           min-width: min(480px, 100%);
+        }
+
+        .weekly-export-actions {
+          position: relative;
+          display: flex;
+          align-items: flex-end;
+        }
+
+        .weekly-export-button {
+          min-height: 52px;
+          border: 1px solid color-mix(in srgb, var(--weekly-accent) 45%, rgba(255, 255, 255, 0.16));
+          border-radius: 16px;
+          background: linear-gradient(135deg, var(--weekly-accent), color-mix(in srgb, var(--weekly-accent) 72%, #2563eb));
+          color: #ffffff;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          font-weight: 900;
+          padding: 0 18px;
+          box-shadow: 0 18px 44px color-mix(in srgb, var(--weekly-accent) 24%, transparent);
+          cursor: pointer;
+        }
+
+        .weekly-export-button:disabled {
+          cursor: not-allowed;
+          opacity: 0.48;
+          box-shadow: none;
+        }
+
+        .weekly-export-menu {
+          position: absolute;
+          top: calc(100% + 10px);
+          right: 0;
+          z-index: 40;
+          width: 180px;
+          border: 1px solid rgba(148, 163, 184, 0.18);
+          border-radius: 18px;
+          background: rgba(14, 16, 20, 0.98);
+          box-shadow: 0 24px 70px rgba(0, 0, 0, 0.38);
+          padding: 8px;
+        }
+
+        .weekly-export-menu button {
+          width: 100%;
+          border: 0;
+          border-radius: 12px;
+          background: transparent;
+          color: var(--text-primary);
+          cursor: pointer;
+          font: inherit;
+          font-weight: 900;
+          padding: 12px 14px;
+          text-align: left;
+        }
+
+        .weekly-export-menu button:hover {
+          background: color-mix(in srgb, var(--weekly-accent) 16%, transparent);
+          color: #ffffff;
         }
 
         .weekly-table-filters label {
@@ -28062,6 +28292,7 @@ export default function DashboardShell({
         .dashboard-light-mode .weekly-form-card textarea,
         .dashboard-light-mode .weekly-table-filters select,
         .dashboard-light-mode .weekly-table-scroll,
+        .dashboard-light-mode .weekly-export-menu,
         .dashboard-light-mode .weekly-computed-field,
         .dashboard-light-mode .weekly-health-option,
         .dashboard-light-mode .weekly-risk-badge,
@@ -28073,6 +28304,7 @@ export default function DashboardShell({
           color: #0f172a;
         }
 
+        .dashboard-light-mode .weekly-export-menu button,
         .dashboard-light-mode .weekly-hero h2,
         .dashboard-light-mode .weekly-focus-strip h2,
         .dashboard-light-mode .weekly-form-card h2,
