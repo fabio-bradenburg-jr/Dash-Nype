@@ -213,3 +213,53 @@ export async function POST(request) {
     return NextResponse.json({ error: error.message || 'Não foi possível salvar o acompanhamento semanal.' }, { status: 500 })
   }
 }
+
+export async function DELETE(request) {
+  try {
+    const context = await getAuthenticatedContext()
+    if (context.error) return context.error
+
+    const body = await request.json().catch(() => ({}))
+    const ids = Array.isArray(body.ids)
+      ? body.ids.map((id) => String(id || '').trim()).filter(Boolean)
+      : []
+
+    if (!ids.length) {
+      return NextResponse.json({ error: 'Selecione ao menos um registro para excluir.' }, { status: 400 })
+    }
+
+    const uniqueIds = Array.from(new Set(ids)).slice(0, 100)
+
+    const { data: records, error: fetchError } = await context.adminSupabase
+      .from('client_weekly_snapshots')
+      .select('id, client_id')
+      .eq('workspace_id', context.accessContext.workspaceId)
+      .in('id', uniqueIds)
+
+    if (fetchError) throw fetchError
+
+    if (!records?.length) {
+      return NextResponse.json({ error: 'Nenhum registro encontrado para excluir.' }, { status: 404 })
+    }
+
+    const unauthorizedRecord = records.find((record) => !canWriteClient(context.accessContext, record.client_id))
+    if (unauthorizedRecord) {
+      return NextResponse.json({ error: 'Sem permissão para excluir um ou mais registros selecionados.' }, { status: 403 })
+    }
+
+    const recordIds = records.map((record) => record.id)
+    const { error: deleteError } = await context.adminSupabase
+      .from('client_weekly_snapshots')
+      .delete()
+      .eq('workspace_id', context.accessContext.workspaceId)
+      .in('id', recordIds)
+
+    if (deleteError) throw deleteError
+
+    return NextResponse.json({ deletedIds: recordIds })
+  } catch (error) {
+    console.error('Client weekly DELETE error:', error)
+    return NextResponse.json({ error: error.message || 'Não foi possível excluir os registros semanais.' }, { status: 500 })
+  }
+}
+

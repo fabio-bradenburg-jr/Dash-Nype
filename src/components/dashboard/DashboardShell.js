@@ -3194,6 +3194,9 @@ export default function DashboardShell({
   const [weeklyTableClientFilter, setWeeklyTableClientFilter] = useState('all')
   const [weeklyTableHealthFilter, setWeeklyTableHealthFilter] = useState('all')
   const [isWeeklyExportMenuOpen, setIsWeeklyExportMenuOpen] = useState(false)
+  const [isWeeklyDeleteMode, setIsWeeklyDeleteMode] = useState(false)
+  const [selectedWeeklyRecordIds, setSelectedWeeklyRecordIds] = useState([])
+  const [isDeletingWeeklyRecords, setIsDeletingWeeklyRecords] = useState(false)
   const [weeklyWeekStart, setWeeklyWeekStart] = useState(() => getMondayDateInputValue())
   const [isWeeklyEntryModalOpen, setIsWeeklyEntryModalOpen] = useState(false)
   const [weeklyForm, setWeeklyForm] = useState({
@@ -3620,6 +3623,65 @@ export default function DashboardShell({
     }
   }
 
+
+  const handleToggleWeeklyRecordSelection = useCallback((recordId) => {
+    setSelectedWeeklyRecordIds((current) => current.includes(recordId)
+      ? current.filter((id) => id !== recordId)
+      : [...current, recordId])
+  }, [])
+
+  const handleToggleWeeklyDeleteMode = useCallback(() => {
+    setWeeklyError('')
+    setWeeklySuccessMessage('')
+    setIsWeeklyDeleteMode((current) => {
+      if (current) setSelectedWeeklyRecordIds([])
+      return !current
+    })
+  }, [])
+
+  const handleDeleteSelectedWeeklyRecords = useCallback(async () => {
+    if (!selectedWeeklyRecordIds.length) {
+      setWeeklyError('Selecione ao menos um registro para excluir.')
+      return
+    }
+
+    const confirmed = window.confirm(`Excluir ${selectedWeeklyRecordIds.length} registro(s) do histórico? Essa ação não pode ser desfeita.`)
+    if (!confirmed) return
+
+    setIsDeletingWeeklyRecords(true)
+    setWeeklyError('')
+    setWeeklySuccessMessage('')
+
+    try {
+      const response = await fetch('/api/client-weekly', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: selectedWeeklyRecordIds }),
+      })
+      const data = await response.json().catch(() => ({}))
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Não foi possível excluir os registros selecionados.')
+      }
+
+      const deletedIds = Array.isArray(data.deletedIds) ? data.deletedIds : selectedWeeklyRecordIds
+      setWeeklyRecords((current) => current.filter((record) => !deletedIds.includes(record.id)))
+      setSelectedWeeklyRecordIds([])
+      setIsWeeklyDeleteMode(false)
+      setWeeklySuccessMessage(`${deletedIds.length} registro(s) excluído(s) com sucesso.`)
+      await loadWeeklyRecords()
+    } catch (error) {
+      setWeeklyError(error.message || 'Não foi possível excluir os registros selecionados.')
+    } finally {
+      setIsDeletingWeeklyRecords(false)
+    }
+  }, [selectedWeeklyRecordIds, loadWeeklyRecords])
+
+  useEffect(() => {
+    if (!selectedWeeklyRecordIds.length) return
+    const visibleIds = new Set(weeklyLatestRecords.map((record) => record.id))
+    setSelectedWeeklyRecordIds((current) => current.filter((id) => visibleIds.has(id)))
+  }, [weeklyLatestRecords, selectedWeeklyRecordIds.length])
 
   useEffect(() => {
     const manual = activeClient?.manualCrmSummary || {}
@@ -12728,7 +12790,21 @@ export default function DashboardShell({
             <h2>Semanas registradas</h2>
             <p className="chart-subtitle">Cada linha fica salva no Supabase e pode ser reaberta editando o mesmo cliente e semana.</p>
           </div>
-          {isWeeklyLoading && <span className="weekly-loading-pill">Carregando...</span>}
+          <div className="weekly-history-actions">
+            {isWeeklyLoading && <span className="weekly-loading-pill">Carregando...</span>}
+            {weeklyLatestRecords.length > 0 && (
+              <button type="button" className="weekly-history-button" onClick={handleToggleWeeklyDeleteMode} disabled={isDeletingWeeklyRecords}>
+                <i className={isWeeklyDeleteMode ? 'bx bx-x' : 'bx bx-trash'}></i>
+                {isWeeklyDeleteMode ? 'Cancelar seleção' : 'Excluir registros'}
+              </button>
+            )}
+            {isWeeklyDeleteMode && (
+              <button type="button" className="weekly-history-button weekly-history-button-danger" onClick={handleDeleteSelectedWeeklyRecords} disabled={isDeletingWeeklyRecords || !selectedWeeklyRecordIds.length}>
+                <i className="bx bx-check-shield"></i>
+                {isDeletingWeeklyRecords ? 'Excluindo...' : `Excluir selecionados (${selectedWeeklyRecordIds.length})`}
+              </button>
+            )}
+          </div>
         </div>
         {weeklyLatestRecords.length ? (
           <div className="weekly-record-list">
@@ -12736,7 +12812,17 @@ export default function DashboardShell({
               const client = clientsById.get(record.clientId)
               const health = WEEKLY_HEALTH_BY_KEY[record.healthStatus] || WEEKLY_HEALTH_BY_KEY.attention
               return (
-                <article key={record.id} className="weekly-record-row">
+                <article key={record.id} className={`weekly-record-row ${selectedWeeklyRecordIds.includes(record.id) ? 'selected' : ''}`}>
+                  {isWeeklyDeleteMode && (
+                    <label className="weekly-record-selector" aria-label={`Selecionar registro de ${client?.name || 'cliente'}`}>
+                      <input
+                        type="checkbox"
+                        checked={selectedWeeklyRecordIds.includes(record.id)}
+                        onChange={() => handleToggleWeeklyRecordSelection(record.id)}
+                      />
+                      <span></span>
+                    </label>
+                  )}
                   <div className="weekly-record-main">
                     <span>{formatWeekRangeLabel(record.weekStart, record.weekEnd)}</span>
                     <strong>{client?.name || 'Cliente removido'}</strong>
@@ -28040,6 +28126,49 @@ export default function DashboardShell({
           white-space: nowrap;
         }
 
+        .weekly-history-actions {
+          display: flex;
+          align-items: center;
+          justify-content: flex-end;
+          gap: 10px;
+          flex-wrap: wrap;
+        }
+
+        .weekly-history-button {
+          min-height: 42px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          border: 1px solid rgba(148, 163, 184, 0.18);
+          border-radius: 14px;
+          background: rgba(255, 255, 255, 0.06);
+          color: var(--text-primary);
+          cursor: pointer;
+          font: inherit;
+          font-size: 0.84rem;
+          font-weight: 900;
+          padding: 0 14px;
+          transition: all 180ms ease;
+        }
+
+        .weekly-history-button:hover:not(:disabled) {
+          border-color: color-mix(in srgb, var(--weekly-accent) 35%, transparent);
+          background: color-mix(in srgb, var(--weekly-accent) 12%, transparent);
+          transform: translateY(-1px);
+        }
+
+        .weekly-history-button:disabled {
+          cursor: not-allowed;
+          opacity: 0.5;
+        }
+
+        .weekly-history-button-danger {
+          border-color: rgba(248, 113, 113, 0.36);
+          background: rgba(239, 68, 68, 0.12);
+          color: #fecaca;
+        }
+
         .weekly-record-list {
           display: flex;
           flex-direction: column;
@@ -28056,6 +28185,48 @@ export default function DashboardShell({
           border-radius: 24px;
           background: rgba(255, 255, 255, 0.035);
           padding: 20px;
+          transition: border-color 180ms ease, background 180ms ease;
+        }
+
+        .weekly-record-row:has(.weekly-record-selector) {
+          grid-template-columns: auto minmax(190px, 0.7fr) minmax(0, 1.25fr) minmax(240px, 0.85fr);
+        }
+
+        .weekly-record-row.selected {
+          border-color: color-mix(in srgb, var(--weekly-accent) 52%, transparent);
+          background: color-mix(in srgb, var(--weekly-accent) 10%, rgba(255, 255, 255, 0.035));
+        }
+
+        .weekly-record-selector {
+          width: 42px;
+          height: 42px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          border: 1px solid rgba(148, 163, 184, 0.18);
+          border-radius: 14px;
+          background: rgba(255, 255, 255, 0.05);
+          cursor: pointer;
+        }
+
+        .weekly-record-selector input {
+          position: absolute;
+          opacity: 0;
+          pointer-events: none;
+        }
+
+        .weekly-record-selector span {
+          width: 18px;
+          height: 18px;
+          border: 2px solid rgba(226, 232, 240, 0.72);
+          border-radius: 6px;
+          transition: all 160ms ease;
+        }
+
+        .weekly-record-selector input:checked + span {
+          border-color: var(--weekly-accent);
+          background: var(--weekly-accent);
+          box-shadow: 0 0 0 4px color-mix(in srgb, var(--weekly-accent) 18%, transparent);
         }
 
         .weekly-record-main {
@@ -28304,7 +28475,25 @@ export default function DashboardShell({
           color: #0f172a;
         }
 
+        .dashboard-light-mode .weekly-history-button,
+        .dashboard-light-mode .weekly-record-selector {
+          background: #ffffff;
+          border-color: rgba(15, 23, 42, 0.1);
+          color: #0f172a;
+        }
+
+        .dashboard-light-mode .weekly-history-button-danger {
+          background: rgba(239, 68, 68, 0.08);
+          border-color: rgba(239, 68, 68, 0.28);
+          color: #991b1b;
+        }
+
+        .dashboard-light-mode .weekly-record-selector span {
+          border-color: rgba(15, 23, 42, 0.34);
+        }
+
         .dashboard-light-mode .weekly-export-menu button,
+        .dashboard-light-mode .weekly-history-button,
         .dashboard-light-mode .weekly-hero h2,
         .dashboard-light-mode .weekly-focus-strip h2,
         .dashboard-light-mode .weekly-form-card h2,
