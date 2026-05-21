@@ -12623,7 +12623,6 @@ export default function DashboardShell({
         </div>
       </div>
 
-      {weeklyError && <div className="form-error weekly-error">{weeklyError}</div>}
       {weeklySuccessMessage && (
         <div
           className="form-success weekly-success"
@@ -27659,10 +27658,23 @@ export default function DashboardShell({
           display: grid;
           grid-template-columns: minmax(0, 1fr) minmax(680px, 0.78fr);
           gap: 28px;
-          align-items: end;
-          padding: 34px;
+          align-items: start;
+          padding: 40px;
           border-radius: 30px;
           overflow: hidden;
+        }
+
+        .weekly-hero {
+          min-height: 220px;
+        }
+
+        .weekly-hero > div:first-child {
+          align-self: start;
+          padding-top: 2px;
+        }
+
+        .weekly-focus-strip > div:first-child {
+          padding: 2px 6px;
         }
 
         .weekly-hero h2,
@@ -27692,6 +27704,7 @@ export default function DashboardShell({
           gap: 14px;
           align-items: flex-end;
           justify-content: flex-end;
+          align-self: start;
         }
 
         .weekly-hero-controls > label {
@@ -27764,7 +27777,7 @@ export default function DashboardShell({
 
         .weekly-range-pill {
           flex: 1 1 220px;
-          min-height: 50px;
+          min-height: 56px;
           border: 1px solid;
           border-radius: 999px;
           display: inline-flex;
@@ -27779,7 +27792,7 @@ export default function DashboardShell({
         }
 
         .weekly-entry-button {
-          min-height: 54px;
+          min-height: 56px;
           border-radius: 18px;
           display: inline-flex;
           align-items: center;
@@ -28006,21 +28019,25 @@ export default function DashboardShell({
           display: flex;
           align-items: flex-end;
           justify-content: flex-end;
-          gap: 14px;
-          flex-wrap: wrap;
+          gap: 16px;
+          flex-wrap: nowrap;
+          min-width: min(100%, 820px);
         }
 
         .weekly-table-filters {
           display: grid;
-          grid-template-columns: repeat(2, minmax(180px, 1fr));
+          grid-template-columns: repeat(2, minmax(220px, 1fr));
+          align-items: flex-end;
           gap: 14px;
-          min-width: min(480px, 100%);
+          flex: 1 1 auto;
+          min-width: 0;
         }
 
         .weekly-export-actions {
           position: relative;
           display: flex;
           align-items: flex-end;
+          flex: 0 0 auto;
         }
 
         .weekly-export-button {
@@ -28080,6 +28097,7 @@ export default function DashboardShell({
           display: flex;
           flex-direction: column;
           gap: 9px;
+          min-width: 0;
         }
 
         .weekly-table-filters span {
@@ -29376,17 +29394,22 @@ export default function DashboardShell({
           }
 
           .weekly-hero-controls,
-          .weekly-custom-range-fields {
+          .weekly-custom-range-fields,
+          .weekly-table-actions,
+          .weekly-table-filters {
             flex-direction: column;
             align-items: stretch;
           }
 
           .weekly-hero-controls > label,
           .weekly-range-pill,
-          .weekly-entry-button {
+          .weekly-entry-button,
+          .weekly-table-filters label,
+          .weekly-export-button {
             max-width: none;
             width: 100%;
           }
+
         }
 
         @media (max-width: 768px) {

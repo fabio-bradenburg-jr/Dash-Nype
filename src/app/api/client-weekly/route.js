@@ -1,3 +1,5 @@
+import { randomUUID } from 'crypto'
+
 import { NextResponse } from 'next/server'
 
 import { createClient } from '@/lib/supabase/server'
@@ -60,6 +62,111 @@ function normalizeJsonArray(value) {
     }
   }
   return []
+}
+
+
+function isMissingWeeklyTableError(error) {
+  const message = String(error?.message || '').toLowerCase()
+  return error?.code === 'PGRST205' || message.includes('schema cache') || message.includes('could not find the table') || message.includes('client_weekly_snapshots')
+}
+
+function normalizeStoredWeeklyRecords(payload) {
+  const records = Array.isArray(payload?.clientWeeklySnapshots) ? payload.clientWeeklySnapshots : []
+  return records
+    .filter((record) => record && typeof record === 'object')
+    .map((record) => ({
+      id: String(record.id || randomUUID()),
+      workspace_id: String(record.workspace_id || record.workspaceId || ''),
+      client_id: String(record.client_id || record.clientId || ''),
+      week_start: String(record.week_start || record.weekStart || '').slice(0, 10),
+      week_end: String(record.week_end || record.weekEnd || '').slice(0, 10),
+      investment: normalizeNumber(record.investment),
+      leads: normalizeInteger(record.leads),
+      sql_count: normalizeInteger(record.sql_count || record.sql || record.sqlCount),
+      health_status: normalizeHealthStatus(record.health_status || record.healthStatus),
+      action_items: normalizeActionItems(record.action_items || record.actionItems),
+      created_by: record.created_by || record.createdBy || null,
+      updated_by: record.updated_by || record.updatedBy || null,
+      created_at: record.created_at || record.createdAt || new Date().toISOString(),
+      updated_at: record.updated_at || record.updatedAt || new Date().toISOString(),
+    }))
+    .filter((record) => record.workspace_id && record.client_id && record.week_start)
+}
+
+async function readWorkspacePreferencePayload(adminSupabase, workspaceId) {
+  const { data, error } = await adminSupabase
+    .from('workspace_preferences')
+    .select('payload')
+    .eq('workspace_id', workspaceId)
+    .maybeSingle()
+
+  if (error) throw error
+  return data?.payload && typeof data.payload === 'object' ? data.payload : {}
+}
+
+async function loadWeeklyFallback(adminSupabase, workspaceId, options = {}) {
+  const payload = await readWorkspacePreferencePayload(adminSupabase, workspaceId)
+  let records = normalizeStoredWeeklyRecords(payload).filter((record) => record.workspace_id === workspaceId)
+  if (options.clientId) records = records.filter((record) => record.client_id === options.clientId)
+  if (options.readableClientIds) records = records.filter((record) => options.readableClientIds.has(record.client_id))
+  return records
+    .sort((a, b) => String(b.week_start).localeCompare(String(a.week_start)) || String(a.client_id).localeCompare(String(b.client_id)))
+    .slice(0, 260)
+}
+
+async function writeWeeklyFallback(adminSupabase, workspaceId, records) {
+  const payload = await readWorkspacePreferencePayload(adminSupabase, workspaceId)
+  const externalRecords = normalizeStoredWeeklyRecords(payload).filter((record) => record.workspace_id !== workspaceId)
+  const nextPayload = {
+    ...payload,
+    clientWeeklySnapshots: [...externalRecords, ...records],
+  }
+
+  const { error } = await adminSupabase
+    .from('workspace_preferences')
+    .upsert({ workspace_id: workspaceId, payload: nextPayload }, { onConflict: 'workspace_id' })
+
+  if (error) throw error
+}
+
+async function saveWeeklyFallback(adminSupabase, workspaceId, userId, input) {
+  const records = normalizeStoredWeeklyRecords(await readWorkspacePreferencePayload(adminSupabase, workspaceId))
+    .filter((record) => record.workspace_id === workspaceId)
+  const now = new Date().toISOString()
+  const existingIndex = records.findIndex((record) => record.client_id === input.clientId && record.week_start === input.weekStart)
+  const previous = existingIndex >= 0 ? records[existingIndex] : null
+  const nextRecord = {
+    id: previous?.id || randomUUID(),
+    workspace_id: workspaceId,
+    client_id: input.clientId,
+    week_start: input.weekStart,
+    week_end: input.weekEnd,
+    investment: input.investment,
+    leads: input.leads,
+    sql_count: input.sqlCount,
+    health_status: input.healthStatus,
+    action_items: input.actionItems,
+    created_by: previous?.created_by || userId,
+    updated_by: userId,
+    created_at: previous?.created_at || now,
+    updated_at: now,
+  }
+
+  if (existingIndex >= 0) records[existingIndex] = nextRecord
+  else records.unshift(nextRecord)
+
+  await writeWeeklyFallback(adminSupabase, workspaceId, records)
+  return nextRecord
+}
+
+async function deleteWeeklyFallback(adminSupabase, workspaceId, ids) {
+  const payload = await readWorkspacePreferencePayload(adminSupabase, workspaceId)
+  const allRecords = normalizeStoredWeeklyRecords(payload)
+  const idSet = new Set(ids)
+  const deletedRecords = allRecords.filter((record) => record.workspace_id === workspaceId && idSet.has(record.id))
+  const remainingWorkspaceRecords = allRecords.filter((record) => record.workspace_id === workspaceId && !idSet.has(record.id))
+  await writeWeeklyFallback(adminSupabase, workspaceId, remainingWorkspaceRecords)
+  return deletedRecords.map((record) => record.id)
 }
 
 function serializeRow(row) {
@@ -150,7 +257,16 @@ export async function GET(request) {
     }
 
     const { data, error } = await query
-    if (error) throw error
+    if (error) {
+      if (isMissingWeeklyTableError(error)) {
+        const fallbackRecords = await loadWeeklyFallback(context.adminSupabase, context.accessContext.workspaceId, {
+          clientId,
+          readableClientIds,
+        })
+        return NextResponse.json({ records: fallbackRecords.map(serializeRow) })
+      }
+      throw error
+    }
 
     return NextResponse.json({ records: (data || []).map(serializeRow) })
   } catch (error) {
@@ -205,7 +321,22 @@ export async function POST(request) {
       .select('*')
       .single()
 
-    if (error) throw error
+    if (error) {
+      if (isMissingWeeklyTableError(error)) {
+        const fallbackRecord = await saveWeeklyFallback(context.adminSupabase, context.accessContext.workspaceId, context.user.id, {
+          clientId,
+          weekStart,
+          weekEnd,
+          investment,
+          leads,
+          sqlCount,
+          healthStatus,
+          actionItems,
+        })
+        return NextResponse.json({ record: serializeRow(fallbackRecord) })
+      }
+      throw error
+    }
 
     return NextResponse.json({ record: serializeRow(data) })
   } catch (error) {
@@ -236,7 +367,22 @@ export async function DELETE(request) {
       .eq('workspace_id', context.accessContext.workspaceId)
       .in('id', uniqueIds)
 
-    if (fetchError) throw fetchError
+    if (fetchError) {
+      if (isMissingWeeklyTableError(fetchError)) {
+        const fallbackRecords = await loadWeeklyFallback(context.adminSupabase, context.accessContext.workspaceId)
+        const selectedRecords = fallbackRecords.filter((record) => uniqueIds.includes(record.id))
+        if (!selectedRecords.length) {
+          return NextResponse.json({ error: 'Nenhum registro encontrado para excluir.' }, { status: 404 })
+        }
+        const unauthorizedRecord = selectedRecords.find((record) => !canWriteClient(context.accessContext, record.client_id))
+        if (unauthorizedRecord) {
+          return NextResponse.json({ error: 'Sem permissão para excluir um ou mais registros selecionados.' }, { status: 403 })
+        }
+        const deletedIds = await deleteWeeklyFallback(context.adminSupabase, context.accessContext.workspaceId, selectedRecords.map((record) => record.id))
+        return NextResponse.json({ deletedIds })
+      }
+      throw fetchError
+    }
 
     if (!records?.length) {
       return NextResponse.json({ error: 'Nenhum registro encontrado para excluir.' }, { status: 404 })
