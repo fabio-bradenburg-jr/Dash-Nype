@@ -6,7 +6,7 @@ import { PLATFORM_AUTH_COOKIE } from '@/lib/saas/auth'
 
 export const dynamic = 'force-dynamic'
 
-const ROOT_TABS = new Set(['assistant', 'clientes', 'apresentacao', 'usuarios', 'settings'])
+const ROOT_TABS = new Set(['assistant', 'clientes', 'apresentacao', 'usuarios', 'settings', 'semanal'])
 
 export default async function RootPage({ searchParams }) {
   const cookieStore = await cookies()

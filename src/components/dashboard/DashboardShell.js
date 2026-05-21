@@ -3677,11 +3677,6 @@ export default function DashboardShell({
     }
   }, [selectedWeeklyRecordIds, loadWeeklyRecords])
 
-  useEffect(() => {
-    if (!selectedWeeklyRecordIds.length) return
-    const visibleIds = new Set(weeklyLatestRecords.map((record) => record.id))
-    setSelectedWeeklyRecordIds((current) => current.filter((id) => visibleIds.has(id)))
-  }, [weeklyLatestRecords, selectedWeeklyRecordIds.length])
 
   useEffect(() => {
     const manual = activeClient?.manualCrmSummary || {}
@@ -4819,6 +4814,12 @@ export default function DashboardShell({
       return leftClient.localeCompare(rightClient)
     })
   }, [weeklyVisibleRecords, clientsById])
+
+  useEffect(() => {
+    if (!selectedWeeklyRecordIds.length) return
+    const visibleIds = new Set(weeklyLatestRecords.map((record) => record.id))
+    setSelectedWeeklyRecordIds((current) => current.filter((id) => visibleIds.has(id)))
+  }, [weeklyLatestRecords, selectedWeeklyRecordIds.length])
 
   const weeklyTableRecords = useMemo(() => {
     return weeklyLatestRecords.filter((record) => {
