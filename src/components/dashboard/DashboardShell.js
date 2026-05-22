@@ -12693,32 +12693,32 @@ export default function DashboardShell({
         style={{ padding: '56px 64px', gap: 32, alignItems: 'center' }}
       >
         <div className="weekly-goal-copy">
-          <span className="eyebrow">Meta operacional</span>
+          <span className="eyebrow weekly-icon-label"><i className="bx bx-target-lock"></i>Meta operacional</span>
           <h2>{weeklyClientFilter === 'all' ? 'Visão consolidada da carteira' : clientsById.get(weeklyClientFilter)?.name || 'Cliente selecionado'}</h2>
           <p>O objetivo do time é manter Crítico + Atenção em até {formatNumber(weeklyHealthRiskTarget)}% da carteira. Ajuste essa meta nas configurações.</p>
         </div>
         <div className={'weekly-risk-badge weekly-goal-badge ' + (weeklySummary.withinRiskTarget ? 'healthy' : 'critical')}>
-          <span>Crítico + Atenção</span>
+          <span><i className="bx bx-error-circle"></i>Crítico + Atenção</span>
           <strong>{weeklySummary.healthCount ? formatNumber(weeklySummary.riskPercent) + '%' : '-'}</strong>
           <small>{weeklySummary.healthCount ? (weeklySummary.withinRiskTarget ? 'Dentro da meta' : 'Acima da meta') : 'Sem dados no período'}</small>
         </div>
       </div>
 
       <div className="weekly-kpi-grid weekly-kpi-grid-wide">
-        <div className="weekly-kpi-card glass-panel"><span>Saúde média do período</span><strong>{weeklySummary.averageHealthLabel}</strong></div>
-        <div className="weekly-kpi-card glass-panel"><span>Saúde média do mês</span><strong>{weeklyMonthSummary.averageHealthLabel}</strong></div>
-        <div className="weekly-kpi-card glass-panel"><span>Investimento</span><strong>{formatCurrency(weeklySummary.investment)}</strong></div>
-        <div className="weekly-kpi-card glass-panel"><span>Leads</span><strong>{formatNumber(weeklySummary.leads)}</strong></div>
-        <div className="weekly-kpi-card glass-panel"><span>CPL médio</span><strong>{weeklySummary.leads > 0 ? formatCurrency(weeklySummary.cpl) : '-'}</strong></div>
-        <div className="weekly-kpi-card glass-panel"><span>SQL</span><strong>{formatNumber(weeklySummary.sql)}</strong></div>
-        <div className="weekly-kpi-card glass-panel"><span>Custo SQL</span><strong>{weeklySummary.sql > 0 ? formatCurrency(weeklySummary.costPerSql) : '-'}</strong></div>
+        <div className="weekly-kpi-card glass-panel"><span><i className="bx bx-pulse"></i>Saúde média do período</span><strong>{weeklySummary.averageHealthLabel}</strong></div>
+        <div className="weekly-kpi-card glass-panel"><span><i className="bx bx-calendar-check"></i>Saúde média do mês</span><strong>{weeklyMonthSummary.averageHealthLabel}</strong></div>
+        <div className="weekly-kpi-card glass-panel"><span><i className="bx bx-wallet"></i>Investimento</span><strong>{formatCurrency(weeklySummary.investment)}</strong></div>
+        <div className="weekly-kpi-card glass-panel"><span><i className="bx bx-user-plus"></i>Leads</span><strong>{formatNumber(weeklySummary.leads)}</strong></div>
+        <div className="weekly-kpi-card glass-panel"><span><i className="bx bx-purchase-tag-alt"></i>CPL médio</span><strong>{weeklySummary.leads > 0 ? formatCurrency(weeklySummary.cpl) : '-'}</strong></div>
+        <div className="weekly-kpi-card glass-panel"><span><i className="bx bx-filter-alt"></i>SQL</span><strong>{formatNumber(weeklySummary.sql)}</strong></div>
+        <div className="weekly-kpi-card glass-panel"><span><i className="bx bx-credit-card"></i>Custo SQL</span><strong>{weeklySummary.sql > 0 ? formatCurrency(weeklySummary.costPerSql) : '-'}</strong></div>
       </div>
 
       <div className="weekly-chart-grid">
         <div className="weekly-chart-card glass-panel">
           <div className="section-header section-header-stack">
             <div>
-              <span className="eyebrow">Evolução</span>
+              <span className="eyebrow weekly-icon-label"><i className="bx bx-line-chart"></i>Evolução</span>
               <h2>Investimento, leads, CPL, SQL e custo SQL</h2>
               <p className="chart-subtitle">Linha fracionada por semanas fechadas de segunda a domingo.</p>
             </div>
@@ -12730,7 +12730,7 @@ export default function DashboardShell({
         <div className="weekly-chart-card glass-panel">
           <div className="section-header section-header-stack">
             <div>
-              <span className="eyebrow">Saúde</span>
+              <span className="eyebrow weekly-icon-label"><i className="bx bx-heart-circle"></i>Saúde</span>
               <h2>{weeklyClientFilter === 'all' ? 'Distribuição da saúde' : 'Mudança de saúde do cliente'}</h2>
               <p className="chart-subtitle">{weeklyClientFilter === 'all' ? 'Barras por status na semana selecionada.' : 'Barras por semana para acompanhar a evolução do cliente.'}</p>
             </div>
@@ -12746,7 +12746,7 @@ export default function DashboardShell({
           <div className="weekly-table-actions">
             <div className="weekly-table-filters">
               <label>
-                <span>Cliente</span>
+                <span><i className="bx bx-buildings"></i>Cliente</span>
                 <select value={weeklyTableClientFilter} onChange={(event) => setWeeklyTableClientFilter(event.target.value)} disabled={weeklyClientFilter !== 'all'}>
                   <option value="all">Todos os Clientes</option>
                   {dashboardEligibleClients.map((client) => (
@@ -12755,7 +12755,7 @@ export default function DashboardShell({
                 </select>
               </label>
               <label>
-                <span>Saúde</span>
+                <span><i className="bx bx-heart"></i>Saúde</span>
                 <select value={weeklyTableHealthFilter} onChange={(event) => setWeeklyTableHealthFilter(event.target.value)}>
                   <option value="all">Todos os Status</option>
                   {WEEKLY_HEALTH_OPTIONS.map((option) => (
@@ -12822,25 +12822,25 @@ export default function DashboardShell({
         </div>
         <div className="weekly-table-title-row" style={{ marginBottom: 28 }}>
           <div>
-            <h2>Tabela de Acompanhamento</h2>
+            <h2><i className="bx bx-table"></i>Tabela de Acompanhamento</h2>
             <p className="chart-subtitle">Visualize exatamente o que foi imputado no período selecionado, com filtro por cliente e saúde.</p>
           </div>
-          <span className="weekly-updated-pill">Atualizado há 15 min</span>
+          <span className="weekly-updated-pill"><i className="bx bx-time-five"></i>Atualizado há 15 min</span>
         </div>
         {weeklyTableRecords.length ? (
           <div className="weekly-table-scroll">
             <table className="weekly-data-table">
               <thead>
                 <tr>
-                  <th>Data</th>
-                  <th>Cliente</th>
-                  <th>Saúde</th>
-                  <th>Investimento</th>
-                  <th>Leads</th>
-                  <th>CPL</th>
-                  <th>SQL</th>
-                  <th>Custo SQL</th>
-                  <th>Plano de ação</th>
+                  <th><i className="bx bx-calendar"></i>Data</th>
+                  <th><i className="bx bx-buildings"></i>Cliente</th>
+                  <th><i className="bx bx-heart"></i>Saúde</th>
+                  <th><i className="bx bx-wallet"></i>Investimento</th>
+                  <th><i className="bx bx-user-plus"></i>Leads</th>
+                  <th><i className="bx bx-purchase-tag-alt"></i>CPL</th>
+                  <th><i className="bx bx-filter-alt"></i>SQL</th>
+                  <th><i className="bx bx-credit-card"></i>Custo SQL</th>
+                  <th><i className="bx bx-list-check"></i>Plano de ação</th>
                 </tr>
               </thead>
               <tbody>
@@ -12913,11 +12913,11 @@ export default function DashboardShell({
                   </div>
                   <div className="weekly-history-card-metrics">
                     <div>
-                      <span>Total Investido</span>
+                      <span><i className="bx bx-wallet"></i>Total Investido</span>
                       <strong>{formatCurrency(card.investment)}</strong>
                     </div>
                     <div>
-                      <span>CPL Médio</span>
+                      <span><i className="bx bx-purchase-tag-alt"></i>CPL Médio</span>
                       <strong>{card.leads > 0 ? formatCurrency(card.cpl) : '-'}</strong>
                     </div>
                   </div>
@@ -27837,6 +27837,40 @@ export default function DashboardShell({
 
         .weekly-goal-copy p {
           line-height: 1.75 !important;
+        }
+
+        .weekly-icon-label,
+        .weekly-kpi-card span,
+        .weekly-risk-badge span,
+        .weekly-table-filters span,
+        .weekly-table-title-row h2,
+        .weekly-updated-pill,
+        .weekly-data-table th,
+        .weekly-history-card-metrics span {
+          display: inline-flex;
+          align-items: center;
+          gap: 7px;
+        }
+
+        .weekly-icon-label i,
+        .weekly-kpi-card span i,
+        .weekly-risk-badge span i,
+        .weekly-table-filters span i,
+        .weekly-table-title-row h2 i,
+        .weekly-updated-pill i,
+        .weekly-data-table th i,
+        .weekly-history-card-metrics span i {
+          color: var(--weekly-accent);
+          font-size: 1rem;
+          line-height: 1;
+        }
+
+        .weekly-table-title-row h2 i {
+          font-size: 1.35rem;
+        }
+
+        .weekly-updated-pill i {
+          font-size: 0.9rem;
         }
 
         .weekly-hero-controls {
