@@ -28027,16 +28027,26 @@ export default function DashboardShell({
         }
 
         .weekly-table-actions {
-          display: grid;
-          grid-template-columns: minmax(220px, 1fr) minmax(220px, 1fr) auto;
+          display: flex;
           align-items: flex-end;
           justify-content: flex-end;
           gap: 16px;
-          width: min(100%, 900px);
+          flex-wrap: nowrap;
+          width: min(100%, 980px);
         }
 
         .weekly-table-filters {
-          display: contents;
+          display: flex;
+          align-items: flex-end;
+          gap: 16px;
+          flex: 1 1 auto;
+          min-width: 0;
+          flex-wrap: nowrap;
+        }
+
+        .weekly-table-filters label {
+          flex: 1 1 0;
+          min-width: 220px;
         }
 
         .weekly-export-actions {
@@ -28044,6 +28054,7 @@ export default function DashboardShell({
           display: flex;
           align-items: flex-end;
           justify-content: flex-end;
+          flex: 0 0 auto;
         }
 
         .weekly-export-button {
@@ -29420,7 +29431,6 @@ export default function DashboardShell({
           }
 
           .weekly-table-actions {
-            grid-template-columns: 1fr;
             width: 100%;
           }
 
