@@ -27212,6 +27212,7 @@ export default function DashboardShell({
 
 
         .simple-clients-layout { gap: 22px; }
+        .simple-team-layout { gap: 32px; }
         .simple-client-card { padding: 22px; }
         .simple-client-controls { margin-bottom: 18px; }
         .simple-client-list { display: grid; gap: 10px; }
