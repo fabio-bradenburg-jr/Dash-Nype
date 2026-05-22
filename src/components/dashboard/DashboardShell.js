@@ -3193,7 +3193,6 @@ export default function DashboardShell({
   const [weeklyCustomUntil, setWeeklyCustomUntil] = useState(() => getWeekEndDateInputValue(getMondayDateInputValue()))
   const [weeklyTableClientFilter, setWeeklyTableClientFilter] = useState('all')
   const [weeklyTableHealthFilter, setWeeklyTableHealthFilter] = useState('all')
-  const [isWeeklyExportMenuOpen, setIsWeeklyExportMenuOpen] = useState(false)
   const [isWeeklyDeleteMode, setIsWeeklyDeleteMode] = useState(false)
   const [selectedWeeklyRecordIds, setSelectedWeeklyRecordIds] = useState([])
   const [isDeletingWeeklyRecords, setIsDeletingWeeklyRecords] = useState(false)
@@ -3622,13 +3621,6 @@ export default function DashboardShell({
       setIsSavingWeeklyRecord(false)
     }
   }
-
-
-  const handleToggleWeeklyRecordSelection = useCallback((recordId) => {
-    setSelectedWeeklyRecordIds((current) => current.includes(recordId)
-      ? current.filter((id) => id !== recordId)
-      : [...current, recordId])
-  }, [])
 
   const handleToggleWeeklyDeleteMode = useCallback(() => {
     setWeeklyError('')
@@ -4829,6 +4821,60 @@ export default function DashboardShell({
     })
   }, [weeklyLatestRecords, weeklyClientFilter, weeklyTableClientFilter, weeklyTableHealthFilter])
 
+  const weeklyHistoryCards = useMemo(() => {
+    const byWeek = new Map()
+    weeklyLatestRecords.forEach((record) => {
+      const key = record.weekStart || record.id
+      const current = byWeek.get(key) || {
+        weekStart: record.weekStart,
+        weekEnd: record.weekEnd,
+        investment: 0,
+        leads: 0,
+        sql: 0,
+        records: [],
+        clientIds: new Set(),
+      }
+      current.investment += Number(record.investment || 0)
+      current.leads += Number(record.leads || 0)
+      current.sql += Number(record.sql || 0)
+      current.records.push(record)
+      if (record.clientId) current.clientIds.add(record.clientId)
+      byWeek.set(key, current)
+    })
+
+    const currentWeekStart = parseLocalDateInput(getMondayDateInputValue())
+    return Array.from(byWeek.values()).map((group) => {
+      const weekStartDate = parseLocalDateInput(group.weekStart)
+      const weeksAgo = currentWeekStart && weekStartDate
+        ? Math.max(0, Math.round((currentWeekStart.getTime() - weekStartDate.getTime()) / (7 * 24 * 60 * 60 * 1000)))
+        : null
+      return {
+        ...group,
+        id: group.weekStart || `week-${group.records.map((record) => record.id).join('-')}`,
+        recordIds: group.records.map((record) => record.id),
+        clientsCount: group.clientIds.size,
+        cpl: group.leads > 0 ? group.investment / group.leads : 0,
+        costPerSql: group.sql > 0 ? group.investment / group.sql : 0,
+        relativeLabel: weeksAgo === null
+          ? 'Semana registrada'
+          : weeksAgo === 0
+            ? 'Semana atual'
+            : weeksAgo === 1
+              ? 'Semana anterior'
+              : `Há ${weeksAgo} semanas`,
+      }
+    }).sort((left, right) => String(right.weekStart).localeCompare(String(left.weekStart)))
+  }, [weeklyLatestRecords])
+
+  const handleToggleWeeklyHistoryCardSelection = useCallback((recordIds) => {
+    setSelectedWeeklyRecordIds((current) => {
+      const ids = recordIds.filter(Boolean)
+      const allSelected = ids.length > 0 && ids.every((id) => current.includes(id))
+      if (allSelected) return current.filter((id) => !ids.includes(id))
+      return Array.from(new Set([...current, ...ids]))
+    })
+  }, [])
+
   const weeklyTableExportRows = useMemo(() => {
     return weeklyTableRecords.map((record) => {
       const client = clientsById.get(record.clientId)
@@ -4862,8 +4908,6 @@ export default function DashboardShell({
   }, [weeklyClientFilter, clientsById, weeklyPeriodWindow.label])
 
   const handleExportWeeklyTable = useCallback(async (format) => {
-    setIsWeeklyExportMenuOpen(false)
-
     if (!weeklyTableExportRows.length) {
       window.alert('Nenhum registro encontrado para exportar com os filtros atuais.')
       return
@@ -12695,18 +12739,13 @@ export default function DashboardShell({
       </div>
 
       <div className="weekly-records-card glass-panel weekly-table-card">
-        <div className="section-header weekly-table-header">
-          <div>
-            <span className="eyebrow">Dados selecionados</span>
-            <h2>Tabela de acompanhamento</h2>
-            <p className="chart-subtitle">Visualize exatamente o que foi imputado no período selecionado, com filtro por cliente e saúde.</p>
-          </div>
+        <div className="weekly-table-toolbar">
           <div className="weekly-table-actions">
             <div className="weekly-table-filters">
               <label>
                 <span>Cliente</span>
                 <select value={weeklyTableClientFilter} onChange={(event) => setWeeklyTableClientFilter(event.target.value)} disabled={weeklyClientFilter !== 'all'}>
-                  <option value="all">Todos os clientes</option>
+                  <option value="all">Todos os Clientes</option>
                   {dashboardEligibleClients.map((client) => (
                     <option key={'weekly-table-client-' + client.id} value={client.id}>{client.name}</option>
                   ))}
@@ -12715,7 +12754,7 @@ export default function DashboardShell({
               <label>
                 <span>Saúde</span>
                 <select value={weeklyTableHealthFilter} onChange={(event) => setWeeklyTableHealthFilter(event.target.value)}>
-                  <option value="all">Todas as saúdes</option>
+                  <option value="all">Todos os Status</option>
                   {WEEKLY_HEALTH_OPTIONS.map((option) => (
                     <option key={'weekly-table-health-' + option.key} value={option.key}>{option.label}</option>
                   ))}
@@ -12725,21 +12764,31 @@ export default function DashboardShell({
             <div className="weekly-export-actions">
               <button
                 type="button"
-                className="weekly-export-button"
-                onClick={() => setIsWeeklyExportMenuOpen((current) => !current)}
+                className="weekly-export-button weekly-export-button-outline"
+                onClick={() => handleExportWeeklyTable('csv')}
                 disabled={!weeklyTableRecords.length}
               >
                 <i className="bx bx-download"></i>
-                Exportar
+                Exportar CSV
               </button>
-              {isWeeklyExportMenuOpen && (
-                <div className="weekly-export-menu" role="menu" aria-label="Escolha o formato da exportação">
-                  <button type="button" onClick={() => handleExportWeeklyTable('pdf')}>Exportar PDF</button>
-                  <button type="button" onClick={() => handleExportWeeklyTable('csv')}>Exportar CSV</button>
-                </div>
-              )}
+              <button
+                type="button"
+                className="weekly-export-button"
+                onClick={() => handleExportWeeklyTable('pdf')}
+                disabled={!weeklyTableRecords.length}
+              >
+                <i className="bx bx-file"></i>
+                Exportar PDF
+              </button>
             </div>
           </div>
+        </div>
+        <div className="weekly-table-title-row">
+          <div>
+            <h2>Tabela de Acompanhamento</h2>
+            <p className="chart-subtitle">Visualize exatamente o que foi imputado no período selecionado, com filtro por cliente e saúde.</p>
+          </div>
+          <span className="weekly-updated-pill">Atualizado há 15 min</span>
         </div>
         {weeklyTableRecords.length ? (
           <div className="weekly-table-scroll">
@@ -12784,10 +12833,9 @@ export default function DashboardShell({
       </div>
 
       <div className="weekly-records-card glass-panel">
-        <div className="section-header section-header-stack">
+        <div className="weekly-history-heading">
           <div>
-            <span className="eyebrow">Histórico</span>
-            <h2>Semanas registradas</h2>
+            <h2><i className="bx bx-history"></i> Histórico de Semanas Registradas</h2>
             <p className="chart-subtitle">Cada linha fica salva no Supabase e pode ser reaberta editando o mesmo cliente e semana.</p>
           </div>
           <div className="weekly-history-actions">
@@ -12806,38 +12854,40 @@ export default function DashboardShell({
             )}
           </div>
         </div>
-        {weeklyLatestRecords.length ? (
-          <div className="weekly-record-list">
-            {weeklyLatestRecords.map((record) => {
-              const client = clientsById.get(record.clientId)
-              const health = WEEKLY_HEALTH_BY_KEY[record.healthStatus] || WEEKLY_HEALTH_BY_KEY.attention
+        {weeklyHistoryCards.length ? (
+          <div className="weekly-history-grid">
+            {weeklyHistoryCards.map((card) => {
+              const isSelected = card.recordIds.length > 0 && card.recordIds.every((id) => selectedWeeklyRecordIds.includes(id))
               return (
-                <article key={record.id} className={`weekly-record-row ${selectedWeeklyRecordIds.includes(record.id) ? 'selected' : ''}`}>
+                <article key={card.id} className={`weekly-history-card ${isSelected ? 'selected' : ''}`}>
                   {isWeeklyDeleteMode && (
-                    <label className="weekly-record-selector" aria-label={`Selecionar registro de ${client?.name || 'cliente'}`}>
+                    <label className="weekly-record-selector weekly-history-selector" aria-label={`Selecionar semana ${formatWeekRangeLabel(card.weekStart, card.weekEnd)}`}>
                       <input
                         type="checkbox"
-                        checked={selectedWeeklyRecordIds.includes(record.id)}
-                        onChange={() => handleToggleWeeklyRecordSelection(record.id)}
+                        checked={isSelected}
+                        onChange={() => handleToggleWeeklyHistoryCardSelection(card.recordIds)}
                       />
                       <span></span>
                     </label>
                   )}
-                  <div className="weekly-record-main">
-                    <span>{formatWeekRangeLabel(record.weekStart, record.weekEnd)}</span>
-                    <strong>{client?.name || 'Cliente removido'}</strong>
-                    <small style={{ color: health.color }}>{health.label}</small>
+                  <div className="weekly-history-card-title">
+                    <strong>{formatWeekRangeLabel(card.weekStart, card.weekEnd)}</strong>
+                    <span>{card.relativeLabel}</span>
                   </div>
-                  <div className="weekly-record-metrics">
-                    <div><span>Invest.</span><strong>{formatCurrency(record.investment || 0)}</strong></div>
-                    <div><span>Leads</span><strong>{formatNumber(record.leads || 0)}</strong></div>
-                    <div><span>CPL</span><strong>{record.leads > 0 ? formatCurrency(record.cpl || 0) : '-'}</strong></div>
-                    <div><span>SQL</span><strong>{formatNumber(record.sql || 0)}</strong></div>
-                    <div><span>Custo SQL</span><strong>{record.sql > 0 ? formatCurrency(record.costPerSql || 0) : '-'}</strong></div>
+                  <div className="weekly-history-card-metrics">
+                    <div>
+                      <span>Total Investido</span>
+                      <strong>{formatCurrency(card.investment)}</strong>
+                    </div>
+                    <div>
+                      <span>CPL Médio</span>
+                      <strong>{card.leads > 0 ? formatCurrency(card.cpl) : '-'}</strong>
+                    </div>
                   </div>
-                  <ol className="weekly-action-list">
-                    {(record.actionItems || []).length ? record.actionItems.map((item, index) => <li key={record.id + '-action-' + index}>{item}</li>) : <li>Sem plano de ação registrado.</li>}
-                  </ol>
+                  <button type="button" className="weekly-history-card-footer" onClick={() => setWeeklyWeekStart(card.weekStart || getMondayDateInputValue())}>
+                    <span>{formatNumber(card.clientsCount)} Clientes Monitorados</span>
+                    <i className="bx bx-chevron-right"></i>
+                  </button>
                 </article>
               )
             })}
@@ -28026,27 +28076,35 @@ export default function DashboardShell({
           gap: 24px;
         }
 
+        .weekly-table-card {
+          padding: 34px;
+        }
+
+        .weekly-table-toolbar {
+          margin-bottom: 54px;
+        }
+
         .weekly-table-actions {
           display: flex;
           align-items: flex-end;
-          justify-content: flex-end;
-          gap: 16px;
+          justify-content: space-between;
+          gap: 28px;
           flex-wrap: nowrap;
-          width: min(100%, 980px);
+          width: 100%;
         }
 
         .weekly-table-filters {
           display: flex;
           align-items: flex-end;
           gap: 16px;
-          flex: 1 1 auto;
+          flex: 0 1 520px;
           min-width: 0;
           flex-wrap: nowrap;
         }
 
         .weekly-table-filters label {
-          flex: 1 1 0;
-          min-width: 220px;
+          flex: 0 1 240px;
+          min-width: 180px;
         }
 
         .weekly-export-actions {
@@ -28054,23 +28112,32 @@ export default function DashboardShell({
           display: flex;
           align-items: flex-end;
           justify-content: flex-end;
+          gap: 12px;
           flex: 0 0 auto;
         }
 
         .weekly-export-button {
-          min-height: 52px;
-          border: 1px solid color-mix(in srgb, var(--weekly-accent) 45%, rgba(255, 255, 255, 0.16));
-          border-radius: 16px;
-          background: linear-gradient(135deg, var(--weekly-accent), color-mix(in srgb, var(--weekly-accent) 72%, #2563eb));
-          color: #ffffff;
+          min-height: 40px;
+          border: 1px solid color-mix(in srgb, var(--weekly-accent) 82%, rgba(255, 255, 255, 0.16));
+          border-radius: 5px;
+          background: color-mix(in srgb, var(--weekly-accent) 88%, #a3e635);
+          color: #071006;
           display: inline-flex;
           align-items: center;
           justify-content: center;
           gap: 8px;
+          font-size: 0.72rem;
           font-weight: 900;
+          letter-spacing: 0.04em;
           padding: 0 18px;
-          box-shadow: 0 18px 44px color-mix(in srgb, var(--weekly-accent) 24%, transparent);
           cursor: pointer;
+          text-transform: uppercase;
+          white-space: nowrap;
+        }
+
+        .weekly-export-button-outline {
+          background: rgba(0, 0, 0, 0.08);
+          color: color-mix(in srgb, var(--weekly-accent) 86%, #d9f99d);
         }
 
         .weekly-export-button:disabled {
@@ -28114,12 +28181,12 @@ export default function DashboardShell({
           display: flex;
           flex-direction: column;
           gap: 9px;
-          min-width: 0;
+          min-width: 180px;
         }
 
         .weekly-table-filters span {
           color: var(--text-muted);
-          font-size: 0.72rem;
+          font-size: 0.68rem;
           font-weight: 900;
           letter-spacing: 0.12em;
           text-transform: uppercase;
@@ -28127,13 +28194,13 @@ export default function DashboardShell({
 
         .weekly-table-filters select {
           width: 100%;
-          min-height: 52px;
-          border: 1px solid rgba(148, 163, 184, 0.16);
-          border-radius: 16px;
-          background: rgba(6, 10, 18, 0.72);
+          min-height: 44px;
+          border: 1px solid color-mix(in srgb, var(--weekly-accent) 34%, rgba(148, 163, 184, 0.18));
+          border-radius: 4px;
+          background: rgba(0, 0, 0, 0.28);
           color: var(--text-primary);
           outline: none;
-          padding: 0 16px;
+          padding: 0 14px;
           font: inherit;
         }
 
@@ -28142,13 +28209,36 @@ export default function DashboardShell({
           cursor: not-allowed;
         }
 
+        .weekly-table-title-row {
+          display: flex;
+          align-items: flex-end;
+          justify-content: space-between;
+          gap: 24px;
+          margin-bottom: 22px;
+        }
+
+        .weekly-table-title-row h2 {
+          font-size: clamp(1.65rem, 2vw, 2rem);
+        }
+
+        .weekly-updated-pill {
+          border-radius: 3px;
+          background: rgba(255, 255, 255, 0.12);
+          color: var(--text-muted);
+          font-size: 0.7rem;
+          font-weight: 900;
+          letter-spacing: 0.08em;
+          padding: 5px 10px;
+          white-space: nowrap;
+        }
+
         .weekly-table-scroll {
-          margin-top: 34px;
+          margin-top: 0;
           overflow-x: auto;
-          border: 1px solid rgba(148, 163, 184, 0.12);
-          border-radius: 24px;
+          border: 1px solid color-mix(in srgb, var(--weekly-accent) 22%, rgba(148, 163, 184, 0.14));
+          border-radius: 8px;
           background: rgba(255, 255, 255, 0.025);
-          padding: 6px;
+          padding: 0;
         }
 
         .weekly-data-table {
@@ -28161,19 +28251,19 @@ export default function DashboardShell({
 
         .weekly-data-table th,
         .weekly-data-table td {
-          padding: 18px 28px;
+          padding: 20px 28px;
           text-align: left;
-          border-bottom: 1px solid rgba(148, 163, 184, 0.1);
-          vertical-align: top;
+          border-bottom: 1px solid color-mix(in srgb, var(--weekly-accent) 16%, rgba(148, 163, 184, 0.1));
+          vertical-align: middle;
         }
 
         .weekly-data-table th {
           color: var(--text-muted);
-          font-size: 0.72rem;
+          font-size: 0.68rem;
           font-weight: 900;
           letter-spacing: 0.12em;
           text-transform: uppercase;
-          background: rgba(255, 255, 255, 0.025);
+          background: rgba(255, 255, 255, 0.035);
         }
 
         .weekly-data-table tbody tr:last-child td {
@@ -28219,15 +28309,37 @@ export default function DashboardShell({
 
         .weekly-health-pill {
           display: inline-flex;
-          min-height: 32px;
+          min-height: 26px;
           align-items: center;
           justify-content: center;
           border: 1px solid;
-          border-radius: 999px;
+          border-radius: 3px;
           padding: 0 12px;
-          font-size: 0.78rem;
+          font-size: 0.68rem;
           font-weight: 900;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
           white-space: nowrap;
+        }
+
+        .weekly-history-heading {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 24px;
+          margin-bottom: 24px;
+        }
+
+        .weekly-history-heading h2 {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          font-size: clamp(1.55rem, 2vw, 2rem);
+        }
+
+        .weekly-history-heading h2 i {
+          color: var(--weekly-accent);
+          font-size: 1.15rem;
         }
 
         .weekly-history-actions {
@@ -28271,6 +28383,106 @@ export default function DashboardShell({
           border-color: rgba(248, 113, 113, 0.36);
           background: rgba(239, 68, 68, 0.12);
           color: #fecaca;
+        }
+
+        .weekly-history-grid {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 22px;
+        }
+
+        .weekly-history-card {
+          position: relative;
+          min-height: 186px;
+          border: 1px solid color-mix(in srgb, var(--weekly-accent) 24%, rgba(148, 163, 184, 0.18));
+          border-radius: 7px;
+          background: rgba(255, 255, 255, 0.035);
+          padding: 26px;
+          transition: border-color 180ms ease, background 180ms ease, transform 180ms ease;
+        }
+
+        .weekly-history-card.selected {
+          border-color: color-mix(in srgb, var(--weekly-accent) 62%, transparent);
+          background: color-mix(in srgb, var(--weekly-accent) 10%, rgba(255, 255, 255, 0.035));
+        }
+
+        .weekly-history-card:hover {
+          transform: translateY(-1px);
+          border-color: color-mix(in srgb, var(--weekly-accent) 42%, rgba(148, 163, 184, 0.2));
+        }
+
+        .weekly-history-selector {
+          position: absolute;
+          top: 18px;
+          right: 18px;
+        }
+
+        .weekly-history-card-title {
+          display: flex;
+          flex-direction: column;
+          gap: 3px;
+          padding-right: 46px;
+        }
+
+        .weekly-history-card-title strong {
+          color: var(--text-primary);
+          font-size: 1rem;
+        }
+
+        .weekly-history-card-title span {
+          color: var(--text-muted);
+          font-size: 0.76rem;
+          font-weight: 900;
+        }
+
+        .weekly-history-card-metrics {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 26px;
+          margin-top: 30px;
+          padding-bottom: 22px;
+          border-bottom: 1px solid color-mix(in srgb, var(--weekly-accent) 16%, rgba(148, 163, 184, 0.12));
+        }
+
+        .weekly-history-card-metrics span {
+          display: block;
+          color: var(--text-muted);
+          font-size: 0.68rem;
+          font-weight: 900;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+        }
+
+        .weekly-history-card-metrics strong {
+          display: block;
+          margin-top: 6px;
+          color: var(--text-primary);
+          font-size: 0.98rem;
+          font-weight: 700;
+        }
+
+        .weekly-history-card-footer {
+          width: 100%;
+          min-height: 42px;
+          border: 0;
+          background: transparent;
+          color: color-mix(in srgb, var(--weekly-accent) 82%, #d9f99d);
+          display: flex;
+          align-items: flex-end;
+          justify-content: space-between;
+          gap: 14px;
+          padding: 18px 0 0;
+          cursor: pointer;
+          font: inherit;
+          font-size: 0.76rem;
+          font-weight: 900;
+          letter-spacing: 0.04em;
+          text-align: left;
+        }
+
+        .weekly-history-card-footer i {
+          color: var(--text-primary);
+          font-size: 1.35rem;
         }
 
         .weekly-record-list {
@@ -28645,6 +28857,10 @@ export default function DashboardShell({
             grid-template-columns: 1fr;
             align-items: stretch;
           }
+
+          .weekly-history-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
         }
 
         @media (max-width: 1180px) {
@@ -28652,6 +28868,15 @@ export default function DashboardShell({
           .weekly-focus-strip,
           .weekly-chart-grid {
             grid-template-columns: 1fr;
+          }
+
+          .weekly-table-actions {
+            flex-direction: column;
+            align-items: stretch;
+          }
+
+          .weekly-export-actions {
+            justify-content: flex-start;
           }
 
           .weekly-form-grid,
@@ -29456,6 +29681,21 @@ export default function DashboardShell({
           .weekly-custom-range-fields,
           .weekly-table-actions,
           .weekly-table-filters {
+            flex-direction: column;
+            align-items: stretch;
+          }
+
+          .weekly-history-heading,
+          .weekly-table-title-row {
+            flex-direction: column;
+            align-items: flex-start;
+          }
+
+          .weekly-history-grid {
+            grid-template-columns: 1fr;
+          }
+
+          .weekly-export-actions {
             flex-direction: column;
             align-items: stretch;
           }
