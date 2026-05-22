@@ -18305,7 +18305,7 @@ export default function DashboardShell({
 
         .weekly-dashboard-panel .weekly-record-row {
           display: grid !important;
-          grid-template-columns: minmax(200px, .72fr) minmax(0, 1.24fr) minmax(260px, .9fr) !important;
+          grid-template-columns: minmax(220px, .68fr) minmax(620px, 1.35fr) minmax(260px, .82fr) !important;
           gap: 22px !important;
           align-items: center !important;
           border: 1px solid rgba(148,163,184,.12) !important;
@@ -18316,14 +18316,16 @@ export default function DashboardShell({
 
         .weekly-dashboard-panel .weekly-record-metrics {
           display: grid !important;
-          grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+          grid-template-columns: repeat(5, minmax(112px, 1fr)) !important;
           gap: 10px !important;
+          min-width: 0 !important;
         }
 
         .weekly-dashboard-panel .weekly-record-metrics div {
           border-radius: 16px !important;
           background: rgba(255,255,255,.045) !important;
           padding: 12px !important;
+          min-width: 0 !important;
         }
 
         .weekly-dashboard-panel .weekly-computed-field span,
@@ -18340,7 +18342,9 @@ export default function DashboardShell({
         .weekly-dashboard-panel .weekly-kpi-card strong,
         .weekly-dashboard-panel .weekly-record-metrics strong {
           color: #f8fafc !important;
-          font-size: clamp(1.25rem, 2vw, 2rem) !important;
+          font-size: clamp(1rem, 1.2vw, 1.2rem) !important;
+          line-height: 1.08 !important;
+          overflow-wrap: anywhere !important;
         }
 
         .dashboard-light-mode .weekly-dashboard-panel .weekly-hero,
@@ -18394,11 +18398,18 @@ export default function DashboardShell({
           background: rgba(15, 23, 42, 0.025);
         }
 
+        @media (max-width: 1320px) {
+          .weekly-dashboard-panel .weekly-record-row,
+          .weekly-dashboard-panel .weekly-record-row:has(.weekly-record-selector) {
+            grid-template-columns: 1fr !important;
+            align-items: stretch !important;
+          }
+        }
+
         @media (max-width: 1180px) {
           .weekly-dashboard-panel .weekly-hero,
           .weekly-dashboard-panel .weekly-content-grid,
-          .weekly-dashboard-panel .weekly-chart-grid,
-          .weekly-dashboard-panel .weekly-record-row {
+          .weekly-dashboard-panel .weekly-chart-grid {
             grid-template-columns: 1fr !important;
           }
         }
@@ -28235,7 +28246,7 @@ export default function DashboardShell({
 
         .weekly-record-row {
           display: grid;
-          grid-template-columns: minmax(190px, 0.7fr) minmax(0, 1.25fr) minmax(240px, 0.85fr);
+          grid-template-columns: minmax(220px, 0.68fr) minmax(620px, 1.35fr) minmax(260px, 0.82fr);
           gap: 20px;
           align-items: center;
           border: 1px solid rgba(148, 163, 184, 0.12);
@@ -28246,7 +28257,7 @@ export default function DashboardShell({
         }
 
         .weekly-record-row:has(.weekly-record-selector) {
-          grid-template-columns: auto minmax(190px, 0.7fr) minmax(0, 1.25fr) minmax(240px, 0.85fr);
+          grid-template-columns: auto minmax(220px, 0.68fr) minmax(620px, 1.35fr) minmax(260px, 0.82fr);
         }
 
         .weekly-record-row.selected {
@@ -28290,6 +28301,7 @@ export default function DashboardShell({
           display: flex;
           flex-direction: column;
           gap: 5px;
+          min-width: 0;
         }
 
         .weekly-record-main span,
@@ -28306,20 +28318,24 @@ export default function DashboardShell({
 
         .weekly-record-metrics {
           display: grid;
-          grid-template-columns: repeat(5, minmax(0, 1fr));
+          grid-template-columns: repeat(5, minmax(112px, 1fr));
           gap: 10px;
+          min-width: 0;
         }
 
         .weekly-record-metrics div {
           border-radius: 16px;
           background: rgba(255, 255, 255, 0.04);
           padding: 12px;
+          min-width: 0;
         }
 
         .weekly-record-metrics strong {
           display: block;
           margin-top: 7px;
-          font-size: 0.95rem;
+          font-size: clamp(1rem, 1.2vw, 1.2rem);
+          line-height: 1.08;
+          overflow-wrap: anywhere;
         }
 
         .weekly-action-list {
@@ -28587,11 +28603,18 @@ export default function DashboardShell({
           color: #475569;
         }
 
+        @media (max-width: 1320px) {
+          .weekly-record-row,
+          .weekly-record-row:has(.weekly-record-selector) {
+            grid-template-columns: 1fr;
+            align-items: stretch;
+          }
+        }
+
         @media (max-width: 1180px) {
           .weekly-hero,
           .weekly-focus-strip,
-          .weekly-chart-grid,
-          .weekly-record-row {
+          .weekly-chart-grid {
             grid-template-columns: 1fr;
           }
 
