@@ -12741,8 +12741,8 @@ export default function DashboardShell({
         </div>
       </div>
 
-      <div className="weekly-records-card glass-panel weekly-table-card">
-        <div className="weekly-table-toolbar">
+      <div className="weekly-records-card glass-panel weekly-table-card" style={{ padding: '52px 64px' }}>
+        <div className="weekly-table-toolbar" style={{ marginBottom: 56 }}>
           <div className="weekly-table-actions">
             <div className="weekly-table-filters">
               <label>
@@ -12770,6 +12770,23 @@ export default function DashboardShell({
                 className="weekly-export-button weekly-export-button-outline"
                 onClick={() => handleExportWeeklyTable('csv')}
                 disabled={!weeklyTableRecords.length}
+                style={{
+                  minHeight: 42,
+                  border: `1px solid ${activeClientDashboardHex}cc`,
+                  borderRadius: 6,
+                  background: 'rgba(0, 0, 0, 0.12)',
+                  color: activeClientDashboardHex,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 8,
+                  padding: '0 18px',
+                  fontSize: '0.72rem',
+                  fontWeight: 900,
+                  letterSpacing: '0.04em',
+                  textTransform: 'uppercase',
+                  whiteSpace: 'nowrap',
+                }}
               >
                 <i className="bx bx-download"></i>
                 Exportar CSV
@@ -12779,6 +12796,23 @@ export default function DashboardShell({
                 className="weekly-export-button"
                 onClick={() => handleExportWeeklyTable('pdf')}
                 disabled={!weeklyTableRecords.length}
+                style={{
+                  minHeight: 42,
+                  border: `1px solid ${activeClientDashboardHex}cc`,
+                  borderRadius: 6,
+                  background: activeClientDashboardHex,
+                  color: '#071006',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 8,
+                  padding: '0 18px',
+                  fontSize: '0.72rem',
+                  fontWeight: 900,
+                  letterSpacing: '0.04em',
+                  textTransform: 'uppercase',
+                  whiteSpace: 'nowrap',
+                }}
               >
                 <i className="bx bx-file"></i>
                 Exportar PDF
@@ -12786,7 +12820,7 @@ export default function DashboardShell({
             </div>
           </div>
         </div>
-        <div className="weekly-table-title-row">
+        <div className="weekly-table-title-row" style={{ marginBottom: 28 }}>
           <div>
             <h2>Tabela de Acompanhamento</h2>
             <p className="chart-subtitle">Visualize exatamente o que foi imputado no período selecionado, com filtro por cliente e saúde.</p>
