@@ -489,63 +489,6 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
     ],
     [clientCustomColumns, clientSystemFields]
   )
-  const settingsSidebarHighlights = useMemo(() => {
-    if (activeSettingsTab === 'panel') {
-      return {
-        title: 'Aparência ativa',
-        description: 'Controle a assinatura visual do app e a atmosfera geral da interface.',
-        items: [
-          'Tema claro/escuro no topo do app',
-          `Cor de destaque ${panelDraft.accent.toUpperCase()}`,
-          `Fundo base ${panelDraft.backgroundTint.toUpperCase()}`,
-        ],
-      }
-    }
-
-    if (activeSettingsTab === 'general') {
-      return {
-        title: 'Integrações gerais',
-        description: 'Credenciais e base de leitura executiva centralizadas por aqui.',
-        items: [
-          `${advertisingIntegrationGroups.length} integrações de mídia`,
-          `${crmIntegrationGroups.length} integrações de CRM`,
-          'Providers e prompt de IA centralizados',
-        ],
-      }
-    }
-
-    if (activeSettingsTab === 'operation') {
-      return {
-        title: 'Controle da operação',
-        description: 'Meta de risco e regras da leitura semanal da carteira.',
-        items: [
-          `Meta Crítico + Atenção: ${operationSettings.healthRiskTargetPercent}%`,
-          'Semanas de segunda a domingo',
-          'Saúde média semanal e mensal',
-        ],
-      }
-    }
-
-    return {
-      title: 'Controle da operação',
-      description: 'Preferências operacionais centralizadas por aqui.',
-      items: [
-        `Meta Crítico + Atenção: ${operationSettings.healthRiskTargetPercent}%`,
-        'Indicadores semanais salvos no Supabase',
-        'Plano de ação com até 5 tópicos',
-      ],
-    }
-  }, [
-    activeSettingsTab,
-    advertisingIntegrationGroups.length,
-    clientImplementationPhases.length,
-    clientCustomColumns.length,
-    clientCustomTabs.length,
-    clientSystemFields.length,
-    crmIntegrationGroups.length,
-    operationSettings,
-    panelDraft,
-  ])
   const serverClients = useMemo(
     () => (Array.isArray(serverState?.clients) ? serverState.clients : []),
     [serverState?.clients]
@@ -1851,20 +1794,6 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
                 </button>
               )}
             </div>
-
-            <div className="settings-sidebar-summary glass-item">
-              <span className="settings-sidebar-summary-kicker">Nesta aba</span>
-              <strong>{settingsSidebarHighlights.title}</strong>
-              <p>{settingsSidebarHighlights.description}</p>
-              <div className="settings-sidebar-summary-list">
-                {settingsSidebarHighlights.items.map((item) => (
-                  <span key={`${activeSettingsTab}-${item}`} className="settings-sidebar-summary-item">
-                    <i className="bx bx-check-circle"></i>
-                    {item}
-                  </span>
-                ))}
-              </div>
-            </div>
           </aside>
 
           <section className="glass-panel settings-panel">
@@ -2648,59 +2577,6 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
           display: grid;
           grid-template-columns: 1fr;
           gap: 6px;
-        }
-
-        .settings-sidebar-summary {
-          margin-top: 18px;
-          padding: 18px;
-          display: grid;
-          gap: 12px;
-          border-radius: 20px;
-          background: rgba(13, 21, 39, 0.78);
-          border: 1px solid rgba(123, 148, 199, 0.12);
-        }
-
-        .settings-sidebar-summary-kicker {
-          color: var(--accent-blue);
-          font-size: 11px;
-          font-weight: 800;
-          letter-spacing: 0.14em;
-          text-transform: uppercase;
-        }
-
-        .settings-sidebar-summary strong {
-          font-size: 18px;
-          font-family: var(--font-family-headline);
-          font-weight: 800;
-          letter-spacing: -0.03em;
-        }
-
-        .settings-sidebar-summary p {
-          margin: 0;
-          color: var(--text-secondary);
-          font-size: 13px;
-          line-height: 1.55;
-        }
-
-        .settings-sidebar-summary-list {
-          display: grid;
-          gap: 10px;
-        }
-
-        .settings-sidebar-summary-item {
-          display: grid;
-          grid-template-columns: 16px minmax(0, 1fr);
-          gap: 10px;
-          align-items: start;
-          color: var(--text-primary);
-          font-size: 13px;
-          line-height: 1.4;
-        }
-
-        .settings-sidebar-summary-item i {
-          color: var(--accent-blue);
-          font-size: 15px;
-          margin-top: 1px;
         }
 
         .settings-sidebar-link {
