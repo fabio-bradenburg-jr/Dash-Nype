@@ -18305,26 +18305,26 @@ export default function DashboardShell({
 
         .weekly-dashboard-panel .weekly-record-row {
           display: grid !important;
-          grid-template-columns: minmax(220px, .68fr) minmax(620px, 1.35fr) minmax(260px, .82fr) !important;
-          gap: 22px !important;
+          grid-template-columns: minmax(300px, .78fr) minmax(700px, 1.35fr) minmax(320px, .82fr) !important;
+          gap: 30px !important;
           align-items: center !important;
           border: 1px solid rgba(148,163,184,.12) !important;
           border-radius: 26px !important;
           background: rgba(255,255,255,.04) !important;
-          padding: 22px !important;
+          padding: 28px !important;
         }
 
         .weekly-dashboard-panel .weekly-record-metrics {
           display: grid !important;
-          grid-template-columns: repeat(5, minmax(112px, 1fr)) !important;
-          gap: 10px !important;
+          grid-template-columns: repeat(5, minmax(124px, 1fr)) !important;
+          gap: 14px !important;
           min-width: 0 !important;
         }
 
         .weekly-dashboard-panel .weekly-record-metrics div {
           border-radius: 16px !important;
           background: rgba(255,255,255,.045) !important;
-          padding: 12px !important;
+          padding: 16px !important;
           min-width: 0 !important;
         }
 
@@ -28143,23 +28143,25 @@ export default function DashboardShell({
         }
 
         .weekly-table-scroll {
-          margin-top: 24px;
+          margin-top: 34px;
           overflow-x: auto;
           border: 1px solid rgba(148, 163, 184, 0.12);
           border-radius: 24px;
           background: rgba(255, 255, 255, 0.025);
+          padding: 6px;
         }
 
         .weekly-data-table {
           width: 100%;
-          min-width: 1120px;
-          border-collapse: collapse;
+          min-width: 1360px;
+          border-collapse: separate;
+          border-spacing: 0;
           color: var(--text-primary);
         }
 
         .weekly-data-table th,
         .weekly-data-table td {
-          padding: 18px 20px;
+          padding: 18px 28px;
           text-align: left;
           border-bottom: 1px solid rgba(148, 163, 184, 0.1);
           vertical-align: top;
@@ -28181,10 +28183,38 @@ export default function DashboardShell({
         .weekly-data-table td {
           color: var(--text-secondary);
           font-size: 0.92rem;
+          line-height: 1.45;
         }
 
         .weekly-data-table td strong {
           color: var(--text-primary);
+        }
+
+        .weekly-data-table th:nth-child(1),
+        .weekly-data-table td:nth-child(1) {
+          min-width: 210px;
+        }
+
+        .weekly-data-table th:nth-child(2),
+        .weekly-data-table td:nth-child(2) {
+          min-width: 170px;
+        }
+
+        .weekly-data-table th:nth-child(3),
+        .weekly-data-table td:nth-child(3) {
+          min-width: 140px;
+        }
+
+        .weekly-data-table th:nth-child(4),
+        .weekly-data-table td:nth-child(4),
+        .weekly-data-table th:nth-child(8),
+        .weekly-data-table td:nth-child(8) {
+          min-width: 150px;
+        }
+
+        .weekly-data-table th:nth-child(9),
+        .weekly-data-table td:nth-child(9) {
+          min-width: 220px;
         }
 
         .weekly-health-pill {
@@ -28252,18 +28282,18 @@ export default function DashboardShell({
 
         .weekly-record-row {
           display: grid;
-          grid-template-columns: minmax(220px, 0.68fr) minmax(620px, 1.35fr) minmax(260px, 0.82fr);
-          gap: 20px;
+          grid-template-columns: minmax(300px, 0.78fr) minmax(700px, 1.35fr) minmax(320px, 0.82fr);
+          gap: 30px;
           align-items: center;
           border: 1px solid rgba(148, 163, 184, 0.12);
           border-radius: 24px;
           background: rgba(255, 255, 255, 0.035);
-          padding: 20px;
+          padding: 28px;
           transition: border-color 180ms ease, background 180ms ease;
         }
 
         .weekly-record-row:has(.weekly-record-selector) {
-          grid-template-columns: auto minmax(220px, 0.68fr) minmax(620px, 1.35fr) minmax(260px, 0.82fr);
+          grid-template-columns: auto minmax(300px, 0.78fr) minmax(700px, 1.35fr) minmax(320px, 0.82fr);
         }
 
         .weekly-record-row.selected {
@@ -28306,7 +28336,7 @@ export default function DashboardShell({
         .weekly-record-main {
           display: flex;
           flex-direction: column;
-          gap: 5px;
+          gap: 9px;
           min-width: 0;
         }
 
@@ -28324,15 +28354,15 @@ export default function DashboardShell({
 
         .weekly-record-metrics {
           display: grid;
-          grid-template-columns: repeat(5, minmax(112px, 1fr));
-          gap: 10px;
+          grid-template-columns: repeat(5, minmax(124px, 1fr));
+          gap: 14px;
           min-width: 0;
         }
 
         .weekly-record-metrics div {
           border-radius: 16px;
           background: rgba(255, 255, 255, 0.04);
-          padding: 12px;
+          padding: 16px;
           min-width: 0;
         }
 
