@@ -28027,28 +28027,23 @@ export default function DashboardShell({
         }
 
         .weekly-table-actions {
-          display: flex;
+          display: grid;
+          grid-template-columns: minmax(220px, 1fr) minmax(220px, 1fr) auto;
           align-items: flex-end;
           justify-content: flex-end;
           gap: 16px;
-          flex-wrap: nowrap;
-          min-width: min(100%, 820px);
+          width: min(100%, 900px);
         }
 
         .weekly-table-filters {
-          display: grid;
-          grid-template-columns: repeat(2, minmax(220px, 1fr));
-          align-items: flex-end;
-          gap: 14px;
-          flex: 1 1 auto;
-          min-width: 0;
+          display: contents;
         }
 
         .weekly-export-actions {
           position: relative;
           display: flex;
           align-items: flex-end;
-          flex: 0 0 auto;
+          justify-content: flex-end;
         }
 
         .weekly-export-button {
@@ -29422,6 +29417,11 @@ export default function DashboardShell({
           .weekly-table-filters {
             flex-direction: column;
             align-items: stretch;
+          }
+
+          .weekly-table-actions {
+            grid-template-columns: 1fr;
+            width: 100%;
           }
 
           .weekly-hero-controls > label,
