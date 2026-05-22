@@ -12688,13 +12688,16 @@ export default function DashboardShell({
         </div>
       )}
 
-      <div className="weekly-focus-strip glass-panel">
-        <div>
+      <div
+        className="weekly-focus-strip weekly-goal-card glass-panel"
+        style={{ padding: '56px 64px', gap: 32, alignItems: 'center' }}
+      >
+        <div className="weekly-goal-copy">
           <span className="eyebrow">Meta operacional</span>
           <h2>{weeklyClientFilter === 'all' ? 'Visão consolidada da carteira' : clientsById.get(weeklyClientFilter)?.name || 'Cliente selecionado'}</h2>
           <p>O objetivo do time é manter Crítico + Atenção em até {formatNumber(weeklyHealthRiskTarget)}% da carteira. Ajuste essa meta nas configurações.</p>
         </div>
-        <div className={'weekly-risk-badge ' + (weeklySummary.withinRiskTarget ? 'healthy' : 'critical')}>
+        <div className={'weekly-risk-badge weekly-goal-badge ' + (weeklySummary.withinRiskTarget ? 'healthy' : 'critical')}>
           <span>Crítico + Atenção</span>
           <strong>{weeklySummary.healthCount ? formatNumber(weeklySummary.riskPercent) + '%' : '-'}</strong>
           <small>{weeklySummary.healthCount ? (weeklySummary.withinRiskTarget ? 'Dentro da meta' : 'Acima da meta') : 'Sem dados no período'}</small>
@@ -27735,9 +27738,26 @@ export default function DashboardShell({
           row-gap: 28px;
         }
 
+        .weekly-goal-card {
+          display: grid !important;
+          grid-template-columns: minmax(0, 1fr) minmax(260px, 340px) !important;
+          min-height: 190px !important;
+          padding: 56px 64px !important;
+          gap: 32px !important;
+          align-items: center !important;
+        }
+
         .weekly-hero > div:first-child {
           align-self: start;
           padding-top: 2px;
+        }
+
+        .weekly-goal-copy {
+          display: flex !important;
+          min-width: 0 !important;
+          flex-direction: column !important;
+          gap: 14px !important;
+          padding: 0 !important;
         }
 
         .weekly-focus-strip > div:first-child {
@@ -27773,6 +27793,16 @@ export default function DashboardShell({
           margin: 0;
           max-width: 860px;
           line-height: 1.75;
+        }
+
+        .weekly-goal-copy .eyebrow,
+        .weekly-goal-copy h2,
+        .weekly-goal-copy p {
+          margin: 0 !important;
+        }
+
+        .weekly-goal-copy p {
+          line-height: 1.75 !important;
         }
 
         .weekly-hero-controls {
@@ -27893,6 +27923,15 @@ export default function DashboardShell({
           gap: 8px;
           padding: 22px;
           background: rgba(255, 255, 255, 0.04);
+        }
+
+        .weekly-goal-badge {
+          display: flex !important;
+          min-height: 132px !important;
+          flex-direction: column !important;
+          justify-content: center !important;
+          gap: 10px !important;
+          padding: 24px !important;
         }
 
         .weekly-risk-badge span,
@@ -28914,6 +28953,11 @@ export default function DashboardShell({
           .weekly-focus-strip {
             gap: 22px;
             padding: 28px 24px;
+          }
+
+          .weekly-goal-card {
+            grid-template-columns: 1fr !important;
+            padding: 32px 26px !important;
           }
 
           .weekly-hero-controls,
