@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meta Ads Performance Dashboard</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Boxicons -->
+    <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="styles.css">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- Sidebar -->
+        <aside class="sidebar glass-panel">
+            <div class="logo">
+                <i class='bx bxl-meta'></i>
+                <span>Ads.Dash</span>
+            </div>
+            <nav class="nav-menu">
+                <a href="#" class="nav-item active"><i class='bx bxs-dashboard'></i> Overview</a>
+                <a href="#" class="nav-item"><i class='bx bxs-megaphone'></i> Campaigns</a>
+                <a href="#" class="nav-item"><i class='bx bxs-group'></i> Audiences</a>
+                <a href="#" class="nav-item"><i class='bx bx-line-chart'></i> Reports</a>
+                <a href="#" class="nav-item"><i class='bx bxs-cog'></i> Settings</a>
+            </nav>
+            <div class="user-profile">
+                <img src="https://ui-avatars.com/api/?name=Fabio+Junior&background=0D8ABC&color=fff" alt="User">
+                <div class="user-info">
+                    <p class="name">Fabio Junior</p>
+                    <p class="role">Admin</p>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Header -->
+            <header class="header">
+                <div class="page-title">
+                    <h1>Performance Overview</h1>
+                    <p>Track your Meta Ads metrics in real-time</p>
+                </div>
+                <div class="header-actions">
+                    <div class="date-picker glass-item">
+                        <i class='bx bx-calendar'></i>
+                        <select id="dateRange">
+                            <option value="today">Today</option>
+                            <option value="yesterday">Yesterday</option>
+                            <option value="last7days" selected>Last 7 Days</option>
+                            <option value="last30days">Last 30 Days</option>
+                            <option value="thismonth">This Month</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-primary"><i class='bx bx-export'></i> Export</button>
+                </div>
+            </header>
+
+            <!-- KPI Cards -->
+            <section class="kpi-grid">
+                <div class="kpi-card glass-panel" data-metric="spend">
+                    <div class="kpi-header">
+                        <span class="kpi-title">Ad Spend</span>
+                        <div class="icon-box blue"><i class='bx bx-dollar'></i></div>
+                    </div>
+                    <div class="kpi-value" id="kpi-spend">$0.00</div>
+                    <div class="kpi-trend positive"><i class='bx bx-trending-up'></i> <span id="trend-spend">0%</span></div>
+                </div>
+                
+                <div class="kpi-card glass-panel" data-metric="impressions">
+                    <div class="kpi-header">
+                        <span class="kpi-title">Impressions</span>
+                        <div class="icon-box purple"><i class='bx bx-show'></i></div>
+                    </div>
+                    <div class="kpi-value" id="kpi-impressions">0</div>
+                    <div class="kpi-trend positive"><i class='bx bx-trending-up'></i> <span id="trend-impressions">0%</span></div>
+                </div>
+
+                <div class="kpi-card glass-panel" data-metric="clicks">
+                    <div class="kpi-header">
+                        <span class="kpi-title">Link Clicks</span>
+                        <div class="icon-box cyan"><i class='bx bx-pointer'></i></div>
+                    </div>
+                    <div class="kpi-value" id="kpi-clicks">0</div>
+                    <div class="kpi-trend positive"><i class='bx bx-trending-up'></i> <span id="trend-clicks">0%</span></div>
+                </div>
+
+                <div class="kpi-card glass-panel" data-metric="cpc">
+                    <div class="kpi-header">
+                        <span class="kpi-title">CPC</span>
+                        <div class="icon-box orange"><i class='bx bx-purchase-tag'></i></div>
+                    </div>
+                    <div class="kpi-value" id="kpi-cpc">$0.00</div>
+                    <div class="kpi-trend negative"><i class='bx bx-trending-down'></i> <span id="trend-cpc">0%</span></div>
+                </div>
+
+                <div class="kpi-card glass-panel" data-metric="purchases">
+                    <div class="kpi-header">
+                        <span class="kpi-title">Purchases</span>
+                        <div class="icon-box emerald"><i class='bx bx-cart'></i></div>
+                    </div>
+                    <div class="kpi-value" id="kpi-purchases">0</div>
+                    <div class="kpi-trend positive"><i class='bx bx-trending-up'></i> <span id="trend-purchases">0%</span></div>
+                </div>
+
+                <div class="kpi-card glass-panel" data-metric="cpa">
+                    <div class="kpi-header">
+                        <span class="kpi-title">Cost per Purchase (CPA)</span>
+                        <div class="icon-box red"><i class='bx bx-target-lock'></i></div>
+                    </div>
+                    <div class="kpi-value" id="kpi-cpa">$0.00</div>
+                    <div class="kpi-trend negative"><i class='bx bx-trending-down'></i> <span id="trend-cpa">0%</span></div>
+                </div>
+
+                <div class="kpi-card glass-panel" data-metric="roas">
+                    <div class="kpi-header">
+                        <span class="kpi-title">ROAS</span>
+                        <div class="icon-box gold"><i class='bx bx-diamond'></i></div>
+                    </div>
+                    <div class="kpi-value" id="kpi-roas">0.00x</div>
+                    <div class="kpi-trend positive"><i class='bx bx-trending-up'></i> <span id="trend-roas">0%</span></div>
+                </div>
+
+                <div class="kpi-card glass-panel" data-metric="ctr">
+                    <div class="kpi-header">
+                        <span class="kpi-title">Outbound CTR</span>
+                        <div class="icon-box pink"><i class='bx bx-mouse'></i></div>
+                    </div>
+                    <div class="kpi-value" id="kpi-ctr">0.00%</div>
+                    <div class="kpi-trend positive"><i class='bx bx-trending-up'></i> <span id="trend-ctr">0%</span></div>
+                </div>
+            </section>
+
+            <!-- Charts Section -->
+            <section class="charts-section">
+                <div class="chart-container glass-panel main-chart">
+                    <div class="chart-header">
+                        <h2>Performance Over Time</h2>
+                        <div class="chart-legend-custom">
+                            <span class="legend-item"><span class="dot blue"></span> Spend</span>
+                            <span class="legend-item"><span class="dot emerald"></span> Purchases</span>
+                        </div>
+                    </div>
+                    <div class="canvas-wrapper">
+                        <canvas id="performanceChart"></canvas>
+                    </div>
+                </div>
+                
+                <div class="chart-container glass-panel secondary-chart">
+                    <div class="chart-header">
+                        <h2>ROAS by Platform</h2>
+                    </div>
+                    <div class="canvas-wrapper donut-wrapper">
+                        <canvas id="platformChart"></canvas>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Campaign Table -->
+            <section class="campaigns-section glass-panel">
+                <div class="section-header">
+                    <h2>Top Active Campaigns</h2>
+                    <div class="search-box">
+                        <i class='bx bx-search'></i>
+                        <input type="text" placeholder="Search campaigns...">
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Status</th>
+                                <th>Campaign Name</th>
+                                <th>Spend</th>
+                                <th>Purchases</th>
+                                <th>CPA</th>
+                                <th>ROAS</th>
+                            </tr>
+                        </thead>
+                        <tbody id="campaignTableBody">
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- App Logic -->
+    <script src="main.js"></script>
+</body>
+</html>
