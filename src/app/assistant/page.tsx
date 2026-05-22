@@ -605,14 +605,25 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
             <p>Estamos preparando os dados internos para a conversa.</p>
           </div>
         ) : (
-          <div className="assistant-content">
+          <div className={`assistant-content ${isHistoryCollapsed ? 'assistant-content-history-collapsed' : ''}`}>
             <section className="assistant-context-column">
               <div className={`assistant-history-card glass-panel ${isHistoryCollapsed ? 'assistant-history-card-collapsed' : ''}`}>
+                {isHistoryCollapsed ? (
+                  <button
+                    type="button"
+                    className="assistant-history-restore"
+                    onClick={() => setIsHistoryCollapsed(false)}
+                    aria-label="Mostrar conversas salvas"
+                    title="Mostrar conversas salvas"
+                  >
+                    <i className="bx bx-chevron-left"></i>
+                  </button>
+                ) : null}
                 <div className="assistant-section-head assistant-history-head">
                   <span className="assistant-section-kicker">Conversas salvas</span>
                   <div className="assistant-history-actions">
-                    <button type="button" className="assistant-history-collapse" onClick={() => setIsHistoryCollapsed((current) => !current)} aria-label={isHistoryCollapsed ? 'Mostrar conversas salvas' : 'Ocultar conversas salvas'} title={isHistoryCollapsed ? 'Mostrar' : 'Ocultar'}>
-                      <i className={`bx ${isHistoryCollapsed ? 'bx-chevron-down' : 'bx-chevron-up'}`}></i>
+                    <button type="button" className="assistant-history-collapse" onClick={() => setIsHistoryCollapsed(true)} aria-label="Ocultar conversas salvas" title="Ocultar conversas salvas">
+                      <i className="bx bx-chevron-right"></i>
                     </button>
                     <button type="button" className="assistant-history-new" onClick={handleCreateConversation}>
                       <i className="bx bx-plus"></i>
@@ -965,6 +976,11 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
           grid-template-columns: 320px minmax(0, 1fr);
           gap: 24px;
           align-items: stretch;
+          transition: grid-template-columns 220ms ease;
+        }
+
+        .assistant-content-history-collapsed {
+          grid-template-columns: 52px minmax(0, 1fr);
         }
 
         .glass-panel {
@@ -986,6 +1002,13 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
         .assistant-history-card {
           padding: 24px;
           border-radius: 20px;
+          position: relative;
+          overflow: hidden;
+          transition:
+            padding 220ms ease,
+            background 220ms ease,
+            border-color 220ms ease,
+            box-shadow 220ms ease;
         }
 
         .assistant-section-head {
@@ -1043,7 +1066,40 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
         }
 
         .assistant-history-card-collapsed {
-          padding-bottom: 20px;
+          min-height: 120px;
+          padding: 0;
+          border-color: transparent;
+          background: transparent;
+          box-shadow: none;
+          display: grid;
+          place-items: start end;
+          overflow: visible;
+        }
+
+        .assistant-history-card-collapsed .assistant-history-head,
+        .assistant-history-card-collapsed .assistant-history-list {
+          display: none;
+        }
+
+        .assistant-history-restore {
+          width: 44px;
+          height: 44px;
+          border-radius: 999px;
+          border: 1px solid var(--border-color);
+          background: rgba(255, 255, 255, 0.04);
+          color: var(--text-primary);
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          box-shadow: 0 16px 34px rgba(0, 0, 0, 0.18);
+          transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
+        }
+
+        .assistant-history-restore:hover {
+          transform: translateX(2px);
+          border-color: color-mix(in srgb, var(--accent-blue) 26%, transparent);
+          background: color-mix(in srgb, var(--accent-blue) 10%, transparent);
         }
 
 
