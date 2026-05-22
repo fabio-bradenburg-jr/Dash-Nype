@@ -27729,13 +27729,23 @@ export default function DashboardShell({
           min-height: 220px;
         }
 
+        .weekly-focus-strip {
+          align-items: center;
+          padding: 46px 52px;
+          row-gap: 28px;
+        }
+
         .weekly-hero > div:first-child {
           align-self: start;
           padding-top: 2px;
         }
 
         .weekly-focus-strip > div:first-child {
-          padding: 2px 6px;
+          display: flex;
+          min-width: 0;
+          flex-direction: column;
+          gap: 12px;
+          padding: 0;
         }
 
         .weekly-hero h2,
@@ -27757,6 +27767,12 @@ export default function DashboardShell({
           margin: 9px 0 0;
           color: var(--text-muted);
           line-height: 1.5;
+        }
+
+        .weekly-focus-strip p {
+          margin: 0;
+          max-width: 860px;
+          line-height: 1.75;
         }
 
         .weekly-hero-controls {
@@ -28893,6 +28909,11 @@ export default function DashboardShell({
           .weekly-chart-card,
           .weekly-records-card {
             padding: 22px;
+          }
+
+          .weekly-focus-strip {
+            gap: 22px;
+            padding: 28px 24px;
           }
 
           .weekly-hero-controls,
