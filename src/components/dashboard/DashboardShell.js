@@ -3198,6 +3198,7 @@ export default function DashboardShell({
   const [isDeletingWeeklyRecords, setIsDeletingWeeklyRecords] = useState(false)
   const [weeklyWeekStart, setWeeklyWeekStart] = useState(() => getMondayDateInputValue())
   const [isWeeklyEntryModalOpen, setIsWeeklyEntryModalOpen] = useState(false)
+  const [isWeeklyHistoryModalOpen, setIsWeeklyHistoryModalOpen] = useState(false)
   const [weeklyForm, setWeeklyForm] = useState({
     clientId: '',
     investment: '',
@@ -4633,6 +4634,40 @@ export default function DashboardShell({
 
   const weeklySummary = useMemo(() => summarizeWeeklyRecords(weeklyVisibleRecords), [summarizeWeeklyRecords, weeklyVisibleRecords])
   const weeklyMonthSummary = useMemo(() => summarizeWeeklyRecords(weeklyMonthRecords), [summarizeWeeklyRecords, weeklyMonthRecords])
+
+  const weeklyClientCostRanking = useMemo(() => {
+    const rowsByClient = new Map()
+
+    weeklyVisibleRecords.forEach((record) => {
+      const clientId = String(record.clientId || '').trim()
+      if (!clientId) return
+
+      const current = rowsByClient.get(clientId) || {
+        clientId,
+        clientName: clientsById.get(clientId)?.name || 'Cliente sem nome',
+        investment: 0,
+        leads: 0,
+        mql: 0,
+      }
+
+      current.investment += Number(record.investment || 0)
+      current.leads += Number(record.leads || 0)
+      current.mql += Number(record.sql || 0)
+      rowsByClient.set(clientId, current)
+    })
+
+    return Array.from(rowsByClient.values())
+      .map((row) => ({
+        ...row,
+        costPerLead: row.leads > 0 ? row.investment / row.leads : 0,
+        costPerMql: row.mql > 0 ? row.investment / row.mql : 0,
+      }))
+      .sort((left, right) => {
+        const leftCost = left.leads > 0 ? left.costPerLead : -1
+        const rightCost = right.leads > 0 ? right.costPerLead : -1
+        return rightCost - leftCost || String(left.clientName).localeCompare(String(right.clientName))
+      })
+  }, [weeklyVisibleRecords, clientsById])
 
   const weeklyLineChartData = useMemo(() => {
     const byWeek = new Map()
@@ -12714,6 +12749,38 @@ export default function DashboardShell({
         <div className="weekly-kpi-card glass-panel"><span><i className="bx bx-credit-card"></i>Custo SQL</span><strong>{weeklySummary.sql > 0 ? formatCurrency(weeklySummary.costPerSql) : '-'}</strong></div>
       </div>
 
+      <div className="weekly-records-card glass-panel weekly-results-card">
+        <div className="section-header section-header-stack">
+          <div>
+            <span className="eyebrow weekly-icon-label"><i className="bx bx-bar-chart-alt-2"></i>Resultados por cliente</span>
+            <h2>Custo médio por lead e MQL</h2>
+            <p className="chart-subtitle">Ordenado pelo maior custo por lead médio no período selecionado.</p>
+          </div>
+        </div>
+
+        {weeklyClientCostRanking.length ? (
+          <div className="weekly-client-results-grid">
+            {weeklyClientCostRanking.map((row) => (
+              <article key={'weekly-client-result-' + row.clientId} className="weekly-client-result-card">
+                <strong>{row.clientName}</strong>
+                <div className="weekly-client-result-metrics">
+                  <div>
+                    <span>Custo por Lead</span>
+                    <b>{row.leads > 0 ? formatCurrency(row.costPerLead) : '-'}</b>
+                  </div>
+                  <div>
+                    <span>Custo por MQL</span>
+                    <b>{row.mql > 0 ? formatCurrency(row.costPerMql) : '-'}</b>
+                  </div>
+                </div>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <div className="ranking-empty">Sem registros no período selecionado para calcular os custos por cliente.</div>
+        )}
+      </div>
+
       <div className="weekly-chart-grid">
         <div className="weekly-chart-card glass-panel">
           <div className="section-header section-header-stack">
@@ -12765,6 +12832,31 @@ export default function DashboardShell({
               </label>
             </div>
             <div className="weekly-export-actions">
+              <button
+                type="button"
+                className="weekly-export-button weekly-export-button-outline"
+                onClick={() => setIsWeeklyHistoryModalOpen(true)}
+                style={{
+                  minHeight: 42,
+                  border: `1px solid ${activeClientDashboardHex}cc`,
+                  borderRadius: 6,
+                  background: 'rgba(0, 0, 0, 0.12)',
+                  color: activeClientDashboardHex,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 8,
+                  padding: '0 18px',
+                  fontSize: '0.72rem',
+                  fontWeight: 900,
+                  letterSpacing: '0.04em',
+                  textTransform: 'uppercase',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                <i className="bx bx-history"></i>
+                Ver histórico
+              </button>
               <button
                 type="button"
                 className="weekly-export-button weekly-export-button-outline"
@@ -12869,71 +12961,6 @@ export default function DashboardShell({
         )}
       </div>
 
-      <div className="weekly-records-card glass-panel">
-        <div className="weekly-history-heading">
-          <div>
-            <h2><i className="bx bx-history"></i> Histórico de Semanas Registradas</h2>
-            <p className="chart-subtitle">Cada linha fica salva no Supabase e pode ser reaberta editando o mesmo cliente e semana.</p>
-          </div>
-          <div className="weekly-history-actions">
-            {isWeeklyLoading && <span className="weekly-loading-pill">Carregando...</span>}
-            {weeklyLatestRecords.length > 0 && (
-              <button type="button" className="weekly-history-button" onClick={handleToggleWeeklyDeleteMode} disabled={isDeletingWeeklyRecords}>
-                <i className={isWeeklyDeleteMode ? 'bx bx-x' : 'bx bx-trash'}></i>
-                {isWeeklyDeleteMode ? 'Cancelar seleção' : 'Excluir registros'}
-              </button>
-            )}
-            {isWeeklyDeleteMode && (
-              <button type="button" className="weekly-history-button weekly-history-button-danger" onClick={handleDeleteSelectedWeeklyRecords} disabled={isDeletingWeeklyRecords || !selectedWeeklyRecordIds.length}>
-                <i className="bx bx-check-shield"></i>
-                {isDeletingWeeklyRecords ? 'Excluindo...' : `Excluir selecionados (${selectedWeeklyRecordIds.length})`}
-              </button>
-            )}
-          </div>
-        </div>
-        {weeklyHistoryCards.length ? (
-          <div className="weekly-history-grid">
-            {weeklyHistoryCards.map((card) => {
-              const isSelected = card.recordIds.length > 0 && card.recordIds.every((id) => selectedWeeklyRecordIds.includes(id))
-              return (
-                <article key={card.id} className={`weekly-history-card ${isSelected ? 'selected' : ''}`}>
-                  {isWeeklyDeleteMode && (
-                    <label className="weekly-record-selector weekly-history-selector" aria-label={`Selecionar semana ${formatWeekRangeLabel(card.weekStart, card.weekEnd)}`}>
-                      <input
-                        type="checkbox"
-                        checked={isSelected}
-                        onChange={() => handleToggleWeeklyHistoryCardSelection(card.recordIds)}
-                      />
-                      <span></span>
-                    </label>
-                  )}
-                  <div className="weekly-history-card-title">
-                    <strong>{formatWeekRangeLabel(card.weekStart, card.weekEnd)}</strong>
-                    <span>{card.relativeLabel}</span>
-                  </div>
-                  <div className="weekly-history-card-metrics">
-                    <div>
-                      <span><i className="bx bx-wallet"></i>Total Investido</span>
-                      <strong>{formatCurrency(card.investment)}</strong>
-                    </div>
-                    <div>
-                      <span><i className="bx bx-purchase-tag-alt"></i>CPL Médio</span>
-                      <strong>{card.leads > 0 ? formatCurrency(card.cpl) : '-'}</strong>
-                    </div>
-                  </div>
-                  <button type="button" className="weekly-history-card-footer" onClick={() => setWeeklyWeekStart(card.weekStart || getMondayDateInputValue())}>
-                    <span>{formatNumber(card.clientsCount)} Clientes Monitorados</span>
-                    <i className="bx bx-chevron-right"></i>
-                  </button>
-                </article>
-              )
-            })}
-          </div>
-        ) : (
-          <div className="ranking-empty">Nenhuma semana encontrada para o filtro atual.</div>
-        )}
-      </div>
-
       {isWeeklyEntryModalOpen && typeof document !== 'undefined' && createPortal(
         <div className="modal-overlay weekly-modal-overlay" style={weeklyModalOverlayStyle} role="presentation" onClick={() => setIsWeeklyEntryModalOpen(false)}>
           <div className="modal-card glass-panel simple-client-modal weekly-entry-modal" role="dialog" aria-modal="true" aria-label="Cadastrar dados da semana" onClick={(event) => event.stopPropagation()} style={weeklyModalCardStyle}>
@@ -12941,6 +12968,86 @@ export default function DashboardShell({
               <i className="bx bx-x"></i>
             </button>
             {weeklyFormContent}
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {isWeeklyHistoryModalOpen && typeof document !== 'undefined' && createPortal(
+        <div className="modal-overlay weekly-modal-overlay" style={weeklyModalOverlayStyle} role="presentation" onClick={() => setIsWeeklyHistoryModalOpen(false)}>
+          <div className="modal-card glass-panel weekly-history-modal" role="dialog" aria-modal="true" aria-label="Histórico de semanas registradas" onClick={(event) => event.stopPropagation()}>
+            <button type="button" className="modal-close" style={weeklyModalCloseStyle} onClick={() => setIsWeeklyHistoryModalOpen(false)} aria-label="Fechar histórico">
+              <i className="bx bx-x"></i>
+            </button>
+            <div className="weekly-history-heading">
+              <div>
+                <h2><i className="bx bx-history"></i> Histórico de Semanas Registradas</h2>
+                <p className="chart-subtitle">Cada linha fica salva no Supabase e pode ser reaberta editando o mesmo cliente e semana.</p>
+              </div>
+              <div className="weekly-history-actions">
+                {isWeeklyLoading && <span className="weekly-loading-pill">Carregando...</span>}
+                {weeklyLatestRecords.length > 0 && (
+                  <button type="button" className="weekly-history-button" onClick={handleToggleWeeklyDeleteMode} disabled={isDeletingWeeklyRecords}>
+                    <i className={isWeeklyDeleteMode ? 'bx bx-x' : 'bx bx-trash'}></i>
+                    {isWeeklyDeleteMode ? 'Cancelar seleção' : 'Excluir registros'}
+                  </button>
+                )}
+                {isWeeklyDeleteMode && (
+                  <button type="button" className="weekly-history-button weekly-history-button-danger" onClick={handleDeleteSelectedWeeklyRecords} disabled={isDeletingWeeklyRecords || !selectedWeeklyRecordIds.length}>
+                    <i className="bx bx-check-shield"></i>
+                    {isDeletingWeeklyRecords ? 'Excluindo...' : `Excluir selecionados (${selectedWeeklyRecordIds.length})`}
+                  </button>
+                )}
+              </div>
+            </div>
+            {weeklyHistoryCards.length ? (
+              <div className="weekly-history-grid">
+                {weeklyHistoryCards.map((card) => {
+                  const isSelected = card.recordIds.length > 0 && card.recordIds.every((id) => selectedWeeklyRecordIds.includes(id))
+                  return (
+                    <article key={card.id} className={`weekly-history-card ${isSelected ? 'selected' : ''}`}>
+                      {isWeeklyDeleteMode && (
+                        <label className="weekly-record-selector weekly-history-selector" aria-label={`Selecionar semana ${formatWeekRangeLabel(card.weekStart, card.weekEnd)}`}>
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => handleToggleWeeklyHistoryCardSelection(card.recordIds)}
+                          />
+                          <span></span>
+                        </label>
+                      )}
+                      <div className="weekly-history-card-title">
+                        <strong>{formatWeekRangeLabel(card.weekStart, card.weekEnd)}</strong>
+                        <span>{card.relativeLabel}</span>
+                      </div>
+                      <div className="weekly-history-card-metrics">
+                        <div>
+                          <span><i className="bx bx-wallet"></i>Total Investido</span>
+                          <strong>{formatCurrency(card.investment)}</strong>
+                        </div>
+                        <div>
+                          <span><i className="bx bx-purchase-tag-alt"></i>CPL Médio</span>
+                          <strong>{card.leads > 0 ? formatCurrency(card.cpl) : '-'}</strong>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        className="weekly-history-card-footer"
+                        onClick={() => {
+                          setWeeklyWeekStart(card.weekStart || getMondayDateInputValue())
+                          setIsWeeklyHistoryModalOpen(false)
+                        }}
+                      >
+                        <span>{formatNumber(card.clientsCount)} Clientes Monitorados</span>
+                        <i className="bx bx-chevron-right"></i>
+                      </button>
+                    </article>
+                  )
+                })}
+              </div>
+            ) : (
+              <div className="ranking-empty">Nenhuma semana encontrada para o filtro atual.</div>
+            )}
           </div>
         </div>,
         document.body
@@ -28164,6 +28271,66 @@ export default function DashboardShell({
           padding: 22px;
         }
 
+        .weekly-results-card {
+          display: grid;
+          gap: 24px;
+        }
+
+        .weekly-client-results-grid {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 16px;
+        }
+
+        .weekly-client-result-card {
+          min-height: 152px;
+          border: 1px solid color-mix(in srgb, var(--weekly-accent) 20%, rgba(148, 163, 184, 0.12));
+          border-radius: 24px;
+          background:
+            radial-gradient(circle at 12% 0%, color-mix(in srgb, var(--weekly-accent) 12%, transparent), transparent 42%),
+            rgba(255, 255, 255, 0.035);
+          display: grid;
+          gap: 22px;
+          padding: 22px;
+        }
+
+        .weekly-client-result-card > strong {
+          color: var(--text-primary);
+          font-size: 1.05rem;
+          line-height: 1.3;
+        }
+
+        .weekly-client-result-metrics {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 14px;
+        }
+
+        .weekly-client-result-metrics div {
+          min-width: 0;
+          border-top: 1px solid rgba(148, 163, 184, 0.14);
+          padding-top: 14px;
+        }
+
+        .weekly-client-result-metrics span {
+          display: block;
+          color: var(--text-muted);
+          font-size: 0.68rem;
+          font-weight: 900;
+          letter-spacing: 0.1em;
+          line-height: 1.35;
+          text-transform: uppercase;
+        }
+
+        .weekly-client-result-metrics b {
+          display: block;
+          margin-top: 8px;
+          color: var(--text-primary);
+          font-size: clamp(1.25rem, 2vw, 1.75rem);
+          letter-spacing: -0.04em;
+          line-height: 1;
+        }
+
         .weekly-chart-grid {
           display: grid;
           grid-template-columns: minmax(0, 1.35fr) minmax(360px, 0.65fr);
@@ -28452,6 +28619,24 @@ export default function DashboardShell({
           justify-content: space-between;
           gap: 24px;
           margin-bottom: 24px;
+        }
+
+        .weekly-history-modal {
+          width: min(1180px, calc(100vw - 48px));
+          max-height: min(820px, calc(100vh - 48px));
+          overflow: auto;
+          border-radius: 30px;
+          padding: 42px;
+          background:
+            linear-gradient(145deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.025)),
+            radial-gradient(circle at 10% 0%, color-mix(in srgb, var(--weekly-accent) 14%, transparent), transparent 36%),
+            rgba(18, 18, 20, 0.96);
+          border: 1px solid rgba(148, 163, 184, 0.16);
+          box-shadow: 0 32px 90px rgba(0, 0, 0, 0.44);
+        }
+
+        .weekly-history-modal .weekly-history-heading {
+          padding-right: 56px;
         }
 
         .weekly-history-heading h2 {
@@ -29008,6 +29193,10 @@ export default function DashboardShell({
           .weekly-kpi-grid-wide {
             grid-template-columns: repeat(2, minmax(0, 1fr));
           }
+
+          .weekly-client-results-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
         }
 
         @media (max-width: 720px) {
@@ -29034,6 +29223,7 @@ export default function DashboardShell({
           .weekly-health-options,
           .weekly-kpi-grid,
           .weekly-kpi-grid-wide,
+          .weekly-client-results-grid,
           .weekly-record-metrics {
             grid-template-columns: 1fr;
           }
