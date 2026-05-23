@@ -1800,6 +1800,754 @@ textarea:focus {
     flex-wrap: wrap !important;
 }
 
+.weekly-dashboard-panel {
+    width: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 28px !important;
+    --weekly-accent: var(--client-dashboard-accent, var(--button-primary, #26c281));
+}
+
+.weekly-dashboard-panel .weekly-command-center {
+    display: grid !important;
+    grid-template-columns: minmax(320px, 0.68fr) minmax(520px, 1fr) !important;
+    gap: 0 !important;
+    overflow: hidden !important;
+    border: 1px solid rgba(190, 201, 191, 0.16) !important;
+    border-radius: 26px !important;
+    background:
+        linear-gradient(145deg, rgba(10, 15, 14, 0.96), rgba(14, 20, 18, 0.88)),
+        radial-gradient(circle at 12% 0%, color-mix(in srgb, var(--weekly-accent) 18%, transparent), transparent 34%) !important;
+    box-shadow: 0 28px 70px rgba(0, 0, 0, 0.28) !important;
+}
+
+.weekly-dashboard-panel .weekly-command-heading {
+    display: flex !important;
+    min-width: 0 !important;
+    flex-direction: column !important;
+    justify-content: space-between !important;
+    gap: 28px !important;
+    padding: 34px !important;
+    border-right: 1px solid rgba(190, 201, 191, 0.14) !important;
+}
+
+.weekly-dashboard-panel .weekly-command-heading h2 {
+    margin: 0 !important;
+    max-width: 520px !important;
+    color: #f8fafc !important;
+    font-size: clamp(34px, 4vw, 54px) !important;
+    font-weight: 800 !important;
+    letter-spacing: -0.02em !important;
+    line-height: 0.98 !important;
+}
+
+.weekly-dashboard-panel .weekly-command-heading p {
+    margin: 0 !important;
+    max-width: 560px !important;
+    color: rgba(241, 245, 249, 0.7) !important;
+    font-size: 15px !important;
+    line-height: 1.65 !important;
+}
+
+.weekly-dashboard-panel .weekly-command-filters {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(180px, 1fr)) !important;
+    gap: 14px !important;
+    padding: 28px 28px 0 !important;
+    align-self: start !important;
+}
+
+.weekly-dashboard-panel .weekly-command-filters label,
+.weekly-dashboard-panel .weekly-command-filters .weekly-custom-range-fields label {
+    display: flex !important;
+    min-width: 0 !important;
+    flex-direction: column !important;
+    gap: 9px !important;
+}
+
+.weekly-dashboard-panel .weekly-command-filters label > span,
+.weekly-dashboard-panel .weekly-command-primary span,
+.weekly-dashboard-panel .weekly-command-rail span,
+.weekly-dashboard-panel .weekly-risk-breakdown span {
+    color: rgba(241, 245, 249, 0.6) !important;
+    font-size: 11px !important;
+    font-weight: 900 !important;
+    letter-spacing: 0.11em !important;
+    text-transform: uppercase !important;
+}
+
+.weekly-dashboard-panel .weekly-command-filters select,
+.weekly-dashboard-panel .weekly-command-filters input {
+    width: 100% !important;
+    min-height: 54px !important;
+    border: 1px solid rgba(190, 201, 191, 0.16) !important;
+    border-radius: 8px !important;
+    background: rgba(6, 10, 18, 0.72) !important;
+    color: #f8fafc !important;
+    outline: none !important;
+    padding: 0 16px !important;
+    font: inherit !important;
+}
+
+.weekly-dashboard-panel .weekly-command-filters select:focus,
+.weekly-dashboard-panel .weekly-command-filters input:focus {
+    border-color: color-mix(in srgb, var(--weekly-accent) 62%, transparent) !important;
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--weekly-accent) 14%, transparent) !important;
+}
+
+.weekly-dashboard-panel .weekly-command-filters .weekly-custom-range-fields {
+    grid-column: 1 / -1 !important;
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 14px !important;
+    min-width: 0 !important;
+}
+
+.weekly-dashboard-panel .weekly-command-grid {
+    display: grid !important;
+    grid-column: 2 !important;
+    grid-template-columns: minmax(240px, 0.82fr) minmax(300px, 1fr) !important;
+    gap: 14px !important;
+    padding: 18px 28px 28px !important;
+    align-self: end !important;
+}
+
+.weekly-dashboard-panel .weekly-command-primary,
+.weekly-dashboard-panel .weekly-command-rail {
+    border: 1px solid rgba(190, 201, 191, 0.14) !important;
+    border-radius: 18px !important;
+    background: rgba(255, 255, 255, 0.055) !important;
+}
+
+.weekly-dashboard-panel .weekly-command-primary {
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: space-between !important;
+    gap: 24px !important;
+    padding: 22px !important;
+}
+
+.weekly-dashboard-panel .weekly-command-primary div {
+    display: grid !important;
+    gap: 8px !important;
+}
+
+.weekly-dashboard-panel .weekly-command-primary strong {
+    color: #f8fafc !important;
+    font-size: clamp(22px, 2.3vw, 32px) !important;
+    font-weight: 800 !important;
+    letter-spacing: -0.02em !important;
+    line-height: 1.08 !important;
+}
+
+.weekly-dashboard-panel .weekly-command-primary small {
+    color: rgba(241, 245, 249, 0.58) !important;
+    font-size: 13px !important;
+    font-weight: 800 !important;
+}
+
+.weekly-dashboard-panel .weekly-command-primary .weekly-entry-button {
+    width: 100% !important;
+    min-height: 52px !important;
+    border-radius: 8px !important;
+}
+
+.weekly-dashboard-panel .weekly-command-rail {
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    overflow: hidden !important;
+}
+
+.weekly-dashboard-panel .weekly-command-rail div {
+    display: grid !important;
+    min-height: 154px !important;
+    align-content: space-between !important;
+    gap: 18px !important;
+    padding: 20px !important;
+}
+
+.weekly-dashboard-panel .weekly-command-rail div + div {
+    border-left: 1px solid rgba(190, 201, 191, 0.12) !important;
+}
+
+.weekly-dashboard-panel .weekly-command-rail strong {
+    color: #f8fafc !important;
+    font-size: clamp(28px, 3vw, 42px) !important;
+    font-weight: 800 !important;
+    letter-spacing: -0.03em !important;
+    line-height: 1 !important;
+}
+
+.weekly-dashboard-panel .weekly-goal-card {
+    grid-template-columns: minmax(0, 1fr) minmax(260px, 0.58fr) minmax(240px, 320px) !important;
+    padding: 42px 46px !important;
+    gap: 32px !important;
+    align-items: center !important;
+}
+
+.weekly-dashboard-panel .weekly-risk-breakdown {
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 10px !important;
+}
+
+.weekly-dashboard-panel .weekly-risk-breakdown div {
+    min-height: 118px !important;
+    border: 1px solid rgba(148, 163, 184, 0.13) !important;
+    border-radius: 16px !important;
+    background: rgba(255, 255, 255, 0.04) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: space-between !important;
+    gap: 18px !important;
+    padding: 18px !important;
+}
+
+.weekly-dashboard-panel .weekly-risk-breakdown strong {
+    color: var(--text-primary) !important;
+    font-size: clamp(26px, 2.5vw, 37px) !important;
+    font-weight: 800 !important;
+    letter-spacing: -0.03em !important;
+    line-height: 1 !important;
+}
+
+.weekly-dashboard-panel .weekly-kpi-board {
+    grid-template-columns: repeat(7, minmax(146px, 1fr)) !important;
+    overflow-x: auto !important;
+    padding-bottom: 2px !important;
+}
+
+.weekly-dashboard-panel .weekly-focus-strip,
+.weekly-dashboard-panel .weekly-chart-card,
+.weekly-dashboard-panel .weekly-records-card,
+.weekly-dashboard-panel .weekly-kpi-card {
+    border: 1px solid rgba(190, 201, 191, 0.15) !important;
+    background:
+        linear-gradient(145deg, rgba(16, 22, 20, 0.92), rgba(12, 17, 16, 0.84)),
+        radial-gradient(circle at 10% 0%, color-mix(in srgb, var(--weekly-accent) 10%, transparent), transparent 34%) !important;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.24) !important;
+    backdrop-filter: blur(18px) !important;
+    -webkit-backdrop-filter: blur(18px) !important;
+}
+
+.weekly-dashboard-panel .weekly-focus-strip {
+    display: grid !important;
+    min-height: 210px !important;
+    border-radius: 24px !important;
+}
+
+.weekly-dashboard-panel .weekly-goal-copy {
+    display: flex !important;
+    min-width: 0 !important;
+    flex-direction: column !important;
+    gap: 14px !important;
+}
+
+.weekly-dashboard-panel .weekly-goal-copy .eyebrow,
+.weekly-dashboard-panel .weekly-goal-copy h2,
+.weekly-dashboard-panel .weekly-goal-copy p {
+    margin: 0 !important;
+}
+
+.weekly-dashboard-panel .weekly-goal-copy h2,
+.weekly-dashboard-panel .weekly-chart-card h2,
+.weekly-dashboard-panel .weekly-records-card h2 {
+    color: #f8fafc !important;
+    font-size: clamp(24px, 2.1vw, 34px) !important;
+    font-weight: 800 !important;
+    letter-spacing: -0.02em !important;
+    line-height: 1.1 !important;
+}
+
+.weekly-dashboard-panel .weekly-goal-copy p,
+.weekly-dashboard-panel .weekly-chart-card .chart-subtitle,
+.weekly-dashboard-panel .weekly-records-card .chart-subtitle {
+    color: rgba(241, 245, 249, 0.64) !important;
+    font-size: 14px !important;
+    line-height: 1.65 !important;
+}
+
+.weekly-dashboard-panel .weekly-icon-label,
+.weekly-dashboard-panel .weekly-kpi-card span,
+.weekly-dashboard-panel .weekly-risk-badge span,
+.weekly-dashboard-panel .weekly-table-filters span,
+.weekly-dashboard-panel .weekly-table-title-row h2,
+.weekly-dashboard-panel .weekly-updated-pill,
+.weekly-dashboard-panel .weekly-data-table th,
+.weekly-dashboard-panel .weekly-history-card-metrics span {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 7px !important;
+}
+
+.weekly-dashboard-panel .weekly-icon-label i,
+.weekly-dashboard-panel .weekly-kpi-card span i,
+.weekly-dashboard-panel .weekly-risk-badge span i,
+.weekly-dashboard-panel .weekly-table-filters span i,
+.weekly-dashboard-panel .weekly-table-title-row h2 i,
+.weekly-dashboard-panel .weekly-updated-pill i,
+.weekly-dashboard-panel .weekly-data-table th i,
+.weekly-dashboard-panel .weekly-history-card-metrics span i {
+    color: var(--weekly-accent) !important;
+    font-size: 16px !important;
+    line-height: 1 !important;
+}
+
+.weekly-dashboard-panel .weekly-risk-badge {
+    min-height: 140px !important;
+    border: 1px solid rgba(190, 201, 191, 0.15) !important;
+    border-radius: 18px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+    gap: 10px !important;
+    padding: 22px !important;
+    background: rgba(255, 255, 255, 0.045) !important;
+}
+
+.weekly-dashboard-panel .weekly-risk-badge strong {
+    color: #f8fafc !important;
+    font-size: clamp(36px, 4vw, 54px) !important;
+    font-weight: 850 !important;
+    letter-spacing: -0.04em !important;
+    line-height: 0.95 !important;
+}
+
+.weekly-dashboard-panel .weekly-risk-badge small {
+    color: rgba(241, 245, 249, 0.62) !important;
+    font-size: 12px !important;
+    font-weight: 900 !important;
+    letter-spacing: 0.08em !important;
+    text-transform: uppercase !important;
+}
+
+.weekly-dashboard-panel .weekly-risk-badge.healthy {
+    border-color: rgba(38, 194, 129, 0.34) !important;
+    background: color-mix(in srgb, var(--weekly-accent) 10%, rgba(255, 255, 255, 0.035)) !important;
+}
+
+.weekly-dashboard-panel .weekly-risk-badge.critical {
+    border-color: rgba(248, 113, 113, 0.34) !important;
+    background:
+        linear-gradient(145deg, rgba(127, 29, 29, 0.18), rgba(255, 255, 255, 0.035)),
+        rgba(255, 255, 255, 0.035) !important;
+}
+
+.weekly-dashboard-panel .weekly-kpi-grid {
+    display: grid !important;
+    gap: 12px !important;
+}
+
+.weekly-dashboard-panel .weekly-kpi-card {
+    min-height: 152px !important;
+    border-radius: 18px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: space-between !important;
+    gap: 18px !important;
+    padding: 20px !important;
+    transition: transform 180ms ease, border-color 180ms ease, background 180ms ease !important;
+}
+
+.weekly-dashboard-panel .weekly-kpi-card:hover {
+    transform: translateY(-2px) !important;
+    border-color: color-mix(in srgb, var(--weekly-accent) 34%, rgba(190, 201, 191, 0.16)) !important;
+}
+
+.weekly-dashboard-panel .weekly-kpi-card span {
+    color: rgba(241, 245, 249, 0.58) !important;
+    font-size: 11px !important;
+    font-weight: 900 !important;
+    letter-spacing: 0.1em !important;
+    text-transform: uppercase !important;
+}
+
+.weekly-dashboard-panel .weekly-kpi-card strong {
+    color: #f8fafc !important;
+    font-size: clamp(22px, 2.2vw, 32px) !important;
+    font-weight: 850 !important;
+    letter-spacing: -0.04em !important;
+    line-height: 1 !important;
+    overflow-wrap: anywhere !important;
+}
+
+.weekly-dashboard-panel .weekly-results-card {
+    display: grid !important;
+    gap: 22px !important;
+    padding: 30px !important;
+    border-radius: 24px !important;
+}
+
+.weekly-dashboard-panel .section-header {
+    margin: 0 !important;
+}
+
+.weekly-dashboard-panel .weekly-client-results-grid {
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 14px !important;
+}
+
+.weekly-dashboard-panel .weekly-client-result-card {
+    min-height: 154px !important;
+    display: grid !important;
+    gap: 22px !important;
+    padding: 22px !important;
+    border: 1px solid color-mix(in srgb, var(--weekly-accent) 22%, rgba(190, 201, 191, 0.12)) !important;
+    border-radius: 18px !important;
+    background:
+        linear-gradient(145deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.025)),
+        radial-gradient(circle at 8% 0%, color-mix(in srgb, var(--weekly-accent) 12%, transparent), transparent 42%) !important;
+}
+
+.weekly-dashboard-panel .weekly-client-result-card > strong {
+    color: #f8fafc !important;
+    font-size: 16px !important;
+    line-height: 1.25 !important;
+}
+
+.weekly-dashboard-panel .weekly-client-result-metrics {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 14px !important;
+}
+
+.weekly-dashboard-panel .weekly-client-result-metrics div {
+    border-top: 1px solid rgba(190, 201, 191, 0.14) !important;
+    padding-top: 14px !important;
+}
+
+.weekly-dashboard-panel .weekly-client-result-metrics span {
+    display: block !important;
+    color: rgba(241, 245, 249, 0.56) !important;
+    font-size: 10px !important;
+    font-weight: 900 !important;
+    letter-spacing: 0.1em !important;
+    text-transform: uppercase !important;
+}
+
+.weekly-dashboard-panel .weekly-client-result-metrics b {
+    display: block !important;
+    margin-top: 8px !important;
+    color: #f8fafc !important;
+    font-size: clamp(22px, 2vw, 30px) !important;
+    font-weight: 850 !important;
+    letter-spacing: -0.04em !important;
+    line-height: 1 !important;
+}
+
+.weekly-dashboard-panel .weekly-chart-grid {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1.35fr) minmax(340px, 0.65fr) !important;
+    gap: 20px !important;
+}
+
+.weekly-dashboard-panel .weekly-chart-card {
+    padding: 30px !important;
+    border-radius: 24px !important;
+}
+
+.weekly-dashboard-panel .weekly-chart-body {
+    height: 390px !important;
+    margin-top: 22px !important;
+    border: 1px solid rgba(190, 201, 191, 0.12) !important;
+    border-radius: 18px !important;
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.018)),
+        rgba(0, 0, 0, 0.16) !important;
+    padding: 18px !important;
+}
+
+.weekly-dashboard-panel .ranking-empty {
+    min-height: 160px !important;
+    display: grid !important;
+    place-items: center !important;
+    border: 1px dashed rgba(190, 201, 191, 0.2) !important;
+    border-radius: 18px !important;
+    color: rgba(241, 245, 249, 0.58) !important;
+    text-align: center !important;
+    padding: 22px !important;
+}
+
+.weekly-dashboard-panel .weekly-table-card {
+    padding: 34px !important;
+    border-radius: 24px !important;
+}
+
+.weekly-dashboard-panel .weekly-table-toolbar {
+    margin-bottom: 30px !important;
+}
+
+.weekly-dashboard-panel .weekly-table-actions {
+    display: flex !important;
+    align-items: flex-end !important;
+    justify-content: space-between !important;
+    gap: 20px !important;
+    flex-wrap: wrap !important;
+}
+
+.weekly-dashboard-panel .weekly-table-filters {
+    display: flex !important;
+    align-items: flex-end !important;
+    gap: 14px !important;
+    flex-wrap: wrap !important;
+}
+
+.weekly-dashboard-panel .weekly-table-filters label {
+    display: flex !important;
+    min-width: 210px !important;
+    flex-direction: column !important;
+    gap: 8px !important;
+}
+
+.weekly-dashboard-panel .weekly-table-filters select {
+    min-height: 44px !important;
+    border: 1px solid rgba(190, 201, 191, 0.16) !important;
+    border-radius: 8px !important;
+    background: rgba(6, 10, 18, 0.72) !important;
+    color: #f8fafc !important;
+    padding: 0 14px !important;
+}
+
+.weekly-dashboard-panel .weekly-export-actions {
+    display: flex !important;
+    align-items: flex-end !important;
+    justify-content: flex-end !important;
+    gap: 10px !important;
+    flex-wrap: wrap !important;
+}
+
+.weekly-dashboard-panel .weekly-export-button {
+    min-height: 42px !important;
+    border-radius: 8px !important;
+    font-size: 11px !important;
+    font-weight: 900 !important;
+    letter-spacing: 0.06em !important;
+    text-transform: uppercase !important;
+}
+
+.weekly-dashboard-panel .weekly-table-title-row {
+    display: flex !important;
+    align-items: flex-end !important;
+    justify-content: space-between !important;
+    gap: 18px !important;
+    margin-bottom: 20px !important;
+}
+
+.weekly-dashboard-panel .weekly-table-title-row h2 {
+    margin: 0 !important;
+}
+
+.weekly-dashboard-panel .weekly-updated-pill {
+    border: 1px solid rgba(190, 201, 191, 0.14) !important;
+    border-radius: 999px !important;
+    background: rgba(255, 255, 255, 0.05) !important;
+    color: rgba(241, 245, 249, 0.6) !important;
+    font-size: 11px !important;
+    font-weight: 900 !important;
+    letter-spacing: 0.08em !important;
+    padding: 7px 12px !important;
+    text-transform: uppercase !important;
+}
+
+.weekly-dashboard-panel .weekly-table-scroll {
+    overflow-x: auto !important;
+    border: 1px solid rgba(190, 201, 191, 0.14) !important;
+    border-radius: 16px !important;
+    background: rgba(4, 8, 7, 0.24) !important;
+}
+
+.weekly-dashboard-panel .weekly-data-table {
+    width: 100% !important;
+    min-width: 1180px !important;
+    border-collapse: separate !important;
+    border-spacing: 0 !important;
+    color: #f8fafc !important;
+}
+
+.weekly-dashboard-panel .weekly-data-table th,
+.weekly-dashboard-panel .weekly-data-table td {
+    padding: 18px 22px !important;
+    border-bottom: 1px solid rgba(190, 201, 191, 0.11) !important;
+    text-align: left !important;
+    vertical-align: middle !important;
+}
+
+.weekly-dashboard-panel .weekly-data-table th {
+    color: rgba(241, 245, 249, 0.58) !important;
+    font-size: 10px !important;
+    font-weight: 900 !important;
+    letter-spacing: 0.1em !important;
+    text-transform: uppercase !important;
+    background: rgba(255, 255, 255, 0.045) !important;
+}
+
+.weekly-dashboard-panel .weekly-data-table td {
+    color: rgba(241, 245, 249, 0.7) !important;
+    font-size: 14px !important;
+    line-height: 1.45 !important;
+}
+
+.weekly-dashboard-panel .weekly-data-table td strong {
+    color: #f8fafc !important;
+}
+
+.weekly-dashboard-panel .weekly-health-pill {
+    display: inline-flex !important;
+    min-height: 28px !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border: 1px solid !important;
+    border-radius: 999px !important;
+    padding: 0 12px !important;
+    font-size: 10px !important;
+    font-weight: 900 !important;
+    letter-spacing: 0.08em !important;
+    text-transform: uppercase !important;
+    white-space: nowrap !important;
+}
+
+.dashboard-light-mode .weekly-dashboard-panel .weekly-command-center {
+    border-color: rgba(15, 23, 42, 0.08) !important;
+    background:
+        linear-gradient(145deg, #0d1110, #18201d),
+        radial-gradient(circle at 12% 0%, color-mix(in srgb, var(--weekly-accent) 18%, transparent), transparent 34%) !important;
+    box-shadow: 0 28px 70px rgba(15, 23, 42, 0.16) !important;
+}
+
+.dashboard-light-mode .weekly-dashboard-panel .weekly-focus-strip,
+.dashboard-light-mode .weekly-dashboard-panel .weekly-chart-card,
+.dashboard-light-mode .weekly-dashboard-panel .weekly-records-card,
+.dashboard-light-mode .weekly-dashboard-panel .weekly-kpi-card {
+    border-color: rgba(15, 23, 42, 0.08) !important;
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.96)),
+        radial-gradient(circle at 10% 0%, color-mix(in srgb, var(--weekly-accent) 8%, transparent), transparent 34%) !important;
+    box-shadow: 0 18px 50px rgba(15, 23, 42, 0.08) !important;
+}
+
+.dashboard-light-mode .weekly-dashboard-panel .weekly-goal-copy h2,
+.dashboard-light-mode .weekly-dashboard-panel .weekly-chart-card h2,
+.dashboard-light-mode .weekly-dashboard-panel .weekly-records-card h2,
+.dashboard-light-mode .weekly-dashboard-panel .weekly-risk-badge strong,
+.dashboard-light-mode .weekly-dashboard-panel .weekly-kpi-card strong,
+.dashboard-light-mode .weekly-dashboard-panel .weekly-client-result-card > strong,
+.dashboard-light-mode .weekly-dashboard-panel .weekly-client-result-metrics b,
+.dashboard-light-mode .weekly-dashboard-panel .weekly-risk-breakdown strong,
+.dashboard-light-mode .weekly-dashboard-panel .weekly-data-table td strong {
+    color: #0f172a !important;
+}
+
+.dashboard-light-mode .weekly-dashboard-panel .weekly-goal-copy p,
+.dashboard-light-mode .weekly-dashboard-panel .weekly-chart-card .chart-subtitle,
+.dashboard-light-mode .weekly-dashboard-panel .weekly-records-card .chart-subtitle,
+.dashboard-light-mode .weekly-dashboard-panel .weekly-kpi-card span,
+.dashboard-light-mode .weekly-dashboard-panel .weekly-risk-badge small,
+.dashboard-light-mode .weekly-dashboard-panel .weekly-client-result-metrics span,
+.dashboard-light-mode .weekly-dashboard-panel .weekly-data-table th,
+.dashboard-light-mode .weekly-dashboard-panel .weekly-data-table td,
+.dashboard-light-mode .weekly-dashboard-panel .weekly-updated-pill {
+    color: #475569 !important;
+}
+
+.dashboard-light-mode .weekly-dashboard-panel .weekly-risk-breakdown div,
+.dashboard-light-mode .weekly-dashboard-panel .weekly-risk-badge,
+.dashboard-light-mode .weekly-dashboard-panel .weekly-client-result-card,
+.dashboard-light-mode .weekly-dashboard-panel .weekly-chart-body,
+.dashboard-light-mode .weekly-dashboard-panel .weekly-table-scroll,
+.dashboard-light-mode .weekly-dashboard-panel .weekly-table-filters select {
+    background: #ffffff !important;
+    border-color: rgba(15, 23, 42, 0.08) !important;
+    color: #0f172a !important;
+}
+
+.dashboard-light-mode .weekly-dashboard-panel .weekly-data-table th {
+    background: #f8fafc !important;
+}
+
+@media (max-width: 1320px) {
+    .weekly-dashboard-panel .weekly-command-center {
+        grid-template-columns: 1fr !important;
+    }
+
+    .weekly-dashboard-panel .weekly-command-heading {
+        border-right: 0 !important;
+        border-bottom: 1px solid rgba(190, 201, 191, 0.14) !important;
+    }
+
+    .weekly-dashboard-panel .weekly-command-grid {
+        grid-column: auto !important;
+    }
+
+    .weekly-dashboard-panel .weekly-goal-card {
+        grid-template-columns: 1fr minmax(240px, 320px) !important;
+    }
+
+    .weekly-dashboard-panel .weekly-risk-breakdown {
+        grid-column: 1 / -1 !important;
+    }
+}
+
+@media (max-width: 1180px) {
+    .weekly-dashboard-panel .weekly-command-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    .weekly-dashboard-panel .weekly-chart-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    .weekly-dashboard-panel .weekly-client-results-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    }
+}
+
+@media (max-width: 720px) {
+    .weekly-dashboard-panel .weekly-command-center,
+    .weekly-dashboard-panel .weekly-focus-strip,
+    .weekly-dashboard-panel .weekly-form-card,
+    .weekly-dashboard-panel .weekly-chart-card,
+    .weekly-dashboard-panel .weekly-records-card {
+        border-radius: 22px !important;
+    }
+
+    .weekly-dashboard-panel .weekly-command-heading,
+    .weekly-dashboard-panel .weekly-command-filters,
+    .weekly-dashboard-panel .weekly-command-grid {
+        padding: 22px !important;
+    }
+
+    .weekly-dashboard-panel .weekly-command-filters,
+    .weekly-dashboard-panel .weekly-command-filters .weekly-custom-range-fields,
+    .weekly-dashboard-panel .weekly-command-rail,
+    .weekly-dashboard-panel .weekly-risk-breakdown,
+    .weekly-dashboard-panel .weekly-goal-card {
+        grid-template-columns: 1fr !important;
+    }
+
+    .weekly-dashboard-panel .weekly-command-rail div + div {
+        border-left: 0 !important;
+        border-top: 1px solid rgba(190, 201, 191, 0.12) !important;
+    }
+
+    .weekly-dashboard-panel .weekly-client-results-grid,
+    .weekly-dashboard-panel .weekly-chart-grid,
+    .weekly-dashboard-panel .weekly-table-actions,
+    .weekly-dashboard-panel .weekly-table-filters,
+    .weekly-dashboard-panel .weekly-export-actions,
+    .weekly-dashboard-panel .weekly-table-title-row {
+        display: grid !important;
+        grid-template-columns: 1fr !important;
+        align-items: stretch !important;
+    }
+
+    .weekly-dashboard-panel .weekly-table-filters label,
+    .weekly-dashboard-panel .weekly-export-button {
+        width: 100% !important;
+        min-width: 0 !important;
+    }
+}
+
 .operations-hero-card {
     display: grid !important;
     grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr) !important;
