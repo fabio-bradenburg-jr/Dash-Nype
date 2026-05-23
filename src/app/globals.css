@@ -2012,8 +2012,8 @@ textarea:focus {
 }
 
 .weekly-dashboard-panel .weekly-kpi-board {
-    grid-template-columns: repeat(7, minmax(146px, 1fr)) !important;
-    overflow-x: auto !important;
+    grid-template-columns: repeat(auto-fit, minmax(146px, 1fr)) !important;
+    overflow-x: visible !important;
     padding-bottom: 2px !important;
 }
 

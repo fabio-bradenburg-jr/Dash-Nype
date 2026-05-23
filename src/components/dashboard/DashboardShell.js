@@ -18752,9 +18752,9 @@ export default function DashboardShell({
         }
 
         .weekly-dashboard-panel .weekly-kpi-grid.weekly-kpi-board {
-          grid-template-columns: repeat(7, minmax(146px, 1fr)) !important;
+          grid-template-columns: repeat(auto-fit, minmax(146px, 1fr)) !important;
           gap: 12px !important;
-          overflow-x: auto !important;
+          overflow-x: visible !important;
         }
 
         .weekly-dashboard-panel .weekly-kpi-card {
