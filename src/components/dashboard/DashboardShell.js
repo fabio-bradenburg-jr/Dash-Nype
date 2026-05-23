@@ -4901,6 +4901,32 @@ export default function DashboardShell({
     }).sort((left, right) => String(right.weekStart).localeCompare(String(left.weekStart)))
   }, [weeklyLatestRecords])
 
+  const weeklyPortfolioStats = useMemo(() => {
+    const uniqueClientIds = new Set()
+    let actionItemsCount = 0
+    let criticalCount = 0
+    let attentionCount = 0
+
+    weeklyVisibleRecords.forEach((record) => {
+      if (record.clientId) uniqueClientIds.add(record.clientId)
+      actionItemsCount += Array.isArray(record.actionItems) ? record.actionItems.filter(Boolean).length : 0
+      if (record.healthStatus === 'critical') criticalCount += 1
+      if (record.healthStatus === 'attention') attentionCount += 1
+    })
+
+    return {
+      recordsCount: weeklyVisibleRecords.length,
+      monitoredClients: uniqueClientIds.size,
+      actionItemsCount,
+      criticalCount,
+      attentionCount,
+      healthyCount: weeklyVisibleRecords.filter((record) => record.healthStatus === 'healthy' || record.healthStatus === 'great').length,
+      latestWeekLabel: weeklyHistoryCards[0]
+        ? formatWeekRangeLabel(weeklyHistoryCards[0].weekStart, weeklyHistoryCards[0].weekEnd)
+        : 'Sem semanas registradas',
+    }
+  }, [weeklyVisibleRecords, weeklyHistoryCards])
+
   const handleToggleWeeklyHistoryCardSelection = useCallback((recordIds) => {
     setSelectedWeeklyRecordIds((current) => {
       const ids = recordIds.filter(Boolean)
@@ -12656,15 +12682,15 @@ export default function DashboardShell({
 
   const renderWeeklyClientPanel = () => (
     <section className="weekly-dashboard-panel">
-      <div className="weekly-hero glass-panel">
-        <div>
-          <span className="eyebrow">Ritmo semanal</span>
+      <div className="weekly-command-center glass-panel">
+        <div className="weekly-command-heading">
+          <span className="eyebrow weekly-icon-label"><i className="bx bx-pulse"></i>Operação semanal</span>
           <h2>Controle da Operação</h2>
-          <p>Registre investimento, leads, SQL, saúde e plano de ação por semana, sempre de segunda a domingo.</p>
+          <p>Leitura executiva da semana, saúde da carteira e custos de aquisição por cliente em uma rotina de segunda a domingo.</p>
         </div>
-        <div className="weekly-hero-controls">
+        <div className="weekly-command-filters">
           <label>
-            <span>Visualizar</span>
+            <span>Carteira</span>
             <select value={weeklyClientFilter} onChange={(event) => setWeeklyClientFilter(event.target.value)}>
               <option value="all">Todos os clientes</option>
               {dashboardEligibleClients.map((client) => (
@@ -12673,7 +12699,7 @@ export default function DashboardShell({
             </select>
           </label>
           <label>
-            <span>Período</span>
+            <span>Janela</span>
             <select value={weeklyPeriodPreset} onChange={(event) => setWeeklyPeriodPreset(event.target.value)}>
               {WEEKLY_PERIOD_OPTIONS.map((option) => (
                 <option key={'weekly-period-' + option.value} value={option.value}>{option.label}</option>
@@ -12692,13 +12718,33 @@ export default function DashboardShell({
               </label>
             </div>
           )}
-          <div className="weekly-range-pill" style={{ borderColor: activeClientDashboardHex + '66', color: activeClientDashboardHex }}>
-            {weeklyPeriodWindow.label}
+        </div>
+        <div className="weekly-command-grid">
+          <div className="weekly-command-primary">
+            <div>
+              <span>Período ativo</span>
+              <strong>{weeklyPeriodWindow.label}</strong>
+              <small>{weeklyPortfolioStats.latestWeekLabel}</small>
+            </div>
+            <button type="button" className="btn btn-primary weekly-entry-button" onClick={() => { setWeeklySuccessMessage(''); setIsWeeklyEntryModalOpen(true) }} style={{ background: activeClientDashboardHex, borderColor: activeClientDashboardHex }}>
+              <i className="bx bx-plus"></i>
+              Cadastrar dados
+            </button>
           </div>
-          <button type="button" className="btn btn-primary weekly-entry-button" onClick={() => { setWeeklySuccessMessage(''); setIsWeeklyEntryModalOpen(true) }} style={{ background: activeClientDashboardHex, borderColor: activeClientDashboardHex }}>
-            <i className="bx bx-plus"></i>
-            Cadastrar dados
-          </button>
+          <div className="weekly-command-rail">
+            <div>
+              <span>Clientes monitorados</span>
+              <strong>{formatNumber(weeklyPortfolioStats.monitoredClients)}</strong>
+            </div>
+            <div>
+              <span>Registros no filtro</span>
+              <strong>{formatNumber(weeklyPortfolioStats.recordsCount)}</strong>
+            </div>
+            <div>
+              <span>Planos em pauta</span>
+              <strong>{formatNumber(weeklyPortfolioStats.actionItemsCount)}</strong>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -12723,14 +12769,16 @@ export default function DashboardShell({
         </div>
       )}
 
-      <div
-        className="weekly-focus-strip weekly-goal-card glass-panel"
-        style={{ padding: '56px 64px', gap: 32, alignItems: 'center' }}
-      >
+      <div className="weekly-focus-strip weekly-goal-card glass-panel">
         <div className="weekly-goal-copy">
           <span className="eyebrow weekly-icon-label"><i className="bx bx-target-lock"></i>Meta operacional</span>
           <h2>{weeklyClientFilter === 'all' ? 'Visão consolidada da carteira' : clientsById.get(weeklyClientFilter)?.name || 'Cliente selecionado'}</h2>
           <p>O objetivo do time é manter Crítico + Atenção em até {formatNumber(weeklyHealthRiskTarget)}% da carteira. Ajuste essa meta nas configurações.</p>
+        </div>
+        <div className="weekly-risk-breakdown">
+          <div><span>Crítico</span><strong>{formatNumber(weeklyPortfolioStats.criticalCount)}</strong></div>
+          <div><span>Atenção</span><strong>{formatNumber(weeklyPortfolioStats.attentionCount)}</strong></div>
+          <div><span>Estável</span><strong>{formatNumber(weeklyPortfolioStats.healthyCount)}</strong></div>
         </div>
         <div className={'weekly-risk-badge weekly-goal-badge ' + (weeklySummary.withinRiskTarget ? 'healthy' : 'critical')}>
           <span><i className="bx bx-error-circle"></i>Crítico + Atenção</span>
@@ -12739,7 +12787,7 @@ export default function DashboardShell({
         </div>
       </div>
 
-      <div className="weekly-kpi-grid weekly-kpi-grid-wide">
+      <div className="weekly-kpi-grid weekly-kpi-grid-wide weekly-kpi-board">
         <div className="weekly-kpi-card glass-panel"><span><i className="bx bx-pulse"></i>Saúde média do período</span><strong>{weeklySummary.averageHealthLabel}</strong></div>
         <div className="weekly-kpi-card glass-panel"><span><i className="bx bx-calendar-check"></i>Saúde média do mês</span><strong>{weeklyMonthSummary.averageHealthLabel}</strong></div>
         <div className="weekly-kpi-card glass-panel"><span><i className="bx bx-wallet"></i>Investimento</span><strong>{formatCurrency(weeklySummary.investment)}</strong></div>
@@ -27844,6 +27892,167 @@ export default function DashboardShell({
           --weekly-accent: var(--client-dashboard-accent, var(--button-primary, var(--accent-blue)));
         }
 
+        .weekly-command-center {
+          display: grid;
+          grid-template-columns: minmax(320px, 0.72fr) minmax(520px, 1fr);
+          gap: 24px;
+          align-items: stretch;
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          border-radius: 28px;
+          background:
+            linear-gradient(145deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.018)),
+            radial-gradient(circle at 10% 0%, color-mix(in srgb, var(--weekly-accent) 14%, transparent), transparent 34%),
+            rgba(13, 17, 16, 0.9);
+          box-shadow: 0 28px 70px rgba(0, 0, 0, 0.28);
+          padding: 34px;
+          overflow: hidden;
+        }
+
+        .weekly-command-heading {
+          display: flex;
+          min-width: 0;
+          flex-direction: column;
+          justify-content: space-between;
+          gap: 22px;
+          padding-right: 12px;
+        }
+
+        .weekly-command-heading h2 {
+          margin: 0;
+          color: var(--text-primary);
+          font-size: clamp(1.9rem, 3vw, 3rem);
+          letter-spacing: -0.04em;
+          line-height: 1.04;
+        }
+
+        .weekly-command-heading p {
+          max-width: 620px;
+          margin: 0;
+          color: var(--text-muted);
+          line-height: 1.65;
+        }
+
+        .weekly-command-filters {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(180px, 1fr));
+          gap: 14px;
+          align-self: start;
+        }
+
+        .weekly-command-filters label {
+          display: flex;
+          min-width: 0;
+          flex-direction: column;
+          gap: 9px;
+        }
+
+        .weekly-command-filters label > span,
+        .weekly-command-primary span,
+        .weekly-command-rail span,
+        .weekly-risk-breakdown span {
+          color: var(--text-muted);
+          font-size: 0.7rem;
+          font-weight: 900;
+          letter-spacing: 0.12em;
+          text-transform: uppercase;
+        }
+
+        .weekly-command-filters select,
+        .weekly-command-filters input {
+          width: 100%;
+          min-height: 54px;
+          border: 1px solid rgba(148, 163, 184, 0.16);
+          border-radius: 8px;
+          background: rgba(6, 10, 18, 0.72);
+          color: var(--text-primary);
+          outline: none;
+          padding: 0 16px;
+          font: inherit;
+          transition: border-color 180ms ease, box-shadow 180ms ease, background 180ms ease;
+        }
+
+        .weekly-command-filters select:focus,
+        .weekly-command-filters input:focus {
+          border-color: color-mix(in srgb, var(--weekly-accent) 62%, transparent);
+          box-shadow: 0 0 0 4px color-mix(in srgb, var(--weekly-accent) 14%, transparent);
+        }
+
+        .weekly-command-filters .weekly-custom-range-fields {
+          grid-column: 1 / -1;
+          flex: none;
+        }
+
+        .weekly-command-grid {
+          display: grid;
+          grid-column: 2;
+          grid-template-columns: minmax(240px, 0.88fr) minmax(280px, 1fr);
+          gap: 14px;
+          align-self: end;
+        }
+
+        .weekly-command-primary,
+        .weekly-command-rail {
+          border: 1px solid rgba(148, 163, 184, 0.14);
+          border-radius: 18px;
+          background: rgba(255, 255, 255, 0.045);
+        }
+
+        .weekly-command-primary {
+          display: flex;
+          flex-direction: column;
+          justify-content: space-between;
+          gap: 24px;
+          padding: 22px;
+        }
+
+        .weekly-command-primary div {
+          display: grid;
+          gap: 8px;
+        }
+
+        .weekly-command-primary strong {
+          color: var(--text-primary);
+          font-size: clamp(1.45rem, 2.3vw, 2rem);
+          letter-spacing: -0.04em;
+          line-height: 1.08;
+        }
+
+        .weekly-command-primary small {
+          color: var(--text-muted);
+          font-size: 0.82rem;
+          font-weight: 800;
+        }
+
+        .weekly-command-primary .weekly-entry-button {
+          width: 100%;
+          border-radius: 8px;
+        }
+
+        .weekly-command-rail {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          overflow: hidden;
+        }
+
+        .weekly-command-rail div {
+          display: grid;
+          align-content: space-between;
+          gap: 18px;
+          min-height: 154px;
+          padding: 20px;
+        }
+
+        .weekly-command-rail div + div {
+          border-left: 1px solid rgba(148, 163, 184, 0.12);
+        }
+
+        .weekly-command-rail strong {
+          color: var(--text-primary);
+          font-size: clamp(1.65rem, 2.5vw, 2.5rem);
+          letter-spacing: -0.05em;
+          line-height: 1;
+        }
+
         .weekly-hero,
         .weekly-focus-strip,
         .weekly-form-card,
@@ -27882,9 +28091,9 @@ export default function DashboardShell({
 
         .weekly-goal-card {
           display: grid !important;
-          grid-template-columns: minmax(0, 1fr) minmax(260px, 340px) !important;
+          grid-template-columns: minmax(0, 1fr) minmax(260px, 0.58fr) minmax(240px, 320px) !important;
           min-height: 190px !important;
-          padding: 56px 64px !important;
+          padding: 42px 46px !important;
           gap: 32px !important;
           align-items: center !important;
         }
@@ -27945,6 +28154,31 @@ export default function DashboardShell({
 
         .weekly-goal-copy p {
           line-height: 1.75 !important;
+        }
+
+        .weekly-risk-breakdown {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 10px;
+        }
+
+        .weekly-risk-breakdown div {
+          min-height: 118px;
+          border: 1px solid rgba(148, 163, 184, 0.13);
+          border-radius: 16px;
+          background: rgba(255, 255, 255, 0.04);
+          display: flex;
+          flex-direction: column;
+          justify-content: space-between;
+          gap: 18px;
+          padding: 18px;
+        }
+
+        .weekly-risk-breakdown strong {
+          color: var(--text-primary);
+          font-size: clamp(1.65rem, 2.5vw, 2.3rem);
+          letter-spacing: -0.05em;
+          line-height: 1;
         }
 
         .weekly-icon-label,
@@ -28260,6 +28494,12 @@ export default function DashboardShell({
 
         .weekly-kpi-grid-wide {
           grid-template-columns: repeat(4, minmax(0, 1fr));
+        }
+
+        .weekly-kpi-board {
+          grid-template-columns: repeat(7, minmax(140px, 1fr));
+          overflow-x: auto;
+          padding-bottom: 2px;
         }
 
         .weekly-kpi-card {
@@ -29076,6 +29316,7 @@ export default function DashboardShell({
         }
 
         .dashboard-light-mode .weekly-hero,
+        .dashboard-light-mode .weekly-command-center,
         .dashboard-light-mode .weekly-focus-strip,
         .dashboard-light-mode .weekly-form-card,
         .dashboard-light-mode .weekly-chart-card,
@@ -29088,6 +29329,11 @@ export default function DashboardShell({
 
         .dashboard-light-mode .weekly-hero-controls select,
         .dashboard-light-mode .weekly-hero-controls input,
+        .dashboard-light-mode .weekly-command-filters select,
+        .dashboard-light-mode .weekly-command-filters input,
+        .dashboard-light-mode .weekly-command-primary,
+        .dashboard-light-mode .weekly-command-rail,
+        .dashboard-light-mode .weekly-risk-breakdown div,
         .dashboard-light-mode .weekly-form-card select,
         .dashboard-light-mode .weekly-form-card input,
         .dashboard-light-mode .weekly-form-card textarea,
@@ -29124,6 +29370,10 @@ export default function DashboardShell({
 
         .dashboard-light-mode .weekly-export-menu button,
         .dashboard-light-mode .weekly-history-button,
+        .dashboard-light-mode .weekly-command-heading h2,
+        .dashboard-light-mode .weekly-command-primary strong,
+        .dashboard-light-mode .weekly-command-rail strong,
+        .dashboard-light-mode .weekly-risk-breakdown strong,
         .dashboard-light-mode .weekly-hero h2,
         .dashboard-light-mode .weekly-focus-strip h2,
         .dashboard-light-mode .weekly-form-card h2,
@@ -29139,6 +29389,12 @@ export default function DashboardShell({
         }
 
         .dashboard-light-mode .weekly-hero p,
+        .dashboard-light-mode .weekly-command-heading p,
+        .dashboard-light-mode .weekly-command-filters label > span,
+        .dashboard-light-mode .weekly-command-primary span,
+        .dashboard-light-mode .weekly-command-primary small,
+        .dashboard-light-mode .weekly-command-rail span,
+        .dashboard-light-mode .weekly-risk-breakdown span,
         .dashboard-light-mode .weekly-focus-strip p,
         .dashboard-light-mode .weekly-form-card .chart-subtitle,
         .dashboard-light-mode .weekly-chart-card .chart-subtitle,
@@ -29161,6 +29417,22 @@ export default function DashboardShell({
         }
 
         @media (max-width: 1320px) {
+          .weekly-command-center {
+            grid-template-columns: 1fr;
+          }
+
+          .weekly-command-grid {
+            grid-column: auto;
+          }
+
+          .weekly-goal-card {
+            grid-template-columns: 1fr minmax(240px, 320px) !important;
+          }
+
+          .weekly-risk-breakdown {
+            grid-column: 1 / -1;
+          }
+
           .weekly-record-row,
           .weekly-record-row:has(.weekly-record-selector) {
             grid-template-columns: 1fr;
@@ -29173,10 +29445,15 @@ export default function DashboardShell({
         }
 
         @media (max-width: 1180px) {
+          .weekly-command-grid,
           .weekly-hero,
           .weekly-focus-strip,
           .weekly-chart-grid {
             grid-template-columns: 1fr;
+          }
+
+          .weekly-command-rail {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
           }
 
           .weekly-table-actions {
@@ -29200,6 +29477,7 @@ export default function DashboardShell({
         }
 
         @media (max-width: 720px) {
+          .weekly-command-center,
           .weekly-hero,
           .weekly-focus-strip,
           .weekly-form-card,
@@ -29218,6 +29496,9 @@ export default function DashboardShell({
             padding: 32px 26px !important;
           }
 
+          .weekly-command-filters,
+          .weekly-command-rail,
+          .weekly-risk-breakdown,
           .weekly-hero-controls,
           .weekly-form-grid,
           .weekly-health-options,
