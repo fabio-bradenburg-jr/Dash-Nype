@@ -31250,6 +31250,32 @@ export default function DashboardShell({
           box-shadow: 0 14px 28px color-mix(in srgb, var(--button-primary, #26c281) 24%, transparent) !important;
         }
 
+        .dashboard-shell-stellar .btn-primary i,
+        .dashboard-shell-stellar .nav-item.active i,
+        .dashboard-shell-stellar .sidebar-toggle i,
+        .dashboard-shell-stellar .home-hub-kicker,
+        .dashboard-shell-stellar .management-hero-kicker,
+        .dashboard-shell-stellar .meta-filter-kicker,
+        .dashboard-shell-stellar .monday-command-kicker,
+        .dashboard-shell-stellar .monday-decision-eyebrow,
+        .dashboard-shell-stellar .weekly-command-kicker,
+        .dashboard-shell-stellar .weekly-section-kicker,
+        .dashboard-shell-stellar .operation-stellar-tab.active,
+        .dashboard-shell-stellar .metric-library-panel strong,
+        .dashboard-shell-stellar .ai-insights-meta strong {
+          color: color-mix(in srgb, var(--button-primary, #26c281) 76%, #f1f1f1) !important;
+        }
+
+        .dashboard-shell-stellar .stage-chip.active,
+        .dashboard-shell-stellar .settings-choice.active,
+        .dashboard-shell-stellar .client-registry-display-btn.active,
+        .dashboard-shell-stellar .operation-stellar-theme-option.active,
+        .dashboard-shell-stellar .metric-library-chip.active,
+        .dashboard-shell-stellar .weekly-range-pill.active {
+          border-color: color-mix(in srgb, var(--button-primary, #26c281) 38%, var(--lumina-page-border)) !important;
+          background: color-mix(in srgb, var(--button-primary, #26c281) 13%, rgba(255, 255, 255, 0.035)) !important;
+        }
+
         .dashboard-shell-stellar .btn-secondary {
           border-color: var(--lumina-page-border) !important;
           background: rgba(255, 255, 255, 0.035) !important;

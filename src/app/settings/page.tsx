@@ -1821,17 +1821,17 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
                     </div>
 
                     <div className="settings-grid settings-grid-obsidian">
-                      <div className="glass-item settings-block settings-block-obsidian">
+                      <div className="glass-item settings-block settings-block-obsidian settings-detail-accent-block" style={{ '--settings-accent': panelDraft.accent } as CSSProperties}>
                         <div className="settings-obsidian-head">
                           <div>
-                            <span>Cor de destaque</span>
-                            <h2>Assinatura visual</h2>
+                            <span>Cor dos detalhes do app</span>
+                            <h2>Botões, ícones e destaques</h2>
                           </div>
-                          <p>Define a energia dos botões, links ativos e detalhes de navegação do sistema.</p>
+                          <p>Define a cor dos botões principais, ícones ativos, links, bordas de foco, indicadores e frases destacadas do sistema.</p>
                         </div>
 
                         <div className="settings-color-showcase">
-                          <div className="settings-color-display" style={{ '--settings-accent': panelDraft.accent } as CSSProperties}>
+                          <div className="settings-color-display">
                             <i className="bx bx-palette"></i>
                           </div>
                           <div className="settings-color-code">
@@ -1866,8 +1866,21 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
                           />
                           <div className="settings-color-code">
                             <strong>{panelDraft.accent.toUpperCase()}</strong>
-                            <span>Aplicado quando você salvar as preferências visuais.</span>
+                            <span>Salve para aplicar essa cor nos detalhes visuais do app inteiro.</span>
                           </div>
+                        </div>
+
+                        <div className="settings-detail-preview" aria-label="Prévia da cor dos detalhes do app">
+                          <button type="button" className="settings-detail-preview-button">
+                            <i className="bx bx-check-circle"></i>
+                            Botão principal
+                          </button>
+                          <div className="settings-detail-preview-icon">
+                            <i className="bx bx-sparkles"></i>
+                          </div>
+                          <p>
+                            <strong>Frase destacada:</strong> essa cor aparece nos pontos que guiam a atenção dentro do app.
+                          </p>
                         </div>
 
                       </div>
@@ -2906,6 +2919,65 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
           border: 1px solid rgba(69, 71, 75, 0.18);
         }
 
+        .settings-detail-accent-block {
+          --settings-accent: var(--accent-blue);
+        }
+
+        .settings-detail-preview {
+          display: grid;
+          grid-template-columns: minmax(180px, max-content) 48px minmax(0, 1fr);
+          gap: 14px;
+          align-items: center;
+          padding: 16px;
+          border-radius: 18px;
+          border: 1px solid color-mix(in srgb, var(--settings-accent) 24%, rgba(255, 255, 255, 0.08));
+          background:
+            linear-gradient(90deg, color-mix(in srgb, var(--settings-accent) 12%, transparent), rgba(255, 255, 255, 0.025));
+        }
+
+        .settings-detail-preview-button {
+          min-height: 46px;
+          padding: 0 16px;
+          border: 1px solid color-mix(in srgb, var(--settings-accent) 70%, #ffffff 8%);
+          border-radius: 12px;
+          background:
+            linear-gradient(135deg, var(--settings-accent), color-mix(in srgb, var(--settings-accent) 78%, #ffffff 12%));
+          color: #ffffff;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 9px;
+          font: inherit;
+          font-weight: 800;
+          box-shadow: 0 14px 28px color-mix(in srgb, var(--settings-accent) 24%, transparent);
+        }
+
+        .settings-detail-preview-button i {
+          font-size: 18px;
+        }
+
+        .settings-detail-preview-icon {
+          width: 48px;
+          height: 48px;
+          border-radius: 14px;
+          display: grid;
+          place-items: center;
+          border: 1px solid color-mix(in srgb, var(--settings-accent) 34%, transparent);
+          background: color-mix(in srgb, var(--settings-accent) 13%, transparent);
+          color: color-mix(in srgb, var(--settings-accent) 76%, #ffffff);
+          font-size: 22px;
+        }
+
+        .settings-detail-preview p {
+          margin: 0;
+          color: var(--text-secondary);
+          line-height: 1.5;
+        }
+
+        .settings-detail-preview strong {
+          color: color-mix(in srgb, var(--settings-accent) 72%, #ffffff);
+        }
+
         .settings-color-picker input[type='color'] {
           width: 72px;
           min-width: 72px;
@@ -3437,6 +3509,7 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
         }
 
         :root[data-ui-mode='light'] .settings-color-picker,
+        :root[data-ui-mode='light'] .settings-detail-preview,
         :root[data-ui-mode='light'] .settings-color-code-row input,
         :root[data-ui-mode='light'] .settings-copy-button,
         :root[data-ui-mode='light'] .settings-rgb-field input {
@@ -3463,6 +3536,10 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
           color: var(--accent-blue);
           background: color-mix(in srgb, var(--accent-blue) 5%, white);
           border-color: color-mix(in srgb, var(--accent-blue) 22%, rgba(15, 23, 42, 0.08));
+        }
+
+        :root[data-ui-mode='light'] .settings-detail-preview strong {
+          color: color-mix(in srgb, var(--settings-accent) 74%, #0f172a);
         }
 
         :root[data-ui-mode='light'] .settings-mode-card:not(.active) {
@@ -4256,9 +4333,10 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
 
         .settings-save-button {
           border-radius: 10px;
-          background: linear-gradient(135deg, #006c44 0%, #26c281 100%) !important;
+          background:
+            linear-gradient(135deg, var(--button-primary, var(--accent-blue)) 0%, color-mix(in srgb, var(--button-primary, var(--accent-blue)) 78%, #2ecc71 22%) 100%) !important;
           color: #ffffff !important;
-          box-shadow: 0 14px 30px rgba(38, 194, 129, 0.16);
+          box-shadow: 0 14px 30px color-mix(in srgb, var(--button-primary, var(--accent-blue)) 18%, transparent);
         }
 
         :root[data-ui-mode='light'] .settings-page-shell {
@@ -4398,6 +4476,15 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
           box-shadow: 0 18px 36px rgba(13, 13, 13, 0.16) !important;
         }
 
+        :global(.dashboard-light-mode) .settings-detail-preview {
+          background: color-mix(in srgb, var(--settings-accent) 8%, #ffffff) !important;
+          border-color: color-mix(in srgb, var(--settings-accent) 24%, rgba(15, 23, 42, 0.08)) !important;
+        }
+
+        :global(.dashboard-light-mode) .settings-detail-preview strong {
+          color: color-mix(in srgb, var(--settings-accent) 74%, #0f172a);
+        }
+
         @media (max-width: 980px) {
           .settings-workspace {
             grid-template-columns: 1fr;
@@ -4451,6 +4538,10 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
           }
 
           .settings-color-showcase {
+            grid-template-columns: 1fr;
+          }
+
+          .settings-detail-preview {
             grid-template-columns: 1fr;
           }
 
