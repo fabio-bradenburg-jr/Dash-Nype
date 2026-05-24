@@ -31046,6 +31046,335 @@ export default function DashboardShell({
             grid-template-columns: 1fr;
           }
         }
+
+        /* Lumina global finish pass for every app page and popup. */
+        .dashboard-shell-stellar {
+          --lumina-page-bg: #070908;
+          --lumina-page-surface: rgba(18, 24, 23, 0.82);
+          --lumina-page-surface-strong: rgba(23, 28, 27, 0.94);
+          --lumina-page-border: rgba(190, 201, 191, 0.16);
+          --lumina-page-border-strong: rgba(190, 201, 191, 0.28);
+          --lumina-page-text: #f1f1f1;
+          --lumina-page-muted: rgba(241, 241, 241, 0.68);
+          --lumina-page-soft: rgba(241, 241, 241, 0.48);
+          background:
+            radial-gradient(circle at 78% 0%, color-mix(in srgb, var(--button-primary, #26c281) 10%, transparent), transparent 30%),
+            linear-gradient(180deg, #070908 0%, #0d1110 52%, #070908 100%) !important;
+          color: var(--lumina-page-text);
+        }
+
+        .dashboard-shell-stellar .main-content {
+          background: transparent !important;
+        }
+
+        .dashboard-shell-stellar .glass-panel,
+        .dashboard-shell-stellar .glass-item,
+        .dashboard-shell-stellar .hero-panel,
+        .dashboard-shell-stellar .grouped-results,
+        .dashboard-shell-stellar .chart-container,
+        .dashboard-shell-stellar .ranking-card,
+        .dashboard-shell-stellar .source-section,
+        .dashboard-shell-stellar .campaigns-section,
+        .dashboard-shell-stellar .kpi-card,
+        .dashboard-shell-stellar .meta-summary-card,
+        .dashboard-shell-stellar .meta-filter-panel,
+        .dashboard-shell-stellar .metric-library-panel,
+        .dashboard-shell-stellar .meta-result-preview-panel,
+        .dashboard-shell-stellar .client-registry-manager-panel,
+        .dashboard-shell-stellar .context-panel,
+        .dashboard-shell-stellar .qualification-panel,
+        .dashboard-shell-stellar .weekly-command-center,
+        .dashboard-shell-stellar .weekly-focus-strip,
+        .dashboard-shell-stellar .weekly-records-card,
+        .dashboard-shell-stellar .weekly-chart-card,
+        .dashboard-shell-stellar .weekly-form-card,
+        .dashboard-shell-stellar .operations-meta-card,
+        .dashboard-shell-stellar .operations-filter-card,
+        .dashboard-shell-stellar .operations-spotlight-card,
+        .dashboard-shell-stellar .user-directory-card,
+        .dashboard-shell-stellar .simple-client-card,
+        .dashboard-shell-stellar .simple-team-card,
+        .dashboard-shell-stellar .empty-panel {
+          border: 1px solid var(--lumina-page-border) !important;
+          background:
+            linear-gradient(180deg, rgba(18, 24, 23, 0.88), rgba(13, 17, 16, 0.9)),
+            var(--lumina-page-surface) !important;
+          box-shadow: 0 22px 52px rgba(0, 0, 0, 0.22) !important;
+          backdrop-filter: blur(14px);
+          -webkit-backdrop-filter: blur(14px);
+        }
+
+        .dashboard-shell-stellar .hero-panel,
+        .dashboard-shell-stellar .home-hub-hero,
+        .dashboard-shell-stellar .weekly-command-center,
+        .dashboard-shell-stellar .monday-command-panel,
+        .dashboard-shell-stellar .management-header-row {
+          background:
+            linear-gradient(135deg, color-mix(in srgb, var(--button-primary, #26c281) 10%, transparent), transparent 38%),
+            linear-gradient(180deg, rgba(18, 24, 23, 0.94), rgba(13, 17, 16, 0.92)) !important;
+          border-color: var(--lumina-page-border-strong) !important;
+        }
+
+        .dashboard-shell-stellar .modal-overlay,
+        .dashboard-shell-stellar .weekly-modal-overlay {
+          background:
+            radial-gradient(circle at 50% 0%, color-mix(in srgb, var(--button-primary, #26c281) 14%, transparent), transparent 32%),
+            rgba(2, 6, 5, 0.78) !important;
+          backdrop-filter: blur(18px) saturate(118%);
+          -webkit-backdrop-filter: blur(18px) saturate(118%);
+          padding: clamp(16px, 3vw, 32px);
+        }
+
+        .dashboard-shell-stellar .modal-card,
+        .dashboard-shell-stellar .simple-client-modal,
+        .dashboard-shell-stellar .dashboard-entry-modal,
+        .dashboard-shell-stellar .ai-insights-modal,
+        .dashboard-shell-stellar .meta-result-modal,
+        .dashboard-shell-stellar .meta-ranking-modal,
+        .dashboard-shell-stellar .weekly-entry-modal,
+        .dashboard-shell-stellar .weekly-history-modal,
+        .dashboard-shell-stellar .operation-card-modal {
+          border: 1px solid var(--lumina-page-border-strong) !important;
+          border-radius: 24px !important;
+          background:
+            linear-gradient(145deg, color-mix(in srgb, var(--button-primary, #26c281) 8%, transparent), transparent 30%),
+            linear-gradient(180deg, rgba(18, 24, 23, 0.98), rgba(9, 13, 12, 0.98)) !important;
+          color: var(--lumina-page-text) !important;
+          box-shadow: 0 30px 90px rgba(0, 0, 0, 0.44) !important;
+        }
+
+        .dashboard-shell-stellar .modal-header {
+          align-items: flex-start;
+          padding-bottom: 4px;
+        }
+
+        .dashboard-shell-stellar .modal-header h3,
+        .dashboard-shell-stellar .page-title h1,
+        .dashboard-shell-stellar .management-header-copy h2,
+        .dashboard-shell-stellar .hero-panel h2,
+        .dashboard-shell-stellar .ranking-card h3,
+        .dashboard-shell-stellar .source-section-copy h2,
+        .dashboard-shell-stellar .weekly-section-title,
+        .dashboard-shell-stellar .weekly-history-heading h3,
+        .dashboard-shell-stellar .operation-modal-breadcrumbs strong {
+          color: var(--lumina-page-text) !important;
+          letter-spacing: 0;
+        }
+
+        .dashboard-shell-stellar .modal-header p,
+        .dashboard-shell-stellar .page-title p,
+        .dashboard-shell-stellar .management-header-copy p,
+        .dashboard-shell-stellar .hero-panel p,
+        .dashboard-shell-stellar .ranking-card p,
+        .dashboard-shell-stellar .source-section-copy p,
+        .dashboard-shell-stellar .input-group label,
+        .dashboard-shell-stellar .field-helper,
+        .dashboard-shell-stellar .chart-subtitle,
+        .dashboard-shell-stellar .empty-panel p,
+        .dashboard-shell-stellar .weekly-helper,
+        .dashboard-shell-stellar .operation-modal-breadcrumbs {
+          color: var(--lumina-page-muted) !important;
+        }
+
+        .dashboard-shell-stellar .modal-close,
+        .dashboard-shell-stellar .operation-stellar-icon-button,
+        .dashboard-shell-stellar .operation-stellar-theme-toggle,
+        .dashboard-shell-stellar .client-registry-display-btn,
+        .dashboard-shell-stellar .metric-library-chip,
+        .dashboard-shell-stellar .weekly-export-button {
+          border: 1px solid var(--lumina-page-border) !important;
+          background: rgba(255, 255, 255, 0.035) !important;
+          color: var(--lumina-page-muted) !important;
+          box-shadow: none !important;
+        }
+
+        .dashboard-shell-stellar .modal-close:hover,
+        .dashboard-shell-stellar .operation-stellar-icon-button:hover,
+        .dashboard-shell-stellar .operation-stellar-theme-toggle:hover,
+        .dashboard-shell-stellar .client-registry-display-btn:hover,
+        .dashboard-shell-stellar .metric-library-chip:hover,
+        .dashboard-shell-stellar .weekly-export-button:hover {
+          border-color: color-mix(in srgb, var(--button-primary, #26c281) 34%, var(--lumina-page-border)) !important;
+          background: color-mix(in srgb, var(--button-primary, #26c281) 10%, rgba(255, 255, 255, 0.035)) !important;
+          color: var(--lumina-page-text) !important;
+        }
+
+        .dashboard-shell-stellar .metric-library-dropdown,
+        .dashboard-shell-stellar .weekly-export-menu,
+        .dashboard-shell-stellar .home-tools-menu,
+        .dashboard-shell-stellar .operation-assignee-dropdown,
+        .dashboard-shell-stellar .meta-campaign-filter-panel,
+        .dashboard-shell-stellar .client-select-menu {
+          border: 1px solid var(--lumina-page-border-strong) !important;
+          border-radius: 18px !important;
+          background:
+            linear-gradient(180deg, rgba(18, 24, 23, 0.98), rgba(9, 13, 12, 0.98)) !important;
+          box-shadow: 0 26px 70px rgba(0, 0, 0, 0.36) !important;
+          backdrop-filter: blur(16px);
+          -webkit-backdrop-filter: blur(16px);
+        }
+
+        .dashboard-shell-stellar .input-group input:not([type="checkbox"]):not([type="file"]),
+        .dashboard-shell-stellar .input-group select,
+        .dashboard-shell-stellar .input-group textarea,
+        .dashboard-shell-stellar .client-select-input,
+        .dashboard-shell-stellar .operation-stellar-search,
+        .dashboard-shell-stellar .client-registry-search,
+        .dashboard-shell-stellar .client-registry-filter-group,
+        .dashboard-shell-stellar .users-search-field input,
+        .dashboard-shell-stellar .weekly-command-filter input,
+        .dashboard-shell-stellar .weekly-command-filter select,
+        .dashboard-shell-stellar .weekly-table-filters input,
+        .dashboard-shell-stellar .weekly-table-filters select {
+          border: 1px solid var(--lumina-page-border) !important;
+          background: rgba(7, 9, 8, 0.42) !important;
+          color: var(--lumina-page-text) !important;
+          box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035) !important;
+        }
+
+        .dashboard-shell-stellar input:focus,
+        .dashboard-shell-stellar select:focus,
+        .dashboard-shell-stellar textarea:focus,
+        .dashboard-shell-stellar .client-select-input:focus-within,
+        .dashboard-shell-stellar .operation-stellar-search:focus-within {
+          border-color: color-mix(in srgb, var(--button-primary, #26c281) 48%, var(--lumina-page-border)) !important;
+          box-shadow: 0 0 0 3px color-mix(in srgb, var(--button-primary, #26c281) 16%, transparent) !important;
+          outline: none !important;
+        }
+
+        .dashboard-shell-stellar .btn-primary {
+          border-color: color-mix(in srgb, var(--button-primary, #26c281) 72%, #ffffff 8%) !important;
+          background:
+            linear-gradient(135deg, var(--button-primary, #26c281), color-mix(in srgb, var(--button-primary, #26c281) 78%, #2ecc71 22%)) !important;
+          color: #ffffff !important;
+          box-shadow: 0 14px 28px color-mix(in srgb, var(--button-primary, #26c281) 24%, transparent) !important;
+        }
+
+        .dashboard-shell-stellar .btn-secondary {
+          border-color: var(--lumina-page-border) !important;
+          background: rgba(255, 255, 255, 0.035) !important;
+          color: var(--lumina-page-text) !important;
+        }
+
+        .dashboard-shell-stellar .operation-clickup-sidebar,
+        .dashboard-shell-stellar .operation-clickup-main,
+        .dashboard-shell-stellar .operation-clickup-activity {
+          background: rgba(9, 13, 12, 0.64) !important;
+          border-color: var(--lumina-page-border) !important;
+        }
+
+        .dashboard-shell-stellar .operation-clickup-description,
+        .dashboard-shell-stellar .operation-clickup-fields,
+        .dashboard-shell-stellar .operation-inline-create,
+        .dashboard-shell-stellar .operation-comment-list,
+        .dashboard-shell-stellar .operation-subtask-list,
+        .dashboard-shell-stellar .simple-client-row,
+        .dashboard-shell-stellar .client-registry-row,
+        .dashboard-shell-stellar .user-directory-row,
+        .dashboard-shell-stellar .weekly-record-row,
+        .dashboard-shell-stellar .weekly-history-item {
+          border-color: var(--lumina-page-border) !important;
+          background: rgba(255, 255, 255, 0.025) !important;
+        }
+
+        .dashboard-light-mode.dashboard-shell-stellar {
+          --lumina-page-bg: #f9f9f9;
+          --lumina-page-surface: #ffffff;
+          --lumina-page-surface-strong: #ffffff;
+          --lumina-page-border: rgba(108, 122, 112, 0.22);
+          --lumina-page-border-strong: rgba(108, 122, 112, 0.32);
+          --lumina-page-text: #1a1c1c;
+          --lumina-page-muted: #3d4a41;
+          --lumina-page-soft: #6c7a70;
+          background:
+            radial-gradient(circle at 78% 0%, color-mix(in srgb, var(--button-primary, #006c44) 9%, transparent), transparent 28%),
+            linear-gradient(180deg, #f9f9f9 0%, #f3f3f3 100%) !important;
+          color: #1a1c1c !important;
+        }
+
+        .dashboard-light-mode.dashboard-shell-stellar .glass-panel,
+        .dashboard-light-mode.dashboard-shell-stellar .glass-item,
+        .dashboard-light-mode.dashboard-shell-stellar .hero-panel,
+        .dashboard-light-mode.dashboard-shell-stellar .grouped-results,
+        .dashboard-light-mode.dashboard-shell-stellar .chart-container,
+        .dashboard-light-mode.dashboard-shell-stellar .ranking-card,
+        .dashboard-light-mode.dashboard-shell-stellar .source-section,
+        .dashboard-light-mode.dashboard-shell-stellar .campaigns-section,
+        .dashboard-light-mode.dashboard-shell-stellar .kpi-card,
+        .dashboard-light-mode.dashboard-shell-stellar .meta-summary-card,
+        .dashboard-light-mode.dashboard-shell-stellar .meta-filter-panel,
+        .dashboard-light-mode.dashboard-shell-stellar .metric-library-panel,
+        .dashboard-light-mode.dashboard-shell-stellar .meta-result-preview-panel,
+        .dashboard-light-mode.dashboard-shell-stellar .client-registry-manager-panel,
+        .dashboard-light-mode.dashboard-shell-stellar .context-panel,
+        .dashboard-light-mode.dashboard-shell-stellar .qualification-panel,
+        .dashboard-light-mode.dashboard-shell-stellar .weekly-command-center,
+        .dashboard-light-mode.dashboard-shell-stellar .weekly-focus-strip,
+        .dashboard-light-mode.dashboard-shell-stellar .weekly-records-card,
+        .dashboard-light-mode.dashboard-shell-stellar .weekly-chart-card,
+        .dashboard-light-mode.dashboard-shell-stellar .weekly-form-card,
+        .dashboard-light-mode.dashboard-shell-stellar .operations-meta-card,
+        .dashboard-light-mode.dashboard-shell-stellar .operations-filter-card,
+        .dashboard-light-mode.dashboard-shell-stellar .operations-spotlight-card,
+        .dashboard-light-mode.dashboard-shell-stellar .user-directory-card,
+        .dashboard-light-mode.dashboard-shell-stellar .simple-client-card,
+        .dashboard-light-mode.dashboard-shell-stellar .simple-team-card,
+        .dashboard-light-mode.dashboard-shell-stellar .empty-panel {
+          background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.98)) !important;
+          border-color: var(--lumina-page-border) !important;
+          box-shadow: 0 18px 42px rgba(15, 23, 42, 0.06) !important;
+        }
+
+        .dashboard-light-mode.dashboard-shell-stellar .modal-overlay,
+        .dashboard-light-mode.dashboard-shell-stellar .weekly-modal-overlay {
+          background: rgba(15, 23, 42, 0.34) !important;
+        }
+
+        .dashboard-light-mode.dashboard-shell-stellar .modal-card,
+        .dashboard-light-mode.dashboard-shell-stellar .simple-client-modal,
+        .dashboard-light-mode.dashboard-shell-stellar .dashboard-entry-modal,
+        .dashboard-light-mode.dashboard-shell-stellar .ai-insights-modal,
+        .dashboard-light-mode.dashboard-shell-stellar .meta-result-modal,
+        .dashboard-light-mode.dashboard-shell-stellar .meta-ranking-modal,
+        .dashboard-light-mode.dashboard-shell-stellar .weekly-entry-modal,
+        .dashboard-light-mode.dashboard-shell-stellar .weekly-history-modal,
+        .dashboard-light-mode.dashboard-shell-stellar .operation-card-modal {
+          background:
+            linear-gradient(145deg, color-mix(in srgb, var(--button-primary, #006c44) 6%, white), #ffffff 36%),
+            #ffffff !important;
+          color: #1a1c1c !important;
+          border-color: var(--lumina-page-border-strong) !important;
+          box-shadow: 0 30px 80px rgba(15, 23, 42, 0.18) !important;
+        }
+
+        .dashboard-light-mode.dashboard-shell-stellar .metric-library-dropdown,
+        .dashboard-light-mode.dashboard-shell-stellar .weekly-export-menu,
+        .dashboard-light-mode.dashboard-shell-stellar .home-tools-menu,
+        .dashboard-light-mode.dashboard-shell-stellar .operation-assignee-dropdown,
+        .dashboard-light-mode.dashboard-shell-stellar .meta-campaign-filter-panel,
+        .dashboard-light-mode.dashboard-shell-stellar .client-select-menu {
+          background: #ffffff !important;
+          border-color: var(--lumina-page-border) !important;
+          box-shadow: 0 24px 60px rgba(15, 23, 42, 0.14) !important;
+        }
+
+        .dashboard-light-mode.dashboard-shell-stellar .input-group input:not([type="checkbox"]):not([type="file"]),
+        .dashboard-light-mode.dashboard-shell-stellar .input-group select,
+        .dashboard-light-mode.dashboard-shell-stellar .input-group textarea,
+        .dashboard-light-mode.dashboard-shell-stellar .client-select-input,
+        .dashboard-light-mode.dashboard-shell-stellar .operation-stellar-search,
+        .dashboard-light-mode.dashboard-shell-stellar .client-registry-search,
+        .dashboard-light-mode.dashboard-shell-stellar .client-registry-filter-group,
+        .dashboard-light-mode.dashboard-shell-stellar .users-search-field input,
+        .dashboard-light-mode.dashboard-shell-stellar .weekly-command-filter input,
+        .dashboard-light-mode.dashboard-shell-stellar .weekly-command-filter select,
+        .dashboard-light-mode.dashboard-shell-stellar .weekly-table-filters input,
+        .dashboard-light-mode.dashboard-shell-stellar .weekly-table-filters select {
+          background: #ffffff !important;
+          color: #1a1c1c !important;
+          border-color: rgba(108, 122, 112, 0.26) !important;
+        }
+
         @page {
           size: A4 landscape;
           margin: 8mm;
