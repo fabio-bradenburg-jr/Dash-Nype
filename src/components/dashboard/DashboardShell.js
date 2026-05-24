@@ -16360,7 +16360,7 @@ export default function DashboardShell({
 
                       return (
                         <div key={'simple-user-' + managedUser.id} className="simple-client-row" role="row">
-                          <div className="simple-client-main"><span className="simple-client-avatar"><i className="bx bx-user"></i></span><div><strong>{managedUser.full_name || managedUser.email}</strong><small>{managedUser.email}</small></div></div>
+                          <div className="simple-client-main"><span className="simple-client-avatar"><i className="bx bx-user"></i></span><div className="simple-team-identity"><strong>{managedUser.full_name || managedUser.email}</strong><small>{managedUser.email}</small></div></div>
                           <span className="simple-client-status-text">{accessLabel}</span>
                           <span className={'integration-status-icon ' + (hasAiAccess ? 'active' : '')} title={hasAiAccess ? 'IA liberada' : 'IA bloqueada'}><i className={'bx ' + (hasAiAccess ? 'bx-brain' : 'bx-lock-alt')}></i></span>
                           <span className={'integration-status-icon ' + (hasIntegrationAccess ? 'active' : '')} title={hasIntegrationAccess ? 'Integrações liberadas' : 'Integrações bloqueadas'}><i className={'bx ' + (hasIntegrationAccess ? 'bx-plug' : 'bx-lock-alt')}></i></span>
@@ -30916,6 +30916,18 @@ export default function DashboardShell({
           grid-template-columns: 42px minmax(0, 1fr);
           gap: 12px;
           align-items: center;
+          min-width: 0;
+        }
+
+        .simple-team-list .simple-team-identity {
+          display: grid;
+          gap: 3px;
+          min-width: 0;
+        }
+
+        .simple-team-list .simple-team-identity strong,
+        .simple-team-list .simple-team-identity small {
+          display: block;
           min-width: 0;
         }
 
