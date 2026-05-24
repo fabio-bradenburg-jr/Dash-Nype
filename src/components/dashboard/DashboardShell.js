@@ -13094,7 +13094,11 @@ export default function DashboardShell({
                 })}
               </div>
             ) : (
-              <div className="ranking-empty">Nenhuma semana encontrada para o filtro atual.</div>
+              <div className="weekly-history-empty">
+                <i className="bx bx-calendar-x"></i>
+                <strong>Nenhuma semana encontrada</strong>
+                <span>Quando houver registros para o filtro atual, eles aparecem aqui em cards para reabrir e revisar.</span>
+              </div>
             )}
           </div>
         </div>,
@@ -29696,28 +29700,42 @@ export default function DashboardShell({
         }
 
         .weekly-history-modal {
-          width: min(1180px, calc(100vw - 48px));
-          max-height: min(820px, calc(100vh - 48px));
-          overflow: auto;
-          border-radius: 30px;
-          padding: 42px;
+          position: relative !important;
+          width: min(1180px, calc(100vw - 48px)) !important;
+          max-height: min(820px, calc(100vh - 48px)) !important;
+          overflow: auto !important;
+          border-radius: 30px !important;
+          padding: 42px !important;
           background:
             linear-gradient(145deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.025)),
             radial-gradient(circle at 10% 0%, color-mix(in srgb, var(--weekly-accent) 14%, transparent), transparent 36%),
-            rgba(18, 18, 20, 0.96);
-          border: 1px solid rgba(148, 163, 184, 0.16);
-          box-shadow: 0 32px 90px rgba(0, 0, 0, 0.44);
+            rgba(18, 18, 20, 0.96) !important;
+          border: 1px solid color-mix(in srgb, var(--weekly-accent) 22%, rgba(148, 163, 184, 0.16)) !important;
+          box-shadow: 0 32px 90px rgba(0, 0, 0, 0.44) !important;
+          display: grid !important;
+          gap: 26px !important;
         }
 
         .weekly-history-modal .weekly-history-heading {
           padding-right: 56px;
         }
 
+        .weekly-history-modal .modal-close {
+          position: absolute !important;
+          top: 22px !important;
+          right: 22px !important;
+          z-index: 2;
+        }
+
         .weekly-history-heading h2 {
           display: flex;
           align-items: center;
           gap: 12px;
+          margin: 0 0 8px;
+          color: var(--text-primary);
           font-size: clamp(1.55rem, 2vw, 2rem);
+          line-height: 1.16;
+          letter-spacing: 0;
         }
 
         .weekly-history-heading h2 i {
@@ -29772,6 +29790,45 @@ export default function DashboardShell({
           display: grid;
           grid-template-columns: repeat(3, minmax(0, 1fr));
           gap: 22px;
+        }
+
+        .weekly-history-empty {
+          min-height: 210px;
+          padding: 34px 28px;
+          border-radius: 24px;
+          border: 1px dashed color-mix(in srgb, var(--weekly-accent) 28%, rgba(148, 163, 184, 0.2));
+          background:
+            linear-gradient(135deg, color-mix(in srgb, var(--weekly-accent) 9%, transparent), rgba(255, 255, 255, 0.025)),
+            rgba(255, 255, 255, 0.025);
+          display: grid;
+          place-items: center;
+          align-content: center;
+          gap: 10px;
+          text-align: center;
+          color: var(--text-muted);
+        }
+
+        .weekly-history-empty i {
+          width: 52px;
+          height: 52px;
+          border-radius: 18px;
+          display: grid;
+          place-items: center;
+          color: color-mix(in srgb, var(--weekly-accent) 78%, #ffffff);
+          background: color-mix(in srgb, var(--weekly-accent) 12%, rgba(255, 255, 255, 0.04));
+          border: 1px solid color-mix(in srgb, var(--weekly-accent) 22%, transparent);
+          font-size: 24px;
+        }
+
+        .weekly-history-empty strong {
+          color: var(--text-primary);
+          font-size: 1.05rem;
+        }
+
+        .weekly-history-empty span {
+          max-width: 520px;
+          color: var(--text-muted);
+          line-height: 1.55;
         }
 
         .weekly-history-card {
@@ -30123,6 +30180,30 @@ export default function DashboardShell({
           box-shadow: 0 34px 100px rgba(15, 23, 42, 0.2) !important;
         }
 
+        :root[data-ui-mode='light'] .weekly-history-modal {
+          background:
+            linear-gradient(145deg, color-mix(in srgb, var(--weekly-accent) 7%, #ffffff), rgba(255, 255, 255, 0.98) 36%),
+            #ffffff !important;
+          border-color: color-mix(in srgb, var(--weekly-accent) 18%, rgba(15, 23, 42, 0.08)) !important;
+          color: #0f172a !important;
+          box-shadow: 0 34px 100px rgba(15, 23, 42, 0.2) !important;
+        }
+
+        :root[data-ui-mode='light'] .weekly-history-heading h2,
+        :root[data-ui-mode='light'] .weekly-history-empty strong {
+          color: #0f172a !important;
+        }
+
+        :root[data-ui-mode='light'] .weekly-history-heading p,
+        :root[data-ui-mode='light'] .weekly-history-empty span {
+          color: #475569 !important;
+        }
+
+        :root[data-ui-mode='light'] .weekly-history-empty {
+          background: color-mix(in srgb, var(--weekly-accent) 6%, #ffffff) !important;
+          border-color: color-mix(in srgb, var(--weekly-accent) 22%, rgba(15, 23, 42, 0.1)) !important;
+        }
+
         :root[data-ui-mode='light'] .weekly-entry-form h2,
         :root[data-ui-mode='light'] .weekly-entry-form .input-group > span,
         :root[data-ui-mode='light'] .weekly-entry-form .weekly-action-input > span {
@@ -30190,6 +30271,20 @@ export default function DashboardShell({
           background: #ffffff;
           border-color: rgba(15, 23, 42, 0.1);
           color: #0f172a;
+        }
+
+        .dashboard-light-mode .weekly-history-modal {
+          background:
+            linear-gradient(145deg, color-mix(in srgb, var(--weekly-accent) 7%, #ffffff), rgba(255, 255, 255, 0.98) 36%),
+            #ffffff !important;
+          border-color: color-mix(in srgb, var(--weekly-accent) 18%, rgba(15, 23, 42, 0.08)) !important;
+          color: #0f172a !important;
+          box-shadow: 0 34px 100px rgba(15, 23, 42, 0.2) !important;
+        }
+
+        .dashboard-light-mode .weekly-history-empty {
+          background: color-mix(in srgb, var(--weekly-accent) 6%, #ffffff) !important;
+          border-color: color-mix(in srgb, var(--weekly-accent) 22%, rgba(15, 23, 42, 0.1)) !important;
         }
 
         .dashboard-light-mode .weekly-history-button-danger {
