@@ -3531,14 +3531,14 @@ export default function DashboardShell({
 
   const loadWeeklyRecords = useCallback(async () => {
     if (!hasLoadedPreferences) return
-    if (activeTab !== 'semanal') return
+    if (activeTab !== 'semanal' && activeTab !== 'clientes') return
 
     setIsWeeklyLoading(true)
     setWeeklyError('')
 
     try {
       const params = new URLSearchParams()
-      if (weeklyClientFilter !== 'all') params.set('clientId', weeklyClientFilter)
+      if (activeTab === 'semanal' && weeklyClientFilter !== 'all') params.set('clientId', weeklyClientFilter)
       const response = await fetch(`/api/client-weekly${params.toString() ? `?${params.toString()}` : ''}`, { cache: 'no-store' })
       const data = await response.json().catch(() => ({}))
 
@@ -4564,6 +4564,25 @@ export default function DashboardShell({
       return matchesClient
     })
   }, [weeklyRecords, weeklyClientFilter])
+
+  const latestWeeklyHealthByClientId = useMemo(() => {
+    const latestByClient = new Map()
+
+    weeklyRecords.forEach((record) => {
+      if (!record?.clientId) return
+      const current = latestByClient.get(record.clientId)
+      const currentWeek = String(current?.weekStart || '')
+      const nextWeek = String(record.weekStart || '')
+      const isNewerWeek = nextWeek.localeCompare(currentWeek) > 0
+      const isSameWeekNewerRecord = nextWeek === currentWeek && String(record.updatedAt || record.createdAt || record.id || '').localeCompare(String(current?.updatedAt || current?.createdAt || current?.id || '')) > 0
+
+      if (!current || isNewerWeek || isSameWeekNewerRecord) {
+        latestByClient.set(record.clientId, record)
+      }
+    })
+
+    return latestByClient
+  }, [weeklyRecords])
 
   const weeklyVisibleRecords = useMemo(
     () => weeklyBaseVisibleRecords.filter((record) => isWeeklyRecordInsideWindow(record, weeklyPeriodWindow)),
@@ -15417,6 +15436,7 @@ export default function DashboardShell({
               <div className="simple-client-list" role="table" aria-label="Clientes cadastrados">
                 <div className="simple-client-row simple-client-row-head" role="row">
                   <span role="columnheader">Cliente</span>
+                  <span role="columnheader">Saúde</span>
                   <span role="columnheader" aria-label="Meta Ads"><i className="bx bxl-meta"></i></span>
                   <span role="columnheader" aria-label="Agendor"><i className="bx bx-git-branch"></i></span>
                   <span role="columnheader" aria-label="Google Sheets"><i className="bx bx-spreadsheet"></i></span>
@@ -15436,6 +15456,8 @@ export default function DashboardShell({
                     const hasMeta = Boolean(client.metaAdAccountId)
                     const hasAgendor = Boolean(client.agendorAccountId || client.integrations?.agendorToken)
                     const hasSheets = Boolean(client.googleSheetsUrl)
+                    const latestHealthRecord = latestWeeklyHealthByClientId.get(client.id)
+                    const latestHealth = latestHealthRecord ? (WEEKLY_HEALTH_BY_KEY[latestHealthRecord.healthStatus] || WEEKLY_HEALTH_BY_KEY.attention) : null
 
                     return (
                       <div key={client.id} className="simple-client-row" role="row">
@@ -15456,6 +15478,14 @@ export default function DashboardShell({
                             <small>{metaAccount?.name || client.metaAdAccountId || client.cnpj || 'Sem conta de anúncio selecionada'}</small>
                           </span>
                         </button>
+                        <span
+                          className={'simple-client-health ' + (latestHealth ? 'active ' + latestHealthRecord.healthStatus : 'empty')}
+                          style={latestHealth ? { '--client-health-color': latestHealth.color } : undefined}
+                          title={latestHealth ? `Último semanal: ${formatWeekRangeLabel(latestHealthRecord.weekStart, latestHealthRecord.weekEnd)}` : 'Sem registro semanal'}
+                        >
+                          <b>{latestHealth?.label || 'Sem registro'}</b>
+                          <small>{latestHealth ? formatWeekRangeLabel(latestHealthRecord.weekStart, latestHealthRecord.weekEnd) : 'Aguardando semanal'}</small>
+                        </span>
                         <span className={hasMeta ? 'simple-client-icon active' : 'simple-client-icon'} title={hasMeta ? 'Meta conectada' : 'Meta não conectada'}>
                           <i className="bx bxl-meta"></i>
                         </span>
@@ -28079,7 +28109,7 @@ export default function DashboardShell({
         .simple-client-list { display: grid; gap: 10px; }
         .simple-client-row {
           display: grid;
-          grid-template-columns: minmax(220px, 1fr) 72px 72px 72px 110px;
+          grid-template-columns: minmax(220px, 1fr) minmax(132px, 0.42fr) 72px 72px 72px 110px;
           align-items: center;
           gap: 12px;
           padding: 14px 16px;
@@ -28134,6 +28164,42 @@ export default function DashboardShell({
         }
         .simple-client-name strong { font-size: 0.98rem; }
         .simple-client-name small { color: var(--muted-text); font-size: 0.78rem; }
+        .simple-client-health {
+          min-width: 0;
+          width: 100%;
+          display: grid;
+          gap: 3px;
+          justify-self: stretch;
+          padding: 9px 11px;
+          border-radius: 14px;
+          border: 1px solid rgba(148, 163, 184, 0.18);
+          background: rgba(255, 255, 255, 0.035);
+          color: var(--muted-text);
+        }
+        .simple-client-health.active {
+          border-color: color-mix(in srgb, var(--client-health-color) 38%, rgba(148, 163, 184, 0.18));
+          background: color-mix(in srgb, var(--client-health-color) 13%, rgba(255, 255, 255, 0.035));
+          color: color-mix(in srgb, var(--client-health-color) 86%, #f1f5f9);
+        }
+        .simple-client-health b,
+        .simple-client-health small {
+          min-width: 0;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+        .simple-client-health b {
+          font-size: 0.78rem;
+          line-height: 1.1;
+        }
+        .simple-client-health small {
+          color: rgba(241, 241, 241, 0.58);
+          font-size: 0.68rem;
+          font-weight: 700;
+        }
+        .simple-client-health.empty b {
+          color: rgba(241, 241, 241, 0.6);
+        }
         .simple-client-icon {
           width: 38px;
           height: 38px;
@@ -30403,8 +30469,13 @@ export default function DashboardShell({
 
         :root[data-ui-mode='light'] .management-header-copy p,
         :root[data-ui-mode='light'] .management-hero p,
-        :root[data-ui-mode='light'] .simple-client-name small {
+        :root[data-ui-mode='light'] .simple-client-name small,
+        :root[data-ui-mode='light'] .simple-client-health small {
           color: #475569 !important;
+        }
+
+        :root[data-ui-mode='light'] .simple-client-health.empty b {
+          color: #64748b !important;
         }
 
         :root[data-ui-mode='light'] .simple-client-card,
@@ -31887,6 +31958,19 @@ export default function DashboardShell({
           .dashboard-color-preview-row {
             display: grid;
             grid-template-columns: 1fr;
+          }
+
+          .simple-clients-layout .simple-client-row {
+            grid-template-columns: minmax(0, 1fr) repeat(3, 44px) minmax(92px, auto);
+          }
+
+          .simple-clients-layout .simple-client-row-head {
+            display: none;
+          }
+
+          .simple-clients-layout .simple-client-name,
+          .simple-clients-layout .simple-client-health {
+            grid-column: 1 / -1;
           }
 
           .dashboard-rgb-grid,
