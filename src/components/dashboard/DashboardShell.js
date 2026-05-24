@@ -14259,6 +14259,7 @@ export default function DashboardShell({
   return (
     <div
       className={`dashboard-container dashboard-shell-stellar ${isLightAppMode ? "dashboard-light-mode" : ""}`}
+      data-active-tab={activeTab}
       style={{
         '--accent-blue': appAccentColor,
         '--saas-primary': appAccentColor,
@@ -18952,6 +18953,524 @@ export default function DashboardShell({
             display: grid !important;
             grid-template-columns: 1fr !important;
             align-items: stretch !important;
+          }
+        }
+
+        /* Lumina app-wide pass, excluding the Presentation page. */
+        .dashboard-container:not([data-active-tab='apresentacao']) {
+          --lumina-dark-bg: #070908;
+          --lumina-dark-surface: #0d1110;
+          --lumina-dark-raised: #121817;
+          --lumina-dark-card: rgba(18, 24, 23, 0.82);
+          --lumina-dark-border: rgba(190, 201, 191, 0.16);
+          --lumina-dark-border-strong: rgba(190, 201, 191, 0.28);
+          --lumina-text: #f1f1f1;
+          --lumina-muted: rgba(241, 241, 241, 0.62);
+          --lumina-soft: rgba(241, 241, 241, 0.44);
+          background:
+            radial-gradient(circle at 82% 0%, color-mix(in srgb, var(--button-primary, #26c281) 9%, transparent), transparent 30%),
+            linear-gradient(180deg, #070908 0%, #0d1110 56%, #070908 100%) !important;
+          color: var(--lumina-text);
+        }
+
+        .dashboard-container:not([data-active-tab='apresentacao']) .sidebar {
+          width: 112px;
+          padding: 20px 14px;
+          border-right: 1px solid var(--lumina-dark-border);
+          background:
+            linear-gradient(180deg, rgba(18, 24, 23, 0.94), rgba(7, 9, 8, 0.92)),
+            rgba(18, 24, 23, 0.82) !important;
+          box-shadow: 18px 0 46px rgba(0, 0, 0, 0.22);
+          backdrop-filter: blur(14px);
+        }
+
+        .dashboard-container:not([data-active-tab='apresentacao']) .sidebar:not(.sidebar-collapsed) {
+          width: 244px;
+        }
+
+        .dashboard-container:not([data-active-tab='apresentacao']) .main-content {
+          margin-left: 244px;
+          width: calc(100% - 244px);
+          padding: 26px 32px 42px;
+          background: transparent !important;
+        }
+
+        .dashboard-container:not([data-active-tab='apresentacao']) .main-content-expanded {
+          margin-left: 112px;
+          width: calc(100% - 112px);
+        }
+
+        .dashboard-container:not([data-active-tab='apresentacao']) .logo {
+          min-height: 64px;
+          padding: 10px;
+          border-radius: 18px;
+          background: rgba(255, 255, 255, 0.035);
+          border: 1px solid rgba(190, 201, 191, 0.12);
+        }
+
+        .dashboard-container:not([data-active-tab='apresentacao']) .logo-copy span {
+          color: #f1f1f1;
+          font-weight: 850;
+          letter-spacing: -0.01em;
+        }
+
+        .dashboard-container:not([data-active-tab='apresentacao']) .logo-copy small {
+          color: var(--lumina-soft);
+        }
+
+        .dashboard-container:not([data-active-tab='apresentacao']) .sidebar-toggle {
+          width: 36px;
+          height: 36px;
+          top: 26px;
+          right: -18px;
+          color: #f1f1f1;
+          border-color: var(--lumina-dark-border);
+          background:
+            linear-gradient(180deg, rgba(18, 24, 23, 0.98), rgba(13, 17, 16, 0.98)),
+            rgba(18, 24, 23, 0.9) !important;
+          box-shadow: 0 12px 26px rgba(0, 0, 0, 0.28);
+        }
+
+        .dashboard-container:not([data-active-tab='apresentacao']) .nav-menu {
+          gap: 8px;
+        }
+
+        .dashboard-container:not([data-active-tab='apresentacao']) .sidebar :global(.nav-item) {
+          min-height: 48px;
+          padding: 0 12px;
+          border-radius: 14px;
+          border: 1px solid transparent;
+          color: rgba(241, 241, 241, 0.66);
+          font-size: 13px;
+          font-weight: 760;
+          letter-spacing: 0;
+          background: transparent;
+        }
+
+        .dashboard-container:not([data-active-tab='apresentacao']) .sidebar :global(.nav-item i) {
+          color: rgba(241, 241, 241, 0.48);
+          font-size: 20px;
+        }
+
+        .dashboard-container:not([data-active-tab='apresentacao']) .sidebar :global(.nav-item:hover) {
+          color: #f1f1f1;
+          background: color-mix(in srgb, var(--button-primary, #26c281) 8%, rgba(255, 255, 255, 0.035));
+          border-color: color-mix(in srgb, var(--button-primary, #26c281) 22%, var(--lumina-dark-border));
+          box-shadow: inset 3px 0 0 color-mix(in srgb, var(--button-primary, #26c281) 62%, #f1f1f1);
+          transform: translateX(2px);
+        }
+
+        .dashboard-container:not([data-active-tab='apresentacao']) .sidebar :global(.nav-item.active) {
+          color: #f1f1f1;
+          border-color: color-mix(in srgb, var(--button-primary, #26c281) 30%, var(--lumina-dark-border));
+          background:
+            linear-gradient(90deg, color-mix(in srgb, var(--button-primary, #26c281) 16%, transparent), rgba(255, 255, 255, 0.034));
+          box-shadow: inset 3px 0 0 color-mix(in srgb, var(--button-primary, #26c281) 80%, #f1f1f1);
+        }
+
+        .dashboard-container:not([data-active-tab='apresentacao']) .sidebar :global(.nav-item.active i),
+        .dashboard-container:not([data-active-tab='apresentacao']) .sidebar :global(.nav-item:hover i) {
+          color: color-mix(in srgb, var(--button-primary, #26c281) 72%, #f1f1f1);
+        }
+
+        .dashboard-container:not([data-active-tab='apresentacao']) .sidebar-collapsed {
+          width: 112px;
+        }
+
+        .dashboard-container:not([data-active-tab='apresentacao']) .sidebar-collapsed :global(.nav-item) {
+          width: 54px;
+          height: 54px;
+          border-radius: 16px;
+        }
+
+        .dashboard-container:not([data-active-tab='apresentacao']) .sidebar-logout-button {
+          color: rgba(241, 241, 241, 0.58);
+          border-color: rgba(190, 201, 191, 0.1);
+          background: rgba(255, 255, 255, 0.02);
+        }
+
+        .dashboard-container:not([data-active-tab='apresentacao']) .app-shell-topbar {
+          min-height: 58px;
+          margin-bottom: 22px;
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) auto;
+          gap: 16px;
+          align-items: center;
+        }
+
+        .dashboard-container:not([data-active-tab='apresentacao']) .operation-stellar-search {
+          min-height: 54px;
+          border-radius: 999px;
+          border: 1px solid var(--lumina-dark-border) !important;
+          background:
+            linear-gradient(180deg, rgba(18, 24, 23, 0.86), rgba(13, 17, 16, 0.9)),
+            rgba(18, 24, 23, 0.82) !important;
+          box-shadow: 0 16px 34px rgba(0, 0, 0, 0.18) !important;
+          backdrop-filter: blur(12px);
+        }
+
+        .dashboard-container:not([data-active-tab='apresentacao']) .operation-stellar-search i {
+          color: var(--lumina-soft) !important;
+        }
+
+        .dashboard-container:not([data-active-tab='apresentacao']) .operation-stellar-search input {
+          color: #f1f1f1 !important;
+          font-size: 14px;
+        }
+
+        .dashboard-container:not([data-active-tab='apresentacao']) .operation-stellar-search input::placeholder {
+          color: rgba(241, 241, 241, 0.42);
+          opacity: 1;
+        }
+
+        .dashboard-container:not([data-active-tab='apresentacao']) .operation-stellar-actions {
+          gap: 10px;
+        }
+
+        .dashboard-container:not([data-active-tab='apresentacao']) .operation-stellar-icon-button,
+        .dashboard-container:not([data-active-tab='apresentacao']) .operation-stellar-theme-toggle,
+        .dashboard-container:not([data-active-tab='apresentacao']) .operation-stellar-user-avatar {
+          border: 1px solid var(--lumina-dark-border) !important;
+          background:
+            linear-gradient(180deg, rgba(18, 24, 23, 0.86), rgba(13, 17, 16, 0.9)),
+            rgba(18, 24, 23, 0.82) !important;
+          color: #f1f1f1 !important;
+          box-shadow: 0 14px 28px rgba(0, 0, 0, 0.16) !important;
+        }
+
+        .dashboard-container:not([data-active-tab='apresentacao']) .operation-stellar-theme-option.active {
+          background: color-mix(in srgb, var(--button-primary, #26c281) 18%, rgba(255, 255, 255, 0.05)) !important;
+          color: #f1f1f1 !important;
+          box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--button-primary, #26c281) 28%, transparent) !important;
+        }
+
+        .dashboard-container:not([data-active-tab='apresentacao']) .operation-stellar-user-avatar {
+          background: linear-gradient(135deg, #006c44, #26c281) !important;
+          color: #ffffff !important;
+          border-color: rgba(38, 194, 129, 0.4) !important;
+        }
+
+        .dashboard-container:not([data-active-tab='apresentacao']) .header {
+          margin-bottom: 24px;
+          padding: 0;
+        }
+
+        .dashboard-container:not([data-active-tab='apresentacao']) .page-title {
+          width: 100%;
+          padding: 26px 28px;
+          border-radius: 20px;
+          border: 1px solid var(--lumina-dark-border);
+          background:
+            radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--button-primary, #26c281) 10%, transparent), transparent 34%),
+            linear-gradient(180deg, rgba(18, 24, 23, 0.84), rgba(13, 17, 16, 0.88));
+          box-shadow: 0 18px 44px rgba(0, 0, 0, 0.2);
+        }
+
+        .dashboard-container:not([data-active-tab='apresentacao']) .page-title h1 {
+          color: #f1f1f1;
+          font-size: clamp(32px, 4vw, 48px);
+          line-height: 1.02;
+          letter-spacing: -0.02em;
+          margin: 0;
+        }
+
+        .dashboard-container:not([data-active-tab='apresentacao']) .page-title p,
+        .dashboard-container:not([data-active-tab='apresentacao']) .assistant-header-prompt {
+          max-width: 760px;
+          color: var(--lumina-muted);
+          font-size: 14px;
+          line-height: 1.62;
+          margin-top: 10px;
+        }
+
+        .dashboard-container:not([data-active-tab='apresentacao']) .clients-layout,
+        .dashboard-container:not([data-active-tab='apresentacao']) .integrations-layout,
+        .dashboard-container:not([data-active-tab='apresentacao']) .simple-clients-layout {
+          gap: 24px;
+          min-width: 0;
+        }
+
+        .dashboard-container:not([data-active-tab='apresentacao']) .management-header-row {
+          padding: 24px 26px;
+          border-radius: 20px;
+          border: 1px solid var(--lumina-dark-border);
+          background:
+            linear-gradient(180deg, rgba(18, 24, 23, 0.84), rgba(13, 17, 16, 0.9)),
+            rgba(18, 24, 23, 0.82);
+        }
+
+        .dashboard-container:not([data-active-tab='apresentacao']) .management-header-copy h2 {
+          color: #f1f1f1;
+          font-size: clamp(28px, 3.3vw, 42px);
+          letter-spacing: -0.02em;
+        }
+
+        .dashboard-container:not([data-active-tab='apresentacao']) .management-header-copy p {
+          color: var(--lumina-muted);
+          font-size: 14px;
+        }
+
+        .dashboard-container:not([data-active-tab='apresentacao']) .glass-panel,
+        .dashboard-container:not([data-active-tab='apresentacao']) .glass-item,
+        .dashboard-container:not([data-active-tab='apresentacao']) .management-directory-card,
+        .dashboard-container:not([data-active-tab='apresentacao']) .users-toolbar-card,
+        .dashboard-container:not([data-active-tab='apresentacao']) .simple-client-card,
+        .dashboard-container:not([data-active-tab='apresentacao']) .empty-panel {
+          border-radius: 18px;
+          border-color: var(--lumina-dark-border);
+          background:
+            linear-gradient(180deg, rgba(18, 24, 23, 0.84), rgba(13, 17, 16, 0.9)),
+            rgba(18, 24, 23, 0.78);
+          box-shadow: 0 18px 44px rgba(0, 0, 0, 0.18);
+        }
+
+        .dashboard-container:not([data-active-tab='apresentacao']) .btn {
+          border-radius: 10px;
+          min-height: 42px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          font-weight: 760;
+        }
+
+        .dashboard-container:not([data-active-tab='apresentacao']) .btn-primary {
+          border-color: rgba(38, 194, 129, 0.32);
+          background: linear-gradient(135deg, #006c44 0%, #26c281 100%) !important;
+          color: #ffffff !important;
+          box-shadow: 0 14px 30px rgba(38, 194, 129, 0.16);
+        }
+
+        .dashboard-container:not([data-active-tab='apresentacao']) .btn-secondary,
+        .dashboard-container:not([data-active-tab='apresentacao']) .modal-close {
+          border-color: var(--lumina-dark-border);
+          background: rgba(255, 255, 255, 0.035);
+          color: #f1f1f1;
+        }
+
+        .dashboard-container:not([data-active-tab='apresentacao']) input,
+        .dashboard-container:not([data-active-tab='apresentacao']) select,
+        .dashboard-container:not([data-active-tab='apresentacao']) textarea,
+        .dashboard-container:not([data-active-tab='apresentacao']) .client-select-input,
+        .dashboard-container:not([data-active-tab='apresentacao']) .client-registry-search,
+        .dashboard-container:not([data-active-tab='apresentacao']) .client-registry-filter-group {
+          border-radius: 12px;
+          border-color: var(--lumina-dark-border);
+          background: rgba(7, 9, 8, 0.5);
+          color: #f1f1f1;
+        }
+
+        .dashboard-container:not([data-active-tab='apresentacao']) input:focus,
+        .dashboard-container:not([data-active-tab='apresentacao']) select:focus,
+        .dashboard-container:not([data-active-tab='apresentacao']) textarea:focus {
+          outline: none;
+          border-color: color-mix(in srgb, var(--button-primary, #26c281) 58%, #ffffff);
+          box-shadow: 0 0 0 3px color-mix(in srgb, var(--button-primary, #26c281) 15%, transparent);
+        }
+
+        .dashboard-container:not([data-active-tab='apresentacao']) .input-group label,
+        .dashboard-container:not([data-active-tab='apresentacao']) .field-helper,
+        .dashboard-container:not([data-active-tab='apresentacao']) .chart-subtitle,
+        .dashboard-container:not([data-active-tab='apresentacao']) .empty-panel p {
+          color: var(--lumina-muted);
+        }
+
+        .dashboard-container:not([data-active-tab='apresentacao']) .simple-client-list {
+          gap: 8px;
+          overflow-x: visible;
+        }
+
+        .dashboard-container:not([data-active-tab='apresentacao']) .simple-client-row {
+          border-radius: 14px;
+          border-color: rgba(190, 201, 191, 0.13);
+          background: rgba(255, 255, 255, 0.026);
+        }
+
+        .dashboard-container:not([data-active-tab='apresentacao']) .simple-client-row-head,
+        .dashboard-container:not([data-active-tab='apresentacao']) .simple-client-head {
+          background: rgba(255, 255, 255, 0.045);
+          color: var(--lumina-soft);
+        }
+
+        .dashboard-container:not([data-active-tab='apresentacao']) .simple-client-name strong,
+        .dashboard-container:not([data-active-tab='apresentacao']) .empty-panel h3,
+        .dashboard-container:not([data-active-tab='apresentacao']) .modal-header h3 {
+          color: #f1f1f1;
+        }
+
+        .dashboard-container:not([data-active-tab='apresentacao']) .simple-client-name small,
+        .dashboard-container:not([data-active-tab='apresentacao']) .modal-header p {
+          color: var(--lumina-muted);
+        }
+
+        .dashboard-container:not([data-active-tab='apresentacao']) .simple-client-icon,
+        .dashboard-container:not([data-active-tab='apresentacao']) .directory-card-icon,
+        .dashboard-container:not([data-active-tab='apresentacao']) .client-avatar-shell {
+          border-color: var(--lumina-dark-border);
+          background: rgba(255, 255, 255, 0.035);
+          color: var(--lumina-soft);
+        }
+
+        .dashboard-container:not([data-active-tab='apresentacao']) .simple-client-icon.active {
+          color: #ffffff;
+          border-color: rgba(38, 194, 129, 0.38);
+          background: linear-gradient(135deg, #006c44, #26c281);
+        }
+
+        .dashboard-container:not([data-active-tab='apresentacao']) .modal-overlay {
+          background: rgba(7, 9, 8, 0.72);
+          backdrop-filter: blur(10px);
+        }
+
+        .dashboard-container:not([data-active-tab='apresentacao']) .modal-card {
+          border-radius: 18px;
+          border: 1px solid var(--lumina-dark-border);
+          background:
+            radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--button-primary, #26c281) 10%, transparent), transparent 32%),
+            linear-gradient(180deg, rgba(18, 24, 23, 0.96), rgba(13, 17, 16, 0.98));
+        }
+
+        .dashboard-light-mode:not([data-active-tab='apresentacao']) {
+          background: linear-gradient(180deg, #f9f9f9 0%, #f1f4f2 100%) !important;
+          color: #1a1c1c;
+        }
+
+        .dashboard-light-mode:not([data-active-tab='apresentacao']) .sidebar {
+          background: rgba(255, 255, 255, 0.94) !important;
+          border-right-color: #bbcabe;
+          box-shadow: 18px 0 36px rgba(20, 90, 50, 0.06);
+        }
+
+        .dashboard-light-mode:not([data-active-tab='apresentacao']) .logo,
+        .dashboard-light-mode:not([data-active-tab='apresentacao']) .operation-stellar-search,
+        .dashboard-light-mode:not([data-active-tab='apresentacao']) .operation-stellar-icon-button,
+        .dashboard-light-mode:not([data-active-tab='apresentacao']) .operation-stellar-theme-toggle,
+        .dashboard-light-mode:not([data-active-tab='apresentacao']) .glass-panel,
+        .dashboard-light-mode:not([data-active-tab='apresentacao']) .glass-item,
+        .dashboard-light-mode:not([data-active-tab='apresentacao']) .management-directory-card,
+        .dashboard-light-mode:not([data-active-tab='apresentacao']) .users-toolbar-card,
+        .dashboard-light-mode:not([data-active-tab='apresentacao']) .simple-client-card,
+        .dashboard-light-mode:not([data-active-tab='apresentacao']) .empty-panel,
+        .dashboard-light-mode:not([data-active-tab='apresentacao']) .page-title,
+        .dashboard-light-mode:not([data-active-tab='apresentacao']) .management-header-row {
+          background: #ffffff !important;
+          border-color: rgba(187, 202, 190, 0.9) !important;
+          box-shadow: 0 14px 30px rgba(20, 90, 50, 0.055) !important;
+        }
+
+        .dashboard-light-mode:not([data-active-tab='apresentacao']) .logo-copy span,
+        .dashboard-light-mode:not([data-active-tab='apresentacao']) .page-title h1,
+        .dashboard-light-mode:not([data-active-tab='apresentacao']) .management-header-copy h2,
+        .dashboard-light-mode:not([data-active-tab='apresentacao']) .simple-client-name strong,
+        .dashboard-light-mode:not([data-active-tab='apresentacao']) .empty-panel h3,
+        .dashboard-light-mode:not([data-active-tab='apresentacao']) .modal-header h3 {
+          color: #1a1c1c !important;
+        }
+
+        .dashboard-light-mode:not([data-active-tab='apresentacao']) .logo-copy small,
+        .dashboard-light-mode:not([data-active-tab='apresentacao']) .page-title p,
+        .dashboard-light-mode:not([data-active-tab='apresentacao']) .assistant-header-prompt,
+        .dashboard-light-mode:not([data-active-tab='apresentacao']) .management-header-copy p,
+        .dashboard-light-mode:not([data-active-tab='apresentacao']) .simple-client-name small,
+        .dashboard-light-mode:not([data-active-tab='apresentacao']) .input-group label,
+        .dashboard-light-mode:not([data-active-tab='apresentacao']) .field-helper,
+        .dashboard-light-mode:not([data-active-tab='apresentacao']) .chart-subtitle,
+        .dashboard-light-mode:not([data-active-tab='apresentacao']) .empty-panel p,
+        .dashboard-light-mode:not([data-active-tab='apresentacao']) .modal-header p {
+          color: #3d4a41 !important;
+        }
+
+        .dashboard-light-mode:not([data-active-tab='apresentacao']) .sidebar :global(.nav-item) {
+          color: #3d4a41;
+        }
+
+        .dashboard-light-mode:not([data-active-tab='apresentacao']) .sidebar :global(.nav-item i) {
+          color: rgba(61, 74, 65, 0.72);
+        }
+
+        .dashboard-light-mode:not([data-active-tab='apresentacao']) .sidebar :global(.nav-item.active),
+        .dashboard-light-mode:not([data-active-tab='apresentacao']) .sidebar :global(.nav-item:hover) {
+          color: #1a1c1c;
+          border-color: color-mix(in srgb, #006c44 28%, #bbcabe);
+          background: color-mix(in srgb, #26c281 10%, #ffffff);
+          box-shadow: inset 3px 0 0 #006c44;
+        }
+
+        .dashboard-light-mode:not([data-active-tab='apresentacao']) input,
+        .dashboard-light-mode:not([data-active-tab='apresentacao']) select,
+        .dashboard-light-mode:not([data-active-tab='apresentacao']) textarea,
+        .dashboard-light-mode:not([data-active-tab='apresentacao']) .client-select-input,
+        .dashboard-light-mode:not([data-active-tab='apresentacao']) .client-registry-search,
+        .dashboard-light-mode:not([data-active-tab='apresentacao']) .client-registry-filter-group,
+        .dashboard-light-mode:not([data-active-tab='apresentacao']) .simple-client-row {
+          background: #ffffff !important;
+          border-color: rgba(187, 202, 190, 0.9) !important;
+          color: #1a1c1c !important;
+        }
+
+        .dashboard-light-mode:not([data-active-tab='apresentacao']) .simple-client-row-head,
+        .dashboard-light-mode:not([data-active-tab='apresentacao']) .simple-client-head {
+          background: #f3f3f3 !important;
+          color: #3d4a41 !important;
+        }
+
+        .dashboard-light-mode:not([data-active-tab='apresentacao']) .btn-secondary,
+        .dashboard-light-mode:not([data-active-tab='apresentacao']) .modal-close {
+          background: #ffffff !important;
+          border-color: rgba(187, 202, 190, 0.9) !important;
+          color: #1a1c1c !important;
+        }
+
+        @media (max-width: 1180px) {
+          .dashboard-container:not([data-active-tab='apresentacao']) .main-content,
+          .dashboard-container:not([data-active-tab='apresentacao']) .main-content-expanded {
+            margin-left: 112px;
+            width: calc(100% - 112px);
+            padding: 22px;
+          }
+
+          .dashboard-container:not([data-active-tab='apresentacao']) .sidebar:not(.sidebar-collapsed) {
+            width: 112px;
+          }
+
+          .dashboard-container:not([data-active-tab='apresentacao']) .sidebar:not(.sidebar-collapsed) .logo-copy,
+          .dashboard-container:not([data-active-tab='apresentacao']) .sidebar:not(.sidebar-collapsed) :global(.nav-item) {
+            font-size: 0;
+          }
+
+          .dashboard-container:not([data-active-tab='apresentacao']) .sidebar:not(.sidebar-collapsed) :global(.nav-item) {
+            justify-content: center;
+            width: 54px;
+            height: 54px;
+            margin: 0 auto;
+            padding: 0;
+          }
+        }
+
+        @media (max-width: 720px) {
+          .dashboard-container:not([data-active-tab='apresentacao']) .sidebar {
+            display: none;
+          }
+
+          .dashboard-container:not([data-active-tab='apresentacao']) .main-content,
+          .dashboard-container:not([data-active-tab='apresentacao']) .main-content-expanded {
+            margin-left: 0;
+            width: 100%;
+            padding: 18px;
+          }
+
+          .dashboard-container:not([data-active-tab='apresentacao']) .app-shell-topbar {
+            grid-template-columns: 1fr;
+          }
+
+          .dashboard-container:not([data-active-tab='apresentacao']) .operation-stellar-actions {
+            justify-content: flex-start;
+          }
+
+          .dashboard-container:not([data-active-tab='apresentacao']) .page-title,
+          .dashboard-container:not([data-active-tab='apresentacao']) .management-header-row {
+            padding: 20px;
+            border-radius: 16px;
           }
         }
       `}</style>
