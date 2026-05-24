@@ -14308,27 +14308,33 @@ export default function DashboardShell({
         </div>
 
         <nav className="nav-menu">
-          <button type="button" data-tooltip="Search" className={`nav-item nav-button ${activeTab === 'assistant' ? 'active' : ''}`} onClick={() => setActiveTab('assistant')}>
-            <i className="bx bx-search-alt"></i> Search
+          <button type="button" data-tooltip="Search" aria-label="Search" className={`nav-item nav-button ${activeTab === 'assistant' ? 'active' : ''}`} onClick={() => setActiveTab('assistant')}>
+            <i className="bx bx-search-alt"></i>
+            {!isSidebarCollapsed && 'Search'}
           </button>
           {canAccessClientsTab && (
-            <button type="button" data-tooltip="Clients" className={`nav-item nav-button ${activeTab === 'clientes' ? 'active' : ''}`} onClick={() => setActiveTab('clientes')}>
-              <i className="bx bxs-buildings"></i> Clients
+            <button type="button" data-tooltip="Clients" aria-label="Clients" className={`nav-item nav-button ${activeTab === 'clientes' ? 'active' : ''}`} onClick={() => setActiveTab('clientes')}>
+              <i className="bx bxs-buildings"></i>
+              {!isSidebarCollapsed && 'Clients'}
             </button>
           )}
-          <button type="button" data-tooltip="Presentation" className={`nav-item nav-button ${activeTab === 'apresentacao' ? 'active' : ''}`} onClick={() => setActiveTab('apresentacao')}>
-            <i className="bx bxs-dashboard"></i> Presentation
+          <button type="button" data-tooltip="Presentation" aria-label="Presentation" className={`nav-item nav-button ${activeTab === 'apresentacao' ? 'active' : ''}`} onClick={() => setActiveTab('apresentacao')}>
+            <i className="bx bxs-dashboard"></i>
+            {!isSidebarCollapsed && 'Presentation'}
           </button>
-          <button type="button" data-tooltip="Controle da Operação" className={`nav-item nav-button ${activeTab === 'semanal' ? 'active' : ''}`} onClick={() => setActiveTab('semanal')}>
-            <i className="bx bx-pulse"></i> Controle da Operação
+          <button type="button" data-tooltip="Controle da Operação" aria-label="Controle da Operação" className={`nav-item nav-button ${activeTab === 'semanal' ? 'active' : ''}`} onClick={() => setActiveTab('semanal')}>
+            <i className="bx bx-pulse"></i>
+            {!isSidebarCollapsed && 'Controle da Operação'}
           </button>
           {canAccessTeamTab && (
-            <button type="button" data-tooltip="Team" className={`nav-item nav-button ${activeTab === 'usuarios' ? 'active' : ''}`} onClick={() => setActiveTab('usuarios')}>
-              <i className="bx bxs-user-detail"></i> Team
+            <button type="button" data-tooltip="Team" aria-label="Team" className={`nav-item nav-button ${activeTab === 'usuarios' ? 'active' : ''}`} onClick={() => setActiveTab('usuarios')}>
+              <i className="bx bxs-user-detail"></i>
+              {!isSidebarCollapsed && 'Team'}
             </button>
           )}
-          <button type="button" data-tooltip="Settings" className={"nav-item nav-button " + (activeTab === "settings" ? "active" : "")} onClick={() => setActiveTab('settings')}>
-            <i className="bx bx-cog"></i> Settings
+          <button type="button" data-tooltip="Settings" aria-label="Settings" className={"nav-item nav-button " + (activeTab === "settings" ? "active" : "")} onClick={() => setActiveTab('settings')}>
+            <i className="bx bx-cog"></i>
+            {!isSidebarCollapsed && 'Settings'}
           </button>
         </nav>
 
@@ -19080,7 +19086,17 @@ export default function DashboardShell({
         .dashboard-container:not([data-active-tab='apresentacao']) .sidebar-collapsed :global(.nav-item) {
           width: 54px;
           height: 54px;
+          min-width: 54px;
+          padding: 0;
           border-radius: 16px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 0;
+        }
+
+        .dashboard-container:not([data-active-tab='apresentacao']) .sidebar-collapsed :global(.nav-item i) {
+          margin: 0;
         }
 
         .dashboard-container:not([data-active-tab='apresentacao']) .sidebar-logout-button {
