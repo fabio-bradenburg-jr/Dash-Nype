@@ -1963,18 +1963,26 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
                 <div className="glass-item settings-block settings-block-full">
                   <div className="settings-section-head">
                     <div>
-                      <h2>Integrações globais</h2>
-                      <p>Essas credenciais abastecem o app inteiro. Depois, em cada cliente, você escolhe apenas as contas e funis vinculados.</p>
+                      <h2>Integrações gerais</h2>
+                      <p>Essas credenciais abastecem o app inteiro. Separe ferramentas operacionais da camada de IA para configurar cada frente sem mistura.</p>
                     </div>
                   </div>
 
                   <div className="settings-general-layout">
-                    <section className="settings-category-shell">
-                      <div className="settings-category-head">
-                        <span className="settings-category-kicker">Contas de anúncio</span>
-                        <h3>Mídia e plataformas de aquisição</h3>
-                        <p>Concentre aqui as credenciais que alimentam leitura de mídia, campanhas e resultado por conta.</p>
+                    <section className="settings-integration-family settings-integration-family-tools">
+                      <div className="settings-category-head settings-integration-family-head">
+                        <span className="settings-category-kicker">Integrações de Ferramentas</span>
+                        <h3>Fontes operacionais conectadas</h3>
+                        <p>Conecte mídia, CRM e plataformas usadas no dia a dia da operação para alimentar clientes, campanhas, funis e relatórios.</p>
                       </div>
+
+                      <div className="settings-integration-family-grid">
+                        <section className="settings-category-shell">
+                          <div className="settings-category-head">
+                            <span className="settings-category-kicker">Contas de anúncio</span>
+                            <h3>Mídia e plataformas de aquisição</h3>
+                            <p>Concentre aqui as credenciais que alimentam leitura de mídia, campanhas e resultado por conta.</p>
+                          </div>
 
                       <div className="settings-integrations-grid settings-category-grid">
                         <div className="integration-block integration-block-meta">
@@ -2116,14 +2124,14 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
                           </div>
                         ))}
                       </div>
-                    </section>
+                        </section>
 
-                    <section className="settings-category-shell">
-                      <div className="settings-category-head">
-                        <span className="settings-category-kicker">CRMs</span>
-                        <h3>Comercial, funis e relacionamento</h3>
-                        <p>Separe aqui as credenciais usadas para pipelines, oportunidades, vendas e acompanhamento comercial.</p>
-                      </div>
+                        <section className="settings-category-shell">
+                          <div className="settings-category-head">
+                            <span className="settings-category-kicker">CRMs</span>
+                            <h3>Comercial, funis e relacionamento</h3>
+                            <p>Separe aqui as credenciais usadas para pipelines, oportunidades, vendas e acompanhamento comercial.</p>
+                          </div>
 
                       <div className="settings-integrations-grid settings-category-grid">
                         {crmIntegrationGroups.map((group) => (
@@ -2152,14 +2160,23 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
                           </div>
                         ))}
                       </div>
+                        </section>
+                      </div>
                     </section>
 
-                    <section className="settings-category-shell">
-                      <div className="settings-category-head">
-                        <span className="settings-category-kicker">IA</span>
-                        <h3>Configuração da IA</h3>
-                        <p>A área de uso da IA fica na Home, mas a configuração do provider e do prompt continua centralizada aqui.</p>
+                    <section className="settings-integration-family settings-integration-family-ai">
+                      <div className="settings-category-head settings-integration-family-head">
+                        <span className="settings-category-kicker">Integração de IA</span>
+                        <h3>Provider, prompts e agentes</h3>
+                        <p>Defina a IA ativa, o prompt global do dashboard e os agentes usados no chat, isolados das integrações de ferramentas.</p>
                       </div>
+
+                      <section className="settings-category-shell">
+                        <div className="settings-category-head">
+                          <span className="settings-category-kicker">IA</span>
+                          <h3>Configuração da IA</h3>
+                          <p>A área de uso da IA fica na Home, mas a configuração do provider e do prompt continua centralizada aqui.</p>
+                        </div>
 
                       <div className="settings-integrations-grid settings-category-grid">
                         <div className="integration-block integration-block-meta">
@@ -2377,6 +2394,7 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
                           </div>
                         </div>
                       </div>
+                      </section>
                     </section>
                   </div>
                 </div>
@@ -3477,6 +3495,47 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
         .settings-general-layout {
           display: grid;
           gap: 22px;
+        }
+
+        .settings-integration-family {
+          display: grid;
+          gap: 18px;
+        }
+
+        .settings-integration-family-head {
+          padding: 2px 2px 0;
+        }
+
+        .settings-integration-family-head h3 {
+          font-size: 26px;
+        }
+
+        .settings-integration-family-grid {
+          display: grid;
+          gap: 18px;
+        }
+
+        .settings-integration-family-tools {
+          padding-bottom: 4px;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .settings-integration-family-ai .settings-category-shell {
+          border-color: color-mix(in srgb, var(--accent-blue) 20%, rgba(255, 255, 255, 0.06));
+          background:
+            linear-gradient(145deg, rgba(16, 185, 129, 0.07), rgba(255, 255, 255, 0.02) 34%),
+            rgba(255, 255, 255, 0.02);
+        }
+
+        :root[data-ui-mode='light'] .settings-integration-family-tools {
+          border-bottom-color: rgba(15, 23, 42, 0.08);
+        }
+
+        :root[data-ui-mode='light'] .settings-integration-family-ai .settings-category-shell {
+          border-color: color-mix(in srgb, var(--accent-blue) 16%, rgba(15, 23, 42, 0.08)) !important;
+          background:
+            linear-gradient(145deg, color-mix(in srgb, var(--accent-blue) 7%, white), rgba(255, 255, 255, 0.96) 38%),
+            #ffffff !important;
         }
 
         .settings-category-shell {
