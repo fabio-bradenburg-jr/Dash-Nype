@@ -16331,7 +16331,7 @@ export default function DashboardShell({
                     <h3>Membros do time</h3>
                     <p>Lista limpa com acesso aos dashboards, IA e integrações. Nada de PDI, operação ou métricas internas.</p>
                   </div>
-                  <div className="users-toolbar-actions"><button type="button" className="btn btn-primary" onClick={() => setIsCreateUserModalOpen(true)}>Novo membro</button></div>
+                  <div className="users-toolbar-actions"><button type="button" className="btn btn-primary" onClick={() => setIsCreateUserModalOpen(true)}><i className="bx bx-user-plus" aria-hidden="true"></i><span>Novo membro</span></button></div>
                 </div>
 
                 <div className="users-search-row"><div className="input-group users-search-field"><label>Buscar membro</label><input type="text" value={userSearch} onChange={(event) => setUserSearch(event.target.value)} placeholder="Nome ou e-mail" /></div></div>
@@ -16353,7 +16353,7 @@ export default function DashboardShell({
                           <span className="simple-client-status-text">{accessLabel}</span>
                           <span className={'integration-status-icon ' + (hasAiAccess ? 'active' : '')} title={hasAiAccess ? 'IA liberada' : 'IA bloqueada'}><i className={'bx ' + (hasAiAccess ? 'bx-brain' : 'bx-lock-alt')}></i></span>
                           <span className={'integration-status-icon ' + (hasIntegrationAccess ? 'active' : '')} title={hasIntegrationAccess ? 'Integrações liberadas' : 'Integrações bloqueadas'}><i className={'bx ' + (hasIntegrationAccess ? 'bx-plug' : 'bx-lock-alt')}></i></span>
-                          <button type="button" className="btn btn-secondary" onClick={() => { setSelectedUserId(managedUser.id); setIsEditUserModalOpen(true) }}>Editar</button>
+                          <button type="button" className="btn btn-secondary" onClick={() => { setSelectedUserId(managedUser.id); setIsEditUserModalOpen(true) }}><i className="bx bx-edit-alt" aria-hidden="true"></i><span>Editar</span></button>
                         </div>
                       )
                     })}
@@ -30116,6 +30116,393 @@ export default function DashboardShell({
         .simple-team-list .simple-client-row-head span:nth-child(4),
         .simple-team-list .simple-client-row span:nth-child(4) {
           justify-self: center;
+        }
+
+        /* Lumina directory pass for Team. */
+        .simple-team-layout {
+          gap: 24px;
+          width: 100%;
+          min-width: 0;
+        }
+
+        .simple-team-layout .management-hero,
+        .simple-team-card {
+          border-radius: 20px;
+          border-color: rgba(190, 201, 191, 0.16);
+          background:
+            radial-gradient(circle at top left, color-mix(in srgb, var(--button-primary, var(--accent-blue, #26c281)) 12%, transparent), transparent 30%),
+            linear-gradient(180deg, rgba(18, 24, 23, 0.9), rgba(13, 17, 16, 0.92)),
+            rgba(18, 24, 23, 0.84);
+          box-shadow: 0 22px 52px rgba(0, 0, 0, 0.22);
+        }
+
+        .simple-team-layout .management-hero {
+          padding: 28px;
+          display: grid;
+          grid-template-columns: minmax(0, 0.95fr) minmax(360px, 1.05fr);
+          gap: 24px;
+          align-items: stretch;
+        }
+
+        .simple-team-layout .management-hero-copy {
+          align-self: center;
+          max-width: 680px;
+        }
+
+        .simple-team-layout .management-hero-kicker,
+        .simple-team-layout .management-card-kicker {
+          color: color-mix(in srgb, var(--button-primary, var(--accent-blue, #26c281)) 74%, #f1f1f1);
+          letter-spacing: 0.14em;
+        }
+
+        .simple-team-layout .management-hero h2 {
+          max-width: 12ch;
+          font-size: clamp(2rem, 3vw, 3.4rem);
+          line-height: 1.02;
+          letter-spacing: -0.02em;
+        }
+
+        .simple-team-layout .management-hero p {
+          max-width: 620px;
+          color: rgba(241, 241, 241, 0.68);
+        }
+
+        .simple-team-layout .management-stats-grid {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 12px;
+          align-self: stretch;
+        }
+
+        .simple-team-layout .management-stat-card {
+          min-height: 118px;
+          padding: 18px;
+          border-radius: 16px;
+          border: 1px solid rgba(190, 201, 191, 0.14);
+          background:
+            linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.018)),
+            rgba(7, 9, 8, 0.34);
+          display: grid;
+          align-content: space-between;
+          box-shadow: none;
+        }
+
+        .simple-team-layout .management-stat-card small {
+          color: rgba(241, 241, 241, 0.58);
+          font-size: 11px;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+        }
+
+        .simple-team-layout .management-stat-card strong {
+          color: #f1f1f1;
+          font-size: clamp(1.8rem, 3vw, 2.6rem);
+          line-height: 1;
+        }
+
+        .simple-team-card {
+          padding: 24px;
+          gap: 18px;
+        }
+
+        .simple-team-card .user-picker-head {
+          padding-bottom: 18px;
+          border-bottom: 1px solid rgba(190, 201, 191, 0.12);
+        }
+
+        .simple-team-card .user-picker-head h3 {
+          font-size: 24px;
+          line-height: 1.18;
+          letter-spacing: -0.01em;
+        }
+
+        .simple-team-card .user-picker-head p {
+          max-width: 720px;
+          color: rgba(241, 241, 241, 0.62);
+        }
+
+        .simple-team-card .users-toolbar-actions .btn,
+        .simple-team-list .btn {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          border-radius: 10px;
+          white-space: nowrap;
+        }
+
+        .simple-team-card .users-search-row {
+          justify-content: stretch;
+        }
+
+        .simple-team-card .users-search-field {
+          width: min(100%, 520px);
+        }
+
+        .simple-team-card .users-search-field input {
+          min-height: 48px;
+          border-radius: 999px;
+          background: rgba(7, 9, 8, 0.54);
+          border-color: rgba(190, 201, 191, 0.16);
+        }
+
+        .simple-team-list {
+          gap: 8px;
+          width: 100%;
+          min-width: 0;
+          overflow: visible;
+        }
+
+        .simple-team-list .simple-client-row {
+          grid-template-columns: minmax(260px, 1.3fr) minmax(150px, 0.7fr) minmax(74px, 0.22fr) minmax(92px, 0.28fr) minmax(112px, 0.34fr);
+          gap: 14px;
+          align-items: center;
+          padding: 14px 16px;
+          border-radius: 14px;
+          border: 1px solid rgba(190, 201, 191, 0.12);
+          background: rgba(255, 255, 255, 0.025);
+          transition: border-color 0.2s ease, background 0.2s ease, transform 0.2s ease;
+        }
+
+        .simple-team-list .simple-client-row:not(.simple-client-row-head):not(.simple-client-head):hover {
+          border-color: color-mix(in srgb, var(--button-primary, var(--accent-blue, #26c281)) 28%, rgba(190, 201, 191, 0.16));
+          background: color-mix(in srgb, var(--button-primary, var(--accent-blue, #26c281)) 7%, rgba(255, 255, 255, 0.03));
+          transform: translateY(-1px);
+        }
+
+        .simple-team-list .simple-client-head {
+          min-height: 42px;
+          padding-block: 10px;
+          background: rgba(255, 255, 255, 0.04);
+          color: rgba(241, 241, 241, 0.62);
+          text-transform: uppercase;
+          letter-spacing: 0.08em;
+          font-size: 11px;
+          font-weight: 800;
+        }
+
+        .simple-team-list .simple-client-main {
+          display: grid;
+          grid-template-columns: 42px minmax(0, 1fr);
+          gap: 12px;
+          align-items: center;
+          min-width: 0;
+        }
+
+        .simple-team-list .simple-client-main strong,
+        .simple-team-list .simple-client-main small,
+        .simple-team-list .simple-client-status-text {
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        .simple-team-list .simple-client-main small {
+          color: rgba(241, 241, 241, 0.56);
+        }
+
+        .simple-team-list .simple-client-avatar {
+          width: 42px;
+          height: 42px;
+          border-radius: 12px;
+          display: grid;
+          place-items: center;
+          color: color-mix(in srgb, var(--button-primary, var(--accent-blue, #26c281)) 76%, #f1f1f1);
+          background: color-mix(in srgb, var(--button-primary, var(--accent-blue, #26c281)) 12%, rgba(255, 255, 255, 0.04));
+          border: 1px solid color-mix(in srgb, var(--button-primary, var(--accent-blue, #26c281)) 22%, rgba(190, 201, 191, 0.12));
+        }
+
+        .simple-team-list .simple-client-status-text {
+          color: rgba(241, 241, 241, 0.72);
+          font-weight: 700;
+        }
+
+        .simple-team-list .integration-status-icon {
+          width: 38px;
+          height: 38px;
+          border-radius: 12px;
+          display: grid;
+          place-items: center;
+          justify-self: center;
+          background: rgba(255, 255, 255, 0.04);
+          border: 1px solid rgba(190, 201, 191, 0.12);
+          color: rgba(241, 241, 241, 0.52);
+        }
+
+        .simple-team-list .integration-status-icon.active {
+          color: #f1f1f1;
+          background: linear-gradient(135deg, #006c44, #26c281);
+          border-color: rgba(38, 194, 129, 0.42);
+          box-shadow: 0 10px 24px rgba(38, 194, 129, 0.12);
+        }
+
+        .simple-team-card .empty-panel {
+          border-radius: 16px;
+          border-color: rgba(190, 201, 191, 0.14);
+          background: rgba(255, 255, 255, 0.03);
+        }
+
+        .simple-team-layout .modal-card {
+          border-radius: 18px;
+          border-color: rgba(190, 201, 191, 0.16);
+        }
+
+        .simple-team-layout .stage-selector {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 10px;
+        }
+
+        .simple-team-layout .stage-selector .stage-chip {
+          border-radius: 999px;
+        }
+
+        :root[data-ui-mode='light'] .simple-team-layout .management-hero,
+        :root[data-ui-mode='light'] .simple-team-card {
+          background: #ffffff !important;
+          border-color: rgba(187, 202, 190, 0.9) !important;
+          box-shadow: 0 16px 34px rgba(20, 90, 50, 0.06) !important;
+        }
+
+        :root[data-ui-mode='light'] .simple-team-layout .management-hero-kicker,
+        :root[data-ui-mode='light'] .simple-team-layout .management-card-kicker {
+          color: #006c44 !important;
+        }
+
+        :root[data-ui-mode='light'] .simple-team-layout .management-hero h2,
+        :root[data-ui-mode='light'] .simple-team-card .user-picker-head h3,
+        :root[data-ui-mode='light'] .simple-team-list .simple-client-main strong,
+        :root[data-ui-mode='light'] .simple-team-list .simple-client-status-text {
+          color: #1a1c1c !important;
+        }
+
+        :root[data-ui-mode='light'] .simple-team-layout .management-hero p,
+        :root[data-ui-mode='light'] .simple-team-card .user-picker-head p,
+        :root[data-ui-mode='light'] .simple-team-list .simple-client-main small {
+          color: #3d4a41 !important;
+        }
+
+        :root[data-ui-mode='light'] .simple-team-layout .management-stat-card,
+        :root[data-ui-mode='light'] .simple-team-list .simple-client-row,
+        :root[data-ui-mode='light'] .simple-team-card .empty-panel {
+          background: #ffffff !important;
+          border-color: rgba(187, 202, 190, 0.9) !important;
+          box-shadow: 0 8px 20px rgba(20, 90, 50, 0.045) !important;
+        }
+
+        :root[data-ui-mode='light'] .simple-team-list .simple-client-head {
+          background: #f3f3f3 !important;
+          color: #3d4a41 !important;
+          box-shadow: none !important;
+        }
+
+        :root[data-ui-mode='light'] .simple-team-layout .management-stat-card small {
+          color: #3d4a41 !important;
+        }
+
+        :root[data-ui-mode='light'] .simple-team-layout .management-stat-card strong {
+          color: #1a1c1c !important;
+        }
+
+        :root[data-ui-mode='light'] .simple-team-card .users-search-field input {
+          background: #ffffff !important;
+          border-color: rgba(187, 202, 190, 0.95) !important;
+          color: #1a1c1c !important;
+        }
+
+        :root[data-ui-mode='light'] .simple-team-list .simple-client-avatar {
+          background: color-mix(in srgb, #26c281 12%, #ffffff) !important;
+          border-color: color-mix(in srgb, #006c44 24%, #bbcabe) !important;
+          color: #006c44 !important;
+        }
+
+        :root[data-ui-mode='light'] .simple-team-list .integration-status-icon {
+          background: #f3f3f3 !important;
+          border-color: rgba(187, 202, 190, 0.95) !important;
+          color: #3d4a41 !important;
+        }
+
+        :root[data-ui-mode='light'] .simple-team-list .integration-status-icon.active {
+          background: linear-gradient(135deg, #006c44, #26c281) !important;
+          color: #ffffff !important;
+          border-color: rgba(0, 108, 68, 0.34) !important;
+        }
+
+        @media (max-width: 1100px) {
+          .simple-team-layout .management-hero {
+            grid-template-columns: 1fr;
+          }
+
+          .simple-team-layout .management-hero h2 {
+            max-width: none;
+          }
+        }
+
+        @media (max-width: 920px) {
+          .simple-team-card {
+            padding: 18px;
+          }
+
+          .simple-team-card .user-picker-head {
+            align-items: stretch;
+            flex-direction: column;
+          }
+
+          .simple-team-card .users-toolbar-actions {
+            justify-content: flex-start;
+          }
+
+          .simple-team-list .simple-client-head {
+            display: none;
+          }
+
+          .simple-team-list .simple-client-row {
+            grid-template-columns: minmax(0, 1fr) minmax(128px, auto);
+            gap: 12px;
+            align-items: center;
+          }
+
+          .simple-team-list .simple-client-main {
+            grid-column: 1 / -1;
+          }
+
+          .simple-team-list .simple-client-status-text {
+            grid-column: 1 / 2;
+            white-space: normal;
+          }
+
+          .simple-team-list .integration-status-icon {
+            justify-self: start;
+          }
+
+          .simple-team-list .btn {
+            justify-self: end;
+          }
+        }
+
+        @media (max-width: 620px) {
+          .simple-team-layout .management-hero {
+            padding: 18px;
+            border-radius: 16px;
+          }
+
+          .simple-team-layout .management-stats-grid {
+            grid-template-columns: 1fr;
+          }
+
+          .simple-team-list .simple-client-row {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
+
+          .simple-team-list .simple-client-status-text,
+          .simple-team-list .btn {
+            grid-column: 1 / -1;
+            justify-self: stretch;
+          }
+
+          .simple-team-list .integration-status-icon {
+            width: 100%;
+          }
         }
 
         @media (max-width: 1180px) {

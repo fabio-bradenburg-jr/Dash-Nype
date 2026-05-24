@@ -3216,10 +3216,10 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
         }
 
         .settings-action-bar-global {
-          position: sticky;
-          bottom: 16px;
+          position: static;
+          bottom: auto;
           z-index: 10;
-          margin-top: 8px;
+          margin-top: 0;
         }
 
         .settings-action-copy {
@@ -3993,6 +3993,366 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
           opacity: 0.5;
         }
 
+        /* Lumina control-room pass for Settings. */
+        .settings-page-shell {
+          background:
+            radial-gradient(circle at top right, color-mix(in srgb, var(--button-primary, #26c281) 10%, transparent), transparent 34%),
+            linear-gradient(180deg, #070908 0%, #0d1110 58%, #070908 100%) !important;
+        }
+
+        .settings-main {
+          padding-right: 28px;
+        }
+
+        .settings-workspace {
+          gap: 24px;
+          grid-template-columns: minmax(0, 1fr);
+        }
+
+        .settings-section-sidebar {
+          padding: 14px;
+          border-radius: 18px;
+          position: static;
+          justify-self: stretch;
+          display: grid;
+          grid-template-columns: minmax(180px, 0.28fr) minmax(0, 1fr);
+          gap: 16px;
+          align-items: center;
+          background:
+            linear-gradient(180deg, rgba(18, 24, 23, 0.9), rgba(13, 17, 16, 0.88)),
+            rgba(18, 24, 23, 0.78);
+          border-color: rgba(190, 201, 191, 0.16);
+          box-shadow: 0 18px 42px rgba(0, 0, 0, 0.22);
+          backdrop-filter: blur(12px);
+        }
+
+        .settings-sidebar-title {
+          padding: 8px 14px 8px 8px;
+          border-right: 1px solid rgba(190, 201, 191, 0.12);
+          border-bottom: 0;
+        }
+
+        .settings-sidebar-title span,
+        .settings-hero-kicker,
+        .settings-obsidian-head span,
+        .settings-category-kicker {
+          color: color-mix(in srgb, var(--button-primary, #26c281) 72%, #f1f1f1);
+          letter-spacing: 0.14em;
+        }
+
+        .settings-sidebar-title strong {
+          max-width: none;
+          font-size: 18px;
+          letter-spacing: -0.01em;
+        }
+
+        .settings-sidebar-nav {
+          display: flex;
+          flex-wrap: nowrap;
+          gap: 10px;
+          min-width: 0;
+          overflow-x: auto;
+          scrollbar-width: none;
+        }
+
+        .settings-sidebar-nav::-webkit-scrollbar {
+          display: none;
+        }
+
+        .settings-sidebar-link {
+          flex: 1 1 0;
+          min-width: 210px;
+          border-radius: 12px;
+          padding: 12px;
+          background: rgba(255, 255, 255, 0.025);
+          border-color: rgba(190, 201, 191, 0.12);
+          grid-template-columns: 22px minmax(0, 1fr);
+          align-items: center;
+        }
+
+        .settings-sidebar-link i {
+          color: color-mix(in srgb, var(--button-primary, #26c281) 68%, #f1f1f1);
+          font-size: 19px;
+        }
+
+        .settings-sidebar-link strong {
+          font-size: 13px;
+          letter-spacing: 0;
+        }
+
+        .settings-sidebar-link span {
+          color: rgba(241, 241, 241, 0.58);
+          font-size: 11px;
+        }
+
+        .settings-sidebar-link:hover,
+        .settings-sidebar-link.active {
+          border-color: color-mix(in srgb, var(--button-primary, #26c281) 30%, rgba(190, 201, 191, 0.16));
+          background:
+            linear-gradient(90deg, color-mix(in srgb, var(--button-primary, #26c281) 14%, transparent), rgba(255, 255, 255, 0.035));
+          transform: translateY(-1px);
+          box-shadow: inset 0 -3px 0 color-mix(in srgb, var(--button-primary, #26c281) 74%, #f1f1f1);
+        }
+
+        .settings-panel {
+          padding: 28px;
+          gap: 26px;
+          border-radius: 20px;
+          background:
+            radial-gradient(circle at top left, color-mix(in srgb, var(--button-primary, #26c281) 10%, transparent), transparent 28%),
+            linear-gradient(180deg, rgba(18, 24, 23, 0.86), rgba(13, 17, 16, 0.92));
+          border-color: rgba(190, 201, 191, 0.16);
+          box-shadow: 0 22px 52px rgba(0, 0, 0, 0.24);
+        }
+
+        .settings-head {
+          padding: 4px 0 22px;
+          border-bottom-color: rgba(190, 201, 191, 0.14);
+        }
+
+        .settings-head h1 {
+          font-size: clamp(2rem, 3vw, 3rem);
+          line-height: 1.05;
+          letter-spacing: -0.02em;
+        }
+
+        .settings-head p {
+          max-width: 760px;
+          color: rgba(241, 241, 241, 0.68);
+        }
+
+        .settings-block,
+        .settings-category-shell,
+        .integration-block,
+        .meta-connection-card,
+        .meta-connection-guide-card,
+        .settings-mode-card,
+        .settings-operation-card,
+        .settings-operation-field,
+        .settings-stack-card {
+          border-radius: 16px;
+          background:
+            linear-gradient(180deg, rgba(255, 255, 255, 0.034), rgba(255, 255, 255, 0.018)),
+            rgba(18, 24, 23, 0.76);
+          border: 1px solid rgba(190, 201, 191, 0.14);
+          box-shadow: none;
+        }
+
+        .settings-block-hero {
+          padding: 26px;
+          border-radius: 18px;
+          background:
+            linear-gradient(135deg, color-mix(in srgb, var(--button-primary, #26c281) 12%, rgba(18, 24, 23, 0.88)), rgba(18, 24, 23, 0.86)),
+            rgba(18, 24, 23, 0.8);
+        }
+
+        .settings-block h2,
+        .settings-category-head h3 {
+          letter-spacing: -0.015em;
+        }
+
+        .settings-grid,
+        .settings-form-grid,
+        .settings-integrations-grid,
+        .settings-mode-grid {
+          gap: 16px;
+        }
+
+        .settings-choice,
+        .settings-preset,
+        .settings-tab,
+        .settings-copy-button,
+        .settings-inline-confirm,
+        .settings-inline-remove {
+          border-radius: 10px;
+        }
+
+        .settings-choice,
+        .settings-preset,
+        .settings-tab {
+          border-color: rgba(190, 201, 191, 0.14);
+          background: rgba(255, 255, 255, 0.035);
+        }
+
+        .settings-choice.active,
+        .settings-preset.active,
+        .settings-tab.active {
+          border-color: color-mix(in srgb, var(--button-primary, #26c281) 38%, rgba(190, 201, 191, 0.18));
+          background: color-mix(in srgb, var(--button-primary, #26c281) 14%, rgba(255, 255, 255, 0.035));
+        }
+
+        .input-group input,
+        .input-group select,
+        .input-group textarea,
+        .settings-rgb-field input,
+        .settings-color-code-row input,
+        .settings-operation-field input {
+          border-radius: 10px;
+          background: rgba(7, 9, 8, 0.64);
+          border-color: rgba(190, 201, 191, 0.16);
+        }
+
+        .input-group input:focus,
+        .input-group select:focus,
+        .input-group textarea:focus,
+        .settings-rgb-field input:focus,
+        .settings-operation-field input:focus {
+          border-color: color-mix(in srgb, var(--button-primary, #26c281) 60%, white);
+          box-shadow: 0 0 0 3px color-mix(in srgb, var(--button-primary, #26c281) 16%, transparent);
+        }
+
+        .settings-action-bar-global {
+          border-radius: 18px;
+          background:
+            linear-gradient(90deg, rgba(13, 17, 16, 0.94), rgba(18, 24, 23, 0.9)),
+            rgba(18, 24, 23, 0.86);
+          border-color: rgba(190, 201, 191, 0.18);
+        }
+
+        .settings-save-button {
+          border-radius: 10px;
+          background: linear-gradient(135deg, #006c44 0%, #26c281 100%) !important;
+          color: #ffffff !important;
+          box-shadow: 0 14px 30px rgba(38, 194, 129, 0.16);
+        }
+
+        :root[data-ui-mode='light'] .settings-page-shell {
+          background: linear-gradient(180deg, #f9f9f9 0%, #f1f4f2 100%) !important;
+        }
+
+        :root[data-ui-mode='light'] .settings-panel,
+        :root[data-ui-mode='light'] .settings-section-sidebar {
+          background: rgba(255, 255, 255, 0.9) !important;
+          border-color: #bbcabe !important;
+          box-shadow: 0 16px 34px rgba(20, 90, 50, 0.06) !important;
+        }
+
+        :root[data-ui-mode='light'] .settings-head {
+          border-bottom-color: rgba(108, 122, 112, 0.22);
+        }
+
+        :root[data-ui-mode='light'] .settings-head h1,
+        :root[data-ui-mode='light'] .settings-block h2,
+        :root[data-ui-mode='light'] .settings-category-head h3,
+        :root[data-ui-mode='light'] .settings-sidebar-title strong {
+          color: #1a1c1c !important;
+        }
+
+        :root[data-ui-mode='light'] .settings-head p,
+        :root[data-ui-mode='light'] .settings-sidebar-link span,
+        :root[data-ui-mode='light'] .settings-block p,
+        :root[data-ui-mode='light'] .settings-category-head p,
+        :root[data-ui-mode='light'] .input-group label,
+        :root[data-ui-mode='light'] .input-group small,
+        :root[data-ui-mode='light'] .settings-help-text {
+          color: #3d4a41 !important;
+        }
+
+        :root[data-ui-mode='light'] .settings-sidebar-link,
+        :root[data-ui-mode='light'] .settings-sidebar-link:hover {
+          background: #ffffff !important;
+          border-color: rgba(187, 202, 190, 0.92) !important;
+          color: #1a1c1c !important;
+          box-shadow: none !important;
+        }
+
+        :root[data-ui-mode='light'] .settings-sidebar-link.active {
+          background: color-mix(in srgb, #26c281 12%, #ffffff) !important;
+          border-color: color-mix(in srgb, #006c44 34%, #bbcabe) !important;
+          box-shadow: inset 0 -3px 0 #006c44 !important;
+        }
+
+        :root[data-ui-mode='light'] .settings-block,
+        :root[data-ui-mode='light'] .settings-category-shell,
+        :root[data-ui-mode='light'] .integration-block,
+        :root[data-ui-mode='light'] .meta-connection-card,
+        :root[data-ui-mode='light'] .meta-connection-guide-card,
+        :root[data-ui-mode='light'] .settings-mode-card,
+        :root[data-ui-mode='light'] .settings-operation-card,
+        :root[data-ui-mode='light'] .settings-operation-field,
+        :root[data-ui-mode='light'] .settings-stack-card {
+          background: #ffffff !important;
+          border-color: rgba(187, 202, 190, 0.86) !important;
+          box-shadow: 0 10px 24px rgba(20, 90, 50, 0.045) !important;
+        }
+
+        :root[data-ui-mode='light'] .settings-choice,
+        :root[data-ui-mode='light'] .settings-preset,
+        :root[data-ui-mode='light'] .settings-tab {
+          background: #ffffff !important;
+          border-color: rgba(187, 202, 190, 0.92) !important;
+          color: #1a1c1c !important;
+        }
+
+        :root[data-ui-mode='light'] .settings-choice.active,
+        :root[data-ui-mode='light'] .settings-preset.active,
+        :root[data-ui-mode='light'] .settings-tab.active {
+          background: color-mix(in srgb, #26c281 12%, #ffffff) !important;
+          border-color: color-mix(in srgb, #006c44 34%, #bbcabe) !important;
+        }
+
+        :root[data-ui-mode='light'] .settings-action-bar-global {
+          background: #1a1c1c !important;
+          border-color: rgba(26, 28, 28, 0.16) !important;
+          box-shadow: 0 18px 36px rgba(13, 13, 13, 0.16) !important;
+        }
+
+        :global(.dashboard-light-mode) .settings-page-shell {
+          background: linear-gradient(180deg, #f9f9f9 0%, #f1f4f2 100%) !important;
+        }
+
+        :global(.dashboard-light-mode) .settings-panel,
+        :global(.dashboard-light-mode) .settings-section-sidebar {
+          background: rgba(255, 255, 255, 0.94) !important;
+          border-color: #bbcabe !important;
+          box-shadow: 0 16px 34px rgba(20, 90, 50, 0.06) !important;
+        }
+
+        :global(.dashboard-light-mode) .settings-head p,
+        :global(.dashboard-light-mode) .settings-block p,
+        :global(.dashboard-light-mode) .settings-category-head p,
+        :global(.dashboard-light-mode) .settings-sidebar-link span,
+        :global(.dashboard-light-mode) .input-group label,
+        :global(.dashboard-light-mode) .input-group small,
+        :global(.dashboard-light-mode) .settings-help-text {
+          color: #3d4a41 !important;
+          opacity: 1 !important;
+        }
+
+        :global(.dashboard-light-mode) .settings-sidebar-link,
+        :global(.dashboard-light-mode) .settings-sidebar-link:hover {
+          background: #ffffff !important;
+          border-color: rgba(187, 202, 190, 0.92) !important;
+          color: #1a1c1c !important;
+          box-shadow: none !important;
+        }
+
+        :global(.dashboard-light-mode) .settings-sidebar-link.active {
+          background: color-mix(in srgb, #26c281 12%, #ffffff) !important;
+          border-color: color-mix(in srgb, #006c44 34%, #bbcabe) !important;
+          box-shadow: inset 0 -3px 0 #006c44 !important;
+        }
+
+        :global(.dashboard-light-mode) .settings-block,
+        :global(.dashboard-light-mode) .settings-category-shell,
+        :global(.dashboard-light-mode) .integration-block,
+        :global(.dashboard-light-mode) .meta-connection-card,
+        :global(.dashboard-light-mode) .meta-connection-guide-card,
+        :global(.dashboard-light-mode) .settings-mode-card,
+        :global(.dashboard-light-mode) .settings-operation-card,
+        :global(.dashboard-light-mode) .settings-operation-field,
+        :global(.dashboard-light-mode) .settings-stack-card {
+          background: #ffffff !important;
+          border-color: rgba(187, 202, 190, 0.86) !important;
+          box-shadow: 0 10px 24px rgba(20, 90, 50, 0.045) !important;
+        }
+
+        :global(.dashboard-light-mode) .settings-action-bar-global {
+          background: #1a1c1c !important;
+          border-color: rgba(26, 28, 28, 0.16) !important;
+          box-shadow: 0 18px 36px rgba(13, 13, 13, 0.16) !important;
+        }
+
         @media (max-width: 980px) {
           .settings-workspace {
             grid-template-columns: 1fr;
@@ -4002,10 +4362,27 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
             position: static;
             max-height: none;
             overflow: visible;
+            grid-template-columns: 1fr;
           }
 
           .settings-sidebar-nav {
+            display: grid;
             grid-template-columns: repeat(2, minmax(0, 1fr));
+            overflow: visible;
+          }
+
+          .settings-sidebar-title {
+            border-right: 0;
+            border-bottom: 1px solid rgba(190, 201, 191, 0.12);
+            padding: 8px 8px 12px;
+          }
+
+          .settings-sidebar-link {
+            min-width: 0;
+          }
+
+          .settings-main {
+            padding-right: 0;
           }
 
           .settings-grid {
@@ -4073,11 +4450,17 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
           }
 
           .settings-panel {
-            padding: 24px;
+            padding: 18px;
+            border-radius: 16px;
           }
 
           .settings-head h1 {
             font-size: 34px;
+          }
+
+          .settings-form-grid,
+          .settings-operation-grid {
+            grid-template-columns: 1fr;
           }
 
           .settings-preset-grid {
