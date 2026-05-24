@@ -5,7 +5,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useUser } from '@/lib/contexts/UserContext'
 import { DEFAULT_USER_APPEARANCE } from '@/lib/user-appearance-storage'
-import { USER_APPEARANCE_PRESETS } from '@/lib/user-appearance-storage'
 import {
   createClientCustomColumnRecord,
   createClientImplementationPhaseRecord,
@@ -1871,19 +1870,6 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
                           </div>
                         </div>
 
-                        <div className="settings-preset-grid settings-preset-grid-swatches">
-                          {USER_APPEARANCE_PRESETS.map((preset) => (
-                            <button
-                              key={preset.value}
-                              type="button"
-                              className={`settings-preset settings-preset-swatch-card ${panelDraft.accent === preset.value ? 'active' : ''}`}
-                              onClick={() => updatePanelDraft((current) => ({ ...current, accent: preset.value }))}
-                            >
-                              <span className="settings-preset-swatch" style={{ background: preset.value }}></span>
-                              {preset.label}
-                            </button>
-                          ))}
-                        </div>
                       </div>
 
                       <div className="glass-item settings-block settings-block-full settings-block-obsidian">
