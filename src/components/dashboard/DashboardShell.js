@@ -16455,40 +16455,6 @@ export default function DashboardShell({
                         <strong>{googleSheetsSummary?.totalRows ? `${googleSheetsSummary.totalRows} linha(s) lida(s)` : 'Planilha conectada'}</strong>
                       </div>
                     )}
-                    {hasRdConfigured && (
-                      <>
-                        <div className="hero-stat">
-                          <span>CRM</span>
-                          <strong>{activeClient?.rdStationAccountId || 'Token configurado para este cliente'}</strong>
-                        </div>
-                        <div className="hero-stat">
-                          <span>Funil</span>
-                          <div className="hero-select-wrap">
-                            <select value={draftRdPipelineFilter} onChange={(event) => setDraftRdPipelineFilter(event.target.value)} className="hero-select">
-                              <option value="">Todos os funis</option>
-                              {rdPipelineOptions.map((pipeline) => (
-                                <option key={pipeline.id} value={pipeline.id}>
-                                  {pipeline.name}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-                        </div>
-                        <div className="hero-stat">
-                          <span>Vendedor</span>
-                          <div className="hero-select-wrap">
-                            <select value={draftRdSellerFilter} onChange={(event) => setDraftRdSellerFilter(event.target.value)} className="hero-select">
-                              <option value="all">Todos os vendedores</option>
-                              {(rdSummary?.sellers || []).map((seller) => (
-                                <option key={seller.id} value={seller.id}>
-                                  {seller.name}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-                        </div>
-                      </>
-                    )}
                   </>
                   )}
                 </div>
@@ -17405,6 +17371,34 @@ export default function DashboardShell({
                         <span>{crmSourceLabel}</span>
                       </div>
                       <p className="source-section-copy">Em seguida, entram os indicadores comerciais e de CRM vinculados ao cliente.</p>
+                    </div>
+                    <div className="rd-crm-filter-panel">
+                      <div className="rd-crm-filter-field">
+                        <label>Funil</label>
+                        <div className="hero-select-wrap">
+                          <select value={draftRdPipelineFilter} onChange={(event) => setDraftRdPipelineFilter(event.target.value)} className="hero-select">
+                            <option value="">Todos os funis</option>
+                            {rdPipelineOptions.map((pipeline) => (
+                              <option key={pipeline.id} value={pipeline.id}>
+                                {pipeline.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                      <div className="rd-crm-filter-field">
+                        <label>Vendedor</label>
+                        <div className="hero-select-wrap">
+                          <select value={draftRdSellerFilter} onChange={(event) => setDraftRdSellerFilter(event.target.value)} className="hero-select">
+                            <option value="all">Todos os vendedores</option>
+                            {(rdSummary?.sellers || []).map((seller) => (
+                              <option key={seller.id} value={seller.id}>
+                                {seller.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
                     </div>
                   <section className="glass-panel grouped-results">
                       <div className="section-header section-header-stack section-header-with-action">
@@ -25085,6 +25079,7 @@ export default function DashboardShell({
         }
 
         :root[data-ui-mode='light'] .hero-stat,
+        :root[data-ui-mode='light'] .rd-crm-filter-panel,
         :root[data-ui-mode='light'] .conversion-stat,
         :root[data-ui-mode='light'] .template-metric-remove,
         :root[data-ui-mode='light'] .meta-campaign-filter-trigger,
@@ -25100,6 +25095,10 @@ export default function DashboardShell({
           background: rgba(255, 255, 255, 0.88);
           border-color: rgba(15, 23, 42, 0.08);
           color: var(--text-primary);
+        }
+
+        :root[data-ui-mode='light'] .rd-crm-filter-field label {
+          color: #3d4a41;
         }
 
         :root[data-ui-mode='light'] .meta-filter-kicker,
@@ -25658,6 +25657,33 @@ export default function DashboardShell({
           max-width: 520px;
         }
 
+        .rd-crm-filter-panel {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 14px;
+          padding: 16px;
+          margin-top: 16px;
+          border-radius: 18px;
+          border: 1px solid rgba(190, 201, 191, 0.12);
+          background:
+            linear-gradient(180deg, rgba(255, 255, 255, 0.024), rgba(255, 255, 255, 0.012)),
+            rgba(13, 17, 16, 0.72);
+        }
+
+        .rd-crm-filter-field {
+          min-width: 0;
+        }
+
+        .rd-crm-filter-field label {
+          display: block;
+          margin-bottom: 8px;
+          color: rgba(241, 241, 241, 0.54);
+          font-size: 11px;
+          font-weight: 800;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+        }
+
         .hero-stat {
           padding: 18px;
           border-radius: 16px;
@@ -25703,6 +25729,12 @@ export default function DashboardShell({
         .hero-select option {
           color: var(--text-primary);
           background: #111827;
+        }
+
+        .rd-crm-filter-panel .hero-select {
+          min-height: 48px;
+          background: rgba(255, 255, 255, 0.045);
+          border-color: rgba(190, 201, 191, 0.14);
         }
 
         .feedback-banner,
@@ -31742,6 +31774,10 @@ export default function DashboardShell({
           .source-section-copy {
             text-align: left;
             max-width: none;
+          }
+
+          .rd-crm-filter-panel {
+            grid-template-columns: 1fr;
           }
 
           .meta-filter-panel-head {
