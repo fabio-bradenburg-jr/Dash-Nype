@@ -3216,13 +3216,6 @@ export default function DashboardShell({
       ? 'light'
       : 'dark'
   const isLightAppMode = currentAppMode === 'light'
-  const handleToggleAppMode = (mode) => {
-    if (mode === currentAppMode) return
-    updateAppearance((current) => ({
-      ...current,
-      mode,
-    }))
-  }
   const [clients, setClients] = useState([])
   const [clientGroups, setClientGroups] = useState([])
   const [products, setProducts] = useState([])
@@ -3253,7 +3246,6 @@ export default function DashboardShell({
   const [operationViewMode, setOperationViewMode] = useState('kanban')
   const [operationPeriodFilter, setOperationPeriodFilter] = useState('all')
   const [operationSearch, setOperationSearch] = useState('')
-  const [shellSearch, setShellSearch] = useState('')
   const [operationSegmentFilter, setOperationSegmentFilter] = useState('all')
   const [operationTierFilter, setOperationTierFilter] = useState('all')
   const [operationSquadFilter, setOperationSquadFilter] = useState('all')
@@ -4566,21 +4558,12 @@ export default function DashboardShell({
     () => rgbToHex(activeClientDashboardRgb),
     [activeClientDashboardRgb]
   )
-  const weeklySearchTerm = useMemo(() => shellSearch.trim().toLowerCase(), [shellSearch])
   const weeklyBaseVisibleRecords = useMemo(() => {
     return weeklyRecords.filter((record) => {
-      const client = clientsById.get(record.clientId)
       const matchesClient = weeklyClientFilter === 'all' || record.clientId === weeklyClientFilter
-      const matchesSearch = !weeklySearchTerm || [
-        client?.name,
-        client?.company,
-        record.weekStart,
-        record.weekEnd,
-        WEEKLY_HEALTH_BY_KEY[record.healthStatus]?.label,
-      ].some((value) => String(value || '').toLowerCase().includes(weeklySearchTerm))
-      return matchesClient && matchesSearch
+      return matchesClient
     })
-  }, [weeklyRecords, weeklyClientFilter, weeklySearchTerm, clientsById])
+  }, [weeklyRecords, weeklyClientFilter])
 
   const weeklyVisibleRecords = useMemo(
     () => weeklyBaseVisibleRecords.filter((record) => isWeeklyRecordInsideWindow(record, weeklyPeriodWindow)),
@@ -14221,45 +14204,6 @@ export default function DashboardShell({
     setIsHomeToolsExpanded((current) => !current)
   }
 
-  const shouldShowGlobalAppBar = true
-  const appBarPlaceholder = (() => {
-    if (activeTab === 'operacao') return 'Search operations...'
-    if (activeTab === 'clientes') return 'Buscar clientes...'
-    if (activeTab === 'usuarios') return canManageUsers ? 'Buscar pessoas...' : 'Buscar metas, clientes e desenvolvimento...'
-    if (activeTab === 'semanal') return 'Buscar cliente, operação ou semana...'
-    if (activeTab === 'produtos') return 'Buscar produtos...'
-    if (activeTab === 'apresentacao') return 'Buscar dashboards e campanhas...'
-    if (activeTab === 'assistant') return 'Buscar conversas e prompts...'
-    if (activeTab === 'calendar') return 'Buscar eventos e agendas...'
-    if (activeTab === 'contexto') return 'Buscar indicadores e contexto...'
-    if (activeTab === 'clickup') return 'Buscar tarefas do ClickUp...'
-    if (activeTab === 'monday') return 'Buscar itens do Monday...'
-    return 'Buscar no app...'
-  })()
-  const appBarSearchValue =
-    activeTab === 'operacao'
-      ? operationSearch
-      : activeTab === 'clientes'
-        ? clientSearch
-        : activeTab === 'usuarios'
-          ? userSearch
-          : shellSearch
-  const handleAppBarSearchChange = (value) => {
-    if (activeTab === 'operacao') {
-      setOperationSearch(value)
-      return
-    }
-    if (activeTab === 'clientes') {
-      setClientSearch(value)
-      return
-    }
-    if (activeTab === 'usuarios') {
-      setUserSearch(value)
-      return
-    }
-    setShellSearch(value)
-  }
-
   return (
     <div
       className={`dashboard-container dashboard-shell-stellar ${isLightAppMode ? "dashboard-light-mode" : ""}`}
@@ -14362,114 +14306,6 @@ export default function DashboardShell({
       </aside>
 
       <main className={`main-content ${isSidebarCollapsed ? 'main-content-expanded' : ''}`}>
-        {shouldShowGlobalAppBar && (
-          <div className="operation-stellar-topbar app-shell-topbar">
-            <div
-              className="operation-stellar-search"
-              style={
-                isLightAppMode
-                  ? {
-                      border: '1px solid rgba(15, 23, 42, 0.08)',
-                      background: 'linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(241, 245, 249, 0.99))',
-                      boxShadow: '0 14px 30px rgba(15, 23, 42, 0.05)',
-                    }
-                  : undefined
-              }
-            >
-              <i className="bx bx-search-alt" style={isLightAppMode ? { color: '#64748b' } : undefined}></i>
-              <input
-                type="text"
-                value={appBarSearchValue}
-                onChange={(event) => handleAppBarSearchChange(event.target.value)}
-                placeholder={appBarPlaceholder}
-                style={isLightAppMode ? { color: '#0f172a' } : undefined}
-              />
-            </div>
-            <div className="operation-stellar-actions">
-              <button
-                type="button"
-                className="operation-stellar-icon-button"
-                aria-label="Configurações"
-                onClick={() => setActiveTab('settings')}
-                style={
-                  isLightAppMode
-                    ? {
-                        border: '1px solid rgba(15, 23, 42, 0.08)',
-                        background: 'rgba(255, 255, 255, 0.84)',
-                        color: '#475569',
-                        boxShadow: '0 10px 24px rgba(15, 23, 42, 0.04)',
-                      }
-                    : undefined
-                }
-              >
-                <i className="bx bx-cog"></i>
-              </button>
-              <div
-                className="operation-stellar-theme-toggle"
-                role="group"
-                aria-label="Alternar tema"
-                style={
-                  isLightAppMode
-                    ? {
-                        border: '1px solid rgba(15, 23, 42, 0.08)',
-                        background: 'linear-gradient(180deg, rgba(255, 255, 255, 0.88), rgba(248, 250, 252, 0.96))',
-                        boxShadow: '0 10px 24px rgba(15, 23, 42, 0.04)',
-                      }
-                    : undefined
-                }
-              >
-                <button
-                  type="button"
-                  className={`operation-stellar-theme-option ${currentAppMode === 'dark' ? 'active' : ''}`}
-                  onClick={() => handleToggleAppMode('dark')}
-                  aria-pressed={currentAppMode === 'dark'}
-                  aria-label="Ativar modo escuro"
-                  style={
-                    isLightAppMode
-                      ? currentAppMode === 'dark'
-                        ? {
-                            background: 'rgba(15, 23, 42, 0.9)',
-                            color: '#f8fafc',
-                            boxShadow: '0 8px 18px rgba(15, 23, 42, 0.16)',
-                          }
-                        : {
-                            color: '#64748b',
-                          }
-                      : undefined
-                  }
-                >
-                  <i className="bx bx-moon"></i>
-                </button>
-                <button
-                  type="button"
-                  className={`operation-stellar-theme-option ${currentAppMode === 'light' ? 'active' : ''}`}
-                  onClick={() => handleToggleAppMode('light')}
-                  aria-pressed={currentAppMode === 'light'}
-                  aria-label="Ativar modo claro"
-                  style={
-                    isLightAppMode
-                      ? currentAppMode === 'light'
-                        ? {
-                            background: 'rgba(255, 255, 255, 0.98)',
-                            color: '#0f172a',
-                            boxShadow: '0 8px 18px rgba(15, 23, 42, 0.12)',
-                          }
-                        : {
-                            color: '#64748b',
-                          }
-                      : undefined
-                  }
-                >
-                  <i className="bx bx-sun"></i>
-                </button>
-              </div>
-              <span className="operation-stellar-user-avatar" aria-label={profile?.full_name || user?.email || 'Usuário'}>
-                {(profile?.full_name || user?.email || 'U').trim().slice(0, 1).toUpperCase()}
-              </span>
-            </div>
-          </div>
-        )}
-
         <header className="header" style={{ alignItems: 'flex-start' }}>
           {activeTab !== 'apresentacao' && (
             <div className="page-title">
