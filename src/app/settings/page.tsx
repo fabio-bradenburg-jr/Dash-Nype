@@ -4633,6 +4633,36 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
             grid-template-columns: 1fr;
           }
         }
+
+        :root[data-ui-mode='light'] .settings-page-shell :where(
+          h1, h2, h3, h4, h5, h6,
+          p, span, strong, small, label, b,
+          li, dt, dd,
+          .settings-head, .settings-block,
+          .settings-category-head, .settings-sidebar-title,
+          .settings-mode-copy, .settings-action-copy
+        ):not(.settings-save-button):not(.settings-save-button *):not(.btn-primary):not(.btn-primary *) {
+          color: #1a1c1c !important;
+        }
+
+        :root[data-ui-mode='light'] .settings-page-shell :where(
+          input, select, textarea,
+          .settings-color-code-row input,
+          .settings-rgb-field input
+        ) {
+          color: #1a1c1c !important;
+        }
+
+        :root[data-ui-mode='light'] .settings-page-shell :where(
+          .settings-head p,
+          .settings-block p,
+          .settings-category-head p,
+          .settings-sidebar-link span,
+          .input-group small,
+          .settings-help-text
+        ):not(.settings-save-button):not(.settings-save-button *) {
+          color: #3d4a41 !important;
+        }
       `}</style>
     </div>
   )

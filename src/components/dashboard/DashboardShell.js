@@ -31627,6 +31627,38 @@ export default function DashboardShell({
           border-color: rgba(108, 122, 112, 0.26) !important;
         }
 
+        .dashboard-light-mode.dashboard-shell-stellar :where(
+          h1, h2, h3, h4, h5, h6,
+          p, span, strong, small, label, b,
+          td, th, li, dt, dd,
+          .page-title, .modal-header, .integration-heading,
+          .management-header-copy, .weekly-command-heading,
+          .weekly-goal-copy, .simple-client-copy,
+          .simple-team-identity, .settings-action-copy
+        ):not(.btn-primary):not(.btn-primary *):not(.settings-save-button):not(.settings-save-button *):not(.badge-on-dark):not(.badge-on-dark *) {
+          color: #1a1c1c !important;
+        }
+
+        .dashboard-light-mode.dashboard-shell-stellar :where(
+          .field-helper, .chart-subtitle, .empty-panel p,
+          .modal-header p, .integration-heading p,
+          .simple-client-name small, .simple-client-health small,
+          .weekly-helper, .weekly-command-primary small,
+          .settings-action-copy span
+        ):not(.btn-primary):not(.btn-primary *) {
+          color: #3d4a41 !important;
+        }
+
+        .dashboard-light-mode.dashboard-shell-stellar :where(
+          input, select, textarea,
+          .client-select-input,
+          .client-registry-search input,
+          .operation-stellar-search input,
+          .users-search-field input
+        ) {
+          color: #1a1c1c !important;
+        }
+
         @page {
           size: A4 landscape;
           margin: 8mm;
