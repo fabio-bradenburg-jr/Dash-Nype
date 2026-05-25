@@ -3224,6 +3224,7 @@ export default function DashboardShell({
   const [weeklyWeekStart, setWeeklyWeekStart] = useState(() => getMondayDateInputValue())
   const [isWeeklyEntryModalOpen, setIsWeeklyEntryModalOpen] = useState(false)
   const [isWeeklyHistoryModalOpen, setIsWeeklyHistoryModalOpen] = useState(false)
+  const [isWeeklyCostRankingModalOpen, setIsWeeklyCostRankingModalOpen] = useState(false)
   const [weeklyForm, setWeeklyForm] = useState({
     clientId: '',
     investment: '',
@@ -4710,6 +4711,11 @@ export default function DashboardShell({
       })
   }, [weeklyVisibleRecords, clientsById])
 
+  const weeklyClientCostRankingPreview = useMemo(
+    () => weeklyClientCostRanking.slice(0, 5),
+    [weeklyClientCostRanking]
+  )
+
   const weeklyLineChartData = useMemo(() => {
     const byWeek = new Map()
     weeklyVisibleRecords.forEach((record) => {
@@ -5129,6 +5135,93 @@ export default function DashboardShell({
       window.alert('Não consegui gerar o PDF agora. Tente exportar como CSV ou recarregar a página.')
     }
   }, [weeklyTableExportRows, weeklyTableExportFileName, weeklyPeriodWindow.label, activeClientDashboardHex])
+
+  const handleExportWeeklyCostRankingPdf = useCallback(async () => {
+    if (!weeklyClientCostRanking.length) {
+      window.alert('Nenhum resultado encontrado para exportar com os filtros atuais.')
+      return
+    }
+
+    try {
+      const jsPdfModule = await import('jspdf')
+      const JsPDF = jsPdfModule.default || jsPdfModule.jsPDF
+      const pdf = new JsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' })
+      const pageWidth = pdf.internal.pageSize.getWidth()
+      const pageHeight = pdf.internal.pageSize.getHeight()
+      const margin = 36
+      const accent = activeClientDashboardHex || '#10b981'
+      const normalizeFileName = (value) => String(value || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9]+/gi, '-')
+        .replace(/^-+|-+$/g, '')
+        .toLowerCase() || 'ranking'
+
+      let cursorY = 54
+
+      const drawTitle = () => {
+        pdf.setFont('helvetica', 'bold')
+        pdf.setFontSize(18)
+        pdf.setTextColor('#0f172a')
+        pdf.text('Custo médio por lead e MQL', margin, cursorY)
+        cursorY += 22
+        pdf.setFont('helvetica', 'normal')
+        pdf.setFontSize(10)
+        pdf.setTextColor('#64748b')
+        pdf.text(`Período: ${weeklyPeriodWindow.label || 'Selecionado'}`, margin, cursorY)
+        cursorY += 26
+      }
+
+      const drawHeader = () => {
+        pdf.setFillColor(accent)
+        pdf.roundedRect(margin, cursorY, pageWidth - margin * 2, 28, 8, 8, 'F')
+        pdf.setFont('helvetica', 'bold')
+        pdf.setFontSize(8)
+        pdf.setTextColor('#ffffff')
+        pdf.text('#', margin + 10, cursorY + 18)
+        pdf.text('CLIENTE', margin + 42, cursorY + 18)
+        pdf.text('INVESTIMENTO', margin + 266, cursorY + 18)
+        pdf.text('LEADS', margin + 370, cursorY + 18)
+        pdf.text('MQL', margin + 424, cursorY + 18)
+        pdf.text('CPL', margin + 468, cursorY + 18)
+        pdf.text('CUSTO MQL', margin + 526, cursorY + 18)
+        cursorY += 32
+      }
+
+      drawTitle()
+      drawHeader()
+
+      weeklyClientCostRanking.forEach((row, index) => {
+        const rowHeight = 34
+        if (cursorY + rowHeight > pageHeight - margin) {
+          pdf.addPage('a4', 'portrait')
+          cursorY = 42
+          drawHeader()
+        }
+
+        pdf.setFillColor(index % 2 === 0 ? '#f8fafc' : '#ffffff')
+        pdf.roundedRect(margin, cursorY, pageWidth - margin * 2, rowHeight, 6, 6, 'F')
+        pdf.setFont('helvetica', 'normal')
+        pdf.setFontSize(8.5)
+        pdf.setTextColor('#0f172a')
+        pdf.text(String(index + 1), margin + 10, cursorY + 21)
+        pdf.setFont('helvetica', 'bold')
+        pdf.text(pdf.splitTextToSize(row.clientName || '-', 204).slice(0, 1), margin + 42, cursorY + 21)
+        pdf.setFont('helvetica', 'normal')
+        pdf.text(formatCurrency(row.investment || 0), margin + 266, cursorY + 21)
+        pdf.text(formatNumber(row.leads || 0), margin + 370, cursorY + 21)
+        pdf.text(formatNumber(row.mql || 0), margin + 424, cursorY + 21)
+        pdf.text(row.leads > 0 ? formatCurrency(row.costPerLead) : '-', margin + 468, cursorY + 21)
+        pdf.text(row.mql > 0 ? formatCurrency(row.costPerMql) : '-', margin + 526, cursorY + 21)
+        cursorY += rowHeight
+      })
+
+      pdf.save(`custo-lead-mql-${normalizeFileName(weeklyPeriodWindow.label)}.pdf`)
+    } catch (error) {
+      console.error('Erro ao exportar ranking de custos em PDF', error)
+      window.alert('Não consegui gerar o PDF agora. Tente novamente em instantes.')
+    }
+  }, [weeklyClientCostRanking, weeklyPeriodWindow.label, activeClientDashboardHex])
 
   const selectedQualifiedStagesKey = useMemo(
     () => JSON.stringify([...selectedQualifiedStages].sort()),
@@ -12862,11 +12955,17 @@ export default function DashboardShell({
             <h2>Custo médio por lead e MQL</h2>
             <p className="chart-subtitle">Ordenado pelo maior custo por lead médio no período selecionado.</p>
           </div>
+          {weeklyClientCostRanking.length > 5 && (
+            <button type="button" className="weekly-ranking-open-button" onClick={() => setIsWeeklyCostRankingModalOpen(true)}>
+              <i className="bx bx-list-ul"></i>
+              Ver outros
+            </button>
+          )}
         </div>
 
         {weeklyClientCostRanking.length ? (
           <div className="weekly-client-results-grid">
-            {weeklyClientCostRanking.map((row) => (
+            {weeklyClientCostRankingPreview.map((row) => (
               <article key={'weekly-client-result-' + row.clientId} className="weekly-client-result-card">
                 <strong>{row.clientName}</strong>
                 <div className="weekly-client-result-metrics">
@@ -13156,6 +13255,66 @@ export default function DashboardShell({
                 <i className="bx bx-calendar-x"></i>
                 <strong>Nenhuma semana encontrada</strong>
                 <span>Quando houver registros para o filtro atual, eles aparecem aqui em cards para reabrir e revisar.</span>
+              </div>
+            )}
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {isWeeklyCostRankingModalOpen && typeof document !== 'undefined' && createPortal(
+        <div className="modal-overlay weekly-modal-overlay" style={weeklyModalOverlayStyle} role="presentation" onClick={() => setIsWeeklyCostRankingModalOpen(false)}>
+          <div className="modal-card glass-panel weekly-history-modal weekly-cost-ranking-modal" role="dialog" aria-modal="true" aria-label="Ranking completo de custo médio por lead e MQL" onClick={(event) => event.stopPropagation()}>
+            <button type="button" className="modal-close" style={weeklyModalCloseStyle} onClick={() => setIsWeeklyCostRankingModalOpen(false)} aria-label="Fechar ranking">
+              <i className="bx bx-x"></i>
+            </button>
+            <div className="weekly-history-heading">
+              <div>
+                <h2><i className="bx bx-bar-chart-alt-2"></i> Custo médio por lead e MQL</h2>
+                <p className="chart-subtitle">Todos os clientes do período selecionado, ordenados pelo maior custo por lead médio.</p>
+              </div>
+              <div className="weekly-history-actions">
+                <span className="weekly-loading-pill">{formatNumber(weeklyClientCostRanking.length)} resultado(s)</span>
+                <button type="button" className="weekly-history-button" onClick={handleExportWeeklyCostRankingPdf}>
+                  <i className="bx bx-file"></i>
+                  Exportar PDF
+                </button>
+              </div>
+            </div>
+            {weeklyClientCostRanking.length ? (
+              <div className="weekly-cost-ranking-table-wrap">
+                <table className="weekly-cost-ranking-table">
+                  <thead>
+                    <tr>
+                      <th>#</th>
+                      <th>Cliente</th>
+                      <th>Investimento</th>
+                      <th>Leads</th>
+                      <th>MQL</th>
+                      <th>Custo por Lead</th>
+                      <th>Custo por MQL</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {weeklyClientCostRanking.map((row, index) => (
+                      <tr key={'weekly-cost-ranking-row-' + row.clientId}>
+                        <td>{index + 1}</td>
+                        <td><strong>{row.clientName}</strong></td>
+                        <td>{formatCurrency(row.investment || 0)}</td>
+                        <td>{formatNumber(row.leads || 0)}</td>
+                        <td>{formatNumber(row.mql || 0)}</td>
+                        <td>{row.leads > 0 ? formatCurrency(row.costPerLead) : '-'}</td>
+                        <td>{row.mql > 0 ? formatCurrency(row.costPerMql) : '-'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="weekly-history-empty">
+                <i className="bx bx-bar-chart-alt-2"></i>
+                <strong>Nenhum resultado encontrado</strong>
+                <span>Quando houver registros para o filtro atual, o ranking completo aparece aqui.</span>
               </div>
             )}
           </div>
@@ -18799,6 +18958,70 @@ export default function DashboardShell({
           font-size: clamp(22px, 2vw, 30px) !important;
         }
 
+        .weekly-dashboard-panel .weekly-ranking-open-button,
+        .weekly-ranking-open-button {
+          min-height: 42px !important;
+          display: inline-flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          gap: 8px !important;
+          border: 1px solid color-mix(in srgb, var(--weekly-accent) 36%, rgba(190, 201, 191, 0.2)) !important;
+          border-radius: 14px !important;
+          background: color-mix(in srgb, var(--weekly-accent) 12%, rgba(255, 255, 255, 0.04)) !important;
+          color: #f8fafc !important;
+          padding: 0 16px !important;
+          font: inherit !important;
+          font-size: 13px !important;
+          font-weight: 850 !important;
+          cursor: pointer !important;
+        }
+
+        .weekly-cost-ranking-modal {
+          width: min(1120px, calc(100vw - 32px)) !important;
+          max-height: min(780px, calc(100vh - 48px)) !important;
+          overflow: hidden !important;
+        }
+
+        .weekly-cost-ranking-table-wrap {
+          max-height: min(560px, calc(100vh - 230px)) !important;
+          overflow: auto !important;
+          border: 1px solid rgba(190, 201, 191, 0.14) !important;
+          border-radius: 18px !important;
+          background: rgba(4, 8, 7, 0.22) !important;
+        }
+
+        .weekly-cost-ranking-table {
+          width: 100% !important;
+          min-width: 880px !important;
+          border-collapse: collapse !important;
+        }
+
+        .weekly-cost-ranking-table th,
+        .weekly-cost-ranking-table td {
+          padding: 16px 18px !important;
+          border-bottom: 1px solid rgba(190, 201, 191, 0.11) !important;
+          color: #f8fafc !important;
+          text-align: left !important;
+          white-space: nowrap !important;
+        }
+
+        .weekly-cost-ranking-table th {
+          position: sticky !important;
+          top: 0 !important;
+          z-index: 1 !important;
+          background: rgba(10, 16, 14, 0.96) !important;
+          color: rgba(241, 245, 249, 0.62) !important;
+          font-size: 11px !important;
+          font-weight: 900 !important;
+          letter-spacing: 0.08em !important;
+          text-transform: uppercase !important;
+        }
+
+        .weekly-cost-ranking-table td:first-child {
+          color: color-mix(in srgb, var(--weekly-accent) 84%, #f8fafc) !important;
+          font-weight: 900 !important;
+        }
+
         .weekly-dashboard-panel .weekly-chart-grid {
           grid-template-columns: minmax(0, 1.35fr) minmax(340px, 0.65fr) !important;
           gap: 20px !important;
@@ -18872,6 +19095,31 @@ export default function DashboardShell({
         .dashboard-light-mode .weekly-dashboard-panel .weekly-risk-badge small,
         .dashboard-light-mode .weekly-dashboard-panel .weekly-client-result-metrics span {
           color: #475569 !important;
+        }
+
+        .dashboard-light-mode .weekly-ranking-open-button {
+          background: color-mix(in srgb, var(--weekly-accent) 10%, #ffffff) !important;
+          color: #0f172a !important;
+          border-color: color-mix(in srgb, var(--weekly-accent) 32%, rgba(15, 23, 42, 0.12)) !important;
+        }
+
+        .dashboard-light-mode .weekly-cost-ranking-table-wrap,
+        :root[data-ui-mode='light'] .weekly-cost-ranking-table-wrap {
+          background: #ffffff !important;
+          border-color: rgba(15, 23, 42, 0.1) !important;
+        }
+
+        .dashboard-light-mode .weekly-cost-ranking-table th,
+        :root[data-ui-mode='light'] .weekly-cost-ranking-table th {
+          background: #f8fafc !important;
+          color: #475569 !important;
+        }
+
+        .dashboard-light-mode .weekly-cost-ranking-table td,
+        .dashboard-light-mode .weekly-cost-ranking-table td strong,
+        :root[data-ui-mode='light'] .weekly-cost-ranking-table td,
+        :root[data-ui-mode='light'] .weekly-cost-ranking-table td strong {
+          color: #0f172a !important;
         }
 
         .dashboard-light-mode .weekly-dashboard-panel .weekly-risk-breakdown div,
