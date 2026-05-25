@@ -3221,19 +3221,20 @@ export default function DashboardShell({
   const [weeklyError, setWeeklyError] = useState('')
   const [weeklySuccessMessage, setWeeklySuccessMessage] = useState('')
   const [weeklyClientFilter, setWeeklyClientFilter] = useState('all')
+  const [weeklyChartClientFilter, setWeeklyChartClientFilter] = useState('all')
   const [weeklyPeriodPreset, setWeeklyPeriodPreset] = useState('filled')
   const [weeklyCustomSince, setWeeklyCustomSince] = useState(() => getMondayDateInputValue())
   const [weeklyCustomUntil, setWeeklyCustomUntil] = useState(() => getWeekEndDateInputValue(getMondayDateInputValue()))
   const [weeklyMonthFilter, setWeeklyMonthFilter] = useState(() => getCurrentMonthInputValue())
   const [weeklyFilledWeekStart, setWeeklyFilledWeekStart] = useState('')
   const [weeklyTableHealthFilter, setWeeklyTableHealthFilter] = useState('all')
+  const [weeklyTableSort, setWeeklyTableSort] = useState({ key: 'date', direction: 'desc' })
   const [isWeeklyDeleteMode, setIsWeeklyDeleteMode] = useState(false)
   const [selectedWeeklyRecordIds, setSelectedWeeklyRecordIds] = useState([])
   const [isDeletingWeeklyRecords, setIsDeletingWeeklyRecords] = useState(false)
   const [weeklyWeekStart, setWeeklyWeekStart] = useState(() => getMondayDateInputValue())
   const [isWeeklyEntryModalOpen, setIsWeeklyEntryModalOpen] = useState(false)
   const [isWeeklyHistoryModalOpen, setIsWeeklyHistoryModalOpen] = useState(false)
-  const [isWeeklyCostRankingModalOpen, setIsWeeklyCostRankingModalOpen] = useState(false)
   const [weeklyForm, setWeeklyForm] = useState({
     clientId: '',
     investment: '',
@@ -4688,15 +4689,6 @@ export default function DashboardShell({
   const weeklyCurrentCpl = weeklyCurrentLeads > 0 ? weeklyCurrentInvestment / weeklyCurrentLeads : 0
   const weeklyCurrentCostPerSql = weeklyCurrentSql > 0 ? weeklyCurrentInvestment / weeklyCurrentSql : 0
 
-  const weeklySelectedDate = useMemo(() => new Date(String(weeklyWeekStart || getMondayDateInputValue()) + 'T00:00:00'), [weeklyWeekStart])
-  const weeklySelectedMonthKey = useMemo(() => {
-    if (Number.isNaN(weeklySelectedDate.getTime())) return ''
-    return String(weeklySelectedDate.getFullYear()) + '-' + String(weeklySelectedDate.getMonth() + 1).padStart(2, '0')
-  }, [weeklySelectedDate])
-  const weeklyMonthRecords = useMemo(
-    () => weeklyBaseVisibleRecords.filter((record) => String(record.weekStart || '').startsWith(weeklySelectedMonthKey)),
-    [weeklyBaseVisibleRecords, weeklySelectedMonthKey]
-  )
   const weeklyHealthRiskTarget = Number.isFinite(Number(operationSettings?.healthRiskTargetPercent))
     ? Math.min(100, Math.max(0, Number(operationSettings.healthRiskTargetPercent)))
     : 20
@@ -4728,50 +4720,50 @@ export default function DashboardShell({
   }, [weeklyHealthRiskTarget])
 
   const weeklySummary = useMemo(() => summarizeWeeklyRecords(weeklyVisibleRecords), [summarizeWeeklyRecords, weeklyVisibleRecords])
-  const weeklyMonthSummary = useMemo(() => summarizeWeeklyRecords(weeklyMonthRecords), [summarizeWeeklyRecords, weeklyMonthRecords])
 
-  const weeklyClientCostRanking = useMemo(() => {
+  const weeklyChartClientRows = useMemo(() => {
     const rowsByClient = new Map()
 
     weeklyVisibleRecords.forEach((record) => {
       const clientId = String(record.clientId || '').trim()
       if (!clientId) return
-
       const current = rowsByClient.get(clientId) || {
         clientId,
         clientName: clientsById.get(clientId)?.name || 'Cliente sem nome',
         investment: 0,
         leads: 0,
-        mql: 0,
+        sql: 0,
+        recordsCount: 0,
       }
 
       current.investment += Number(record.investment || 0)
       current.leads += Number(record.leads || 0)
-      current.mql += Number(record.sql || 0)
+      current.sql += Number(record.sql || 0)
+      current.recordsCount += 1
       rowsByClient.set(clientId, current)
     })
 
-    return Array.from(rowsByClient.values())
-      .map((row) => ({
-        ...row,
-        costPerLead: row.leads > 0 ? row.investment / row.leads : 0,
-        costPerMql: row.mql > 0 ? row.investment / row.mql : 0,
-      }))
-      .sort((left, right) => {
-        const leftCost = left.leads > 0 ? left.costPerLead : -1
-        const rightCost = right.leads > 0 ? right.costPerLead : -1
-        return rightCost - leftCost || String(left.clientName).localeCompare(String(right.clientName))
-      })
+    return Array.from(rowsByClient.values()).sort((left, right) => String(left.clientName).localeCompare(String(right.clientName), 'pt-BR', { sensitivity: 'base', numeric: true }))
   }, [weeklyVisibleRecords, clientsById])
 
-  const weeklyClientCostRankingPreview = useMemo(
-    () => weeklyClientCostRanking.slice(0, 5),
-    [weeklyClientCostRanking]
-  )
+  useEffect(() => {
+    if (weeklyChartClientFilter === 'all') return
+    const hasSelectedClient = weeklyChartClientRows.some((row) => row.clientId === weeklyChartClientFilter)
+    if (!hasSelectedClient) setWeeklyChartClientFilter('all')
+  }, [weeklyChartClientFilter, weeklyChartClientRows])
+
+  const weeklyLineChartRecords = useMemo(() => {
+    if (weeklyChartClientFilter === 'all') return weeklyVisibleRecords
+    return weeklyVisibleRecords.filter((record) => record.clientId === weeklyChartClientFilter)
+  }, [weeklyVisibleRecords, weeklyChartClientFilter])
+
+  const weeklySelectedChartClientName = weeklyChartClientFilter === 'all'
+    ? 'Carteira consolidada'
+    : weeklyChartClientRows.find((row) => row.clientId === weeklyChartClientFilter)?.clientName || 'Cliente selecionado'
 
   const weeklyLineChartData = useMemo(() => {
     const byWeek = new Map()
-    weeklyVisibleRecords.forEach((record) => {
+    weeklyLineChartRecords.forEach((record) => {
       const current = byWeek.get(record.weekStart) || { weekStart: record.weekStart, weekEnd: record.weekEnd, investment: 0, leads: 0, sql: 0 }
       current.investment += Number(record.investment || 0)
       current.leads += Number(record.leads || 0)
@@ -4828,7 +4820,7 @@ export default function DashboardShell({
         },
       ],
     }
-  }, [weeklyVisibleRecords, activeClientDashboardHex])
+  }, [weeklyLineChartRecords, activeClientDashboardHex])
 
   const weeklyHealthChartData = useMemo(() => {
     const records = weeklyVisibleRecords
@@ -4949,11 +4941,83 @@ export default function DashboardShell({
   }, [weeklyLatestRecords, selectedWeeklyRecordIds.length])
 
   const weeklyTableRecords = useMemo(() => {
+    const getSortValue = (record) => {
+      const clientName = clientsById.get(record.clientId)?.name || 'Cliente removido'
+      const health = WEEKLY_HEALTH_BY_KEY[record.healthStatus] || WEEKLY_HEALTH_BY_KEY.attention
+
+      switch (weeklyTableSort.key) {
+        case 'date':
+          return String(record.weekStart || '')
+        case 'client':
+          return clientName
+        case 'health':
+          return health.score ?? 0
+        case 'investment':
+          return Number(record.investment || 0)
+        case 'leads':
+          return Number(record.leads || 0)
+        case 'cpl':
+          return Number(record.leads || 0) > 0 ? Number(record.cpl || 0) : null
+        case 'sql':
+          return Number(record.sql || 0)
+        case 'costPerSql':
+          return Number(record.sql || 0) > 0 ? Number(record.costPerSql || 0) : null
+        case 'actionPlan':
+          return (record.actionItems || []).length ? record.actionItems.join(' | ') : 'Sem plano de ação'
+        default:
+          return ''
+      }
+    }
+
+    const compareValues = (leftValue, rightValue) => {
+      const leftMissing = leftValue == null || leftValue === ''
+      const rightMissing = rightValue == null || rightValue === ''
+      if (leftMissing && rightMissing) return 0
+      if (leftMissing) return 1
+      if (rightMissing) return -1
+
+      if (typeof leftValue === 'number' && typeof rightValue === 'number') {
+        return leftValue - rightValue
+      }
+
+      return String(leftValue).localeCompare(String(rightValue), 'pt-BR', { sensitivity: 'base', numeric: true })
+    }
+
     return weeklyLatestRecords.filter((record) => {
       const matchesHealth = weeklyTableHealthFilter === 'all' || record.healthStatus === weeklyTableHealthFilter
       return matchesHealth
+    }).sort((left, right) => {
+      const direction = weeklyTableSort.direction === 'asc' ? 1 : -1
+      const primaryCompare = compareValues(getSortValue(left), getSortValue(right)) * direction
+      if (primaryCompare) return primaryCompare
+
+      const dateCompare = String(right.weekStart || '').localeCompare(String(left.weekStart || ''))
+      if (dateCompare) return dateCompare
+
+      const leftClient = clientsById.get(left.clientId)?.name || ''
+      const rightClient = clientsById.get(right.clientId)?.name || ''
+      return leftClient.localeCompare(rightClient, 'pt-BR', { sensitivity: 'base', numeric: true })
     })
-  }, [weeklyLatestRecords, weeklyTableHealthFilter])
+  }, [weeklyLatestRecords, weeklyTableHealthFilter, weeklyTableSort, clientsById])
+
+  const weeklyTableColumns = useMemo(() => ([
+    { key: 'date', label: 'Data', icon: 'bx-calendar' },
+    { key: 'client', label: 'Cliente', icon: 'bx-buildings' },
+    { key: 'health', label: 'Saúde', icon: 'bx-heart' },
+    { key: 'investment', label: 'Investimento', icon: 'bx-wallet' },
+    { key: 'leads', label: 'Leads', icon: 'bx-user-plus' },
+    { key: 'cpl', label: 'CPL', icon: 'bx-purchase-tag-alt' },
+    { key: 'sql', label: 'SQL', icon: 'bx-filter-alt' },
+    { key: 'costPerSql', label: 'Custo SQL', icon: 'bx-credit-card' },
+    { key: 'actionPlan', label: 'Plano de ação', icon: 'bx-list-check' },
+  ]), [])
+
+  const handleWeeklyTableSort = useCallback((key) => {
+    setWeeklyTableSort((current) => ({
+      key,
+      direction: current.key === key && current.direction === 'asc' ? 'desc' : 'asc',
+    }))
+  }, [])
 
   const weeklyHistoryCards = useMemo(() => {
     const byWeek = new Map()
@@ -5187,93 +5251,6 @@ export default function DashboardShell({
       window.alert('Não consegui gerar o PDF agora. Tente exportar como CSV ou recarregar a página.')
     }
   }, [weeklyTableExportRows, weeklyTableExportFileName, weeklyPeriodWindow.label, activeClientDashboardHex])
-
-  const handleExportWeeklyCostRankingPdf = useCallback(async () => {
-    if (!weeklyClientCostRanking.length) {
-      window.alert('Nenhum resultado encontrado para exportar com os filtros atuais.')
-      return
-    }
-
-    try {
-      const jsPdfModule = await import('jspdf')
-      const JsPDF = jsPdfModule.default || jsPdfModule.jsPDF
-      const pdf = new JsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' })
-      const pageWidth = pdf.internal.pageSize.getWidth()
-      const pageHeight = pdf.internal.pageSize.getHeight()
-      const margin = 36
-      const accent = activeClientDashboardHex || '#10b981'
-      const normalizeFileName = (value) => String(value || '')
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .replace(/[^a-z0-9]+/gi, '-')
-        .replace(/^-+|-+$/g, '')
-        .toLowerCase() || 'ranking'
-
-      let cursorY = 54
-
-      const drawTitle = () => {
-        pdf.setFont('helvetica', 'bold')
-        pdf.setFontSize(18)
-        pdf.setTextColor('#0f172a')
-        pdf.text('Custo médio por lead e MQL', margin, cursorY)
-        cursorY += 22
-        pdf.setFont('helvetica', 'normal')
-        pdf.setFontSize(10)
-        pdf.setTextColor('#64748b')
-        pdf.text(`Período: ${weeklyPeriodWindow.label || 'Selecionado'}`, margin, cursorY)
-        cursorY += 26
-      }
-
-      const drawHeader = () => {
-        pdf.setFillColor(accent)
-        pdf.roundedRect(margin, cursorY, pageWidth - margin * 2, 28, 8, 8, 'F')
-        pdf.setFont('helvetica', 'bold')
-        pdf.setFontSize(8)
-        pdf.setTextColor('#ffffff')
-        pdf.text('#', margin + 10, cursorY + 18)
-        pdf.text('CLIENTE', margin + 42, cursorY + 18)
-        pdf.text('INVESTIMENTO', margin + 266, cursorY + 18)
-        pdf.text('LEADS', margin + 370, cursorY + 18)
-        pdf.text('MQL', margin + 424, cursorY + 18)
-        pdf.text('CPL', margin + 468, cursorY + 18)
-        pdf.text('CUSTO MQL', margin + 526, cursorY + 18)
-        cursorY += 32
-      }
-
-      drawTitle()
-      drawHeader()
-
-      weeklyClientCostRanking.forEach((row, index) => {
-        const rowHeight = 34
-        if (cursorY + rowHeight > pageHeight - margin) {
-          pdf.addPage('a4', 'portrait')
-          cursorY = 42
-          drawHeader()
-        }
-
-        pdf.setFillColor(index % 2 === 0 ? '#f8fafc' : '#ffffff')
-        pdf.roundedRect(margin, cursorY, pageWidth - margin * 2, rowHeight, 6, 6, 'F')
-        pdf.setFont('helvetica', 'normal')
-        pdf.setFontSize(8.5)
-        pdf.setTextColor('#0f172a')
-        pdf.text(String(index + 1), margin + 10, cursorY + 21)
-        pdf.setFont('helvetica', 'bold')
-        pdf.text(pdf.splitTextToSize(row.clientName || '-', 204).slice(0, 1), margin + 42, cursorY + 21)
-        pdf.setFont('helvetica', 'normal')
-        pdf.text(formatCurrency(row.investment || 0), margin + 266, cursorY + 21)
-        pdf.text(formatNumber(row.leads || 0), margin + 370, cursorY + 21)
-        pdf.text(formatNumber(row.mql || 0), margin + 424, cursorY + 21)
-        pdf.text(row.leads > 0 ? formatCurrency(row.costPerLead) : '-', margin + 468, cursorY + 21)
-        pdf.text(row.mql > 0 ? formatCurrency(row.costPerMql) : '-', margin + 526, cursorY + 21)
-        cursorY += rowHeight
-      })
-
-      pdf.save(`custo-lead-mql-${normalizeFileName(weeklyPeriodWindow.label)}.pdf`)
-    } catch (error) {
-      console.error('Erro ao exportar ranking de custos em PDF', error)
-      window.alert('Não consegui gerar o PDF agora. Tente novamente em instantes.')
-    }
-  }, [weeklyClientCostRanking, weeklyPeriodWindow.label, activeClientDashboardHex])
 
   const selectedQualifiedStagesKey = useMemo(
     () => JSON.stringify([...selectedQualifiedStages].sort()),
@@ -13006,7 +12983,6 @@ export default function DashboardShell({
 
       <div className="weekly-kpi-grid weekly-kpi-grid-wide weekly-kpi-board">
         <div className="weekly-kpi-card glass-panel"><span><i className="bx bx-pulse"></i>Saúde média do período</span><strong>{weeklySummary.averageHealthLabel}</strong></div>
-        <div className="weekly-kpi-card glass-panel"><span><i className="bx bx-calendar-check"></i>Saúde média do mês</span><strong>{weeklyMonthSummary.averageHealthLabel}</strong></div>
         <div className="weekly-kpi-card glass-panel"><span><i className="bx bx-wallet"></i>Investimento</span><strong>{formatCurrency(weeklySummary.investment)}</strong></div>
         <div className="weekly-kpi-card glass-panel"><span><i className="bx bx-user-plus"></i>Leads</span><strong>{formatNumber(weeklySummary.leads)}</strong></div>
         <div className="weekly-kpi-card glass-panel"><span><i className="bx bx-purchase-tag-alt"></i>CPL médio</span><strong>{weeklySummary.leads > 0 ? formatCurrency(weeklySummary.cpl) : '-'}</strong></div>
@@ -13014,57 +12990,7 @@ export default function DashboardShell({
         <div className="weekly-kpi-card glass-panel"><span><i className="bx bx-credit-card"></i>Custo SQL</span><strong>{weeklySummary.sql > 0 ? formatCurrency(weeklySummary.costPerSql) : '-'}</strong></div>
       </div>
 
-      <div className="weekly-records-card glass-panel weekly-results-card">
-        <div className="section-header section-header-stack">
-          <div>
-            <span className="eyebrow weekly-icon-label"><i className="bx bx-bar-chart-alt-2"></i>Resultados por cliente</span>
-            <h2>Custo médio por lead e MQL</h2>
-            <p className="chart-subtitle">Ordenado pelo maior custo por lead médio no período selecionado.</p>
-          </div>
-          {weeklyClientCostRanking.length > 5 && (
-            <button type="button" className="weekly-ranking-open-button" onClick={() => setIsWeeklyCostRankingModalOpen(true)}>
-              <i className="bx bx-list-ul"></i>
-              Ver outros
-            </button>
-          )}
-        </div>
-
-        {weeklyClientCostRanking.length ? (
-          <div className="weekly-client-results-grid">
-            {weeklyClientCostRankingPreview.map((row) => (
-              <article key={'weekly-client-result-' + row.clientId} className="weekly-client-result-card">
-                <strong>{row.clientName}</strong>
-                <div className="weekly-client-result-metrics">
-                  <div>
-                    <span>Custo por Lead</span>
-                    <b>{row.leads > 0 ? formatCurrency(row.costPerLead) : '-'}</b>
-                  </div>
-                  <div>
-                    <span>Custo por MQL</span>
-                    <b>{row.mql > 0 ? formatCurrency(row.costPerMql) : '-'}</b>
-                  </div>
-                </div>
-              </article>
-            ))}
-          </div>
-        ) : (
-          <div className="ranking-empty">Sem registros no período selecionado para calcular os custos por cliente.</div>
-        )}
-      </div>
-
-      <div className="weekly-chart-grid">
-        <div className="weekly-chart-card glass-panel">
-          <div className="section-header section-header-stack">
-            <div>
-              <span className="eyebrow weekly-icon-label"><i className="bx bx-line-chart"></i>Evolução</span>
-              <h2>Investimento, leads, CPL, SQL e custo SQL</h2>
-              <p className="chart-subtitle">Linha fracionada por semanas fechadas de segunda a domingo.</p>
-            </div>
-          </div>
-          <div className="weekly-chart-body">
-            {weeklyVisibleRecords.length ? <Line data={weeklyLineChartData} options={weeklyChartOptions} /> : <div className="ranking-empty">Salve a primeira semana para liberar o gráfico de linha.</div>}
-          </div>
-        </div>
+      <div className="weekly-chart-grid weekly-chart-grid-single">
         <div className="weekly-chart-card glass-panel">
           <div className="section-header section-header-stack">
             <div>
@@ -13186,15 +13112,25 @@ export default function DashboardShell({
             <table className="weekly-data-table">
               <thead>
                 <tr>
-                  <th><i className="bx bx-calendar"></i>Data</th>
-                  <th><i className="bx bx-buildings"></i>Cliente</th>
-                  <th><i className="bx bx-heart"></i>Saúde</th>
-                  <th><i className="bx bx-wallet"></i>Investimento</th>
-                  <th><i className="bx bx-user-plus"></i>Leads</th>
-                  <th><i className="bx bx-purchase-tag-alt"></i>CPL</th>
-                  <th><i className="bx bx-filter-alt"></i>SQL</th>
-                  <th><i className="bx bx-credit-card"></i>Custo SQL</th>
-                  <th><i className="bx bx-list-check"></i>Plano de ação</th>
+                  {weeklyTableColumns.map((column) => {
+                    const isSorted = weeklyTableSort.key === column.key
+                    const sortLabel = isSorted
+                      ? `Ordenado ${weeklyTableSort.direction === 'asc' ? 'crescente' : 'decrescente'}`
+                      : 'Ordenar coluna'
+                    return (
+                      <th key={'weekly-table-column-' + column.key} aria-sort={isSorted ? (weeklyTableSort.direction === 'asc' ? 'ascending' : 'descending') : 'none'}>
+                        <button
+                          type="button"
+                          className={'weekly-table-sort-button ' + (isSorted ? 'is-active' : '')}
+                          onClick={() => handleWeeklyTableSort(column.key)}
+                          aria-label={`${sortLabel}: ${column.label}`}
+                        >
+                          <span><i className={'bx ' + column.icon}></i>{column.label}</span>
+                          <i className={'bx ' + (isSorted ? (weeklyTableSort.direction === 'asc' ? 'bx-chevron-up' : 'bx-chevron-down') : 'bx-sort-alt-2')} aria-hidden="true"></i>
+                        </button>
+                      </th>
+                    )
+                  })}
                 </tr>
               </thead>
               <tbody>
@@ -13221,6 +13157,60 @@ export default function DashboardShell({
         ) : (
           <div className="ranking-empty">Nenhum registro encontrado para os filtros da tabela.</div>
         )}
+      </div>
+
+      <div className="weekly-chart-card glass-panel weekly-evolution-card">
+        <div className="weekly-evolution-layout">
+          <div className="weekly-evolution-main">
+            <div className="section-header section-header-stack">
+              <div>
+                <span className="eyebrow weekly-icon-label"><i className="bx bx-line-chart"></i>Evolução</span>
+                <h2>Investimento, leads, CPL, SQL e custo SQL</h2>
+                <p className="chart-subtitle">Linha fracionada por semanas fechadas de segunda a domingo para {weeklySelectedChartClientName}.</p>
+              </div>
+            </div>
+            <div className="weekly-chart-body weekly-evolution-chart-body">
+              {weeklyLineChartRecords.length ? <Line data={weeklyLineChartData} options={weeklyChartOptions} /> : <div className="ranking-empty">Salve a primeira semana para liberar o gráfico de linha.</div>}
+            </div>
+          </div>
+          <aside className="weekly-chart-client-list" aria-label="Clientes do gráfico de evolução">
+            <div className="weekly-chart-client-list-head">
+              <span><i className="bx bx-buildings"></i>Clientes</span>
+              <strong>{formatNumber(weeklyChartClientRows.length)}</strong>
+            </div>
+            <button
+              type="button"
+              className={'weekly-chart-client-button ' + (weeklyChartClientFilter === 'all' ? 'is-active' : '')}
+              onClick={() => setWeeklyChartClientFilter('all')}
+            >
+              <span>
+                <strong>Carteira consolidada</strong>
+                <small>{formatNumber(weeklyVisibleRecords.length)} registro(s)</small>
+              </span>
+              <b>{weeklySummary.leads > 0 ? formatCurrency(weeklySummary.cpl) : '-'}</b>
+            </button>
+            <div className="weekly-chart-client-scroll">
+              {weeklyChartClientRows.length ? (
+                weeklyChartClientRows.map((row) => (
+                  <button
+                    key={'weekly-chart-client-' + row.clientId}
+                    type="button"
+                    className={'weekly-chart-client-button ' + (weeklyChartClientFilter === row.clientId ? 'is-active' : '')}
+                    onClick={() => setWeeklyChartClientFilter(row.clientId)}
+                  >
+                    <span>
+                      <strong>{row.clientName}</strong>
+                      <small>{formatNumber(row.recordsCount)} registro(s) · {formatNumber(row.leads)} leads · {formatNumber(row.sql)} SQL</small>
+                    </span>
+                    <b>{row.leads > 0 ? formatCurrency(row.investment / row.leads) : '-'}</b>
+                  </button>
+                ))
+              ) : (
+                <div className="ranking-empty">Nenhum cliente no período selecionado.</div>
+              )}
+            </div>
+          </aside>
+        </div>
       </div>
 
       {isWeeklyEntryModalOpen && typeof document !== 'undefined' && createPortal(
@@ -13342,65 +13332,6 @@ export default function DashboardShell({
         document.body
       )}
 
-      {isWeeklyCostRankingModalOpen && typeof document !== 'undefined' && createPortal(
-        <div className="modal-overlay weekly-modal-overlay" style={weeklyModalOverlayStyle} role="presentation" onClick={() => setIsWeeklyCostRankingModalOpen(false)}>
-          <div className="modal-card glass-panel weekly-history-modal weekly-cost-ranking-modal" role="dialog" aria-modal="true" aria-label="Ranking completo de custo médio por lead e MQL" onClick={(event) => event.stopPropagation()}>
-            <button type="button" className="modal-close" style={weeklyModalCloseStyle} onClick={() => setIsWeeklyCostRankingModalOpen(false)} aria-label="Fechar ranking">
-              <i className="bx bx-x"></i>
-            </button>
-            <div className="weekly-history-heading">
-              <div>
-                <h2><i className="bx bx-bar-chart-alt-2"></i> Custo médio por lead e MQL</h2>
-                <p className="chart-subtitle">Todos os clientes do período selecionado, ordenados pelo maior custo por lead médio.</p>
-              </div>
-              <div className="weekly-history-actions">
-                <span className="weekly-loading-pill">{formatNumber(weeklyClientCostRanking.length)} resultado(s)</span>
-                <button type="button" className="weekly-history-button" onClick={handleExportWeeklyCostRankingPdf}>
-                  <i className="bx bx-file"></i>
-                  Exportar PDF
-                </button>
-              </div>
-            </div>
-            {weeklyClientCostRanking.length ? (
-              <div className="weekly-cost-ranking-table-wrap">
-                <table className="weekly-cost-ranking-table">
-                  <thead>
-                    <tr>
-                      <th>#</th>
-                      <th>Cliente</th>
-                      <th>Investimento</th>
-                      <th>Leads</th>
-                      <th>MQL</th>
-                      <th>Custo por Lead</th>
-                      <th>Custo por MQL</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {weeklyClientCostRanking.map((row, index) => (
-                      <tr key={'weekly-cost-ranking-row-' + row.clientId}>
-                        <td>{index + 1}</td>
-                        <td><strong>{row.clientName}</strong></td>
-                        <td>{formatCurrency(row.investment || 0)}</td>
-                        <td>{formatNumber(row.leads || 0)}</td>
-                        <td>{formatNumber(row.mql || 0)}</td>
-                        <td>{row.leads > 0 ? formatCurrency(row.costPerLead) : '-'}</td>
-                        <td>{row.mql > 0 ? formatCurrency(row.costPerMql) : '-'}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <div className="weekly-history-empty">
-                <i className="bx bx-bar-chart-alt-2"></i>
-                <strong>Nenhum resultado encontrado</strong>
-                <span>Quando houver registros para o filtro atual, o ranking completo aparece aqui.</span>
-              </div>
-            )}
-          </div>
-        </div>,
-        document.body
-      )}
     </section>
   )
 
@@ -30151,6 +30082,25 @@ export default function DashboardShell({
           gap: 28px;
         }
 
+        .weekly-chart-grid-single {
+          grid-template-columns: minmax(0, 1fr);
+        }
+
+        .weekly-evolution-card {
+          padding: 36px;
+        }
+
+        .weekly-evolution-layout {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) minmax(300px, 360px);
+          gap: 28px;
+          align-items: stretch;
+        }
+
+        .weekly-evolution-main {
+          min-width: 0;
+        }
+
         .weekly-chart-body {
           height: 390px;
           margin-top: 22px;
@@ -30162,6 +30112,119 @@ export default function DashboardShell({
 
         .weekly-chart-body-small {
           height: 390px;
+        }
+
+        .weekly-evolution-chart-body {
+          height: 430px;
+        }
+
+        .weekly-chart-client-list {
+          display: flex;
+          min-width: 0;
+          max-height: 552px;
+          flex-direction: column;
+          gap: 10px;
+          border: 1px solid color-mix(in srgb, var(--weekly-accent) 20%, rgba(148, 163, 184, 0.12));
+          border-radius: 20px;
+          background: rgba(0, 0, 0, 0.16);
+          padding: 14px;
+        }
+
+        .weekly-chart-client-list-head {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          padding: 4px 4px 8px;
+        }
+
+        .weekly-chart-client-list-head span {
+          display: inline-flex;
+          align-items: center;
+          gap: 7px;
+          color: var(--text-muted);
+          font-size: 0.7rem;
+          font-weight: 900;
+          letter-spacing: 0.12em;
+          text-transform: uppercase;
+        }
+
+        .weekly-chart-client-list-head strong {
+          color: var(--text-primary);
+          font-size: 0.86rem;
+        }
+
+        .weekly-chart-client-scroll {
+          display: flex;
+          min-height: 0;
+          flex-direction: column;
+          gap: 10px;
+          overflow: auto;
+          padding-right: 2px;
+        }
+
+        .weekly-chart-client-button {
+          width: 100%;
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) auto;
+          gap: 14px;
+          align-items: center;
+          border: 1px solid rgba(148, 163, 184, 0.12);
+          border-radius: 14px;
+          background: rgba(255, 255, 255, 0.035);
+          color: var(--text-secondary);
+          cursor: pointer;
+          font: inherit;
+          padding: 14px;
+          text-align: left;
+          transition: border-color 0.18s ease, background 0.18s ease, color 0.18s ease, transform 0.18s ease;
+        }
+
+        .weekly-chart-client-button:hover,
+        .weekly-chart-client-button:focus-visible {
+          border-color: color-mix(in srgb, var(--weekly-accent) 42%, rgba(148, 163, 184, 0.18));
+          background: color-mix(in srgb, var(--weekly-accent) 10%, rgba(255, 255, 255, 0.045));
+          color: var(--text-primary);
+          outline: none;
+          transform: translateY(-1px);
+        }
+
+        .weekly-chart-client-button.is-active {
+          border-color: color-mix(in srgb, var(--weekly-accent) 72%, rgba(148, 163, 184, 0.18));
+          background: color-mix(in srgb, var(--weekly-accent) 16%, rgba(255, 255, 255, 0.04));
+          color: var(--text-primary);
+          box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--weekly-accent) 22%, transparent);
+        }
+
+        .weekly-chart-client-button span {
+          min-width: 0;
+        }
+
+        .weekly-chart-client-button strong,
+        .weekly-chart-client-button small {
+          display: block;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        .weekly-chart-client-button strong {
+          color: inherit;
+          font-size: 0.92rem;
+          font-weight: 900;
+        }
+
+        .weekly-chart-client-button small {
+          margin-top: 5px;
+          color: var(--text-muted);
+          font-size: 0.74rem;
+          font-weight: 800;
+        }
+
+        .weekly-chart-client-button b {
+          color: color-mix(in srgb, var(--weekly-accent) 74%, var(--text-primary));
+          font-size: 0.9rem;
+          white-space: nowrap;
         }
 
         .weekly-loading-pill {
@@ -30369,6 +30432,57 @@ export default function DashboardShell({
           letter-spacing: 0.12em;
           text-transform: uppercase;
           background: rgba(255, 255, 255, 0.035);
+        }
+
+        .weekly-table-sort-button {
+          width: 100%;
+          min-height: 24px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          border: 0;
+          background: transparent;
+          color: inherit;
+          cursor: pointer;
+          font: inherit;
+          letter-spacing: inherit;
+          padding: 0;
+          text-align: left;
+          text-transform: inherit;
+        }
+
+        .weekly-table-sort-button span {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          min-width: 0;
+          white-space: nowrap;
+        }
+
+        .weekly-table-sort-button > i:last-child {
+          color: color-mix(in srgb, var(--weekly-accent) 72%, var(--text-muted));
+          font-size: 0.9rem;
+          opacity: 0;
+          transition: opacity 0.18s ease, transform 0.18s ease;
+        }
+
+        .weekly-table-sort-button:hover,
+        .weekly-table-sort-button:focus-visible,
+        .weekly-table-sort-button.is-active {
+          color: var(--text-primary);
+        }
+
+        .weekly-table-sort-button:hover > i:last-child,
+        .weekly-table-sort-button:focus-visible > i:last-child,
+        .weekly-table-sort-button.is-active > i:last-child {
+          opacity: 1;
+        }
+
+        .weekly-table-sort-button:focus-visible {
+          outline: 2px solid color-mix(in srgb, var(--weekly-accent) 72%, transparent);
+          outline-offset: 5px;
+          border-radius: 4px;
         }
 
         .weekly-data-table tbody tr:last-child td {
@@ -31125,8 +31239,19 @@ export default function DashboardShell({
           .weekly-command-grid,
           .weekly-hero,
           .weekly-focus-strip,
+          .weekly-evolution-layout,
           .weekly-chart-grid {
             grid-template-columns: 1fr;
+          }
+
+          .weekly-chart-client-list {
+            max-height: none;
+          }
+
+          .weekly-chart-client-scroll {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            overflow: visible;
           }
 
           .weekly-command-rail {
@@ -31161,6 +31286,14 @@ export default function DashboardShell({
           .weekly-chart-card,
           .weekly-records-card {
             padding: 22px;
+          }
+
+          .weekly-evolution-card {
+            padding: 22px;
+          }
+
+          .weekly-chart-client-scroll {
+            grid-template-columns: 1fr;
           }
 
           .weekly-focus-strip {

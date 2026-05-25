@@ -2382,6 +2382,57 @@ textarea:focus {
     background: rgba(255, 255, 255, 0.045) !important;
 }
 
+.weekly-dashboard-panel .weekly-table-sort-button {
+    width: 100% !important;
+    min-height: 24px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 12px !important;
+    border: 0 !important;
+    background: transparent !important;
+    color: inherit !important;
+    cursor: pointer !important;
+    font: inherit !important;
+    letter-spacing: inherit !important;
+    padding: 0 !important;
+    text-align: left !important;
+    text-transform: inherit !important;
+}
+
+.weekly-dashboard-panel .weekly-table-sort-button span {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 4px !important;
+    min-width: 0 !important;
+    white-space: nowrap !important;
+}
+
+.weekly-dashboard-panel .weekly-table-sort-button > i:last-child {
+    color: color-mix(in srgb, var(--weekly-accent) 72%, rgba(241, 245, 249, 0.58)) !important;
+    font-size: 0.9rem !important;
+    opacity: 0 !important;
+    transition: opacity 0.18s ease, transform 0.18s ease !important;
+}
+
+.weekly-dashboard-panel .weekly-table-sort-button:hover,
+.weekly-dashboard-panel .weekly-table-sort-button:focus-visible,
+.weekly-dashboard-panel .weekly-table-sort-button.is-active {
+    color: #f8fafc !important;
+}
+
+.weekly-dashboard-panel .weekly-table-sort-button:hover > i:last-child,
+.weekly-dashboard-panel .weekly-table-sort-button:focus-visible > i:last-child,
+.weekly-dashboard-panel .weekly-table-sort-button.is-active > i:last-child {
+    opacity: 1 !important;
+}
+
+.weekly-dashboard-panel .weekly-table-sort-button:focus-visible {
+    outline: 2px solid color-mix(in srgb, var(--weekly-accent) 72%, transparent) !important;
+    outline-offset: 5px !important;
+    border-radius: 4px !important;
+}
+
 .weekly-dashboard-panel .weekly-data-table td {
     color: rgba(241, 245, 249, 0.7) !important;
     font-size: 14px !important;
@@ -2463,6 +2514,16 @@ textarea:focus {
 
 .dashboard-light-mode .weekly-dashboard-panel .weekly-data-table th {
     background: #f8fafc !important;
+}
+
+.dashboard-light-mode .weekly-dashboard-panel .weekly-table-sort-button:hover,
+.dashboard-light-mode .weekly-dashboard-panel .weekly-table-sort-button:focus-visible,
+.dashboard-light-mode .weekly-dashboard-panel .weekly-table-sort-button.is-active {
+    color: #0f172a !important;
+}
+
+.dashboard-light-mode .weekly-dashboard-panel .weekly-table-sort-button > i:last-child {
+    color: color-mix(in srgb, var(--weekly-accent) 78%, #64748b) !important;
 }
 
 @media (max-width: 1320px) {
