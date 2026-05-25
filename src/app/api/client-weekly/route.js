@@ -40,7 +40,7 @@ function normalizeInteger(value) {
 
 function normalizeHealthStatus(value) {
   const status = String(value || '').trim()
-  return ['critical', 'attention', 'healthy', 'with_result'].includes(status) ? status : 'attention'
+  return ['integration', 'critical', 'attention', 'healthy', 'with_result'].includes(status) ? status : 'attention'
 }
 
 function normalizeActionItems(value) {
@@ -408,4 +408,3 @@ export async function DELETE(request) {
     return NextResponse.json({ error: error.message || 'Não foi possível excluir os registros semanais.' }, { status: 500 })
   }
 }
-

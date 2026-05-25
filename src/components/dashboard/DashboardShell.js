@@ -198,6 +198,14 @@ function normalizeMetaAdAccountIdForCompare(value) {
 
 const WEEKLY_HEALTH_OPTIONS = [
   {
+    key: 'integration',
+    label: 'Integração',
+    score: 0,
+    color: '#8b5cf6',
+    softColor: '#ede9fe',
+    criteria: 'Cliente em fase de integração, configuração ou validação inicial das conexões.',
+  },
+  {
     key: 'critical',
     label: 'Crítico',
     score: 1,
@@ -232,6 +240,15 @@ const WEEKLY_HEALTH_OPTIONS = [
 ]
 
 const WEEKLY_HEALTH_BY_KEY = Object.fromEntries(WEEKLY_HEALTH_OPTIONS.map((item) => [item.key, item]))
+const CLIENT_HEALTH_SORT_RANK = {
+  integration: 0,
+  critical: 1,
+  attention: 2,
+  healthy: 3,
+  with_result: 4,
+  churn: 5,
+  empty: 6,
+}
 
 const WEEKLY_PERIOD_OPTIONS = [
   { value: 'current_week', label: 'Semana atual' },
@@ -14275,33 +14292,33 @@ export default function DashboardShell({
         </div>
 
         <nav className="nav-menu">
-          <button type="button" data-tooltip="Search" aria-label="Search" className={`nav-item nav-button ${activeTab === 'assistant' ? 'active' : ''}`} onClick={() => setActiveTab('assistant')}>
+          <button type="button" data-tooltip="Busca" aria-label="Busca" className={`nav-item nav-button ${activeTab === 'assistant' ? 'active' : ''}`} onClick={() => setActiveTab('assistant')}>
             <i className="bx bx-search-alt"></i>
-            {!isSidebarCollapsed && 'Search'}
+            {!isSidebarCollapsed && 'Busca'}
           </button>
           {canAccessClientsTab && (
-            <button type="button" data-tooltip="Clients" aria-label="Clients" className={`nav-item nav-button ${activeTab === 'clientes' ? 'active' : ''}`} onClick={() => setActiveTab('clientes')}>
+            <button type="button" data-tooltip="Clientes" aria-label="Clientes" className={`nav-item nav-button ${activeTab === 'clientes' ? 'active' : ''}`} onClick={() => setActiveTab('clientes')}>
               <i className="bx bxs-buildings"></i>
-              {!isSidebarCollapsed && 'Clients'}
+              {!isSidebarCollapsed && 'Clientes'}
             </button>
           )}
-          <button type="button" data-tooltip="Presentation" aria-label="Presentation" className={`nav-item nav-button ${activeTab === 'apresentacao' ? 'active' : ''}`} onClick={() => setActiveTab('apresentacao')}>
+          <button type="button" data-tooltip="Apresentação" aria-label="Apresentação" className={`nav-item nav-button ${activeTab === 'apresentacao' ? 'active' : ''}`} onClick={() => setActiveTab('apresentacao')}>
             <i className="bx bxs-dashboard"></i>
-            {!isSidebarCollapsed && 'Presentation'}
+            {!isSidebarCollapsed && 'Apresentação'}
           </button>
           <button type="button" data-tooltip="Controle da Operação" aria-label="Controle da Operação" className={`nav-item nav-button ${activeTab === 'semanal' ? 'active' : ''}`} onClick={() => setActiveTab('semanal')}>
             <i className="bx bx-pulse"></i>
             {!isSidebarCollapsed && 'Controle da Operação'}
           </button>
           {canAccessTeamTab && (
-            <button type="button" data-tooltip="Team" aria-label="Team" className={`nav-item nav-button ${activeTab === 'usuarios' ? 'active' : ''}`} onClick={() => setActiveTab('usuarios')}>
+            <button type="button" data-tooltip="Time" aria-label="Time" className={`nav-item nav-button ${activeTab === 'usuarios' ? 'active' : ''}`} onClick={() => setActiveTab('usuarios')}>
               <i className="bx bxs-user-detail"></i>
-              {!isSidebarCollapsed && 'Team'}
+              {!isSidebarCollapsed && 'Time'}
             </button>
           )}
-          <button type="button" data-tooltip="Settings" aria-label="Settings" className={"nav-item nav-button " + (activeTab === "settings" ? "active" : "")} onClick={() => setActiveTab('settings')}>
+          <button type="button" data-tooltip="Configurações" aria-label="Configurações" className={"nav-item nav-button " + (activeTab === "settings" ? "active" : "")} onClick={() => setActiveTab('settings')}>
             <i className="bx bx-cog"></i>
-            {!isSidebarCollapsed && 'Settings'}
+            {!isSidebarCollapsed && 'Configurações'}
           </button>
         </nav>
 
@@ -15451,13 +15468,33 @@ export default function DashboardShell({
                       .filter(Boolean)
                       .some((value) => String(value).toLowerCase().includes(query))
                   })
+                  .sort((leftClient, rightClient) => {
+                    const getClientHealthRank = (client) => {
+                      if (String(client?.status || '').trim().toLowerCase() === 'churn') return CLIENT_HEALTH_SORT_RANK.churn
+                      const latestRecord = latestWeeklyHealthByClientId.get(client.id)
+                      return CLIENT_HEALTH_SORT_RANK[latestRecord?.healthStatus] ?? CLIENT_HEALTH_SORT_RANK.empty
+                    }
+                    const rankCompare = getClientHealthRank(leftClient) - getClientHealthRank(rightClient)
+                    if (rankCompare) return rankCompare
+                    return String(leftClient.name || '').localeCompare(String(rightClient.name || ''), 'pt-BR')
+                  })
                   .map((client) => {
                     const metaAccount = adAccounts.find((account) => account.id === client.metaAdAccountId)
                     const hasMeta = Boolean(client.metaAdAccountId)
                     const hasAgendor = Boolean(client.agendorAccountId || client.integrations?.agendorToken)
                     const hasSheets = Boolean(client.googleSheetsUrl)
+                    const isChurnClient = String(client.status || '').trim().toLowerCase() === 'churn'
                     const latestHealthRecord = latestWeeklyHealthByClientId.get(client.id)
-                    const latestHealth = latestHealthRecord ? (WEEKLY_HEALTH_BY_KEY[latestHealthRecord.healthStatus] || WEEKLY_HEALTH_BY_KEY.attention) : null
+                    const latestHealth = isChurnClient
+                      ? { key: 'churn', label: 'Churn', color: '#64748b' }
+                      : latestHealthRecord
+                        ? (WEEKLY_HEALTH_BY_KEY[latestHealthRecord.healthStatus] || WEEKLY_HEALTH_BY_KEY.attention)
+                        : null
+                    const healthDetail = isChurnClient
+                      ? (client.churnDate ? `Churn em ${formatClientDate(client.churnDate)}` : 'Cliente churn')
+                      : latestHealth
+                        ? formatWeekRangeLabel(latestHealthRecord.weekStart, latestHealthRecord.weekEnd)
+                        : 'Aguardando semanal'
 
                     return (
                       <div key={client.id} className="simple-client-row" role="row">
@@ -15479,12 +15516,12 @@ export default function DashboardShell({
                           </span>
                         </button>
                         <span
-                          className={'simple-client-health ' + (latestHealth ? 'active ' + latestHealthRecord.healthStatus : 'empty')}
+                          className={'simple-client-health ' + (latestHealth ? 'active ' + (latestHealth.key || latestHealthRecord?.healthStatus || '') : 'empty')}
                           style={latestHealth ? { '--client-health-color': latestHealth.color } : undefined}
-                          title={latestHealth ? `Último semanal: ${formatWeekRangeLabel(latestHealthRecord.weekStart, latestHealthRecord.weekEnd)}` : 'Sem registro semanal'}
+                          title={isChurnClient ? 'Cliente marcado como Churn' : latestHealth ? `Último semanal: ${healthDetail}` : 'Sem registro semanal'}
                         >
                           <b>{latestHealth?.label || 'Sem registro'}</b>
-                          <small>{latestHealth ? formatWeekRangeLabel(latestHealthRecord.weekStart, latestHealthRecord.weekEnd) : 'Aguardando semanal'}</small>
+                          <small>{healthDetail}</small>
                         </span>
                         <span className={hasMeta ? 'simple-client-icon active' : 'simple-client-icon'} title={hasMeta ? 'Meta conectada' : 'Meta não conectada'}>
                           <i className="bx bxl-meta"></i>
