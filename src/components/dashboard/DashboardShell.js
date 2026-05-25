@@ -28728,7 +28728,6 @@ export default function DashboardShell({
 
         .weekly-command-heading {
           display: flex;
-          grid-row: 1 / span 2;
           min-width: 0;
           flex-direction: column;
           justify-content: flex-start;
@@ -28753,9 +28752,12 @@ export default function DashboardShell({
 
         .weekly-command-filters {
           display: grid;
+          grid-column: 2;
+          grid-row: 1;
           grid-template-columns: repeat(2, minmax(180px, 1fr));
           gap: 14px;
           align-self: start;
+          z-index: 2;
         }
 
         .weekly-command-filters label {
@@ -28804,9 +28806,13 @@ export default function DashboardShell({
         .weekly-command-grid {
           display: grid;
           grid-column: 2;
-          grid-row: 2;
+          grid-row: 1;
           grid-template-columns: minmax(0, 1fr);
           align-self: start;
+          justify-self: end;
+          width: min(550px, 100%);
+          margin-top: 128px;
+          z-index: 1;
         }
 
         .weekly-command-primary,
@@ -30333,13 +30339,12 @@ export default function DashboardShell({
             grid-template-columns: 1fr;
           }
 
-          .weekly-command-heading {
-            grid-row: auto;
-          }
-
+          .weekly-command-filters,
           .weekly-command-grid {
             grid-column: auto;
             grid-row: auto;
+            width: 100%;
+            margin-top: 0;
           }
 
           .weekly-goal-card {
