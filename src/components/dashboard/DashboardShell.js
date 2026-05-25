@@ -3226,7 +3226,6 @@ export default function DashboardShell({
   const [weeklyCustomUntil, setWeeklyCustomUntil] = useState(() => getWeekEndDateInputValue(getMondayDateInputValue()))
   const [weeklyMonthFilter, setWeeklyMonthFilter] = useState(() => getCurrentMonthInputValue())
   const [weeklyFilledWeekStart, setWeeklyFilledWeekStart] = useState('')
-  const [weeklyTableClientFilter, setWeeklyTableClientFilter] = useState('all')
   const [weeklyTableHealthFilter, setWeeklyTableHealthFilter] = useState('all')
   const [isWeeklyDeleteMode, setIsWeeklyDeleteMode] = useState(false)
   const [selectedWeeklyRecordIds, setSelectedWeeklyRecordIds] = useState([])
@@ -4951,11 +4950,10 @@ export default function DashboardShell({
 
   const weeklyTableRecords = useMemo(() => {
     return weeklyLatestRecords.filter((record) => {
-      const matchesClient = weeklyClientFilter !== 'all' || weeklyTableClientFilter === 'all' || record.clientId === weeklyTableClientFilter
       const matchesHealth = weeklyTableHealthFilter === 'all' || record.healthStatus === weeklyTableHealthFilter
-      return matchesClient && matchesHealth
+      return matchesHealth
     })
-  }, [weeklyLatestRecords, weeklyClientFilter, weeklyTableClientFilter, weeklyTableHealthFilter])
+  }, [weeklyLatestRecords, weeklyTableHealthFilter])
 
   const weeklyHistoryCards = useMemo(() => {
     const byWeek = new Map()
@@ -13085,15 +13083,6 @@ export default function DashboardShell({
         <div className="weekly-table-toolbar" style={{ marginBottom: 56 }}>
           <div className="weekly-table-actions">
             <div className="weekly-table-filters">
-              <label>
-                <span><i className="bx bx-buildings"></i>Cliente</span>
-                <select value={weeklyTableClientFilter} onChange={(event) => setWeeklyTableClientFilter(event.target.value)} disabled={weeklyClientFilter !== 'all'}>
-                  <option value="all">Todos os Clientes</option>
-                  {dashboardEligibleClients.map((client) => (
-                    <option key={'weekly-table-client-' + client.id} value={client.id}>{client.name}</option>
-                  ))}
-                </select>
-              </label>
               <label>
                 <span><i className="bx bx-heart"></i>Saúde</span>
                 <select value={weeklyTableHealthFilter} onChange={(event) => setWeeklyTableHealthFilter(event.target.value)}>
