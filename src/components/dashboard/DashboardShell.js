@@ -18635,7 +18635,7 @@ export default function DashboardShell({
 
         .weekly-dashboard-panel .weekly-risk-breakdown {
           display: grid !important;
-          grid-template-columns: repeat(auto-fit, minmax(118px, 1fr)) !important;
+          grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
           gap: 10px !important;
           min-width: 0 !important;
         }
@@ -28984,7 +28984,7 @@ export default function DashboardShell({
 
         .weekly-risk-breakdown {
           display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));
+          grid-template-columns: repeat(3, minmax(0, 1fr));
           gap: 10px;
           min-width: 0;
         }
