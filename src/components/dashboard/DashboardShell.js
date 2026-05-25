@@ -12759,20 +12759,6 @@ export default function DashboardShell({
               Cadastrar dados
             </button>
           </div>
-          <div className="weekly-command-rail">
-            <div>
-              <span>Clientes monitorados</span>
-              <strong>{formatNumber(weeklyPortfolioStats.monitoredClients)}</strong>
-            </div>
-            <div>
-              <span>Registros no filtro</span>
-              <strong>{formatNumber(weeklyPortfolioStats.recordsCount)}</strong>
-            </div>
-            <div>
-              <span>Planos em pauta</span>
-              <strong>{formatNumber(weeklyPortfolioStats.actionItemsCount)}</strong>
-            </div>
-          </div>
         </div>
       </div>
 
@@ -18825,8 +18811,13 @@ export default function DashboardShell({
             grid-template-columns: 1fr !important;
           }
 
+          .weekly-dashboard-panel .weekly-command-heading {
+            grid-row: auto !important;
+          }
+
           .weekly-dashboard-panel .weekly-command-grid {
             grid-column: auto !important;
+            grid-row: auto !important;
           }
 
           .weekly-dashboard-panel .weekly-goal-card {
@@ -28721,8 +28712,9 @@ export default function DashboardShell({
         .weekly-command-center {
           display: grid;
           grid-template-columns: minmax(320px, 0.72fr) minmax(520px, 1fr);
-          gap: 24px;
-          align-items: stretch;
+          column-gap: 24px;
+          row-gap: 14px;
+          align-items: start;
           border: 1px solid rgba(255, 255, 255, 0.08);
           border-radius: 28px;
           background:
@@ -28730,16 +28722,17 @@ export default function DashboardShell({
             radial-gradient(circle at 10% 0%, color-mix(in srgb, var(--weekly-accent) 14%, transparent), transparent 34%),
             rgba(13, 17, 16, 0.9);
           box-shadow: 0 28px 70px rgba(0, 0, 0, 0.28);
-          padding: 34px;
+          padding: 30px 34px;
           overflow: hidden;
         }
 
         .weekly-command-heading {
           display: flex;
+          grid-row: 1 / span 2;
           min-width: 0;
           flex-direction: column;
-          justify-content: space-between;
-          gap: 22px;
+          justify-content: flex-start;
+          gap: 20px;
           padding-right: 12px;
         }
 
@@ -28811,9 +28804,9 @@ export default function DashboardShell({
         .weekly-command-grid {
           display: grid;
           grid-column: 2;
-          grid-template-columns: minmax(240px, 0.88fr) minmax(280px, 1fr);
-          gap: 14px;
-          align-self: end;
+          grid-row: 2;
+          grid-template-columns: minmax(0, 1fr);
+          align-self: start;
         }
 
         .weekly-command-primary,
@@ -28825,10 +28818,11 @@ export default function DashboardShell({
 
         .weekly-command-primary {
           display: flex;
-          flex-direction: column;
+          flex-direction: row;
+          align-items: center;
           justify-content: space-between;
-          gap: 24px;
-          padding: 22px;
+          gap: 18px;
+          padding: 20px;
         }
 
         .weekly-command-primary div {
@@ -28850,7 +28844,7 @@ export default function DashboardShell({
         }
 
         .weekly-command-primary .weekly-entry-button {
-          width: 100%;
+          width: min(260px, 100%);
           border-radius: 8px;
         }
 
@@ -30339,8 +30333,13 @@ export default function DashboardShell({
             grid-template-columns: 1fr;
           }
 
+          .weekly-command-heading {
+            grid-row: auto;
+          }
+
           .weekly-command-grid {
             grid-column: auto;
+            grid-row: auto;
           }
 
           .weekly-goal-card {
@@ -30411,6 +30410,15 @@ export default function DashboardShell({
           .weekly-focus-strip {
             gap: 22px;
             padding: 28px 24px;
+          }
+
+          .weekly-command-primary {
+            flex-direction: column;
+            align-items: stretch;
+          }
+
+          .weekly-command-primary .weekly-entry-button {
+            width: 100%;
           }
 
           .weekly-goal-card {
