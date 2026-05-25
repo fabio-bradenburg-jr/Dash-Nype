@@ -18609,7 +18609,7 @@ export default function DashboardShell({
         }
 
         .weekly-dashboard-panel .weekly-goal-card {
-          grid-template-columns: minmax(0, 1fr) minmax(260px, 0.58fr) minmax(240px, 320px) !important;
+          grid-template-columns: minmax(0, 1fr) minmax(560px, 1.1fr) minmax(240px, 300px) !important;
           padding: 42px 46px !important;
           gap: 32px !important;
           align-items: center !important;
@@ -18635,8 +18635,9 @@ export default function DashboardShell({
 
         .weekly-dashboard-panel .weekly-risk-breakdown {
           display: grid !important;
-          grid-template-columns: repeat(6, minmax(116px, 1fr)) !important;
+          grid-template-columns: repeat(auto-fit, minmax(118px, 1fr)) !important;
           gap: 10px !important;
+          min-width: 0 !important;
         }
 
         .weekly-dashboard-panel .weekly-risk-breakdown div {
@@ -18829,11 +18830,15 @@ export default function DashboardShell({
           }
 
           .weekly-dashboard-panel .weekly-goal-card {
-            grid-template-columns: 1fr minmax(240px, 320px) !important;
+            grid-template-columns: 1fr !important;
           }
 
           .weekly-dashboard-panel .weekly-risk-breakdown {
-            grid-column: 1 / -1 !important;
+            grid-column: auto !important;
+          }
+
+          .weekly-dashboard-panel .weekly-goal-badge {
+            width: 100% !important;
           }
 
           .weekly-dashboard-panel .weekly-record-row,
@@ -28912,7 +28917,7 @@ export default function DashboardShell({
 
         .weekly-goal-card {
           display: grid !important;
-          grid-template-columns: minmax(0, 1fr) minmax(260px, 0.58fr) minmax(240px, 320px) !important;
+          grid-template-columns: minmax(0, 1fr) minmax(560px, 1.1fr) minmax(240px, 300px) !important;
           min-height: 190px !important;
           padding: 42px 46px !important;
           gap: 32px !important;
@@ -28979,8 +28984,9 @@ export default function DashboardShell({
 
         .weekly-risk-breakdown {
           display: grid;
-          grid-template-columns: repeat(6, minmax(116px, 1fr));
+          grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));
           gap: 10px;
+          min-width: 0;
         }
 
         .weekly-risk-breakdown div {
@@ -30338,11 +30344,15 @@ export default function DashboardShell({
           }
 
           .weekly-goal-card {
-            grid-template-columns: 1fr minmax(240px, 320px) !important;
+            grid-template-columns: 1fr !important;
           }
 
           .weekly-risk-breakdown {
-            grid-column: 1 / -1;
+            grid-column: auto;
+          }
+
+          .weekly-goal-badge {
+            width: 100%;
           }
 
           .weekly-record-row,
