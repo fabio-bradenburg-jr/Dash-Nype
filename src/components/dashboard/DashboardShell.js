@@ -4923,23 +4923,32 @@ export default function DashboardShell({
   const weeklyPortfolioStats = useMemo(() => {
     const uniqueClientIds = new Set()
     let actionItemsCount = 0
-    let criticalCount = 0
-    let attentionCount = 0
+    const healthCounts = {
+      integration: 0,
+      critical: 0,
+      attention: 0,
+      healthy: 0,
+      with_result: 0,
+      churn: 0,
+    }
 
     weeklyVisibleRecords.forEach((record) => {
       if (record.clientId) uniqueClientIds.add(record.clientId)
       actionItemsCount += Array.isArray(record.actionItems) ? record.actionItems.filter(Boolean).length : 0
-      if (record.healthStatus === 'critical') criticalCount += 1
-      if (record.healthStatus === 'attention') attentionCount += 1
+      if (healthCounts[record.healthStatus] != null) healthCounts[record.healthStatus] += 1
     })
 
     return {
       recordsCount: weeklyVisibleRecords.length,
       monitoredClients: uniqueClientIds.size,
       actionItemsCount,
-      criticalCount,
-      attentionCount,
-      healthyCount: weeklyVisibleRecords.filter((record) => record.healthStatus === 'healthy' || record.healthStatus === 'great').length,
+      healthCounts,
+      criticalCount: healthCounts.critical,
+      attentionCount: healthCounts.attention,
+      healthyCount: healthCounts.healthy,
+      withResultCount: healthCounts.with_result,
+      integrationCount: healthCounts.integration,
+      churnCount: healthCounts.churn,
       latestWeekLabel: weeklyHistoryCards[0]
         ? formatWeekRangeLabel(weeklyHistoryCards[0].weekStart, weeklyHistoryCards[0].weekEnd)
         : 'Sem semanas registradas',
@@ -12795,9 +12804,12 @@ export default function DashboardShell({
           <p>O objetivo do time é manter Crítico + Atenção em até {formatNumber(weeklyHealthRiskTarget)}% da carteira. Ajuste essa meta nas configurações.</p>
         </div>
         <div className="weekly-risk-breakdown">
+          <div><span>Integração</span><strong>{formatNumber(weeklyPortfolioStats.integrationCount)}</strong></div>
           <div><span>Crítico</span><strong>{formatNumber(weeklyPortfolioStats.criticalCount)}</strong></div>
           <div><span>Atenção</span><strong>{formatNumber(weeklyPortfolioStats.attentionCount)}</strong></div>
-          <div><span>Estável</span><strong>{formatNumber(weeklyPortfolioStats.healthyCount)}</strong></div>
+          <div><span>Saudável</span><strong>{formatNumber(weeklyPortfolioStats.healthyCount)}</strong></div>
+          <div><span>Com resultado</span><strong>{formatNumber(weeklyPortfolioStats.withResultCount)}</strong></div>
+          <div><span>Churn</span><strong>{formatNumber(weeklyPortfolioStats.churnCount)}</strong></div>
         </div>
         <div className={'weekly-risk-badge weekly-goal-badge ' + (weeklySummary.withinRiskTarget ? 'healthy' : 'critical')}>
           <span><i className="bx bx-error-circle"></i>Crítico + Atenção</span>
@@ -18623,12 +18635,12 @@ export default function DashboardShell({
 
         .weekly-dashboard-panel .weekly-risk-breakdown {
           display: grid !important;
-          grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+          grid-template-columns: repeat(6, minmax(116px, 1fr)) !important;
           gap: 10px !important;
         }
 
         .weekly-dashboard-panel .weekly-risk-breakdown div {
-          min-height: 118px !important;
+          min-height: 108px !important;
           border: 1px solid rgba(148, 163, 184, 0.13) !important;
           border-radius: 16px !important;
           background: rgba(255, 255, 255, 0.04) !important;
@@ -28967,12 +28979,12 @@ export default function DashboardShell({
 
         .weekly-risk-breakdown {
           display: grid;
-          grid-template-columns: repeat(3, minmax(0, 1fr));
+          grid-template-columns: repeat(6, minmax(116px, 1fr));
           gap: 10px;
         }
 
         .weekly-risk-breakdown div {
-          min-height: 118px;
+          min-height: 108px;
           border: 1px solid rgba(148, 163, 184, 0.13);
           border-radius: 16px;
           background: rgba(255, 255, 255, 0.04);
