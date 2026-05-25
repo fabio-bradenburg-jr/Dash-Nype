@@ -19747,6 +19747,226 @@ export default function DashboardShell({
           color: #1a1c1c !important;
         }
 
+        .weekly-modal-overlay .weekly-history-modal {
+          position: relative !important;
+          width: min(1120px, calc(100vw - 40px)) !important;
+          max-height: min(820px, calc(100vh - 48px)) !important;
+          display: grid !important;
+          gap: 26px !important;
+          overflow: auto !important;
+          padding: 42px !important;
+          border-radius: 24px !important;
+          border: 1px solid color-mix(in srgb, var(--button-primary, #26c281) 24%, rgba(190, 201, 191, 0.16)) !important;
+          background:
+            linear-gradient(145deg, color-mix(in srgb, var(--button-primary, #26c281) 8%, transparent), transparent 34%),
+            linear-gradient(180deg, rgba(18, 24, 23, 0.98), rgba(9, 13, 12, 0.98)) !important;
+          color: #f1f1f1 !important;
+          box-shadow: 0 34px 100px rgba(0, 0, 0, 0.48) !important;
+        }
+
+        .weekly-modal-overlay .weekly-history-modal .modal-close {
+          position: absolute !important;
+          top: 20px !important;
+          right: 20px !important;
+          z-index: 3 !important;
+          width: 44px !important;
+          height: 44px !important;
+          border-radius: 999px !important;
+        }
+
+        .weekly-modal-overlay .weekly-history-heading {
+          display: flex !important;
+          align-items: flex-start !important;
+          justify-content: space-between !important;
+          gap: 24px !important;
+          padding-right: 58px !important;
+          margin: 0 !important;
+        }
+
+        .weekly-modal-overlay .weekly-history-heading h2 {
+          display: flex !important;
+          align-items: center !important;
+          gap: 12px !important;
+          margin: 0 0 8px !important;
+          color: #f8fafc !important;
+          font-size: clamp(24px, 2vw, 32px) !important;
+          line-height: 1.14 !important;
+          letter-spacing: 0 !important;
+        }
+
+        .weekly-modal-overlay .weekly-history-heading h2 i {
+          color: var(--button-primary, #26c281) !important;
+          font-size: 20px !important;
+        }
+
+        .weekly-modal-overlay .weekly-history-heading .chart-subtitle {
+          max-width: 720px !important;
+          margin: 0 !important;
+          color: rgba(241, 245, 249, 0.66) !important;
+          font-size: 14px !important;
+          line-height: 1.55 !important;
+        }
+
+        .weekly-modal-overlay .weekly-history-actions {
+          display: flex !important;
+          align-items: center !important;
+          justify-content: flex-end !important;
+          gap: 10px !important;
+          flex-wrap: wrap !important;
+        }
+
+        .weekly-modal-overlay .weekly-history-button {
+          min-height: 42px !important;
+          display: inline-flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          gap: 8px !important;
+          border: 1px solid rgba(190, 201, 191, 0.18) !important;
+          border-radius: 14px !important;
+          background: rgba(255, 255, 255, 0.06) !important;
+          color: #f8fafc !important;
+          padding: 0 14px !important;
+          font: inherit !important;
+          font-size: 13px !important;
+          font-weight: 850 !important;
+          cursor: pointer !important;
+        }
+
+        .weekly-modal-overlay .weekly-history-button-danger {
+          border-color: rgba(248, 113, 113, 0.38) !important;
+          background: rgba(239, 68, 68, 0.12) !important;
+          color: #fecaca !important;
+        }
+
+        .weekly-modal-overlay .weekly-history-grid {
+          display: grid !important;
+          grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)) !important;
+          gap: 18px !important;
+        }
+
+        .weekly-modal-overlay .weekly-history-card {
+          position: relative !important;
+          min-height: 190px !important;
+          display: flex !important;
+          flex-direction: column !important;
+          justify-content: space-between !important;
+          gap: 20px !important;
+          border: 1px solid color-mix(in srgb, var(--button-primary, #26c281) 24%, rgba(190, 201, 191, 0.16)) !important;
+          border-radius: 18px !important;
+          background:
+            radial-gradient(circle at 12% 0%, color-mix(in srgb, var(--button-primary, #26c281) 12%, transparent), transparent 42%),
+            rgba(255, 255, 255, 0.04) !important;
+          padding: 22px !important;
+        }
+
+        .weekly-modal-overlay .weekly-history-card-title {
+          display: flex !important;
+          flex-direction: column !important;
+          gap: 6px !important;
+          padding-right: 36px !important;
+        }
+
+        .weekly-modal-overlay .weekly-history-card-title strong {
+          color: #f8fafc !important;
+          font-size: 17px !important;
+          line-height: 1.25 !important;
+        }
+
+        .weekly-modal-overlay .weekly-history-card-title span {
+          color: rgba(241, 245, 249, 0.56) !important;
+          font-size: 12px !important;
+          font-weight: 850 !important;
+        }
+
+        .weekly-modal-overlay .weekly-history-card-metrics {
+          display: grid !important;
+          grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+          gap: 14px !important;
+          margin: 0 !important;
+          padding: 0 0 18px !important;
+          border-bottom: 1px solid rgba(190, 201, 191, 0.13) !important;
+        }
+
+        .weekly-modal-overlay .weekly-history-card-metrics span {
+          display: flex !important;
+          align-items: center !important;
+          gap: 6px !important;
+          color: rgba(241, 245, 249, 0.56) !important;
+          font-size: 11px !important;
+          font-weight: 900 !important;
+          letter-spacing: 0.08em !important;
+          text-transform: uppercase !important;
+        }
+
+        .weekly-modal-overlay .weekly-history-card-metrics span i {
+          color: var(--button-primary, #26c281) !important;
+        }
+
+        .weekly-modal-overlay .weekly-history-card-metrics strong {
+          display: block !important;
+          margin-top: 8px !important;
+          color: #f8fafc !important;
+          font-size: 18px !important;
+          line-height: 1.1 !important;
+        }
+
+        .weekly-modal-overlay .weekly-history-card-footer {
+          width: 100% !important;
+          min-height: 36px !important;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: space-between !important;
+          gap: 12px !important;
+          border: 0 !important;
+          background: transparent !important;
+          color: color-mix(in srgb, var(--button-primary, #26c281) 82%, #f8fafc) !important;
+          padding: 0 !important;
+          font: inherit !important;
+          font-size: 12px !important;
+          font-weight: 900 !important;
+          letter-spacing: 0.04em !important;
+          cursor: pointer !important;
+        }
+
+        .weekly-modal-overlay .weekly-history-card-footer i {
+          color: #f8fafc !important;
+          font-size: 20px !important;
+        }
+
+        :root[data-ui-mode='light'] .weekly-modal-overlay .weekly-history-modal,
+        .dashboard-light-mode .weekly-modal-overlay .weekly-history-modal {
+          background:
+            linear-gradient(145deg, color-mix(in srgb, var(--button-primary, #26c281) 7%, #ffffff), rgba(255, 255, 255, 0.98) 36%),
+            #ffffff !important;
+          border-color: color-mix(in srgb, var(--button-primary, #26c281) 18%, rgba(15, 23, 42, 0.08)) !important;
+          color: #0f172a !important;
+          box-shadow: 0 34px 100px rgba(15, 23, 42, 0.2) !important;
+        }
+
+        :root[data-ui-mode='light'] .weekly-modal-overlay .weekly-history-heading h2,
+        :root[data-ui-mode='light'] .weekly-modal-overlay .weekly-history-card-title strong,
+        :root[data-ui-mode='light'] .weekly-modal-overlay .weekly-history-card-metrics strong,
+        .dashboard-light-mode .weekly-modal-overlay .weekly-history-heading h2,
+        .dashboard-light-mode .weekly-modal-overlay .weekly-history-card-title strong,
+        .dashboard-light-mode .weekly-modal-overlay .weekly-history-card-metrics strong {
+          color: #0f172a !important;
+        }
+
+        :root[data-ui-mode='light'] .weekly-modal-overlay .weekly-history-heading .chart-subtitle,
+        :root[data-ui-mode='light'] .weekly-modal-overlay .weekly-history-card-title span,
+        :root[data-ui-mode='light'] .weekly-modal-overlay .weekly-history-card-metrics span,
+        .dashboard-light-mode .weekly-modal-overlay .weekly-history-heading .chart-subtitle,
+        .dashboard-light-mode .weekly-modal-overlay .weekly-history-card-title span,
+        .dashboard-light-mode .weekly-modal-overlay .weekly-history-card-metrics span {
+          color: #475569 !important;
+        }
+
+        :root[data-ui-mode='light'] .weekly-modal-overlay .weekly-history-card,
+        .dashboard-light-mode .weekly-modal-overlay .weekly-history-card {
+          background: #ffffff !important;
+          border-color: rgba(15, 23, 42, 0.1) !important;
+        }
+
         @media (max-width: 1180px) {
           .dashboard-container:not([data-active-tab='apresentacao']) .main-content,
           .dashboard-container:not([data-active-tab='apresentacao']) .main-content-expanded {
