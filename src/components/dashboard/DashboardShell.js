@@ -260,11 +260,9 @@ const CLIENT_HEALTH_SORT_RANK = {
 
 const WEEKLY_PERIOD_OPTIONS = [
   { value: 'current_week', label: 'Semana atual' },
-  { value: 'previous_week', label: 'Semana anterior' },
-  { value: 'month', label: 'Mês inteiro' },
-  { value: 'quarter', label: 'Último trimestre' },
-  { value: 'year', label: '1 ano' },
-  { value: 'custom', label: 'Personalizado' },
+  { value: 'previous_week', label: 'Semana passada' },
+  { value: 'custom', label: 'Personalizada' },
+  { value: 'month', label: 'Mês' },
 ]
 
 
@@ -291,7 +289,11 @@ function formatWeekRangeLabel(weekStart, weekEnd) {
 }
 
 
-function getWeeklyPeriodWindow(preset, customSince, customUntil) {
+function getCurrentMonthInputValue() {
+  return getTodayDateInputValue().slice(0, 7)
+}
+
+function getWeeklyPeriodWindow(preset, customSince, customUntil, selectedMonth) {
   const today = new Date()
   const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate())
   const currentWeekStartValue = getMondayDateInputValue(todayStart)
@@ -312,19 +314,16 @@ function getWeeklyPeriodWindow(preset, customSince, customUntil) {
   }
 
   if (preset === 'month') {
-    const start = new Date(todayStart.getFullYear(), todayStart.getMonth(), 1)
-    const end = todayStart
-    return { start, end, label: `${formatShortDate(formatLocalDateInput(start))} até ${formatShortDate(formatLocalDateInput(end))}` }
-  }
-
-  if (preset === 'quarter') {
-    const start = shiftLocalDays(todayStart, -89)
-    return { start, end: todayStart, label: `${formatShortDate(formatLocalDateInput(start))} até ${formatShortDate(formatLocalDateInput(todayStart))}` }
-  }
-
-  if (preset === 'year') {
-    const start = shiftLocalDays(todayStart, -364)
-    return { start, end: todayStart, label: `${formatShortDate(formatLocalDateInput(start))} até ${formatShortDate(formatLocalDateInput(todayStart))}` }
+    const [selectedYear, selectedMonthNumber] = String(selectedMonth || getCurrentMonthInputValue()).split('-').map(Number)
+    if (!selectedYear || !selectedMonthNumber) {
+      const start = new Date(todayStart.getFullYear(), todayStart.getMonth(), 1)
+      const end = new Date(todayStart.getFullYear(), todayStart.getMonth() + 1, 0)
+      return { start, end, label: formatMonthBucketLabel(getCurrentMonthInputValue()), monthKey: getCurrentMonthInputValue() }
+    }
+    const start = new Date(selectedYear, selectedMonthNumber - 1, 1)
+    const end = new Date(selectedYear, selectedMonthNumber, 0)
+    const monthKey = `${selectedYear}-${String(selectedMonthNumber).padStart(2, '0')}`
+    return { start, end, label: formatMonthBucketLabel(monthKey), monthKey }
   }
 
   return { start: currentWeekStart, end: currentWeekEnd, label: formatWeekRangeLabel(currentWeekStartValue) }
@@ -3216,6 +3215,7 @@ export default function DashboardShell({
   const [weeklyPeriodPreset, setWeeklyPeriodPreset] = useState('current_week')
   const [weeklyCustomSince, setWeeklyCustomSince] = useState(() => getMondayDateInputValue())
   const [weeklyCustomUntil, setWeeklyCustomUntil] = useState(() => getWeekEndDateInputValue(getMondayDateInputValue()))
+  const [weeklyMonthFilter, setWeeklyMonthFilter] = useState(() => getCurrentMonthInputValue())
   const [weeklyTableClientFilter, setWeeklyTableClientFilter] = useState('all')
   const [weeklyTableHealthFilter, setWeeklyTableHealthFilter] = useState('all')
   const [isWeeklyDeleteMode, setIsWeeklyDeleteMode] = useState(false)
@@ -3538,8 +3538,8 @@ export default function DashboardShell({
   )
   const weeklyWeekEnd = useMemo(() => getWeekEndDateInputValue(weeklyWeekStart), [weeklyWeekStart])
   const weeklyPeriodWindow = useMemo(
-    () => getWeeklyPeriodWindow(weeklyPeriodPreset, weeklyCustomSince, weeklyCustomUntil),
-    [weeklyPeriodPreset, weeklyCustomSince, weeklyCustomUntil]
+    () => getWeeklyPeriodWindow(weeklyPeriodPreset, weeklyCustomSince, weeklyCustomUntil, weeklyMonthFilter),
+    [weeklyPeriodPreset, weeklyCustomSince, weeklyCustomUntil, weeklyMonthFilter]
   )
 
   useEffect(() => {
@@ -4614,10 +4614,19 @@ export default function DashboardShell({
     return latestByClient
   }, [weeklyRecords])
 
-  const weeklyVisibleRecords = useMemo(
-    () => weeklyBaseVisibleRecords.filter((record) => isWeeklyRecordInsideWindow(record, weeklyPeriodWindow)),
-    [weeklyBaseVisibleRecords, weeklyPeriodWindow]
-  )
+  const weeklyVisibleRecords = useMemo(() => {
+    const recordsInsideWindow = weeklyBaseVisibleRecords.filter((record) => isWeeklyRecordInsideWindow(record, weeklyPeriodWindow))
+    if (weeklyPeriodPreset !== 'month') return recordsInsideWindow
+
+    const latestMonthWeekStart = recordsInsideWindow.reduce((latest, record) => {
+      const weekStart = String(record.weekStart || '')
+      if (!weekStart.startsWith(weeklyPeriodWindow.monthKey || '')) return latest
+      return weekStart.localeCompare(latest) > 0 ? weekStart : latest
+    }, '')
+
+    if (!latestMonthWeekStart) return []
+    return recordsInsideWindow.filter((record) => String(record.weekStart || '') === latestMonthWeekStart)
+  }, [weeklyBaseVisibleRecords, weeklyPeriodPreset, weeklyPeriodWindow])
 
   const weeklyCurrentInvestment = normalizeWeeklyNumber(weeklyForm.investment)
   const weeklyCurrentLeads = normalizeWeeklyInteger(weeklyForm.leads)
@@ -12757,6 +12766,12 @@ export default function DashboardShell({
                 <input type="date" value={weeklyCustomUntil} onChange={(event) => setWeeklyCustomUntil(event.target.value)} />
               </label>
             </div>
+          )}
+          {weeklyPeriodPreset === 'month' && (
+            <label>
+              <span>Mês</span>
+              <input type="month" value={weeklyMonthFilter} onChange={(event) => setWeeklyMonthFilter(event.target.value)} />
+            </label>
           )}
         </div>
         <div className="weekly-command-grid">
