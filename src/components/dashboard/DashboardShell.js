@@ -3424,6 +3424,11 @@ export default function DashboardShell({
 
   const currentTheme = useMemo(() => resolveDashboardTheme(themeColor), [themeColor])
   const appAccentColor = appearance?.accent || currentTheme.main
+  const appBackgroundTintHex = appearance?.backgroundTint || '#0d1110'
+  const appBackgroundTintRgb = useMemo(
+    () => parseDashboardColor(appBackgroundTintHex) || hexToRgb('#0d1110'),
+    [appBackgroundTintHex]
+  )
   const normalizedNewClientDashboardColor = useMemo(() => {
     const parsedColor = parseDashboardColor(newClientDashboardColor || appAccentColor) || parseDashboardColor(appAccentColor) || hexToRgb('#10B981')
     return rgbToHex(parsedColor).toUpperCase()
@@ -14259,6 +14264,13 @@ export default function DashboardShell({
     setIsHomeToolsExpanded((current) => !current)
   }
 
+  const handleToggleAppMode = () => {
+    updateAppearance({
+      ...(appearance || {}),
+      mode: isLightAppMode ? 'dark' : 'light',
+    })
+  }
+
   return (
     <div
       className={`dashboard-container dashboard-shell-stellar ${isLightAppMode ? "dashboard-light-mode" : ""}`}
@@ -14273,6 +14285,8 @@ export default function DashboardShell({
         '--main': appAccentColor,
         '--meta-blue': appAccentColor,
         '--theme-surface': currentTheme.surface,
+        '--app-bg-color': appBackgroundTintHex,
+        '--app-bg-rgb': `${appBackgroundTintRgb.r}, ${appBackgroundTintRgb.g}, ${appBackgroundTintRgb.b}`,
         '--accent-orange': `rgb(${activeClientDashboardAccentRgb.r}, ${activeClientDashboardAccentRgb.g}, ${activeClientDashboardAccentRgb.b})`,
         '--accent': `rgb(${activeClientDashboardAccentRgb.r}, ${activeClientDashboardAccentRgb.g}, ${activeClientDashboardAccentRgb.b})`,
       }}
@@ -14348,16 +14362,29 @@ export default function DashboardShell({
           </div>
         )}
 
-        <button
-          type="button"
-          data-tooltip="Sair"
-          className="nav-item nav-button sidebar-logout-button"
-          onClick={handleLogout}
-          aria-label="Sair da plataforma"
-        >
-          <i className="bx bx-log-out"></i>
-          {!isSidebarCollapsed && 'Sair'}
-        </button>
+        <div className="sidebar-bottom-actions">
+          <button
+            type="button"
+            data-tooltip={isLightAppMode ? 'Modo noturno' : 'Modo claro'}
+            className="nav-item nav-button sidebar-theme-button"
+            onClick={handleToggleAppMode}
+            aria-label={isLightAppMode ? 'Ativar modo noturno' : 'Ativar modo claro'}
+          >
+            <i className={`bx ${isLightAppMode ? 'bx-moon' : 'bx-sun'}`}></i>
+            {!isSidebarCollapsed && (isLightAppMode ? 'Modo noturno' : 'Modo claro')}
+          </button>
+
+          <button
+            type="button"
+            data-tooltip="Sair"
+            className="nav-item nav-button sidebar-logout-button"
+            onClick={handleLogout}
+            aria-label="Sair da plataforma"
+          >
+            <i className="bx bx-log-out"></i>
+            {!isSidebarCollapsed && 'Sair'}
+          </button>
+        </div>
       </aside>
 
       <main className={`main-content ${isSidebarCollapsed ? 'main-content-expanded' : ''}`}>
@@ -18908,10 +18935,10 @@ export default function DashboardShell({
 
         /* Lumina app-wide pass, excluding the Presentation page. */
         .dashboard-container:not([data-active-tab='apresentacao']) {
-          --lumina-dark-bg: #070908;
-          --lumina-dark-surface: #0d1110;
-          --lumina-dark-raised: #121817;
-          --lumina-dark-card: rgba(18, 24, 23, 0.82);
+          --lumina-dark-bg: color-mix(in srgb, var(--app-bg-color, #070908) 76%, #020605 24%);
+          --lumina-dark-surface: color-mix(in srgb, var(--app-bg-color, #0d1110) 62%, #0d1110 38%);
+          --lumina-dark-raised: color-mix(in srgb, var(--app-bg-color, #121817) 42%, #121817 58%);
+          --lumina-dark-card: rgba(var(--app-bg-rgb, 18, 24, 23), 0.20);
           --lumina-dark-border: rgba(190, 201, 191, 0.16);
           --lumina-dark-border-strong: rgba(190, 201, 191, 0.28);
           --lumina-text: #f1f1f1;
@@ -18919,7 +18946,8 @@ export default function DashboardShell({
           --lumina-soft: rgba(241, 241, 241, 0.44);
           background:
             radial-gradient(circle at 82% 0%, color-mix(in srgb, var(--button-primary, #26c281) 9%, transparent), transparent 30%),
-            linear-gradient(180deg, #070908 0%, #0d1110 56%, #070908 100%) !important;
+            radial-gradient(circle at 8% 12%, rgba(var(--app-bg-rgb, 7, 9, 8), 0.34), transparent 28%),
+            linear-gradient(180deg, var(--lumina-dark-bg) 0%, var(--lumina-dark-surface) 56%, var(--lumina-dark-bg) 100%) !important;
           color: var(--lumina-text);
         }
 
@@ -18928,8 +18956,8 @@ export default function DashboardShell({
           padding: 20px 14px;
           border-right: 1px solid var(--lumina-dark-border);
           background:
-            linear-gradient(180deg, rgba(18, 24, 23, 0.94), rgba(7, 9, 8, 0.92)),
-            rgba(18, 24, 23, 0.82) !important;
+            linear-gradient(180deg, color-mix(in srgb, var(--app-bg-color, #121817) 26%, rgba(18, 24, 23, 0.94)), rgba(7, 9, 8, 0.92)),
+            rgba(var(--app-bg-rgb, 18, 24, 23), 0.12) !important;
           box-shadow: 18px 0 46px rgba(0, 0, 0, 0.22);
           backdrop-filter: blur(14px);
         }
@@ -19043,6 +19071,13 @@ export default function DashboardShell({
           margin: 0;
         }
 
+        .dashboard-container:not([data-active-tab='apresentacao']) .sidebar-bottom-actions {
+          margin-top: auto;
+          display: grid;
+          gap: 8px;
+        }
+
+        .dashboard-container:not([data-active-tab='apresentacao']) .sidebar-theme-button,
         .dashboard-container:not([data-active-tab='apresentacao']) .sidebar-logout-button {
           color: rgba(241, 241, 241, 0.58);
           border-color: rgba(190, 201, 191, 0.1);
@@ -31239,9 +31274,9 @@ export default function DashboardShell({
 
         /* Lumina global finish pass for every app page and popup. */
         .dashboard-shell-stellar {
-          --lumina-page-bg: #070908;
-          --lumina-page-surface: rgba(18, 24, 23, 0.82);
-          --lumina-page-surface-strong: rgba(23, 28, 27, 0.94);
+          --lumina-page-bg: color-mix(in srgb, var(--app-bg-color, #070908) 76%, #020605 24%);
+          --lumina-page-surface: rgba(var(--app-bg-rgb, 18, 24, 23), 0.18);
+          --lumina-page-surface-strong: color-mix(in srgb, var(--app-bg-color, #171c1b) 22%, rgba(23, 28, 27, 0.94));
           --lumina-page-border: rgba(190, 201, 191, 0.16);
           --lumina-page-border-strong: rgba(190, 201, 191, 0.28);
           --lumina-page-text: #f1f1f1;
@@ -31249,7 +31284,8 @@ export default function DashboardShell({
           --lumina-page-soft: rgba(241, 241, 241, 0.48);
           background:
             radial-gradient(circle at 78% 0%, color-mix(in srgb, var(--button-primary, #26c281) 10%, transparent), transparent 30%),
-            linear-gradient(180deg, #070908 0%, #0d1110 52%, #070908 100%) !important;
+            radial-gradient(circle at 10% 14%, rgba(var(--app-bg-rgb, 7, 9, 8), 0.34), transparent 28%),
+            linear-gradient(180deg, var(--lumina-page-bg) 0%, color-mix(in srgb, var(--app-bg-color, #0d1110) 54%, #0d1110 46%) 52%, var(--lumina-page-bg) 100%) !important;
           color: var(--lumina-page-text);
         }
 
@@ -31287,7 +31323,7 @@ export default function DashboardShell({
         .dashboard-shell-stellar .empty-panel {
           border: 1px solid var(--lumina-page-border) !important;
           background:
-            linear-gradient(180deg, rgba(18, 24, 23, 0.88), rgba(13, 17, 16, 0.9)),
+            linear-gradient(180deg, color-mix(in srgb, var(--app-bg-color, #121817) 16%, rgba(18, 24, 23, 0.88)), rgba(13, 17, 16, 0.9)),
             var(--lumina-page-surface) !important;
           box-shadow: 0 22px 52px rgba(0, 0, 0, 0.22) !important;
           backdrop-filter: blur(14px);
@@ -31301,7 +31337,7 @@ export default function DashboardShell({
         .dashboard-shell-stellar .management-header-row {
           background:
             linear-gradient(135deg, color-mix(in srgb, var(--button-primary, #26c281) 10%, transparent), transparent 38%),
-            linear-gradient(180deg, rgba(18, 24, 23, 0.94), rgba(13, 17, 16, 0.92)) !important;
+            linear-gradient(180deg, color-mix(in srgb, var(--app-bg-color, #121817) 18%, rgba(18, 24, 23, 0.94)), rgba(13, 17, 16, 0.92)) !important;
           border-color: var(--lumina-page-border-strong) !important;
         }
 

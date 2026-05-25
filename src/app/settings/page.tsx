@@ -992,6 +992,13 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
     setPanelFeedback('')
   }
 
+  const handlePanelHexChange = (fieldName: 'accent' | 'backgroundTint', value: string) => {
+    const normalized = String(value || '').trim()
+    const candidate = normalized.startsWith('#') ? normalized : `#${normalized}`
+    if (!/^#[0-9a-fA-F]{6}$/.test(candidate)) return
+    updatePanelDraft((current) => ({ ...current, [fieldName]: candidate.toLowerCase() }))
+  }
+
   const handleBackgroundRgbChannelChange = (
     channel: 'r' | 'g' | 'b',
     value: string
@@ -1840,7 +1847,7 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
                               <input
                                 type="text"
                                 value={panelDraft.accent.toUpperCase()}
-                                readOnly
+                                onChange={(event) => handlePanelHexChange('accent', event.target.value)}
                                 aria-label="Código hexadecimal da cor de destaque"
                               />
                               <button
@@ -1915,6 +1922,25 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
                                 <strong>{panelDraft.backgroundTint.toUpperCase()}</strong>
                                 <span>Essa cor sustenta a névoa do app inteiro.</span>
                               </div>
+                            </div>
+
+                            <div className="settings-color-code-row">
+                              <input
+                                type="text"
+                                value={panelDraft.backgroundTint.toUpperCase()}
+                                onChange={(event) => handlePanelHexChange('backgroundTint', event.target.value)}
+                                aria-label="Código hexadecimal da cor do fundo do app"
+                              />
+                              <button
+                                type="button"
+                                className="settings-copy-button"
+                                onClick={() => {
+                                  void navigator.clipboard?.writeText(panelDraft.backgroundTint.toUpperCase())
+                                  setPanelFeedback('Código da cor de fundo copiado para a área de transferência.')
+                                }}
+                              >
+                                <i className="bx bx-copy"></i>
+                              </button>
                             </div>
 
                             <div className="settings-rgb-grid">
