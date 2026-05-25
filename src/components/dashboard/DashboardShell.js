@@ -259,6 +259,7 @@ const CLIENT_HEALTH_SORT_RANK = {
 }
 
 const WEEKLY_PERIOD_OPTIONS = [
+  { value: 'filled', label: 'Preenchido' },
   { value: 'current_week', label: 'Semana atual' },
   { value: 'previous_week', label: 'Semana passada' },
   { value: 'custom', label: 'Personalizada' },
@@ -293,12 +294,20 @@ function getCurrentMonthInputValue() {
   return getTodayDateInputValue().slice(0, 7)
 }
 
-function getWeeklyPeriodWindow(preset, customSince, customUntil, selectedMonth) {
+function getWeeklyPeriodWindow(preset, customSince, customUntil, selectedMonth, selectedFilledWeekStart) {
   const today = new Date()
   const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate())
   const currentWeekStartValue = getMondayDateInputValue(todayStart)
   const currentWeekStart = parseLocalDateInput(currentWeekStartValue) || todayStart
   const currentWeekEnd = parseLocalDateInput(getWeekEndDateInputValue(currentWeekStartValue)) || todayStart
+
+  if (preset === 'filled') {
+    const start = parseLocalDateInput(selectedFilledWeekStart)
+    if (!start) return { start: null, end: null, label: 'Nenhuma semana preenchida', filledWeekStart: '' }
+    const weekStart = formatLocalDateInput(start)
+    const end = parseLocalDateInput(getWeekEndDateInputValue(weekStart)) || start
+    return { start, end, label: formatWeekRangeLabel(weekStart, formatLocalDateInput(end)), filledWeekStart: weekStart }
+  }
 
   if (preset === 'custom') {
     const start = parseLocalDateInput(customSince)
@@ -3212,10 +3221,11 @@ export default function DashboardShell({
   const [weeklyError, setWeeklyError] = useState('')
   const [weeklySuccessMessage, setWeeklySuccessMessage] = useState('')
   const [weeklyClientFilter, setWeeklyClientFilter] = useState('all')
-  const [weeklyPeriodPreset, setWeeklyPeriodPreset] = useState('current_week')
+  const [weeklyPeriodPreset, setWeeklyPeriodPreset] = useState('filled')
   const [weeklyCustomSince, setWeeklyCustomSince] = useState(() => getMondayDateInputValue())
   const [weeklyCustomUntil, setWeeklyCustomUntil] = useState(() => getWeekEndDateInputValue(getMondayDateInputValue()))
   const [weeklyMonthFilter, setWeeklyMonthFilter] = useState(() => getCurrentMonthInputValue())
+  const [weeklyFilledWeekStart, setWeeklyFilledWeekStart] = useState('')
   const [weeklyTableClientFilter, setWeeklyTableClientFilter] = useState('all')
   const [weeklyTableHealthFilter, setWeeklyTableHealthFilter] = useState('all')
   const [isWeeklyDeleteMode, setIsWeeklyDeleteMode] = useState(false)
@@ -3539,8 +3549,8 @@ export default function DashboardShell({
   )
   const weeklyWeekEnd = useMemo(() => getWeekEndDateInputValue(weeklyWeekStart), [weeklyWeekStart])
   const weeklyPeriodWindow = useMemo(
-    () => getWeeklyPeriodWindow(weeklyPeriodPreset, weeklyCustomSince, weeklyCustomUntil, weeklyMonthFilter),
-    [weeklyPeriodPreset, weeklyCustomSince, weeklyCustomUntil, weeklyMonthFilter]
+    () => getWeeklyPeriodWindow(weeklyPeriodPreset, weeklyCustomSince, weeklyCustomUntil, weeklyMonthFilter, weeklyFilledWeekStart),
+    [weeklyPeriodPreset, weeklyCustomSince, weeklyCustomUntil, weeklyMonthFilter, weeklyFilledWeekStart]
   )
 
   useEffect(() => {
@@ -4596,6 +4606,45 @@ export default function DashboardShell({
     })
   }, [weeklyRecords, weeklyClientFilter])
 
+  const weeklyFilledWeekOptions = useMemo(() => {
+    const weeksByStart = new Map()
+
+    weeklyBaseVisibleRecords.forEach((record) => {
+      const weekStart = String(record.weekStart || '').trim()
+      if (!weekStart) return
+      const current = weeksByStart.get(weekStart)
+      if (!current) {
+        weeksByStart.set(weekStart, {
+          value: weekStart,
+          weekEnd: record.weekEnd || getWeekEndDateInputValue(weekStart),
+          recordsCount: 1,
+        })
+        return
+      }
+      current.recordsCount += 1
+      if (!current.weekEnd && record.weekEnd) current.weekEnd = record.weekEnd
+    })
+
+    return Array.from(weeksByStart.values())
+      .sort((left, right) => String(right.value).localeCompare(String(left.value)))
+      .map((week) => ({
+        ...week,
+        label: `${formatWeekRangeLabel(week.value, week.weekEnd)} • ${formatNumber(week.recordsCount)} registro(s)`,
+      }))
+  }, [weeklyBaseVisibleRecords])
+
+  useEffect(() => {
+    if (!weeklyFilledWeekOptions.length) {
+      if (weeklyFilledWeekStart) setWeeklyFilledWeekStart('')
+      return
+    }
+
+    const hasSelectedWeek = weeklyFilledWeekOptions.some((option) => option.value === weeklyFilledWeekStart)
+    if (!hasSelectedWeek) {
+      setWeeklyFilledWeekStart(weeklyFilledWeekOptions[0].value)
+    }
+  }, [weeklyFilledWeekOptions, weeklyFilledWeekStart])
+
   const latestWeeklyHealthByClientId = useMemo(() => {
     const latestByClient = new Map()
 
@@ -4616,6 +4665,11 @@ export default function DashboardShell({
   }, [weeklyRecords])
 
   const weeklyVisibleRecords = useMemo(() => {
+    if (weeklyPeriodPreset === 'filled') {
+      if (!weeklyFilledWeekStart) return []
+      return weeklyBaseVisibleRecords.filter((record) => String(record.weekStart || '') === weeklyFilledWeekStart)
+    }
+
     const recordsInsideWindow = weeklyBaseVisibleRecords.filter((record) => isWeeklyRecordInsideWindow(record, weeklyPeriodWindow))
     if (weeklyPeriodPreset !== 'month') return recordsInsideWindow
 
@@ -4627,7 +4681,7 @@ export default function DashboardShell({
 
     if (!latestMonthWeekStart) return []
     return recordsInsideWindow.filter((record) => String(record.weekStart || '') === latestMonthWeekStart)
-  }, [weeklyBaseVisibleRecords, weeklyPeriodPreset, weeklyPeriodWindow])
+  }, [weeklyBaseVisibleRecords, weeklyPeriodPreset, weeklyPeriodWindow, weeklyFilledWeekStart])
 
   const weeklyCurrentInvestment = normalizeWeeklyNumber(weeklyForm.investment)
   const weeklyCurrentLeads = normalizeWeeklyInteger(weeklyForm.leads)
@@ -12864,6 +12918,20 @@ export default function DashboardShell({
             <label>
               <span>Mês</span>
               <input type="month" value={weeklyMonthFilter} onChange={(event) => setWeeklyMonthFilter(event.target.value)} />
+            </label>
+          )}
+          {weeklyPeriodPreset === 'filled' && (
+            <label>
+              <span>Semana preenchida</span>
+              <select value={weeklyFilledWeekStart} onChange={(event) => setWeeklyFilledWeekStart(event.target.value)} disabled={!weeklyFilledWeekOptions.length}>
+                {weeklyFilledWeekOptions.length ? (
+                  weeklyFilledWeekOptions.map((option) => (
+                    <option key={'weekly-filled-week-' + option.value} value={option.value}>{option.label}</option>
+                  ))
+                ) : (
+                  <option value="">Nenhuma semana preenchida</option>
+                )}
+              </select>
             </label>
           )}
         </div>
