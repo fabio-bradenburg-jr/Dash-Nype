@@ -4922,7 +4922,7 @@ export default function DashboardShell({
 
   const weeklyPortfolioStats = useMemo(() => {
     const uniqueClientIds = new Set()
-    let actionItemsCount = 0
+    const activeBaseClientsCount = clients.filter((client) => normalizedStatus(client) !== 'churn').length
     const healthCounts = {
       integration: 0,
       critical: 0,
@@ -4934,14 +4934,13 @@ export default function DashboardShell({
 
     weeklyVisibleRecords.forEach((record) => {
       if (record.clientId) uniqueClientIds.add(record.clientId)
-      actionItemsCount += Array.isArray(record.actionItems) ? record.actionItems.filter(Boolean).length : 0
       if (healthCounts[record.healthStatus] != null) healthCounts[record.healthStatus] += 1
     })
 
     return {
       recordsCount: weeklyVisibleRecords.length,
       monitoredClients: uniqueClientIds.size,
-      actionItemsCount,
+      activeBaseClientsCount,
       healthCounts,
       criticalCount: healthCounts.critical,
       attentionCount: healthCounts.attention,
@@ -4953,7 +4952,7 @@ export default function DashboardShell({
         ? formatWeekRangeLabel(weeklyHistoryCards[0].weekStart, weeklyHistoryCards[0].weekEnd)
         : 'Sem semanas registradas',
     }
-  }, [weeklyVisibleRecords, weeklyHistoryCards])
+  }, [clients, weeklyVisibleRecords, weeklyHistoryCards])
 
   const handleToggleWeeklyHistoryCardSelection = useCallback((recordIds) => {
     setSelectedWeeklyRecordIds((current) => {
@@ -12748,6 +12747,20 @@ export default function DashboardShell({
           )}
         </div>
         <div className="weekly-command-grid">
+          <div className="weekly-command-rail">
+            <div>
+              <span>Clientes monitorados</span>
+              <strong>{formatNumber(weeklyPortfolioStats.monitoredClients)}</strong>
+            </div>
+            <div>
+              <span>Registros no filtro</span>
+              <strong>{formatNumber(weeklyPortfolioStats.recordsCount)}</strong>
+            </div>
+            <div>
+              <span>Clientes totais na base</span>
+              <strong>{formatNumber(weeklyPortfolioStats.activeBaseClientsCount)}</strong>
+            </div>
+          </div>
           <div className="weekly-command-primary">
             <div>
               <span>Período ativo</span>
@@ -28807,10 +28820,11 @@ export default function DashboardShell({
           display: grid;
           grid-column: 2;
           grid-row: 1;
-          grid-template-columns: minmax(0, 1fr);
+          grid-template-columns: minmax(280px, 1fr) minmax(420px, 550px);
+          gap: 14px;
           align-self: start;
           justify-self: end;
-          width: min(550px, 100%);
+          width: 100%;
           margin-top: 128px;
           z-index: 1;
         }
@@ -28858,6 +28872,7 @@ export default function DashboardShell({
           display: grid;
           grid-template-columns: repeat(3, minmax(0, 1fr));
           overflow: hidden;
+          min-width: 0;
         }
 
         .weekly-command-rail div {
@@ -30345,6 +30360,10 @@ export default function DashboardShell({
             grid-row: auto;
             width: 100%;
             margin-top: 0;
+          }
+
+          .weekly-command-grid {
+            grid-template-columns: 1fr;
           }
 
           .weekly-goal-card {
