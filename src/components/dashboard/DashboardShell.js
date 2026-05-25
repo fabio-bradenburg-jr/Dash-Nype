@@ -266,6 +266,7 @@ const WEEKLY_PERIOD_OPTIONS = [
   { value: 'month', label: 'Mês' },
 ]
 
+const ALL_FILLED_WEEK_PERIODS = 'all_filled_periods'
 
 function getMondayDateInputValue(value = new Date()) {
   const source = value instanceof Date ? new Date(value) : new Date(`${value}T00:00:00`)
@@ -302,6 +303,9 @@ function getWeeklyPeriodWindow(preset, customSince, customUntil, selectedMonth, 
   const currentWeekEnd = parseLocalDateInput(getWeekEndDateInputValue(currentWeekStartValue)) || todayStart
 
   if (preset === 'filled') {
+    if (selectedFilledWeekStart === ALL_FILLED_WEEK_PERIODS) {
+      return { start: null, end: null, label: 'Todos os períodos preenchidos', filledWeekStart: ALL_FILLED_WEEK_PERIODS }
+    }
     const start = parseLocalDateInput(selectedFilledWeekStart)
     if (!start) return { start: null, end: null, label: 'Nenhuma semana preenchida', filledWeekStart: '' }
     const weekStart = formatLocalDateInput(start)
@@ -4639,7 +4643,7 @@ export default function DashboardShell({
       return
     }
 
-    const hasSelectedWeek = weeklyFilledWeekOptions.some((option) => option.value === weeklyFilledWeekStart)
+    const hasSelectedWeek = weeklyFilledWeekStart === ALL_FILLED_WEEK_PERIODS || weeklyFilledWeekOptions.some((option) => option.value === weeklyFilledWeekStart)
     if (!hasSelectedWeek) {
       setWeeklyFilledWeekStart(weeklyFilledWeekOptions[0].value)
     }
@@ -4667,6 +4671,7 @@ export default function DashboardShell({
   const weeklyVisibleRecords = useMemo(() => {
     if (weeklyPeriodPreset === 'filled') {
       if (!weeklyFilledWeekStart) return []
+      if (weeklyFilledWeekStart === ALL_FILLED_WEEK_PERIODS) return weeklyBaseVisibleRecords
       return weeklyBaseVisibleRecords.filter((record) => String(record.weekStart || '') === weeklyFilledWeekStart)
     }
 
@@ -12900,9 +12905,12 @@ export default function DashboardShell({
               <span>Semana preenchida</span>
               <select value={weeklyFilledWeekStart} onChange={(event) => setWeeklyFilledWeekStart(event.target.value)} disabled={!weeklyFilledWeekOptions.length}>
                 {weeklyFilledWeekOptions.length ? (
-                  weeklyFilledWeekOptions.map((option) => (
-                    <option key={'weekly-filled-week-' + option.value} value={option.value}>{option.label}</option>
-                  ))
+                  <>
+                    <option value={ALL_FILLED_WEEK_PERIODS}>Todos os períodos preenchidos</option>
+                    {weeklyFilledWeekOptions.map((option) => (
+                      <option key={'weekly-filled-week-' + option.value} value={option.value}>{option.label}</option>
+                    ))}
+                  </>
                 ) : (
                   <option value="">Nenhuma semana preenchida</option>
                 )}
