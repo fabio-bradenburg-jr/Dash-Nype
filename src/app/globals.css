@@ -2258,6 +2258,140 @@ textarea:focus {
     padding: 18px !important;
 }
 
+.weekly-dashboard-panel .weekly-chart-grid-single {
+    grid-template-columns: minmax(0, 1fr) !important;
+}
+
+.weekly-dashboard-panel .weekly-evolution-card {
+    padding: 36px !important;
+}
+
+.weekly-dashboard-panel .weekly-evolution-layout {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) minmax(320px, 380px) !important;
+    gap: 28px !important;
+    align-items: stretch !important;
+}
+
+.weekly-dashboard-panel .weekly-evolution-main {
+    min-width: 0 !important;
+}
+
+.weekly-dashboard-panel .weekly-evolution-chart-body {
+    height: 430px !important;
+}
+
+.weekly-dashboard-panel .weekly-chart-client-list {
+    display: flex !important;
+    min-width: 0 !important;
+    max-height: 552px !important;
+    flex-direction: column !important;
+    gap: 10px !important;
+    overflow: hidden !important;
+    border: 1px solid color-mix(in srgb, var(--weekly-accent) 22%, rgba(190, 201, 191, 0.14)) !important;
+    border-radius: 18px !important;
+    background: rgba(4, 8, 7, 0.24) !important;
+    padding: 14px !important;
+}
+
+.weekly-dashboard-panel .weekly-chart-client-list-head {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 12px !important;
+    padding: 4px 4px 8px !important;
+}
+
+.weekly-dashboard-panel .weekly-chart-client-list-head span {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 7px !important;
+    color: rgba(241, 245, 249, 0.58) !important;
+    font-size: 10px !important;
+    font-weight: 900 !important;
+    letter-spacing: 0.1em !important;
+    text-transform: uppercase !important;
+}
+
+.weekly-dashboard-panel .weekly-chart-client-list-head strong {
+    color: #f8fafc !important;
+    font-size: 13px !important;
+    line-height: 1 !important;
+}
+
+.weekly-dashboard-panel .weekly-chart-client-scroll {
+    display: flex !important;
+    min-height: 0 !important;
+    flex-direction: column !important;
+    gap: 10px !important;
+    overflow: auto !important;
+    padding-right: 2px !important;
+}
+
+.weekly-dashboard-panel .weekly-chart-client-button {
+    width: 100% !important;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    gap: 14px !important;
+    align-items: center !important;
+    border: 1px solid rgba(190, 201, 191, 0.12) !important;
+    border-radius: 14px !important;
+    background: rgba(255, 255, 255, 0.035) !important;
+    color: rgba(241, 245, 249, 0.72) !important;
+    cursor: pointer !important;
+    font: inherit !important;
+    padding: 14px !important;
+    text-align: left !important;
+    transition: border-color 0.18s ease, background 0.18s ease, color 0.18s ease, transform 0.18s ease !important;
+}
+
+.weekly-dashboard-panel .weekly-chart-client-button:hover,
+.weekly-dashboard-panel .weekly-chart-client-button:focus-visible {
+    border-color: color-mix(in srgb, var(--weekly-accent) 44%, rgba(190, 201, 191, 0.18)) !important;
+    background: color-mix(in srgb, var(--weekly-accent) 10%, rgba(255, 255, 255, 0.045)) !important;
+    color: #f8fafc !important;
+    outline: none !important;
+    transform: translateY(-1px) !important;
+}
+
+.weekly-dashboard-panel .weekly-chart-client-button.is-active {
+    border-color: color-mix(in srgb, var(--weekly-accent) 72%, rgba(190, 201, 191, 0.18)) !important;
+    background: color-mix(in srgb, var(--weekly-accent) 16%, rgba(255, 255, 255, 0.04)) !important;
+    color: #f8fafc !important;
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--weekly-accent) 24%, transparent) !important;
+}
+
+.weekly-dashboard-panel .weekly-chart-client-button span {
+    min-width: 0 !important;
+}
+
+.weekly-dashboard-panel .weekly-chart-client-button strong,
+.weekly-dashboard-panel .weekly-chart-client-button small {
+    display: block !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+}
+
+.weekly-dashboard-panel .weekly-chart-client-button strong {
+    color: inherit !important;
+    font-size: 14px !important;
+    font-weight: 900 !important;
+}
+
+.weekly-dashboard-panel .weekly-chart-client-button small {
+    margin-top: 5px !important;
+    color: rgba(241, 245, 249, 0.52) !important;
+    font-size: 12px !important;
+    font-weight: 800 !important;
+}
+
+.weekly-dashboard-panel .weekly-chart-client-button b {
+    color: color-mix(in srgb, var(--weekly-accent) 74%, #f8fafc) !important;
+    font-size: 14px !important;
+    white-space: nowrap !important;
+}
+
 .weekly-dashboard-panel .ranking-empty {
     min-height: 160px !important;
     display: grid !important;
@@ -2504,6 +2638,8 @@ textarea:focus {
 .dashboard-light-mode .weekly-dashboard-panel .weekly-risk-breakdown div,
 .dashboard-light-mode .weekly-dashboard-panel .weekly-risk-badge,
 .dashboard-light-mode .weekly-dashboard-panel .weekly-client-result-card,
+.dashboard-light-mode .weekly-dashboard-panel .weekly-chart-client-list,
+.dashboard-light-mode .weekly-dashboard-panel .weekly-chart-client-button,
 .dashboard-light-mode .weekly-dashboard-panel .weekly-chart-body,
 .dashboard-light-mode .weekly-dashboard-panel .weekly-table-scroll,
 .dashboard-light-mode .weekly-dashboard-panel .weekly-table-filters select {
@@ -2524,6 +2660,19 @@ textarea:focus {
 
 .dashboard-light-mode .weekly-dashboard-panel .weekly-table-sort-button > i:last-child {
     color: color-mix(in srgb, var(--weekly-accent) 78%, #64748b) !important;
+}
+
+.dashboard-light-mode .weekly-dashboard-panel .weekly-chart-client-list-head span,
+.dashboard-light-mode .weekly-dashboard-panel .weekly-chart-client-button small {
+    color: #64748b !important;
+}
+
+.dashboard-light-mode .weekly-dashboard-panel .weekly-chart-client-list-head strong,
+.dashboard-light-mode .weekly-dashboard-panel .weekly-chart-client-button,
+.dashboard-light-mode .weekly-dashboard-panel .weekly-chart-client-button.is-active,
+.dashboard-light-mode .weekly-dashboard-panel .weekly-chart-client-button:hover,
+.dashboard-light-mode .weekly-dashboard-panel .weekly-chart-client-button:focus-visible {
+    color: #0f172a !important;
 }
 
 @media (max-width: 1320px) {
@@ -2554,8 +2703,19 @@ textarea:focus {
         grid-template-columns: 1fr !important;
     }
 
+    .weekly-dashboard-panel .weekly-evolution-layout,
     .weekly-dashboard-panel .weekly-chart-grid {
         grid-template-columns: 1fr !important;
+    }
+
+    .weekly-dashboard-panel .weekly-chart-client-list {
+        max-height: none !important;
+    }
+
+    .weekly-dashboard-panel .weekly-chart-client-scroll {
+        display: grid !important;
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        overflow: visible !important;
     }
 
     .weekly-dashboard-panel .weekly-client-results-grid {
@@ -2592,6 +2752,7 @@ textarea:focus {
     }
 
     .weekly-dashboard-panel .weekly-client-results-grid,
+    .weekly-dashboard-panel .weekly-evolution-layout,
     .weekly-dashboard-panel .weekly-chart-grid,
     .weekly-dashboard-panel .weekly-table-actions,
     .weekly-dashboard-panel .weekly-table-filters,
@@ -2600,6 +2761,14 @@ textarea:focus {
         display: grid !important;
         grid-template-columns: 1fr !important;
         align-items: stretch !important;
+    }
+
+    .weekly-dashboard-panel .weekly-evolution-card {
+        padding: 22px !important;
+    }
+
+    .weekly-dashboard-panel .weekly-chart-client-scroll {
+        grid-template-columns: 1fr !important;
     }
 
     .weekly-dashboard-panel .weekly-table-filters label,
