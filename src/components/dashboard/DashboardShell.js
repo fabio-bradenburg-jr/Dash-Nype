@@ -13303,6 +13303,29 @@ export default function DashboardShell({
                           <strong>{card.leads > 0 ? formatCurrency(card.cpl) : '-'}</strong>
                         </div>
                       </div>
+                      {isWeeklyDeleteMode && (
+                        <div className="weekly-history-record-list">
+                          {card.records.map((record) => {
+                            const recordClientName = clientsById.get(record.clientId)?.name || 'Cliente removido'
+                            const recordHealth = WEEKLY_HEALTH_BY_KEY[record.healthStatus]?.label || 'Sem saúde'
+                            const isRecordSelected = selectedWeeklyRecordIds.includes(record.id)
+                            return (
+                              <label key={'weekly-history-record-' + record.id} className={`weekly-history-record-item ${isRecordSelected ? 'selected' : ''}`}>
+                                <input
+                                  type="checkbox"
+                                  checked={isRecordSelected}
+                                  onChange={() => handleToggleWeeklyHistoryCardSelection([record.id])}
+                                />
+                                <span className="weekly-history-record-check"></span>
+                                <span className="weekly-history-record-copy">
+                                  <strong>{recordClientName}</strong>
+                                  <small>{recordHealth} • {formatCurrency(record.investment || 0)} • {formatNumber(record.leads || 0)} leads</small>
+                                </span>
+                              </label>
+                            )
+                          })}
+                        </div>
+                      )}
                       <button
                         type="button"
                         className="weekly-history-card-footer"
@@ -19910,6 +19933,71 @@ export default function DashboardShell({
           line-height: 1.1 !important;
         }
 
+        .weekly-modal-overlay .weekly-history-record-list {
+          display: grid !important;
+          gap: 8px !important;
+          margin-top: -4px !important;
+        }
+
+        .weekly-modal-overlay .weekly-history-record-item {
+          min-height: 52px !important;
+          display: grid !important;
+          grid-template-columns: 18px minmax(0, 1fr) !important;
+          align-items: center !important;
+          gap: 12px !important;
+          border: 1px solid rgba(190, 201, 191, 0.12) !important;
+          border-radius: 14px !important;
+          background: rgba(255, 255, 255, 0.035) !important;
+          padding: 10px 12px !important;
+          cursor: pointer !important;
+        }
+
+        .weekly-modal-overlay .weekly-history-record-item.selected {
+          border-color: color-mix(in srgb, var(--button-primary, #26c281) 58%, rgba(190, 201, 191, 0.16)) !important;
+          background: color-mix(in srgb, var(--button-primary, #26c281) 12%, rgba(255, 255, 255, 0.035)) !important;
+        }
+
+        .weekly-modal-overlay .weekly-history-record-item input {
+          position: absolute !important;
+          opacity: 0 !important;
+          pointer-events: none !important;
+        }
+
+        .weekly-modal-overlay .weekly-history-record-check {
+          width: 18px !important;
+          height: 18px !important;
+          border: 2px solid rgba(241, 245, 249, 0.48) !important;
+          border-radius: 6px !important;
+          display: block !important;
+        }
+
+        .weekly-modal-overlay .weekly-history-record-item.selected .weekly-history-record-check {
+          border-color: var(--button-primary, #26c281) !important;
+          background: var(--button-primary, #26c281) !important;
+          box-shadow: 0 0 0 4px color-mix(in srgb, var(--button-primary, #26c281) 18%, transparent) !important;
+        }
+
+        .weekly-modal-overlay .weekly-history-record-copy {
+          min-width: 0 !important;
+          display: grid !important;
+          gap: 3px !important;
+        }
+
+        .weekly-modal-overlay .weekly-history-record-copy strong {
+          color: #f8fafc !important;
+          font-size: 13px !important;
+          line-height: 1.2 !important;
+          overflow: hidden !important;
+          text-overflow: ellipsis !important;
+          white-space: nowrap !important;
+        }
+
+        .weekly-modal-overlay .weekly-history-record-copy small {
+          color: rgba(241, 245, 249, 0.56) !important;
+          font-size: 11px !important;
+          line-height: 1.25 !important;
+        }
+
         .weekly-modal-overlay .weekly-history-card-footer {
           width: 100% !important;
           min-height: 36px !important;
@@ -19965,6 +20053,22 @@ export default function DashboardShell({
         .dashboard-light-mode .weekly-modal-overlay .weekly-history-card {
           background: #ffffff !important;
           border-color: rgba(15, 23, 42, 0.1) !important;
+        }
+
+        :root[data-ui-mode='light'] .weekly-modal-overlay .weekly-history-record-item,
+        .dashboard-light-mode .weekly-modal-overlay .weekly-history-record-item {
+          background: #f8fafc !important;
+          border-color: rgba(15, 23, 42, 0.1) !important;
+        }
+
+        :root[data-ui-mode='light'] .weekly-modal-overlay .weekly-history-record-copy strong,
+        .dashboard-light-mode .weekly-modal-overlay .weekly-history-record-copy strong {
+          color: #0f172a !important;
+        }
+
+        :root[data-ui-mode='light'] .weekly-modal-overlay .weekly-history-record-copy small,
+        .dashboard-light-mode .weekly-modal-overlay .weekly-history-record-copy small {
+          color: #475569 !important;
         }
 
         @media (max-width: 1180px) {
