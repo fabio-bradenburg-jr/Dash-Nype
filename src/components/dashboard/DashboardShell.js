@@ -4930,7 +4930,7 @@ export default function DashboardShell({
 
   const weeklyPortfolioStats = useMemo(() => {
     const uniqueClientIds = new Set()
-    const activeBaseClientsCount = clients.filter((client) => normalizedStatus(client) !== 'churn').length
+    const activeBaseClientsCount = clients.filter((client) => String(client?.status || '').trim().toLowerCase() !== 'churn').length
     const healthCounts = {
       integration: 0,
       critical: 0,
