@@ -18733,7 +18733,7 @@ export default function DashboardShell({
         }
 
         .weekly-dashboard-panel .weekly-kpi-card strong {
-          font-size: clamp(22px, 2.2vw, 32px) !important;
+          font-size: clamp(20px, calc(2.2vw - 2px), 30px) !important;
         }
 
         .weekly-dashboard-panel .weekly-results-card,
