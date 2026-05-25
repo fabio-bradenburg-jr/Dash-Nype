@@ -13161,18 +13161,6 @@ export default function DashboardShell({
 
       <div className="weekly-chart-card glass-panel weekly-evolution-card">
         <div className="weekly-evolution-layout">
-          <div className="weekly-evolution-main">
-            <div className="section-header section-header-stack">
-              <div>
-                <span className="eyebrow weekly-icon-label"><i className="bx bx-line-chart"></i>Evolução</span>
-                <h2>Investimento, leads, CPL, SQL e custo SQL</h2>
-                <p className="chart-subtitle">Linha fracionada por semanas fechadas de segunda a domingo para {weeklySelectedChartClientName}.</p>
-              </div>
-            </div>
-            <div className="weekly-chart-body weekly-evolution-chart-body">
-              {weeklyLineChartRecords.length ? <Line data={weeklyLineChartData} options={weeklyChartOptions} /> : <div className="ranking-empty">Salve a primeira semana para liberar o gráfico de linha.</div>}
-            </div>
-          </div>
           <aside className="weekly-chart-client-list" aria-label="Clientes do gráfico de evolução">
             <div className="weekly-chart-client-list-head">
               <span><i className="bx bx-buildings"></i>Clientes</span>
@@ -13210,6 +13198,18 @@ export default function DashboardShell({
               )}
             </div>
           </aside>
+          <div className="weekly-evolution-main">
+            <div className="section-header section-header-stack">
+              <div>
+                <span className="eyebrow weekly-icon-label"><i className="bx bx-line-chart"></i>Evolução</span>
+                <h2>Investimento, leads, CPL, SQL e custo SQL</h2>
+                <p className="chart-subtitle">Linha fracionada por semanas fechadas de segunda a domingo para {weeklySelectedChartClientName}.</p>
+              </div>
+            </div>
+            <div className="weekly-chart-body weekly-evolution-chart-body">
+              {weeklyLineChartRecords.length ? <Line data={weeklyLineChartData} options={weeklyChartOptions} /> : <div className="ranking-empty">Salve a primeira semana para liberar o gráfico de linha.</div>}
+            </div>
+          </div>
         </div>
       </div>
 
@@ -30092,7 +30092,7 @@ export default function DashboardShell({
 
         .weekly-evolution-layout {
           display: grid;
-          grid-template-columns: minmax(0, 1fr) minmax(300px, 360px);
+          grid-template-columns: minmax(300px, 360px) minmax(0, 1fr);
           gap: 28px;
           align-items: stretch;
         }

@@ -2268,7 +2268,7 @@ textarea:focus {
 
 .weekly-dashboard-panel .weekly-evolution-layout {
     display: grid !important;
-    grid-template-columns: minmax(0, 1fr) minmax(320px, 380px) !important;
+    grid-template-columns: minmax(320px, 380px) minmax(0, 1fr) !important;
     gap: 28px !important;
     align-items: stretch !important;
 }
