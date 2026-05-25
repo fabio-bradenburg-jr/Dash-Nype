@@ -15472,6 +15472,7 @@ export default function DashboardShell({
               <div className="simple-client-list" role="table" aria-label="Clientes cadastrados">
                 <div className="simple-client-row simple-client-row-head" role="row">
                   <span role="columnheader">Cliente</span>
+                  <span role="columnheader">Status</span>
                   <span role="columnheader">Saúde</span>
                   <span role="columnheader" aria-label="Meta Ads"><i className="bx bxl-meta"></i></span>
                   <span role="columnheader" aria-label="Agendor"><i className="bx bx-git-branch"></i></span>
@@ -15534,6 +15535,19 @@ export default function DashboardShell({
                             <small>{metaAccount?.name || client.metaAdAccountId || client.cnpj || 'Sem conta de anúncio selecionada'}</small>
                           </span>
                         </button>
+                        <label className="simple-client-status-select" title="Status do cliente">
+                          <span>Status</span>
+                          <select
+                            value={['Ativo', 'Pausado', 'Churn'].includes(client.status) ? client.status : 'Ativo'}
+                            onChange={(event) => handleClientInlineFieldChange(client.id, 'status', event.target.value)}
+                            disabled={!canEditClientRecord(client.id)}
+                            aria-label={`Status de ${client.name}`}
+                          >
+                            <option value="Ativo">Ativo</option>
+                            <option value="Pausado">Pausado</option>
+                            <option value="Churn">Churn</option>
+                          </select>
+                        </label>
                         <span
                           className={'simple-client-health ' + (latestHealth ? 'active ' + (latestHealth.key || latestHealthRecord?.healthStatus || '') : 'empty')}
                           style={latestHealth ? { '--client-health-color': latestHealth.color } : undefined}
@@ -28175,7 +28189,7 @@ export default function DashboardShell({
         .simple-client-list { display: grid; gap: 10px; }
         .simple-client-row {
           display: grid;
-          grid-template-columns: minmax(220px, 1fr) minmax(132px, 0.42fr) 72px 72px 72px 110px;
+          grid-template-columns: minmax(220px, 1fr) minmax(128px, 0.32fr) minmax(132px, 0.42fr) 72px 72px 72px 110px;
           align-items: center;
           gap: 12px;
           padding: 14px 16px;
@@ -28230,6 +28244,37 @@ export default function DashboardShell({
         }
         .simple-client-name strong { font-size: 0.98rem; }
         .simple-client-name small { color: var(--muted-text); font-size: 0.78rem; }
+        .simple-client-status-select {
+          display: grid;
+          gap: 5px;
+          min-width: 0;
+          width: 100%;
+        }
+        .simple-client-status-select span {
+          display: none;
+          color: var(--muted-text);
+          font-size: 0.68rem;
+          font-weight: 900;
+          letter-spacing: 0.12em;
+          text-transform: uppercase;
+        }
+        .simple-client-status-select select {
+          width: 100%;
+          min-height: 42px;
+          border: 1px solid rgba(148, 163, 184, 0.2);
+          border-radius: 12px;
+          background: rgba(255, 255, 255, 0.045);
+          color: var(--text-primary);
+          font: inherit;
+          font-size: 0.82rem;
+          font-weight: 800;
+          outline: none;
+          padding: 0 12px;
+        }
+        .simple-client-status-select select:disabled {
+          cursor: not-allowed;
+          opacity: 0.64;
+        }
         .simple-client-health {
           min-width: 0;
           width: 100%;
@@ -32068,8 +32113,13 @@ export default function DashboardShell({
           }
 
           .simple-clients-layout .simple-client-name,
+          .simple-clients-layout .simple-client-status-select,
           .simple-clients-layout .simple-client-health {
             grid-column: 1 / -1;
+          }
+
+          .simple-clients-layout .simple-client-status-select span {
+            display: inline-flex;
           }
 
           .dashboard-rgb-grid,
