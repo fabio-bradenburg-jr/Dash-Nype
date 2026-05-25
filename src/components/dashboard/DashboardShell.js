@@ -237,6 +237,14 @@ const WEEKLY_HEALTH_OPTIONS = [
     softColor: '#dbeafe',
     criteria: 'Resultado acima da meta, cliente satisfeito e engajado com expansão.',
   },
+  {
+    key: 'churn',
+    label: 'Churn',
+    score: 5,
+    color: '#64748b',
+    softColor: '#e2e8f0',
+    criteria: 'Cliente encerrado, perdido ou sem continuidade ativa na operação.',
+  },
 ]
 
 const WEEKLY_HEALTH_BY_KEY = Object.fromEntries(WEEKLY_HEALTH_OPTIONS.map((item) => [item.key, item]))

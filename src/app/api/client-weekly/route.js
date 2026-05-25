@@ -40,7 +40,7 @@ function normalizeInteger(value) {
 
 function normalizeHealthStatus(value) {
   const status = String(value || '').trim()
-  return ['integration', 'critical', 'attention', 'healthy', 'with_result'].includes(status) ? status : 'attention'
+  return ['integration', 'critical', 'attention', 'healthy', 'with_result', 'churn'].includes(status) ? status : 'attention'
 }
 
 function normalizeActionItems(value) {
