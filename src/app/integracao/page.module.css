@@ -67,6 +67,46 @@
   border-bottom: 1px solid var(--lp-line);
 }
 
+.darkSection {
+  width: min(1500px, calc(100% - 48px));
+  margin: 24px auto;
+  padding: 64px 48px 80px;
+  border: 1px solid rgba(0, 209, 132, 0.2);
+  border-radius: 34px;
+  background:
+    radial-gradient(circle at 72% 12%, rgba(0, 209, 132, 0.16), transparent 30%),
+    linear-gradient(135deg, #071110 0%, #0c1715 55%, #08100f 100%);
+  box-shadow: 0 28px 80px rgba(7, 17, 16, 0.16);
+  color: #f4fbf8;
+}
+
+.darkSection .slideMeta {
+  border-bottom-color: rgba(255, 255, 255, 0.12);
+}
+
+.darkSection .pill {
+  border-color: rgba(0, 209, 132, 0.58);
+  background: rgba(0, 209, 132, 0.12);
+  color: #63f5ba;
+}
+
+.darkSection h2,
+.darkSection h3,
+.darkSection .kicker,
+.darkSection .lead strong,
+.darkSection .closingPanel strong {
+  color: #f7fffc;
+}
+
+.darkSection .sectionIntro,
+.darkSection .centerTitle p,
+.darkSection .methodCard p,
+.darkSection .methodCard li,
+.darkSection .practiceCard p,
+.darkSection .checkCard p {
+  color: rgba(231, 243, 238, 0.72);
+}
+
 .pill {
   display: inline-flex;
   align-items: center;
@@ -362,6 +402,34 @@
   box-shadow: 0 28px 60px rgba(0, 209, 132, 0.09);
 }
 
+.darkSection .methodCard,
+.darkSection .practiceCard,
+.darkSection .checkCard {
+  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.055);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.14);
+}
+
+.darkSection .featuredMethod {
+  border-color: rgba(0, 209, 132, 0.62);
+  box-shadow: 0 28px 70px rgba(0, 209, 132, 0.14);
+}
+
+.darkSection .methodCard > span {
+  background: #f7fffc;
+  color: #071110;
+}
+
+.darkSection .methodCard ul {
+  border-top-color: rgba(255, 255, 255, 0.12);
+}
+
+.darkSection .impactBox {
+  border-color: rgba(0, 209, 132, 0.42);
+  background: rgba(0, 209, 132, 0.1);
+  color: #f7fffc;
+}
+
 .splitContent {
   display: grid;
   grid-template-columns: 0.9fr 1.08fr;
@@ -541,6 +609,14 @@
   font-family: "Courier New", monospace;
 }
 
+.darkSection h2,
+.darkSection .centerTitle h2,
+.darkSection .methodCard h3,
+.darkSection .practiceCard h3,
+.darkSection .checkCard h3 {
+  color: #f7fffc;
+}
+
 @media (max-width: 1180px) {
   .methodGrid,
   .practiceGrid {
@@ -570,6 +646,12 @@
   .slide {
     width: min(100% - 32px, 1500px);
     padding: 42px 0 64px;
+  }
+
+  .darkSection {
+    width: min(100% - 32px, 1500px);
+    padding: 42px 24px 64px;
+    border-radius: 24px;
   }
 
   .slideMeta {

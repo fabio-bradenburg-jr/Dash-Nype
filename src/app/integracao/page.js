@@ -200,7 +200,7 @@ export default function IntegracaoPage() {
         <div className={styles.impactBox}>Quanto mais completa for essa etapa, <Highlight>mais rápido</Highlight> conseguimos colocar sua operação para rodar.</div>
       </SlideShell>
 
-      <SlideShell eyebrow="O que vamos construir juntos" className={styles.methodSlide}>
+      <SlideShell eyebrow="O que vamos construir juntos" className={`${styles.methodSlide} ${styles.darkSection}`}>
         <div id="metodo" className={styles.centerTitle}>
           <p className={styles.kicker}>Nosso método exclusivo</p>
           <h2>5 P&apos;s</h2>
@@ -269,7 +269,7 @@ export default function IntegracaoPage() {
         </div>
       </SlideShell>
 
-      <SlideShell eyebrow="Atendimento comercial">
+      <SlideShell eyebrow="Atendimento comercial" className={styles.darkSection}>
         <h2>Velocidade e processo <Highlight>fazem diferença</Highlight></h2>
         <p className={styles.sectionIntro}>
           O comercial recebe o lead e precisa seguir um processo claro para aumentar as chances de conversão.
@@ -305,7 +305,7 @@ export default function IntegracaoPage() {
         </div>
       </SlideShell>
 
-      <SlideShell eyebrow="Checklist de integração">
+      <SlideShell eyebrow="Checklist de integração" className={styles.darkSection}>
         <h2>Antes de iniciar os anúncios, <Highlight>precisamos destes itens</Highlight></h2>
         <p className={styles.sectionIntro}>Depois da reunião de integração, esse checklist será usado para organizar o início das campanhas.</p>
         <div className={styles.checklistGrid}>
