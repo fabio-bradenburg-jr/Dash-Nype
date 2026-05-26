@@ -200,7 +200,7 @@ export default function IntegracaoPage() {
         <div className={styles.impactBox}>Quanto mais completa for essa etapa, <Highlight>mais rápido</Highlight> conseguimos colocar sua operação para rodar.</div>
       </SlideShell>
 
-      <SlideShell eyebrow="O que vamos construir juntos" className={`${styles.methodSlide} ${styles.darkSection}`}>
+      <SlideShell eyebrow="O que vamos construir juntos" className={styles.darkSection}>
         <div id="metodo" className={styles.centerTitle}>
           <p className={styles.kicker}>Nosso método exclusivo</p>
           <h2>5 P&apos;s</h2>
