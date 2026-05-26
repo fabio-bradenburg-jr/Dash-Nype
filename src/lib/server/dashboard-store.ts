@@ -648,12 +648,38 @@ function normalizeClientDashboardIntegrationKeys(items: unknown): string[] {
   return normalized.length ? normalized : [...DEFAULT_CLIENT_DASHBOARD_INTEGRATION_KEYS]
 }
 
+function normalizeManualCrmSummary(payload: unknown): Record<string, number | null> {
+  const source = payload && typeof payload === 'object' ? payload as LooseRecord : {}
+  const pickValue = (...keys: string[]) => {
+    for (const key of keys) {
+      const value = source[key]
+      if (value !== null && value !== undefined && String(value).trim() !== '') return value
+    }
+    return null
+  }
+  const toNumber = (value: unknown) => {
+    if (value === null || value === undefined || String(value).trim() === '') return null
+    const numeric = Number(String(value).replace(',', '.'))
+    return Number.isFinite(numeric) ? numeric : null
+  }
+
+  return {
+    opportunityCount: toNumber(pickValue('opportunityCount', 'opportunities', 'contactsInPeriod', 'contacts')),
+    qualifiedOpportunityCount: toNumber(pickValue('qualifiedOpportunityCount', 'qualifiedDeals', 'qualifiedContacts')),
+    wonOpportunityCount: toNumber(pickValue('wonOpportunityCount', 'wonDeals')),
+    lostOpportunityCount: toNumber(pickValue('lostOpportunityCount', 'lostDeals', 'lostContacts')),
+    wonRevenue: toNumber(pickValue('wonRevenue', 'wonOpportunityRevenue')),
+    lostOpportunityValue: toNumber(pickValue('lostOpportunityValue')),
+  }
+}
+
 function normalizeClientRecord(client: LooseRecord): ClientRecord {
   const payload = client?.payload && typeof client.payload === 'object' ? client.payload : client || {}
   const businessData = payload.business_data && typeof payload.business_data === 'object' ? payload.business_data : {}
-  const manualCrmSummary = payload.manualCrmSummary && typeof payload.manualCrmSummary === 'object'
+  const rawManualCrmSummary = payload.manualCrmSummary && typeof payload.manualCrmSummary === 'object'
     ? payload.manualCrmSummary
     : (businessData.manualCrmSummary && typeof businessData.manualCrmSummary === 'object' ? businessData.manualCrmSummary : {})
+  const manualCrmSummary = normalizeManualCrmSummary(rawManualCrmSummary)
   const crmProvider = String(payload.crmProvider || payload.crmMode || businessData.crmProvider || businessData.crmMode || '').trim()
   const { dashboardTemplates, activeDashboardTemplateId } = normalizeClientDashboardTemplates(payload)
   const normalizedAiSettings = normalizeAiSettings(payload.integrations || {})

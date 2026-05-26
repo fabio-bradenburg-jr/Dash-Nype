@@ -849,6 +849,8 @@ export function createClientRecord(overrides: ClientRecordOverrides = {}): Clien
   const normalizedAiSettings = normalizeAiSettings(overrides.integrations || {})
   const clientId = overrides.id || createRecordId('client')
   const customClientId = resolveClientUid(overrides, clientId)
+  const rawCrmProvider = String(overrides.crmProvider || (overrides as Record<string, unknown>).crmMode || '').trim()
+  const crmProvider = rawCrmProvider.toLowerCase() === 'manual' ? 'manual' : rawCrmProvider
 
   return {
     id: clientId,
@@ -857,8 +859,8 @@ export function createClientRecord(overrides: ClientRecordOverrides = {}): Clien
     operationEnabled: overrides.operationEnabled !== false,
     dashboardEnabled: overrides.dashboardEnabled !== false,
     dashboardVisibleIntegrationKeys: normalizeClientDashboardIntegrationKeys(overrides.dashboardVisibleIntegrationKeys),
-    crmProvider: '',
-    manualCrmSummary: {},
+    crmProvider,
+    manualCrmSummary: overrides.manualCrmSummary || {},
     status: 'Ativo',
     productId: '',
     product: '',
@@ -949,6 +951,8 @@ export function createClientRecord(overrides: ClientRecordOverrides = {}): Clien
       ? Number(overrides.googleSheetsHeaderRow)
       : 1,
     googleSheetsStatusColumn: String(overrides.googleSheetsStatusColumn || '').trim(),
+    crmProvider,
+    manualCrmSummary: overrides.manualCrmSummary || {},
     integrations: {
       ...DEFAULT_INTEGRATIONS,
       ...overrides.integrations,

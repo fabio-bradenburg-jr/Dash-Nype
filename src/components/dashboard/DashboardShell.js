@@ -3083,12 +3083,20 @@ function calculateRate(partial, total) {
 
 function buildManualCrmSummary(manualCrmSummary, metaSummary = null) {
   const manual = manualCrmSummary && typeof manualCrmSummary === 'object' ? manualCrmSummary : {}
-  const opportunityCount = safeNumber(manual.opportunityCount)
-  const qualifiedOpportunityCount = safeNumber(manual.qualifiedOpportunityCount)
-  const wonOpportunityCount = safeNumber(manual.wonOpportunityCount)
-  const lostOpportunityCount = safeNumber(manual.lostOpportunityCount)
-  const wonRevenue = safeNumber(manual.wonRevenue)
-  const lostOpportunityValue = safeNumber(manual.lostOpportunityValue)
+  const pickManualValue = (...keys) => {
+    for (const key of keys) {
+      if (manual[key] !== null && manual[key] !== undefined && String(manual[key]).trim() !== '') {
+        return manual[key]
+      }
+    }
+    return null
+  }
+  const opportunityCount = safeNumber(pickManualValue('opportunityCount', 'opportunities', 'contactsInPeriod', 'contacts'))
+  const qualifiedOpportunityCount = safeNumber(pickManualValue('qualifiedOpportunityCount', 'qualifiedDeals', 'qualifiedContacts'))
+  const wonOpportunityCount = safeNumber(pickManualValue('wonOpportunityCount', 'wonDeals'))
+  const lostOpportunityCount = safeNumber(pickManualValue('lostOpportunityCount', 'lostDeals', 'lostContacts'))
+  const wonRevenue = safeNumber(pickManualValue('wonRevenue', 'wonOpportunityRevenue'))
+  const lostOpportunityValue = safeNumber(pickManualValue('lostOpportunityValue'))
   const avgTicketWon = wonOpportunityCount > 0 ? wonRevenue / wonOpportunityCount : 0
   const spend = safeNumber(metaSummary?.spend)
 
@@ -6489,20 +6497,32 @@ export default function DashboardShell({
     const nextCrmProvider = enabled ? 'manual' : (hasAgendorConfigured ? 'agendor' : '')
     const nextCrmMode = enabled ? 'manual' : nextCrmProvider
     const manualCrmSummary = activeClient.manualCrmSummary || {}
+    const nextClients = clients.map((client) => {
+      if (client.id !== activeClient.id) return client
 
-    updateActiveClient((client) => {
       const dashboardVisibleIntegrationKeys = enabled
         ? ensureAgendorDashboardVisibility(client)
         : normalizeClientDashboardIntegrationKeys(client.dashboardVisibleIntegrationKeys)
 
-      return {
+      return createClientRecord({
         ...client,
         crmProvider: nextCrmProvider,
         crmMode: nextCrmMode,
         manualCrmSummary,
         dashboardVisibleIntegrationKeys,
-      }
+      })
     })
+    setClients(nextClients)
+
+    const updatedActiveClient = nextClients.find((client) => client.id === activeClient.id) || {
+      ...activeClient,
+      crmProvider: nextCrmProvider,
+      crmMode: nextCrmMode,
+      manualCrmSummary,
+      dashboardVisibleIntegrationKeys: enabled
+        ? ensureAgendorDashboardVisibility(activeClient)
+        : normalizeClientDashboardIntegrationKeys(activeClient.dashboardVisibleIntegrationKeys),
+    }
 
     setIsSavingIntegrations(true)
     try {
@@ -6513,6 +6533,7 @@ export default function DashboardShell({
           crmProvider: nextCrmProvider,
           crmMode: nextCrmMode,
           manualCrmSummary,
+          dashboardVisibleIntegrationKeys: updatedActiveClient.dashboardVisibleIntegrationKeys,
           business_data: {
             crmProvider: nextCrmProvider,
             crmMode: nextCrmMode,
@@ -6523,6 +6544,12 @@ export default function DashboardShell({
       const data = await response.json().catch(() => ({}))
       if (!response.ok) {
         throw new Error(data?.error || data?.detail || 'Não foi possível salvar o modo de CRM deste cliente.')
+      }
+
+      await persistWorkspaceState({ clients: nextClients, activeClientId })
+      if (enabled) {
+        setRdSummary(buildManualCrmSummary(manualCrmSummary, insights))
+        setPreviousRdSummary(null)
       }
     } catch (error) {
       alert(error?.message || 'Não foi possível salvar o modo de CRM deste cliente.')
@@ -10068,17 +10095,20 @@ export default function DashboardShell({
         throw new Error(data?.error || data?.detail || 'Não foi possível salvar os dados manuais do CRM.')
       }
 
-      setClients((currentClients) =>
-        currentClients.map((client) =>
-          client.id === activeClient.id
-            ? createClientRecord({
-                ...client,
-                crmProvider: 'manual',
-                manualCrmSummary,
-              })
-            : client
-        )
+      const nextClients = clients.map((client) =>
+        client.id === activeClient.id
+          ? createClientRecord({
+              ...client,
+              crmProvider: 'manual',
+              crmMode: 'manual',
+              manualCrmSummary,
+              dashboardVisibleIntegrationKeys: ensureAgendorDashboardVisibility(client),
+            })
+          : client
       )
+
+      setClients(nextClients)
+      await persistWorkspaceState({ clients: nextClients, activeClientId })
       setRdSummary(buildManualCrmSummary(manualCrmSummary, insights))
       setPreviousRdSummary(null)
       setIsManualCrmModalOpen(false)
