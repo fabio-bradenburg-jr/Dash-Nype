@@ -246,22 +246,6 @@ export default function IntegracaoPage() {
         </div>
       </SlideShell>
 
-      <SlideShell eyebrow="Checklist de integração">
-        <h2>Antes de iniciar os anúncios, <Highlight>precisamos destes itens</Highlight></h2>
-        <p className={styles.sectionIntro}>Depois da reunião de integração, esse checklist será usado para organizar o início das campanhas.</p>
-        <div className={styles.checklistGrid}>
-          {checklistItems.map(([title, text], index) => (
-            <article className={styles.checkCard} key={title}>
-              <span>{String(index + 1).padStart(2, '0')}</span>
-              <div>
-                <h3>{title}</h3>
-                <p>{text}</p>
-              </div>
-            </article>
-          ))}
-        </div>
-      </SlideShell>
-
       <SlideShell eyebrow="Organização dos leads" className={styles.splitSlide}>
         <div className={styles.splitContent}>
           <div>
@@ -311,6 +295,22 @@ export default function IntegracaoPage() {
         <div className={styles.meetingGrid}>
           {meetingItems.map(([title, text], index) => (
             <article key={title}>
+              <span>{String(index + 1).padStart(2, '0')}</span>
+              <div>
+                <h3>{title}</h3>
+                <p>{text}</p>
+              </div>
+            </article>
+          ))}
+        </div>
+      </SlideShell>
+
+      <SlideShell eyebrow="Checklist de integração">
+        <h2>Antes de iniciar os anúncios, <Highlight>precisamos destes itens</Highlight></h2>
+        <p className={styles.sectionIntro}>Depois da reunião de integração, esse checklist será usado para organizar o início das campanhas.</p>
+        <div className={styles.checklistGrid}>
+          {checklistItems.map(([title, text], index) => (
+            <article className={styles.checkCard} key={title}>
               <span>{String(index + 1).padStart(2, '0')}</span>
               <div>
                 <h3>{title}</h3>
