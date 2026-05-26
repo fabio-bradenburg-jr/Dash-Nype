@@ -3240,7 +3240,7 @@ export default function DashboardShell({
   const [weeklyMonthFilter, setWeeklyMonthFilter] = useState(() => getCurrentMonthInputValue())
   const [weeklyFilledWeekStart, setWeeklyFilledWeekStart] = useState('')
   const [weeklyTableHealthFilter, setWeeklyTableHealthFilter] = useState('all')
-  const [weeklyTableSort, setWeeklyTableSort] = useState({ key: 'date', direction: 'desc' })
+  const [weeklyTableSort, setWeeklyTableSort] = useState({ key: 'health', direction: 'asc' })
   const [isWeeklyDeleteMode, setIsWeeklyDeleteMode] = useState(false)
   const [selectedWeeklyRecordIds, setSelectedWeeklyRecordIds] = useState([])
   const [isDeletingWeeklyRecords, setIsDeletingWeeklyRecords] = useState(false)
