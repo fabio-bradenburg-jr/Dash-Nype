@@ -133,12 +133,11 @@ const meetingItems = [
   ['Ajustes nas campanhas e processo', 'Plano de ação para o próximo ciclo.'],
 ]
 
-function SlideShell({ eyebrow, slide, children, className = '', id }) {
+function SlideShell({ eyebrow, children, className = '', id }) {
   return (
     <section id={id} className={`${styles.slide} ${className}`}>
       <div className={styles.slideMeta}>
         <span className={styles.pill}>{eyebrow}</span>
-        <span className={styles.slideNumber}>SLIDE {String(slide).padStart(2, '0')} / 10</span>
       </div>
       {children}
     </section>
@@ -158,7 +157,7 @@ export default function IntegracaoPage() {
         </a>
       </nav>
 
-      <SlideShell eyebrow="Apresentação de integração" slide={1} className={styles.heroSlide} id="inicio">
+      <SlideShell eyebrow="Apresentação de integração" className={styles.heroSlide} id="inicio">
         <p className={styles.kicker}>Método LP — onboarding do cliente</p>
         <h1>Bem-vindo ao <Highlight>Método LP</Highlight></h1>
         <p className={styles.lead}>
@@ -176,7 +175,7 @@ export default function IntegracaoPage() {
         </div>
       </SlideShell>
 
-      <SlideShell eyebrow="Como funciona a partir de agora" slide={2} className={styles.flowSlide}>
+      <SlideShell eyebrow="Como funciona a partir de agora" className={styles.flowSlide}>
         <h2>Agora começa a estruturação da sua <Highlight>máquina comercial</Highlight></h2>
         <p className={styles.sectionIntro}>
           Após a assinatura do contrato, iniciamos uma etapa de organização estratégica para entender o cenário da empresa,
@@ -201,7 +200,7 @@ export default function IntegracaoPage() {
         <div className={styles.impactBox}>Quanto mais completa for essa etapa, <Highlight>mais rápido</Highlight> conseguimos colocar sua operação para rodar.</div>
       </SlideShell>
 
-      <SlideShell eyebrow="O que vamos construir juntos" slide={3} className={styles.methodSlide}>
+      <SlideShell eyebrow="O que vamos construir juntos" className={styles.methodSlide}>
         <div id="metodo" className={styles.centerTitle}>
           <p className={styles.kicker}>Nosso método exclusivo</p>
           <h2>5 P&apos;s</h2>
@@ -223,7 +222,7 @@ export default function IntegracaoPage() {
         </div>
       </SlideShell>
 
-      <SlideShell eyebrow="Seu papel nessa etapa" slide={4} className={styles.splitSlide}>
+      <SlideShell eyebrow="Seu papel nessa etapa" className={styles.splitSlide}>
         <div className={styles.splitContent}>
           <div>
             <h2>Para tudo funcionar, precisamos do seu <Highlight>comprometimento</Highlight></h2>
@@ -247,7 +246,7 @@ export default function IntegracaoPage() {
         </div>
       </SlideShell>
 
-      <SlideShell eyebrow="Checklist de integração" slide={5}>
+      <SlideShell eyebrow="Checklist de integração">
         <h2>Antes de iniciar os anúncios, <Highlight>precisamos destes itens</Highlight></h2>
         <p className={styles.sectionIntro}>Depois da reunião de integração, esse checklist será usado para organizar o início das campanhas.</p>
         <div className={styles.checklistGrid}>
@@ -263,7 +262,7 @@ export default function IntegracaoPage() {
         </div>
       </SlideShell>
 
-      <SlideShell eyebrow="Formulário de integração" slide={6} className={styles.formIntroSlide}>
+      <SlideShell eyebrow="Formulário de integração" className={styles.formIntroSlide}>
         <div className={styles.formPanel}>
           <span className={styles.pill}>Próximo passo</span>
           <h2>Agora precisamos conhecer melhor sua <Highlight>empresa</Highlight></h2>
@@ -274,7 +273,7 @@ export default function IntegracaoPage() {
         </div>
       </SlideShell>
 
-      <SlideShell eyebrow="Organização dos leads" slide={7} className={styles.splitSlide}>
+      <SlideShell eyebrow="Organização dos leads" className={styles.splitSlide}>
         <div className={styles.splitContent}>
           <div>
             <h2>Todos os leads precisam ser <Highlight>acompanhados</Highlight></h2>
@@ -297,7 +296,7 @@ export default function IntegracaoPage() {
         </div>
       </SlideShell>
 
-      <SlideShell eyebrow="Atendimento comercial" slide={8}>
+      <SlideShell eyebrow="Atendimento comercial">
         <h2>Velocidade e processo <Highlight>fazem diferença</Highlight></h2>
         <p className={styles.sectionIntro}>
           O comercial recebe o lead e precisa seguir um processo claro para aumentar as chances de conversão.
@@ -314,7 +313,7 @@ export default function IntegracaoPage() {
         <div className={styles.impactBox}>Venda não depende só de interesse. Depende de <Highlight>método, constância e acompanhamento.</Highlight></div>
       </SlideShell>
 
-      <SlideShell eyebrow="Reuniões e acompanhamento" slide={9}>
+      <SlideShell eyebrow="Reuniões e acompanhamento">
         <h2>Mensalmente, acompanhamos os <Highlight>indicadores</Highlight></h2>
         <p className={styles.sectionIntro}>
           Durante o projeto, realizamos reuniões de acompanhamento para analisar campanhas, leads, atendimento comercial,
@@ -333,7 +332,7 @@ export default function IntegracaoPage() {
         </div>
       </SlideShell>
 
-      <SlideShell eyebrow="Encerramento" slide={10} className={styles.closingSlide}>
+      <SlideShell eyebrow="Encerramento" className={styles.closingSlide}>
         <div id="encerramento" className={styles.closingPanel}>
           <span className={styles.pill}>Sua jornada começa agora</span>
           <h2>Bem-vindo ao <Highlight>Método LP</Highlight></h2>
