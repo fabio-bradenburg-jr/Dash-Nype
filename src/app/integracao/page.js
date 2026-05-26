@@ -262,17 +262,6 @@ export default function IntegracaoPage() {
         </div>
       </SlideShell>
 
-      <SlideShell eyebrow="Formulário de integração" className={styles.formIntroSlide}>
-        <div className={styles.formPanel}>
-          <span className={styles.pill}>Próximo passo</span>
-          <h2>Agora precisamos conhecer melhor sua <Highlight>empresa</Highlight></h2>
-          <p>
-            As respostas de integração vão ajudar nossa equipe a montar uma estratégia mais alinhada com a realidade do seu negócio.
-          </p>
-          <a className={styles.primaryButton} href="#encerramento">Preencher formulário de integração <i className="bx bx-right-arrow-alt" /></a>
-        </div>
-      </SlideShell>
-
       <SlideShell eyebrow="Organização dos leads" className={styles.splitSlide}>
         <div className={styles.splitContent}>
           <div>
@@ -343,7 +332,6 @@ export default function IntegracaoPage() {
             <span><b>02</b>Envio de informações</span>
             <span><b>03</b>Início das campanhas</span>
           </div>
-          <a className={styles.primaryButton} href="#inicio">Preencher formulário de integração <i className="bx bx-right-arrow-alt" /></a>
         </div>
       </SlideShell>
     </main>

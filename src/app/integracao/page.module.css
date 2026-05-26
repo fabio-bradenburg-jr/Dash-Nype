@@ -132,7 +132,6 @@
 .bodyCopy,
 .sectionIntro,
 .centerTitle p,
-.formPanel p,
 .closingPanel p {
   max-width: 1040px;
   color: var(--lp-muted);
@@ -179,8 +178,7 @@
 }
 
 .flowSlide h2,
-.splitSlide h2,
-.formIntroSlide h2 {
+.splitSlide h2 {
   max-width: 1120px;
 }
 
@@ -429,14 +427,6 @@
   gap: 22px;
 }
 
-.formIntroSlide {
-  min-height: 70vh;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-}
-
-.formPanel,
 .closingPanel {
   display: grid;
   justify-items: center;
@@ -449,19 +439,13 @@
     rgba(255, 255, 255, 0.42);
 }
 
-.formPanel h2,
 .closingPanel h2 {
   max-width: 1000px;
   margin-top: 34px;
 }
 
-.formPanel p,
 .closingPanel p {
   margin: 32px auto 0;
-}
-
-.formPanel .primaryButton {
-  margin-top: 40px;
 }
 
 .trackingPanel {
@@ -608,7 +592,6 @@
   .bodyCopy,
   .sectionIntro,
   .centerTitle p,
-  .formPanel p,
   .closingPanel p {
     font-size: 18px;
   }
@@ -626,7 +609,6 @@
   .practiceCard,
   .meetingGrid article,
   .trackingPanel,
-  .formPanel,
   .closingPanel {
     padding: 24px;
     border-radius: 22px;
