@@ -12632,7 +12632,7 @@ export default function DashboardShell({
     display: 'grid',
     placeItems: 'center',
     padding: 24,
-    background: 'rgba(4, 9, 18, 0.78)',
+    background: isLightAppMode ? 'rgba(15, 23, 42, 0.34)' : 'rgba(4, 9, 18, 0.78)',
     backdropFilter: 'blur(16px)',
     WebkitBackdropFilter: 'blur(16px)',
     boxSizing: 'border-box',
@@ -12645,9 +12645,12 @@ export default function DashboardShell({
     overflow: 'hidden',
     padding: 30,
     borderRadius: 32,
-    background: `linear-gradient(145deg, rgba(255,255,255,.07), rgba(255,255,255,.025)), radial-gradient(circle at 10% 0%, ${activeClientDashboardHex}29, transparent 38%), rgba(18,18,20,.97)`,
-    border: '1px solid rgba(255,255,255,.12)',
-    boxShadow: '0 34px 100px rgba(0,0,0,.52)',
+    background: isLightAppMode
+      ? `linear-gradient(145deg, ${activeClientDashboardHex}10, rgba(255,255,255,.98) 34%), #ffffff`
+      : `linear-gradient(145deg, rgba(255,255,255,.07), rgba(255,255,255,.025)), radial-gradient(circle at 10% 0%, ${activeClientDashboardHex}29, transparent 38%), rgba(18,18,20,.97)`,
+    border: isLightAppMode ? '1px solid rgba(15,23,42,.1)' : '1px solid rgba(255,255,255,.12)',
+    boxShadow: isLightAppMode ? '0 34px 100px rgba(15,23,42,.2)' : '0 34px 100px rgba(0,0,0,.52)',
+    color: isLightAppMode ? '#0f172a' : 'var(--text-primary)',
     boxSizing: 'border-box',
   }
 
@@ -12658,9 +12661,9 @@ export default function DashboardShell({
     width: 44,
     height: 44,
     borderRadius: 999,
-    border: '1px solid rgba(255,255,255,.12)',
-    background: 'rgba(255,255,255,.07)',
-    color: '#fff',
+    border: isLightAppMode ? '1px solid rgba(15,23,42,.12)' : '1px solid rgba(255,255,255,.12)',
+    background: isLightAppMode ? 'rgba(255,255,255,.94)' : 'rgba(255,255,255,.07)',
+    color: isLightAppMode ? '#0f172a' : '#fff',
     display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -12698,16 +12701,16 @@ export default function DashboardShell({
     flexDirection: 'column',
     gap: 10,
     minWidth: 0,
-    color: 'var(--text-primary)',
+    color: isLightAppMode ? '#0f172a' : 'var(--text-primary)',
   }
 
   const weeklyControlStyle = {
     width: '100%',
     minHeight: 56,
-    border: '1px solid rgba(148,163,184,.18)',
+    border: isLightAppMode ? '1px solid rgba(15,23,42,.12)' : '1px solid rgba(148,163,184,.18)',
     borderRadius: 18,
-    background: 'rgba(6,10,18,.72)',
-    color: 'var(--text-primary)',
+    background: isLightAppMode ? '#ffffff' : 'rgba(6,10,18,.72)',
+    color: isLightAppMode ? '#0f172a' : 'var(--text-primary)',
     padding: '0 18px',
     font: 'inherit',
     outline: 'none',
@@ -12728,9 +12731,10 @@ export default function DashboardShell({
     flexDirection: 'column',
     justifyContent: 'center',
     gap: 10,
-    border: '1px solid rgba(148,163,184,.14)',
+    border: isLightAppMode ? '1px solid rgba(15,23,42,.1)' : '1px solid rgba(148,163,184,.14)',
     borderRadius: 22,
-    background: 'rgba(255,255,255,.045)',
+    background: isLightAppMode ? '#ffffff' : 'rgba(255,255,255,.045)',
+    color: isLightAppMode ? '#0f172a' : 'var(--text-primary)',
     padding: 18,
     boxSizing: 'border-box',
   }
@@ -12748,9 +12752,9 @@ export default function DashboardShell({
     minHeight: 122,
     padding: 16,
     borderRadius: 20,
-    border: '1px solid rgba(148,163,184,.15)',
-    background: 'rgba(255,255,255,.045)',
-    color: 'var(--text-primary)',
+    border: isLightAppMode ? '1px solid rgba(15,23,42,.1)' : '1px solid rgba(148,163,184,.15)',
+    background: isLightAppMode ? '#ffffff' : 'rgba(255,255,255,.045)',
+    color: isLightAppMode ? '#0f172a' : 'var(--text-primary)',
     textAlign: 'left',
     cursor: 'pointer',
     boxSizing: 'border-box',
@@ -12764,8 +12768,8 @@ export default function DashboardShell({
     justifyContent: 'flex-end',
     gap: 14,
     paddingTop: 18,
-    borderTop: '1px solid rgba(148,163,184,.12)',
-    background: 'linear-gradient(180deg, transparent, rgba(18,18,20,.98) 20%)',
+    borderTop: isLightAppMode ? '1px solid rgba(15,23,42,.08)' : '1px solid rgba(148,163,184,.12)',
+    background: isLightAppMode ? 'linear-gradient(180deg, transparent, rgba(255,255,255,.98) 20%)' : 'linear-gradient(180deg, transparent, rgba(18,18,20,.98) 20%)',
   }
 
   const weeklyFormContent = (
@@ -31036,6 +31040,74 @@ export default function DashboardShell({
           background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.98)) !important;
           border-color: rgba(15, 23, 42, 0.08) !important;
           box-shadow: 0 34px 100px rgba(15, 23, 42, 0.2) !important;
+        }
+
+        .dashboard-light-mode .weekly-modal-overlay,
+        :root[data-ui-mode='light'] .weekly-modal-overlay {
+          background: rgba(15, 23, 42, 0.34) !important;
+        }
+
+        .dashboard-light-mode .weekly-entry-modal,
+        .dashboard-light-mode .modal-card,
+        .dashboard-light-mode .simple-client-modal {
+          background:
+            linear-gradient(145deg, color-mix(in srgb, var(--weekly-accent, var(--button-primary, #006c44)) 6%, #ffffff), rgba(255, 255, 255, 0.98) 36%),
+            #ffffff !important;
+          border-color: rgba(15, 23, 42, 0.1) !important;
+          color: #0f172a !important;
+          box-shadow: 0 30px 80px rgba(15, 23, 42, 0.18) !important;
+        }
+
+        .dashboard-light-mode .weekly-entry-form h2,
+        .dashboard-light-mode .weekly-entry-form strong,
+        .dashboard-light-mode .modal-header h3,
+        .dashboard-light-mode .input-group label {
+          color: #0f172a !important;
+        }
+
+        .dashboard-light-mode .weekly-entry-form .chart-subtitle,
+        .dashboard-light-mode .weekly-entry-form .input-group > span,
+        .dashboard-light-mode .weekly-entry-form .weekly-action-input > span,
+        .dashboard-light-mode .weekly-entry-form .weekly-action-input small,
+        .dashboard-light-mode .weekly-entry-form small,
+        .dashboard-light-mode .weekly-health-option small,
+        .dashboard-light-mode .modal-header p {
+          color: #475569 !important;
+        }
+
+        .dashboard-light-mode .weekly-entry-form select,
+        .dashboard-light-mode .weekly-entry-form input,
+        .dashboard-light-mode .weekly-entry-form textarea,
+        .dashboard-light-mode .weekly-entry-form .weekly-computed-field,
+        .dashboard-light-mode .weekly-entry-form .weekly-health-option,
+        .dashboard-light-mode .input-group input:not([type="checkbox"]):not([type="file"]),
+        .dashboard-light-mode .input-group select,
+        .dashboard-light-mode .input-group textarea,
+        .dashboard-light-mode .client-select-input {
+          background: #ffffff !important;
+          border-color: rgba(15, 23, 42, 0.12) !important;
+          color: #0f172a !important;
+        }
+
+        .dashboard-light-mode .weekly-entry-form select::placeholder,
+        .dashboard-light-mode .weekly-entry-form input::placeholder,
+        .dashboard-light-mode .weekly-entry-form textarea::placeholder,
+        .dashboard-light-mode .input-group input::placeholder,
+        .dashboard-light-mode .input-group textarea::placeholder {
+          color: #64748b !important;
+          opacity: 1 !important;
+        }
+
+        .dashboard-light-mode .weekly-entry-actions {
+          border-top-color: rgba(15, 23, 42, 0.08) !important;
+          background: linear-gradient(180deg, transparent, rgba(255, 255, 255, 0.98) 18%) !important;
+        }
+
+        .dashboard-light-mode .modal-close,
+        .dashboard-light-mode .btn.btn-secondary {
+          background: rgba(255, 255, 255, 0.94) !important;
+          border-color: rgba(15, 23, 42, 0.12) !important;
+          color: #0f172a !important;
         }
 
         :root[data-ui-mode='light'] .weekly-history-modal {
