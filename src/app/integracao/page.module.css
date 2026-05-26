@@ -1,0 +1,666 @@
+.page {
+  --lp-green: #00d184;
+  --lp-green-dark: #00a96b;
+  --lp-ink: #071110;
+  --lp-muted: #56615f;
+  --lp-line: #d7e2de;
+  --lp-soft: #eefaf5;
+  --lp-surface: #f7fbf9;
+  min-height: 100vh;
+  background:
+    linear-gradient(90deg, rgba(0, 209, 132, 0.035), transparent 20%, transparent 80%, rgba(0, 209, 132, 0.04)),
+    var(--lp-surface);
+  color: var(--lp-ink);
+  font-family: "Manrope", "Inter", sans-serif;
+  letter-spacing: 0;
+}
+
+.navbar {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 112px;
+  border-bottom: 1px solid var(--lp-line);
+  background: rgba(247, 251, 249, 0.86);
+  backdrop-filter: blur(18px);
+}
+
+.logoLink {
+  display: grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+}
+
+.logoMark {
+  width: 60px;
+  height: 56px;
+  display: block;
+  background: linear-gradient(135deg, #18e89a, #08b86f);
+  mask-image: url('/assessoria-lp-logo.png');
+  mask-size: contain;
+  mask-position: center;
+  mask-repeat: no-repeat;
+  -webkit-mask-image: url('/assessoria-lp-logo.png');
+  -webkit-mask-size: contain;
+  -webkit-mask-position: center;
+  -webkit-mask-repeat: no-repeat;
+}
+
+.slide {
+  width: min(1500px, calc(100% - 48px));
+  margin: 0 auto;
+  padding: 64px 0 80px;
+  scroll-margin-top: 132px;
+}
+
+.slideMeta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 24px;
+  padding-bottom: 28px;
+  margin-bottom: 64px;
+  border-bottom: 1px solid var(--lp-line);
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  min-height: 36px;
+  padding: 8px 18px;
+  border: 1px solid rgba(0, 209, 132, 0.45);
+  border-radius: 999px;
+  background: rgba(0, 209, 132, 0.06);
+  color: var(--lp-green-dark);
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.slideNumber,
+.kicker {
+  color: var(--lp-green-dark);
+  font-family: "Courier New", monospace;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.slideNumber {
+  color: #4d5a57;
+  white-space: nowrap;
+}
+
+.heroSlide {
+  min-height: calc(100vh - 112px);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.heroSlide .slideMeta {
+  margin-bottom: 104px;
+}
+
+.heroSlide h1,
+.slide h2 {
+  max-width: 1080px;
+  margin: 0;
+  color: var(--lp-ink);
+  font-size: clamp(56px, 6.8vw, 100px);
+  font-weight: 800;
+  line-height: 0.98;
+}
+
+.highlight {
+  color: var(--lp-green);
+  overflow-wrap: anywhere;
+}
+
+.lead {
+  max-width: 1040px;
+  margin: 52px 0 0;
+  color: #394340;
+  font-size: clamp(26px, 2.4vw, 34px);
+  line-height: 1.35;
+}
+
+.lead strong {
+  color: var(--lp-ink);
+}
+
+.bodyCopy,
+.sectionIntro,
+.centerTitle p,
+.formPanel p,
+.closingPanel p {
+  max-width: 1040px;
+  color: var(--lp-muted);
+  font-size: clamp(20px, 1.8vw, 28px);
+  line-height: 1.58;
+}
+
+.bodyCopy {
+  margin: 36px 0 0;
+}
+
+.heroActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  margin-top: 60px;
+}
+
+.primaryButton,
+.secondaryButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 68px;
+  padding: 0 38px;
+  border-radius: 999px;
+  font-size: 18px;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.primaryButton {
+  border: 1px solid var(--lp-green);
+  background: linear-gradient(135deg, #00c978, #08e69a);
+  color: #ffffff;
+  box-shadow: 0 18px 40px rgba(0, 209, 132, 0.2);
+}
+
+.secondaryButton {
+  border: 1px solid var(--lp-line);
+  background: rgba(255, 255, 255, 0.55);
+  color: var(--lp-ink);
+}
+
+.flowSlide h2,
+.splitSlide h2,
+.formIntroSlide h2 {
+  max-width: 1120px;
+}
+
+.sectionIntro {
+  margin: 36px 0 64px;
+}
+
+.flowList {
+  display: grid;
+  gap: 24px;
+}
+
+.flowCard {
+  display: grid;
+  grid-template-columns: 84px 88px minmax(0, 1fr) minmax(320px, 0.76fr);
+  align-items: center;
+  gap: 28px;
+  padding: 34px;
+  border: 1px solid var(--lp-line);
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.56);
+  box-shadow: 0 18px 40px rgba(8, 37, 31, 0.04);
+}
+
+.flowIndex {
+  color: var(--lp-green);
+  font-family: "Courier New", monospace;
+  font-size: 40px;
+  font-weight: 800;
+}
+
+.flowIcon,
+.practiceCard span {
+  display: grid;
+  place-items: center;
+  width: 66px;
+  height: 66px;
+  border-radius: 22px;
+  background: var(--lp-green);
+  color: #ffffff;
+  font-size: 30px;
+}
+
+.flowCard h3,
+.methodCard h3,
+.numberedList h3,
+.checkCard h3,
+.practiceCard h3,
+.meetingGrid h3 {
+  margin: 0;
+  color: var(--lp-ink);
+  font-size: 24px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.flowCard p,
+.methodCard p,
+.numberedList p,
+.checkCard p,
+.practiceCard p,
+.meetingGrid p {
+  margin: 14px 0 0;
+  color: var(--lp-muted);
+  font-size: 18px;
+  line-height: 1.5;
+}
+
+.flowCard aside {
+  padding: 20px;
+  border: 1px solid rgba(0, 209, 132, 0.35);
+  border-radius: 18px;
+  background: rgba(0, 209, 132, 0.035);
+}
+
+.flowCard small {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--lp-green-dark);
+  font-family: "Courier New", monospace;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.flowCard aside strong {
+  font-size: 18px;
+  line-height: 1.42;
+}
+
+.impactBox,
+.callout {
+  margin-top: 56px;
+  padding: 40px;
+  border: 1px solid rgba(0, 209, 132, 0.35);
+  border-radius: 26px;
+  background: rgba(0, 209, 132, 0.055);
+  color: var(--lp-ink);
+  font-size: clamp(24px, 2vw, 30px);
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.centerTitle {
+  text-align: center;
+}
+
+.centerTitle h2 {
+  max-width: none;
+  margin-top: 24px;
+  font-size: clamp(80px, 8vw, 116px);
+}
+
+.centerTitle p {
+  margin: 32px auto 0;
+}
+
+.methodGrid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 24px;
+  margin-top: 84px;
+}
+
+.methodCard {
+  display: flex;
+  flex-direction: column;
+  min-height: 560px;
+  padding: 34px;
+  border: 1px solid var(--lp-line);
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.56);
+}
+
+.methodCard > span {
+  display: grid;
+  place-items: center;
+  width: 68px;
+  height: 68px;
+  margin-bottom: 34px;
+  border-radius: 50%;
+  background: var(--lp-ink);
+  color: #ffffff;
+  font-weight: 800;
+  font-size: 18px;
+}
+
+.methodCard ul {
+  display: grid;
+  gap: 14px;
+  margin: auto 0 0;
+  padding: 28px 0 0;
+  border-top: 1px solid var(--lp-line);
+  list-style: none;
+}
+
+.methodCard li {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  gap: 10px;
+  color: var(--lp-muted);
+  font-size: 16px;
+  line-height: 1.35;
+}
+
+.methodCard li i,
+.trackingPanel i {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border: 1px solid var(--lp-green);
+  border-radius: 50%;
+  color: var(--lp-green);
+  font-size: 14px;
+}
+
+.featuredMethod {
+  border-color: rgba(0, 209, 132, 0.55);
+  box-shadow: 0 28px 60px rgba(0, 209, 132, 0.09);
+}
+
+.splitContent {
+  display: grid;
+  grid-template-columns: 0.9fr 1.08fr;
+  gap: 68px;
+  align-items: start;
+}
+
+.splitContent > *,
+.methodCard,
+.flowCard,
+.checkCard,
+.practiceCard,
+.meetingGrid article,
+.numberedList article {
+  min-width: 0;
+}
+
+.splitContent h2 {
+  font-size: clamp(50px, 5vw, 76px);
+}
+
+.callout {
+  display: grid;
+  gap: 18px;
+  font-size: clamp(22px, 1.8vw, 28px);
+}
+
+.callout i {
+  color: var(--lp-green);
+  font-size: 38px;
+}
+
+.numberedList {
+  display: grid;
+  gap: 18px;
+}
+
+.numberedList article,
+.meetingGrid article,
+.checkCard {
+  display: grid;
+  grid-template-columns: 54px minmax(0, 1fr);
+  gap: 18px;
+  padding: 28px;
+  border: 1px solid var(--lp-line);
+  border-radius: 26px;
+  background: rgba(255, 255, 255, 0.58);
+}
+
+.numberedList span,
+.meetingGrid span,
+.checkCard span {
+  color: var(--lp-green);
+  font-family: "Courier New", monospace;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.checklistGrid,
+.meetingGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 22px;
+}
+
+.formIntroSlide {
+  min-height: 70vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.formPanel,
+.closingPanel {
+  display: grid;
+  justify-items: center;
+  text-align: center;
+  padding: 72px;
+  border: 1px solid rgba(0, 209, 132, 0.35);
+  border-radius: 34px;
+  background:
+    radial-gradient(circle at 75% 18%, rgba(0, 209, 132, 0.12), transparent 28%),
+    rgba(255, 255, 255, 0.42);
+}
+
+.formPanel h2,
+.closingPanel h2 {
+  max-width: 1000px;
+  margin-top: 34px;
+}
+
+.formPanel p,
+.closingPanel p {
+  margin: 32px auto 0;
+}
+
+.formPanel .primaryButton {
+  margin-top: 40px;
+}
+
+.trackingPanel {
+  padding: 34px;
+  border: 1px solid rgba(0, 209, 132, 0.55);
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.64);
+  box-shadow: 0 32px 70px rgba(0, 75, 48, 0.08);
+}
+
+.trackingPanel p {
+  margin: 0 0 18px;
+  color: var(--lp-green-dark);
+  font-family: "Courier New", monospace;
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.trackingPanel div {
+  display: grid;
+  grid-template-columns: 36px 24px minmax(0, 1fr);
+  align-items: center;
+  gap: 14px;
+  min-height: 62px;
+  border-bottom: 1px solid var(--lp-line);
+}
+
+.trackingPanel div:last-child {
+  border-bottom: 0;
+}
+
+.trackingPanel span {
+  color: #52605d;
+  font-family: "Courier New", monospace;
+  font-weight: 700;
+}
+
+.trackingPanel strong {
+  font-size: 19px;
+}
+
+.practiceGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 28px;
+  margin-top: 64px;
+}
+
+.practiceCard {
+  min-height: 260px;
+  padding: 34px;
+  border: 1px solid var(--lp-line);
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.58);
+}
+
+.practiceCard h3 {
+  margin-top: 34px;
+}
+
+.meetingGrid {
+  margin-top: 68px;
+}
+
+.closingPanel strong {
+  margin-top: 46px;
+  font-size: clamp(24px, 2.2vw, 34px);
+  line-height: 1.35;
+}
+
+.nextSteps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 48px;
+  width: min(900px, 100%);
+  margin: 64px 0 36px;
+  padding-top: 36px;
+  border-top: 1px solid var(--lp-line);
+  text-align: left;
+}
+
+.nextSteps span {
+  display: grid;
+  gap: 10px;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.nextSteps b {
+  color: var(--lp-green);
+  font-family: "Courier New", monospace;
+}
+
+@media (max-width: 1180px) {
+  .methodGrid,
+  .practiceGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .flowCard,
+  .splitContent {
+    grid-template-columns: 1fr;
+  }
+
+  .flowCard {
+    align-items: start;
+  }
+}
+
+@media (max-width: 760px) {
+  .navbar {
+    height: 86px;
+  }
+
+  .logoMark {
+    width: 44px;
+    height: 42px;
+  }
+
+  .slide {
+    width: min(100% - 32px, 1500px);
+    padding: 42px 0 64px;
+  }
+
+  .slideMeta {
+    align-items: flex-start;
+    flex-direction: column;
+    margin-bottom: 44px;
+  }
+
+  .slideNumber,
+  .kicker {
+    font-size: 14px;
+  }
+
+  .heroSlide h1,
+  .slide h2 {
+    font-size: clamp(42px, 13vw, 62px);
+    overflow-wrap: anywhere;
+  }
+
+  .lead,
+  .bodyCopy,
+  .sectionIntro,
+  .centerTitle p,
+  .formPanel p,
+  .closingPanel p {
+    font-size: 18px;
+  }
+
+  .primaryButton,
+  .secondaryButton {
+    width: 100%;
+    min-height: 58px;
+    padding: 0 22px;
+  }
+
+  .flowCard,
+  .numberedList article,
+  .checkCard,
+  .practiceCard,
+  .meetingGrid article,
+  .trackingPanel,
+  .formPanel,
+  .closingPanel {
+    padding: 24px;
+    border-radius: 22px;
+  }
+
+  .flowCard {
+    grid-template-columns: 1fr;
+    gap: 18px;
+  }
+
+  .methodGrid,
+  .checklistGrid,
+  .practiceGrid,
+  .meetingGrid,
+  .nextSteps {
+    grid-template-columns: 1fr;
+  }
+
+  .methodCard {
+    min-height: auto;
+  }
+
+  .splitContent {
+    gap: 32px;
+  }
+
+  .trackingPanel div {
+    grid-template-columns: 34px 22px minmax(0, 1fr);
+  }
+}
