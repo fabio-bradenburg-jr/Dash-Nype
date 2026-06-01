@@ -28,6 +28,7 @@ function replaceMetaAccessToken(url, nextToken) {
 }
 
 const META_RESPONSE_CACHE = new Map()
+const META_IN_FLIGHT_REQUESTS = new Map()
 const META_CACHE_TTL_MS = 60_000
 const META_MAX_PAGES = 40
 
@@ -62,62 +63,76 @@ export async function fetchMetaJson(url, fallbackMessage, options = {}) {
     return cachedEntry.data
   }
 
-  for (let attempt = 0; attempt < 2; attempt += 1) {
-    try {
-      let requestUrl = url
-      let pageCount = 0
-      let mergedData = null
-      let hasRetriedWithEnvToken = false
-
-      while (requestUrl && pageCount < maxPages) {
-        const response = await fetch(requestUrl, fetchOptions)
-        const data = await response.json()
-
-        if (data?.error) {
-          if (
-            envToken &&
-            !hasRetriedWithEnvToken &&
-            isInvalidMetaTokenPayload(data) &&
-            requestUrl.includes('access_token=') &&
-            !requestUrl.includes(`access_token=${encodeURIComponent(envToken)}`)
-          ) {
-            requestUrl = replaceMetaAccessToken(requestUrl, envToken)
-            hasRetriedWithEnvToken = true
-            continue
-          }
-
-          throw new Error(data.error.message || fallbackMessage)
-        }
-
-        if (!mergedData) {
-          mergedData = {
-            ...data,
-            data: Array.isArray(data?.data) ? [...data.data] : data?.data,
-          }
-        } else if (Array.isArray(mergedData.data) && Array.isArray(data?.data)) {
-          mergedData.data.push(...data.data)
-        }
-
-        requestUrl = data?.paging?.next || ''
-        pageCount += 1
-      }
-
-      const finalData = mergedData || {}
-
-      META_RESPONSE_CACHE.set(cacheKey, {
-        data: finalData,
-        timestamp: Date.now(),
-      })
-
-      return finalData
-    } catch (error) {
-      lastError = error
-
-      if (!isTimeoutError(error) || attempt === 1) {
-        throw new Error(normalizeMetaError(error, fallbackMessage))
-      }
-    }
+  if (META_IN_FLIGHT_REQUESTS.has(cacheKey)) {
+    return META_IN_FLIGHT_REQUESTS.get(cacheKey)
   }
 
-  throw new Error(normalizeMetaError(lastError, fallbackMessage))
+  const requestPromise = (async () => {
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      try {
+        let requestUrl = url
+        let pageCount = 0
+        let mergedData = null
+        let hasRetriedWithEnvToken = false
+
+        while (requestUrl && pageCount < maxPages) {
+          const response = await fetch(requestUrl, fetchOptions)
+          const data = await response.json()
+
+          if (data?.error) {
+            if (
+              envToken &&
+              !hasRetriedWithEnvToken &&
+              isInvalidMetaTokenPayload(data) &&
+              requestUrl.includes('access_token=') &&
+              !requestUrl.includes(`access_token=${encodeURIComponent(envToken)}`)
+            ) {
+              requestUrl = replaceMetaAccessToken(requestUrl, envToken)
+              hasRetriedWithEnvToken = true
+              continue
+            }
+
+            throw new Error(data.error.message || fallbackMessage)
+          }
+
+          if (!mergedData) {
+            mergedData = {
+              ...data,
+              data: Array.isArray(data?.data) ? [...data.data] : data?.data,
+            }
+          } else if (Array.isArray(mergedData.data) && Array.isArray(data?.data)) {
+            mergedData.data.push(...data.data)
+          }
+
+          requestUrl = data?.paging?.next || ''
+          pageCount += 1
+        }
+
+        const finalData = mergedData || {}
+
+        META_RESPONSE_CACHE.set(cacheKey, {
+          data: finalData,
+          timestamp: Date.now(),
+        })
+
+        return finalData
+      } catch (error) {
+        lastError = error
+
+        if (!isTimeoutError(error) || attempt === 1) {
+          throw new Error(normalizeMetaError(error, fallbackMessage))
+        }
+      }
+    }
+
+    throw new Error(normalizeMetaError(lastError, fallbackMessage))
+  })()
+
+  META_IN_FLIGHT_REQUESTS.set(cacheKey, requestPromise)
+
+  try {
+    return await requestPromise
+  } finally {
+    META_IN_FLIGHT_REQUESTS.delete(cacheKey)
+  }
 }

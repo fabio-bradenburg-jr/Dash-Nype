@@ -9507,14 +9507,6 @@ export default function DashboardShell({
       return
     }
 
-    if (
-      shouldFetchPresentationData
-      && hasMetaConfigured
-      && lastCompletedMetaStructureFetchKeyRef.current !== metaStructureFetchKey
-    ) {
-      return
-    }
-
     let cancelled = false
 
     const fetchDashboardData = async () => {
@@ -9534,13 +9526,12 @@ export default function DashboardShell({
         rdSellerFilter,
         rdLeadSourceFiltersKey,
         selectedQualifiedStagesKey,
-        metaFilteredCampaignIdsKey,
-        metaFilteredAdsetIdsKey,
-        metaFilteredAdIdsKey,
+        metaFilteredCampaignIdsKey: hasActiveMetaCampaignNarrowing ? metaFilteredCampaignIdsKey : '',
+        metaFilteredAdsetIdsKey: hasActiveMetaAdsetNarrowing ? metaFilteredAdsetIdsKey : '',
+        metaFilteredAdIdsKey: hasActiveMetaAdNarrowing ? metaFilteredAdIdsKey : '',
         hasActiveMetaCampaignNarrowing,
         hasActiveMetaAdsetNarrowing,
         hasActiveMetaAdNarrowing,
-        isMetaStructureReady,
         metaCredentialSignature,
         rdToken: activeCrmToken,
         googleSheetsUrl: activeClient?.googleSheetsUrl || '',
@@ -9613,6 +9604,7 @@ export default function DashboardShell({
             previousInsightsParams.set('since', formatLocalDateInput(previousMetaWindow.start))
             previousInsightsParams.set('until', formatLocalDateInput(previousMetaWindow.end))
           }
+          previousInsightsParams.set('include_campaign_daily', 'false')
           if (hasActiveMetaCampaignNarrowing && currentMetaFilteredCampaignIds.length === 0) {
             previousInsightsParams.set('campaign_ids', '__none__')
           } else if (hasActiveMetaCampaignNarrowing) {
@@ -9625,12 +9617,15 @@ export default function DashboardShell({
             previousInsightsParams.set('ad_ids', currentMetaFilteredAdIds.join(','))
           }
 
-          const [insightsResult, previousInsightsResult] = await Promise.all([
-            fetchJsonWithTimeout(`/api/meta/insights?${insightsParams.toString()}`, { headers: metaRequestHeaders }),
-            previousMetaWindow
-              ? fetchJsonWithTimeout(`/api/meta/insights?${previousInsightsParams.toString()}`, { headers: metaRequestHeaders })
-              : Promise.resolve(null),
-          ])
+          const insightsRequest = fetchJsonWithTimeout(
+            `/api/meta/insights?${insightsParams.toString()}`,
+            { headers: metaRequestHeaders }
+          )
+          const previousInsightsRequest = previousMetaWindow
+            ? fetchJsonWithTimeout(`/api/meta/insights?${previousInsightsParams.toString()}`, { headers: metaRequestHeaders })
+                .catch(() => null)
+            : Promise.resolve(null)
+          const insightsResult = await insightsRequest
 
           const insightsResponse = insightsResult.response
           const insightsData = insightsResult.data
@@ -9654,7 +9649,14 @@ export default function DashboardShell({
             setInsights(resolvedMetaSummary)
             setDailyData(insightsData.daily || [])
             setDailyCampaignData(insightsData.daily_by_campaign || [])
+          }
 
+          if (!cancelled) {
+            setIsLoading(false)
+          }
+
+          const previousInsightsResult = await previousInsightsRequest
+          if (!cancelled) {
             if (previousInsightsResult) {
               const previousInsightsResponse = previousInsightsResult.response
               const previousInsightsData = previousInsightsResult.data
@@ -9930,9 +9932,7 @@ export default function DashboardShell({
     hasActiveMetaCampaignNarrowing,
     hasActiveMetaAdsetNarrowing,
     hasActiveMetaAdNarrowing,
-    isMetaStructureReady,
     metaCredentialSignature,
-    metaStructureFetchKey,
     metaRequestHeaders,
     activeCrmToken,
     activeCrmProvider,

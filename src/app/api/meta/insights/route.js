@@ -11,6 +11,7 @@ export async function GET(request) {
     const datePreset = searchParams.get('date_preset') || 'last_7d'
     const since = searchParams.get('since')
     const until = searchParams.get('until')
+    const includeCampaignDaily = searchParams.get('include_campaign_daily') !== 'false'
     const campaignIds = searchParams.getAll('campaign_ids').flatMap((value) => value.split(',')).filter(Boolean)
     const adsetIds = searchParams.getAll('adset_ids').flatMap((value) => value.split(',')).filter(Boolean)
     const adIds = searchParams.getAll('ad_ids').flatMap((value) => value.split(',')).filter(Boolean)
@@ -98,10 +99,12 @@ export async function GET(request) {
         dailyUrl,
         'A Meta demorou para responder ao carregar os indicadores principais. Tente novamente em alguns instantes.'
       ),
-      fetchMetaJson(
-        dailyCampaignUrl,
-        'A Meta demorou para responder ao carregar a evolução por campanha. Tente novamente em alguns instantes.'
-      ),
+      includeCampaignDaily
+        ? fetchMetaJson(
+            dailyCampaignUrl,
+            'A Meta demorou para responder ao carregar a evolução por campanha. Tente novamente em alguns instantes.'
+          )
+        : Promise.resolve({ data: [] }),
     ])
 
     const mergeMetricArrays = (items = []) => {
