@@ -108,17 +108,29 @@ async function writePersistentMetaCache({ cacheKey, requestPath, data, ttlMs }) 
   try {
     const now = new Date()
     const supabase = createAdminClient()
-    const { error } = await supabase
+    const fetchedAt = now.toISOString()
+    const { error: latestCacheError } = await supabase
       .from('meta_api_cache')
       .upsert({
         cache_key: cacheKey,
         request_path: requestPath,
         payload: data,
-        fetched_at: now.toISOString(),
+        fetched_at: fetchedAt,
         expires_at: new Date(now.getTime() + ttlMs).toISOString(),
       })
 
-    if (error) throw error
+    if (latestCacheError) throw latestCacheError
+
+    const { error: historyError } = await supabase
+      .from('meta_api_cache_history')
+      .insert({
+        cache_key: cacheKey,
+        request_path: requestPath,
+        payload: data,
+        fetched_at: fetchedAt,
+      })
+
+    if (historyError) throw historyError
   } catch {
     // Cache persistence must never prevent the live Meta response from reaching the dashboard.
   }
