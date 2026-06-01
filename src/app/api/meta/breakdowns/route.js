@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server'
+import { after, NextResponse } from 'next/server'
 import { formatInsightsWithConversions } from '@/lib/meta-metrics'
 import { fetchMetaJson, normalizeMetaError } from '@/lib/server/meta-fetch'
 import { buildMetaInsightsFilterExpression, resolveMetaDateSelection } from '@/lib/server/meta-date-range'
@@ -141,10 +141,7 @@ async function saveCreativeRanking(adAccountId, creatives) {
   try {
     const clientKey = String(adAccountId).replace(/^act_/, '')
     const supabase = createAdminClient()
-    const { error } = await supabase
-      .from('meta_creative_cache')
-      .upsert(
-        creatives.map((creative) => ({
+    const rows = creatives.map((creative) => ({
           client_key: clientKey,
           ad_id: creative.adId,
           payload: {
@@ -152,14 +149,18 @@ async function saveCreativeRanking(adAccountId, creatives) {
             previewLoaded: false,
           },
           fetched_at: new Date().toISOString(),
-        })),
-        {
+        }))
+
+    for (let index = 0; index < rows.length; index += 250) {
+      const { error } = await supabase
+        .from('meta_creative_cache')
+        .upsert(rows.slice(index, index + 250), {
           onConflict: 'client_key,ad_id',
           ignoreDuplicates: true,
-        }
-      )
+        })
 
-    if (error) throw error
+      if (error) throw error
+    }
   } catch {
     // Ranking persistence must not prevent the dashboard from rendering Meta results.
   }
@@ -326,7 +327,7 @@ export async function GET(request) {
       })
       .sort((a, b) => (b.custom_metrics?.totalConversions || 0) - (a.custom_metrics?.totalConversions || 0))
 
-    await saveCreativeRanking(adAccountId, creatives)
+    after(() => saveCreativeRanking(adAccountId, creatives))
 
     return NextResponse.json({
       ad_account_id: adAccountId,
