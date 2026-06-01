@@ -119,55 +119,9 @@ function normalizeCreativeLabel(ad) {
     .trim()
 }
 
-function extractCreativeImageHashes(ad) {
+function resolveCreativeImageUrl(ad) {
   const creative = ad?.creative || {}
   const storySpec = creative.object_story_spec || {}
-  const hashes = [
-    creative.image_hash,
-    storySpec.photo_data?.image_hash,
-    storySpec.video_data?.image_hash,
-    storySpec.link_data?.image_hash,
-    ...(storySpec.link_data?.child_attachments || []).map((attachment) => attachment?.image_hash),
-  ]
-
-  return Array.from(new Set(hashes.filter(Boolean)))
-}
-
-function buildMetaAdImageMap(payload) {
-  const imageMap = new Map()
-  const rows = Array.isArray(payload?.data)
-    ? payload.data
-    : Object.values(payload?.images || {})
-
-  rows.forEach((item) => {
-    const hash = String(item?.hash || '').trim()
-    const url = String(item?.url || item?.permalink_url || '').trim()
-    if (!hash || !url) return
-
-    const currentArea = Number(item?.original_width || item?.width || 0) * Number(item?.original_height || item?.height || 0)
-    const previous = imageMap.get(hash)
-    const previousArea = previous
-      ? Number(previous?.original_width || previous?.width || 0) * Number(previous?.original_height || previous?.height || 0)
-      : 0
-
-    if (!previous || currentArea >= previousArea) {
-      imageMap.set(hash, item)
-    }
-  })
-
-  return imageMap
-}
-
-function resolveCreativeImageUrl(ad, imageMap = new Map()) {
-  const creative = ad?.creative || {}
-  const storySpec = creative.object_story_spec || {}
-  const imageHashes = extractCreativeImageHashes(ad)
-
-  for (const hash of imageHashes) {
-    const matchedImage = imageMap.get(hash)
-    if (matchedImage?.url) return matchedImage.url
-    if (matchedImage?.permalink_url) return matchedImage.permalink_url
-  }
 
   return (
     creative.image_url ||
@@ -193,31 +147,6 @@ async function fetchMetaBreakdownSafely(url, fallbackMessage) {
       error: normalizeMetaError(error, fallbackMessage),
     }
   }
-}
-
-async function fetchCreativePreviewHtml(adId, token) {
-  const previewFormats = [
-    'DESKTOP_FEED_STANDARD',
-    'MOBILE_FEED_STANDARD',
-    'INSTAGRAM_STANDARD',
-  ]
-
-  for (const previewFormat of previewFormats) {
-    try {
-      const previewUrl = `https://graph.facebook.com/v19.0/${adId}/previews?ad_format=${previewFormat}&access_token=${token}`
-      const previewData = await fetchMetaJson(
-        previewUrl,
-        'A Meta demorou para responder ao carregar o preview desse criativo.'
-      )
-
-      const body = previewData?.data?.[0]?.body || ''
-      if (body) return body
-    } catch (error) {
-      continue
-    }
-  }
-
-  return ''
 }
 
 export async function GET(request) {
@@ -267,9 +196,7 @@ export async function GET(request) {
     const creativeTimeFilter = buildMetaInsightsFilterExpression(datePreset, since, until)
 
     const creativeUrl = `https://graph.facebook.com/v19.0/${id}/ads?fields=id,name,campaign_id,adset_id,creative{name,thumbnail_url,image_url,image_hash,effective_object_story_id,object_story_spec},${creativeTimeFilter}{${creativeInsightFields}}&limit=100&access_token=${token}`
-    const adImagesUrl = `https://graph.facebook.com/v19.0/${id}/adimages?fields=hash,url,permalink_url,width,height,original_width,original_height&limit=500&access_token=${token}`
-
-    const [ageResult, cityResult, stateResult, creativeResult, adImagesResult] = await Promise.all([
+    const [ageResult, cityResult, stateResult, creativeResult] = await Promise.all([
       fetchMetaBreakdownSafely(
         `https://graph.facebook.com/v19.0/${id}/insights?${ageParams.toString()}`,
         'A Meta demorou para responder ao carregar os rankings detalhados. Tente novamente em alguns instantes.'
@@ -286,13 +213,7 @@ export async function GET(request) {
         creativeUrl,
         'A Meta demorou para responder ao carregar os rankings detalhados. Tente novamente em alguns instantes.'
       ),
-      fetchMetaBreakdownSafely(
-        adImagesUrl,
-        'A Meta demorou para responder ao carregar as imagens dos criativos. Tente novamente em alguns instantes.'
-      ),
     ])
-
-    const adImageMap = buildMetaAdImageMap(adImagesResult.data)
 
     let cityRows = cityResult.data?.data || []
     let cityLabelKey = 'city'
@@ -300,18 +221,10 @@ export async function GET(request) {
     let geoScope = 'city'
 
     if (!cityRows.length && cityError) {
-      const regionParams = buildBaseParams({ token, datePreset, since, until, fields: geographicInsightFields })
-      regionParams.set('breakdowns', 'region')
-      appendMetaEntityFiltering(regionParams, campaignIds, adsetIds, adIds)
-      const regionResult = await fetchMetaBreakdownSafely(
-        `https://graph.facebook.com/v19.0/${id}/insights?${regionParams.toString()}`,
-        'A Meta demorou para responder ao carregar os rankings detalhados. Tente novamente em alguns instantes.'
-      )
-
-      cityRows = regionResult.data?.data || []
+      cityRows = stateResult.data?.data || []
       cityLabelKey = 'region'
       geoScope = 'region'
-      cityError = regionResult.error || cityError
+      cityError = stateResult.error || cityError
 
       if (!cityRows.length && cityError) {
         const countryParams = buildBaseParams({ token, datePreset, since, until, fields: geographicInsightFields })
@@ -373,7 +286,7 @@ export async function GET(request) {
           campaignId: ad.campaign_id || '',
           adsetId: ad.adset_id || '',
           label: normalizeCreativeLabel(ad),
-          imageUrl: resolveCreativeImageUrl(ad, adImageMap),
+          imageUrl: resolveCreativeImageUrl(ad),
           spend: parseFloat(insight.spend || 0),
           impressions: parseInt(insight.impressions || 0, 10),
           clicks: parseInt(insight.clicks || 0, 10),
@@ -382,22 +295,12 @@ export async function GET(request) {
       })
       .sort((a, b) => (b.custom_metrics?.totalConversions || 0) - (a.custom_metrics?.totalConversions || 0))
 
-    const creativePreviewIds = new Set(creatives.slice(0, 30).map((creative) => creative.adId).filter(Boolean))
-    const creativesWithPreview = await Promise.all(
-      creatives.map(async (creative) => ({
-        ...creative,
-        previewHtml: creativePreviewIds.has(creative.adId)
-          ? await fetchCreativePreviewHtml(creative.adId, token)
-          : '',
-      }))
-    )
-
     return NextResponse.json({
       ad_account_id: adAccountId,
       ages: normalizeBreakdownRows(ageResult.data?.data || [], 'age', { limit: Number.MAX_SAFE_INTEGER }),
       states: normalizeBreakdownRows(stateResult.data?.data || [], 'region', { limit: Number.MAX_SAFE_INTEGER }),
       cities: normalizeBreakdownRows(cityRows, cityLabelKey, { limit: 100 }),
-      creatives: creativesWithPreview,
+      creatives,
       detail_daily: detailDaily,
       geoScope,
       errors: {
