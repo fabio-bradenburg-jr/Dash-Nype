@@ -11416,7 +11416,10 @@ export default function DashboardShell({
         setMetaCreativePreviewLoading(true)
         setMetaCreativePreviewError('')
 
-        const params = new URLSearchParams({ ad_id: activeMetaRankingDrilldownItem.adId })
+        const params = new URLSearchParams({
+          ad_id: activeMetaRankingDrilldownItem.adId,
+          ad_account_id: selectedAdAccount,
+        })
         const response = await fetch(`/api/meta/creative-preview?${params.toString()}`, {
           headers: metaRequestHeaders,
         })
@@ -11450,6 +11453,7 @@ export default function DashboardShell({
     activeMetaRankingDrilldownItem?.adId,
     hasMetaConfigured,
     metaRequestHeaders,
+    selectedAdAccount,
   ])
 
   useEffect(() => {

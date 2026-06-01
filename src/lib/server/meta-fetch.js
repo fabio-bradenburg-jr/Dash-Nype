@@ -38,20 +38,35 @@ const META_HISTORICAL_CACHE_TTL_MS = 24 * 60 * 60_000
 const META_PREVIEW_CACHE_TTL_MS = 7 * 24 * 60 * 60_000
 const META_MAX_PAGES = 40
 
-function buildPersistentMetaCacheIdentity(url, method = 'GET') {
+function normalizeClientKey(value) {
+  return String(value || 'unassigned').replace(/^act_/, '') || 'unassigned'
+}
+
+function resolveMetaResourceKind(parsed, explicitKind) {
+  if (explicitKind) return explicitKind
+  if (parsed.pathname.endsWith('/previews')) return 'creative_preview'
+  if (parsed.pathname.endsWith('/ads')) return 'creative_ranking'
+  if (parsed.pathname.endsWith('/insights')) return 'insights'
+  return 'meta_response'
+}
+
+function buildPersistentMetaCacheIdentity(url, method = 'GET', cacheContext = {}) {
   try {
     const parsed = new URL(url)
     const token = parsed.searchParams.get('access_token') || ''
+    const accountMatch = parsed.pathname.match(/\/act_([^/]+)/)
     parsed.searchParams.delete('access_token')
     parsed.searchParams.sort()
 
     const requestPath = `${parsed.origin}${parsed.pathname}?${parsed.searchParams.toString()}`
+    const clientKey = normalizeClientKey(cacheContext.clientKey || accountMatch?.[1])
+    const resourceKind = resolveMetaResourceKind(parsed, cacheContext.resourceKind)
     const tokenFingerprint = createHash('sha256').update(token).digest('hex')
     const cacheKey = createHash('sha256')
       .update(`${method}:${requestPath}:${tokenFingerprint}`)
       .digest('hex')
 
-    return { cacheKey, requestPath }
+    return { cacheKey, clientKey, resourceKind, requestPath }
   } catch {
     return null
   }
@@ -104,7 +119,7 @@ async function readPersistentMetaCache(cacheKey) {
   }
 }
 
-async function writePersistentMetaCache({ cacheKey, requestPath, data, ttlMs }) {
+async function writePersistentMetaCache({ cacheKey, clientKey, resourceKind, requestPath, data, ttlMs }) {
   try {
     const now = new Date()
     const supabase = createAdminClient()
@@ -113,6 +128,8 @@ async function writePersistentMetaCache({ cacheKey, requestPath, data, ttlMs }) 
       .from('meta_api_cache')
       .upsert({
         cache_key: cacheKey,
+        client_key: clientKey,
+        resource_kind: resourceKind,
         request_path: requestPath,
         payload: data,
         fetched_at: fetchedAt,
@@ -125,6 +142,8 @@ async function writePersistentMetaCache({ cacheKey, requestPath, data, ttlMs }) 
       .from('meta_api_cache_history')
       .insert({
         cache_key: cacheKey,
+        client_key: clientKey,
+        resource_kind: resourceKind,
         request_path: requestPath,
         payload: data,
         fetched_at: fetchedAt,
@@ -165,11 +184,12 @@ export async function fetchMetaJson(url, fallbackMessage, options = {}) {
   let lastError = null
   const cacheKey = `${options.method || 'GET'}:${url}`
   const cachedEntry = META_RESPONSE_CACHE.get(cacheKey)
-  const persistentCacheIdentity = buildPersistentMetaCacheIdentity(url, options.method || 'GET')
+  const persistentCacheIdentity = buildPersistentMetaCacheIdentity(url, options.method || 'GET', options.cacheContext)
   const envToken = String(process.env.META_ACCESS_TOKEN || '').trim()
   const maxPages = Number.isFinite(Number(options.maxPages)) ? Number(options.maxPages) : META_MAX_PAGES
   const fetchOptions = { ...options }
   delete fetchOptions.maxPages
+  delete fetchOptions.cacheContext
 
   if (cachedEntry && Date.now() - cachedEntry.timestamp < META_CACHE_TTL_MS) {
     return cachedEntry.data
@@ -179,7 +199,7 @@ export async function fetchMetaJson(url, fallbackMessage, options = {}) {
     ? await readPersistentMetaCache(persistentCacheIdentity.cacheKey)
     : null
 
-  if (persistentCacheEntry?.isFresh) {
+  if (persistentCacheEntry?.data) {
     META_RESPONSE_CACHE.set(cacheKey, {
       data: persistentCacheEntry.data,
       timestamp: Date.now(),
@@ -242,6 +262,8 @@ export async function fetchMetaJson(url, fallbackMessage, options = {}) {
         if (persistentCacheIdentity) {
           await writePersistentMetaCache({
             cacheKey: persistentCacheIdentity.cacheKey,
+            clientKey: persistentCacheIdentity.clientKey,
+            resourceKind: persistentCacheIdentity.resourceKind,
             requestPath: persistentCacheIdentity.requestPath,
             data: finalData,
             ttlMs: resolvePersistentMetaCacheTtlMs(url),
