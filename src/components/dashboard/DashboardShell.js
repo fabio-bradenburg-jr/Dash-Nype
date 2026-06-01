@@ -10024,10 +10024,11 @@ export default function DashboardShell({
       }
     }
 
-    fetchRankings()
+    const fetchRankingsTimeout = window.setTimeout(fetchRankings, 180)
 
     return () => {
       cancelled = true
+      window.clearTimeout(fetchRankingsTimeout)
     }
   }, [
     activeClientId,
