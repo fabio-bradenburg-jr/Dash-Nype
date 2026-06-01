@@ -3180,6 +3180,7 @@ export default function DashboardShell({
   const campaignsRef = useRef([])
   const hasOpenedDashboardEntryRef = useRef(false)
   const lastMetaStructureFetchKeyRef = useRef('')
+  const lastCompletedMetaStructureFetchKeyRef = useRef('')
   const lastRdPipelinesFetchKeyRef = useRef('')
   const lastDashboardFetchKeyRef = useRef('')
   const lastDashboardFetchAtRef = useRef(0)
@@ -7528,6 +7529,7 @@ export default function DashboardShell({
   useEffect(() => {
     lastDashboardFetchKeyRef.current = ''
     lastMetaStructureFetchKeyRef.current = ''
+    lastCompletedMetaStructureFetchKeyRef.current = ''
     lastBreakdownsFetchKeyRef.current = ''
     setInsights(null)
     setPreviousInsights(null)
@@ -9269,6 +9271,26 @@ export default function DashboardShell({
     event.target.value = ''
   }
 
+  const metaStructureFetchKey = useMemo(
+    () =>
+      JSON.stringify({
+        activeClientId,
+        selectedAdAccount,
+        dateRange,
+        customSince,
+        customUntil,
+        metaCredentialSignature,
+      }),
+    [
+      activeClientId,
+      selectedAdAccount,
+      dateRange,
+      customSince,
+      customUntil,
+      metaCredentialSignature,
+    ]
+  )
+
   useEffect(() => {
     if (!hasLoadedPreferences || !activeClient) {
       setAdAccounts([])
@@ -9330,6 +9352,7 @@ export default function DashboardShell({
 
     if (!activeClientId) {
       lastMetaStructureFetchKeyRef.current = ''
+      lastCompletedMetaStructureFetchKeyRef.current = ''
       setIsLoading(false)
       setInsights(null)
       setDailyData([])
@@ -9350,6 +9373,7 @@ export default function DashboardShell({
 
     const loadMetaStructure = async () => {
       if (!hasMetaConfigured) {
+        lastCompletedMetaStructureFetchKeyRef.current = ''
         setCampaigns([])
         setMetaHierarchy([])
         setIsMetaStructureReady(true)
@@ -9359,21 +9383,15 @@ export default function DashboardShell({
       setIsMetaStructureReady(false)
 
       try {
-        const fetchKey = JSON.stringify({
-          activeClientId,
-          selectedAdAccount,
-          dateRange,
-          customSince,
-          customUntil,
-          metaCredentialSignature,
-        })
+        const fetchKey = metaStructureFetchKey
 
         if (lastMetaStructureFetchKeyRef.current === fetchKey) {
-          setIsMetaStructureReady(true)
+          setIsMetaStructureReady(lastCompletedMetaStructureFetchKeyRef.current === fetchKey)
           return
         }
 
         lastMetaStructureFetchKeyRef.current = fetchKey
+        lastCompletedMetaStructureFetchKeyRef.current = ''
 
         const params = new URLSearchParams({
           ad_account_id: selectedAdAccount,
@@ -9406,9 +9424,11 @@ export default function DashboardShell({
           setErrorMessage(structureData?.error || 'Não foi possível carregar conjuntos e anúncios da Meta.')
         }
 
+        lastCompletedMetaStructureFetchKeyRef.current = fetchKey
         setIsMetaStructureReady(true)
       } catch (error) {
         if (!cancelled) {
+          lastCompletedMetaStructureFetchKeyRef.current = metaStructureFetchKey
           setCampaigns([])
           setMetaHierarchy([])
           setIsMetaStructureReady(true)
@@ -9430,6 +9450,7 @@ export default function DashboardShell({
     customSince,
     customUntil,
     hasMetaConfigured,
+    metaStructureFetchKey,
     metaCredentialSignature,
     metaRequestHeaders,
   ])
@@ -9483,6 +9504,14 @@ export default function DashboardShell({
     }
 
     if (shouldFetchMondayData && mondayDateRange === 'custom' && (!mondayCustomSince || !mondayCustomUntil)) {
+      return
+    }
+
+    if (
+      shouldFetchPresentationData
+      && hasMetaConfigured
+      && lastCompletedMetaStructureFetchKeyRef.current !== metaStructureFetchKey
+    ) {
       return
     }
 
@@ -9903,6 +9932,7 @@ export default function DashboardShell({
     hasActiveMetaAdNarrowing,
     isMetaStructureReady,
     metaCredentialSignature,
+    metaStructureFetchKey,
     metaRequestHeaders,
     activeCrmToken,
     activeCrmProvider,
@@ -9936,6 +9966,10 @@ export default function DashboardShell({
     }
 
     if (!isMetaStructureReady) {
+      return
+    }
+
+    if (lastCompletedMetaStructureFetchKeyRef.current !== metaStructureFetchKey) {
       return
     }
 
@@ -10045,6 +10079,7 @@ export default function DashboardShell({
     hasActiveMetaAdNarrowing,
     isMetaStructureReady,
     metaCredentialSignature,
+    metaStructureFetchKey,
     metaRequestHeaders,
     activeTab,
   ])
