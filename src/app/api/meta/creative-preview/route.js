@@ -90,7 +90,7 @@ export async function GET(request) {
     }
 
     const savedCreative = await readSavedCreative(clientKey, adId)
-    if (savedCreative) {
+    if (savedCreative?.previewLoaded) {
       return NextResponse.json(savedCreative)
     }
 
@@ -112,6 +112,7 @@ export async function GET(request) {
       description: resolveCreativeDescription(creative),
       previewHtml,
       imageUrl: creative.image_url || creative.thumbnail_url || '',
+      previewLoaded: true,
     }
 
     await saveCreative(clientKey, adId, payload)

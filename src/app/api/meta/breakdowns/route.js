@@ -3,6 +3,7 @@ import { formatInsightsWithConversions } from '@/lib/meta-metrics'
 import { fetchMetaJson, normalizeMetaError } from '@/lib/server/meta-fetch'
 import { buildMetaInsightsFilterExpression, resolveMetaDateSelection } from '@/lib/server/meta-date-range'
 import { resolveWorkspaceMetaAccessToken } from '@/lib/server/meta-connection'
+import { createAdminClient } from '@/lib/server/supabase-admin'
 
 function buildBaseParams({ token, datePreset, since, until, fields }) {
   const params = new URLSearchParams({ access_token: token, fields })
@@ -132,6 +133,36 @@ function resolveCreativeImageUrl(ad) {
     creative.thumbnail_url ||
     ''
   )
+}
+
+async function saveCreativeRanking(adAccountId, creatives) {
+  if (!adAccountId || !creatives.length) return
+
+  try {
+    const clientKey = String(adAccountId).replace(/^act_/, '')
+    const supabase = createAdminClient()
+    const { error } = await supabase
+      .from('meta_creative_cache')
+      .upsert(
+        creatives.map((creative) => ({
+          client_key: clientKey,
+          ad_id: creative.adId,
+          payload: {
+            ...creative,
+            previewLoaded: false,
+          },
+          fetched_at: new Date().toISOString(),
+        })),
+        {
+          onConflict: 'client_key,ad_id',
+          ignoreDuplicates: true,
+        }
+      )
+
+    if (error) throw error
+  } catch {
+    // Ranking persistence must not prevent the dashboard from rendering Meta results.
+  }
 }
 
 async function fetchMetaBreakdownSafely(url, fallbackMessage) {
@@ -294,6 +325,8 @@ export async function GET(request) {
         }
       })
       .sort((a, b) => (b.custom_metrics?.totalConversions || 0) - (a.custom_metrics?.totalConversions || 0))
+
+    await saveCreativeRanking(adAccountId, creatives)
 
     return NextResponse.json({
       ad_account_id: adAccountId,
