@@ -3354,6 +3354,9 @@ export default function DashboardShell({
   const [metaRankingDetailDailyData, setMetaRankingDetailDailyData] = useState([])
   const [metaRankingDetailDailyLoading, setMetaRankingDetailDailyLoading] = useState(false)
   const [metaRankingDetailDailyError, setMetaRankingDetailDailyError] = useState('')
+  const [metaCreativePreview, setMetaCreativePreview] = useState(null)
+  const [metaCreativePreviewLoading, setMetaCreativePreviewLoading] = useState(false)
+  const [metaCreativePreviewError, setMetaCreativePreviewError] = useState('')
   const [metaResultPreviewKey, setMetaResultPreviewKey] = useState('purchases')
   const [metaResultGrouping, setMetaResultGrouping] = useState('day')
   const [isRankingsLoading, setIsRankingsLoading] = useState(false)
@@ -11398,6 +11401,58 @@ export default function DashboardShell({
   const isCreativeRankingDrilldown = metaRankingDrilldown?.type === 'creatives'
   const activeMetaRankingDrilldownItem = metaRankingDrilldown?.item || null
   useEffect(() => {
+    if (!isCreativeRankingDrilldown || !activeMetaRankingDrilldownItem?.adId || !hasMetaConfigured) {
+      setMetaCreativePreview(null)
+      setMetaCreativePreviewLoading(false)
+      setMetaCreativePreviewError('')
+      return
+    }
+
+    let cancelled = false
+
+    const fetchCreativePreview = async () => {
+      try {
+        setMetaCreativePreview(null)
+        setMetaCreativePreviewLoading(true)
+        setMetaCreativePreviewError('')
+
+        const params = new URLSearchParams({ ad_id: activeMetaRankingDrilldownItem.adId })
+        const response = await fetch(`/api/meta/creative-preview?${params.toString()}`, {
+          headers: metaRequestHeaders,
+        })
+        const data = await response.json().catch(() => ({}))
+
+        if (!response.ok) {
+          throw new Error(data?.error || 'Não foi possível carregar o preview real desse criativo.')
+        }
+
+        if (!cancelled) {
+          setMetaCreativePreview(data)
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setMetaCreativePreviewError(error.message || 'Não foi possível carregar o preview real desse criativo.')
+        }
+      } finally {
+        if (!cancelled) {
+          setMetaCreativePreviewLoading(false)
+        }
+      }
+    }
+
+    fetchCreativePreview()
+
+    return () => {
+      cancelled = true
+    }
+  }, [
+    isCreativeRankingDrilldown,
+    activeMetaRankingDrilldownItem?.adId,
+    hasMetaConfigured,
+    metaRequestHeaders,
+  ])
+
+  useEffect(() => {
     if (!metaRankingDrilldown?.type || !activeMetaRankingDrilldownItem || !selectedAdAccount || !hasMetaConfigured) {
       setMetaRankingDetailDailyData([])
       setMetaRankingDetailDailyError('')
@@ -18336,26 +18391,43 @@ export default function DashboardShell({
                   <div className="meta-ranking-detail-head">
                     <span className="meta-ranking-detail-kicker">{activeMetaRankingDrilldownConfig.previewKicker}</span>
                     <h4>{activeMetaRankingDrilldownItem.label}</h4>
-                    <p>{isCreativeRankingDrilldown ? 'Visual da peca com a melhor imagem disponivel retornada pela Meta para esse criativo.' : activeMetaRankingDrilldownConfig.description}</p>
+                    <p>{isCreativeRankingDrilldown ? 'Preview real retornado pela Meta para conferir a peça, ler o texto e reproduzir vídeos disponíveis.' : activeMetaRankingDrilldownConfig.description}</p>
                   </div>
 
                   {metaRankingDrilldown.type === 'creatives' ? (
-                    <div className="meta-ranking-preview-frame">
-                      {activeMetaRankingDrilldownItem.previewHtml ? (
-                        <iframe
-                          title={`Preview de ${activeMetaRankingDrilldownItem.label}`}
-                          srcDoc={activeMetaRankingDrilldownItem.previewHtml}
-                          sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
-                        />
-                      ) : activeMetaRankingDrilldownItem.imageUrl ? (
-                        <img src={activeMetaRankingDrilldownItem.imageUrl} alt={activeMetaRankingDrilldownItem.label} />
-                      ) : (
-                        <div className="meta-ranking-preview-fallback">
-                          <i className="bx bx-image-alt"></i>
-                          <span>Preview indisponível</span>
+                    <>
+                      <div className="meta-ranking-preview-frame">
+                        {metaCreativePreviewLoading ? (
+                          <div className="meta-ranking-preview-fallback">
+                            <i className="bx bx-loader-alt bx-spin"></i>
+                            <span>Carregando preview real...</span>
+                          </div>
+                        ) : metaCreativePreview?.previewHtml ? (
+                          <iframe
+                            title={`Preview de ${activeMetaRankingDrilldownItem.label}`}
+                            srcDoc={metaCreativePreview.previewHtml}
+                            sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
+                            allow="autoplay; encrypted-media; picture-in-picture"
+                          />
+                        ) : (metaCreativePreview?.imageUrl || activeMetaRankingDrilldownItem.imageUrl) ? (
+                          <img src={metaCreativePreview?.imageUrl || activeMetaRankingDrilldownItem.imageUrl} alt={activeMetaRankingDrilldownItem.label} />
+                        ) : (
+                          <div className="meta-ranking-preview-fallback">
+                            <i className="bx bx-image-alt"></i>
+                            <span>Preview indisponível</span>
+                          </div>
+                        )}
+                      </div>
+                      {metaCreativePreviewError ? (
+                        <p className="meta-ranking-preview-error">{metaCreativePreviewError}</p>
+                      ) : null}
+                      {metaCreativePreview?.description ? (
+                        <div className="meta-ranking-creative-description">
+                          <span>Texto do anúncio</span>
+                          <p>{metaCreativePreview.description}</p>
                         </div>
-                      )}
-                    </div>
+                      ) : null}
+                    </>
                   ) : null}
 
                   {metaRankingDrilldownSummary && !isCreativeRankingDrilldown ? (
@@ -24287,6 +24359,37 @@ export default function DashboardShell({
         .meta-ranking-preview-fallback i {
           font-size: 28px;
           color: var(--text-secondary);
+        }
+
+        .meta-ranking-preview-error {
+          color: #fca5a5;
+          font-size: 13px;
+          line-height: 1.5;
+          margin: 0;
+        }
+
+        .meta-ranking-creative-description {
+          display: grid;
+          gap: 8px;
+          padding: 16px;
+          border-radius: 16px;
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          background: rgba(255, 255, 255, 0.03);
+        }
+
+        .meta-ranking-creative-description span {
+          color: var(--accent-blue);
+          font-size: 11px;
+          font-weight: 700;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+        }
+
+        .meta-ranking-creative-description p {
+          color: var(--text-secondary);
+          line-height: 1.6;
+          margin: 0;
+          white-space: pre-wrap;
         }
 
         .meta-ranking-preview-fallback-text strong {
