@@ -1,0 +1,21 @@
+create table if not exists public.meta_api_cache (
+  cache_key text primary key,
+  request_path text not null,
+  payload jsonb not null default '{}'::jsonb,
+  fetched_at timestamptz not null default timezone('utc', now()),
+  expires_at timestamptz not null,
+  created_at timestamptz not null default timezone('utc', now()),
+  updated_at timestamptz not null default timezone('utc', now())
+);
+
+create index if not exists meta_api_cache_expires_at_idx
+  on public.meta_api_cache (expires_at);
+
+alter table public.meta_api_cache enable row level security;
+
+revoke all on table public.meta_api_cache from anon, authenticated;
+
+drop trigger if exists meta_api_cache_set_updated_at on public.meta_api_cache;
+create trigger meta_api_cache_set_updated_at
+before update on public.meta_api_cache
+for each row execute procedure public.set_updated_at();
