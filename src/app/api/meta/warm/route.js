@@ -13,27 +13,43 @@ async function warmMetaDashboard({ origin, token, params }) {
   const headers = {
     'x-meta-access-token': token,
   }
-  const requests = [
-    buildInternalMetaUrl(origin, '/api/meta/structure', params),
-    buildInternalMetaUrl(origin, '/api/meta/insights', params),
-    buildInternalMetaUrl(origin, '/api/meta/campaigns', params),
-    buildInternalMetaUrl(origin, '/api/meta/breakdowns', params),
-  ]
+  const datePreset = params.get('date_preset') || 'last_7d'
+  const warmParamGroups = [params]
 
-  const results = await Promise.allSettled(
-    requests.map(async (url) => {
-      const response = await fetch(url, {
-        headers,
-        cache: 'no-store',
+  ;['last_7d', 'last_30d'].forEach((nextDatePreset) => {
+    if (nextDatePreset === datePreset) return
+
+    warmParamGroups.push(new URLSearchParams({
+      ad_account_id: params.get('ad_account_id'),
+      date_preset: nextDatePreset,
+    }))
+  })
+
+  let rejectedCount = 0
+  for (const warmParams of warmParamGroups) {
+    const requests = [
+      buildInternalMetaUrl(origin, '/api/meta/structure', warmParams),
+      buildInternalMetaUrl(origin, '/api/meta/insights', warmParams),
+      buildInternalMetaUrl(origin, '/api/meta/campaigns', warmParams),
+      buildInternalMetaUrl(origin, '/api/meta/breakdowns', warmParams),
+    ]
+
+    const results = await Promise.allSettled(
+      requests.map(async (url) => {
+        const response = await fetch(url, {
+          headers,
+          cache: 'no-store',
+        })
+
+        if (!response.ok) {
+          throw new Error(`Meta warm request failed with status ${response.status}.`)
+        }
       })
+    )
 
-      if (!response.ok) {
-        throw new Error(`Meta warm request failed with status ${response.status}.`)
-      }
-    })
-  )
+    rejectedCount += results.filter((result) => result.status === 'rejected').length
+  }
 
-  const rejectedCount = results.filter((result) => result.status === 'rejected').length
   if (rejectedCount > 0) {
     console.error(`Meta background warm completed with ${rejectedCount} failed request(s).`)
   }
