@@ -4604,9 +4604,25 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
         }
 
         :root[data-ui-mode='light'] .settings-action-bar-global {
-          background: #1a1c1c !important;
-          border-color: rgba(26, 28, 28, 0.16) !important;
-          box-shadow: 0 18px 36px rgba(13, 13, 13, 0.16) !important;
+          background: rgba(255, 255, 255, 0.98) !important;
+          border-color: rgba(187, 202, 190, 0.92) !important;
+          color: #1a1c1c !important;
+          box-shadow: 0 18px 36px rgba(20, 90, 50, 0.08) !important;
+        }
+
+        :root[data-ui-mode='light'] .settings-action-bar-global .settings-action-copy strong {
+          color: #1a1c1c !important;
+        }
+
+        :root[data-ui-mode='light'] .settings-action-bar-global .settings-action-copy span {
+          color: #3d4a41 !important;
+        }
+
+        :root[data-ui-mode='light'] .settings-action-bar-global .settings-ghost-button,
+        :root[data-ui-mode='light'] .settings-action-bar-global .settings-action-buttons .btn-secondary {
+          background: #f3f3f3 !important;
+          border-color: rgba(187, 202, 190, 0.92) !important;
+          color: #1a1c1c !important;
         }
 
         :global(.dashboard-light-mode) .settings-page-shell {
@@ -4660,9 +4676,25 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
         }
 
         :global(.dashboard-light-mode) .settings-action-bar-global {
-          background: #1a1c1c !important;
-          border-color: rgba(26, 28, 28, 0.16) !important;
-          box-shadow: 0 18px 36px rgba(13, 13, 13, 0.16) !important;
+          background: rgba(255, 255, 255, 0.98) !important;
+          border-color: rgba(187, 202, 190, 0.92) !important;
+          color: #1a1c1c !important;
+          box-shadow: 0 18px 36px rgba(20, 90, 50, 0.08) !important;
+        }
+
+        :global(.dashboard-light-mode) .settings-action-bar-global .settings-action-copy strong {
+          color: #1a1c1c !important;
+        }
+
+        :global(.dashboard-light-mode) .settings-action-bar-global .settings-action-copy span {
+          color: #3d4a41 !important;
+        }
+
+        :global(.dashboard-light-mode) .settings-action-bar-global .settings-ghost-button,
+        :global(.dashboard-light-mode) .settings-action-bar-global .settings-action-buttons .btn-secondary {
+          background: #f3f3f3 !important;
+          border-color: rgba(187, 202, 190, 0.92) !important;
+          color: #1a1c1c !important;
         }
 
         :global(.dashboard-light-mode) .settings-detail-preview {
