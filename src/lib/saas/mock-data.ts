@@ -1,15 +1,18 @@
 import { PlatformSnapshot } from '@/lib/saas/types'
 import { LEGACY_THEME_PRESETS } from '@/lib/saas/theme-presets'
 
-const defaultLegacyTheme = LEGACY_THEME_PRESETS[0]
+const defaultLegacyTheme = LEGACY_THEME_PRESETS.find((preset) => preset.key === 'emerald') || LEGACY_THEME_PRESETS[0]
 
 export const demoPlatformSnapshot: PlatformSnapshot = {
   theme: {
     primaryColor: defaultLegacyTheme.primaryColor,
     accentColor: defaultLegacyTheme.accentColor,
     backgroundColor: defaultLegacyTheme.backgroundColor,
+    panelColor: '#121817',
+    textColor: '#f1f1f1',
     buttonTextColor: defaultLegacyTheme.buttonTextColor,
     darkMode: defaultLegacyTheme.darkMode,
+    mode: 'dark',
     logoUrl: '',
     appName: 'Assessoria LP',
     appSubtitle: 'Performance Hub',

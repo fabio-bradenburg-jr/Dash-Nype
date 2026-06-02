@@ -2,9 +2,11 @@ import type { User } from '@supabase/supabase-js'
 import type { AssistantAiAccessLevel } from '@/lib/types/ai'
 
 export interface UserAppearance {
-  mode: 'light' | 'dark'
+  mode: 'light' | 'dark' | 'custom'
   accent: string
   backgroundTint: string
+  panelColor: string
+  textColor: string
 }
 
 export interface UserProfile {

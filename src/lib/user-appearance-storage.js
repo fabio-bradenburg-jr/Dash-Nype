@@ -1,13 +1,15 @@
 export const USER_APPEARANCE_KEY_PREFIX = 'nype-user-appearance'
 
 export const DEFAULT_USER_APPEARANCE = {
-  mode: 'light',
-  accent: '#4744e5',
-  backgroundTint: '#4744e5',
+  mode: 'dark',
+  accent: '#26c281',
+  backgroundTint: '#070908',
+  panelColor: '#121817',
+  textColor: '#f1f1f1',
 }
 
 export const USER_APPEARANCE_PRESETS = [
-  { label: 'Assessoria LP', value: '#4744e5' },
+  { label: 'Assessoria LP', value: '#26c281' },
   { label: 'Azul', value: '#3b82f6' },
   { label: 'Esmeralda', value: '#10b981' },
   { label: 'Laranja', value: '#f59e0b' },
@@ -16,18 +18,20 @@ export const USER_APPEARANCE_PRESETS = [
   { label: 'Índigo', value: '#6366f1' },
 ]
 
-function normalizeHexColor(value) {
+function normalizeHexColor(value, fallback = DEFAULT_USER_APPEARANCE.accent) {
   const normalized = String(value || '').trim()
   return /^#([0-9a-f]{6})$/i.test(normalized)
     ? normalized.toLowerCase()
-    : DEFAULT_USER_APPEARANCE.accent
+    : fallback
 }
 
 export function normalizeUserAppearance(appearance) {
   return {
-    mode: appearance?.mode === 'dark' ? 'dark' : 'light',
+    mode: ['light', 'dark', 'custom'].includes(appearance?.mode) ? appearance.mode : 'dark',
     accent: normalizeHexColor(appearance?.accent),
-    backgroundTint: normalizeHexColor(appearance?.backgroundTint),
+    backgroundTint: normalizeHexColor(appearance?.backgroundTint, DEFAULT_USER_APPEARANCE.backgroundTint),
+    panelColor: normalizeHexColor(appearance?.panelColor, DEFAULT_USER_APPEARANCE.panelColor),
+    textColor: normalizeHexColor(appearance?.textColor, DEFAULT_USER_APPEARANCE.textColor),
   }
 }
 
@@ -73,16 +77,29 @@ export function applyUserAppearance(appearance) {
   if (typeof document === 'undefined') return
 
   const normalized = normalizeUserAppearance(appearance)
-  const { r, g, b } = hexToRgb(normalized.accent)
-  const backgroundRgb = hexToRgb(normalized.backgroundTint)
+  const applied = normalized.mode === 'light'
+    ? { ...normalized, accent: '#26c281', backgroundTint: '#f7faf8', panelColor: '#ffffff', textColor: '#17201c' }
+    : normalized.mode === 'dark'
+      ? { ...normalized, ...DEFAULT_USER_APPEARANCE }
+      : normalized
+  const uiMode = normalized.mode === 'light' ? 'light' : 'dark'
+  const { r, g, b } = hexToRgb(applied.accent)
+  const backgroundRgb = hexToRgb(applied.backgroundTint)
   const root = document.documentElement
 
-  root.dataset.uiMode = normalized.mode
-  root.style.setProperty('--accent-blue', normalized.accent)
-  root.style.setProperty('--saas-primary', normalized.accent)
-  root.style.setProperty('--saas-accent', normalized.accent)
-  root.style.setProperty('--button-primary', normalized.accent)
-  root.style.setProperty('--button-primary-hover', `color-mix(in srgb, ${normalized.accent} 86%, #0f172a 14%)`)
+  root.dataset.uiMode = uiMode
+  root.dataset.themeMode = normalized.mode
+  root.style.setProperty('--accent-blue', applied.accent)
+  root.style.setProperty('--saas-primary', applied.accent)
+  root.style.setProperty('--saas-accent', applied.accent)
+  root.style.setProperty('--saas-page-bg', applied.backgroundTint)
+  root.style.setProperty('--saas-panel-bg', applied.panelColor)
+  root.style.setProperty('--saas-text', applied.textColor)
+  root.style.setProperty('--bg-dark', applied.backgroundTint)
+  root.style.setProperty('--bg-panel', applied.panelColor)
+  root.style.setProperty('--text-primary', applied.textColor)
+  root.style.setProperty('--button-primary', applied.accent)
+  root.style.setProperty('--button-primary-hover', `color-mix(in srgb, ${applied.accent} 86%, #0f172a 14%)`)
   root.style.setProperty('--button-primary-soft', `rgba(${r}, ${g}, ${b}, 0.14)`)
   root.style.setProperty('--button-primary-shadow', `rgba(${r}, ${g}, ${b}, 0.28)`)
   root.style.setProperty('--accent-rgb', `${r}, ${g}, ${b}`)

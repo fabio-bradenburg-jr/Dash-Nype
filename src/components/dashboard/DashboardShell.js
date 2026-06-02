@@ -3172,6 +3172,10 @@ export default function DashboardShell({
   initialClientsOverride = null,
   initialAppLogoUrl = '',
   externalAppMode = '',
+  externalAppAccent = '',
+  externalAppBackground = '',
+  externalAppPanelColor = '',
+  externalAppTextColor = '',
 }) {
   const REMOVED_TABS = new Set(['calendar', 'clickup', 'contexto', 'home', 'monday', 'operacao'])
   const { user, profile, access, appearance, updateAppearance, loading: userLoading } = useUser()
@@ -3452,8 +3456,15 @@ export default function DashboardShell({
   })
 
   const currentTheme = useMemo(() => resolveDashboardTheme(themeColor), [themeColor])
-  const appAccentColor = appearance?.accent || currentTheme.main
-  const appBackgroundTintHex = appearance?.backgroundTint || '#0d1110'
+  const appAccentColor = externalAppAccent
+    || (appearance?.mode === 'custom' ? appearance?.accent : '#26c281')
+    || currentTheme.main
+  const appBackgroundTintHex = externalAppBackground
+    || (appearance?.mode === 'custom'
+      ? appearance?.backgroundTint
+      : appearance?.mode === 'light'
+        ? '#f7faf8'
+        : '#070908')
   const appBackgroundTintRgb = useMemo(
     () => parseDashboardColor(appBackgroundTintHex) || hexToRgb('#0d1110'),
     [appBackgroundTintHex]
@@ -14658,6 +14669,9 @@ export default function DashboardShell({
         '--theme-surface': currentTheme.surface,
         '--app-bg-color': appBackgroundTintHex,
         '--app-bg-rgb': `${appBackgroundTintRgb.r}, ${appBackgroundTintRgb.g}, ${appBackgroundTintRgb.b}`,
+        '--bg-dark': externalAppBackground || undefined,
+        '--bg-panel': externalAppPanelColor || undefined,
+        '--text-primary': externalAppTextColor || undefined,
         '--accent-orange': `rgb(${activeClientDashboardAccentRgb.r}, ${activeClientDashboardAccentRgb.g}, ${activeClientDashboardAccentRgb.b})`,
         '--accent': `rgb(${activeClientDashboardAccentRgb.r}, ${activeClientDashboardAccentRgb.g}, ${activeClientDashboardAccentRgb.b})`,
       }}

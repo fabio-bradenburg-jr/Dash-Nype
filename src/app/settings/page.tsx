@@ -84,7 +84,11 @@ type BackgroundPreviewStyle = CSSProperties & {
 }
 
 function appearancesMatch(left: UserAppearance, right: UserAppearance): boolean {
-  return left.mode === right.mode && left.accent === right.accent && left.backgroundTint === right.backgroundTint
+  return left.mode === right.mode
+    && left.accent === right.accent
+    && left.backgroundTint === right.backgroundTint
+    && left.panelColor === right.panelColor
+    && left.textColor === right.textColor
 }
 
 const PANEL_BACKGROUND_PRESETS: Array<{ label: string; value: string }> = [
@@ -992,7 +996,7 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
     setPanelFeedback('')
   }
 
-  const handlePanelHexChange = (fieldName: 'accent' | 'backgroundTint', value: string) => {
+  const handlePanelHexChange = (fieldName: 'accent' | 'backgroundTint' | 'panelColor' | 'textColor', value: string) => {
     const normalized = String(value || '').trim()
     const candidate = normalized.startsWith('#') ? normalized : `#${normalized}`
     if (!/^#[0-9a-fA-F]{6}$/.test(candidate)) return
@@ -1822,11 +1826,28 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
                       <div>
                         <span className="settings-hero-kicker">Configuração visual</span>
                         <h2>Interface do sistema</h2>
-                        <p>Personalize o app dentro da linguagem Digital Obsidian, com foco em contraste, profundidade e leitura executiva.</p>
-                        <small>A troca entre modo claro e escuro agora fica no topo do app.</small>
+                        <p>Use o modo escuro padrão da Assessoria LP, alterne para a versão clara ou libere a personalização completa da interface.</p>
                       </div>
                     </div>
 
+                    <div className="settings-preset-grid">
+                      {[
+                        { mode: 'dark', label: 'Modo escuro' },
+                        { mode: 'light', label: 'Modo claro' },
+                        { mode: 'custom', label: 'Personalizado' },
+                      ].map((option) => (
+                        <button
+                          key={option.mode}
+                          type="button"
+                          className={`settings-preset ${panelDraft.mode === option.mode ? 'active' : ''}`}
+                          onClick={() => updatePanelDraft((current) => ({ ...current, mode: option.mode as UserAppearance['mode'] }))}
+                        >
+                          {option.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    {panelDraft.mode === 'custom' ? (
                     <div className="settings-grid settings-grid-obsidian">
                       <div className="glass-item settings-block settings-block-obsidian settings-detail-accent-block" style={{ '--settings-accent': panelDraft.accent } as CSSProperties}>
                         <div className="settings-obsidian-head">
@@ -1992,7 +2013,68 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
                           </div>
                         </div>
                       </div>
+
+                      <div className="glass-item settings-block settings-block-obsidian">
+                        <div className="settings-obsidian-head">
+                          <div>
+                            <span>Fundo das caixas</span>
+                            <h2>Superfícies dos painéis</h2>
+                          </div>
+                          <p>Aplique uma cor consistente aos cards, caixas e painéis de conteúdo.</p>
+                        </div>
+                        <div className="settings-color-picker">
+                          <input
+                            type="color"
+                            value={panelDraft.panelColor}
+                            onChange={(event) => updatePanelDraft((current) => ({ ...current, panelColor: event.target.value }))}
+                            aria-label="Selecionar cor de fundo das caixas"
+                          />
+                          <div className="settings-color-code">
+                            <strong>{panelDraft.panelColor.toUpperCase()}</strong>
+                            <span>Cor base das superfícies do sistema.</span>
+                          </div>
+                        </div>
+                        <div className="settings-color-code-row">
+                          <input
+                            type="text"
+                            value={panelDraft.panelColor.toUpperCase()}
+                            onChange={(event) => handlePanelHexChange('panelColor', event.target.value)}
+                            aria-label="Código hexadecimal da cor de fundo das caixas"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="glass-item settings-block settings-block-obsidian">
+                        <div className="settings-obsidian-head">
+                          <div>
+                            <span>Cor das letras</span>
+                            <h2>Texto principal</h2>
+                          </div>
+                          <p>Defina a leitura principal das telas de acordo com o fundo escolhido.</p>
+                        </div>
+                        <div className="settings-color-picker">
+                          <input
+                            type="color"
+                            value={panelDraft.textColor}
+                            onChange={(event) => updatePanelDraft((current) => ({ ...current, textColor: event.target.value }))}
+                            aria-label="Selecionar cor das letras"
+                          />
+                          <div className="settings-color-code">
+                            <strong>{panelDraft.textColor.toUpperCase()}</strong>
+                            <span>Cor principal dos títulos e textos do app.</span>
+                          </div>
+                        </div>
+                        <div className="settings-color-code-row">
+                          <input
+                            type="text"
+                            value={panelDraft.textColor.toUpperCase()}
+                            onChange={(event) => handlePanelHexChange('textColor', event.target.value)}
+                            aria-label="Código hexadecimal da cor das letras"
+                          />
+                        </div>
+                      </div>
                     </div>
+                    ) : null}
 
                   </div>
                 </div>

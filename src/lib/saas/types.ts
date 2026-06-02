@@ -1,7 +1,12 @@
+export type ThemeMode = 'light' | 'dark' | 'custom'
+
 export type ThemeSettings = {
+  mode?: ThemeMode
   primaryColor: string
   accentColor: string
   backgroundColor: string
+  panelColor?: string
+  textColor?: string
   buttonTextColor?: string
   darkMode: boolean
   logoUrl?: string

@@ -7,19 +7,22 @@
    ========================================= */
 
 :root {
-    --saas-primary: #0f766e;
-    --saas-accent: #f97316;
-    --saas-surface: #f8fafc;
-    --saas-button-text: #ffffff;
+    --saas-primary: #26c281;
+    --saas-accent: #4fdf9b;
+    --saas-surface: #070908;
+    --saas-page-bg: #070908;
+    --saas-panel-bg: #121817;
+    --saas-text: #f1f1f1;
+    --saas-button-text: #06110c;
     --button-primary: var(--saas-primary);
     --button-primary-hover: color-mix(in srgb, var(--button-primary) 86%, #0f172a 14%);
     --button-primary-soft: color-mix(in srgb, var(--button-primary) 14%, transparent);
     --button-primary-shadow: color-mix(in srgb, var(--button-primary) 28%, transparent);
     /* Colors */
-    --bg-dark: #05060a;
-    --bg-panel: rgba(15, 15, 17, 0.88);
+    --bg-dark: var(--saas-page-bg);
+    --bg-panel: var(--saas-panel-bg);
     --border-color: rgba(255, 255, 255, 0.08);
-    --text-primary: #f5f5f5;
+    --text-primary: var(--saas-text);
     --text-secondary: rgba(229, 229, 229, 0.68);
     --text-muted: rgba(161, 161, 170, 0.56);
     --shell-rail: #040404;
@@ -29,10 +32,10 @@
     /* Brand Colors */
     --meta-blue: var(--saas-primary);
     --accent-blue: var(--saas-primary);
-    --accent-rgb: 71, 68, 229;
+    --accent-rgb: 38, 194, 129;
     --accent-purple: #8b5cf6;
     --accent-cyan: var(--accent-blue);
-    --accent-emerald: #4EDE63;
+    --accent-emerald: #4fdf9b;
     --accent-orange: var(--saas-accent);
     --accent-red: #ef4444;
     --accent-gold: #fbbf24;
@@ -88,7 +91,7 @@ body {
         radial-gradient(circle at 100% 0%, var(--app-bg-secondary) 0%, transparent 26%),
         radial-gradient(circle at 50% 100%, var(--app-bg-tertiary) 0%, transparent 30%),
         linear-gradient(180deg, rgba(255, 255, 255, 0.018), rgba(255, 255, 255, 0)),
-        linear-gradient(180deg, #040404 0%, #060606 38%, #080808 100%);
+        linear-gradient(180deg, color-mix(in srgb, var(--bg-dark) 94%, #000000) 0%, var(--bg-dark) 100%);
     background-attachment: fixed;
 }
 
@@ -99,9 +102,9 @@ body {
 :root[data-ui-mode='light'] body {
     background-image:
         radial-gradient(circle at 0% 0%, rgba(var(--accent-rgb), 0.1) 0%, transparent 18%),
-        radial-gradient(circle at 100% 0%, rgba(97, 97, 255, 0.08) 0%, transparent 22%),
+        radial-gradient(circle at 100% 0%, rgba(var(--accent-rgb), 0.08) 0%, transparent 22%),
         radial-gradient(circle at 50% 100%, rgba(var(--accent-rgb), 0.06) 0%, transparent 24%),
-        linear-gradient(180deg, #faf8ff 0%, #f5f3fb 100%);
+        linear-gradient(180deg, var(--bg-dark) 0%, color-mix(in srgb, var(--bg-dark) 94%, #eef7f1) 100%);
 }
 
 /* Scrollbar */
@@ -143,7 +146,7 @@ body {
 .glass-item {
     background:
         linear-gradient(180deg, rgba(255, 255, 255, 0.024), rgba(255, 255, 255, 0.012)),
-        rgba(19, 19, 22, 0.78);
+        color-mix(in srgb, var(--saas-panel-bg) 88%, transparent);
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 18px;
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
@@ -310,7 +313,7 @@ body {
 :root:not([data-ui-mode='light']) .saas-app-shell main [class*='text-slate-900'],
 :root:not([data-ui-mode='light']) .saas-app-shell main [class*='text-slate-800'],
 :root:not([data-ui-mode='light']) .saas-app-shell main [class*='text-slate-700'] {
-    color: #f8fafc !important;
+    color: var(--saas-text, #f8fafc) !important;
 }
 
 :root[data-ui-mode='light'] .saas-legacy-dashboard-frame .main-content [class*='text-white'] {
@@ -321,14 +324,14 @@ body {
 :root:not([data-ui-mode='light']) .saas-legacy-dashboard-frame .main-content [class*='text-slate-900'],
 :root:not([data-ui-mode='light']) .saas-legacy-dashboard-frame .main-content [class*='text-slate-800'],
 :root:not([data-ui-mode='light']) .saas-legacy-dashboard-frame .main-content [class*='text-slate-700'] {
-    color: #f8fafc !important;
+    color: var(--saas-text, #f8fafc) !important;
 }
 
 :root:not([data-ui-mode='light']) .saas-legacy-dashboard-frame .stage-chip,
 :root:not([data-ui-mode='light']) .saas-legacy-dashboard-frame .stage-chip.active,
 :root:not([data-ui-mode='light']) .saas-legacy-dashboard-frame .stage-chip span,
 :root:not([data-ui-mode='light']) .saas-legacy-dashboard-frame .stage-chip.active span {
-    color: #f8fafc !important;
+    color: var(--saas-text, #f8fafc) !important;
 }
 
 /* Sidebar */

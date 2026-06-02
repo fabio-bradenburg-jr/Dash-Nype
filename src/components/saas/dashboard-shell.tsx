@@ -26,6 +26,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { createDashboardTemplate } from '@/lib/dashboard-storage'
+import { applyThemeMode, applyThemeVariables, getThemeMode } from '@/lib/saas/theme-presets'
 import { ClientContextBundle, KnowledgeSource, MetricCard, PlatformSnapshot } from '@/lib/saas/types'
 
 const SAAS_THEME_STORAGE_KEY = 'nype-orbit-saas-theme'
@@ -307,7 +308,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [activeModule, setActiveModule] = useState<NavigationKey>('overview')
-  const [currentTheme, setCurrentTheme] = useState(snapshot.theme)
+  const [currentTheme, setCurrentTheme] = useState(() => applyThemeMode(snapshot.theme, getThemeMode(snapshot.theme)))
   const [currentUserName, setCurrentUserName] = useState('Usuário')
   const [selectedClientId, setSelectedClientId] = useState(snapshot.selectedClient.id)
   const [selectedClient, setSelectedClient] = useState(snapshot.selectedClient)
@@ -341,8 +342,8 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
     agendorAccountIds: [] as string[],
     agendorQualifiedStageIds: [] as string[],
     manualCrm: createEmptyManualCrmForm(),
-    dashboardButtonColor: currentTheme.primaryColor || '#0f766e',
-    dashboardAccentColor: currentTheme.accentColor || '#f97316',
+    dashboardButtonColor: currentTheme.primaryColor || '#26c281',
+    dashboardAccentColor: currentTheme.accentColor || '#4fdf9b',
     logoUrl: '',
   })
   const [clientAgendorOptions, setClientAgendorOptions] = useState<AgendorPipelineOption[]>([])
@@ -405,8 +406,8 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
         company: client.company,
         dashboardEnabled: true,
         operationEnabled: false,
-        dashboardColor: String(dashboardTheme.buttonColor || businessData.dashboardButtonColor || currentTheme.primaryColor || '#0f766e'),
-        dashboardAccentColor: String(dashboardTheme.accentColor || businessData.dashboardAccentColor || currentTheme.accentColor || '#f97316'),
+        dashboardColor: String(dashboardTheme.buttonColor || businessData.dashboardButtonColor || currentTheme.primaryColor || '#26c281'),
+        dashboardAccentColor: String(dashboardTheme.accentColor || businessData.dashboardAccentColor || currentTheme.accentColor || '#4fdf9b'),
         logoUrl: String(businessData.logoUrl || ''),
         dashboardVisibleIntegrationKeys: ['meta_ads', 'rd_station'],
         metaAdAccountId: metaIntegration?.external_account_id || String(businessData.metaAdAccountId || ''),
@@ -558,33 +559,24 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
 
   useEffect(() => {
     const storedTheme = readStoredTheme()
-    setCurrentTheme({
+    setCurrentTheme(applyThemeMode({
       ...snapshot.theme,
       ...(storedTheme || {}),
-    })
+    }, getThemeMode(storedTheme || snapshot.theme)))
   }, [snapshot.theme])
 
   useEffect(() => {
     const storedTheme = readStoredTheme()
     if (!storedTheme) return
 
-    setCurrentTheme((current) => ({
+    setCurrentTheme((current) => applyThemeMode({
       ...current,
       ...storedTheme,
-    }))
+    }, getThemeMode(storedTheme)))
   }, [])
 
   useEffect(() => {
-    const root = document.documentElement
-    root.style.setProperty('--saas-primary', currentTheme.primaryColor)
-    root.style.setProperty('--saas-accent', currentTheme.accentColor)
-    root.style.setProperty('--saas-surface', currentTheme.backgroundColor)
-    root.style.setProperty('--saas-button-text', currentTheme.buttonTextColor || '#ffffff')
-    root.style.setProperty('--accent-blue', currentTheme.primaryColor)
-    root.style.setProperty('--accent-orange', currentTheme.accentColor)
-    root.style.setProperty('--main', currentTheme.primaryColor)
-    root.style.setProperty('--accent', currentTheme.accentColor)
-    root.dataset.uiMode = currentTheme.darkMode ? 'dark' : 'light'
+    applyThemeVariables(document.documentElement, currentTheme)
   }, [currentTheme])
 
   useEffect(() => {
@@ -701,10 +693,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
   }
 
   async function handleToggleColorMode() {
-    const nextTheme = {
-      ...currentTheme,
-      darkMode: !currentTheme.darkMode,
-    }
+    const nextTheme = applyThemeMode(currentTheme, currentTheme.darkMode ? 'light' : 'dark')
 
     setCurrentTheme(nextTheme)
     setThemeModeSaving(true)
@@ -1162,7 +1151,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
       className={`saas-app-shell min-h-screen ${isDarkMode ? 'text-white' : 'text-slate-900'}`}
       style={{
         background: isDarkMode
-          ? 'radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--saas-primary) 20%, transparent), transparent 28%), radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--saas-accent) 18%, transparent), transparent 24%), radial-gradient(circle at 50% 100%, rgba(148,163,184,0.08), transparent 34%), linear-gradient(180deg,#020617,#0f172a 54%,#020617)'
+          ? 'radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--saas-primary) 20%, transparent), transparent 28%), radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--saas-accent) 18%, transparent), transparent 24%), linear-gradient(180deg,color-mix(in srgb,var(--saas-page-bg) 94%,#000000),var(--saas-page-bg))'
           : 'radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--saas-primary) 18%, transparent), transparent 28%), radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--saas-accent) 22%, transparent), transparent 24%), radial-gradient(circle at 50% 100%, rgba(15,23,42,0.05), transparent 36%), linear-gradient(180deg, color-mix(in srgb, var(--saas-surface) 94%, white), #ffffff)',
       }}
     >
@@ -1170,7 +1159,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
         <section className="lg:hidden">
           <div className="rounded-[30px] border border-white/80 bg-[linear-gradient(135deg,rgba(255,255,255,0.94),rgba(248,250,252,0.82))] p-4 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur-xl">
             <div className="flex flex-wrap items-center gap-3">
-              <div className="grid h-12 w-12 place-items-center rounded-2xl bg-[linear-gradient(180deg,#020617,#0f172a)] ring-1 ring-white/15">
+              <div className="grid h-12 w-12 place-items-center rounded-2xl bg-[linear-gradient(180deg,#070908,#121817)] ring-1 ring-white/15">
                 {currentTheme.logoUrl ? (
                   <img src={currentTheme.logoUrl} alt={`Logo ${currentTheme.appName || 'Assessoria LP'}`} className="h-full w-full rounded-2xl object-contain p-2" />
                 ) : (
@@ -1229,7 +1218,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
           </div>
         </section>
 
-        <aside className={`relative sticky top-4 hidden h-[calc(100vh-2rem)] flex-none flex-col rounded-[34px] border border-white/10 bg-[linear-gradient(180deg,#020617,#0f172a)] py-7 text-white shadow-[0_30px_100px_rgba(2,6,23,0.36)] transition-all duration-300 lg:flex ${isSidebarCollapsed ? 'w-[92px] px-3' : 'w-[272px] px-6 xl:w-[292px]'}`}>
+        <aside className={`relative sticky top-4 hidden h-[calc(100vh-2rem)] flex-none flex-col rounded-[34px] border border-white/10 bg-[linear-gradient(180deg,#070908,#121817)] py-7 text-white shadow-[0_30px_100px_rgba(2,6,23,0.36)] transition-all duration-300 lg:flex ${isSidebarCollapsed ? 'w-[92px] px-3' : 'w-[272px] px-6 xl:w-[292px]'}`}>
           <div className={`mb-8 flex items-center ${isSidebarCollapsed ? 'justify-center' : 'gap-3'}`}>
             <div className="grid h-12 w-12 place-items-center rounded-2xl bg-white/10 ring-1 ring-white/15">
               {currentTheme.logoUrl ? (
@@ -1417,6 +1406,10 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
               initialClientsOverride={legacyDashboardClients}
               initialAppLogoUrl={currentTheme.logoUrl || ''}
               externalAppMode={currentTheme.darkMode ? 'dark' : 'light'}
+              externalAppAccent={currentTheme.accentColor}
+              externalAppBackground={currentTheme.backgroundColor}
+              externalAppPanelColor={currentTheme.panelColor}
+              externalAppTextColor={currentTheme.textColor}
             />
           </section>
           ) : null}

@@ -5,8 +5,8 @@ import { useRouter } from 'next/navigation'
 
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { LEGACY_THEME_PRESETS, findLegacyThemePreset } from '@/lib/saas/theme-presets'
-import { ThemeSettings } from '@/lib/saas/types'
+import { applyThemeMode, applyThemeVariables, getThemeMode } from '@/lib/saas/theme-presets'
+import { ThemeMode, ThemeSettings } from '@/lib/saas/types'
 
 const SAAS_THEME_STORAGE_KEY = 'nype-orbit-saas-theme'
 
@@ -28,33 +28,14 @@ export function ThemePanel({ initialTheme, onThemeChange, onThemeSaved }: ThemeP
   function updateTheme(nextTheme: ThemeSettings) {
     setTheme(nextTheme)
     onThemeChange?.(nextTheme)
-    const root = document.documentElement
-    root.style.setProperty('--saas-primary', nextTheme.primaryColor)
-    root.style.setProperty('--saas-accent', nextTheme.accentColor)
-    root.style.setProperty('--saas-surface', nextTheme.backgroundColor)
-    root.style.setProperty('--saas-button-text', nextTheme.buttonTextColor || '#ffffff')
-    root.style.setProperty('--accent-blue', nextTheme.primaryColor)
-    root.style.setProperty('--accent-orange', nextTheme.accentColor)
-    root.style.setProperty('--main', nextTheme.primaryColor)
-    root.style.setProperty('--accent', nextTheme.accentColor)
-    root.dataset.uiMode = nextTheme.darkMode ? 'dark' : 'light'
+    applyThemeVariables(document.documentElement, nextTheme)
   }
 
-  function applyLegacyPreset(presetKey: string) {
-    const preset = LEGACY_THEME_PRESETS.find((item) => item.key === presetKey)
-    if (!preset) return
-
-    updateTheme({
-      ...theme,
-      primaryColor: preset.primaryColor,
-      accentColor: preset.accentColor,
-      backgroundColor: preset.backgroundColor,
-      buttonTextColor: preset.buttonTextColor,
-      darkMode: preset.darkMode,
-    })
+  function selectMode(mode: ThemeMode) {
+    updateTheme(applyThemeMode(theme, mode))
   }
 
-  const activeLegacyPreset = findLegacyThemePreset(theme.primaryColor)?.key || ''
+  const activeMode = getThemeMode(theme)
 
   function handleLogoUpload(file: File | undefined) {
     if (!file) return
@@ -93,28 +74,27 @@ export function ThemePanel({ initialTheme, onThemeChange, onThemeSaved }: ThemeP
       <CardContent className="grid gap-4 md:grid-cols-2">
         <div className="rounded-[28px] border border-slate-200/80 bg-slate-50/80 p-4 md:col-span-2">
           <div className="mb-3">
-            <p className="font-semibold text-slate-900">Paletas do app antigo</p>
-            <p className="mt-1 text-sm leading-6 text-slate-500">Aplique com um clique as combinações clássicas do sistema anterior.</p>
+            <p className="font-semibold text-slate-900">Aparência do sistema</p>
+            <p className="mt-1 text-sm leading-6 text-slate-500">O modo escuro com verde LP é o padrão. Use o personalizado para liberar os ajustes de cor.</p>
           </div>
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-            {LEGACY_THEME_PRESETS.map((preset) => (
+          <div className="grid gap-3 sm:grid-cols-3">
+            {[
+              { key: 'dark', label: 'Modo escuro', description: 'Fundo profundo e detalhes no verde da marca.' },
+              { key: 'light', label: 'Modo claro', description: 'Superfícies claras com o mesmo verde LP.' },
+              { key: 'custom', label: 'Personalizado', description: 'Libera todos os controles de cor.' },
+            ].map((option) => (
               <button
-                key={preset.key}
+                key={option.key}
                 type="button"
-                onClick={() => applyLegacyPreset(preset.key)}
+                onClick={() => selectMode(option.key as ThemeMode)}
                 className={`rounded-[22px] border p-3 text-left transition ${
-                  activeLegacyPreset === preset.key
+                  activeMode === option.key
                     ? 'border-slate-900 bg-white shadow-[0_14px_30px_rgba(15,23,42,0.08)]'
                     : 'border-slate-200 bg-white/80 hover:border-slate-300 hover:bg-white'
                 }`}
               >
-                <div className="mb-3 flex gap-2">
-                  <span className="h-8 w-8 rounded-full border border-slate-200" style={{ background: preset.primaryColor }} />
-                  <span className="h-8 w-8 rounded-full border border-slate-200" style={{ background: preset.accentColor }} />
-                  <span className="h-8 w-8 rounded-full border border-slate-200" style={{ background: preset.backgroundColor }} />
-                </div>
-                <p className="font-semibold text-slate-900">{preset.label}</p>
-                <p className="mt-1 text-xs uppercase tracking-[0.24em] text-slate-400">Tema legado</p>
+                <p className="font-semibold text-slate-900">{option.label}</p>
+                <p className="mt-1 text-sm leading-5 text-slate-500">{option.description}</p>
               </button>
             ))}
           </div>
@@ -137,11 +117,11 @@ export function ThemePanel({ initialTheme, onThemeChange, onThemeSaved }: ThemeP
             placeholder="Ex.: Performance Hub"
           />
         </label>
-        {[
-          { label: 'Primária', value: theme.primaryColor, key: 'primaryColor' },
-          { label: 'Destaque', value: theme.accentColor, key: 'accentColor' },
-          { label: 'Fundo', value: theme.backgroundColor, key: 'backgroundColor' },
-          { label: 'Texto dos botões', value: theme.buttonTextColor || '#ffffff', key: 'buttonTextColor' },
+        {activeMode === 'custom' ? [
+          { label: 'Fundo da página', value: theme.backgroundColor, key: 'backgroundColor' },
+          { label: 'Fundo das caixas', value: theme.panelColor || '#121817', key: 'panelColor' },
+          { label: 'Cor dos detalhes', value: theme.accentColor, key: 'accentColor' },
+          { label: 'Cor das letras', value: theme.textColor || '#f1f1f1', key: 'textColor' },
         ].map((item) => (
           <label key={item.key} className="grid gap-2 text-sm font-medium text-slate-600">
             <span className="font-semibold text-slate-700">{item.label}</span>
@@ -149,15 +129,14 @@ export function ThemePanel({ initialTheme, onThemeChange, onThemeSaved }: ThemeP
               type="color"
               className="h-12 w-full rounded-2xl border border-slate-200 bg-white p-2 shadow-sm"
               value={item.value}
-              onChange={(event) => updateTheme({ ...theme, [item.key]: event.target.value })}
+              onChange={(event) => updateTheme({
+                ...theme,
+                ...(item.key === 'accentColor' ? { primaryColor: event.target.value } : {}),
+                [item.key]: event.target.value,
+              })}
             />
           </label>
-        ))}
-        <div className="flex items-end">
-          <Button variant="secondary" className="w-full" onClick={() => updateTheme({ ...theme, darkMode: !theme.darkMode })}>
-            {theme.darkMode ? 'Desativar modo escuro' : 'Ativar modo escuro'}
-          </Button>
-        </div>
+        )) : null}
         <div className="rounded-[28px] border border-slate-200/80 bg-slate-50/80 p-4 md:col-span-2">
           <div className="grid gap-4 md:grid-cols-[120px_1fr] md:items-center">
             <div className="grid h-24 w-24 place-items-center overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
