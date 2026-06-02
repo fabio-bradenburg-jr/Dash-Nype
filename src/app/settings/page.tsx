@@ -1832,17 +1832,26 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
 
                     <div className="settings-preset-grid">
                       {[
-                        { mode: 'dark', label: 'Modo escuro' },
-                        { mode: 'light', label: 'Modo claro' },
-                        { mode: 'custom', label: 'Personalizado' },
+                        { mode: 'dark', label: 'Modo escuro', description: 'Contraste premium', icon: 'bx-moon' },
+                        { mode: 'light', label: 'Modo claro', description: 'Leitura luminosa', icon: 'bx-sun' },
+                        { mode: 'custom', label: 'Personalizado', description: 'Cores sob medida', icon: 'bx-palette' },
                       ].map((option) => (
                         <button
                           key={option.mode}
                           type="button"
-                          className={`settings-preset ${panelDraft.mode === option.mode ? 'active' : ''}`}
+                          className={`settings-preset settings-theme-option ${panelDraft.mode === option.mode ? 'active' : ''}`}
                           onClick={() => updatePanelDraft((current) => ({ ...current, mode: option.mode as UserAppearance['mode'] }))}
                         >
-                          {option.label}
+                          <span className="settings-theme-option-icon">
+                            <i className={`bx ${option.icon}`}></i>
+                          </span>
+                          <span className="settings-theme-option-copy">
+                            <strong>{option.label}</strong>
+                            <small>{option.description}</small>
+                          </span>
+                          <span className="settings-theme-option-check" aria-hidden="true">
+                            <i className="bx bx-check"></i>
+                          </span>
                         </button>
                       ))}
                     </div>
@@ -3273,6 +3282,78 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
           align-items: center;
           justify-content: center;
           gap: 10px;
+        }
+
+        .settings-theme-option {
+          min-height: 78px;
+          padding: 14px;
+          justify-content: flex-start;
+          gap: 12px;
+          text-align: left;
+          transition: border-color 180ms ease, background 180ms ease, transform 180ms ease;
+        }
+
+        .settings-theme-option:hover {
+          border-color: rgba(129, 216, 167, 0.38);
+          background: rgba(255, 255, 255, 0.055);
+          transform: translateY(-1px);
+        }
+
+        .settings-theme-option-icon,
+        .settings-theme-option-check {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          flex: 0 0 auto;
+        }
+
+        .settings-theme-option-icon {
+          width: 42px;
+          height: 42px;
+          border: 1px solid rgba(190, 201, 191, 0.14);
+          border-radius: 10px;
+          background: rgba(255, 255, 255, 0.04);
+          color: rgba(241, 241, 241, 0.62);
+          font-size: 21px;
+        }
+
+        .settings-theme-option-copy {
+          display: grid;
+          gap: 4px;
+          min-width: 0;
+        }
+
+        .settings-theme-option-copy strong {
+          color: var(--text-primary);
+          font-size: 15px;
+          line-height: 1.2;
+        }
+
+        .settings-theme-option-copy small {
+          color: var(--text-secondary);
+          font-size: 12px;
+          line-height: 1.3;
+        }
+
+        .settings-theme-option-check {
+          width: 24px;
+          height: 24px;
+          margin-left: auto;
+          border-radius: 999px;
+          background: rgba(255, 255, 255, 0.05);
+          color: transparent;
+          font-size: 17px;
+        }
+
+        .settings-theme-option.active .settings-theme-option-icon {
+          border-color: color-mix(in srgb, var(--button-primary, #26c281) 44%, transparent);
+          background: color-mix(in srgb, var(--button-primary, #26c281) 16%, transparent);
+          color: var(--button-primary, #26c281);
+        }
+
+        .settings-theme-option.active .settings-theme-option-check {
+          background: var(--button-primary, #26c281);
+          color: #06110c;
         }
 
         .settings-section-head {
