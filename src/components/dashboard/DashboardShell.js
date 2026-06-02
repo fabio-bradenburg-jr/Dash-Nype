@@ -9459,6 +9459,37 @@ export default function DashboardShell({
   ])
 
   useEffect(() => {
+    if (activeTab !== 'apresentacao' || !selectedAdAccount || !hasMetaConfigured) return
+    if (dateRange === 'custom' && (!customSince || !customUntil)) return
+
+    const params = new URLSearchParams({
+      ad_account_id: selectedAdAccount,
+      date_preset: dateRange,
+    })
+
+    if (dateRange === 'custom') {
+      params.set('since', customSince)
+      params.set('until', customUntil)
+    }
+
+    fetch(`/api/meta/warm?${params.toString()}`, {
+      headers: metaRequestHeaders,
+      keepalive: true,
+    }).catch(() => {
+      // The visible dashboard requests remain the fallback if background warming cannot start.
+    })
+  }, [
+    activeTab,
+    selectedAdAccount,
+    dateRange,
+    customSince,
+    customUntil,
+    hasMetaConfigured,
+    metaCredentialSignature,
+    metaRequestHeaders,
+  ])
+
+  useEffect(() => {
     const shouldFetchPresentationData = activeTab === 'apresentacao'
     const shouldFetchClickUpData = activeTab === 'clickup'
     const shouldFetchMondayData = activeTab === 'monday'
