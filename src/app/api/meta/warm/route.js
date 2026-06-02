@@ -24,8 +24,6 @@ async function warmMetaDashboard({ origin, token, params }) {
       date_preset: nextDatePreset,
     }))
   })
-  warmParamGroups.push(params)
-
   let rejectedCount = 0
   for (const warmParams of warmParamGroups) {
     const requests = [

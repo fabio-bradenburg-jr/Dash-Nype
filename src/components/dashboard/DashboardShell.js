@@ -3185,6 +3185,7 @@ export default function DashboardShell({
   const lastDashboardFetchKeyRef = useRef('')
   const lastDashboardFetchAtRef = useRef(0)
   const lastBreakdownsFetchKeyRef = useRef('')
+  const lastMetaWarmFetchKeyRef = useRef('')
   const lastGoogleSheetsFetchKeyRef = useRef('')
   const selectedQualifiedStagesRef = useRef([])
   const rdLeadSourceFiltersRef = useRef([])
@@ -9472,10 +9473,15 @@ export default function DashboardShell({
       params.set('until', customUntil)
     }
 
+    const warmFetchKey = params.toString()
+    if (lastMetaWarmFetchKeyRef.current === warmFetchKey) return
+    lastMetaWarmFetchKeyRef.current = warmFetchKey
+
     fetch(`/api/meta/warm?${params.toString()}`, {
       headers: metaRequestHeaders,
       keepalive: true,
     }).catch(() => {
+      lastMetaWarmFetchKeyRef.current = ''
       // The visible dashboard requests remain the fallback if background warming cannot start.
     })
   }, [
