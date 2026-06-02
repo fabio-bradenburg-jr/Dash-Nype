@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto'
+import { after } from 'next/server'
 import { createAdminClient } from '@/lib/server/supabase-admin'
 
 function isTimeoutError(error) {
@@ -32,6 +33,7 @@ function replaceMetaAccessToken(url, nextToken) {
 
 const META_RESPONSE_CACHE = new Map()
 const META_IN_FLIGHT_REQUESTS = new Map()
+const META_BACKGROUND_REFRESHES = new Set()
 const META_CACHE_TTL_MS = 60_000
 const META_PERSISTENT_CACHE_TTL_MS = 5 * 60_000
 const META_HISTORICAL_CACHE_TTL_MS = 24 * 60 * 60_000
@@ -180,6 +182,14 @@ async function writePersistentMetaCache({ cacheKey, clientKey, resourceKind, req
   }
 }
 
+async function persistMetaResponse(cacheEntry) {
+  try {
+    after(() => writePersistentMetaCache(cacheEntry))
+  } catch {
+    await writePersistentMetaCache(cacheEntry)
+  }
+}
+
 function canUseStaleMetaCache(error) {
   return (
     isTimeoutError(error) ||
@@ -210,17 +220,19 @@ export async function fetchMetaJson(url, fallbackMessage, options = {}) {
   const cacheKey = `${options.method || 'GET'}:${url}`
   const cachedEntry = META_RESPONSE_CACHE.get(cacheKey)
   const persistentCacheIdentity = buildPersistentMetaCacheIdentity(url, options.method || 'GET', options.cacheContext)
+  const shouldForceRefresh = options.forceRefresh === true
   const envToken = String(process.env.META_ACCESS_TOKEN || '').trim()
   const maxPages = Number.isFinite(Number(options.maxPages)) ? Number(options.maxPages) : META_MAX_PAGES
   const fetchOptions = { ...options }
   delete fetchOptions.maxPages
   delete fetchOptions.cacheContext
+  delete fetchOptions.forceRefresh
 
-  if (cachedEntry && Date.now() - cachedEntry.timestamp < META_CACHE_TTL_MS) {
+  if (!shouldForceRefresh && cachedEntry && Date.now() - cachedEntry.timestamp < META_CACHE_TTL_MS) {
     return cachedEntry.data
   }
 
-  const persistentCacheEntry = persistentCacheIdentity
+  const persistentCacheEntry = !shouldForceRefresh && persistentCacheIdentity
     ? await readPersistentMetaCache(persistentCacheIdentity)
     : null
 
@@ -229,6 +241,28 @@ export async function fetchMetaJson(url, fallbackMessage, options = {}) {
       data: persistentCacheEntry.data,
       timestamp: Date.now(),
     })
+
+    if (!persistentCacheEntry.isFresh && !META_BACKGROUND_REFRESHES.has(cacheKey)) {
+      META_BACKGROUND_REFRESHES.add(cacheKey)
+
+      try {
+        after(async () => {
+          try {
+            await fetchMetaJson(url, fallbackMessage, {
+              ...options,
+              forceRefresh: true,
+            })
+          } catch {
+            // The saved snapshot remains available if Meta cannot refresh it now.
+          } finally {
+            META_BACKGROUND_REFRESHES.delete(cacheKey)
+          }
+        })
+      } catch {
+        META_BACKGROUND_REFRESHES.delete(cacheKey)
+      }
+    }
+
     return persistentCacheEntry.data
   }
 
@@ -285,7 +319,7 @@ export async function fetchMetaJson(url, fallbackMessage, options = {}) {
         })
 
         if (persistentCacheIdentity) {
-          await writePersistentMetaCache({
+          await persistMetaResponse({
             cacheKey: persistentCacheIdentity.cacheKey,
             clientKey: persistentCacheIdentity.clientKey,
             resourceKind: persistentCacheIdentity.resourceKind,
