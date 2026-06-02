@@ -13178,16 +13178,7 @@ export default function DashboardShell({
         </div>
       </div>
 
-      <div className="weekly-kpi-grid weekly-kpi-grid-wide weekly-kpi-board">
-        <div className="weekly-kpi-card glass-panel"><span><i className="bx bx-pulse"></i>Saúde média do período</span><strong>{weeklySummary.averageHealthLabel}</strong></div>
-        <div className="weekly-kpi-card glass-panel"><span><i className="bx bx-wallet"></i>Investimento</span><strong>{formatCurrency(weeklySummary.investment)}</strong></div>
-        <div className="weekly-kpi-card glass-panel"><span><i className="bx bx-user-plus"></i>Leads</span><strong>{formatNumber(weeklySummary.leads)}</strong></div>
-        <div className="weekly-kpi-card glass-panel"><span><i className="bx bx-purchase-tag-alt"></i>CPL médio</span><strong>{weeklySummary.leads > 0 ? formatCurrency(weeklySummary.cpl) : '-'}</strong></div>
-        <div className="weekly-kpi-card glass-panel"><span><i className="bx bx-filter-alt"></i>SQL</span><strong>{formatNumber(weeklySummary.sql)}</strong></div>
-        <div className="weekly-kpi-card glass-panel"><span><i className="bx bx-credit-card"></i>Custo SQL</span><strong>{weeklySummary.sql > 0 ? formatCurrency(weeklySummary.costPerSql) : '-'}</strong></div>
-      </div>
-
-      <div className="weekly-chart-grid weekly-chart-grid-single">
+      <div className="weekly-health-overview">
         <div className="weekly-chart-card glass-panel">
           <div className="section-header section-header-stack">
             <div>
@@ -13199,6 +13190,14 @@ export default function DashboardShell({
           <div className="weekly-chart-body weekly-chart-body-small">
             {weeklyVisibleRecords.length ? <Bar data={weeklyHealthChartData} options={weeklyBarOptions} /> : <div className="ranking-empty">Sem saúde registrada ainda.</div>}
           </div>
+        </div>
+        <div className="weekly-kpi-grid weekly-kpi-grid-wide weekly-kpi-board">
+          <div className="weekly-kpi-card glass-panel"><span><i className="bx bx-pulse"></i>Saúde média do período</span><strong>{weeklySummary.averageHealthLabel}</strong></div>
+          <div className="weekly-kpi-card glass-panel"><span><i className="bx bx-wallet"></i>Investimento</span><strong>{formatCurrency(weeklySummary.investment)}</strong></div>
+          <div className="weekly-kpi-card glass-panel"><span><i className="bx bx-user-plus"></i>Leads</span><strong>{formatNumber(weeklySummary.leads)}</strong></div>
+          <div className="weekly-kpi-card glass-panel"><span><i className="bx bx-purchase-tag-alt"></i>CPL médio</span><strong>{weeklySummary.leads > 0 ? formatCurrency(weeklySummary.cpl) : '-'}</strong></div>
+          <div className="weekly-kpi-card glass-panel"><span><i className="bx bx-filter-alt"></i>SQL</span><strong>{formatNumber(weeklySummary.sql)}</strong></div>
+          <div className="weekly-kpi-card glass-panel"><span><i className="bx bx-credit-card"></i>Custo SQL</span><strong>{weeklySummary.sql > 0 ? formatCurrency(weeklySummary.costPerSql) : '-'}</strong></div>
         </div>
       </div>
 
@@ -30265,6 +30264,19 @@ export default function DashboardShell({
           padding-bottom: 2px;
         }
 
+        .weekly-health-overview {
+          display: grid;
+          grid-template-columns: minmax(0, 1.55fr) minmax(420px, 0.85fr);
+          gap: 20px;
+          align-items: stretch;
+        }
+
+        .weekly-health-overview .weekly-kpi-grid.weekly-kpi-board {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          overflow: visible;
+          padding-bottom: 0;
+        }
+
         .weekly-kpi-card {
           min-height: 136px;
           border-radius: 26px;
@@ -31566,6 +31578,7 @@ export default function DashboardShell({
           .weekly-hero,
           .weekly-focus-strip,
           .weekly-evolution-layout,
+          .weekly-health-overview,
           .weekly-chart-grid {
             grid-template-columns: 1fr;
           }
@@ -31651,6 +31664,10 @@ export default function DashboardShell({
           .weekly-kpi-grid-wide,
           .weekly-client-results-grid,
           .weekly-record-metrics {
+            grid-template-columns: 1fr;
+          }
+
+          .weekly-health-overview .weekly-kpi-grid.weekly-kpi-board {
             grid-template-columns: 1fr;
           }
         }

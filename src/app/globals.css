@@ -2141,6 +2141,19 @@ textarea:focus {
     gap: 12px !important;
 }
 
+.weekly-dashboard-panel .weekly-health-overview {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1.55fr) minmax(420px, 0.85fr) !important;
+    gap: 20px !important;
+    align-items: stretch !important;
+}
+
+.weekly-dashboard-panel .weekly-health-overview .weekly-kpi-grid.weekly-kpi-board {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    overflow: visible !important;
+    padding-bottom: 0 !important;
+}
+
 .weekly-dashboard-panel .weekly-kpi-card {
     min-height: 152px !important;
     border-radius: 18px !important;
@@ -2738,6 +2751,7 @@ textarea:focus {
     }
 
     .weekly-dashboard-panel .weekly-evolution-layout,
+    .weekly-dashboard-panel .weekly-health-overview,
     .weekly-dashboard-panel .weekly-chart-grid {
         grid-template-columns: 1fr !important;
     }
@@ -2785,8 +2799,13 @@ textarea:focus {
         border-top: 1px solid rgba(190, 201, 191, 0.12) !important;
     }
 
+    .weekly-dashboard-panel .weekly-health-overview .weekly-kpi-grid.weekly-kpi-board {
+        grid-template-columns: 1fr !important;
+    }
+
     .weekly-dashboard-panel .weekly-client-results-grid,
     .weekly-dashboard-panel .weekly-evolution-layout,
+    .weekly-dashboard-panel .weekly-health-overview,
     .weekly-dashboard-panel .weekly-chart-grid,
     .weekly-dashboard-panel .weekly-table-actions,
     .weekly-dashboard-panel .weekly-table-filters,
