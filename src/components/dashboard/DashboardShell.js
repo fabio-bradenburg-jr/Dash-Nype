@@ -17317,7 +17317,17 @@ export default function DashboardShell({
                                     <div className="creative-ranking-main">
                                       <div className="creative-thumb">
                                         {item.imageUrl ? (
-                                          <img src={item.imageUrl} alt={item.label} />
+                                          <>
+                                            <img
+                                              src={item.imageUrl}
+                                              alt={item.label}
+                                              onError={(event) => {
+                                                event.currentTarget.hidden = true
+                                                event.currentTarget.nextElementSibling.hidden = false
+                                              }}
+                                            />
+                                            <span hidden>Sem imagem</span>
+                                          </>
                                         ) : (
                                           <span>Sem imagem</span>
                                         )}

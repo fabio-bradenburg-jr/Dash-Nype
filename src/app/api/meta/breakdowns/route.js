@@ -94,6 +94,15 @@ function normalizeStringValue(value) {
     .toLowerCase()
 }
 
+function buildCreativeThumbnailUrl(adAccountId, adId) {
+  const params = new URLSearchParams({
+    ad_account_id: adAccountId,
+    ad_id: adId,
+  })
+
+  return `/api/meta/creative-thumbnail?${params.toString()}`
+}
+
 function normalizeDetailDailyRows(rows = [], labelKey) {
   return rows
     .map((row) => {
@@ -320,7 +329,7 @@ export async function GET(request) {
           campaignId: insightRow.campaign_id || '',
           adsetId: insightRow.adset_id || '',
           label: insightRow.ad_name || ad.label || 'Criativo sem nome',
-          imageUrl: ad.imageUrl || '',
+          imageUrl: ad.imageUrl || buildCreativeThumbnailUrl(adAccountId, insightRow.ad_id),
           spend: parseFloat(insight.spend || 0),
           impressions: parseInt(insight.impressions || 0, 10),
           clicks: parseInt(insight.clicks || 0, 10),
