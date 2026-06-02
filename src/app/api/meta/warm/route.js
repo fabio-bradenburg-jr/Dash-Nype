@@ -1,14 +1,21 @@
 import { after, NextResponse } from 'next/server'
 import { resolveWorkspaceMetaAccessToken } from '@/lib/server/meta-connection'
 
-const BACKGROUND_WARM_DELAY_MS = 8_000
+const DEFAULT_BACKGROUND_WARM_DELAY_MS = 8_000
+const MAX_BACKGROUND_WARM_DELAY_MS = 60_000
 
 function buildInternalMetaUrl(origin, pathname, params) {
   return `${origin}${pathname}?${params.toString()}`
 }
 
-async function warmMetaDashboard({ origin, token, params }) {
-  await new Promise((resolve) => setTimeout(resolve, BACKGROUND_WARM_DELAY_MS))
+function resolveBackgroundWarmDelay(value) {
+  const parsed = Number(value)
+  if (!Number.isFinite(parsed)) return DEFAULT_BACKGROUND_WARM_DELAY_MS
+  return Math.min(Math.max(Math.round(parsed), 0), MAX_BACKGROUND_WARM_DELAY_MS)
+}
+
+async function warmMetaDashboard({ origin, token, params, delayMs }) {
+  await new Promise((resolve) => setTimeout(resolve, delayMs))
 
   const headers = {
     'x-meta-access-token': token,
@@ -46,6 +53,7 @@ export async function GET(request) {
     const datePreset = searchParams.get('date_preset') || 'last_7d'
     const since = searchParams.get('since')
     const until = searchParams.get('until')
+    const delayMs = resolveBackgroundWarmDelay(searchParams.get('delay_ms'))
     const token = await resolveWorkspaceMetaAccessToken(request)
 
     if (!token || !adAccountId) {
@@ -66,9 +74,9 @@ export async function GET(request) {
       params.set('until', until)
     }
 
-    after(() => warmMetaDashboard({ origin, token, params }))
+    after(() => warmMetaDashboard({ origin, token, params, delayMs }))
 
-    return NextResponse.json({ accepted: true }, { status: 202 })
+    return NextResponse.json({ accepted: true, delayMs }, { status: 202 })
   } catch (error) {
     console.error('Meta background warm error:', error)
     return NextResponse.json({ error: 'Não foi possível iniciar o carregamento em segundo plano.' }, { status: 500 })

@@ -3185,6 +3185,7 @@ export default function DashboardShell({
   const lastDashboardFetchKeyRef = useRef('')
   const lastDashboardFetchAtRef = useRef(0)
   const lastBreakdownsFetchKeyRef = useRef('')
+  const lastMetaPortfolioWarmKeyRef = useRef('')
   const lastGoogleSheetsFetchKeyRef = useRef('')
   const selectedQualifiedStagesRef = useRef([])
   const rdLeadSourceFiltersRef = useRef([])
@@ -9462,21 +9463,47 @@ export default function DashboardShell({
     if (activeTab !== 'apresentacao' || !selectedAdAccount || !hasMetaConfigured) return
     if (dateRange === 'custom' && (!customSince || !customUntil)) return
 
-    const params = new URLSearchParams({
-      ad_account_id: selectedAdAccount,
-      date_preset: dateRange,
+    const portfolioAdAccounts = Array.from(
+      new Set(
+        dashboardEligibleClients
+          .map((client) => String(client.metaAdAccountId || '').trim())
+          .filter(Boolean)
+      )
+    ).sort((left, right) => {
+      if (left === selectedAdAccount) return -1
+      if (right === selectedAdAccount) return 1
+      return left.localeCompare(right)
     })
 
-    if (dateRange === 'custom') {
-      params.set('since', customSince)
-      params.set('until', customUntil)
-    }
+    const portfolioWarmKey = JSON.stringify({
+      accounts: [...portfolioAdAccounts].sort(),
+      dateRange,
+      customSince,
+      customUntil,
+      metaCredentialSignature,
+    })
 
-    fetch(`/api/meta/warm?${params.toString()}`, {
-      headers: metaRequestHeaders,
-      keepalive: true,
-    }).catch(() => {
-      // The visible dashboard requests remain the fallback if background warming cannot start.
+    if (lastMetaPortfolioWarmKeyRef.current === portfolioWarmKey) return
+    lastMetaPortfolioWarmKeyRef.current = portfolioWarmKey
+
+    portfolioAdAccounts.forEach((adAccountId, index) => {
+      const params = new URLSearchParams({
+        ad_account_id: adAccountId,
+        date_preset: dateRange,
+        delay_ms: String(index === 0 ? 8_000 : Math.min(2_000 + index * 2_000, 60_000)),
+      })
+
+      if (dateRange === 'custom') {
+        params.set('since', customSince)
+        params.set('until', customUntil)
+      }
+
+      fetch(`/api/meta/warm?${params.toString()}`, {
+        headers: metaRequestHeaders,
+        keepalive: true,
+      }).catch(() => {
+        // The visible dashboard requests remain the fallback if background warming cannot start.
+      })
     })
   }, [
     activeTab,
@@ -9487,6 +9514,7 @@ export default function DashboardShell({
     hasMetaConfigured,
     metaCredentialSignature,
     metaRequestHeaders,
+    dashboardEligibleClients,
   ])
 
   useEffect(() => {
