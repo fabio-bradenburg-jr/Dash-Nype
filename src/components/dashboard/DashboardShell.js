@@ -3183,6 +3183,7 @@ export default function DashboardShell({
   const lastCompletedMetaStructureFetchKeyRef = useRef('')
   const lastRdPipelinesFetchKeyRef = useRef('')
   const lastDashboardFetchKeyRef = useRef('')
+  const lastCompletedDashboardFetchKeyRef = useRef('')
   const lastDashboardFetchAtRef = useRef(0)
   const lastBreakdownsFetchKeyRef = useRef('')
   const lastMetaWarmFetchKeyRef = useRef('')
@@ -6128,6 +6129,7 @@ export default function DashboardShell({
         setClientTabOverrides(Array.isArray(state.clientTabOverrides) ? state.clientTabOverrides : [])
         setTeamProfiles(Array.isArray(state.teamProfiles) ? state.teamProfiles : [])
         lastDashboardFetchKeyRef.current = ''
+        lastCompletedDashboardFetchKeyRef.current = ''
         lastDashboardFetchAtRef.current = 0
         setActiveClientId(initialActiveClientId || initialClientRecord?.id || state.activeClientId || mergedServerClients[0]?.id || '')
       } catch (error) {
@@ -7532,6 +7534,7 @@ export default function DashboardShell({
 
   useEffect(() => {
     lastDashboardFetchKeyRef.current = ''
+    lastCompletedDashboardFetchKeyRef.current = ''
     lastMetaStructureFetchKeyRef.current = ''
     lastCompletedMetaStructureFetchKeyRef.current = ''
     lastBreakdownsFetchKeyRef.current = ''
@@ -9502,6 +9505,7 @@ export default function DashboardShell({
 
     if (shouldFetchPresentationData && !activeClientId) {
       lastDashboardFetchKeyRef.current = ''
+      lastCompletedDashboardFetchKeyRef.current = ''
       lastGoogleSheetsFetchKeyRef.current = ''
       setIsLoading(false)
       setInsights(null)
@@ -9523,6 +9527,7 @@ export default function DashboardShell({
       && !hasSheetsConfigured
     ) {
       lastDashboardFetchKeyRef.current = ''
+      lastCompletedDashboardFetchKeyRef.current = ''
       lastGoogleSheetsFetchKeyRef.current = ''
       setIsLoading(false)
       setInsights(null)
@@ -9580,9 +9585,10 @@ export default function DashboardShell({
 
       const now = Date.now()
       if (
-        lastDashboardFetchKeyRef.current === fetchKey &&
+        lastCompletedDashboardFetchKeyRef.current === fetchKey &&
         now - lastDashboardFetchAtRef.current < 15000
       ) {
+        setIsLoading(false)
         return
       }
 
@@ -9690,6 +9696,7 @@ export default function DashboardShell({
           }
 
           if (!cancelled) {
+            lastCompletedDashboardFetchKeyRef.current = fetchKey
             setIsLoading(false)
           }
 
@@ -9933,6 +9940,7 @@ export default function DashboardShell({
         }
       } finally {
         if (!cancelled) {
+          lastCompletedDashboardFetchKeyRef.current = fetchKey
           setIsLoading(false)
         }
       }
