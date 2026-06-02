@@ -1,7 +1,7 @@
 import { after, NextResponse } from 'next/server'
 import { formatInsightsWithConversions } from '@/lib/meta-metrics'
 import { fetchMetaJson, normalizeMetaError } from '@/lib/server/meta-fetch'
-import { buildMetaInsightsFilterExpression, resolveMetaDateSelection } from '@/lib/server/meta-date-range'
+import { resolveMetaDateSelection } from '@/lib/server/meta-date-range'
 import { resolveWorkspaceMetaAccessToken } from '@/lib/server/meta-connection'
 import { createAdminClient } from '@/lib/server/supabase-admin'
 
@@ -135,6 +135,32 @@ function resolveCreativeImageUrl(ad) {
   )
 }
 
+async function fetchInvestedCreativeDetails(ads, token) {
+  const investedAdIds = ads.map((ad) => ad.ad_id).filter(Boolean)
+  if (!investedAdIds.length) return new Map()
+
+  const detailsByAdId = new Map()
+
+  for (let index = 0; index < investedAdIds.length; index += 100) {
+    const ids = investedAdIds.slice(index, index + 100)
+    const params = new URLSearchParams({
+      ids: ids.join(','),
+      fields: 'id,name,campaign_id,adset_id,creative{name,thumbnail_url,image_url,image_hash,effective_object_story_id,object_story_spec}',
+      access_token: token,
+    })
+    const details = await fetchMetaJson(
+      `https://graph.facebook.com/v19.0/?${params.toString()}`,
+      'A Meta demorou para responder ao carregar os criativos com investimento.'
+    )
+
+    Object.values(details || {}).forEach((ad) => {
+      if (ad?.id) detailsByAdId.set(ad.id, ad)
+    })
+  }
+
+  return detailsByAdId
+}
+
 async function saveCreativeRanking(adAccountId, creatives) {
   if (!adAccountId || !creatives.length) return
 
@@ -225,9 +251,11 @@ export async function GET(request) {
     stateParams.set('breakdowns', 'region')
     appendMetaEntityFiltering(stateParams, campaignIds, adsetIds, adIds)
 
-    const creativeTimeFilter = buildMetaInsightsFilterExpression(datePreset, since, until)
+    const creativeParams = buildBaseParams({ token, datePreset, since, until, fields: `ad_id,ad_name,campaign_id,adset_id,${creativeInsightFields}` })
+    creativeParams.set('level', 'ad')
+    appendMetaEntityFiltering(creativeParams, campaignIds, adsetIds, adIds)
 
-    const creativeUrl = `https://graph.facebook.com/v19.0/${id}/ads?fields=id,name,campaign_id,adset_id,creative{name,thumbnail_url,image_url,image_hash,effective_object_story_id,object_story_spec},${creativeTimeFilter}{${creativeInsightFields}}&limit=100&access_token=${token}`
+    const creativeUrl = `https://graph.facebook.com/v19.0/${id}/insights?${creativeParams.toString()}`
     const [ageResult, cityResult, stateResult, creativeResult] = await Promise.all([
       fetchMetaBreakdownSafely(
         `https://graph.facebook.com/v19.0/${id}/insights?${ageParams.toString()}`,
@@ -304,20 +332,18 @@ export async function GET(request) {
       }
     }
 
-    const creatives = (creativeResult.data?.data || [])
-      .filter((ad) => {
-        if (adIds.length > 0) return adIds.includes(ad.id)
-        if (adsetIds.length > 0) return adsetIds.includes(ad.adset_id)
-        if (campaignIds.length > 0) return campaignIds.includes(ad.campaign_id)
-        return true
-      })
-      .map((ad) => {
-        const insight = formatInsightsWithConversions(ad.insights?.data?.[0] || {})
+    const investedCreativeRows = (creativeResult.data?.data || [])
+      .filter((ad) => parseFloat(ad.spend || 0) > 0)
+    const creativeDetailsByAdId = await fetchInvestedCreativeDetails(investedCreativeRows, token)
+    const creatives = investedCreativeRows
+      .map((insightRow) => {
+        const ad = creativeDetailsByAdId.get(insightRow.ad_id) || {}
+        const insight = formatInsightsWithConversions(insightRow)
         return {
-          adId: ad.id || '',
-          campaignId: ad.campaign_id || '',
-          adsetId: ad.adset_id || '',
-          label: normalizeCreativeLabel(ad),
+          adId: insightRow.ad_id || '',
+          campaignId: insightRow.campaign_id || '',
+          adsetId: insightRow.adset_id || '',
+          label: normalizeCreativeLabel({ ...ad, name: insightRow.ad_name || ad.name }),
           imageUrl: resolveCreativeImageUrl(ad),
           spend: parseFloat(insight.spend || 0),
           impressions: parseInt(insight.impressions || 0, 10),
