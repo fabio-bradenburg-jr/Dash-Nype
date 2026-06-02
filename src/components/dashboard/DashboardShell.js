@@ -9407,14 +9407,12 @@ export default function DashboardShell({
           params.set('until', customUntil)
         }
 
-        const [campaignsResponse, structureResponse] = await Promise.all([
-          fetch(`/api/meta/campaigns?${params.toString()}`, { headers: metaRequestHeaders }),
-          fetch(`/api/meta/structure?${params.toString()}`, { headers: metaRequestHeaders }),
+        const [campaignsResult, structureResult] = await Promise.all([
+          fetchJsonWithTimeout(`/api/meta/campaigns?${params.toString()}`, { headers: metaRequestHeaders }),
+          fetchJsonWithTimeout(`/api/meta/structure?${params.toString()}`, { headers: metaRequestHeaders }),
         ])
-        const [campaignsData, structureData] = await Promise.all([
-          campaignsResponse.json().catch(() => ({ error: 'Não foi possível interpretar a resposta das campanhas da Meta.' })),
-          structureResponse.json().catch(() => ({ error: 'Não foi possível interpretar a resposta da estrutura da Meta.' })),
-        ])
+        const { response: campaignsResponse, data: campaignsData } = campaignsResult
+        const { response: structureResponse, data: structureData } = structureResult
 
         if (!campaignsResponse.ok) {
           throw new Error(campaignsData.error || 'Não foi possível carregar as campanhas da Meta.')
@@ -10078,10 +10076,9 @@ export default function DashboardShell({
           params.set('ad_ids', currentMetaFilteredAdIds.join(','))
         }
 
-        const response = await fetch(`/api/meta/breakdowns?${params.toString()}`, {
+        const { response, data } = await fetchJsonWithTimeout(`/api/meta/breakdowns?${params.toString()}`, {
           headers: metaRequestHeaders,
         })
-        const data = await response.json()
 
         if (!response.ok) {
           throw new Error(data.error || 'Os rankings detalhados não responderam agora.')

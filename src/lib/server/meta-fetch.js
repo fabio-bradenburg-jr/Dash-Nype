@@ -3,7 +3,12 @@ import { after } from 'next/server'
 import { createAdminClient } from '@/lib/server/supabase-admin'
 
 function isTimeoutError(error) {
-  return error?.message === 'fetch failed' || error?.cause?.code === 'UND_ERR_CONNECT_TIMEOUT'
+  return (
+    error?.name === 'AbortError' ||
+    error?.name === 'TimeoutError' ||
+    error?.message === 'fetch failed' ||
+    ['UND_ERR_CONNECT_TIMEOUT', 'UND_ERR_HEADERS_TIMEOUT', 'UND_ERR_BODY_TIMEOUT'].includes(error?.cause?.code)
+  )
 }
 
 function isInvalidMetaTokenPayload(payload) {
@@ -39,6 +44,24 @@ const META_PERSISTENT_CACHE_TTL_MS = 5 * 60_000
 const META_HISTORICAL_CACHE_TTL_MS = 24 * 60 * 60_000
 const META_PREVIEW_CACHE_TTL_MS = 7 * 24 * 60 * 60_000
 const META_MAX_PAGES = 40
+const META_FETCH_TIMEOUT_MS = 12_000
+const META_CACHE_READ_TIMEOUT_MS = 3_000
+const META_FETCH_MAX_ATTEMPTS = 1
+
+async function withTimeout(promise, timeoutMs, message) {
+  let timeoutId
+
+  try {
+    return await Promise.race([
+      promise,
+      new Promise((_, reject) => {
+        timeoutId = setTimeout(() => reject(new Error(message)), timeoutMs)
+      }),
+    ])
+  } finally {
+    clearTimeout(timeoutId)
+  }
+}
 
 function normalizeClientKey(value) {
   return String(value || 'unassigned').replace(/^act_/, '') || 'unassigned'
@@ -101,23 +124,31 @@ function resolvePersistentMetaCacheTtlMs(url) {
 async function readPersistentMetaCache({ cacheKey, requestPath }) {
   try {
     const supabase = createAdminClient()
-    const { data: keyedData, error: keyedError } = await supabase
-      .from('meta_api_cache')
-      .select('payload, expires_at')
-      .eq('cache_key', cacheKey)
-      .maybeSingle()
+    const { data: keyedData, error: keyedError } = await withTimeout(
+      supabase
+        .from('meta_api_cache')
+        .select('payload, expires_at')
+        .eq('cache_key', cacheKey)
+        .maybeSingle(),
+      META_CACHE_READ_TIMEOUT_MS,
+      'A leitura do cache da Meta demorou demais.'
+    )
 
     if (keyedError) throw keyedError
     let data = keyedData
 
     if (!data) {
-      const { data: pathData, error: pathError } = await supabase
-        .from('meta_api_cache')
-        .select('cache_key, client_key, resource_kind, request_path, payload, fetched_at, expires_at')
-        .eq('request_path', requestPath)
-        .order('fetched_at', { ascending: false })
-        .limit(1)
-        .maybeSingle()
+      const { data: pathData, error: pathError } = await withTimeout(
+        supabase
+          .from('meta_api_cache')
+          .select('cache_key, client_key, resource_kind, request_path, payload, fetched_at, expires_at')
+          .eq('request_path', requestPath)
+          .order('fetched_at', { ascending: false })
+          .limit(1)
+          .maybeSingle(),
+        META_CACHE_READ_TIMEOUT_MS,
+        'A leitura do cache da Meta demorou demais.'
+      )
 
       if (pathError) throw pathError
       data = pathData
@@ -271,7 +302,7 @@ export async function fetchMetaJson(url, fallbackMessage, options = {}) {
   }
 
   const requestPromise = (async () => {
-    for (let attempt = 0; attempt < 2; attempt += 1) {
+    for (let attempt = 0; attempt < META_FETCH_MAX_ATTEMPTS; attempt += 1) {
       try {
         let requestUrl = url
         let pageCount = 0
@@ -279,7 +310,10 @@ export async function fetchMetaJson(url, fallbackMessage, options = {}) {
         let hasRetriedWithEnvToken = false
 
         while (requestUrl && pageCount < maxPages) {
-          const response = await fetch(requestUrl, fetchOptions)
+          const response = await fetch(requestUrl, {
+            ...fetchOptions,
+            signal: fetchOptions.signal || AbortSignal.timeout(META_FETCH_TIMEOUT_MS),
+          })
           const data = await response.json()
 
           if (data?.error) {
@@ -337,7 +371,7 @@ export async function fetchMetaJson(url, fallbackMessage, options = {}) {
           return persistentCacheEntry.data
         }
 
-        if (!isTimeoutError(error) || attempt === 1) {
+        if (!isTimeoutError(error) || attempt === META_FETCH_MAX_ATTEMPTS - 1) {
           throw new Error(normalizeMetaError(error, fallbackMessage))
         }
       }
