@@ -9999,11 +9999,18 @@ export default function DashboardShell({
       return
     }
 
-    if (!isMetaStructureReady) {
-      return
-    }
+    const requiresMetaStructureForRankings =
+      hasActiveMetaCampaignNarrowing ||
+      hasActiveMetaAdsetNarrowing ||
+      hasActiveMetaAdNarrowing
 
-    if (lastCompletedMetaStructureFetchKeyRef.current !== metaStructureFetchKey) {
+    if (
+      requiresMetaStructureForRankings &&
+      (
+        !isMetaStructureReady ||
+        lastCompletedMetaStructureFetchKeyRef.current !== metaStructureFetchKey
+      )
+    ) {
       return
     }
 
