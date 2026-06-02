@@ -111,54 +111,30 @@ function normalizeDetailDailyRows(rows = [], labelKey) {
     .sort((left, right) => String(left.date_start).localeCompare(String(right.date_start)))
 }
 
-function normalizeCreativeLabel(ad) {
-  const rawLabel = ad.name || ad.creative?.name || 'Criativo sem nome'
+async function readSavedCreativeDetails(adAccountId, ads) {
+  const adIds = ads.map((ad) => ad.ad_id).filter(Boolean)
+  if (!adAccountId || !adIds.length) return new Map()
 
-  return rawLabel
-    .replace(/\{\{[^}]+\}\}/g, '')
-    .replace(/\s{2,}/g, ' ')
-    .trim()
-}
+  try {
+    const clientKey = String(adAccountId).replace(/^act_/, '')
+    const supabase = createAdminClient()
+    const detailsByAdId = new Map()
 
-function resolveCreativeImageUrl(ad) {
-  const creative = ad?.creative || {}
-  const storySpec = creative.object_story_spec || {}
+    for (let index = 0; index < adIds.length; index += 250) {
+      const { data, error } = await supabase
+        .from('meta_creative_cache')
+        .select('ad_id,payload')
+        .eq('client_key', clientKey)
+        .in('ad_id', adIds.slice(index, index + 250))
 
-  return (
-    creative.image_url ||
-    storySpec.video_data?.image_url ||
-    storySpec.photo_data?.image_url ||
-    storySpec.link_data?.child_attachments?.[0]?.picture ||
-    storySpec.link_data?.picture ||
-    creative.thumbnail_url ||
-    ''
-  )
-}
+      if (error) throw error
+      ;(data || []).forEach((item) => detailsByAdId.set(item.ad_id, item.payload || {}))
+    }
 
-async function fetchInvestedCreativeDetails(ads, token) {
-  const investedAdIds = ads.map((ad) => ad.ad_id).filter(Boolean)
-  if (!investedAdIds.length) return new Map()
-
-  const detailsByAdId = new Map()
-
-  for (let index = 0; index < investedAdIds.length; index += 100) {
-    const ids = investedAdIds.slice(index, index + 100)
-    const params = new URLSearchParams({
-      ids: ids.join(','),
-      fields: 'id,name,campaign_id,adset_id,creative{name,thumbnail_url,image_url,image_hash,effective_object_story_id,object_story_spec}',
-      access_token: token,
-    })
-    const details = await fetchMetaJson(
-      `https://graph.facebook.com/v19.0/?${params.toString()}`,
-      'A Meta demorou para responder ao carregar os criativos com investimento.'
-    )
-
-    Object.values(details || {}).forEach((ad) => {
-      if (ad?.id) detailsByAdId.set(ad.id, ad)
-    })
+    return detailsByAdId
+  } catch {
+    return new Map()
   }
-
-  return detailsByAdId
 }
 
 async function saveCreativeRanking(adAccountId, creatives) {
@@ -334,7 +310,7 @@ export async function GET(request) {
 
     const investedCreativeRows = (creativeResult.data?.data || [])
       .filter((ad) => parseFloat(ad.spend || 0) > 0)
-    const creativeDetailsByAdId = await fetchInvestedCreativeDetails(investedCreativeRows, token)
+    const creativeDetailsByAdId = await readSavedCreativeDetails(adAccountId, investedCreativeRows)
     const creatives = investedCreativeRows
       .map((insightRow) => {
         const ad = creativeDetailsByAdId.get(insightRow.ad_id) || {}
@@ -343,8 +319,8 @@ export async function GET(request) {
           adId: insightRow.ad_id || '',
           campaignId: insightRow.campaign_id || '',
           adsetId: insightRow.adset_id || '',
-          label: normalizeCreativeLabel({ ...ad, name: insightRow.ad_name || ad.name }),
-          imageUrl: resolveCreativeImageUrl(ad),
+          label: insightRow.ad_name || ad.label || 'Criativo sem nome',
+          imageUrl: ad.imageUrl || '',
           spend: parseFloat(insight.spend || 0),
           impressions: parseInt(insight.impressions || 0, 10),
           clicks: parseInt(insight.clicks || 0, 10),
