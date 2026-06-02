@@ -1,7 +1,7 @@
 import { after, NextResponse } from 'next/server'
 import { resolveWorkspaceMetaAccessToken } from '@/lib/server/meta-connection'
 
-const BACKGROUND_WARM_DELAY_MS = 8_000
+const BACKGROUND_WARM_DELAY_MS = 1_000
 
 function buildInternalMetaUrl(origin, pathname, params) {
   return `${origin}${pathname}?${params.toString()}`
@@ -14,7 +14,7 @@ async function warmMetaDashboard({ origin, token, params }) {
     'x-meta-access-token': token,
   }
   const datePreset = params.get('date_preset') || 'last_7d'
-  const warmParamGroups = [params]
+  const warmParamGroups = []
 
   ;['last_7d', 'last_30d'].forEach((nextDatePreset) => {
     if (nextDatePreset === datePreset) return
@@ -24,6 +24,7 @@ async function warmMetaDashboard({ origin, token, params }) {
       date_preset: nextDatePreset,
     }))
   })
+  warmParamGroups.push(params)
 
   let rejectedCount = 0
   for (const warmParams of warmParamGroups) {
