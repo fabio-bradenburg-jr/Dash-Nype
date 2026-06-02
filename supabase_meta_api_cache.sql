@@ -16,6 +16,9 @@ create index if not exists meta_api_cache_expires_at_idx
 create index if not exists meta_api_cache_client_key_resource_kind_idx
   on public.meta_api_cache (client_key, resource_kind);
 
+create index if not exists meta_api_cache_request_path_fetched_at_idx
+  on public.meta_api_cache (request_path, fetched_at desc);
+
 alter table public.meta_api_cache enable row level security;
 
 revoke all on table public.meta_api_cache from anon, authenticated;

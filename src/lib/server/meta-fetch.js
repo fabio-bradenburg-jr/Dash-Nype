@@ -53,7 +53,6 @@ function resolveMetaResourceKind(parsed, explicitKind) {
 function buildPersistentMetaCacheIdentity(url, method = 'GET', cacheContext = {}) {
   try {
     const parsed = new URL(url)
-    const token = parsed.searchParams.get('access_token') || ''
     const accountMatch = parsed.pathname.match(/\/act_([^/]+)/)
     parsed.searchParams.delete('access_token')
     parsed.searchParams.sort()
@@ -61,9 +60,8 @@ function buildPersistentMetaCacheIdentity(url, method = 'GET', cacheContext = {}
     const requestPath = `${parsed.origin}${parsed.pathname}?${parsed.searchParams.toString()}`
     const clientKey = normalizeClientKey(cacheContext.clientKey || accountMatch?.[1])
     const resourceKind = resolveMetaResourceKind(parsed, cacheContext.resourceKind)
-    const tokenFingerprint = createHash('sha256').update(token).digest('hex')
     const cacheKey = createHash('sha256')
-      .update(`${method}:${requestPath}:${tokenFingerprint}`)
+      .update(`${method}:${requestPath}`)
       .digest('hex')
 
     return { cacheKey, clientKey, resourceKind, requestPath }
@@ -98,16 +96,31 @@ function resolvePersistentMetaCacheTtlMs(url) {
   return META_PERSISTENT_CACHE_TTL_MS
 }
 
-async function readPersistentMetaCache(cacheKey) {
+async function readPersistentMetaCache({ cacheKey, requestPath }) {
   try {
     const supabase = createAdminClient()
-    const { data, error } = await supabase
+    const { data: keyedData, error: keyedError } = await supabase
       .from('meta_api_cache')
       .select('payload, expires_at')
       .eq('cache_key', cacheKey)
       .maybeSingle()
 
-    if (error) throw error
+    if (keyedError) throw keyedError
+    let data = keyedData
+
+    if (!data) {
+      const { data: pathData, error: pathError } = await supabase
+        .from('meta_api_cache')
+        .select('payload, expires_at')
+        .eq('request_path', requestPath)
+        .order('fetched_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+      if (pathError) throw pathError
+      data = pathData
+    }
+
     if (!data?.payload) return null
 
     return {
@@ -196,7 +209,7 @@ export async function fetchMetaJson(url, fallbackMessage, options = {}) {
   }
 
   const persistentCacheEntry = persistentCacheIdentity
-    ? await readPersistentMetaCache(persistentCacheIdentity.cacheKey)
+    ? await readPersistentMetaCache(persistentCacheIdentity)
     : null
 
   if (persistentCacheEntry?.data) {
