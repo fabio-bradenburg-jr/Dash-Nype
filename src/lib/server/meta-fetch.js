@@ -111,7 +111,7 @@ async function readPersistentMetaCache({ cacheKey, requestPath }) {
     if (!data) {
       const { data: pathData, error: pathError } = await supabase
         .from('meta_api_cache')
-        .select('payload, expires_at')
+        .select('cache_key, client_key, resource_kind, request_path, payload, fetched_at, expires_at')
         .eq('request_path', requestPath)
         .order('fetched_at', { ascending: false })
         .limit(1)
@@ -119,6 +119,18 @@ async function readPersistentMetaCache({ cacheKey, requestPath }) {
 
       if (pathError) throw pathError
       data = pathData
+
+      if (pathData?.cache_key && pathData.cache_key !== cacheKey) {
+        await supabase.from('meta_api_cache').upsert({
+          cache_key: cacheKey,
+          client_key: pathData.client_key,
+          resource_kind: pathData.resource_kind,
+          request_path: pathData.request_path,
+          payload: pathData.payload,
+          fetched_at: pathData.fetched_at,
+          expires_at: pathData.expires_at,
+        })
+      }
     }
 
     if (!data?.payload) return null
