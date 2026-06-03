@@ -12877,6 +12877,23 @@ export default function DashboardShell({
         })
       }
 
+      const drawGradientRoundedRect = (x, y, width, height, radius = 8, from = logoGreen, to = deepGreen) => {
+        drawGradientRect(x, y, width, height, from, to)
+        pdf.setLineWidth(Math.max(radius, 8))
+        pdf.setDrawColor(pageBackground)
+        pdf.line(x, y, x + radius, y)
+        pdf.line(x, y, x, y + radius)
+        pdf.line(x + width - radius, y, x + width, y)
+        pdf.line(x + width, y, x + width, y + radius)
+        pdf.line(x, y + height - radius, x, y + height)
+        pdf.line(x, y + height, x + radius, y + height)
+        pdf.line(x + width - radius, y + height, x + width, y + height)
+        pdf.line(x + width, y + height - radius, x + width, y + height)
+        pdf.setLineWidth(0.8)
+        pdf.setDrawColor('#9ee8bc')
+        pdf.roundedRect(x, y, width, height, radius, radius, 'S')
+      }
+
       const loadDataUrlFromSource = async (source) => {
         if (!source) return ''
         const sourceText = String(source)
@@ -12982,7 +12999,7 @@ export default function DashboardShell({
       const drawClientSectionTitle = (sectionTitle) => {
         addPageIfNeeded(52)
         if (cursorY < 92) cursorY = 92
-        drawGradientRect(margin, cursorY, pageWidth - margin * 2, 26, logoGreen, deepGreen)
+        drawGradientRoundedRect(margin, cursorY, pageWidth - margin * 2, 26, 8, logoGreen, deepGreen)
         pdf.setFont('helvetica', 'bold')
         pdf.setFontSize(11)
         pdf.setTextColor('#ffffff')
@@ -13104,9 +13121,7 @@ export default function DashboardShell({
           const width = stepWidths[index]
           const x = centerX - width / 2
           const y = stepYPositions[index]
-          drawGradientRect(x, y, width, stepHeights[index], index === 0 ? logoGreen : '#2ecc71', index === 2 ? deepGreen : '#008f5b')
-          pdf.setDrawColor('#b9e9cc')
-          pdf.roundedRect(x, y, width, stepHeights[index], 9, 9, 'S')
+          drawGradientRoundedRect(x, y, width, stepHeights[index], 9, index === 0 ? logoGreen : '#2ecc71', index === 2 ? deepGreen : '#008f5b')
 
           pdf.setFont('helvetica', 'bold')
           pdf.setFontSize(9)
@@ -13154,7 +13169,7 @@ export default function DashboardShell({
         pdf.setFillColor('#ffffff')
         pdf.setDrawColor('#d7e7df')
         pdf.roundedRect(x, y, width, height, 10, 10, 'FD')
-        drawGradientRect(x, y, width, 24, logoGreen, deepGreen)
+        drawGradientRoundedRect(x, y, width, 24, 8, logoGreen, deepGreen)
 
         pdf.setFont('helvetica', 'bold')
         pdf.setFontSize(9)
@@ -13234,7 +13249,7 @@ export default function DashboardShell({
 
         const drawHeader = () => {
           addPageIfNeeded(headerHeight + rowHeight + 8)
-          drawGradientRect(margin, cursorY, tableWidth, headerHeight, logoGreen, deepGreen)
+          drawGradientRoundedRect(margin, cursorY, tableWidth, headerHeight, 8, logoGreen, deepGreen)
           pdf.setFont('helvetica', 'bold')
           pdf.setFontSize(7.4)
           pdf.setTextColor('#ffffff')
@@ -13337,11 +13352,6 @@ export default function DashboardShell({
           drawClientCards([...clientMetaMetrics, ...clientConversionMetrics], 4)
         }
 
-        if (hasRdConfigured) {
-          drawClientSectionTitle(activeClientUsesManualCrm ? 'CRM manual' : crmSourceLabel)
-          drawClientCrmFunnel()
-        }
-
         drawClientSectionTitle('Rankings')
         addPageIfNeeded(260)
         const rankingGap = 12
@@ -13355,6 +13365,11 @@ export default function DashboardShell({
 
         drawClientSectionTitle('Campanhas')
         drawClientCampaignTable(filteredCampaigns, campaignColumns)
+
+        if (hasRdConfigured) {
+          drawClientSectionTitle(activeClientUsesManualCrm ? 'CRM manual' : crmSourceLabel)
+          drawClientCrmFunnel()
+        }
 
         pdf.save(`${dashboardExportFileName}-cliente.pdf`)
       }
