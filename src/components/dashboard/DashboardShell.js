@@ -1249,8 +1249,21 @@ function buildContextInsight(tone, title, description) {
   return { tone, title, description }
 }
 
+function normalizeClientStatus(client) {
+  return String(client?.status || '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+}
+
+function isClientActiveForDashboard(client) {
+  const normalizedStatus = normalizeClientStatus(client)
+  return client?.dashboardEnabled !== false && (!normalizedStatus || normalizedStatus === 'ativo')
+}
+
 function getClientStatusMeta(client) {
-  const normalizedStatus = String(client?.status || '').trim().toLowerCase()
+  const normalizedStatus = normalizeClientStatus(client)
 
   if (normalizedStatus === 'churn') {
     return {
@@ -3573,7 +3586,7 @@ export default function DashboardShell({
     [activeClient?.manualCrmSummary, insights]
   )
   const dashboardEligibleClients = useMemo(
-    () => clients.filter((client) => client.dashboardEnabled !== false),
+    () => clients.filter(isClientActiveForDashboard),
     [clients]
   )
   const weeklyWeekEnd = useMemo(() => getWeekEndDateInputValue(weeklyWeekStart), [weeklyWeekStart])
@@ -4254,13 +4267,12 @@ export default function DashboardShell({
   const contextDashboardSummary = useMemo(() => {
     if (!clients.length) return null
 
-    const normalizedStatus = (client) => String(client?.status || '').trim().toLowerCase()
-    const currentPortfolioClients = clients.filter((client) => normalizedStatus(client) !== 'churn')
-    const activeClients = clients.filter((client) => normalizedStatus(client) === 'ativo')
-    const onboardingClients = clients.filter((client) => normalizedStatus(client) === 'onboarding')
-    const pausedClients = clients.filter((client) => normalizedStatus(client) === 'pausado')
-    const riskClients = clients.filter((client) => normalizedStatus(client) === 'risco')
-    const churnedClients = clients.filter((client) => normalizedStatus(client) === 'churn')
+    const currentPortfolioClients = clients.filter((client) => normalizeClientStatus(client) !== 'churn')
+    const activeClients = clients.filter((client) => normalizeClientStatus(client) === 'ativo')
+    const onboardingClients = clients.filter((client) => normalizeClientStatus(client) === 'onboarding')
+    const pausedClients = clients.filter((client) => normalizeClientStatus(client) === 'pausado')
+    const riskClients = clients.filter((client) => normalizeClientStatus(client) === 'risco')
+    const churnedClients = clients.filter((client) => normalizeClientStatus(client) === 'churn')
 
     const sumNumbers = (list, resolver) =>
       list.reduce((sum, item) => {
