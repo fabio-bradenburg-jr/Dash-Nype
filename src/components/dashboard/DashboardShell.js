@@ -13102,16 +13102,11 @@ export default function DashboardShell({
           pdf.setFont('helvetica', 'bold')
           pdf.setFontSize(9)
           pdf.setTextColor('#ffffff')
-          pdf.text(String(step.title || '').toUpperCase(), x + 16, y + 18)
+          pdf.text(String(step.title || '').toUpperCase(), x + width / 2, y + 17, { align: 'center' })
 
           pdf.setFont('helvetica', 'bold')
-          pdf.setFontSize(20)
-          pdf.text(String(step.value || '-'), x + 16, y + 41)
-
-          pdf.setFont('helvetica', 'normal')
-          pdf.setFontSize(7)
-          pdf.setTextColor('#dcfce7')
-          pdf.text(pdf.splitTextToSize(String(step.note || ''), width - 32).slice(0, 1), x + 126, y + 39)
+          pdf.setFontSize(22)
+          pdf.text(String(step.value || '-'), x + width / 2, y + 42, { align: 'center' })
 
           if (index < ratePills.length) {
             const rate = ratePills[index]
