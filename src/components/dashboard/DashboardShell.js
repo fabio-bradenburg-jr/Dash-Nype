@@ -12878,20 +12878,37 @@ export default function DashboardShell({
       }
 
       const drawGradientRoundedRect = (x, y, width, height, radius = 8, from = logoGreen, to = deepGreen) => {
-        drawGradientRect(x, y, width, height, from, to)
-        pdf.setLineWidth(Math.max(radius, 8))
-        pdf.setDrawColor(pageBackground)
-        pdf.line(x, y, x + radius, y)
-        pdf.line(x, y, x, y + radius)
-        pdf.line(x + width - radius, y, x + width, y)
-        pdf.line(x + width, y, x + width, y + radius)
-        pdf.line(x, y + height - radius, x, y + height)
-        pdf.line(x, y + height, x + radius, y + height)
-        pdf.line(x + width - radius, y + height, x + width, y + height)
-        pdf.line(x + width, y + height - radius, x + width, y + height)
-        pdf.setLineWidth(0.8)
+        const safeRadius = Math.max(0, Math.min(radius, height / 2, width / 2))
+        const start = hexToRgb(from)
+        const end = hexToRgb(to)
+        const steps = Math.max(36, Math.ceil(width / 6))
+        const stepWidth = width / steps
+
+        Array.from({ length: steps }).forEach((_, index) => {
+          const ratio = steps <= 1 ? 0 : index / (steps - 1)
+          const stripX = x + index * stepWidth
+          const stripCenterX = stripX + stepWidth / 2
+          let inset = 0
+
+          if (safeRadius > 0 && stripCenterX < x + safeRadius) {
+            const dx = x + safeRadius - stripCenterX
+            inset = safeRadius - Math.sqrt(Math.max(safeRadius * safeRadius - dx * dx, 0))
+          } else if (safeRadius > 0 && stripCenterX > x + width - safeRadius) {
+            const dx = stripCenterX - (x + width - safeRadius)
+            inset = safeRadius - Math.sqrt(Math.max(safeRadius * safeRadius - dx * dx, 0))
+          }
+
+          pdf.setFillColor(
+            Math.round(start.r + (end.r - start.r) * ratio),
+            Math.round(start.g + (end.g - start.g) * ratio),
+            Math.round(start.b + (end.b - start.b) * ratio)
+          )
+          pdf.rect(stripX, y + inset, stepWidth + 0.8, Math.max(height - inset * 2, 0), 'F')
+        })
+
+        pdf.setLineWidth(0.6)
         pdf.setDrawColor('#9ee8bc')
-        pdf.roundedRect(x, y, width, height, radius, radius, 'S')
+        pdf.roundedRect(x, y, width, height, safeRadius, safeRadius, 'S')
       }
 
       const loadDataUrlFromSource = async (source) => {
