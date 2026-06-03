@@ -12977,6 +12977,7 @@ export default function DashboardShell({
 
       const drawClientSectionTitle = (sectionTitle) => {
         addPageIfNeeded(52)
+        if (cursorY < 92) cursorY = 92
         drawGradientRect(margin, cursorY, pageWidth - margin * 2, 26, logoGreen, deepGreen)
         pdf.setFont('helvetica', 'bold')
         pdf.setFontSize(11)
@@ -13020,6 +13021,129 @@ export default function DashboardShell({
             cursorY += height + 12
           }
         })
+      }
+
+      const drawClientCrmFunnel = () => {
+        const visibleCrmMetrics = rdAgendorFunnelKpis.filter((metric) => !metric.hidden)
+        const findMetric = (...keys) => visibleCrmMetrics.find((metric) => keys.includes(metric.key))
+        const firstStep = findMetric('metaLeadCount', 'manualOpportunityCount') || visibleCrmMetrics[0]
+        const qualifiedStep = findMetric('qualifiedOpportunityCount')
+        const wonStep = findMetric('wonOpportunityCount')
+        const qualificationRate = findMetric('manualLeadToQualifiedRate')
+        const saleRate = findMetric('qualifiedToWonRate')
+        const revenueMetric = findMetric('wonOpportunityRevenue')
+        const roasMetric = findMetric('manualCommercialRoas')
+
+        const funnelSteps = [
+          {
+            title: activeClientUsesManualCrm ? 'Oportunidades' : 'Leads e oportunidades',
+            value: firstStep?.value || '-',
+            note: firstStep?.detail || 'Volume inicial do funil comercial.',
+          },
+          {
+            title: qualifiedStep?.title || 'Qualificados',
+            value: qualifiedStep?.value || '-',
+            note: qualifiedStep?.detail || 'Contatos que chegaram em etapa qualificada.',
+          },
+          {
+            title: wonStep?.title || 'Vendas',
+            value: wonStep?.value || '-',
+            note: wonStep?.detail || 'Negócios fechados no período.',
+          },
+        ]
+        const ratePills = [
+          {
+            title: qualificationRate?.title || 'Taxa de qualificação',
+            value: qualificationRate?.value || '-',
+          },
+          {
+            title: saleRate?.title || 'Taxa de venda',
+            value: saleRate?.value || '-',
+          },
+        ]
+        const sideMetrics = [
+          revenueMetric && {
+            title: 'Faturamento',
+            value: revenueMetric.value || '-',
+            note: revenueMetric.detail || 'Valor vendido no período.',
+          },
+          roasMetric && {
+            title: roasMetric.title || 'ROAS comercial',
+            value: roasMetric.value || '-',
+            note: roasMetric.detail || 'Valor vendido dividido pelo investimento.',
+          },
+        ].filter(Boolean)
+
+        if (!funnelSteps.some((step) => String(step.value || '-').trim() !== '-')) return
+
+        const blockHeight = 292
+        addPageIfNeeded(blockHeight + 8)
+        const blockY = cursorY
+        const funnelX = margin
+        const funnelWidth = pageWidth - margin * 2 - 230
+        const sideX = funnelX + funnelWidth + 18
+        const sideWidth = pageWidth - margin - sideX
+        const centerX = funnelX + funnelWidth / 2
+        const stepHeights = [54, 54, 54]
+        const stepWidths = [
+          Math.min(funnelWidth, 410),
+          Math.min(funnelWidth - 64, 346),
+          Math.min(funnelWidth - 128, 284),
+        ]
+        const stepYPositions = [blockY, blockY + 94, blockY + 188]
+
+        pdf.setFillColor('#f7fbf8')
+        pdf.setDrawColor('#d7e7df')
+        pdf.roundedRect(funnelX, blockY - 8, funnelWidth, blockHeight, 12, 12, 'FD')
+
+        funnelSteps.forEach((step, index) => {
+          const width = stepWidths[index]
+          const x = centerX - width / 2
+          const y = stepYPositions[index]
+          drawGradientRect(x, y, width, stepHeights[index], index === 0 ? logoGreen : '#2ecc71', index === 2 ? deepGreen : '#008f5b')
+          pdf.setDrawColor('#b9e9cc')
+          pdf.roundedRect(x, y, width, stepHeights[index], 9, 9, 'S')
+
+          pdf.setFont('helvetica', 'bold')
+          pdf.setFontSize(9)
+          pdf.setTextColor('#ffffff')
+          pdf.text(String(step.title || '').toUpperCase(), x + 16, y + 18)
+
+          pdf.setFont('helvetica', 'bold')
+          pdf.setFontSize(20)
+          pdf.text(String(step.value || '-'), x + 16, y + 41)
+
+          pdf.setFont('helvetica', 'normal')
+          pdf.setFontSize(7)
+          pdf.setTextColor('#dcfce7')
+          pdf.text(pdf.splitTextToSize(String(step.note || ''), width - 32).slice(0, 1), x + 126, y + 39)
+
+          if (index < ratePills.length) {
+            const rate = ratePills[index]
+            const pillY = y + stepHeights[index] + 16
+            const pillWidth = 174
+            const pillX = centerX - pillWidth / 2
+            pdf.setFillColor('#ffffff')
+            pdf.setDrawColor('#9ee8bc')
+            pdf.roundedRect(pillX, pillY, pillWidth, 28, 14, 14, 'FD')
+            pdf.setFont('helvetica', 'bold')
+            pdf.setFontSize(8)
+            pdf.setTextColor(deepGreen)
+            pdf.text(String(rate.title || '').toUpperCase(), pillX + 12, pillY + 11)
+            pdf.setFontSize(12)
+            pdf.text(String(rate.value || '-'), pillX + 12, pillY + 24)
+
+            pdf.setDrawColor('#9ee8bc')
+            pdf.line(centerX, pillY - 10, centerX, pillY)
+            pdf.line(centerX, pillY + 28, centerX, pillY + 38)
+          }
+        })
+
+        sideMetrics.forEach((metric, index) => {
+          drawClientMetricCard(metric.title, metric.value, metric.note, sideX, blockY + index * 86, sideWidth, 74)
+        })
+
+        cursorY += blockHeight + 14
       }
 
       const drawClientRankingColumn = (title, items, x, y, width, height, type = 'default') => {
@@ -13209,6 +13333,11 @@ export default function DashboardShell({
           drawClientCards([...clientMetaMetrics, ...clientConversionMetrics], 4)
         }
 
+        if (hasRdConfigured) {
+          drawClientSectionTitle(activeClientUsesManualCrm ? 'CRM manual' : crmSourceLabel)
+          drawClientCrmFunnel()
+        }
+
         drawClientSectionTitle('Rankings')
         addPageIfNeeded(260)
         const rankingGap = 12
@@ -13266,7 +13395,9 @@ export default function DashboardShell({
     }
   }, [
     activeClient?.name,
+    activeClientUsesManualCrm,
     availableMetaResultFilters,
+    crmSourceLabel,
     customSince,
     customUntil,
     dashboardExportFileName,
@@ -13275,10 +13406,12 @@ export default function DashboardShell({
     filteredCampaigns,
     formatCampaignMetricValue,
     getCampaignMetricValue,
+    hasRdConfigured,
     metaCampaignFilterSummary,
     metaRankingLayers,
     metaSummaryDashboardMetricCards,
     normalizedMetaResultFilters,
+    rdAgendorFunnelKpis,
     selectedAdAccount,
     selectedMetaCampaignTableColumns,
     visibleMetaConversionGroups,
