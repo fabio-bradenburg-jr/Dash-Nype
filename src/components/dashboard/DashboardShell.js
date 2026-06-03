@@ -10256,7 +10256,7 @@ export default function DashboardShell({
     window.location.replace('/login')
   }
 
-  const exportPDF = async () => {
+  const exportDashboardScreenshotPDF = async () => {
     if (!dashboardRef.current) {
       alert('Não encontrei o conteúdo do dashboard para exportar.')
       return
@@ -12671,6 +12671,229 @@ export default function DashboardShell({
     () => [...metaFixedDashboardMetricCards, ...metaExtraDashboardMetricCards],
     [metaExtraDashboardMetricCards, metaFixedDashboardMetricCards]
   )
+  const dashboardExportFileName = useMemo(() => {
+    const normalize = (value) => String(value || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]+/gi, '-')
+      .replace(/^-+|-+$/g, '')
+      .toLowerCase() || 'dashboard'
+
+    return `dashboard-${normalize(activeClient?.name || 'cliente')}-${normalize(getDatePresetLabel(dateRange, customSince, customUntil))}`
+  }, [activeClient?.name, dateRange, customSince, customUntil])
+  const dashboardExportRows = useMemo(() => {
+    const rows = []
+    const addRow = (section, type, name, metric, value, note = '') => {
+      rows.push({
+        Seção: section,
+        Tipo: type,
+        Nome: name,
+        Métrica: metric,
+        Valor: value,
+        Observação: note,
+      })
+    }
+
+    addRow('Contexto', 'Cliente', activeClient?.name || 'Cliente selecionado', 'Período', getDatePresetLabel(dateRange, customSince, customUntil), selectedAdAccount ? `Conta Meta: ${selectedAdAccount}` : '')
+    if (normalizedMetaResultFilters.length) {
+      addRow(
+        'Contexto',
+        'Filtro',
+        'Tipos de resultado',
+        'Selecionados',
+        availableMetaResultFilters
+          .filter((filter) => normalizedMetaResultFilters.includes(filter.key))
+          .map((filter) => filter.label)
+          .join(', ') || 'Todos',
+        metaCampaignFilterSummary
+      )
+    }
+
+    if (hasMetaConfigured) {
+      metaSummaryDashboardMetricCards.forEach((metric) => {
+        addRow('Meta Ads', 'Resumo', metric.title, 'Valor', metric.value, metric.trend?.label || metric.description || '')
+      })
+
+      visibleMetaConversionGroups.forEach((group) => {
+        group.stats.forEach((stat) => {
+          addRow('Meta Ads', group.title, group.description, stat.label, stat.value)
+        })
+      })
+
+      metaRankingLayers.forEach((layer) => {
+        layer.states.items.slice(0, 5).forEach((item, index) => {
+          addRow('Rankings', `Estados #${index + 1}`, item.name || item.label, layer.resultLabel, formatNumber(item.conversions), `${formatCurrency(item.averageCost)} / resultado`)
+        })
+        layer.creatives.items.slice(0, 5).forEach((item, index) => {
+          addRow('Rankings', `Criativos #${index + 1}`, item.label, layer.resultLabel, formatNumber(item.conversions), `${formatCurrency(item.averageCost)} / resultado • ${formatCurrency(item.spend || 0)} investidos`)
+        })
+        layer.ages.items.slice(0, 5).forEach((item, index) => {
+          addRow('Rankings', `Idade #${index + 1}`, item.label, layer.resultLabel, formatNumber(item.conversions), `${formatCurrency(item.averageCost)} / resultado • ${formatPercent(item.conversionRateValue || 0)} conversão`)
+        })
+      })
+
+      filteredCampaigns.forEach((campaign, index) => {
+        const campaignStatus = campaign.status === 'ACTIVE' ? 'Ativa' : campaign.status === 'PAUSED' ? 'Pausada' : campaign.status || 'Sem status'
+        selectedMetaCampaignTableColumns.forEach((column) => {
+          const value = column.key === 'totalConversions'
+            ? formatNumber(extractMetaCampaignMetrics(campaign).totalConversions)
+            : formatCampaignMetricValue(column.key, getCampaignMetricValue(campaign, column.key))
+          addRow('Campanhas', `#${index + 1} ${campaignStatus}`, campaign.name || 'Campanha sem nome', column.label, value)
+        })
+      })
+    }
+
+    if (hasRdConfigured) {
+      rdAgendorFunnelKpis.filter((metric) => !metric.hidden).forEach((metric) => {
+        addRow(activeClientUsesManualCrm ? 'CRM manual' : crmSourceLabel, 'Funil comercial', metric.title, 'Valor', metric.value, metric.detail || '')
+      })
+    }
+
+    if (hasSheetsConfigured) {
+      defaultGoogleSheetsKpis.forEach((metric) => {
+        addRow('Google Sheets', 'Planilha', metric.title, 'Valor', metric.value)
+      })
+    }
+
+    return rows
+  }, [
+    activeClient?.name,
+    activeClientUsesManualCrm,
+    availableMetaResultFilters,
+    crmSourceLabel,
+    customSince,
+    customUntil,
+    dateRange,
+    defaultGoogleSheetsKpis,
+    filteredCampaigns,
+    formatCampaignMetricValue,
+    getCampaignMetricValue,
+    hasMetaConfigured,
+    hasRdConfigured,
+    hasSheetsConfigured,
+    metaCampaignFilterSummary,
+    metaRankingLayers,
+    metaSummaryDashboardMetricCards,
+    normalizedMetaResultFilters,
+    rdAgendorFunnelKpis,
+    selectedAdAccount,
+    selectedMetaCampaignTableColumns,
+    visibleMetaConversionGroups,
+  ])
+  const handleExportDashboard = useCallback(async (format) => {
+    if (!dashboardExportRows.length) {
+      window.alert('Nenhum dado encontrado para exportar no dashboard atual.')
+      return
+    }
+
+    const columns = ['Seção', 'Tipo', 'Nome', 'Métrica', 'Valor', 'Observação']
+    const escapeCsvCell = (value) => {
+      const text = String(value ?? '')
+      const escaped = text.replace(/"/g, '""')
+      return /[";\n\r]/.test(escaped) ? `"${escaped}"` : escaped
+    }
+
+    if (format === 'csv') {
+      const csv = '\ufeff' + [
+        columns.join(';'),
+        ...dashboardExportRows.map((row) => columns.map((column) => escapeCsvCell(row[column])).join(';')),
+      ].join('\n')
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+      const url = URL.createObjectURL(blob)
+      const anchor = document.createElement('a')
+      anchor.href = url
+      anchor.download = `${dashboardExportFileName}.csv`
+      document.body.appendChild(anchor)
+      anchor.click()
+      anchor.remove()
+      URL.revokeObjectURL(url)
+      return
+    }
+
+    try {
+      setIsExporting(true)
+      const jsPdfModule = await import('jspdf')
+      const JsPDF = jsPdfModule.default || jsPdfModule.jsPDF
+      const pdf = new JsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' })
+      const pageWidth = pdf.internal.pageSize.getWidth()
+      const pageHeight = pdf.internal.pageSize.getHeight()
+      const margin = 32
+      const accent = activeClientDashboardHex || '#10b981'
+      const tableColumns = [
+        { key: 'Seção', label: 'Seção', width: 92 },
+        { key: 'Tipo', label: 'Tipo', width: 96 },
+        { key: 'Nome', label: 'Nome', width: 190 },
+        { key: 'Métrica', label: 'Métrica', width: 118 },
+        { key: 'Valor', label: 'Valor', width: 90 },
+        { key: 'Observação', label: 'Observação', width: 192 },
+      ]
+      const rowHeight = 42
+      let cursorY = 52
+
+      const drawTitle = () => {
+        pdf.setFont('helvetica', 'bold')
+        pdf.setFontSize(18)
+        pdf.setTextColor('#0f172a')
+        pdf.text(`Dashboard ${activeClient?.name || 'do cliente'}`, margin, cursorY)
+        cursorY += 22
+        pdf.setFont('helvetica', 'normal')
+        pdf.setFontSize(10)
+        pdf.setTextColor('#64748b')
+        pdf.text(`Assessoria LP • ${getDatePresetLabel(dateRange, customSince, customUntil)}`, margin, cursorY)
+        cursorY += 28
+      }
+
+      const drawHeader = () => {
+        let x = margin
+        pdf.setFillColor(accent)
+        pdf.roundedRect(margin, cursorY, pageWidth - margin * 2, 28, 8, 8, 'F')
+        pdf.setFont('helvetica', 'bold')
+        pdf.setFontSize(8)
+        pdf.setTextColor('#ffffff')
+        tableColumns.forEach((column) => {
+          pdf.text(column.label.toUpperCase(), x + 6, cursorY + 18)
+          x += column.width
+        })
+        cursorY += 30
+      }
+
+      drawTitle()
+      drawHeader()
+
+      dashboardExportRows.forEach((row, rowIndex) => {
+        if (cursorY + rowHeight > pageHeight - margin) {
+          pdf.addPage('a4', 'landscape')
+          cursorY = 44
+          drawHeader()
+        }
+
+        let x = margin
+        pdf.setFillColor(rowIndex % 2 === 0 ? '#f8fafc' : '#ffffff')
+        pdf.roundedRect(margin, cursorY, pageWidth - margin * 2, rowHeight, 6, 6, 'F')
+        pdf.setDrawColor('#e2e8f0')
+        pdf.line(margin, cursorY + rowHeight, pageWidth - margin, cursorY + rowHeight)
+
+        tableColumns.forEach((column) => {
+          const value = String(row[column.key] ?? '-')
+          const lines = pdf.splitTextToSize(value, column.width - 12).slice(0, column.key === 'Observação' || column.key === 'Nome' ? 2 : 1)
+          pdf.setFont('helvetica', column.key === 'Nome' || column.key === 'Valor' ? 'bold' : 'normal')
+          pdf.setFontSize(8.5)
+          pdf.setTextColor(column.key === 'Seção' ? accent : '#0f172a')
+          pdf.text(lines, x + 6, cursorY + 15)
+          x += column.width
+        })
+
+        cursorY += rowHeight
+      })
+
+      pdf.save(`${dashboardExportFileName}.pdf`)
+    } catch (error) {
+      console.error('Erro ao exportar dashboard', error)
+      window.alert('Não consegui gerar o PDF agora. Tente exportar como CSV ou recarregar a página.')
+    } finally {
+      setIsExporting(false)
+    }
+  }, [activeClient?.name, activeClientDashboardHex, customSince, customUntil, dashboardExportFileName, dashboardExportRows, dateRange])
   const userFirstName = (user?.user_metadata?.full_name || user?.email || 'por aí').split(' ')[0]
   const currentHour = new Date().getHours()
   const assistantGreeting =
@@ -14908,8 +15131,13 @@ export default function DashboardShell({
                   {isAiInsightsLoading ? 'Gerando insights...' : 'Insights'}
                 </button>
 
-                <button onClick={exportPDF} disabled={isExporting} className="btn btn-primary">
-                  <i className={isExporting ? 'bx bx-loader-alt bx-spin' : 'bx bx-export'}></i>
+                <button type="button" onClick={() => handleExportDashboard('csv')} disabled={!dashboardExportRows.length} className="btn btn-secondary">
+                  <i className="bx bx-download"></i>
+                  Exportar CSV
+                </button>
+
+                <button type="button" onClick={() => handleExportDashboard('pdf')} disabled={isExporting || !dashboardExportRows.length} className="btn btn-primary">
+                  <i className={isExporting ? 'bx bx-loader-alt bx-spin' : 'bx bx-file'}></i>
                   {isExporting ? 'Gerando PDF...' : 'Exportar PDF'}
                 </button>
               </>
