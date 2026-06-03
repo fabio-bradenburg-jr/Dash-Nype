@@ -5887,12 +5887,20 @@ export default function DashboardShell({
   )
 
   useEffect(() => {
+    if (activeClientUsesManualCrm) {
+      setRdPipelineFilter('')
+      setDraftRdPipelineFilter('')
+      setRdSellerFilter('all')
+      setDraftRdSellerFilter('all')
+      return
+    }
+
     const nextPipelineId = activeCrmProvider === 'agendor'
       ? selectedAgendorPipelineFilter
       : activeClient?.rdPipelineId || ''
     setRdPipelineFilter(nextPipelineId)
     setDraftRdPipelineFilter(nextPipelineId)
-  }, [activeClientId, activeCrmProvider, activeClient?.rdPipelineId, selectedAgendorPipelineFilter])
+  }, [activeClientId, activeCrmProvider, activeClient?.rdPipelineId, selectedAgendorPipelineFilter, activeClientUsesManualCrm])
 
   useEffect(() => {
     rdLeadSourceFiltersRef.current = rdLeadSourceFilters
@@ -17729,34 +17737,36 @@ export default function DashboardShell({
                       </div>
                       <p className="source-section-copy">Em seguida, entram os indicadores comerciais e de CRM vinculados ao cliente.</p>
                     </div>
-                    <div className="rd-crm-filter-panel">
-                      <div className="rd-crm-filter-field">
-                        <label>Funil</label>
-                        <div className="hero-select-wrap">
-                          <select value={draftRdPipelineFilter} onChange={(event) => setDraftRdPipelineFilter(event.target.value)} className="hero-select">
-                            <option value="">Todos os funis</option>
-                            {rdPipelineOptions.map((pipeline) => (
-                              <option key={pipeline.id} value={pipeline.id}>
-                                {pipeline.name}
-                              </option>
-                            ))}
-                          </select>
+                    {!activeClientUsesManualCrm && (
+                      <div className="rd-crm-filter-panel">
+                        <div className="rd-crm-filter-field">
+                          <label>Funil</label>
+                          <div className="hero-select-wrap">
+                            <select value={draftRdPipelineFilter} onChange={(event) => setDraftRdPipelineFilter(event.target.value)} className="hero-select">
+                              <option value="">Todos os funis</option>
+                              {rdPipelineOptions.map((pipeline) => (
+                                <option key={pipeline.id} value={pipeline.id}>
+                                  {pipeline.name}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+                        <div className="rd-crm-filter-field">
+                          <label>Vendedor</label>
+                          <div className="hero-select-wrap">
+                            <select value={draftRdSellerFilter} onChange={(event) => setDraftRdSellerFilter(event.target.value)} className="hero-select">
+                              <option value="all">Todos os vendedores</option>
+                              {(rdSummary?.sellers || []).map((seller) => (
+                                <option key={seller.id} value={seller.id}>
+                                  {seller.name}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
                         </div>
                       </div>
-                      <div className="rd-crm-filter-field">
-                        <label>Vendedor</label>
-                        <div className="hero-select-wrap">
-                          <select value={draftRdSellerFilter} onChange={(event) => setDraftRdSellerFilter(event.target.value)} className="hero-select">
-                            <option value="all">Todos os vendedores</option>
-                            {(rdSummary?.sellers || []).map((seller) => (
-                              <option key={seller.id} value={seller.id}>
-                                {seller.name}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                      </div>
-                    </div>
+                    )}
                   <section className="glass-panel grouped-results">
                       <div className="section-header section-header-stack section-header-with-action">
                         <div>
