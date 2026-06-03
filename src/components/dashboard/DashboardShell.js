@@ -10228,7 +10228,11 @@ export default function DashboardShell({
       )
 
       setClients(nextClients)
-      await persistWorkspaceState({ clients: nextClients, activeClientId })
+      try {
+        await persistWorkspaceState({ clients: nextClients, activeClientId })
+      } catch (persistError) {
+        console.warn('CRM manual salvo no cliente, mas o snapshot do workspace não foi atualizado agora.', persistError)
+      }
       setRdSummary(buildManualCrmSummary(manualCrmSummary, insights))
       setPreviousRdSummary(null)
       setIsManualCrmModalOpen(false)
