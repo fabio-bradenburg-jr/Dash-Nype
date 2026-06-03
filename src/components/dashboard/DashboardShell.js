@@ -12862,53 +12862,14 @@ export default function DashboardShell({
         }
       }
 
-      const drawGradientRect = (x, y, width, height, from = logoGreen, to = deepGreen, steps = 28) => {
-        const start = hexToRgb(from)
-        const end = hexToRgb(to)
-        const stepWidth = width / steps
-        Array.from({ length: steps }).forEach((_, index) => {
-          const ratio = steps <= 1 ? 0 : index / (steps - 1)
-          pdf.setFillColor(
-            Math.round(start.r + (end.r - start.r) * ratio),
-            Math.round(start.g + (end.g - start.g) * ratio),
-            Math.round(start.b + (end.b - start.b) * ratio)
-          )
-          pdf.rect(x + index * stepWidth, y, stepWidth + 0.6, height, 'F')
-        })
-      }
-
       const drawGradientRoundedRect = (x, y, width, height, radius = 8, from = logoGreen, to = deepGreen) => {
         const safeRadius = Math.max(0, Math.min(radius, height / 2, width / 2))
-        const start = hexToRgb(from)
-        const end = hexToRgb(to)
-        const steps = Math.max(36, Math.ceil(width / 6))
-        const stepWidth = width / steps
-
-        Array.from({ length: steps }).forEach((_, index) => {
-          const ratio = steps <= 1 ? 0 : index / (steps - 1)
-          const stripX = x + index * stepWidth
-          const stripCenterX = stripX + stepWidth / 2
-          let inset = 0
-
-          if (safeRadius > 0 && stripCenterX < x + safeRadius) {
-            const dx = x + safeRadius - stripCenterX
-            inset = safeRadius - Math.sqrt(Math.max(safeRadius * safeRadius - dx * dx, 0))
-          } else if (safeRadius > 0 && stripCenterX > x + width - safeRadius) {
-            const dx = stripCenterX - (x + width - safeRadius)
-            inset = safeRadius - Math.sqrt(Math.max(safeRadius * safeRadius - dx * dx, 0))
-          }
-
-          pdf.setFillColor(
-            Math.round(start.r + (end.r - start.r) * ratio),
-            Math.round(start.g + (end.g - start.g) * ratio),
-            Math.round(start.b + (end.b - start.b) * ratio)
-          )
-          pdf.rect(stripX, y + inset, stepWidth + 0.8, Math.max(height - inset * 2, 0), 'F')
-        })
-
-        pdf.setLineWidth(0.6)
-        pdf.setDrawColor('#9ee8bc')
-        pdf.roundedRect(x, y, width, height, safeRadius, safeRadius, 'S')
+        const fill = hexToRgb(from)
+        const stroke = hexToRgb(to)
+        pdf.setFillColor(fill.r, fill.g, fill.b)
+        pdf.setDrawColor(stroke.r, stroke.g, stroke.b)
+        pdf.setLineWidth(0.45)
+        pdf.roundedRect(x, y, width, height, safeRadius, safeRadius, 'FD')
       }
 
       const loadDataUrlFromSource = async (source) => {
@@ -13114,7 +13075,7 @@ export default function DashboardShell({
 
         if (!funnelSteps.some((step) => String(step.value || '-').trim() !== '-')) return
 
-        const blockHeight = 292
+        const blockHeight = 344
         addPageIfNeeded(blockHeight + 8)
         const blockY = cursorY
         const funnelX = margin
@@ -13128,11 +13089,11 @@ export default function DashboardShell({
           Math.min(funnelWidth - 64, 346),
           Math.min(funnelWidth - 128, 284),
         ]
-        const stepYPositions = [blockY, blockY + 94, blockY + 188]
+        const stepYPositions = [blockY + 12, blockY + 124, blockY + 236]
 
         pdf.setFillColor('#f7fbf8')
         pdf.setDrawColor('#d7e7df')
-        pdf.roundedRect(funnelX, blockY - 8, funnelWidth, blockHeight, 12, 12, 'FD')
+        pdf.roundedRect(funnelX, blockY, funnelWidth, blockHeight, 12, 12, 'FD')
 
         funnelSteps.forEach((step, index) => {
           const width = stepWidths[index]
@@ -13156,27 +13117,27 @@ export default function DashboardShell({
 
           if (index < ratePills.length) {
             const rate = ratePills[index]
-            const pillY = y + stepHeights[index] + 16
-            const pillWidth = 174
+            const pillY = y + stepHeights[index] + 24
+            const pillWidth = 158
             const pillX = centerX - pillWidth / 2
             pdf.setFillColor('#ffffff')
             pdf.setDrawColor('#9ee8bc')
-            pdf.roundedRect(pillX, pillY, pillWidth, 28, 14, 14, 'FD')
+            pdf.roundedRect(pillX, pillY, pillWidth, 25, 12, 12, 'FD')
             pdf.setFont('helvetica', 'bold')
-            pdf.setFontSize(8)
+            pdf.setFontSize(7.2)
             pdf.setTextColor(deepGreen)
-            pdf.text(String(rate.title || '').toUpperCase(), pillX + 12, pillY + 11)
-            pdf.setFontSize(12)
-            pdf.text(String(rate.value || '-'), pillX + 12, pillY + 24)
+            pdf.text(String(rate.title || '').toUpperCase(), pillX + 11, pillY + 10)
+            pdf.setFontSize(10.5)
+            pdf.text(String(rate.value || '-'), pillX + 11, pillY + 21)
 
             pdf.setDrawColor('#9ee8bc')
-            pdf.line(centerX, pillY - 10, centerX, pillY)
-            pdf.line(centerX, pillY + 28, centerX, pillY + 38)
+            pdf.line(centerX, y + stepHeights[index] + 8, centerX, pillY)
+            pdf.line(centerX, pillY + 25, centerX, stepYPositions[index + 1] - 8)
           }
         })
 
         sideMetrics.forEach((metric, index) => {
-          drawClientMetricCard(metric.title, metric.value, metric.note, sideX, blockY + index * 86, sideWidth, 74)
+          drawClientMetricCard(metric.title, metric.value, metric.note, sideX, blockY + 18 + index * 92, sideWidth, 78)
         })
 
         cursorY += blockHeight + 14
