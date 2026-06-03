@@ -12818,72 +12818,117 @@ export default function DashboardShell({
       const pageWidth = pdf.internal.pageSize.getWidth()
       const pageHeight = pdf.internal.pageSize.getHeight()
       const margin = 32
-      const accent = activeClientDashboardHex || '#10b981'
-      const tableColumns = [
-        { key: 'Seção', label: 'Seção', width: 92 },
-        { key: 'Tipo', label: 'Tipo', width: 96 },
-        { key: 'Nome', label: 'Nome', width: 190 },
-        { key: 'Métrica', label: 'Métrica', width: 118 },
-        { key: 'Valor', label: 'Valor', width: 90 },
-        { key: 'Observação', label: 'Observação', width: 192 },
-      ]
-      const rowHeight = 42
-      let cursorY = 52
+      const brandGreen = '#26c281'
+      const pageBackground = '#f8fafc'
+      const panelBorder = '#dbe7df'
+      const cardBorder = '#e2e8f0'
+      const textMain = '#0f172a'
+      const textMuted = '#64748b'
+      const cardGap = 12
+      const cardColumns = 3
+      const cardWidth = (pageWidth - margin * 2 - cardGap * (cardColumns - 1)) / cardColumns
+      const cardHeight = 76
+      let cursorY = 34
 
-      const drawTitle = () => {
-        pdf.setFont('helvetica', 'bold')
-        pdf.setFontSize(18)
-        pdf.setTextColor('#0f172a')
-        pdf.text(`Dashboard ${activeClient?.name || 'do cliente'}`, margin, cursorY)
-        cursorY += 22
-        pdf.setFont('helvetica', 'normal')
-        pdf.setFontSize(10)
-        pdf.setTextColor('#64748b')
-        pdf.text(`Assessoria LP • ${getDatePresetLabel(dateRange, customSince, customUntil)}`, margin, cursorY)
-        cursorY += 28
+      const drawPageBase = () => {
+        pdf.setFillColor(pageBackground)
+        pdf.rect(0, 0, pageWidth, pageHeight, 'F')
+        pdf.setFillColor(brandGreen)
+        pdf.roundedRect(margin, 24, pageWidth - margin * 2, 10, 5, 5, 'F')
       }
 
-      const drawHeader = () => {
-        let x = margin
-        pdf.setFillColor(accent)
-        pdf.roundedRect(margin, cursorY, pageWidth - margin * 2, 28, 8, 8, 'F')
+      const drawTitle = () => {
+        drawPageBase()
+        cursorY = 58
+        pdf.setFont('helvetica', 'bold')
+        pdf.setFontSize(24)
+        pdf.setTextColor(textMain)
+        pdf.text(`Dashboard ${activeClient?.name || 'do cliente'}`, margin, cursorY)
+        cursorY += 24
+        pdf.setFont('helvetica', 'normal')
+        pdf.setFontSize(11)
+        pdf.setTextColor(textMuted)
+        pdf.text(`Assessoria LP • ${getDatePresetLabel(dateRange, customSince, customUntil)}`, margin, cursorY)
+        cursorY += 34
+      }
+
+      const addPageIfNeeded = (neededHeight = cardHeight) => {
+        if (cursorY + neededHeight <= pageHeight - margin) return
+        pdf.addPage('a4', 'landscape')
+        drawPageBase()
+        cursorY = 56
+      }
+
+      const drawSectionTitle = (sectionTitle) => {
+        addPageIfNeeded(46)
+        pdf.setDrawColor(panelBorder)
+        pdf.line(margin, cursorY, pageWidth - margin, cursorY)
+        cursorY += 20
+        pdf.setFont('helvetica', 'bold')
+        pdf.setFontSize(14)
+        pdf.setTextColor(brandGreen)
+        pdf.text(String(sectionTitle || 'Resultados').toUpperCase(), margin, cursorY)
+        cursorY += 18
+      }
+
+      const drawMetricCard = (row, x, y, width) => {
+        const note = String(row.Observação || '')
+        const name = String(row.Nome || row.Tipo || '')
+        const metric = String(row.Métrica || 'Resultado')
+        const value = String(row.Valor || '-')
+        const type = String(row.Tipo || '')
+
+        pdf.setFillColor('#ffffff')
+        pdf.setDrawColor(cardBorder)
+        pdf.roundedRect(x, y, width, cardHeight, 10, 10, 'FD')
+
         pdf.setFont('helvetica', 'bold')
         pdf.setFontSize(8)
-        pdf.setTextColor('#ffffff')
-        tableColumns.forEach((column) => {
-          pdf.text(column.label.toUpperCase(), x + 6, cursorY + 18)
-          x += column.width
+        pdf.setTextColor(brandGreen)
+        pdf.text(pdf.splitTextToSize(metric.toUpperCase(), width - 24).slice(0, 1), x + 14, y + 18)
+
+        pdf.setFont('helvetica', 'bold')
+        pdf.setFontSize(17)
+        pdf.setTextColor(textMain)
+        pdf.text(pdf.splitTextToSize(value, width - 24).slice(0, 1), x + 14, y + 42)
+
+        pdf.setFont('helvetica', 'normal')
+        pdf.setFontSize(8.5)
+        pdf.setTextColor(textMuted)
+        const footer = [name, type].filter(Boolean).join(' • ')
+        pdf.text(pdf.splitTextToSize(footer, width - 24).slice(0, note ? 1 : 2), x + 14, y + 59)
+
+        if (note) {
+          pdf.setFontSize(7.5)
+          pdf.setTextColor('#7a867d')
+          pdf.text(pdf.splitTextToSize(note, width - 24).slice(0, 1), x + 14, y + 70)
+        }
+      }
+
+      const groupedRows = dashboardExportRows.reduce((accumulator, row) => {
+        const section = row.Seção || 'Resultados'
+        if (!accumulator.has(section)) accumulator.set(section, [])
+        accumulator.get(section).push(row)
+        return accumulator
+      }, new Map())
+
+      const drawRowsAsCards = (rows) => {
+        rows.forEach((row, index) => {
+          const columnIndex = index % cardColumns
+          if (columnIndex === 0) addPageIfNeeded(cardHeight + 12)
+          const x = margin + columnIndex * (cardWidth + cardGap)
+          drawMetricCard(row, x, cursorY, cardWidth)
+          if (columnIndex === cardColumns - 1 || index === rows.length - 1) {
+            cursorY += cardHeight + 12
+          }
         })
-        cursorY += 30
       }
 
       drawTitle()
-      drawHeader()
-
-      dashboardExportRows.forEach((row, rowIndex) => {
-        if (cursorY + rowHeight > pageHeight - margin) {
-          pdf.addPage('a4', 'landscape')
-          cursorY = 44
-          drawHeader()
-        }
-
-        let x = margin
-        pdf.setFillColor(rowIndex % 2 === 0 ? '#f8fafc' : '#ffffff')
-        pdf.roundedRect(margin, cursorY, pageWidth - margin * 2, rowHeight, 6, 6, 'F')
-        pdf.setDrawColor('#e2e8f0')
-        pdf.line(margin, cursorY + rowHeight, pageWidth - margin, cursorY + rowHeight)
-
-        tableColumns.forEach((column) => {
-          const value = String(row[column.key] ?? '-')
-          const lines = pdf.splitTextToSize(value, column.width - 12).slice(0, column.key === 'Observação' || column.key === 'Nome' ? 2 : 1)
-          pdf.setFont('helvetica', column.key === 'Nome' || column.key === 'Valor' ? 'bold' : 'normal')
-          pdf.setFontSize(8.5)
-          pdf.setTextColor(column.key === 'Seção' ? accent : '#0f172a')
-          pdf.text(lines, x + 6, cursorY + 15)
-          x += column.width
-        })
-
-        cursorY += rowHeight
+      Array.from(groupedRows.entries()).forEach(([section, rows]) => {
+        drawSectionTitle(section)
+        drawRowsAsCards(rows)
+        cursorY += 6
       })
 
       pdf.save(`${dashboardExportFileName}.pdf`)
@@ -12893,7 +12938,7 @@ export default function DashboardShell({
     } finally {
       setIsExporting(false)
     }
-  }, [activeClient?.name, activeClientDashboardHex, customSince, customUntil, dashboardExportFileName, dashboardExportRows, dateRange])
+  }, [activeClient?.name, customSince, customUntil, dashboardExportFileName, dashboardExportRows, dateRange])
   const userFirstName = (user?.user_metadata?.full_name || user?.email || 'por aí').split(' ')[0]
   const currentHour = new Date().getHours()
   const assistantGreeting =
