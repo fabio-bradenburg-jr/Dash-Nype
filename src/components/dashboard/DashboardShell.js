@@ -1828,6 +1828,7 @@ const FUNNEL_LIBRARY_EXCLUDED_KEYS = new Set([
 
 const LEGACY_DEFAULT_META_CAMPAIGN_TABLE_COLUMN_KEYS = ['spend', 'totalConversions', 'cost_per_lead', 'cpa', 'roas']
 const LEGACY_DEFAULT_META_CAMPAIGN_TABLE_COLUMN_SET = new Set(LEGACY_DEFAULT_META_CAMPAIGN_TABLE_COLUMN_KEYS)
+const CLIENT_PDF_HIDDEN_META_KEYS = new Set(['purchaseValue', 'conversionRate', 'totalConversions'])
 
 const META_CAMPAIGN_TABLE_COLUMN_OPTIONS = {
   spend: { label: 'Investimento', type: 'currency', description: 'Valor investido no período filtrado.' },
@@ -12842,6 +12843,59 @@ export default function DashboardShell({
       const cardWidth = (pageWidth - margin * 2 - cardGap * (cardColumns - 1)) / cardColumns
       const cardHeight = 76
       let cursorY = 34
+      const logoGreen = '#26c281'
+      const deepGreen = '#006c44'
+
+      const hexToRgb = (hex) => {
+        const sanitized = String(hex || '').replace('#', '')
+        const full = sanitized.length === 3
+          ? sanitized.split('').map((item) => `${item}${item}`).join('')
+          : sanitized.padEnd(6, '0').slice(0, 6)
+        return {
+          r: parseInt(full.slice(0, 2), 16),
+          g: parseInt(full.slice(2, 4), 16),
+          b: parseInt(full.slice(4, 6), 16),
+        }
+      }
+
+      const drawGradientRect = (x, y, width, height, from = logoGreen, to = deepGreen, steps = 28) => {
+        const start = hexToRgb(from)
+        const end = hexToRgb(to)
+        const stepWidth = width / steps
+        Array.from({ length: steps }).forEach((_, index) => {
+          const ratio = steps <= 1 ? 0 : index / (steps - 1)
+          pdf.setFillColor(
+            Math.round(start.r + (end.r - start.r) * ratio),
+            Math.round(start.g + (end.g - start.g) * ratio),
+            Math.round(start.b + (end.b - start.b) * ratio)
+          )
+          pdf.rect(x + index * stepWidth, y, stepWidth + 0.6, height, 'F')
+        })
+      }
+
+      const loadDataUrlFromSource = async (source) => {
+        if (!source) return ''
+        const sourceText = String(source)
+        if (sourceText.startsWith('data:image/')) return sourceText
+        return fetch(sourceText)
+          .then((response) => (response.ok ? response.blob() : null))
+          .then((blob) => (
+            blob
+              ? new Promise((resolve) => {
+                  const reader = new FileReader()
+                  reader.onload = () => resolve(String(reader.result || ''))
+                  reader.onerror = () => resolve('')
+                  reader.readAsDataURL(blob)
+                })
+              : ''
+          ))
+          .catch(() => '')
+      }
+
+      const isClientHiddenMetaMetric = (metric) => (
+        CLIENT_PDF_HIDDEN_META_KEYS.has(metric?.key) ||
+        /faturamento|taxa de convers|conversões totais|conversoes totais/i.test(String(metric?.title || metric?.label || ''))
+      )
 
       const drawPageBase = () => {
         pdf.setFillColor(pageBackground)
@@ -12921,6 +12975,262 @@ export default function DashboardShell({
         }
       }
 
+      const drawClientSectionTitle = (sectionTitle) => {
+        addPageIfNeeded(52)
+        drawGradientRect(margin, cursorY, pageWidth - margin * 2, 26, logoGreen, deepGreen)
+        pdf.setFont('helvetica', 'bold')
+        pdf.setFontSize(11)
+        pdf.setTextColor('#ffffff')
+        pdf.text(String(sectionTitle || 'Resultados').toUpperCase(), margin + 14, cursorY + 17)
+        cursorY += 42
+      }
+
+      const drawClientMetricCard = (title, value, note, x, y, width, height = 66) => {
+        pdf.setFillColor('#ffffff')
+        pdf.setDrawColor('#d7e7df')
+        pdf.roundedRect(x, y, width, height, 9, 9, 'FD')
+
+        pdf.setFont('helvetica', 'bold')
+        pdf.setFontSize(8)
+        pdf.setTextColor(deepGreen)
+        pdf.text(pdf.splitTextToSize(String(title || '').toUpperCase(), width - 22).slice(0, 1), x + 12, y + 17)
+
+        pdf.setFont('helvetica', 'bold')
+        pdf.setFontSize(15)
+        pdf.setTextColor(textMain)
+        pdf.text(pdf.splitTextToSize(String(value || '-'), width - 22).slice(0, 1), x + 12, y + 41)
+
+        if (note) {
+          pdf.setFont('helvetica', 'normal')
+          pdf.setFontSize(7.5)
+          pdf.setTextColor(textMuted)
+          pdf.text(pdf.splitTextToSize(String(note), width - 22).slice(0, 1), x + 12, y + 56)
+        }
+      }
+
+      const drawClientCards = (items, columnsCount = 4) => {
+        const gap = 10
+        const height = 68
+        const width = (pageWidth - margin * 2 - gap * (columnsCount - 1)) / columnsCount
+        items.forEach((item, index) => {
+          const columnIndex = index % columnsCount
+          if (columnIndex === 0) addPageIfNeeded(height + 12)
+          drawClientMetricCard(item.title, item.value, item.note, margin + columnIndex * (width + gap), cursorY, width, height)
+          if (columnIndex === columnsCount - 1 || index === items.length - 1) {
+            cursorY += height + 12
+          }
+        })
+      }
+
+      const drawClientRankingColumn = (title, items, x, y, width, height, type = 'default') => {
+        pdf.setFillColor('#ffffff')
+        pdf.setDrawColor('#d7e7df')
+        pdf.roundedRect(x, y, width, height, 10, 10, 'FD')
+        drawGradientRect(x, y, width, 24, logoGreen, deepGreen)
+
+        pdf.setFont('helvetica', 'bold')
+        pdf.setFontSize(9)
+        pdf.setTextColor('#ffffff')
+        pdf.text(String(title || '').toUpperCase(), x + 12, y + 16)
+
+        const rowHeight = (height - 30) / 5
+        Array.from({ length: 5 }).forEach((_, index) => {
+          const item = items[index]
+          const rowY = y + 30 + index * rowHeight
+          if (index > 0) {
+            pdf.setDrawColor('#e3ece6')
+            pdf.line(x + 12, rowY - 4, x + width - 12, rowY - 4)
+          }
+
+          pdf.setFont('helvetica', 'bold')
+          pdf.setFontSize(10)
+          pdf.setTextColor(deepGreen)
+          pdf.text(`${index + 1}`, x + 12, rowY + 16)
+
+          if (!item) {
+            pdf.setFont('helvetica', 'normal')
+            pdf.setFontSize(8.5)
+            pdf.setTextColor(textMuted)
+            pdf.text('Sem dados', x + 34, rowY + 16)
+            return
+          }
+
+          const nameX = type === 'creative' ? x + 66 : x + 34
+          if (type === 'creative') {
+            const imageUrl = item.exportImageDataUrl || ''
+            pdf.setFillColor('#eef7f1')
+            pdf.roundedRect(x + 34, rowY + 2, 24, 24, 5, 5, 'F')
+            if (imageUrl) {
+              try {
+                const imageFormat = /image\/jpe?g/i.test(imageUrl) ? 'JPEG' : 'PNG'
+                pdf.addImage(imageUrl, imageFormat, x + 34, rowY + 2, 24, 24)
+              } catch (error) {
+                pdf.setFont('helvetica', 'normal')
+                pdf.setFontSize(5.8)
+                pdf.setTextColor(textMuted)
+                pdf.text('IMG', x + 40, rowY + 17)
+              }
+            } else {
+              pdf.setFont('helvetica', 'normal')
+              pdf.setFontSize(5.8)
+              pdf.setTextColor(textMuted)
+              pdf.text('IMG', x + 40, rowY + 17)
+            }
+          }
+
+          pdf.setFont('helvetica', 'bold')
+          pdf.setFontSize(8.6)
+          pdf.setTextColor(textMain)
+          pdf.text(pdf.splitTextToSize(String(item.name || item.label || 'Sem nome'), width - (nameX - x) - 12).slice(0, 1), nameX, rowY + 11)
+
+          pdf.setFont('helvetica', 'normal')
+          pdf.setFontSize(7.2)
+          pdf.setTextColor(textMuted)
+          const resultLine = `${formatNumber(item.conversions || 0)} resultado(s) • ${formatCurrency(item.averageCost || 0)}`
+          pdf.text(pdf.splitTextToSize(resultLine, width - (nameX - x) - 12).slice(0, 1), nameX, rowY + 24)
+        })
+      }
+
+      const drawClientCampaignTable = (campaignRows, campaignColumns) => {
+        if (!campaignRows.length) {
+          drawClientCards([{ title: 'Campanhas', value: 'Sem campanhas no período', note: 'Nenhuma linha encontrada para exportar.' }], 1)
+          return
+        }
+
+        const statusWidth = 52
+        const campaignWidth = 220
+        const metricWidth = (pageWidth - margin * 2 - statusWidth - campaignWidth) / Math.max(campaignColumns.length, 1)
+        const headerHeight = 28
+        const rowHeight = 27
+        const tableWidth = pageWidth - margin * 2
+
+        const drawHeader = () => {
+          addPageIfNeeded(headerHeight + rowHeight + 8)
+          drawGradientRect(margin, cursorY, tableWidth, headerHeight, logoGreen, deepGreen)
+          pdf.setFont('helvetica', 'bold')
+          pdf.setFontSize(7.4)
+          pdf.setTextColor('#ffffff')
+          pdf.text('STATUS', margin + 8, cursorY + 18)
+          pdf.text('CAMPANHA', margin + statusWidth + 8, cursorY + 18)
+          campaignColumns.forEach((column, index) => {
+            pdf.text(pdf.splitTextToSize(String(column.label || column.key).toUpperCase(), metricWidth - 8).slice(0, 1), margin + statusWidth + campaignWidth + index * metricWidth + 6, cursorY + 18)
+          })
+          cursorY += headerHeight
+        }
+
+        drawHeader()
+        campaignRows.forEach((campaign, index) => {
+          if (cursorY + rowHeight > pageHeight - margin) {
+            pdf.addPage('a4', 'landscape')
+            drawPageBase()
+            cursorY = 56
+            drawHeader()
+          }
+
+          const rowY = cursorY
+          pdf.setFillColor(index % 2 === 0 ? '#ffffff' : '#f3f8f5')
+          pdf.setDrawColor('#dfe8e2')
+          pdf.rect(margin, rowY, tableWidth, rowHeight, 'FD')
+
+          const campaignStatus = campaign.status === 'ACTIVE' ? 'Ativa' : campaign.status === 'PAUSED' ? 'Pausada' : campaign.status || 'Sem status'
+          pdf.setFont('helvetica', 'bold')
+          pdf.setFontSize(7.4)
+          pdf.setTextColor(campaign.status === 'ACTIVE' ? deepGreen : textMuted)
+          pdf.text(pdf.splitTextToSize(campaignStatus, statusWidth - 10).slice(0, 1), margin + 8, rowY + 17)
+
+          pdf.setTextColor(textMain)
+          pdf.text(pdf.splitTextToSize(campaign.name || 'Campanha sem nome', campaignWidth - 12).slice(0, 1), margin + statusWidth + 8, rowY + 17)
+
+          campaignColumns.forEach((column, columnIndex) => {
+            const value = formatCampaignMetricValue(column.key, getCampaignMetricValue(campaign, column.key))
+            pdf.setFont('helvetica', 'normal')
+            pdf.setFontSize(7.2)
+            pdf.setTextColor(textMain)
+            pdf.text(pdf.splitTextToSize(String(value), metricWidth - 8).slice(0, 1), margin + statusWidth + campaignWidth + columnIndex * metricWidth + 6, rowY + 17)
+          })
+
+          cursorY += rowHeight
+        })
+        cursorY += 12
+      }
+
+      const drawClientPdf = async () => {
+        const clientMetaMetrics = metaSummaryDashboardMetricCards
+          .filter((metric) => !isClientHiddenMetaMetric(metric))
+          .map((metric) => ({
+            title: metric.title,
+            value: metric.value,
+            note: metric.trend?.label || metric.description || '',
+          }))
+        const clientConversionMetrics = visibleMetaConversionGroups.flatMap((group) =>
+          group.stats.map((stat) => ({
+            title: `${group.title} · ${stat.label}`,
+            value: stat.value,
+            note: group.description,
+          }))
+        )
+        const selectedResultLabels = availableMetaResultFilters
+          .filter((filter) => normalizedMetaResultFilters.includes(filter.key))
+          .map((filter) => filter.label)
+          .join(', ') || 'Todos'
+        const activeLayer = metaRankingLayers[0] || null
+        const locationItems = (activeLayer?.states?.items?.length ? activeLayer.states.items : activeLayer?.cities?.items || []).slice(0, 5)
+        const ageItems = (activeLayer?.ages?.items || []).slice(0, 5)
+        const creativeItems = await Promise.all(
+          (activeLayer?.creatives?.items || []).slice(0, 5).map(async (item) => ({
+            ...item,
+            exportImageDataUrl: await loadDataUrlFromSource(item.imageUrl || item.thumbnailUrl || item.picture || item.previewImageUrl),
+          }))
+        )
+        const campaignColumns = selectedMetaCampaignTableColumns.filter((column) => !CLIENT_PDF_HIDDEN_META_KEYS.has(column.key))
+
+        drawPageBase()
+        cursorY = 58
+        pdf.setFont('helvetica', 'bold')
+        pdf.setFontSize(25)
+        pdf.setTextColor(textMain)
+        pdf.text(`Relatório do cliente`, margin, cursorY)
+        cursorY += 24
+        pdf.setFont('helvetica', 'normal')
+        pdf.setFontSize(11)
+        pdf.setTextColor(textMuted)
+        pdf.text(`Assessoria LP • ${activeClient?.name || 'Cliente'} • ${getDatePresetLabel(dateRange, customSince, customUntil)}`, margin, cursorY)
+        cursorY += 30
+
+        drawClientSectionTitle('Contexto dos últimos 7 dias')
+        drawClientCards([
+          { title: 'Cliente', value: activeClient?.name || 'Cliente selecionado', note: selectedAdAccount ? `Conta Meta: ${selectedAdAccount}` : 'Conta Meta conectada' },
+          { title: 'Período', value: getDatePresetLabel(dateRange, customSince, customUntil), note: 'Leitura usada no dashboard.' },
+          { title: 'Cadastro do contexto', value: selectedResultLabels, note: metaCampaignFilterSummary || 'Resultados filtrados no dashboard.' },
+        ], 3)
+
+        if (clientMetaMetrics.length || clientConversionMetrics.length) {
+          drawClientSectionTitle('Meta Ads')
+          drawClientCards([...clientMetaMetrics, ...clientConversionMetrics], 4)
+        }
+
+        drawClientSectionTitle('Rankings')
+        addPageIfNeeded(260)
+        const rankingGap = 12
+        const rankingWidth = (pageWidth - margin * 2 - rankingGap * 2) / 3
+        const rankingY = cursorY
+        const rankingHeight = 248
+        drawClientRankingColumn('Localização', locationItems, margin, rankingY, rankingWidth, rankingHeight)
+        drawClientRankingColumn('Idade', ageItems, margin + rankingWidth + rankingGap, rankingY, rankingWidth, rankingHeight)
+        drawClientRankingColumn('Criativos', creativeItems, margin + (rankingWidth + rankingGap) * 2, rankingY, rankingWidth, rankingHeight, 'creative')
+        cursorY += rankingHeight + 18
+
+        drawClientSectionTitle('Campanhas')
+        drawClientCampaignTable(filteredCampaigns, campaignColumns)
+
+        pdf.save(`${dashboardExportFileName}-cliente.pdf`)
+      }
+
+      if (format === 'client-pdf') {
+        await drawClientPdf()
+        return
+      }
+
       const groupedRows = dashboardExportRows.reduce((accumulator, row) => {
         const section = row.Seção || 'Resultados'
         if (!accumulator.has(section)) accumulator.set(section, [])
@@ -12954,7 +13264,25 @@ export default function DashboardShell({
     } finally {
       setIsExporting(false)
     }
-  }, [activeClient?.name, customSince, customUntil, dashboardExportFileName, dashboardExportRows, dateRange])
+  }, [
+    activeClient?.name,
+    availableMetaResultFilters,
+    customSince,
+    customUntil,
+    dashboardExportFileName,
+    dashboardExportRows,
+    dateRange,
+    filteredCampaigns,
+    formatCampaignMetricValue,
+    getCampaignMetricValue,
+    metaCampaignFilterSummary,
+    metaRankingLayers,
+    metaSummaryDashboardMetricCards,
+    normalizedMetaResultFilters,
+    selectedAdAccount,
+    selectedMetaCampaignTableColumns,
+    visibleMetaConversionGroups,
+  ])
   const userFirstName = (user?.user_metadata?.full_name || user?.email || 'por aí').split(' ')[0]
   const currentHour = new Date().getHours()
   const assistantGreeting =
@@ -15197,9 +15525,14 @@ export default function DashboardShell({
                   Exportar CSV
                 </button>
 
-                <button type="button" onClick={() => handleExportDashboard('pdf')} disabled={isExporting || !dashboardExportRows.length} className="btn btn-primary">
+                <button type="button" onClick={() => handleExportDashboard('client-pdf')} disabled={isExporting || !dashboardExportRows.length} className="btn btn-primary">
                   <i className={isExporting ? 'bx bx-loader-alt bx-spin' : 'bx bx-file'}></i>
-                  {isExporting ? 'Gerando PDF...' : 'Exportar PDF'}
+                  {isExporting ? 'Gerando PDF...' : 'PDF cliente'}
+                </button>
+
+                <button type="button" onClick={() => handleExportDashboard('pdf')} disabled={isExporting || !dashboardExportRows.length} className="btn btn-secondary">
+                  <i className={isExporting ? 'bx bx-loader-alt bx-spin' : 'bx bx-file-blank'}></i>
+                  PDF interno
                 </button>
               </>
             )}
