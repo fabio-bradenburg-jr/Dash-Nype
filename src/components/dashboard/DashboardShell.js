@@ -12899,8 +12899,6 @@ export default function DashboardShell({
       const drawPageBase = () => {
         pdf.setFillColor(pageBackground)
         pdf.rect(0, 0, pageWidth, pageHeight, 'F')
-        pdf.setFillColor(brandGreen)
-        pdf.roundedRect(margin, 24, pageWidth - margin * 2, 10, 5, 5, 'F')
         if (logoDataUrl) {
           pdf.addImage(logoDataUrl, 'PNG', pageWidth - margin - 42, 44, 38, 36)
         }
