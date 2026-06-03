@@ -12815,6 +12815,19 @@ export default function DashboardShell({
       const jsPdfModule = await import('jspdf')
       const JsPDF = jsPdfModule.default || jsPdfModule.jsPDF
       const pdf = new JsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' })
+      const logoDataUrl = await fetch('/assessoria-lp-logo.png')
+        .then((response) => (response.ok ? response.blob() : null))
+        .then((blob) => (
+          blob
+            ? new Promise((resolve) => {
+                const reader = new FileReader()
+                reader.onload = () => resolve(String(reader.result || ''))
+                reader.onerror = () => resolve('')
+                reader.readAsDataURL(blob)
+              })
+            : ''
+        ))
+        .catch(() => '')
       const pageWidth = pdf.internal.pageSize.getWidth()
       const pageHeight = pdf.internal.pageSize.getHeight()
       const margin = 32
@@ -12835,6 +12848,9 @@ export default function DashboardShell({
         pdf.rect(0, 0, pageWidth, pageHeight, 'F')
         pdf.setFillColor(brandGreen)
         pdf.roundedRect(margin, 24, pageWidth - margin * 2, 10, 5, 5, 'F')
+        if (logoDataUrl) {
+          pdf.addImage(logoDataUrl, 'PNG', pageWidth - margin - 42, 44, 38, 36)
+        }
       }
 
       const drawTitle = () => {
