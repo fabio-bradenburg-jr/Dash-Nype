@@ -2173,6 +2173,18 @@ function formatCurrency(value) {
   }).format(Number(value || 0))
 }
 
+function formatCurrencyByCode(value, currency = 'BRL') {
+  try {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: currency || 'BRL',
+      maximumFractionDigits: 2,
+    }).format(Number(value || 0))
+  } catch {
+    return formatCurrency(value)
+  }
+}
+
 function formatNumber(value) {
   return new Intl.NumberFormat('pt-BR').format(Number(value || 0))
 }
@@ -3369,6 +3381,15 @@ export default function DashboardShell({
   const [clientRegistryHover, setClientRegistryHover] = useState({ clientId: '', columnKey: '' })
   const [adAccounts, setAdAccounts] = useState([])
   const [googleAdsAccounts, setGoogleAdsAccounts] = useState([])
+  const [adAccountBalanceRows, setAdAccountBalanceRows] = useState([])
+  const [adAccountBalanceUpdatedAt, setAdAccountBalanceUpdatedAt] = useState('')
+  const [adAccountBalanceLoading, setAdAccountBalanceLoading] = useState(false)
+  const [adAccountBalanceError, setAdAccountBalanceError] = useState('')
+  const [adAccountBalanceSearch, setAdAccountBalanceSearch] = useState('')
+  const [adAccountBalanceCardFilter, setAdAccountBalanceCardFilter] = useState('all')
+  const [adAccountBalanceValueFilter, setAdAccountBalanceValueFilter] = useState('all')
+  const [adAccountBalanceDebtFilter, setAdAccountBalanceDebtFilter] = useState('all')
+  const [adAccountBalanceRefreshNonce, setAdAccountBalanceRefreshNonce] = useState(0)
   const [insights, setInsights] = useState(null)
   const [previousInsights, setPreviousInsights] = useState(null)
   const [googleAdsSummary, setGoogleAdsSummary] = useState(null)
@@ -4248,6 +4269,55 @@ export default function DashboardShell({
     () => dashboardEligibleClients.filter((client) => Boolean(client.metaAdAccountId)).length,
     [dashboardEligibleClients]
   )
+  const filteredAdAccountBalanceRows = useMemo(() => {
+    const query = adAccountBalanceSearch.trim().toLowerCase()
+
+    return adAccountBalanceRows.filter((row) => {
+      const matchesSearch = !query || [row.clientName, row.accountName, row.accountId, row.cardLabel]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(query))
+      const matchesCard = adAccountBalanceCardFilter === 'all'
+        ? true
+        : adAccountBalanceCardFilter === 'with_card'
+          ? row.hasCard
+          : !row.hasCard
+      const balance = Number(row.availableBalance)
+      const matchesBalance = adAccountBalanceValueFilter === 'all'
+        ? true
+        : adAccountBalanceValueFilter === 'critical'
+          ? Number.isFinite(balance) && balance < 100
+          : adAccountBalanceValueFilter === 'attention'
+            ? Number.isFinite(balance) && balance >= 100 && balance <= 200
+            : adAccountBalanceValueFilter === 'healthy'
+              ? Number.isFinite(balance) && balance > 200
+              : true
+      const pending = Number(row.pendingAmount || 0)
+      const matchesDebt = adAccountBalanceDebtFilter === 'all'
+        ? true
+        : adAccountBalanceDebtFilter === 'with_debt'
+          ? pending > 0
+          : pending <= 0
+
+      return matchesSearch && matchesCard && matchesBalance && matchesDebt
+    })
+  }, [adAccountBalanceRows, adAccountBalanceSearch, adAccountBalanceCardFilter, adAccountBalanceValueFilter, adAccountBalanceDebtFilter])
+  const adAccountBalanceSummary = useMemo(() => {
+    const configuredRows = adAccountBalanceRows.filter((row) => row.accountId)
+    const critical = configuredRows.filter((row) => Number(row.availableBalance) < 100).length
+    const attention = configuredRows.filter((row) => Number(row.availableBalance) >= 100 && Number(row.availableBalance) <= 200).length
+    const healthy = configuredRows.filter((row) => Number(row.availableBalance) > 200).length
+    const withCard = configuredRows.filter((row) => row.hasCard).length
+    const pendingAmount = configuredRows.reduce((sum, row) => sum + Number(row.pendingAmount || 0), 0)
+
+    return {
+      configured: configuredRows.length,
+      critical,
+      attention,
+      healthy,
+      withCard,
+      pendingAmount,
+    }
+  }, [adAccountBalanceRows])
   const brandedClientsCount = useMemo(
     () => clients.filter((client) => Boolean(client.logoUrl)).length,
     [clients]
@@ -9493,6 +9563,58 @@ export default function DashboardShell({
     googleAdsConnection.connected,
     activeTab,
   ])
+
+  useEffect(() => {
+    if (!hasLoadedPreferences || activeTab !== 'saldos') return
+
+    let cancelled = false
+
+    const loadAdAccountBalances = async () => {
+      setAdAccountBalanceLoading(true)
+      setAdAccountBalanceError('')
+
+      try {
+        const response = await fetch('/api/meta/account-balances', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...metaRequestHeaders,
+          },
+          body: JSON.stringify({
+            clients: clients.map((client) => ({
+              id: client.id,
+              name: client.name,
+              metaAdAccountId: client.metaAdAccountId,
+            })),
+          }),
+        })
+        const data = await response.json().catch(() => ({}))
+
+        if (!response.ok) {
+          throw new Error(data.error || 'Não foi possível carregar os saldos das contas.')
+        }
+
+        if (cancelled) return
+        setAdAccountBalanceRows(Array.isArray(data.rows) ? data.rows : [])
+        setAdAccountBalanceUpdatedAt(data.updatedAt || new Date().toISOString())
+      } catch (error) {
+        if (cancelled) return
+        setAdAccountBalanceRows([])
+        setAdAccountBalanceUpdatedAt('')
+        setAdAccountBalanceError(error.message || 'Não foi possível carregar os saldos das contas.')
+      } finally {
+        if (!cancelled) {
+          setAdAccountBalanceLoading(false)
+        }
+      }
+    }
+
+    loadAdAccountBalances()
+
+    return () => {
+      cancelled = true
+    }
+  }, [hasLoadedPreferences, activeTab, clients, metaRequestHeaders, adAccountBalanceRefreshNonce])
 
   useEffect(() => {
     if (activeTab !== 'apresentacao') return
@@ -15685,6 +15807,10 @@ export default function DashboardShell({
             <i className="bx bx-pulse"></i>
             {!isSidebarCollapsed && 'Controle da Operação'}
           </button>
+          <button type="button" data-tooltip="Saldos" aria-label="Saldos das contas" className={`nav-item nav-button ${activeTab === 'saldos' ? 'active' : ''}`} onClick={() => setActiveTab('saldos')}>
+            <i className="bx bx-wallet-alt"></i>
+            {!isSidebarCollapsed && 'Saldos'}
+          </button>
           {canAccessTeamTab && (
             <button type="button" data-tooltip="Time" aria-label="Time" className={`nav-item nav-button ${activeTab === 'usuarios' ? 'active' : ''}`} onClick={() => setActiveTab('usuarios')}>
               <i className="bx bxs-user-detail"></i>
@@ -15743,6 +15869,7 @@ export default function DashboardShell({
                 {activeTab === 'monday' && 'Board Operations'}
                 {activeTab === 'usuarios' && (canManageUsers ? 'Team Performance' : 'My Performance')}
                 {activeTab === 'semanal' && 'Controle da Operação'}
+                {activeTab === 'saldos' && 'Saldos de Anúncios'}
                 {activeTab === 'settings' && 'Settings'}
               </h1>
               {activeTab !== 'assistant' && (
@@ -15755,6 +15882,7 @@ export default function DashboardShell({
                   {activeTab === 'monday' && 'Entenda carga, status, throughput e gargalos dos boards em uma leitura executiva da operação.'}
                   {activeTab === 'usuarios' && (canManageUsers ? 'Acompanhe performance, escopo, metas e evolução do time em um dashboard unificado.' : 'Acompanhe sua evolução, metas e contexto operacional dentro do hub da agência.')}
                   {activeTab === 'semanal' && 'Registre investimento, leads, SQL, saúde e plano de ação por semana, de segunda a domingo.'}
+                  {activeTab === 'saldos' && 'Monitore saldo, cartão vinculado e valor pendente das contas de anúncio dos clientes.'}
                   {activeTab === 'settings' && 'Ajuste integrações, IA, aparência, campos de clientes e estrutura operacional sem sair do domínio principal.'}
                 </p>
               )}
@@ -16821,6 +16949,176 @@ export default function DashboardShell({
         {activeTab === 'clickup' && renderClickUpOperationalPanel()}
 
         {activeTab === 'monday' && renderMondayOperationalPanel()}
+
+        {activeTab === 'saldos' && (
+          <section className="ad-balance-page">
+            <div className="ad-balance-hero glass-panel">
+              <div className="ad-balance-hero-copy">
+                <span className="management-card-kicker">Controle financeiro de mídia</span>
+                <h2>Saldo das contas de anúncio</h2>
+                <p>Leitura por cliente cadastrado, ordenada automaticamente do menor saldo para o maior.</p>
+              </div>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={() => setAdAccountBalanceRefreshNonce((current) => current + 1)}
+                disabled={adAccountBalanceLoading}
+              >
+                <i className={'bx ' + (adAccountBalanceLoading ? 'bx-loader-alt bx-spin' : 'bx-refresh')}></i>
+                {adAccountBalanceLoading ? 'Atualizando' : 'Atualizar saldos'}
+              </button>
+            </div>
+
+            {adAccountBalanceError && (
+              <div className="api-error-banner" role="status">
+                <i className="bx bx-error-circle"></i>
+                <span>{adAccountBalanceError}</span>
+              </div>
+            )}
+
+            <div className="ad-balance-summary-grid">
+              <article className="ad-balance-summary-card glass-panel danger">
+                <span>Menos de R$ 100</span>
+                <strong>{formatNumber(adAccountBalanceSummary.critical)}</strong>
+                <small>Prioridade de recarga</small>
+              </article>
+              <article className="ad-balance-summary-card glass-panel warning">
+                <span>Entre R$ 100 e R$ 200</span>
+                <strong>{formatNumber(adAccountBalanceSummary.attention)}</strong>
+                <small>Acompanhar de perto</small>
+              </article>
+              <article className="ad-balance-summary-card glass-panel success">
+                <span>Acima de R$ 200</span>
+                <strong>{formatNumber(adAccountBalanceSummary.healthy)}</strong>
+                <small>Operação confortável</small>
+              </article>
+              <article className="ad-balance-summary-card glass-panel">
+                <span>Com cartão</span>
+                <strong>{formatNumber(adAccountBalanceSummary.withCard)}</strong>
+                <small>{formatCurrency(adAccountBalanceSummary.pendingAmount)} pendente</small>
+              </article>
+            </div>
+
+            <section className="glass-panel ad-balance-table-card">
+              <div className="ad-balance-toolbar">
+                <div className="client-registry-search ad-balance-search">
+                  <i className="bx bx-search"></i>
+                  <input
+                    type="text"
+                    value={adAccountBalanceSearch}
+                    onChange={(event) => setAdAccountBalanceSearch(event.target.value)}
+                    placeholder="Buscar cliente, conta ou cartão..."
+                  />
+                </div>
+                <div className="ad-balance-filter-row">
+                  <label className="date-picker glass-item compact-filter">
+                    <i className="bx bx-credit-card"></i>
+                    <select value={adAccountBalanceCardFilter} onChange={(event) => setAdAccountBalanceCardFilter(event.target.value)}>
+                      <option value="all">Todos os cartões</option>
+                      <option value="with_card">Com cartão</option>
+                      <option value="without_card">Sem cartão</option>
+                    </select>
+                  </label>
+                  <label className="date-picker glass-item compact-filter">
+                    <i className="bx bx-wallet"></i>
+                    <select value={adAccountBalanceValueFilter} onChange={(event) => setAdAccountBalanceValueFilter(event.target.value)}>
+                      <option value="all">Todos os saldos</option>
+                      <option value="critical">Menos de R$ 100</option>
+                      <option value="attention">R$ 100 a R$ 200</option>
+                      <option value="healthy">Acima de R$ 200</option>
+                    </select>
+                  </label>
+                  <label className="date-picker glass-item compact-filter">
+                    <i className="bx bx-receipt"></i>
+                    <select value={adAccountBalanceDebtFilter} onChange={(event) => setAdAccountBalanceDebtFilter(event.target.value)}>
+                      <option value="all">Todos os débitos</option>
+                      <option value="with_debt">Com pendência</option>
+                      <option value="without_debt">Sem pendência</option>
+                    </select>
+                  </label>
+                </div>
+              </div>
+
+              <div className="ad-balance-status-row">
+                <span>{formatNumber(filteredAdAccountBalanceRows.length)} cliente(s) exibido(s)</span>
+                {adAccountBalanceUpdatedAt && (
+                  <span>Atualizado em {formatClientDateTime(adAccountBalanceUpdatedAt)}</span>
+                )}
+              </div>
+
+              <div className="ad-balance-table-wrap">
+                <table className="data-table ad-balance-table">
+                  <thead>
+                    <tr>
+                      <th>Cliente</th>
+                      <th>Conta de anúncio</th>
+                      <th>Saldo em conta</th>
+                      <th>Cartão</th>
+                      <th>Saldo devedor</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {adAccountBalanceLoading && !adAccountBalanceRows.length ? (
+                      <tr>
+                        <td colSpan={6} className="ad-balance-empty-cell">
+                          Carregando saldos das contas cadastradas...
+                        </td>
+                      </tr>
+                    ) : filteredAdAccountBalanceRows.length ? (
+                      filteredAdAccountBalanceRows.map((row) => (
+                        <tr key={`${row.clientId}-${row.accountId || 'empty'}`} className={'ad-balance-row ' + (row.tone || 'empty')}>
+                          <td>
+                            <div className="ad-balance-client-cell">
+                              <span className="ad-balance-client-icon">
+                                <i className="bx bx-building-house"></i>
+                              </span>
+                              <div>
+                                <strong>{row.clientName}</strong>
+                                <small>{row.error || (row.accountId ? 'Cliente cadastrado com Meta Ads' : 'Sem conta Meta vinculada')}</small>
+                              </div>
+                            </div>
+                          </td>
+                          <td>
+                            <div className="ad-balance-account-cell">
+                              <strong>{row.accountName || 'Sem conta'}</strong>
+                              <small>{row.accountId ? `act_${row.accountId}` : 'Configure no cadastro do cliente'}</small>
+                            </div>
+                          </td>
+                          <td>
+                            <span className={'ad-balance-pill ' + (row.tone || 'empty')}>
+                              {row.availableBalance == null ? '-' : formatCurrencyByCode(row.availableBalance, row.currency)}
+                            </span>
+                          </td>
+                          <td>
+                            <span className={'ad-balance-card-status ' + (row.hasCard ? 'active' : '')}>
+                              <i className={'bx ' + (row.hasCard ? 'bx-credit-card-front' : 'bx-credit-card')}></i>
+                              {row.cardLabel || 'Sem cartão'}
+                            </span>
+                          </td>
+                          <td>
+                            <strong>{row.pendingAmount == null ? '-' : formatCurrencyByCode(row.pendingAmount, row.currency)}</strong>
+                          </td>
+                          <td>
+                            <span className={'status-badge ' + (row.accountId ? 'status-active' : 'status-paused')}>
+                              {row.statusLabel || 'Sem status'}
+                            </span>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={6} className="ad-balance-empty-cell">
+                          Nenhum cliente encontrado para os filtros selecionados.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          </section>
+        )}
 
         {activeTab === 'clientes' && (
           <section className="clients-layout simple-clients-layout">
@@ -30146,6 +30444,341 @@ export default function DashboardShell({
           color: var(--text-muted);
           font-size: 13px;
           line-height: 1.5;
+        }
+
+        .ad-balance-page {
+          display: grid;
+          gap: 22px;
+        }
+
+        .ad-balance-hero {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) auto;
+          align-items: center;
+          gap: 18px;
+          padding: 28px;
+          border-radius: 28px;
+          background:
+            radial-gradient(circle at top right, color-mix(in srgb, var(--accent-emerald) 20%, transparent), transparent 34%),
+            linear-gradient(135deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.025));
+        }
+
+        .ad-balance-hero-copy {
+          display: grid;
+          gap: 8px;
+        }
+
+        .ad-balance-hero-copy h2 {
+          margin: 0;
+          color: var(--text-primary);
+          font-size: clamp(2rem, 4vw, 3.5rem);
+          letter-spacing: 0;
+          line-height: 0.98;
+        }
+
+        .ad-balance-hero-copy p {
+          margin: 0;
+          max-width: 780px;
+          color: var(--muted-text);
+          font-size: 1rem;
+          line-height: 1.55;
+        }
+
+        .ad-balance-summary-grid {
+          display: grid;
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+          gap: 14px;
+        }
+
+        .ad-balance-summary-card {
+          min-height: 158px;
+          display: grid;
+          align-content: space-between;
+          gap: 14px;
+          padding: 22px;
+          border-radius: 24px;
+          border: 1px solid rgba(148, 163, 184, 0.16);
+          background: rgba(255, 255, 255, 0.045);
+        }
+
+        .ad-balance-summary-card span {
+          color: var(--muted-text);
+          font-size: 0.72rem;
+          font-weight: 900;
+          letter-spacing: 0.13em;
+          text-transform: uppercase;
+        }
+
+        .ad-balance-summary-card strong {
+          color: var(--text-primary);
+          font-size: clamp(2rem, 4vw, 3rem);
+          line-height: 1;
+        }
+
+        .ad-balance-summary-card small {
+          color: var(--muted-text);
+          font-size: 0.88rem;
+          font-weight: 700;
+        }
+
+        .ad-balance-summary-card.danger {
+          border-color: rgba(248, 113, 113, 0.32);
+          background:
+            radial-gradient(circle at top right, rgba(239, 68, 68, 0.18), transparent 45%),
+            rgba(255, 255, 255, 0.04);
+        }
+
+        .ad-balance-summary-card.warning {
+          border-color: rgba(251, 191, 36, 0.32);
+          background:
+            radial-gradient(circle at top right, rgba(245, 158, 11, 0.18), transparent 45%),
+            rgba(255, 255, 255, 0.04);
+        }
+
+        .ad-balance-summary-card.success {
+          border-color: color-mix(in srgb, var(--accent-emerald) 42%, transparent);
+          background:
+            radial-gradient(circle at top right, color-mix(in srgb, var(--accent-emerald) 22%, transparent), transparent 45%),
+            rgba(255, 255, 255, 0.04);
+        }
+
+        .ad-balance-table-card {
+          display: grid;
+          gap: 18px;
+          padding: 22px;
+          border-radius: 28px;
+        }
+
+        .ad-balance-toolbar {
+          display: grid;
+          grid-template-columns: minmax(260px, 1fr) auto;
+          align-items: center;
+          gap: 14px;
+        }
+
+        .ad-balance-search {
+          min-height: 54px;
+        }
+
+        .ad-balance-filter-row {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(160px, 1fr));
+          gap: 10px;
+        }
+
+        .ad-balance-status-row {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          color: var(--muted-text);
+          font-size: 0.84rem;
+          font-weight: 800;
+        }
+
+        .ad-balance-table-wrap {
+          overflow-x: auto;
+          border-radius: 22px;
+          border: 1px solid rgba(148, 163, 184, 0.13);
+        }
+
+        .ad-balance-table {
+          min-width: 980px;
+          border-collapse: separate;
+          border-spacing: 0;
+        }
+
+        .ad-balance-table thead th {
+          background: rgba(255, 255, 255, 0.035);
+        }
+
+        .ad-balance-row {
+          transition: background 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .ad-balance-row.danger {
+          box-shadow: inset 4px 0 0 rgba(248, 113, 113, 0.92);
+        }
+
+        .ad-balance-row.warning {
+          box-shadow: inset 4px 0 0 rgba(245, 158, 11, 0.92);
+        }
+
+        .ad-balance-row.success {
+          box-shadow: inset 4px 0 0 color-mix(in srgb, var(--accent-emerald) 85%, white 5%);
+        }
+
+        .ad-balance-client-cell,
+        .ad-balance-account-cell {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          min-width: 0;
+        }
+
+        .ad-balance-account-cell {
+          display: grid;
+          gap: 4px;
+        }
+
+        .ad-balance-client-cell div {
+          display: grid;
+          gap: 4px;
+          min-width: 0;
+        }
+
+        .ad-balance-client-cell strong,
+        .ad-balance-account-cell strong {
+          color: var(--text-primary);
+          font-weight: 900;
+        }
+
+        .ad-balance-client-cell small,
+        .ad-balance-account-cell small {
+          color: var(--muted-text);
+          font-size: 0.78rem;
+          line-height: 1.35;
+        }
+
+        .ad-balance-client-icon {
+          width: 42px;
+          height: 42px;
+          flex: 0 0 42px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: 15px;
+          border: 1px solid color-mix(in srgb, var(--accent-emerald) 26%, transparent);
+          background: color-mix(in srgb, var(--accent-emerald) 13%, transparent);
+          color: var(--accent-emerald);
+          font-size: 1.2rem;
+        }
+
+        .ad-balance-pill {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          min-width: 116px;
+          min-height: 38px;
+          padding: 8px 12px;
+          border-radius: 999px;
+          border: 1px solid rgba(148, 163, 184, 0.18);
+          color: var(--text-primary);
+          background: rgba(255, 255, 255, 0.045);
+          font-weight: 900;
+          white-space: nowrap;
+        }
+
+        .ad-balance-pill.danger {
+          border-color: rgba(248, 113, 113, 0.44);
+          background: rgba(239, 68, 68, 0.12);
+          color: #fecaca;
+        }
+
+        .ad-balance-pill.warning {
+          border-color: rgba(245, 158, 11, 0.44);
+          background: rgba(245, 158, 11, 0.12);
+          color: #fde68a;
+        }
+
+        .ad-balance-pill.success {
+          border-color: color-mix(in srgb, var(--accent-emerald) 42%, transparent);
+          background: color-mix(in srgb, var(--accent-emerald) 13%, transparent);
+          color: color-mix(in srgb, var(--accent-emerald) 72%, white 28%);
+        }
+
+        .ad-balance-card-status {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          color: var(--muted-text);
+          font-size: 0.86rem;
+          font-weight: 800;
+        }
+
+        .ad-balance-card-status.active {
+          color: color-mix(in srgb, var(--accent-emerald) 72%, white 20%);
+        }
+
+        .ad-balance-empty-cell {
+          padding: 32px 20px !important;
+          color: var(--muted-text);
+          text-align: center;
+          font-weight: 800;
+        }
+
+        .dashboard-light-mode:not([data-active-tab='apresentacao']) .ad-balance-hero,
+        .dashboard-light-mode:not([data-active-tab='apresentacao']) .ad-balance-summary-card,
+        .dashboard-light-mode:not([data-active-tab='apresentacao']) .ad-balance-table-card {
+          border-color: rgba(15, 23, 42, 0.08);
+          background:
+            radial-gradient(circle at top right, rgba(16, 185, 129, 0.12), transparent 36%),
+            #ffffff;
+          box-shadow: 0 24px 70px rgba(15, 23, 42, 0.08);
+        }
+
+        .dashboard-light-mode:not([data-active-tab='apresentacao']) .ad-balance-table-wrap {
+          border-color: rgba(15, 23, 42, 0.08);
+        }
+
+        .dashboard-light-mode:not([data-active-tab='apresentacao']) .ad-balance-table thead th {
+          background: #f8fafc;
+        }
+
+        .dashboard-light-mode:not([data-active-tab='apresentacao']) .ad-balance-row {
+          background: #ffffff;
+        }
+
+        .dashboard-light-mode:not([data-active-tab='apresentacao']) .ad-balance-pill {
+          background: #f8fafc;
+          color: #0f172a;
+        }
+
+        .dashboard-light-mode:not([data-active-tab='apresentacao']) .ad-balance-pill.danger {
+          background: #fef2f2;
+          color: #b91c1c;
+        }
+
+        .dashboard-light-mode:not([data-active-tab='apresentacao']) .ad-balance-pill.warning {
+          background: #fffbeb;
+          color: #92400e;
+        }
+
+        .dashboard-light-mode:not([data-active-tab='apresentacao']) .ad-balance-pill.success,
+        .dashboard-light-mode:not([data-active-tab='apresentacao']) .ad-balance-card-status.active {
+          background: #ecfdf5;
+          color: #047857;
+        }
+
+        @media (max-width: 1180px) {
+          .ad-balance-summary-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
+
+          .ad-balance-toolbar {
+            grid-template-columns: 1fr;
+          }
+        }
+
+        @media (max-width: 760px) {
+          .ad-balance-hero {
+            grid-template-columns: 1fr;
+            padding: 22px;
+          }
+
+          .ad-balance-hero .btn {
+            width: 100%;
+          }
+
+          .ad-balance-summary-grid,
+          .ad-balance-filter-row {
+            grid-template-columns: 1fr;
+          }
+
+          .ad-balance-status-row {
+            align-items: flex-start;
+            flex-direction: column;
+          }
         }
 
 
