@@ -62,6 +62,15 @@ interface MetaConnectionState {
   expiresAt: string
 }
 
+interface GoogleAdsConnectionState {
+  connected: boolean
+  googleEmail: string
+  googleName: string
+  scopes: string
+  expiresAt: string
+  managerCustomerId: string
+}
+
 type SettingsTab = 'panel' | 'general' | 'operation' | 'clients'
 
 const SETTINGS_TAB_STORAGE_KEY = 'dash_settings_active_tab'
@@ -409,6 +418,17 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
   const [metaConnectionError, setMetaConnectionError] = useState('')
   const [metaConnectionNotice, setMetaConnectionNotice] = useState('')
   const [metaConnectionSetupRequired, setMetaConnectionSetupRequired] = useState(false)
+  const [googleAdsConnection, setGoogleAdsConnection] = useState<GoogleAdsConnectionState>({
+    connected: false,
+    googleEmail: '',
+    googleName: '',
+    scopes: '',
+    expiresAt: '',
+    managerCustomerId: '',
+  })
+  const [isGoogleAdsConnectionLoading, setIsGoogleAdsConnectionLoading] = useState(false)
+  const [googleAdsConnectionError, setGoogleAdsConnectionError] = useState('')
+  const [googleAdsConnectionNotice, setGoogleAdsConnectionNotice] = useState('')
   const [activeSettingsTab, setActiveSettingsTab] = useState<SettingsTab>('panel')
   const [panelDraft, setPanelDraft] = useState<UserAppearance>(appearance)
   const [panelFeedback, setPanelFeedback] = useState('')
@@ -461,8 +481,9 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
   const metaConnectionMode = globalIntegrations.metaConnectionMode === 'oauth' ? 'oauth' : 'manual'
   const hasMetaManualToken = Boolean(String(globalIntegrations.metaAccessToken || '').trim())
   const hasMetaOauthConnection = Boolean(metaConnection.connected)
+  const hasGoogleAdsConnection = Boolean(googleAdsConnection.connected)
   const generalIntegrationGroups = GLOBAL_INTEGRATION_GROUPS
-  const advertisingIntegrationGroups = generalIntegrationGroups.filter((group) => AD_ACCOUNT_INTEGRATION_TITLES.has(group.title))
+  const advertisingIntegrationGroups = generalIntegrationGroups.filter((group) => AD_ACCOUNT_INTEGRATION_TITLES.has(group.title) && group.title !== 'Google Ads')
   const crmIntegrationGroups = generalIntegrationGroups.filter((group) => CRM_INTEGRATION_TITLES.has(group.title))
   const backgroundTintRgb = hexToRgb(panelDraft.backgroundTint)
   const backgroundPreviewStyle: BackgroundPreviewStyle = {
@@ -724,19 +745,83 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
   }, [canEditIntegrations])
 
   useEffect(() => {
+    if (!canEditIntegrations) return
+
+    let cancelled = false
+
+    const loadGoogleAdsConnection = async () => {
+      setIsGoogleAdsConnectionLoading(true)
+
+      try {
+        const response = await fetch('/api/google-ads/connection', { cache: 'no-store' })
+        const data = (await response.json().catch(() => null)) as
+          | { connection?: GoogleAdsConnectionState; error?: string }
+          | null
+
+        if (cancelled) return
+
+        if (!response.ok) {
+          throw new Error(data?.error || 'Não foi possível carregar a conexão do Google Ads.')
+        }
+
+        setGoogleAdsConnection(
+          data?.connection || {
+            connected: false,
+            googleEmail: '',
+            googleName: '',
+            scopes: '',
+            expiresAt: '',
+            managerCustomerId: '',
+          }
+        )
+        if (data?.error) {
+          setGoogleAdsConnectionError(data.error)
+        }
+      } catch (error) {
+        if (cancelled) return
+        setGoogleAdsConnection({
+          connected: false,
+          googleEmail: '',
+          googleName: '',
+          scopes: '',
+          expiresAt: '',
+          managerCustomerId: '',
+        })
+        setGoogleAdsConnectionError(
+          error instanceof Error
+            ? error.message
+            : 'Não foi possível carregar a conexão do Google Ads.'
+        )
+      } finally {
+        if (!cancelled) {
+          setIsGoogleAdsConnectionLoading(false)
+        }
+      }
+    }
+
+    loadGoogleAdsConnection()
+
+    return () => {
+      cancelled = true
+    }
+  }, [canEditIntegrations])
+
+  useEffect(() => {
     if (typeof window === 'undefined') return
 
     const params = new URLSearchParams(window.location.search)
     const tab = embeddedOverride ? params.get('settings_tab') : params.get('tab')
     const connected = params.get('meta_connected')
     const error = params.get('meta_error')
+    const googleAdsConnected = params.get('google_ads_connected')
+    const googleAdsError = params.get('google_ads_error')
 
     const storedTab = window.localStorage.getItem(SETTINGS_TAB_STORAGE_KEY)
     const resolvedStoredTab = storedTab === 'panel' || storedTab === 'general' || storedTab === 'operation'
       ? storedTab
       : null
 
-    if (connected === '1' && canEditIntegrations) {
+    if ((connected === '1' || googleAdsConnected === '1') && canEditIntegrations) {
       setActiveSettingsTab('general')
     } else if (tab === 'ai' && canEditIntegrations) {
       setActiveSettingsTab('general')
@@ -770,6 +855,14 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
     } else if (error) {
       setMetaConnectionError(error)
       setMetaConnectionNotice('')
+    }
+
+    if (googleAdsConnected === '1') {
+      setGoogleAdsConnectionNotice('Conta do Google Ads conectada com sucesso.')
+      setGoogleAdsConnectionError('')
+    } else if (googleAdsError) {
+      setGoogleAdsConnectionError(googleAdsError)
+      setGoogleAdsConnectionNotice('')
     }
   }, [canEditIntegrations, embeddedOverride, globalIntegrations, globalIntegrations.metaConnectionMode, persistGlobalIntegrations])
 
@@ -2226,6 +2319,62 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
                               {isMetaConnectionLoading ? <div className="settings-callout info">Carregando status da conexão da Meta...</div> : null}
                             </>
                           )}
+                        </div>
+
+                        <div className="integration-block integration-block-google-ads">
+                          <div className="integration-heading">
+                            <div className="integration-icon" style={{ color: 'var(--accent-emerald)', borderColor: 'color-mix(in srgb, var(--accent-emerald) 30%, transparent)' }}>
+                              <i className="bx bxl-google"></i>
+                            </div>
+                            <div>
+                              <h3>Google Ads</h3>
+                              <p>Conecte sua conta Google para listar clientes e puxar mídia logo depois da Meta no dashboard.</p>
+                            </div>
+                          </div>
+
+                          <div className="meta-connection-card google-ads-connection-card">
+                            <div className="meta-connection-copy">
+                              <strong>{hasGoogleAdsConnection ? 'Conta conectada' : 'Conta ainda não conectada'}</strong>
+                              <span>
+                                {hasGoogleAdsConnection
+                                  ? `${googleAdsConnection.googleName || googleAdsConnection.googleEmail || 'Usuário Google'} conectado${googleAdsConnection.expiresAt ? ` até ${new Date(googleAdsConnection.expiresAt).toLocaleDateString('pt-BR')}` : ''}.`
+                                  : 'Conecte uma conta Google com acesso às contas Google Ads que serão vinculadas aos clientes.'}
+                              </span>
+                            </div>
+                            <div className="meta-connection-actions">
+                              <a href="/api/google-ads/auth/start?return_to=%2F%3Ftab%3Dsettings%26settings_tab%3Dgeneral" className="btn btn-primary">
+                                {hasGoogleAdsConnection ? 'Reconectar Google Ads' : 'Conectar Google Ads'}
+                              </a>
+                            </div>
+                          </div>
+
+                          <div className="meta-connection-guide">
+                            <div className="meta-connection-guide-card">
+                              <span className="meta-connection-guide-kicker">Status</span>
+                              <strong>{hasGoogleAdsConnection ? 'Conexão pronta para uso' : 'Conexão ainda pendente'}</strong>
+                              <p>
+                                {hasGoogleAdsConnection
+                                  ? 'As contas Google Ads já podem ser listadas no cadastro dos clientes e usadas no dashboard.'
+                                  : 'Depois da conexão, escolha a conta Google Ads dentro do cadastro de cada cliente.'}
+                              </p>
+                            </div>
+
+                            <div className="meta-connection-guide-card">
+                              <span className="meta-connection-guide-kicker">API</span>
+                              <strong>Developer Token obrigatório</strong>
+                              <p>O OAuth identifica a conta Google. Para consultar métricas, mantenha <code>GOOGLE_ADS_DEVELOPER_TOKEN</code> configurado no ambiente.</p>
+                            </div>
+
+                            <div className="meta-connection-guide-card">
+                              <span className="meta-connection-guide-kicker">Relatórios</span>
+                              <strong>Dashboard e exportação</strong>
+                              <p>Os indicadores aparecem após Meta Ads no dashboard e também no PDF exportado para o cliente.</p>
+                            </div>
+                          </div>
+
+                          {googleAdsConnectionNotice ? <div className="settings-callout success">{googleAdsConnectionNotice}</div> : null}
+                          {googleAdsConnectionError ? <div className="settings-callout error">{googleAdsConnectionError}</div> : null}
+                          {isGoogleAdsConnectionLoading ? <div className="settings-callout info">Carregando status da conexão do Google Ads...</div> : null}
                         </div>
 
                         {advertisingIntegrationGroups.map((group) => (

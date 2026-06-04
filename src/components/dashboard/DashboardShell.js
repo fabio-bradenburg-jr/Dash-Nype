@@ -2308,6 +2308,12 @@ function formatMultiplier(value) {
   return `${Number(value || 0).toFixed(2).replace('.', ',')}x`
 }
 
+function formatGoogleAdsAccountLabel(value) {
+  const digits = String(value || '').replace(/\D/g, '')
+  if (digits.length !== 10) return value || 'Conta Google Ads'
+  return `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6)}`
+}
+
 function formatDurationDays(value) {
   const days = Number(value || 0)
   if (!days) return 'Sem base'
@@ -3309,6 +3315,7 @@ export default function DashboardShell({
   const [newClientOperationLane, setNewClientOperationLane] = useState(resolveOperationLaneFromSalesModel('INSIDE_SALES'))
   const [newClientGroupName, setNewClientGroupName] = useState('')
   const [newClientMetaAdAccountId, setNewClientMetaAdAccountId] = useState('')
+  const [newClientGoogleAdsAccountId, setNewClientGoogleAdsAccountId] = useState('')
   const [newClientDashboardColor, setNewClientDashboardColor] = useState('#10B981')
   const [newClientLogoUrl, setNewClientLogoUrl] = useState('')
   const [newProductName, setNewProductName] = useState('')
@@ -3361,8 +3368,11 @@ export default function DashboardShell({
   const [clientRegistryInlineEdit, setClientRegistryInlineEdit] = useState({ clientId: '', columnKey: '' })
   const [clientRegistryHover, setClientRegistryHover] = useState({ clientId: '', columnKey: '' })
   const [adAccounts, setAdAccounts] = useState([])
+  const [googleAdsAccounts, setGoogleAdsAccounts] = useState([])
   const [insights, setInsights] = useState(null)
   const [previousInsights, setPreviousInsights] = useState(null)
+  const [googleAdsSummary, setGoogleAdsSummary] = useState(null)
+  const [googleAdsError, setGoogleAdsError] = useState('')
   const [dailyData, setDailyData] = useState([])
   const [dailyCampaignData, setDailyCampaignData] = useState([])
   const [campaigns, setCampaigns] = useState([])
@@ -3467,6 +3477,14 @@ export default function DashboardShell({
     userName: '',
     scopes: '',
     expiresAt: '',
+  })
+  const [googleAdsConnection, setGoogleAdsConnection] = useState({
+    connected: false,
+    googleEmail: '',
+    googleName: '',
+    scopes: '',
+    expiresAt: '',
+    managerCustomerId: '',
   })
 
   const currentTheme = useMemo(() => resolveDashboardTheme(themeColor), [themeColor])
@@ -4516,6 +4534,7 @@ export default function DashboardShell({
   )
   const isActiveClientDashboardEnabled = activeClient?.dashboardEnabled !== false
   const selectedAdAccount = activeClient?.metaAdAccountId || ''
+  const selectedGoogleAdsAccount = activeClient?.googleAdsAccountId || ''
   const normalizedAiIntegrations = useMemo(
     () => normalizeAiSettings(globalIntegrations),
     [globalIntegrations]
@@ -5334,6 +5353,11 @@ export default function DashboardShell({
     activeClientVisibleIntegrationsSet.has('meta_ads') &&
     selectedAdAccount
   )
+  const hasGoogleAdsConfigured = Boolean(
+    isActiveClientDashboardEnabled &&
+    activeClientVisibleIntegrationsSet.has('google_ads') &&
+    selectedGoogleAdsAccount
+  )
   const hasRdConfigured = Boolean(
     isActiveClientDashboardEnabled &&
     (activeClientVisibleIntegrationsSet.has('rd_station') || activeClientVisibleIntegrationsSet.has('agendor') || activeCrmProvider === 'agendor' || activeClientUsesManualCrm) &&
@@ -5351,7 +5375,7 @@ export default function DashboardShell({
     String(globalIntegrations.mondayToken || '').trim() && String(globalIntegrations.mondayBoardIds || '').trim()
   )
   const hasAnyPresentationData =
-    isActiveClientDashboardEnabled && (hasMetaConfigured || hasRdConfigured || hasSheetsConfigured)
+    isActiveClientDashboardEnabled && (hasMetaConfigured || hasGoogleAdsConfigured || hasRdConfigured || hasSheetsConfigured)
   const rdPipelineOptions = useMemo(
     () => (rdPipelines.length ? rdPipelines : rdSummary?.availablePipelines || []),
     [rdPipelines, rdSummary]
@@ -5802,29 +5826,42 @@ export default function DashboardShell({
 
     let cancelled = false
 
-    const loadMetaConnection = async () => {
+    const loadAdConnections = async () => {
       try {
-        const response = await fetch('/api/meta/connection', { cache: 'no-store' })
-        const data = await response.json().catch(() => null)
+        const [metaResult, googleAdsResult] = await Promise.all([
+          fetch('/api/meta/connection', { cache: 'no-store' }).then(async (response) => ({ response, data: await response.json().catch(() => null) })),
+          fetch('/api/google-ads/connection', { cache: 'no-store' }).then(async (response) => ({ response, data: await response.json().catch(() => null) })),
+        ])
 
         if (cancelled) return
 
-        if (!response.ok) {
-          throw new Error(data?.error || 'Não foi possível carregar a conexão da Meta.')
+        if (metaResult.response.ok) {
+          setMetaConnection(
+            metaResult.data?.connection || {
+              connected: false,
+              userId: '',
+              userName: '',
+              scopes: '',
+              expiresAt: '',
+            }
+          )
         }
 
-        setMetaConnection(
-          data?.connection || {
-            connected: false,
-            userId: '',
-            userName: '',
-            scopes: '',
-            expiresAt: '',
-          }
-        )
+        if (googleAdsResult.response.ok) {
+          setGoogleAdsConnection(
+            googleAdsResult.data?.connection || {
+              connected: false,
+              googleEmail: '',
+              googleName: '',
+              scopes: '',
+              expiresAt: '',
+              managerCustomerId: '',
+            }
+          )
+        }
       } catch (error) {
         if (cancelled) return
-        console.error('Erro ao carregar conexão da Meta:', error)
+        console.error('Erro ao carregar conexões de mídia:', error)
         setMetaConnection({
           connected: false,
           userId: '',
@@ -5832,10 +5869,18 @@ export default function DashboardShell({
           scopes: '',
           expiresAt: '',
         })
+        setGoogleAdsConnection({
+          connected: false,
+          googleEmail: '',
+          googleName: '',
+          scopes: '',
+          expiresAt: '',
+          managerCustomerId: '',
+        })
       }
     }
 
-    loadMetaConnection()
+    loadAdConnections()
 
     return () => {
       cancelled = true
@@ -6629,6 +6674,7 @@ export default function DashboardShell({
       cnpj: normalizeCnpjInput(newClientCnpj),
       logoUrl: newClientLogoUrl,
       metaAdAccountId: newClientMetaAdAccountId,
+      googleAdsAccountId: newClientGoogleAdsAccountId,
       dashboardColor: normalizedNewClientDashboardColor,
       operationEnabled: false,
       dashboardEnabled: true,
@@ -6650,6 +6696,7 @@ export default function DashboardShell({
     setNewClientName('')
     setNewClientCnpj('')
     setNewClientMetaAdAccountId('')
+    setNewClientGoogleAdsAccountId('')
     setNewClientDashboardColor(appAccentColor)
     setNewClientLogoUrl('')
     setNewClientManualCrmEnabled(false)
@@ -7572,6 +7619,8 @@ export default function DashboardShell({
     lastBreakdownsFetchKeyRef.current = ''
     setInsights(null)
     setPreviousInsights(null)
+    setGoogleAdsSummary(null)
+    setGoogleAdsError('')
     setDailyData([])
     setDailyCampaignData([])
     setCampaigns([])
@@ -7580,7 +7629,7 @@ export default function DashboardShell({
     setMetaRankingDrilldown(null)
     setMetaRankingDetailDailyData([])
     setRankingsError('')
-  }, [activeClientId, selectedAdAccount])
+  }, [activeClientId, selectedAdAccount, selectedGoogleAdsAccount])
 
   const handleUserClientToggle = (clientId) => {
     setUserForm((current) => ({
@@ -9387,6 +9436,65 @@ export default function DashboardShell({
   ])
 
   useEffect(() => {
+    if (!hasLoadedPreferences || !activeClient) {
+      setGoogleAdsAccounts([])
+      return
+    }
+
+    if (activeTab !== 'clientes' && activeTab !== 'integracoes') {
+      return
+    }
+
+    if (!googleAdsConnection.connected) {
+      setGoogleAdsAccounts([])
+      return
+    }
+
+    let cancelled = false
+
+    const fetchGoogleAdsAccounts = async () => {
+      try {
+        const response = await fetch('/api/google-ads/adaccounts', { cache: 'no-store' })
+        const data = await response.json()
+
+        if (!response.ok) {
+          throw new Error(data.error || 'Não foi possível listar as contas do Google Ads.')
+        }
+
+        if (cancelled) return
+        const accounts = Array.isArray(data?.accounts) ? data.accounts : []
+        setGoogleAdsAccounts(accounts)
+
+        if (!activeClient.googleAdsAccountId && accounts[0]?.id) {
+          setClients((currentClients) =>
+            currentClients.map((client) =>
+              client.id === activeClientId
+                ? { ...client, googleAdsAccountId: accounts[0].id }
+                : client
+            )
+          )
+        }
+      } catch (error) {
+        if (cancelled) return
+        setGoogleAdsAccounts([])
+        setErrorMessage(error.message || 'Não foi possível conectar ao Google Ads.')
+      }
+    }
+
+    fetchGoogleAdsAccounts()
+
+    return () => {
+      cancelled = true
+    }
+  }, [
+    hasLoadedPreferences,
+    activeClient,
+    activeClientId,
+    googleAdsConnection.connected,
+    activeTab,
+  ])
+
+  useEffect(() => {
     if (activeTab !== 'apresentacao') return
 
     if (!activeClientId) {
@@ -9543,6 +9651,8 @@ export default function DashboardShell({
       setInsights(null)
       setDailyData([])
       setDailyCampaignData([])
+      setGoogleAdsSummary(null)
+      setGoogleAdsError('')
       setRdSummary(null)
       setGoogleSheetsSummary(null)
       setClickUpSummary(null)
@@ -9555,6 +9665,7 @@ export default function DashboardShell({
     if (
       shouldFetchPresentationData
       && !hasMetaConfigured
+      && !hasGoogleAdsConfigured
       && !hasRdConfigured
       && !hasSheetsConfigured
     ) {
@@ -9565,6 +9676,8 @@ export default function DashboardShell({
       setInsights(null)
       setDailyData([])
       setDailyCampaignData([])
+      setGoogleAdsSummary(null)
+      setGoogleAdsError('')
       setRdSummary(null)
       setGoogleSheetsSummary(null)
       setClickUpSummary(null)
@@ -9595,6 +9708,8 @@ export default function DashboardShell({
         mondayCustomSince,
         mondayCustomUntil,
         hasMetaConfigured,
+        hasGoogleAdsConfigured,
+        selectedGoogleAdsAccount,
         hasRdConfigured,
         hasSheetsConfigured,
         rdPipelineFilter,
@@ -9631,6 +9746,7 @@ export default function DashboardShell({
 
       try {
         let metaError = ''
+        let googleAdsRequestError = ''
         let rdError = ''
         let sheetsError = ''
         let clickUpRequestError = ''
@@ -9748,6 +9864,40 @@ export default function DashboardShell({
           setPreviousInsights(null)
           setDailyData([])
           setDailyCampaignData([])
+        }
+
+        if (shouldFetchPresentationData && hasGoogleAdsConfigured) {
+          try {
+            const googleAdsParams = new URLSearchParams({
+              customer_id: selectedGoogleAdsAccount,
+              date_preset: dateRange,
+            })
+            if (dateRange === 'custom') {
+              googleAdsParams.set('since', customSince)
+              googleAdsParams.set('until', customUntil)
+            }
+
+            const googleAdsResponse = await fetch(`/api/google-ads/summary?${googleAdsParams.toString()}`, {
+              cache: 'no-store',
+            })
+            const googleAdsData = await googleAdsResponse.json()
+            if (!googleAdsResponse.ok) {
+              throw new Error(googleAdsData.error || 'Não foi possível carregar os dados do Google Ads.')
+            }
+            if (!cancelled) {
+              setGoogleAdsSummary(googleAdsData || null)
+              setGoogleAdsError('')
+            }
+          } catch (error) {
+            googleAdsRequestError = error.message || 'Não foi possível carregar os dados do Google Ads.'
+            if (!cancelled) {
+              setGoogleAdsSummary(null)
+              setGoogleAdsError(googleAdsRequestError)
+            }
+          }
+        } else if (!cancelled) {
+          setGoogleAdsSummary(null)
+          setGoogleAdsError('')
         }
 
         if (shouldFetchPresentationData && hasRdConfigured && activeClientUsesManualCrm) {
@@ -9950,7 +10100,7 @@ export default function DashboardShell({
         }
 
         if (!cancelled) {
-          setErrorMessage(metaError || rdError || sheetsError || clickUpRequestError || mondayRequestError)
+          setErrorMessage(metaError || googleAdsRequestError || rdError || sheetsError || clickUpRequestError || mondayRequestError)
         }
       } catch (error) {
         if (!cancelled) {
@@ -9959,6 +10109,8 @@ export default function DashboardShell({
           setPreviousInsights(null)
           setDailyData([])
           setDailyCampaignData([])
+          setGoogleAdsSummary(null)
+          setGoogleAdsError('')
           setBreakdowns(EMPTY_META_BREAKDOWNS)
           setRdSummary(null)
           setPreviousRdSummary(null)
@@ -9994,6 +10146,8 @@ export default function DashboardShell({
     mondayCustomSince,
     mondayCustomUntil,
     hasMetaConfigured,
+    hasGoogleAdsConfigured,
+    selectedGoogleAdsAccount,
     hasRdConfigured,
     hasSheetsConfigured,
     hasClickUpConfigured,
@@ -12676,6 +12830,23 @@ export default function DashboardShell({
     () => [...metaFixedDashboardMetricCards, ...metaExtraDashboardMetricCards],
     [metaExtraDashboardMetricCards, metaFixedDashboardMetricCards]
   )
+  const googleAdsKpis = useMemo(() => {
+    const summary = googleAdsSummary?.summary || {}
+    return [
+      { key: 'spend', title: 'Investimento', value: formatCurrency(summary.spend || 0), icon: 'bx-wallet-alt', tone: 'emerald' },
+      { key: 'impressions', title: 'Impressões', value: formatNumber(summary.impressions || 0), icon: 'bx-show', tone: 'blue' },
+      { key: 'clicks', title: 'Cliques', value: formatNumber(summary.clicks || 0), icon: 'bx-pointer', tone: 'cyan' },
+      { key: 'cpc', title: 'CPC médio', value: formatCurrency(summary.cpc || 0), icon: 'bx-purchase-tag', tone: 'orange' },
+      { key: 'ctr', title: 'CTR', value: formatPercent(summary.ctr || 0), icon: 'bx-mouse', tone: 'purple' },
+      { key: 'conversions', title: 'Conversões', value: formatDashboardMetricValue(summary.conversions || 0, 'decimal'), icon: 'bx-target-lock', tone: 'gold' },
+      { key: 'costPerConversion', title: 'Custo por conversão', value: formatCurrency(summary.costPerConversion || 0), icon: 'bx-bullseye', tone: 'pink' },
+      { key: 'roas', title: 'ROAS', value: formatMultiplier(summary.roas || 0), icon: 'bx-trending-up', tone: 'emerald' },
+    ]
+  }, [googleAdsSummary])
+  const googleAdsCampaigns = useMemo(
+    () => Array.isArray(googleAdsSummary?.campaigns) ? googleAdsSummary.campaigns : [],
+    [googleAdsSummary]
+  )
   const dashboardExportFileName = useMemo(() => {
     const normalize = (value) => String(value || '')
       .normalize('NFD')
@@ -12699,7 +12870,10 @@ export default function DashboardShell({
       })
     }
 
-    addRow('Contexto', 'Cliente', activeClient?.name || 'Cliente selecionado', 'Período', getDatePresetLabel(dateRange, customSince, customUntil), selectedAdAccount ? `Conta Meta: ${selectedAdAccount}` : '')
+    addRow('Contexto', 'Cliente', activeClient?.name || 'Cliente selecionado', 'Período', getDatePresetLabel(dateRange, customSince, customUntil), [
+      selectedAdAccount ? `Conta Meta: ${selectedAdAccount}` : '',
+      selectedGoogleAdsAccount ? `Conta Google Ads: ${selectedGoogleAdsAccount}` : '',
+    ].filter(Boolean).join(' • '))
     if (normalizedMetaResultFilters.length) {
       addRow(
         'Contexto',
@@ -12748,6 +12922,18 @@ export default function DashboardShell({
       })
     }
 
+    if (hasGoogleAdsConfigured) {
+      googleAdsKpis.forEach((metric) => {
+        addRow('Google Ads', 'Resumo', metric.title, 'Valor', metric.value)
+      })
+
+      googleAdsCampaigns.forEach((campaign, index) => {
+        addRow('Google Ads', `Campanha #${index + 1}`, campaign.name || 'Campanha sem nome', 'Investimento', formatCurrency(campaign.spend || 0))
+        addRow('Google Ads', `Campanha #${index + 1}`, campaign.name || 'Campanha sem nome', 'Conversões', formatDashboardMetricValue(campaign.conversions || 0, 'decimal'))
+        addRow('Google Ads', `Campanha #${index + 1}`, campaign.name || 'Campanha sem nome', 'Custo por conversão', formatCurrency(campaign.costPerConversion || 0))
+      })
+    }
+
     if (hasRdConfigured) {
       rdAgendorFunnelKpis.filter((metric) => !metric.hidden).forEach((metric) => {
         addRow(activeClientUsesManualCrm ? 'CRM manual' : crmSourceLabel, 'Funil comercial', metric.title, 'Valor', metric.value, metric.detail || '')
@@ -12774,14 +12960,18 @@ export default function DashboardShell({
     formatCampaignMetricValue,
     getCampaignMetricValue,
     hasMetaConfigured,
+    hasGoogleAdsConfigured,
     hasRdConfigured,
     hasSheetsConfigured,
+    googleAdsCampaigns,
+    googleAdsKpis,
     metaCampaignFilterSummary,
     metaRankingLayers,
     metaSummaryDashboardMetricCards,
     normalizedMetaResultFilters,
     rdAgendorFunnelKpis,
     selectedAdAccount,
+    selectedGoogleAdsAccount,
     selectedMetaCampaignTableColumns,
     visibleMetaConversionGroups,
   ])
@@ -13283,6 +13473,11 @@ export default function DashboardShell({
             note: group.description,
           }))
         )
+        const clientGoogleAdsMetrics = googleAdsKpis.map((metric) => ({
+          title: metric.title,
+          value: metric.value,
+          note: selectedGoogleAdsAccount ? `Conta ${selectedGoogleAdsAccount}` : 'Google Ads conectado.',
+        }))
         const selectedResultLabels = availableMetaResultFilters
           .filter((filter) => normalizedMetaResultFilters.includes(filter.key))
           .map((filter) => filter.label)
@@ -13313,7 +13508,10 @@ export default function DashboardShell({
 
         drawClientSectionTitle('Contexto dos últimos 7 dias')
         drawClientCards([
-          { title: 'Cliente', value: activeClient?.name || 'Cliente selecionado', note: selectedAdAccount ? `Conta Meta: ${selectedAdAccount}` : 'Conta Meta conectada' },
+          { title: 'Cliente', value: activeClient?.name || 'Cliente selecionado', note: [
+            selectedAdAccount ? `Meta ${selectedAdAccount}` : '',
+            selectedGoogleAdsAccount ? `Google Ads ${selectedGoogleAdsAccount}` : '',
+          ].filter(Boolean).join(' • ') || 'Contas conectadas' },
           { title: 'Período', value: getDatePresetLabel(dateRange, customSince, customUntil), note: 'Leitura usada no dashboard.' },
           { title: 'Cadastro do contexto', value: selectedResultLabels, note: metaCampaignFilterSummary || 'Resultados filtrados no dashboard.' },
         ], 3)
@@ -13321,6 +13519,11 @@ export default function DashboardShell({
         if (clientMetaMetrics.length || clientConversionMetrics.length) {
           drawClientSectionTitle('Meta Ads')
           drawClientCards([...clientMetaMetrics, ...clientConversionMetrics], 4)
+        }
+
+        if (hasGoogleAdsConfigured && clientGoogleAdsMetrics.length) {
+          drawClientSectionTitle('Google Ads')
+          drawClientCards(clientGoogleAdsMetrics, 4)
         }
 
         drawClientSectionTitle('Rankings')
@@ -16863,6 +17066,27 @@ export default function DashboardShell({
                     </div>
                   </div>
 
+                  <div className="integration-block">
+                    <div className="integration-heading">
+                      <div className="integration-icon" style={{ color: '#10b981', borderColor: '#10b98133' }}>
+                        <i className="bx bxl-google"></i>
+                      </div>
+                      <div>
+                        <h3>Google Ads</h3>
+                        <p>Selecione uma das contas Google Ads disponíveis na conexão global.</p>
+                      </div>
+                    </div>
+                    <div className="input-group">
+                      <label>Conta Google Ads</label>
+                      <select className="client-select-input" value={activeClient.googleAdsAccountId || ''} onChange={(event) => handleClientFieldChange('googleAdsAccountId', event.target.value)} disabled={!canEditActiveClient}>
+                        <option value="">{googleAdsConnection.connected ? 'Selecione uma conta' : 'Conecte o Google Ads em Configurações'}</option>
+                        {googleAdsAccounts.map((account) => (
+                          <option key={account.id} value={account.id}>{account.name ? account.name + ' (' + account.id + ')' : account.id}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
                   <div className="integration-block manual-crm-toggle-block">
                     <label className={'manual-crm-toggle ' + (activeClientUsesManualCrm ? 'active' : '')}>
                       <input type="checkbox" checked={activeClientUsesManualCrm} onChange={(event) => handleToggleManualCrmForActiveClient(event.target.checked)} disabled={!canEditActiveClient} />
@@ -17333,6 +17557,29 @@ export default function DashboardShell({
                               {hasMetaManualToken || hasMetaOauthConnection ? 'Selecionar depois ou escolher agora' : 'Conecte a Meta em Configurações'}
                             </option>
                             {adAccounts.map((account) => (
+                              <option key={account.id} value={account.id}>{account.name ? account.name + ' (' + account.id + ')' : account.id}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="integration-block client-create-integration-card">
+                        <div className="integration-heading">
+                          <div className="integration-icon" style={{ color: '#10b981', borderColor: '#10b98133' }}>
+                            <i className="bx bxl-google"></i>
+                          </div>
+                          <div>
+                            <h3>Google Ads</h3>
+                            <p>Selecione a conta Google Ads disponível na conexão global.</p>
+                          </div>
+                        </div>
+                        <div className="input-group">
+                          <label>Conta Google Ads</label>
+                          <select className="client-select-input" value={newClientGoogleAdsAccountId} onChange={(event) => setNewClientGoogleAdsAccountId(event.target.value)} disabled={!isMaster}>
+                            <option value="">
+                              {googleAdsConnection.connected ? 'Selecionar depois ou escolher agora' : 'Conecte o Google Ads em Configurações'}
+                            </option>
+                            {googleAdsAccounts.map((account) => (
                               <option key={account.id} value={account.id}>{account.name ? account.name + ' (' + account.id + ')' : account.id}</option>
                             ))}
                           </select>
@@ -18350,6 +18597,93 @@ export default function DashboardShell({
                     </table>
                   </div>
                 </section>
+                  </section>
+                )}
+
+                {hasGoogleAdsConfigured && (
+                  <section className="source-section google-ads-source-section">
+                    <div className="source-section-header">
+                      <div className="source-section-badge" style={{ color: '#10b981', borderColor: '#10b981' }}>
+                        <i className="bx bxl-google"></i>
+                        <span>Google Ads</span>
+                      </div>
+                      <p className="source-section-copy">Leitura de investimento, tráfego e conversões da conta Google Ads vinculada a {activeClient.name}.</p>
+                    </div>
+
+                    <section className="glass-panel grouped-results google-ads-results">
+                      <div className="section-header section-header-stack section-header-with-action">
+                        <div>
+                          <h2>Resumo do Google Ads</h2>
+                          <p className="chart-subtitle">
+                            Indicadores carregados da conta {selectedGoogleAdsAccount ? formatGoogleAdsAccountLabel(selectedGoogleAdsAccount) : 'selecionada'} no período atual.
+                          </p>
+                        </div>
+                        {googleAdsSummary?.accountLabel && (
+                          <span className="source-section-badge source-section-mini-badge" style={{ color: '#10b981', borderColor: '#10b981' }}>
+                            {googleAdsSummary.accountLabel}
+                          </span>
+                        )}
+                      </div>
+
+                      {googleAdsError ? (
+                        <div className="settings-callout error">{googleAdsError}</div>
+                      ) : renderFixedKpiGrid(googleAdsKpis)}
+                    </section>
+
+                    <section className="campaigns-section glass-panel google-ads-campaigns-section">
+                      <div className="section-header section-header-stack">
+                        <div>
+                          <h2>Campanhas Google Ads ({googleAdsCampaigns.length})</h2>
+                          <p className="chart-subtitle">Tabela resumida por campanha, ordenada pelo maior investimento do período.</p>
+                        </div>
+                      </div>
+                      <div className="table-container">
+                        <table className="data-table">
+                          <thead>
+                            <tr>
+                              <th>Status</th>
+                              <th>Campanha</th>
+                              <th>Investimento</th>
+                              <th>Impressões</th>
+                              <th>Cliques</th>
+                              <th>CPC</th>
+                              <th>CTR</th>
+                              <th>Conversões</th>
+                              <th>Custo/conv.</th>
+                              <th>ROAS</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {googleAdsCampaigns.length === 0 ? (
+                              <tr>
+                                <td colSpan={10} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
+                                  Nenhuma campanha com investimento ou entrega encontrada nesse período.
+                                </td>
+                              </tr>
+                            ) : (
+                              googleAdsCampaigns.map((campaign, index) => (
+                                <tr key={campaign.id || index}>
+                                  <td>
+                                    <span className={`status-badge ${campaign.status === 'ENABLED' ? 'status-active' : 'status-paused'}`}>
+                                      {campaign.status === 'ENABLED' ? 'Ativa' : campaign.status || 'Sem status'}
+                                    </span>
+                                  </td>
+                                  <td className="campaign-name">{campaign.name}</td>
+                                  <td>{formatCurrency(campaign.spend || 0)}</td>
+                                  <td>{formatNumber(campaign.impressions || 0)}</td>
+                                  <td>{formatNumber(campaign.clicks || 0)}</td>
+                                  <td>{formatCurrency(campaign.cpc || 0)}</td>
+                                  <td>{formatPercent(campaign.ctr || 0)}</td>
+                                  <td>{formatDashboardMetricValue(campaign.conversions || 0, 'decimal')}</td>
+                                  <td>{formatCurrency(campaign.costPerConversion || 0)}</td>
+                                  <td style={(campaign.roas || 0) >= 3 ? { color: 'var(--accent-emerald)' } : undefined}>{formatMultiplier(campaign.roas || 0)}</td>
+                                </tr>
+                              ))
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    </section>
                   </section>
                 )}
 
