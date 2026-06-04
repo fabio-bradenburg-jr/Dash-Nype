@@ -35,6 +35,46 @@ function resolveFundingSource(details) {
   }
 }
 
+function resolveBillingType(account, funding) {
+  if (account.is_prepay_account === true || account.is_prepay_account === 'true') {
+    return {
+      type: 'prepaid',
+      label: 'Pré-pago',
+      description: 'Usa fundos adicionados antes da veiculação.',
+    }
+  }
+
+  if (account.is_prepay_account === false || account.is_prepay_account === 'false' || funding.hasCard) {
+    return {
+      type: 'postpaid',
+      label: 'Pós-pago',
+      description: 'Anuncia primeiro e paga depois pela forma de pagamento.',
+    }
+  }
+
+  return {
+    type: 'unidentified',
+    label: 'Não identificado',
+    description: 'A Meta não retornou o tipo de cobrança desta conta.',
+  }
+}
+
+function resolveAccountTone({ billingType, fundsAvailable, pendingAmount, hasCard }) {
+  if (billingType === 'prepaid') {
+    if (fundsAvailable < 100) return 'danger'
+    if (fundsAvailable <= 200) return 'warning'
+    return 'success'
+  }
+
+  if (billingType === 'postpaid') {
+    if (!hasCard) return 'danger'
+    if (pendingAmount > 0) return 'warning'
+    return 'success'
+  }
+
+  return 'empty'
+}
+
 async function fetchAdAccountBalance(request, token, client) {
   const accountId = normalizeAdAccountId(client.metaAdAccountId)
   if (!accountId) {
@@ -45,7 +85,11 @@ async function fetchAdAccountBalance(request, token, client) {
       accountName: '',
       currency: 'BRL',
       availableBalance: null,
+      fundsAvailable: null,
       pendingAmount: null,
+      billingType: 'not_configured',
+      billingTypeLabel: 'Sem conta',
+      billingDescription: 'Configure a conta de anúncio no cadastro do cliente.',
       hasCard: false,
       cardLabel: 'Sem conta de anúncio',
       accountStatus: 'not_configured',
@@ -63,6 +107,7 @@ async function fetchAdAccountBalance(request, token, client) {
     'amount_spent',
     'spend_cap',
     'currency',
+    'is_prepay_account',
     'funding_source_details',
   ].join(',')
   const url = `https://graph.facebook.com/v19.0/act_${accountId}?fields=${encodeURIComponent(fields)}&access_token=${encodeURIComponent(token)}`
@@ -82,8 +127,17 @@ async function fetchAdAccountBalance(request, token, client) {
     const balanceAmount = normalizeCurrencyAmount(account.balance, currency)
     const amountSpent = normalizeCurrencyAmount(account.amount_spent, currency)
     const spendCap = normalizeCurrencyAmount(account.spend_cap, currency)
-    const availableBalance = spendCap > 0 ? Math.max(spendCap - amountSpent, 0) : Math.max(balanceAmount, 0)
     const funding = resolveFundingSource(account.funding_source_details)
+    const billing = resolveBillingType(account, funding)
+    const fundsAvailable = billing.type === 'prepaid' ? Math.max(balanceAmount, 0) : null
+    const pendingAmount = billing.type === 'postpaid' ? Math.max(balanceAmount, 0) : 0
+    const limitAvailable = spendCap > 0 ? Math.max(spendCap - amountSpent, 0) : null
+    const tone = resolveAccountTone({
+      billingType: billing.type,
+      fundsAvailable: Number(fundsAvailable || 0),
+      pendingAmount,
+      hasCard: funding.hasCard,
+    })
 
     return {
       clientId: client.id,
@@ -91,16 +145,22 @@ async function fetchAdAccountBalance(request, token, client) {
       accountId,
       accountName: account.name || `Conta ${accountId}`,
       currency,
-      availableBalance,
-      pendingAmount: Math.max(balanceAmount, 0),
+      availableBalance: fundsAvailable,
+      fundsAvailable,
+      pendingAmount,
+      limitAvailable,
       amountSpent,
       spendCap,
+      billingType: billing.type,
+      billingTypeLabel: billing.label,
+      billingDescription: billing.description,
+      isPrepayAccount: billing.type === 'prepaid',
       hasCard: funding.hasCard,
       cardLabel: funding.label,
       cardType: funding.type,
       accountStatus: account.account_status || '',
       statusLabel: account.account_status ? `Status ${account.account_status}` : 'Conta ativa',
-      tone: availableBalance < 100 ? 'danger' : availableBalance <= 200 ? 'warning' : 'success',
+      tone,
       error: '',
     }
   } catch (error) {
@@ -111,7 +171,11 @@ async function fetchAdAccountBalance(request, token, client) {
       accountName: `Conta ${accountId}`,
       currency: 'BRL',
       availableBalance: null,
+      fundsAvailable: null,
       pendingAmount: null,
+      billingType: 'unidentified',
+      billingTypeLabel: 'Não identificado',
+      billingDescription: 'Não foi possível ler o tipo de cobrança.',
       hasCard: false,
       cardLabel: 'Não foi possível ler cartão',
       accountStatus: 'error',
@@ -137,9 +201,10 @@ export async function POST(request) {
     )
 
     rows.sort((left, right) => {
-      const leftValue = Number.isFinite(Number(left.availableBalance)) ? Number(left.availableBalance) : Number.POSITIVE_INFINITY
-      const rightValue = Number.isFinite(Number(right.availableBalance)) ? Number(right.availableBalance) : Number.POSITIVE_INFINITY
+      const leftValue = left.billingType === 'prepaid' && Number.isFinite(Number(left.fundsAvailable)) ? Number(left.fundsAvailable) : Number.POSITIVE_INFINITY
+      const rightValue = right.billingType === 'prepaid' && Number.isFinite(Number(right.fundsAvailable)) ? Number(right.fundsAvailable) : Number.POSITIVE_INFINITY
       if (leftValue !== rightValue) return leftValue - rightValue
+      if ((left.billingType || '') !== (right.billingType || '')) return String(left.billingType || '').localeCompare(String(right.billingType || ''), 'pt-BR')
       return String(left.clientName || '').localeCompare(String(right.clientName || ''), 'pt-BR')
     })
 

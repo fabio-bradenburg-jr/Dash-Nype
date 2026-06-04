@@ -3387,6 +3387,7 @@ export default function DashboardShell({
   const [adAccountBalanceError, setAdAccountBalanceError] = useState('')
   const [adAccountBalanceSearch, setAdAccountBalanceSearch] = useState('')
   const [adAccountBalanceCardFilter, setAdAccountBalanceCardFilter] = useState('all')
+  const [adAccountBalanceBillingFilter, setAdAccountBalanceBillingFilter] = useState('all')
   const [adAccountBalanceValueFilter, setAdAccountBalanceValueFilter] = useState('all')
   const [adAccountBalanceDebtFilter, setAdAccountBalanceDebtFilter] = useState('all')
   const [adAccountBalanceRefreshNonce, setAdAccountBalanceRefreshNonce] = useState(0)
@@ -4273,15 +4274,18 @@ export default function DashboardShell({
     const query = adAccountBalanceSearch.trim().toLowerCase()
 
     return adAccountBalanceRows.filter((row) => {
-      const matchesSearch = !query || [row.clientName, row.accountName, row.accountId, row.cardLabel]
+      const matchesSearch = !query || [row.clientName, row.accountName, row.accountId, row.cardLabel, row.billingTypeLabel]
         .filter(Boolean)
         .some((value) => String(value).toLowerCase().includes(query))
+      const matchesBilling = adAccountBalanceBillingFilter === 'all'
+        ? true
+        : row.billingType === adAccountBalanceBillingFilter
       const matchesCard = adAccountBalanceCardFilter === 'all'
         ? true
         : adAccountBalanceCardFilter === 'with_card'
           ? row.hasCard
           : !row.hasCard
-      const balance = Number(row.availableBalance)
+      const balance = Number(row.fundsAvailable)
       const matchesBalance = adAccountBalanceValueFilter === 'all'
         ? true
         : adAccountBalanceValueFilter === 'critical'
@@ -4298,19 +4302,23 @@ export default function DashboardShell({
           ? pending > 0
           : pending <= 0
 
-      return matchesSearch && matchesCard && matchesBalance && matchesDebt
+      return matchesSearch && matchesBilling && matchesCard && matchesBalance && matchesDebt
     })
-  }, [adAccountBalanceRows, adAccountBalanceSearch, adAccountBalanceCardFilter, adAccountBalanceValueFilter, adAccountBalanceDebtFilter])
+  }, [adAccountBalanceRows, adAccountBalanceSearch, adAccountBalanceBillingFilter, adAccountBalanceCardFilter, adAccountBalanceValueFilter, adAccountBalanceDebtFilter])
   const adAccountBalanceSummary = useMemo(() => {
     const configuredRows = adAccountBalanceRows.filter((row) => row.accountId)
-    const critical = configuredRows.filter((row) => Number(row.availableBalance) < 100).length
-    const attention = configuredRows.filter((row) => Number(row.availableBalance) >= 100 && Number(row.availableBalance) <= 200).length
-    const healthy = configuredRows.filter((row) => Number(row.availableBalance) > 200).length
+    const prepaidRows = configuredRows.filter((row) => row.billingType === 'prepaid')
+    const postpaidRows = configuredRows.filter((row) => row.billingType === 'postpaid')
+    const critical = prepaidRows.filter((row) => Number(row.fundsAvailable) < 100).length
+    const attention = prepaidRows.filter((row) => Number(row.fundsAvailable) >= 100 && Number(row.fundsAvailable) <= 200).length
+    const healthy = prepaidRows.filter((row) => Number(row.fundsAvailable) > 200).length
     const withCard = configuredRows.filter((row) => row.hasCard).length
     const pendingAmount = configuredRows.reduce((sum, row) => sum + Number(row.pendingAmount || 0), 0)
 
     return {
       configured: configuredRows.length,
+      prepaid: prepaidRows.length,
+      postpaid: postpaidRows.length,
       critical,
       attention,
       healthy,
@@ -16956,7 +16964,7 @@ export default function DashboardShell({
               <div className="ad-balance-hero-copy">
                 <span className="management-card-kicker">Controle financeiro de mídia</span>
                 <h2>Saldo das contas de anúncio</h2>
-                <p>Leitura por cliente cadastrado, ordenada automaticamente do menor saldo para o maior.</p>
+                <p>Separe contas pré-pagas por fundos disponíveis e contas pós-pagas por saldo devedor e forma de pagamento.</p>
               </div>
               <button
                 type="button"
@@ -16978,24 +16986,24 @@ export default function DashboardShell({
 
             <div className="ad-balance-summary-grid">
               <article className="ad-balance-summary-card glass-panel danger">
-                <span>Menos de R$ 100</span>
+                <span>Pré-pago abaixo de R$ 100</span>
                 <strong>{formatNumber(adAccountBalanceSummary.critical)}</strong>
                 <small>Prioridade de recarga</small>
               </article>
               <article className="ad-balance-summary-card glass-panel warning">
-                <span>Entre R$ 100 e R$ 200</span>
+                <span>Pré-pago entre R$ 100 e R$ 200</span>
                 <strong>{formatNumber(adAccountBalanceSummary.attention)}</strong>
                 <small>Acompanhar de perto</small>
               </article>
               <article className="ad-balance-summary-card glass-panel success">
-                <span>Acima de R$ 200</span>
-                <strong>{formatNumber(adAccountBalanceSummary.healthy)}</strong>
-                <small>Operação confortável</small>
+                <span>Contas pós-pagas</span>
+                <strong>{formatNumber(adAccountBalanceSummary.postpaid)}</strong>
+                <small>{formatNumber(adAccountBalanceSummary.withCard)} com cartão</small>
               </article>
               <article className="ad-balance-summary-card glass-panel">
-                <span>Com cartão</span>
-                <strong>{formatNumber(adAccountBalanceSummary.withCard)}</strong>
-                <small>{formatCurrency(adAccountBalanceSummary.pendingAmount)} pendente</small>
+                <span>Saldo devedor total</span>
+                <strong>{formatCurrency(adAccountBalanceSummary.pendingAmount)}</strong>
+                <small>Contas pós-pagas com cobrança pendente</small>
               </article>
             </div>
 
@@ -17012,6 +17020,15 @@ export default function DashboardShell({
                 </div>
                 <div className="ad-balance-filter-row">
                   <label className="date-picker glass-item compact-filter">
+                    <i className="bx bx-transfer-alt"></i>
+                    <select value={adAccountBalanceBillingFilter} onChange={(event) => setAdAccountBalanceBillingFilter(event.target.value)}>
+                      <option value="all">Todos os tipos</option>
+                      <option value="prepaid">Pré-pago</option>
+                      <option value="postpaid">Pós-pago</option>
+                      <option value="unidentified">Não identificado</option>
+                    </select>
+                  </label>
+                  <label className="date-picker glass-item compact-filter">
                     <i className="bx bx-credit-card"></i>
                     <select value={adAccountBalanceCardFilter} onChange={(event) => setAdAccountBalanceCardFilter(event.target.value)}>
                       <option value="all">Todos os cartões</option>
@@ -17022,10 +17039,10 @@ export default function DashboardShell({
                   <label className="date-picker glass-item compact-filter">
                     <i className="bx bx-wallet"></i>
                     <select value={adAccountBalanceValueFilter} onChange={(event) => setAdAccountBalanceValueFilter(event.target.value)}>
-                      <option value="all">Todos os saldos</option>
-                      <option value="critical">Menos de R$ 100</option>
-                      <option value="attention">R$ 100 a R$ 200</option>
-                      <option value="healthy">Acima de R$ 200</option>
+                      <option value="all">Todos os fundos</option>
+                      <option value="critical">Fundos abaixo de R$ 100</option>
+                      <option value="attention">Fundos de R$ 100 a R$ 200</option>
+                      <option value="healthy">Fundos acima de R$ 200</option>
                     </select>
                   </label>
                   <label className="date-picker glass-item compact-filter">
@@ -17052,7 +17069,8 @@ export default function DashboardShell({
                     <tr>
                       <th>Cliente</th>
                       <th>Conta de anúncio</th>
-                      <th>Saldo em conta</th>
+                      <th>Tipo</th>
+                      <th>Fundos disponíveis</th>
                       <th>Cartão</th>
                       <th>Saldo devedor</th>
                       <th>Status</th>
@@ -17061,7 +17079,7 @@ export default function DashboardShell({
                   <tbody>
                     {adAccountBalanceLoading && !adAccountBalanceRows.length ? (
                       <tr>
-                        <td colSpan={6} className="ad-balance-empty-cell">
+                        <td colSpan={7} className="ad-balance-empty-cell">
                           Carregando saldos das contas cadastradas...
                         </td>
                       </tr>
@@ -17086,8 +17104,14 @@ export default function DashboardShell({
                             </div>
                           </td>
                           <td>
+                            <span className={'ad-balance-billing-badge ' + (row.billingType || 'empty')}>
+                              <i className={'bx ' + (row.billingType === 'prepaid' ? 'bx-wallet' : row.billingType === 'postpaid' ? 'bx-credit-card' : 'bx-help-circle')}></i>
+                              {row.billingTypeLabel || 'Não identificado'}
+                            </span>
+                          </td>
+                          <td>
                             <span className={'ad-balance-pill ' + (row.tone || 'empty')}>
-                              {row.availableBalance == null ? '-' : formatCurrencyByCode(row.availableBalance, row.currency)}
+                              {row.fundsAvailable == null ? (row.billingType === 'postpaid' ? 'Pós-pago' : '-') : formatCurrencyByCode(row.fundsAvailable, row.currency)}
                             </span>
                           </td>
                           <td>
@@ -17108,7 +17132,7 @@ export default function DashboardShell({
                       ))
                     ) : (
                       <tr>
-                        <td colSpan={6} className="ad-balance-empty-cell">
+                        <td colSpan={7} className="ad-balance-empty-cell">
                           Nenhum cliente encontrado para os filtros selecionados.
                         </td>
                       </tr>
@@ -30562,7 +30586,7 @@ export default function DashboardShell({
 
         .ad-balance-filter-row {
           display: grid;
-          grid-template-columns: repeat(3, minmax(160px, 1fr));
+          grid-template-columns: repeat(4, minmax(150px, 1fr));
           gap: 10px;
         }
 
@@ -30583,7 +30607,7 @@ export default function DashboardShell({
         }
 
         .ad-balance-table {
-          min-width: 980px;
+          min-width: 1120px;
           border-collapse: separate;
           border-spacing: 0;
         }
@@ -30687,6 +30711,40 @@ export default function DashboardShell({
           color: color-mix(in srgb, var(--accent-emerald) 72%, white 28%);
         }
 
+        .ad-balance-billing-badge {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          min-height: 36px;
+          padding: 8px 12px;
+          border-radius: 999px;
+          border: 1px solid rgba(148, 163, 184, 0.18);
+          background: rgba(255, 255, 255, 0.045);
+          color: var(--text-primary);
+          font-size: 0.82rem;
+          font-weight: 900;
+          white-space: nowrap;
+        }
+
+        .ad-balance-billing-badge.prepaid {
+          border-color: color-mix(in srgb, var(--accent-emerald) 38%, transparent);
+          background: color-mix(in srgb, var(--accent-emerald) 12%, transparent);
+          color: color-mix(in srgb, var(--accent-emerald) 76%, white 24%);
+        }
+
+        .ad-balance-billing-badge.postpaid {
+          border-color: rgba(96, 165, 250, 0.34);
+          background: rgba(59, 130, 246, 0.12);
+          color: #bfdbfe;
+        }
+
+        .ad-balance-billing-badge.unidentified,
+        .ad-balance-billing-badge.not_configured,
+        .ad-balance-billing-badge.empty {
+          color: var(--muted-text);
+        }
+
         .ad-balance-card-status {
           display: inline-flex;
           align-items: center;
@@ -30748,6 +30806,21 @@ export default function DashboardShell({
         .dashboard-light-mode:not([data-active-tab='apresentacao']) .ad-balance-card-status.active {
           background: #ecfdf5;
           color: #047857;
+        }
+
+        .dashboard-light-mode:not([data-active-tab='apresentacao']) .ad-balance-billing-badge {
+          background: #f8fafc;
+          color: #0f172a;
+        }
+
+        .dashboard-light-mode:not([data-active-tab='apresentacao']) .ad-balance-billing-badge.prepaid {
+          background: #ecfdf5;
+          color: #047857;
+        }
+
+        .dashboard-light-mode:not([data-active-tab='apresentacao']) .ad-balance-billing-badge.postpaid {
+          background: #eff6ff;
+          color: #1d4ed8;
         }
 
         @media (max-width: 1180px) {
