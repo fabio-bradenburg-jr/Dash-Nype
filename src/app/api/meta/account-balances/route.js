@@ -16,22 +16,47 @@ function normalizeCurrencyAmount(value, currency = 'BRL') {
     : numericValue / 100
 }
 
+function parseCurrencyAmountFromText(text) {
+  const rawText = String(text || '')
+  const match = rawText.match(/(?:R\$|\$|€|£)?\s*(-?\d{1,3}(?:[.\s]\d{3})*(?:,\d+)?|-?\d+(?:\.\d+)?)/)
+  if (!match) return null
+
+  const rawValue = match[1].replace(/\s/g, '')
+  const decimalNormalized = rawValue.includes(',')
+    ? rawValue.replace(/\./g, '').replace(',', '.')
+    : rawValue
+  const amount = Number(decimalNormalized)
+
+  return Number.isFinite(amount) ? amount : null
+}
+
+function cleanFundingSourceLabel(label) {
+  return String(label || '').replace(/\s*\([^)]*\)\s*/g, ' ').replace(/\s+/g, ' ').trim()
+}
+
 function resolveFundingSource(details) {
   if (!details || typeof details !== 'object') {
     return {
       hasCard: false,
       label: 'Sem cartão identificado',
       type: '',
+      availableAmount: null,
     }
   }
 
-  const label = details.display_string || details.displayString || details.name || details.id || ''
+  const rawLabel = details.display_string || details.displayString || details.name || details.id || ''
   const type = details.type || details.funding_source_type || details.fundingSourceType || ''
+  const cleanedLabel = cleanFundingSourceLabel(rawLabel)
+  const labelForDetection = `${rawLabel} ${type}`.toLowerCase()
+  const isStoredFunds = /saldo dispon[ií]vel|available balance|fundos|prepaid|prepay|balance/.test(labelForDetection)
+  const availableAmount = isStoredFunds ? parseCurrencyAmountFromText(rawLabel) : null
+  const hasCard = Boolean(rawLabel || type) && !isStoredFunds
 
   return {
-    hasCard: Boolean(label || type),
-    label: label || (type ? String(type) : 'Cartão vinculado'),
+    hasCard,
+    label: cleanedLabel || (type ? String(type) : 'Cartão vinculado'),
     type: String(type || ''),
+    availableAmount,
   }
 }
 
@@ -129,7 +154,8 @@ async function fetchAdAccountBalance(request, token, client) {
     const spendCap = normalizeCurrencyAmount(account.spend_cap, currency)
     const funding = resolveFundingSource(account.funding_source_details)
     const billing = resolveBillingType(account, funding)
-    const fundsAvailable = billing.type === 'prepaid' ? Math.max(balanceAmount, 0) : null
+    const prepaidAvailableAmount = funding.availableAmount != null ? funding.availableAmount : balanceAmount
+    const fundsAvailable = billing.type === 'prepaid' ? Math.max(prepaidAvailableAmount, 0) : null
     const pendingAmount = billing.type === 'postpaid' ? Math.max(balanceAmount, 0) : 0
     const limitAvailable = spendCap > 0 ? Math.max(spendCap - amountSpent, 0) : null
     const tone = resolveAccountTone({

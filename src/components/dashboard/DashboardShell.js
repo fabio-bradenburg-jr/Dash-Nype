@@ -17031,7 +17031,7 @@ export default function DashboardShell({
                   <label className="date-picker glass-item compact-filter">
                     <i className="bx bx-credit-card"></i>
                     <select value={adAccountBalanceCardFilter} onChange={(event) => setAdAccountBalanceCardFilter(event.target.value)}>
-                      <option value="all">Todos os cartões</option>
+                      <option value="all">Todas as formas</option>
                       <option value="with_card">Com cartão</option>
                       <option value="without_card">Sem cartão</option>
                     </select>
@@ -17071,7 +17071,7 @@ export default function DashboardShell({
                       <th>Conta de anúncio</th>
                       <th>Tipo</th>
                       <th>Fundos disponíveis</th>
-                      <th>Cartão</th>
+                      <th>Forma de pagamento</th>
                       <th>Saldo devedor</th>
                       <th>Status</th>
                     </tr>
@@ -17115,9 +17115,9 @@ export default function DashboardShell({
                             </span>
                           </td>
                           <td>
-                            <span className={'ad-balance-card-status ' + (row.hasCard ? 'active' : '')}>
-                              <i className={'bx ' + (row.hasCard ? 'bx-credit-card-front' : 'bx-credit-card')}></i>
-                              {row.cardLabel || 'Sem cartão'}
+                            <span className={'ad-balance-card-status ' + (row.hasCard || row.billingType === 'prepaid' ? 'active' : '')}>
+                              <i className={'bx ' + (row.hasCard ? 'bx-credit-card-front' : row.billingType === 'prepaid' ? 'bx-wallet' : 'bx-credit-card')}></i>
+                              {row.cardLabel || 'Sem forma de pagamento'}
                             </span>
                           </td>
                           <td>
