@@ -34,6 +34,19 @@ function cleanFundingSourceLabel(label) {
   return String(label || '').replace(/\s*\([^)]*\)\s*/g, ' ').replace(/\s+/g, ' ').trim()
 }
 
+function resolvePaymentMethodLabel({ rawLabel, type, isStoredFunds }) {
+  const normalized = `${rawLabel || ''} ${type || ''}`.toLowerCase()
+
+  if (/pix/.test(normalized)) return 'Pix'
+  if (/boleto|bank slip/.test(normalized)) return 'Boleto'
+  if (/cart[aã]o|card|visa|mastercard|amex|elo|hipercard/.test(normalized)) return cleanFundingSourceLabel(rawLabel) || 'Cartão'
+  if (/paypal/.test(normalized)) return 'PayPal'
+  if (/bank|banco|transfer/.test(normalized)) return 'Transferência bancária'
+  if (isStoredFunds) return 'Fundos pré-pagos'
+
+  return cleanFundingSourceLabel(rawLabel) || (type ? String(type) : 'Forma de pagamento vinculada')
+}
+
 function resolveFundingSource(details) {
   if (!details || typeof details !== 'object') {
     return {
@@ -46,7 +59,6 @@ function resolveFundingSource(details) {
 
   const rawLabel = details.display_string || details.displayString || details.name || details.id || ''
   const type = details.type || details.funding_source_type || details.fundingSourceType || ''
-  const cleanedLabel = cleanFundingSourceLabel(rawLabel)
   const labelForDetection = `${rawLabel} ${type}`.toLowerCase()
   const isStoredFunds = /saldo dispon[ií]vel|available balance|fundos|prepaid|prepay|balance/.test(labelForDetection)
   const availableAmount = isStoredFunds ? parseCurrencyAmountFromText(rawLabel) : null
@@ -54,7 +66,7 @@ function resolveFundingSource(details) {
 
   return {
     hasCard,
-    label: cleanedLabel || (type ? String(type) : 'Cartão vinculado'),
+    label: resolvePaymentMethodLabel({ rawLabel, type, isStoredFunds }),
     type: String(type || ''),
     availableAmount,
   }
