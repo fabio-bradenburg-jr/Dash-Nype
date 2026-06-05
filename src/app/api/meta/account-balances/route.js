@@ -112,6 +112,78 @@ function resolveAccountTone({ billingType, fundsAvailable, pendingAmount, hasCar
   return 'empty'
 }
 
+function resolvePaymentStatus({ accountStatus, billingType, hasCard, pendingAmount }) {
+  const status = Number(accountStatus)
+
+  if (status === 3) {
+    return {
+      key: 'payment_problem',
+      label: 'Problema de pagamento',
+      description: 'Conta com cobrança não liquidada na Meta.',
+      tone: 'danger',
+      icon: 'bx-error-circle',
+    }
+  }
+
+  if (status === 8) {
+    return {
+      key: 'payment_pending',
+      label: 'Pagamento pendente',
+      description: 'Conta aguardando liquidação de pagamento.',
+      tone: 'warning',
+      icon: 'bx-time-five',
+    }
+  }
+
+  if (status === 2) {
+    return {
+      key: 'disabled',
+      label: 'Conta desativada',
+      description: 'Conta desativada ou impedida de veicular.',
+      tone: 'danger',
+      icon: 'bx-block',
+    }
+  }
+
+  if (billingType === 'postpaid' && !hasCard) {
+    return {
+      key: 'missing_payment_method',
+      label: 'Sem forma de pagamento',
+      description: 'Conta pós-paga sem cartão ou meio de cobrança identificado.',
+      tone: 'danger',
+      icon: 'bx-credit-card',
+    }
+  }
+
+  if (pendingAmount > 0) {
+    return {
+      key: 'debt_pending',
+      label: 'Saldo devedor',
+      description: 'Conta com valor pendente para acompanhamento.',
+      tone: 'warning',
+      icon: 'bx-receipt',
+    }
+  }
+
+  if (status === 1) {
+    return {
+      key: 'active',
+      label: 'Conta ativa',
+      description: 'Sem problema de pagamento identificado.',
+      tone: 'success',
+      icon: 'bx-check-circle',
+    }
+  }
+
+  return {
+    key: status ? 'attention' : 'unidentified',
+    label: status ? `Status ${status}` : 'Não identificado',
+    description: status ? 'Status retornado pela Meta para revisão.' : 'A Meta não retornou o status da conta.',
+    tone: status ? 'warning' : 'empty',
+    icon: status ? 'bx-info-circle' : 'bx-help-circle',
+  }
+}
+
 async function fetchAdAccountBalance(request, token, client) {
   const accountId = normalizeAdAccountId(client.metaAdAccountId)
   if (!accountId) {
@@ -132,6 +204,10 @@ async function fetchAdAccountBalance(request, token, client) {
       cardLabel: 'Sem conta de anúncio',
       accountStatus: 'not_configured',
       statusLabel: 'Sem conta',
+      statusDescription: 'Configure a conta de anúncio no cadastro do cliente.',
+      statusTone: 'empty',
+      statusIcon: 'bx-link-alt',
+      hasPaymentProblem: false,
       tone: 'empty',
       error: '',
     }
@@ -171,6 +247,12 @@ async function fetchAdAccountBalance(request, token, client) {
     const fundsAvailable = billing.type === 'prepaid' ? Math.max(prepaidAvailableAmount, 0) : null
     const pendingAmount = billing.type === 'postpaid' ? Math.max(balanceAmount, 0) : 0
     const limitAvailable = spendCap > 0 ? Math.max(spendCap - amountSpent, 0) : null
+    const paymentStatus = resolvePaymentStatus({
+      accountStatus: account.account_status,
+      billingType: billing.type,
+      hasCard: funding.hasCard,
+      pendingAmount,
+    })
     const tone = resolveAccountTone({
       billingType: billing.type,
       fundsAvailable: Number(fundsAvailable || 0),
@@ -199,8 +281,12 @@ async function fetchAdAccountBalance(request, token, client) {
       cardLabel: funding.label,
       cardType: funding.type,
       accountStatus: account.account_status || '',
-      statusLabel: account.account_status ? `Status ${account.account_status}` : 'Conta ativa',
-      tone,
+      statusLabel: paymentStatus.label,
+      statusDescription: paymentStatus.description,
+      statusTone: paymentStatus.tone,
+      statusIcon: paymentStatus.icon,
+      hasPaymentProblem: paymentStatus.key === 'payment_problem' || paymentStatus.key === 'payment_pending' || paymentStatus.key === 'missing_payment_method',
+      tone: paymentStatus.tone === 'danger' ? 'danger' : tone,
       error: '',
     }
   } catch (error) {
@@ -221,6 +307,10 @@ async function fetchAdAccountBalance(request, token, client) {
       cardLabel: 'Não foi possível ler cartão',
       accountStatus: 'error',
       statusLabel: 'Erro na leitura',
+      statusDescription: 'Não foi possível consultar a conta na Meta.',
+      statusTone: 'empty',
+      statusIcon: 'bx-error',
+      hasPaymentProblem: false,
       tone: 'empty',
       error: normalizeMetaError(error, 'Não foi possível carregar esta conta de anúncio.'),
     }

@@ -17129,7 +17129,11 @@ export default function DashboardShell({
                             <strong>{row.pendingAmount == null ? '-' : formatCurrencyByCode(row.pendingAmount, row.currency)}</strong>
                           </td>
                           <td>
-                            <span className={'status-badge ' + (row.accountId ? 'status-active' : 'status-paused')}>
+                            <span
+                              className={'ad-balance-payment-status ' + (row.statusTone || (row.accountId ? 'success' : 'empty'))}
+                              title={row.statusDescription || ''}
+                            >
+                              <i className={'bx ' + (row.statusIcon || (row.accountId ? 'bx-check-circle' : 'bx-link-alt'))}></i>
                               {row.statusLabel || 'Sem status'}
                             </span>
                           </td>
@@ -30772,6 +30776,40 @@ export default function DashboardShell({
           color: color-mix(in srgb, var(--accent-emerald) 72%, white 20%);
         }
 
+        .ad-balance-payment-status {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          min-height: 36px;
+          padding: 8px 12px;
+          border-radius: 999px;
+          border: 1px solid rgba(148, 163, 184, 0.18);
+          background: rgba(255, 255, 255, 0.045);
+          color: var(--muted-text);
+          font-size: 0.82rem;
+          font-weight: 900;
+          white-space: nowrap;
+        }
+
+        .ad-balance-payment-status.success {
+          border-color: color-mix(in srgb, var(--accent-emerald) 42%, transparent);
+          background: color-mix(in srgb, var(--accent-emerald) 12%, transparent);
+          color: color-mix(in srgb, var(--accent-emerald) 76%, white 24%);
+        }
+
+        .ad-balance-payment-status.warning {
+          border-color: rgba(245, 158, 11, 0.44);
+          background: rgba(245, 158, 11, 0.12);
+          color: #fde68a;
+        }
+
+        .ad-balance-payment-status.danger {
+          border-color: rgba(248, 113, 113, 0.46);
+          background: rgba(239, 68, 68, 0.13);
+          color: #fecaca;
+        }
+
         .ad-balance-empty-cell {
           padding: 32px 20px !important;
           color: var(--muted-text);
@@ -30835,6 +30873,26 @@ export default function DashboardShell({
         .dashboard-light-mode:not([data-active-tab='apresentacao']) .ad-balance-billing-badge.postpaid {
           background: #eff6ff;
           color: #1d4ed8;
+        }
+
+        .dashboard-light-mode:not([data-active-tab='apresentacao']) .ad-balance-payment-status {
+          background: #f8fafc;
+          color: #475569;
+        }
+
+        .dashboard-light-mode:not([data-active-tab='apresentacao']) .ad-balance-payment-status.success {
+          background: #ecfdf5;
+          color: #047857;
+        }
+
+        .dashboard-light-mode:not([data-active-tab='apresentacao']) .ad-balance-payment-status.warning {
+          background: #fffbeb;
+          color: #92400e;
+        }
+
+        .dashboard-light-mode:not([data-active-tab='apresentacao']) .ad-balance-payment-status.danger {
+          background: #fef2f2;
+          color: #b91c1c;
         }
 
         @media (max-width: 1180px) {
