@@ -38,6 +38,58 @@ function getAuthErrorStatus(error: unknown) {
   return 500
 }
 
+async function findSupabaseUserByEmail(adminSupabase: any, email: string) {
+  const targetEmail = String(email || '').trim().toLowerCase()
+  if (!targetEmail) return null
+
+  let page = 1
+  const perPage = 200
+
+  while (page <= 20) {
+    const { data, error } = await adminSupabase.auth.admin.listUsers({ page, perPage })
+    if (error) throw error
+
+    const user = data?.users?.find((item: any) => String(item.email || '').trim().toLowerCase() === targetEmail)
+    if (user) return user
+    if (!data?.users?.length || data.users.length < perPage) return null
+    page += 1
+  }
+
+  return null
+}
+
+async function createSupabaseUserWithoutEmail(input: {
+  email: string
+  password: string
+  fullName: string
+  companyName: string
+}) {
+  const { createAdminClient } = await import('@/lib/server/supabase-admin')
+  const adminSupabase = createAdminClient()
+  const email = String(input.email || '').trim().toLowerCase()
+  const password = String(input.password || '').trim()
+
+  const { data, error } = await adminSupabase.auth.admin.createUser({
+    email,
+    password,
+    email_confirm: true,
+    user_metadata: {
+      full_name: input.fullName,
+      company_name: input.companyName,
+    },
+  })
+
+  if (!error && data?.user) return data.user
+
+  const message = String(error?.message || '').toLowerCase()
+  if (message.includes('already') || message.includes('registered') || message.includes('exists')) {
+    const existingUser = await findSupabaseUserByEmail(adminSupabase, email)
+    if (existingUser) return existingUser
+  }
+
+  throw new Error(error?.message || 'Não foi possível criar a conta no login antigo.')
+}
+
 async function ensureSupabaseProfileForRegistration(input: {
   user: { id: string; email?: string | null; user_metadata?: Record<string, unknown> | null }
   fullName: string
@@ -136,30 +188,19 @@ async function registerWithLegacySupabase(body: {
     )
   }
 
-  const { createClient } = await import('@/lib/supabase/server')
-
-  const supabase = await createClient()
   const fullName = String(body.full_name || '').trim()
   const companyName = String(body.company_name || '').trim()
   const email = String(body.email || '').trim().toLowerCase()
   const role = isPrimaryAdminEmail(email) ? USER_ROLES.MASTER : USER_ROLES.OPERATOR
-  const { data, error } = await supabase.auth.signUp({
+  const user = await createSupabaseUserWithoutEmail({
     email,
     password: String(body.password || '').trim(),
-    options: {
-      data: {
-        full_name: fullName,
-        company_name: companyName,
-      },
-    },
+    fullName,
+    companyName,
   })
 
-  if (error || !data.user) {
-    throw new Error(error?.message || 'Não foi possível criar a conta no login antigo.')
-  }
-
   const profile = await ensureSupabaseProfileForRegistration({
-    user: data.user,
+    user,
     fullName,
     companyName,
   })
@@ -167,21 +208,21 @@ async function registerWithLegacySupabase(body: {
   // O Supabase antigo pode exigir confirmação de e-mail e não devolver session.
   // Para este app, a sessão principal é o cookie da plataforma, então criamos o acesso local imediatamente.
   const platformUser = await ensurePlatformUserForSupabase({
-    user_id: data.user.id,
-    tenant_id: profile?.workspace_id || data.user.id,
+    user_id: user.id,
+    tenant_id: profile?.workspace_id || user.id,
     tenant_name: companyName || 'Workspace principal',
-    email: data.user.email || body.email || '',
-    full_name: profile?.full_name || fullName || data.user.user_metadata?.full_name || data.user.email || '',
+    email: user.email || body.email || '',
+    full_name: profile?.full_name || fullName || user.user_metadata?.full_name || user.email || '',
     role: profile?.role || role,
   })
   const token = await createLocalAccessToken({
     sub: platformUser.user_id,
     tenant_id: platformUser.tenant_id,
     role: platformUser.role,
-    email: data.user.email || body.email || '',
-    full_name: profile?.full_name || fullName || data.user.user_metadata?.full_name || data.user.email || '',
+    email: user.email || body.email || '',
+    full_name: profile?.full_name || fullName || user.user_metadata?.full_name || user.email || '',
     provider: 'supabase',
-    can_edit_integrations: Boolean(profile?.can_edit_integrations) || isPrimaryAdminEmail(data.user.email || body.email || ''),
+    can_edit_integrations: Boolean(profile?.can_edit_integrations) || isPrimaryAdminEmail(user.email || body.email || ''),
   })
 
   return { token }
