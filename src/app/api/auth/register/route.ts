@@ -53,26 +53,6 @@ function isRecoverablePlatformSyncError(error: unknown) {
   )
 }
 
-async function findSupabaseUserByEmail(adminSupabase: any, email: string) {
-  const targetEmail = String(email || '').trim().toLowerCase()
-  if (!targetEmail) return null
-
-  let page = 1
-  const perPage = 200
-
-  while (page <= 20) {
-    const { data, error } = await adminSupabase.auth.admin.listUsers({ page, perPage })
-    if (error) throw error
-
-    const user = data?.users?.find((item: any) => String(item.email || '').trim().toLowerCase() === targetEmail)
-    if (user) return user
-    if (!data?.users?.length || data.users.length < perPage) return null
-    page += 1
-  }
-
-  return null
-}
-
 async function createSupabaseUserWithoutEmail(input: {
   email: string
   password: string
@@ -98,8 +78,7 @@ async function createSupabaseUserWithoutEmail(input: {
 
   const message = String(error?.message || '').toLowerCase()
   if (message.includes('already') || message.includes('registered') || message.includes('exists')) {
-    const existingUser = await findSupabaseUserByEmail(adminSupabase, email)
-    if (existingUser) return existingUser
+    throw new Error('Este e-mail já possui uma conta. Entre pelo login ou peça um convite para acessar outro workspace.')
   }
 
   throw new Error(error?.message || 'Não foi possível criar a conta no login antigo.')
@@ -126,7 +105,9 @@ async function ensureSupabaseProfileForRegistration(input: {
     .maybeSingle()
 
   if (existingProfileError) throw existingProfileError
-  if (existingProfile?.workspace_id) return existingProfile
+  if (existingProfile?.workspace_id) {
+    throw new Error('Este e-mail já está vinculado a um workspace. Entre pelo login ou use outro e-mail para criar uma nova empresa.')
+  }
 
   let workspaceId = null
 
