@@ -41,10 +41,14 @@ function isRecoverableLoginError(error: unknown) {
   const message = error instanceof Error ? error.message.toLowerCase() : String(error || '').toLowerCase()
   return (
     message.includes('tenant or user not found') ||
+    message.includes('tenant/user') ||
     message.includes('schema cache') ||
     message.includes('could not find the table') ||
     message.includes('database_url') ||
+    message.includes('password authentication failed') ||
     message.includes('connection terminated') ||
+    message.includes('econnrefused') ||
+    message.includes('enotfound') ||
     message.includes('timeout') ||
     message.includes('fetch failed')
   )
