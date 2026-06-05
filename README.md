@@ -1,113 +1,42 @@
-# Nype Orbit SaaS
+# Assessoria LP Dashboard
 
-Multi-tenant SaaS platform for marketing metrics, client management, integrations, health scoring, and operational tracking.
+Next.js dashboard for Meta Ads analysis, client management, AI assistance, weekly operations tracking, and workspace settings.
+
+Production domain: `https://app.assessorialp.com.br`
 
 ## Stack
 
-- Frontend: Next.js, React, TypeScript, TailwindCSS, shadcn/ui-style components, Recharts
-- Backend: FastAPI, SQLAlchemy ORM, PostgreSQL, JWT authentication
-- Architecture: REST API, multi-tenant data isolation, modular services, mock background sync jobs
+- Next.js App Router
+- React
+- TypeScript and JavaScript
+- TailwindCSS
+- Supabase Auth and Postgres
 
-## Project structure
+## Active App Shape
 
 ```text
 Nype/
-├── apps/
-│   ├── backend/                 # FastAPI API, SQLAlchemy models, seed data, cron sync
-│   ├── ai-service/              # Existing lightweight AI service
-│   └── api/                     # Existing NestJS API kept intact
 ├── src/
-│   ├── app/saas/                # New SaaS dashboard route
-│   ├── components/saas/         # Dashboard modules
-│   ├── components/ui/           # shadcn/ui-style primitives
-│   └── lib/saas/                # Types, mock data, API adapter
-└── packages/db/                 # Existing shared package
+│   ├── app/                    # Next routes and API handlers
+│   ├── components/dashboard/   # Current online dashboard shell
+│   ├── components/saas/        # Legacy-compatible SaaS panels still imported by /saas
+│   └── lib/                    # Supabase, dashboard, Meta, AI, and integration helpers
+├── public/                     # Static assets
+├── supabase_schema.sql         # Current Supabase schema used by the app
+└── supabase_client_weekly_snapshots.sql
 ```
 
-## Backend modules
-
-- `auth`: email/password login and JWT issue
-- `clients`: full CRUD with tenant scoping
-- `integrations`: Meta Ads, Google Ads, LinkedIn Ads, and Agendor connection records
-- `dashboards`: client and operations aggregations
-- `tasks`: project management per client
-- `settings`: tenant theme customization
-- `services/seed.py`: production-style demo seed
-- `services/integrations.py`: mock sync + metric normalization
-- `services/health.py`: green/yellow/red health score engine
-
-## Frontend modules
-
-- Sidebar navigation
-- Topbar with client selector
-- Metric cards
-- Time-series and distribution charts
-- Dynamic funnel builder
-- Client health and integration panels
-- Project checklist and task management
-- Theme customization panel
-
-## Local run
-
-### 1. Start PostgreSQL
-
-```bash
-docker run --name nype-marketing-postgres -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=nype_marketing -p 5432:5432 -d postgres:16
-```
-
-### 2. Install frontend dependencies
+## Local Run
 
 ```bash
 npm install
-```
-
-### 3. Configure and run the FastAPI backend
-
-```bash
-cd apps/backend
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-cp .env.example .env
-uvicorn app.main:app --reload --port 8000
-```
-
-Demo users:
-
-- `admin@nype.demo` / `admin123`
-- `operator@nype.demo` / `operator123`
-
-### 4. Run the Next.js frontend
-
-```bash
-cd ../..
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000). The new SaaS is now the primary application at the root domain, and the legacy interface routes redirect back to `/`.
+Open `http://localhost:3000`.
 
-## API overview
+## Supabase
 
-- `POST /api/v1/auth/login`
-- `GET /api/v1/auth/me`
-- `GET /api/v1/clients`
-- `POST /api/v1/clients`
-- `PUT /api/v1/clients/{client_id}`
-- `DELETE /api/v1/clients/{client_id}`
-- `GET /api/v1/clients/{client_id}/checklist`
-- `GET /api/v1/clients/{client_id}/tasks`
-- `GET /api/v1/dashboards/clients/{client_id}`
-- `GET /api/v1/dashboards/operations`
-- `GET /api/v1/integrations`
-- `POST /api/v1/integrations`
-- `POST /api/v1/integrations/{integration_id}/sync`
-- `GET /api/v1/settings/theme`
-- `PUT /api/v1/settings/theme`
-- `GET /api/v1/tasks`
-- `POST /api/v1/tasks/clients/{client_id}`
-- `PATCH /api/v1/tasks/{task_id}`
+The current app uses the workspace-based Supabase tables such as `workspaces`, `profiles`, `workspace_clients`, `workspace_preferences`, `workspace_meta_connections`, `assistant_conversations`, `assistant_messages`, and related access-control tables.
 
-## Notes
-
-- The frontend uses live API data when available and falls back to typed mock data so the dashboard still renders during setup.
-- Integration sync currently uses deterministic mock payloads with normalization logic; the provider module boundaries are ready for real API clients.
+The old Prisma/Nest/FastAPI local services and Prisma-style Supabase schema were removed because the online app no longer depends on them.
