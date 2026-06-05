@@ -2,13 +2,10 @@ import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 
 import { PLATFORM_AUTH_COOKIE } from '@/lib/saas/auth'
-import { getPlatformApiUrl } from '@/lib/saas/server-api'
 import { getLocalSessionUser } from '@/lib/server/platform-auth-fallback'
 import { createAdminClient } from '@/lib/server/supabase-admin'
 import { getWorkspaceBranding } from '@/lib/server/workspace-branding'
 import { isPrimaryAdminEmail, USER_ROLES } from '@/lib/server/access-control'
-
-const API_URL = getPlatformApiUrl()
 
 function unauthenticatedResponse() {
   const response = NextResponse.json({ authenticated: false }, { status: 401 })
@@ -81,23 +78,9 @@ export async function GET() {
   }
 
   try {
-    const response = await fetch(`${API_URL}/auth/me`, {
-      headers: { Authorization: `Bearer ${token}` },
-      cache: 'no-store',
-    })
-
-    if (!response.ok) {
-      throw new Error('Sessão remota inválida')
-    }
-
-    const user = await response.json()
+    const user = await enrichLocalUserWithWorkspace(await getLocalSessionUser(token))
     return NextResponse.json({ authenticated: true, user })
   } catch {
-    try {
-      const user = await enrichLocalUserWithWorkspace(await getLocalSessionUser(token))
-      return NextResponse.json({ authenticated: true, user, fallback: true })
-    } catch {
-      return unauthenticatedResponse()
-    }
+    return unauthenticatedResponse()
   }
 }

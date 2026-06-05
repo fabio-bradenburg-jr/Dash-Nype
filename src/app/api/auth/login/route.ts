@@ -1,15 +1,7 @@
 import { NextResponse } from 'next/server'
 
 import { PLATFORM_AUTH_COOKIE } from '@/lib/saas/auth'
-import { getPlatformApiUrl } from '@/lib/saas/server-api'
-import {
-  createLocalAccessToken,
-  ensurePlatformUserForSupabase,
-  hasLocalDatabaseConfig,
-  loginWithLocalDatabase,
-} from '@/lib/server/platform-auth-fallback'
-
-const API_URL = getPlatformApiUrl()
+import { createLocalAccessToken } from '@/lib/server/platform-auth-fallback'
 
 function getSupabaseAuthConfig() {
   const missing: string[] = []
@@ -104,40 +96,15 @@ async function loginWithLegacySupabase(body: { email: string; password: string }
     }
   }
 
-  try {
-    const platformUser = await ensurePlatformUserForSupabase({
-      user_id: data.user.id,
-      tenant_id: accessContext.workspaceId || data.user.id,
-      tenant_name: accessContext.profile?.workspace?.name || accessContext.profile?.company_name || 'Workspace principal',
-      email: data.user.email || '',
-      full_name: accessContext.profile?.full_name || data.user.user_metadata?.full_name || data.user.email || '',
-      role: accessContext.role || 'operator',
-    })
-
-    return createLocalAccessToken({
-      sub: platformUser.user_id,
-      tenant_id: platformUser.tenant_id,
-      role: platformUser.role,
-      email: data.user.email || '',
-      full_name: accessContext.profile?.full_name || data.user.user_metadata?.full_name || data.user.email || '',
-      provider: 'supabase',
-      can_edit_integrations: accessContext.canEditIntegrations || isPrimaryAdmin,
-    })
-  } catch (platformError) {
-    if (!isPrimaryAdmin && !isRecoverableLoginError(platformError)) {
-      throw platformError
-    }
-
-    return createLocalAccessToken({
-      sub: `supabase:${data.user.id}`,
-      tenant_id: accessContext.workspaceId || data.user.id,
-      role: isPrimaryAdmin ? 'master' : String(accessContext.role || 'visualizador'),
-      email: data.user.email || '',
-      full_name: accessContext.profile?.full_name || data.user.user_metadata?.full_name || data.user.email || '',
-      provider: 'supabase',
-      can_edit_integrations: isPrimaryAdmin || Boolean(accessContext.canEditIntegrations),
-    })
-  }
+  return createLocalAccessToken({
+    sub: `supabase:${data.user.id}`,
+    tenant_id: accessContext.workspaceId || data.user.id,
+    role: isPrimaryAdmin ? 'master' : String(accessContext.role || 'visualizador'),
+    email: data.user.email || '',
+    full_name: accessContext.profile?.full_name || data.user.user_metadata?.full_name || data.user.email || '',
+    provider: 'supabase',
+    can_edit_integrations: isPrimaryAdmin || Boolean(accessContext.canEditIntegrations),
+  })
 }
 
 export async function POST(request: Request) {
@@ -158,78 +125,7 @@ export async function POST(request: Request) {
 
     return nextResponse
   } catch (legacyError) {
-    const supabaseConfig = getSupabaseAuthConfig()
-
-    if (supabaseConfig.enabled && !isRecoverableLoginError(legacyError)) {
-      const message = legacyError instanceof Error ? legacyError.message : 'Não foi possível entrar.'
-      return NextResponse.json({ error: message }, { status: getAuthErrorStatus(legacyError) })
-    }
-
-    // Se o Supabase falhou por infraestrutura/perfil, seguimos para o backend novo/fallback local.
-  }
-
-  try {
-    const response = await fetch(`${API_URL}/auth/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-      cache: 'no-store',
-    })
-
-    const data = await response.json()
-
-    if (!response.ok) {
-      return NextResponse.json(
-        { error: data?.detail || data?.error || 'Não foi possível entrar.' },
-        { status: response.status }
-      )
-    }
-
-    const nextResponse = NextResponse.json({ ok: true })
-    nextResponse.cookies.set({
-      name: PLATFORM_AUTH_COOKIE,
-      value: data.access_token,
-      httpOnly: true,
-      sameSite: 'lax',
-      secure: process.env.NODE_ENV === 'production',
-      path: '/',
-      maxAge: 60 * 60 * 12,
-    })
-
-    return nextResponse
-  } catch {
-    if (!hasLocalDatabaseConfig()) {
-      return NextResponse.json(
-        {
-          error:
-            'Não foi possível entrar agora. A autenticação está disponível, mas a base de permissões do app não respondeu.',
-        },
-        { status: 503 }
-      )
-    }
-
-    try {
-      const token = await loginWithLocalDatabase(body)
-      const nextResponse = NextResponse.json({ ok: true, fallback: true })
-      nextResponse.cookies.set({
-        name: PLATFORM_AUTH_COOKIE,
-        value: token,
-        httpOnly: true,
-        sameSite: 'lax',
-        secure: process.env.NODE_ENV === 'production',
-        path: '/',
-        maxAge: 60 * 60 * 12,
-      })
-      return nextResponse
-    } catch (fallbackError) {
-      const message =
-        fallbackError instanceof Error && fallbackError.message === 'DATABASE_URL não configurada'
-          ? 'O login não está disponível neste ambiente agora. Falta configurar a conexão com o banco.'
-          : fallbackError instanceof Error
-            ? fallbackError.message
-            : 'Não foi possível entrar.'
-
-      return NextResponse.json({ error: isRecoverableLoginError(fallbackError) ? 'Não foi possível validar seu acesso agora porque a base de permissões do app não respondeu.' : message }, { status: isRecoverableLoginError(fallbackError) ? 503 : 500 })
-    }
+    const message = legacyError instanceof Error ? legacyError.message : 'Não foi possível entrar.'
+    return NextResponse.json({ error: message }, { status: getAuthErrorStatus(legacyError) })
   }
 }

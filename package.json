@@ -2,16 +2,9 @@
   "name": "nype-dashboard",
   "version": "0.1.0",
   "private": true,
-  "workspaces": [
-    "apps/*",
-    "packages/*"
-  ],
   "scripts": {
     "dev": "next dev --webpack",
     "dev:web": "next dev --webpack",
-    "dev:backend": "cd apps/backend && uvicorn app.main:app --reload --port 8000",
-    "dev:api": "npm --workspace @nype/api run start:dev",
-    "dev:db:seed": "npm --workspace @nype/db run prisma:seed",
     "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint"
@@ -27,7 +20,6 @@
     "jspdf": "^4.2.0",
     "lucide-react": "^0.511.0",
     "next": "16.1.6",
-    "pg": "^8.20.0",
     "react": "19.2.3",
     "react-chartjs-2": "^5.3.1",
     "react-dom": "19.2.3",

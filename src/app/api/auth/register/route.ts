@@ -1,16 +1,8 @@
 import { NextResponse } from 'next/server'
 
 import { PLATFORM_AUTH_COOKIE } from '@/lib/saas/auth'
-import { getPlatformApiUrl } from '@/lib/saas/server-api'
-import {
-  createLocalAccessToken,
-  ensurePlatformUserForSupabase,
-  hasLocalDatabaseConfig,
-  registerWithLocalDatabase,
-} from '@/lib/server/platform-auth-fallback'
+import { createLocalAccessToken } from '@/lib/server/platform-auth-fallback'
 import { isPrimaryAdminEmail, USER_ROLES } from '@/lib/server/access-control'
-
-const API_URL = getPlatformApiUrl()
 
 function getSupabaseAuthConfig() {
   const missing: string[] = []
@@ -37,20 +29,6 @@ function getAuthErrorStatus(error: unknown) {
   if (message.includes('password') || message.includes('senha')) return 400
   if (message.includes('email') || message.includes('invalid') || message.includes('validate')) return 400
   return 500
-}
-
-function isRecoverablePlatformSyncError(error: unknown) {
-  const message = error instanceof Error ? error.message.toLowerCase() : String(error || '').toLowerCase()
-  return (
-    message.includes('tenant or user not found') ||
-    message.includes('tenant/user') ||
-    message.includes('database_url') ||
-    message.includes('password authentication failed') ||
-    message.includes('connection terminated') ||
-    message.includes('econnrefused') ||
-    message.includes('enotfound') ||
-    message.includes('timeout')
-  )
 }
 
 async function createSupabaseUserWithoutEmail(input: {
@@ -214,28 +192,12 @@ async function registerWithLegacySupabase(body: {
     companyName,
   })
 
-  // O Supabase antigo pode exigir confirmação de e-mail e não devolver session.
-  // Para este app, a sessão principal é o cookie da plataforma, então criamos o acesso local imediatamente.
-  let platformUser = null
-  try {
-    platformUser = await ensurePlatformUserForSupabase({
-      user_id: user.id,
-      tenant_id: profile?.workspace_id || user.id,
-      tenant_name: companyName || 'Workspace principal',
-      email: user.email || body.email || '',
-      full_name: profile?.full_name || fullName || user.user_metadata?.full_name || user.email || '',
-      role: profile?.role || role,
-    })
-  } catch (platformError) {
-    if (!isRecoverablePlatformSyncError(platformError)) {
-      throw platformError
-    }
-  }
-
+  // O Supabase pode não devolver session no cadastro administrativo.
+  // A sessão do app é o cookie local assinado, vinculado ao workspace atual.
   const token = await createLocalAccessToken({
-    sub: platformUser?.user_id || `supabase:${user.id}`,
-    tenant_id: platformUser?.tenant_id || profile?.workspace_id || user.id,
-    role: platformUser?.role || profile?.role || role,
+    sub: `supabase:${user.id}`,
+    tenant_id: profile?.workspace_id || user.id,
+    role: profile?.role || role,
     email: user.email || body.email || '',
     full_name: profile?.full_name || fullName || user.user_metadata?.full_name || user.email || '',
     provider: 'supabase',
@@ -264,78 +226,7 @@ export async function POST(request: Request) {
 
     return nextResponse
   } catch (legacyError) {
-    const supabaseConfig = getSupabaseAuthConfig()
-
-    if (supabaseConfig.enabled) {
-      const message = legacyError instanceof Error ? legacyError.message : 'Não foi possível criar a conta.'
-      return NextResponse.json({ error: message }, { status: getAuthErrorStatus(legacyError) })
-    }
-
-    // Se o Supabase não estiver configurado, seguimos para o backend novo/fallback local.
-  }
-
-  try {
-    const response = await fetch(`${API_URL}/auth/register`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-      cache: 'no-store',
-    })
-
-    const data = await response.json()
-
-    if (!response.ok) {
-      return NextResponse.json(
-        { error: data?.detail || data?.error || 'Não foi possível criar a conta.' },
-        { status: response.status }
-      )
-    }
-
-    const nextResponse = NextResponse.json({ ok: true })
-    nextResponse.cookies.set({
-      name: PLATFORM_AUTH_COOKIE,
-      value: data.access_token,
-      httpOnly: true,
-      sameSite: 'lax',
-      secure: process.env.NODE_ENV === 'production',
-      path: '/',
-      maxAge: 60 * 60 * 12,
-    })
-
-    return nextResponse
-  } catch {
-    if (!hasLocalDatabaseConfig()) {
-      return NextResponse.json(
-        {
-          error:
-            'O cadastro não está disponível neste ambiente agora. Configure `PLATFORM_BACKEND_URL` para o backend do SaaS ou `DATABASE_URL` para o fallback local.',
-        },
-        { status: 500 }
-      )
-    }
-
-    try {
-      const token = await registerWithLocalDatabase(body)
-      const nextResponse = NextResponse.json({ ok: true, fallback: true })
-      nextResponse.cookies.set({
-        name: PLATFORM_AUTH_COOKIE,
-        value: token,
-        httpOnly: true,
-        sameSite: 'lax',
-        secure: process.env.NODE_ENV === 'production',
-        path: '/',
-        maxAge: 60 * 60 * 12,
-      })
-      return nextResponse
-    } catch (fallbackError) {
-      const message =
-        fallbackError instanceof Error && fallbackError.message === 'DATABASE_URL não configurada'
-          ? 'O cadastro não está disponível neste ambiente agora. Falta configurar a conexão com o banco.'
-          : fallbackError instanceof Error
-            ? fallbackError.message
-            : 'Não foi possível criar a conta.'
-
-      return NextResponse.json({ error: message }, { status: 500 })
-    }
+    const message = legacyError instanceof Error ? legacyError.message : 'Não foi possível criar a conta.'
+    return NextResponse.json({ error: message }, { status: getAuthErrorStatus(legacyError) })
   }
 }
