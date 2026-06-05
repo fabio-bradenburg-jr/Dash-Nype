@@ -9592,6 +9592,7 @@ export default function DashboardShell({
             clients: clients.map((client) => ({
               id: client.id,
               name: client.name,
+              logoUrl: client.logoUrl,
               metaAdAccountId: client.metaAdAccountId,
             })),
           }),
@@ -17089,7 +17090,11 @@ export default function DashboardShell({
                           <td>
                             <div className="ad-balance-client-cell">
                               <span className="ad-balance-client-icon">
-                                <i className="bx bx-building-house"></i>
+                                {row.clientLogoUrl ? (
+                                  <img src={row.clientLogoUrl} alt={`Logo ${row.clientName}`} />
+                                ) : (
+                                  <i className="bx bx-building-house"></i>
+                                )}
                               </span>
                               <div>
                                 <strong>{row.clientName}</strong>
@@ -30676,6 +30681,15 @@ export default function DashboardShell({
           background: color-mix(in srgb, var(--accent-emerald) 13%, transparent);
           color: var(--accent-emerald);
           font-size: 1.2rem;
+          overflow: hidden;
+        }
+
+        .ad-balance-client-icon img {
+          width: 100%;
+          height: 100%;
+          object-fit: contain;
+          padding: 6px;
+          background: rgba(255, 255, 255, 0.04);
         }
 
         .ad-balance-pill {

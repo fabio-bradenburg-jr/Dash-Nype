@@ -118,6 +118,7 @@ async function fetchAdAccountBalance(request, token, client) {
     return {
       clientId: client.id,
       clientName: client.name || 'Cliente sem nome',
+      clientLogoUrl: client.logoUrl || '',
       accountId: '',
       accountName: '',
       currency: 'BRL',
@@ -180,6 +181,7 @@ async function fetchAdAccountBalance(request, token, client) {
     return {
       clientId: client.id,
       clientName: client.name || account.name || 'Cliente sem nome',
+      clientLogoUrl: client.logoUrl || '',
       accountId,
       accountName: account.name || `Conta ${accountId}`,
       currency,
@@ -205,6 +207,7 @@ async function fetchAdAccountBalance(request, token, client) {
     return {
       clientId: client.id,
       clientName: client.name || 'Cliente sem nome',
+      clientLogoUrl: client.logoUrl || '',
       accountId,
       accountName: `Conta ${accountId}`,
       currency: 'BRL',
