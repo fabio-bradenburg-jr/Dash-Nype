@@ -1,7 +1,11 @@
 import { NextResponse } from 'next/server'
+import { randomBytes } from 'crypto'
+import { cookies } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/server/supabase-admin'
 import { AI_ACCESS_LEVELS, getAccessContext, isPrimaryAdminEmail, USER_ROLES } from '@/lib/server/access-control'
+import { PLATFORM_AUTH_COOKIE } from '@/lib/saas/auth'
+import { verifyLocalAccessToken } from '@/lib/server/platform-auth-fallback'
 
 function isMissingRelationError(error) {
   const message = String(error?.message || '').toLowerCase()
@@ -143,12 +147,56 @@ async function getAuthorizedContext(options = {}) {
   } = await supabase.auth.getUser()
 
   if (error) throw error
-  if (!user) {
-    return { errorResponse: NextResponse.json({ error: 'Não autenticado.' }, { status: 401 }) }
-  }
-
   const adminSupabase = createAdminClient()
-  const accessContext = await getAccessContext(supabase, user, { adminSupabase })
+  let accessContext = null
+
+  if (user) {
+    accessContext = await getAccessContext(supabase, user, { adminSupabase })
+  } else {
+    const token = (await cookies()).get(PLATFORM_AUTH_COOKIE)?.value
+    if (!token) {
+      return { errorResponse: NextResponse.json({ error: 'Não autenticado.' }, { status: 401 }) }
+    }
+
+    const payload = await verifyLocalAccessToken(token)
+    const userId = String(payload.sub || '').replace(/^supabase:/, '')
+    const { data: profile, error: profileError } = await adminSupabase
+      .from('profiles')
+      .select('id, email, full_name, role, ai_access_level, can_edit_integrations, workspace_id')
+      .eq('id', userId)
+      .maybeSingle()
+
+    if (profileError) throw profileError
+    if (!profile?.workspace_id) {
+      return { errorResponse: NextResponse.json({ error: 'Workspace não encontrado.' }, { status: 404 }) }
+    }
+
+    const { data: workspace, error: workspaceError } = await adminSupabase
+      .from('workspaces')
+      .select('id, name, owner_user_id')
+      .eq('id', profile.workspace_id)
+      .maybeSingle()
+
+    if (workspaceError) throw workspaceError
+
+    const isPrimaryAdmin = isPrimaryAdminEmail(profile.email)
+    const isWorkspaceOwner = Boolean(workspace?.owner_user_id && workspace.owner_user_id === profile.id)
+    const role = isPrimaryAdmin ? USER_ROLES.MASTER : profile.role === USER_ROLES.MASTER ? USER_ROLES.VIEWER : profile.role || USER_ROLES.VIEWER
+
+    accessContext = {
+      profile,
+      role,
+      workspaceId: profile.workspace_id,
+      workspace: workspace || null,
+      isWorkspaceOwner,
+      canManageUsers: isPrimaryAdmin || isWorkspaceOwner,
+      canManageClients: isPrimaryAdmin || isWorkspaceOwner || role === USER_ROLES.OPERATOR,
+      canEditIntegrations: isPrimaryAdmin || isWorkspaceOwner || Boolean(profile.can_edit_integrations),
+      viewableClientIds: [],
+      editableClientIds: [],
+      isClientRole: role === USER_ROLES.CLIENT,
+    }
+  }
 
   const hasPermission = requireManageUsers ? accessContext.canManageUsers : (accessContext.canManageUsers || accessContext.canManageClients)
 
@@ -236,7 +284,7 @@ export async function POST(request) {
     const { adminSupabase, accessContext } = authorized
     const body = await request.json()
     const email = String(body.email || '').trim().toLowerCase()
-    const password = String(body.password || '').trim()
+    const password = String(body.password || '').trim() || randomBytes(9).toString('base64url')
     const fullName = String(body.fullName || '').trim()
     let role = Object.values(USER_ROLES).includes(body.role) ? body.role : USER_ROLES.VIEWER
 
@@ -257,8 +305,8 @@ export async function POST(request) {
     const clientIds = Array.isArray(body.clientIds) ? body.clientIds.filter(Boolean) : []
     const clientGroupIds = Array.isArray(body.clientGroupIds) ? body.clientGroupIds.filter(Boolean) : []
 
-    if (!email || !password) {
-      return NextResponse.json({ error: 'Informe email e senha para criar o usuário.' }, { status: 400 })
+    if (!email) {
+      return NextResponse.json({ error: 'Informe o e-mail para convidar o usuário.' }, { status: 400 })
     }
 
     const { data: createdUser, error: createUserError } = await adminSupabase.auth.admin.createUser({
@@ -330,7 +378,15 @@ export async function POST(request) {
       }
     }
 
-    return NextResponse.json({ ok: true, userId })
+    return NextResponse.json({
+      ok: true,
+      userId,
+      invite: {
+        email,
+        temporaryPassword: password,
+        loginUrl: '/login',
+      },
+    })
   } catch (error) {
     console.error('Users POST error:', error)
     return NextResponse.json({ error: error.message || 'Não foi possível criar o usuário.' }, { status: 500 })

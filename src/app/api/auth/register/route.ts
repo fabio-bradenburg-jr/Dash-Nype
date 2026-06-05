@@ -96,9 +96,10 @@ async function ensureSupabaseProfileForRegistration(input: {
   fullName: string
   companyName: string
 }) {
-  const [{ createAdminClient }, { AI_ACCESS_LEVELS }] = await Promise.all([
+  const [{ createAdminClient }, { AI_ACCESS_LEVELS }, { saveWorkspaceBranding }] = await Promise.all([
     import('@/lib/server/supabase-admin'),
     import('@/lib/server/access-control'),
+    import('@/lib/server/workspace-branding'),
   ])
   const adminSupabase = createAdminClient()
   const email = String(input.user.email || '').trim().toLowerCase()
@@ -169,6 +170,18 @@ async function ensureSupabaseProfileForRegistration(input: {
     .single()
 
   if (profileError) throw profileError
+
+  await saveWorkspaceBranding(
+    adminSupabase,
+    workspaceId,
+    {
+      appName: input.companyName || 'Novo workspace',
+      companyName: input.companyName || 'Novo workspace',
+      onboardingCompleted: false,
+    },
+    input.companyName || 'Novo workspace'
+  )
+
   return profile
 }
 

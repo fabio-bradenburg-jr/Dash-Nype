@@ -9,6 +9,20 @@ export interface UserAppearance {
   textColor: string
 }
 
+export interface WorkspaceBranding {
+  appName: string
+  appSubtitle: string
+  companyName: string
+  logoUrl: string
+  mode: 'light' | 'dark' | 'custom'
+  primaryColor: string
+  accentColor: string
+  backgroundColor: string
+  panelColor: string
+  textColor: string
+  onboardingCompleted: boolean
+}
+
 export interface UserProfile {
   id: string
   email: string
@@ -24,6 +38,13 @@ export interface AccessContextValue {
   profile: UserProfile | null
   role: string | null
   workspaceId: string | null
+  workspace?: {
+    id: string
+    name?: string | null
+    owner_user_id?: string | null
+  } | null
+  workspaceBranding?: WorkspaceBranding | null
+  isWorkspaceOwner?: boolean
   canManageUsers: boolean
   canManageClients: boolean
   canEditIntegrations: boolean

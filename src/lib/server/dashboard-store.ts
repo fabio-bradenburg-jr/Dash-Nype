@@ -1,5 +1,6 @@
 import { USER_ROLES } from '@/lib/server/access-control'
 import { DEFAULT_AI_SETTINGS, normalizeAiSettings } from '@/lib/ai-config'
+import { normalizeWorkspaceBranding } from '@/lib/server/workspace-branding'
 import type {
   AccessContextLike,
   ClientChecklistItemRecord,
@@ -1067,6 +1068,7 @@ export async function getDashboardState(
     accessContext
   )
   const preferencePayload = preferenceRow?.payload && typeof preferenceRow.payload === 'object' ? preferenceRow.payload : {}
+  const workspaceBranding = normalizeWorkspaceBranding(preferencePayload.workspaceBranding, accessContext.workspace?.name || '')
   const storedGlobalIntegrations =
     preferencePayload.globalIntegrations && typeof preferencePayload.globalIntegrations === 'object'
       ? preferencePayload.globalIntegrations
@@ -1087,6 +1089,7 @@ export async function getDashboardState(
     metric1: preferenceRow?.metric_1 || 'spend',
     metric2: preferenceRow?.metric_2 || 'roas',
     activeClientId: filteredClients[0]?.id || '',
+    workspaceBranding,
     globalIntegrations: resolvedGlobalIntegrations,
     clients: filteredClients,
     clientGroups,
@@ -1198,11 +1201,12 @@ export async function saveDashboardState(
     return getDashboardState(adminSupabase, accessContext)
   }
 
-  if (accessContext.role === USER_ROLES.MASTER) {
+  if (accessContext.role === USER_ROLES.MASTER || accessContext.canManageUsers) {
     const [
       { data: existingClientRows, error: existingClientsError },
       { data: existingGroupRows, error: existingGroupsError },
       { data: existingProductRows, error: existingProductsError },
+      { data: currentPreferenceRow, error: currentPreferenceError },
     ] = await Promise.all([
       adminSupabase
         .from('workspace_clients')
@@ -1216,17 +1220,28 @@ export async function saveDashboardState(
         .from('workspace_products')
         .select('id')
         .eq('workspace_id', accessContext.workspaceId),
+      adminSupabase
+        .from('workspace_preferences')
+        .select('payload')
+        .eq('workspace_id', accessContext.workspaceId)
+        .maybeSingle(),
     ])
 
     if (existingClientsError) throw existingClientsError
     if (existingGroupsError && !isMissingRelationError(existingGroupsError)) throw existingGroupsError
     if (existingProductsError && !isMissingRelationError(existingProductsError)) throw existingProductsError
+    if (currentPreferenceError) throw currentPreferenceError
     if (existingGroupsError && isMissingRelationError(existingGroupsError) && submittedClientGroups.length > 0) {
       throw new Error('As tabelas de grupos de clientes ainda nao foram criadas no Supabase. Rode a migration antes de salvar grupos.')
     }
     if (existingProductsError && isMissingRelationError(existingProductsError) && submittedProducts.length > 0) {
       throw new Error('A tabela de produtos ainda nao foi criada no Supabase. Rode a migration antes de salvar produtos.')
     }
+
+    const currentPreferencePayload =
+      currentPreferenceRow?.payload && typeof currentPreferenceRow.payload === 'object'
+        ? currentPreferenceRow.payload
+        : {}
 
     const { error: preferenceError } = await adminSupabase
       .from('workspace_preferences')
@@ -1237,6 +1252,7 @@ export async function saveDashboardState(
           metric_1: state.metric1 || 'spend',
           metric_2: state.metric2 || 'roas',
           payload: {
+            ...currentPreferencePayload,
             operationCards: submittedOperationCards,
             operationSettings: submittedOperationSettings,
             clientImplementationPhases: submittedClientImplementationPhases,
@@ -1462,6 +1478,7 @@ export async function saveDashboardState(
           metric_1: state.metric1 || currentState.metric1 || 'spend',
           metric_2: state.metric2 || currentState.metric2 || 'roas',
           payload: {
+            ...currentPreferencePayload,
             operationCards: [...preservedOperationCards, ...editableOperationCards],
             operationSettings: currentState.operationSettings,
             clientImplementationPhases: submittedClientImplementationPhases.length ? submittedClientImplementationPhases : currentState.clientImplementationPhases,

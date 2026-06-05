@@ -10,7 +10,7 @@ import {
   normalizeUserAppearance,
   saveUserAppearance,
 } from '@/lib/user-appearance-storage'
-import type { AccessContextValue, UserAppearance, UserContextValue, UserProfile } from '@/lib/types/user'
+import type { AccessContextValue, UserAppearance, UserContextValue, UserProfile, WorkspaceBranding } from '@/lib/types/user'
 
 interface MeResponse {
   profile?: UserProfile | null
@@ -23,6 +23,12 @@ interface PlatformSessionUser {
   full_name?: string
   role?: string
   tenant_id?: string
+  workspace?: AccessContextValue['workspace']
+  branding?: WorkspaceBranding | null
+  ai_access_level?: AccessContextValue['aiAccessLevel']
+  is_workspace_owner?: boolean
+  can_manage_users?: boolean
+  can_manage_clients?: boolean
   can_edit_integrations?: boolean
 }
 
@@ -57,27 +63,34 @@ function buildPlatformProfile(platformUser: PlatformSessionUser): UserProfile {
     full_name: platformUser.full_name || platformUser.email || 'Usuário',
     avatar_url: '',
     role,
-    ai_access_level: isPrimaryAdmin ? 'master' : 'team',
+    ai_access_level: platformUser.ai_access_level || (isPrimaryAdmin ? 'master' : 'team'),
     can_edit_integrations: isPrimaryAdmin || Boolean(platformUser.can_edit_integrations),
     workspace_id: platformUser.tenant_id || null,
   }
 }
 
-function buildPlatformAccess(profile: UserProfile): AccessContextValue {
+function buildPlatformAccess(profile: UserProfile, platformUser: PlatformSessionUser): AccessContextValue {
   const role = normalizePlatformRole(profile.role)
   const isClientRole = role === 'client' || role === 'cliente'
   const isPrimaryAdmin = isPrimaryAdminEmail(profile.email)
+  const isWorkspaceOwner = Boolean(platformUser.is_workspace_owner)
+  const canManageUsers = isPrimaryAdmin || isWorkspaceOwner || Boolean(platformUser.can_manage_users)
+  const canManageClients = isPrimaryAdmin || isWorkspaceOwner || Boolean(platformUser.can_manage_clients) || role === 'operador' || role === 'operator'
+  const canEditIntegrations = isPrimaryAdmin || isWorkspaceOwner || Boolean(platformUser.can_edit_integrations)
 
   return {
     profile,
     role,
     workspaceId: profile.workspace_id,
-    canManageUsers: isPrimaryAdmin,
-    canManageClients: isPrimaryAdmin,
-    canEditIntegrations: isPrimaryAdmin || Boolean(profile.can_edit_integrations),
-    canViewDashboard: isPrimaryAdmin,
-    canUseAi: isPrimaryAdmin && !isClientRole,
-    aiAccessLevel: isPrimaryAdmin ? 'master' : 'team',
+    workspace: platformUser.workspace || null,
+    workspaceBranding: platformUser.branding || null,
+    isWorkspaceOwner,
+    canManageUsers,
+    canManageClients,
+    canEditIntegrations,
+    canViewDashboard: isPrimaryAdmin || isWorkspaceOwner || canManageClients,
+    canUseAi: !isClientRole && (isPrimaryAdmin || isWorkspaceOwner || canManageClients),
+    aiAccessLevel: profile.ai_access_level || (isPrimaryAdmin ? 'master' : 'team'),
     isClientRole,
     viewableClientIds: [],
     editableClientIds: [],
@@ -148,7 +161,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
         if (isMounted) {
           setUser(buildPlatformUser(data.user))
           setProfile(platformProfile)
-          setAccess(buildPlatformAccess(platformProfile))
+          setAccess(buildPlatformAccess(platformProfile, data.user))
           setAppearance(loadUserAppearance(data.user.id) as UserAppearance)
         }
         return true

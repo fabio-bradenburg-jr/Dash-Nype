@@ -347,6 +347,19 @@ export interface DashboardPreferences {
   metric1: string
   metric2: string
   activeClientId: string
+  workspaceBranding?: {
+    appName: string
+    appSubtitle: string
+    companyName: string
+    logoUrl: string
+    mode: 'light' | 'dark' | 'custom'
+    primaryColor: string
+    accentColor: string
+    backgroundColor: string
+    panelColor: string
+    textColor: string
+    onboardingCompleted: boolean
+  }
   globalIntegrations: DashboardIntegrations
   clients: ClientRecord[]
   clientGroups: ClientGroupRecord[]
@@ -363,6 +376,7 @@ export interface DashboardPreferences {
 
 export interface AccessContextLike {
   workspaceId?: string | null
+  workspace?: { id?: string | null; name?: string | null; owner_user_id?: string | null } | null
   role?: string | null
   profile?: { id?: string | null } | null
   canManageClients?: boolean

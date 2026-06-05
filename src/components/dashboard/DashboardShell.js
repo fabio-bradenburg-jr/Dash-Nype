@@ -80,6 +80,20 @@ const THEMES = Object.fromEntries(
   ])
 )
 
+const DEFAULT_WORKSPACE_BRANDING = {
+  appName: 'Assessoria LP',
+  appSubtitle: 'Performance Hub',
+  companyName: 'Assessoria LP',
+  logoUrl: '',
+  mode: 'dark',
+  primaryColor: '#26C281',
+  accentColor: '#4FDF9B',
+  backgroundColor: '#070908',
+  panelColor: '#121817',
+  textColor: '#F4F7F5',
+  onboardingCompleted: true,
+}
+
 const THEME_LABELS = Object.fromEntries(LEGACY_THEME_PRESETS.map((preset) => [preset.key, preset.label]))
 
 const AI_INSIGHT_TYPE_LABELS = {
@@ -3475,9 +3489,15 @@ export default function DashboardShell({
   const [isEditClientModalOpen, setIsEditClientModalOpen] = useState(false)
   const [isCreateUserModalOpen, setIsCreateUserModalOpen] = useState(false)
   const [isEditUserModalOpen, setIsEditUserModalOpen] = useState(false)
+  const [isBrandingModalOpen, setIsBrandingModalOpen] = useState(false)
+  const [workspaceBranding, setWorkspaceBranding] = useState(DEFAULT_WORKSPACE_BRANDING)
+  const [brandingForm, setBrandingForm] = useState(DEFAULT_WORKSPACE_BRANDING)
+  const [isSavingBranding, setIsSavingBranding] = useState(false)
+  const [brandingError, setBrandingError] = useState('')
   const [isDashboardEntryModalOpen, setIsDashboardEntryModalOpen] = useState(false)
   const [dashboardEntryClientId, setDashboardEntryClientId] = useState('')
   const [createUserError, setCreateUserError] = useState('')
+  const [createdUserInvite, setCreatedUserInvite] = useState(null)
   const [editUserError, setEditUserError] = useState('')
   const [userForm, setUserForm] = useState({
     fullName: '',
@@ -3510,10 +3530,20 @@ export default function DashboardShell({
   })
 
   const currentTheme = useMemo(() => resolveDashboardTheme(themeColor), [themeColor])
+  const effectiveWorkspaceBranding = useMemo(
+    () => ({
+      ...DEFAULT_WORKSPACE_BRANDING,
+      ...(access?.workspaceBranding || {}),
+      ...(workspaceBranding || {}),
+    }),
+    [access?.workspaceBranding, workspaceBranding]
+  )
   const appAccentColor = externalAppAccent
+    || effectiveWorkspaceBranding.accentColor
     || (appearance?.mode === 'custom' ? appearance?.accent : '#26c281')
     || currentTheme.main
   const appBackgroundTintHex = externalAppBackground
+    || effectiveWorkspaceBranding.backgroundColor
     || (appearance?.mode === 'custom'
       ? appearance?.backgroundTint
       : appearance?.mode === 'light'
@@ -3527,7 +3557,9 @@ export default function DashboardShell({
     const parsedColor = parseDashboardColor(newClientDashboardColor || appAccentColor) || parseDashboardColor(appAccentColor) || hexToRgb('#10B981')
     return rgbToHex(parsedColor).toUpperCase()
   }, [newClientDashboardColor, appAccentColor])
-  const appLogoUrl = initialAppLogoUrl || globalIntegrations.appLogoUrl || ''
+  const appLogoUrl = initialAppLogoUrl || effectiveWorkspaceBranding.logoUrl || globalIntegrations.appLogoUrl || ''
+  const appName = effectiveWorkspaceBranding.appName || effectiveWorkspaceBranding.companyName || 'Assessoria LP'
+  const appSubtitle = effectiveWorkspaceBranding.appSubtitle || 'Performance Hub'
   const role = access?.role || profile?.role || 'visualizador'
   const canManageUsers = Boolean(access?.canManageUsers)
   const canManageClients = Boolean(access?.canManageClients)
@@ -6252,6 +6284,17 @@ export default function DashboardShell({
         setThemeColor(state.themeColor || 'blue')
         setMetric1(state.metric1 || 'spend')
         setMetric2(state.metric2 || 'roas')
+        if (state.workspaceBranding) {
+          const nextBranding = {
+            ...DEFAULT_WORKSPACE_BRANDING,
+            ...state.workspaceBranding,
+          }
+          setWorkspaceBranding(nextBranding)
+          setBrandingForm(nextBranding)
+          if (canManageUsers && !nextBranding.onboardingCompleted) {
+            setIsBrandingModalOpen(true)
+          }
+        }
         setGlobalIntegrations((current) => {
           const nextIntegrations = {
             ...current,
@@ -6295,7 +6338,7 @@ export default function DashboardShell({
     }
 
     syncFromServer()
-  }, [hasLoadedPreferences, userLoading, user, hasSyncedServerState, initialActiveClientId, initialClientRecord, hasInitialClientsOverride])
+  }, [hasLoadedPreferences, userLoading, user, hasSyncedServerState, initialActiveClientId, initialClientRecord, hasInitialClientsOverride, canManageUsers])
 
   useEffect(() => {
     if (!hasLoadedPreferences) return
@@ -7945,6 +7988,46 @@ export default function DashboardShell({
     return data
   }
 
+  const handleSaveWorkspaceBranding = async (event) => {
+    event?.preventDefault?.()
+
+    try {
+      setBrandingError('')
+      setIsSavingBranding(true)
+
+      const response = await fetch('/api/workspace/branding', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          branding: {
+            ...brandingForm,
+            onboardingCompleted: true,
+          },
+        }),
+      })
+      const data = await response.json().catch(() => null)
+
+      if (!response.ok) {
+        throw new Error(data?.error || 'Não foi possível salvar a identidade visual.')
+      }
+
+      const nextBranding = {
+        ...DEFAULT_WORKSPACE_BRANDING,
+        ...(data?.branding || brandingForm),
+        onboardingCompleted: true,
+      }
+      setWorkspaceBranding(nextBranding)
+      setBrandingForm(nextBranding)
+      setIsBrandingModalOpen(false)
+    } catch (error) {
+      setBrandingError(error.message || 'Não foi possível salvar a identidade visual.')
+    } finally {
+      setIsSavingBranding(false)
+    }
+  }
+
   const handleCreateUser = async (event) => {
     event.preventDefault()
 
@@ -7967,6 +8050,8 @@ export default function DashboardShell({
         throw new Error(data.error || 'Não foi possível criar o usuário.')
       }
 
+      setCreatedUserInvite(data.invite || null)
+
       setUserForm({
         fullName: '',
         email: '',
@@ -7977,7 +8062,6 @@ export default function DashboardShell({
         clientIds: [],
         clientGroupIds: [],
       })
-      setIsCreateUserModalOpen(false)
       await loadUsers()
     } catch (error) {
       setCreateUserError(error.message || 'Não foi possível criar o usuário.')
@@ -15758,8 +15842,8 @@ export default function DashboardShell({
         '--app-bg-color': appBackgroundTintHex,
         '--app-bg-rgb': `${appBackgroundTintRgb.r}, ${appBackgroundTintRgb.g}, ${appBackgroundTintRgb.b}`,
         '--bg-dark': externalAppBackground || undefined,
-        '--bg-panel': externalAppPanelColor || undefined,
-        '--text-primary': externalAppTextColor || undefined,
+        '--bg-panel': externalAppPanelColor || effectiveWorkspaceBranding.panelColor || undefined,
+        '--text-primary': externalAppTextColor || effectiveWorkspaceBranding.textColor || undefined,
         '--accent-orange': `rgb(${activeClientDashboardAccentRgb.r}, ${activeClientDashboardAccentRgb.g}, ${activeClientDashboardAccentRgb.b})`,
         '--accent': `rgb(${activeClientDashboardAccentRgb.r}, ${activeClientDashboardAccentRgb.g}, ${activeClientDashboardAccentRgb.b})`,
       }}
@@ -15787,11 +15871,17 @@ export default function DashboardShell({
 
         <div className="sidebar-top">
           <div className="logo">
-            <span className="brand-logo-mark logo-image" aria-hidden="true"></span>
+            {appLogoUrl ? (
+              <span className="brand-logo-mark workspace-logo-mark" aria-hidden="true">
+                <img src={appLogoUrl} alt="" />
+              </span>
+            ) : (
+              <span className="brand-logo-mark logo-image" aria-hidden="true"></span>
+            )}
             {!isSidebarCollapsed && (
               <div className="logo-copy">
-                <span>Assessoria LP</span>
-                <small>Performance Hub</small>
+                <span>{appName}</span>
+                <small>{appSubtitle}</small>
               </div>
             )}
           </div>
@@ -16082,12 +16172,101 @@ export default function DashboardShell({
 
         {activeTab === 'settings' && (
           <section style={{ width: '100%' }}>
+            {canManageUsers && (
+              <div className="glass-panel workspace-branding-card">
+                <div className="workspace-branding-head">
+                  <span className="management-card-kicker">White label</span>
+                  <h3>Marca do workspace</h3>
+                  <p>Defina nome, logo e cores que aparecem para sua equipe dentro da plataforma.</p>
+                </div>
+                <div className="workspace-branding-preview">
+                  {appLogoUrl ? (
+                    <span className="brand-logo-mark workspace-logo-mark"><img src={appLogoUrl} alt="" /></span>
+                  ) : (
+                    <span className="brand-logo-mark logo-image" aria-hidden="true"></span>
+                  )}
+                  <div>
+                    <strong>{appName}</strong>
+                    <small>{appSubtitle}</small>
+                  </div>
+                  <button type="button" className="btn btn-primary" onClick={() => { setBrandingForm(effectiveWorkspaceBranding); setIsBrandingModalOpen(true) }}>
+                    <i className="bx bx-palette" aria-hidden="true"></i>
+                    <span>Personalizar marca</span>
+                  </button>
+                </div>
+              </div>
+            )}
             <SettingsPage embeddedOverride={true} />
           </section>
         )}
 
 
         {activeTab === 'semanal' && renderWeeklyClientPanel()}
+
+        {isBrandingModalOpen && canManageUsers && (
+          <div className="modal-overlay" onClick={() => setIsBrandingModalOpen(false)}>
+            <div className="modal-card glass-panel workspace-branding-modal" onClick={(event) => event.stopPropagation()}>
+              <div className="modal-header">
+                <div>
+                  <h3>Configurar sua plataforma</h3>
+                  <p>Esta marca será aplicada para o workspace, equipe e futuras telas do produto.</p>
+                </div>
+                <button type="button" className="modal-close" onClick={() => setIsBrandingModalOpen(false)} aria-label="Fechar identidade visual">
+                  <i className="bx bx-x"></i>
+                </button>
+              </div>
+
+              <form onSubmit={handleSaveWorkspaceBranding}>
+                {brandingError && <div className="form-alert">{brandingError}</div>}
+                <div className="form-grid user-admin-grid">
+                  <div className="input-group">
+                    <label>Nome da empresa</label>
+                    <input type="text" value={brandingForm.companyName || ''} onChange={(event) => setBrandingForm((current) => ({ ...current, companyName: event.target.value, appName: event.target.value }))} placeholder="Ex.: Minha Assessoria" />
+                  </div>
+                  <div className="input-group">
+                    <label>Nome no app</label>
+                    <input type="text" value={brandingForm.appName || ''} onChange={(event) => setBrandingForm((current) => ({ ...current, appName: event.target.value }))} placeholder="Nome exibido no menu" />
+                  </div>
+                  <div className="input-group">
+                    <label>Subtítulo</label>
+                    <input type="text" value={brandingForm.appSubtitle || ''} onChange={(event) => setBrandingForm((current) => ({ ...current, appSubtitle: event.target.value }))} placeholder="Ex.: Performance Hub" />
+                  </div>
+                  <div className="input-group">
+                    <label>URL da logo</label>
+                    <input type="url" value={brandingForm.logoUrl || ''} onChange={(event) => setBrandingForm((current) => ({ ...current, logoUrl: event.target.value }))} placeholder="https://..." />
+                  </div>
+                  <div className="input-group">
+                    <label>Cor principal</label>
+                    <input type="color" value={brandingForm.primaryColor || '#26C281'} onChange={(event) => setBrandingForm((current) => ({ ...current, primaryColor: event.target.value, accentColor: event.target.value }))} />
+                  </div>
+                  <div className="input-group">
+                    <label>Detalhes</label>
+                    <input type="color" value={brandingForm.accentColor || '#26C281'} onChange={(event) => setBrandingForm((current) => ({ ...current, accentColor: event.target.value }))} />
+                  </div>
+                  <div className="input-group">
+                    <label>Fundo</label>
+                    <input type="color" value={brandingForm.backgroundColor || '#070908'} onChange={(event) => setBrandingForm((current) => ({ ...current, backgroundColor: event.target.value }))} />
+                  </div>
+                  <div className="input-group">
+                    <label>Caixas</label>
+                    <input type="color" value={brandingForm.panelColor || '#121817'} onChange={(event) => setBrandingForm((current) => ({ ...current, panelColor: event.target.value }))} />
+                  </div>
+                  <div className="input-group">
+                    <label>Textos</label>
+                    <input type="color" value={brandingForm.textColor || '#F4F7F5'} onChange={(event) => setBrandingForm((current) => ({ ...current, textColor: event.target.value }))} />
+                  </div>
+                </div>
+                <div className="modal-foot">
+                  <span className="form-note">O e-mail master global continua sendo fabiobrandenburgjr@gmail.com. Este painel configura a marca do workspace atual.</span>
+                  <div className="modal-actions">
+                    <button type="button" className="btn btn-secondary" onClick={() => setIsBrandingModalOpen(false)}>Cancelar</button>
+                    <button type="submit" className="btn btn-primary" disabled={isSavingBranding}>{isSavingBranding ? 'Salvando...' : 'Salvar marca'}</button>
+                  </div>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
 
         {activeTab === 'operacao' && isOperationCreateModalOpen && canPersistClientChanges && (
           <div className="modal-overlay" onClick={() => setIsOperationCreateModalOpen(false)}>
@@ -18032,7 +18211,7 @@ export default function DashboardShell({
                     <h3>Membros do time</h3>
                     <p>Lista limpa com acesso aos dashboards, IA e integrações. Nada de PDI, operação ou métricas internas.</p>
                   </div>
-                  <div className="users-toolbar-actions"><button type="button" className="btn btn-primary" onClick={() => setIsCreateUserModalOpen(true)}><i className="bx bx-user-plus" aria-hidden="true"></i><span>Novo membro</span></button></div>
+                  <div className="users-toolbar-actions"><button type="button" className="btn btn-primary" onClick={() => { setCreatedUserInvite(null); setIsCreateUserModalOpen(true) }}><i className="bx bx-user-plus" aria-hidden="true"></i><span>Convidar membro</span></button></div>
                 </div>
 
                 <div className="users-search-row"><div className="input-group users-search-field"><label>Buscar membro</label><input type="text" value={userSearch} onChange={(event) => setUserSearch(event.target.value)} placeholder="Nome ou e-mail" /></div></div>
@@ -18066,18 +18245,23 @@ export default function DashboardShell({
 
               {isCreateUserModalOpen && (
                 <div className="modal-overlay" onClick={() => setIsCreateUserModalOpen(false)}><div className="modal-card glass-panel" onClick={(event) => event.stopPropagation()}>
-                  <div className="modal-header"><div><h3>Novo membro</h3><p>Cadastre o acesso, dashboards, IA e permissão de integrações.</p></div><button type="button" className="modal-close" onClick={() => setIsCreateUserModalOpen(false)} aria-label="Fechar cadastro de membro"><i className="bx bx-x"></i></button></div>
+                  <div className="modal-header"><div><h3>Convidar membro</h3><p>Crie um acesso no workspace atual e envie as credenciais temporárias para a pessoa da equipe.</p></div><button type="button" className="modal-close" onClick={() => setIsCreateUserModalOpen(false)} aria-label="Fechar convite de membro"><i className="bx bx-x"></i></button></div>
                   <form onSubmit={handleCreateUser}>
                     {createUserError && <div className="form-alert">{createUserError}</div>}
+                    {createdUserInvite && (
+                      <div className="form-success">
+                        Convite criado para {createdUserInvite.email}. Link: {createdUserInvite.loginUrl} · Senha temporária: {createdUserInvite.temporaryPassword}
+                      </div>
+                    )}
                     <div className="form-grid user-admin-grid">
                       <div className="input-group"><label>Nome</label><input type="text" value={userForm.fullName} onChange={(event) => setUserForm((current) => ({ ...current, fullName: event.target.value, role: 'visualizador' }))} placeholder="Nome completo" /></div>
                       <div className="input-group"><label>E-mail</label><input type="email" value={userForm.email} onChange={(event) => setUserForm((current) => ({ ...current, email: event.target.value, role: 'visualizador' }))} placeholder="usuario@empresa.com" /></div>
-                      <div className="input-group"><label>Senha inicial</label><input type="password" value={userForm.password} onChange={(event) => setUserForm((current) => ({ ...current, password: event.target.value }))} placeholder="Senha provisória" /></div>
+                      <div className="input-group"><label>Senha inicial opcional</label><input type="password" value={userForm.password} onChange={(event) => setUserForm((current) => ({ ...current, password: event.target.value }))} placeholder="Gerada automaticamente se ficar vazio" /></div>
                       <div className="input-group"><label>IA</label><select className="client-select-input" value={userForm.aiAccessLevel} onChange={(event) => setUserForm((current) => ({ ...current, aiAccessLevel: event.target.value }))}><option value="team">Liberada</option><option value="none">Bloqueada</option></select></div>
                       <div className="input-group"><label>Integrações</label><select className="client-select-input" value={userForm.canEditIntegrations ? 'enabled' : 'disabled'} onChange={(event) => setUserForm((current) => ({ ...current, canEditIntegrations: event.target.value === 'enabled' }))}><option value="disabled">Bloqueadas</option><option value="enabled">Liberadas</option></select></div>
                     </div>
                     <div className="input-group"><label>Dashboards liberados</label><div className="stage-selector">{dashboardEligibleClients.length ? dashboardEligibleClients.map((client) => (<label key={'new-user-' + client.id} className={'stage-chip ' + (userForm.clientIds.includes(client.id) ? 'active' : '')}><input type="checkbox" checked={userForm.clientIds.includes(client.id)} onChange={() => handleUserClientToggle(client.id)} /><span>{client.name}</span></label>)) : <div className="stage-empty">Cadastre clientes antes de liberar dashboards para o time.</div>}</div></div>
-                    <div className="modal-actions"><button type="button" className="btn btn-secondary" onClick={() => setIsCreateUserModalOpen(false)}>Cancelar</button><button type="submit" className="btn btn-primary" disabled={savingUser}>{savingUser ? 'Criando...' : 'Adicionar membro'}</button></div>
+                    <div className="modal-actions"><button type="button" className="btn btn-secondary" onClick={() => setIsCreateUserModalOpen(false)}>Fechar</button><button type="submit" className="btn btn-primary" disabled={savingUser}>{savingUser ? 'Criando...' : 'Gerar convite'}</button></div>
                   </form>
                 </div></div>
               )}
@@ -22030,6 +22214,90 @@ export default function DashboardShell({
           color: rgba(225, 226, 235, 0.7);
           font-size: 18px;
           line-height: 1.65;
+        }
+
+        .workspace-branding-card {
+          margin: 0 0 24px;
+          padding: 28px;
+          border-radius: 28px;
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) minmax(340px, 0.8fr);
+          gap: 24px;
+          align-items: center;
+          background:
+            radial-gradient(circle at 8% 16%, color-mix(in srgb, var(--accent-blue) 16%, transparent), transparent 30%),
+            linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.015));
+        }
+
+        .workspace-branding-head {
+          display: grid;
+          gap: 10px;
+        }
+
+        .workspace-branding-head h3 {
+          margin: 0;
+          color: var(--text-primary, #fff);
+          font-size: 28px;
+          letter-spacing: -0.02em;
+        }
+
+        .workspace-branding-head p {
+          margin: 0;
+          color: var(--text-secondary, rgba(225, 226, 235, 0.68));
+          line-height: 1.55;
+        }
+
+        .workspace-branding-preview {
+          min-height: 112px;
+          padding: 18px;
+          border-radius: 22px;
+          border: 1px solid color-mix(in srgb, var(--accent-blue) 24%, rgba(255,255,255,0.1));
+          background: color-mix(in srgb, var(--bg-panel, #121817) 76%, rgba(255,255,255,0.04));
+          display: grid;
+          grid-template-columns: auto minmax(0, 1fr) auto;
+          align-items: center;
+          gap: 16px;
+        }
+
+        .workspace-branding-preview strong,
+        .workspace-branding-preview small {
+          display: block;
+        }
+
+        .workspace-branding-preview strong {
+          color: var(--text-primary, #fff);
+          font-size: 18px;
+        }
+
+        .workspace-branding-preview small {
+          margin-top: 4px;
+          color: var(--text-secondary, rgba(225, 226, 235, 0.62));
+        }
+
+        .workspace-branding-modal {
+          max-width: 920px;
+        }
+
+        .dashboard-light-mode .workspace-branding-card {
+          background:
+            radial-gradient(circle at 8% 16%, color-mix(in srgb, var(--accent-blue) 10%, transparent), transparent 30%),
+            linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.96));
+          border-color: rgba(15, 23, 42, 0.08);
+        }
+
+        .dashboard-light-mode .workspace-branding-head h3,
+        .dashboard-light-mode .workspace-branding-preview strong {
+          color: #0f172a;
+        }
+
+        .dashboard-light-mode .workspace-branding-head p,
+        .dashboard-light-mode .workspace-branding-preview small {
+          color: #64748b;
+        }
+
+        .dashboard-light-mode .workspace-branding-preview {
+          background: #ffffff;
+          border-color: rgba(15, 23, 42, 0.08);
         }
 
         .management-stats-grid {
@@ -30259,6 +30527,16 @@ export default function DashboardShell({
           border: 1px solid rgba(245, 158, 11, 0.28);
           background: rgba(245, 158, 11, 0.08);
           color: #fde68a;
+          font-size: 14px;
+          line-height: 1.6;
+        }
+
+        .form-success {
+          padding: 14px 16px;
+          border-radius: 16px;
+          border: 1px solid color-mix(in srgb, var(--accent-blue) 38%, transparent);
+          background: color-mix(in srgb, var(--accent-blue) 12%, transparent);
+          color: color-mix(in srgb, var(--accent-blue) 72%, #ffffff 28%);
           font-size: 14px;
           line-height: 1.6;
         }

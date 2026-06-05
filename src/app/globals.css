@@ -471,6 +471,25 @@ body {
     flex-basis: 30px;
 }
 
+.workspace-logo-mark {
+    background: color-mix(in srgb, var(--bg-panel, #121817) 82%, var(--accent-blue, #26c281) 18%);
+    border: 1px solid color-mix(in srgb, var(--accent-blue, #26c281) 34%, transparent);
+    box-shadow: 0 16px 34px color-mix(in srgb, var(--accent-blue, #26c281) 20%, transparent);
+    display: grid;
+    place-items: center;
+    mask-image: none;
+    -webkit-mask-image: none;
+    overflow: hidden;
+    padding: 5px;
+}
+
+.workspace-logo-mark img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
+}
+
 .brand-logo-preview {
     --brand-logo-color: var(--saas-accent, var(--accent-blue, #4744e5));
     width: 64px;

@@ -153,6 +153,7 @@ export async function getAccessContext(supabase, user, options = {}) {
   const role = isPrimaryAdmin ? USER_ROLES.MASTER : profile.role === USER_ROLES.MASTER ? USER_ROLES.VIEWER : profile.role || USER_ROLES.VIEWER
   const aiAccessLevel = isPrimaryAdmin ? AI_ACCESS_LEVELS.MASTER : resolveAiAccessLevel(profile, role)
   let workspaceId = profile.workspace_id || null
+  let workspace = null
 
   if (isPrimaryAdmin && !workspaceId && adminSupabase) {
     const { data: firstWorkspace, error: firstWorkspaceError } = await adminSupabase
@@ -172,6 +173,19 @@ export async function getAccessContext(supabase, user, options = {}) {
         .eq('id', profile.id)
     }
   }
+
+  if (workspaceId && adminSupabase) {
+    const { data: workspaceData, error: workspaceError } = await adminSupabase
+      .from('workspaces')
+      .select('id, name, owner_user_id')
+      .eq('id', workspaceId)
+      .maybeSingle()
+
+    if (workspaceError) throw workspaceError
+    workspace = workspaceData || null
+  }
+
+  const isWorkspaceOwner = Boolean(workspace?.owner_user_id && workspace.owner_user_id === user.id)
 
   let accessRows = []
   let groupAccessRows = []
@@ -235,11 +249,13 @@ export async function getAccessContext(supabase, user, options = {}) {
     role,
     aiAccessLevel,
     workspaceId,
-    canManageUsers: isPrimaryAdmin,
-    canManageClients: isPrimaryAdmin || role === USER_ROLES.OPERATOR,
-    canEditIntegrations: isPrimaryAdmin || Boolean(profile.can_edit_integrations),
-    canViewDashboard: isPrimaryAdmin || viewableClientIds.size > 0,
-    canUseAi: aiAccessLevel !== AI_ACCESS_LEVELS.NONE && (isPrimaryAdmin || viewableClientIds.size > 0),
+    workspace,
+    isWorkspaceOwner,
+    canManageUsers: isPrimaryAdmin || isWorkspaceOwner,
+    canManageClients: isPrimaryAdmin || isWorkspaceOwner || role === USER_ROLES.OPERATOR,
+    canEditIntegrations: isPrimaryAdmin || isWorkspaceOwner || Boolean(profile.can_edit_integrations),
+    canViewDashboard: isPrimaryAdmin || isWorkspaceOwner || role === USER_ROLES.OPERATOR || viewableClientIds.size > 0,
+    canUseAi: aiAccessLevel !== AI_ACCESS_LEVELS.NONE && (isPrimaryAdmin || isWorkspaceOwner || role === USER_ROLES.OPERATOR || viewableClientIds.size > 0),
     isClientRole: role === USER_ROLES.CLIENT,
     viewableClientIds: Array.from(viewableClientIds),
     editableClientIds: Array.from(editableClientIds),

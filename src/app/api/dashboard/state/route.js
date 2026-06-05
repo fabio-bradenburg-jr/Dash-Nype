@@ -1,28 +1,85 @@
 import { NextResponse } from 'next/server'
+import { cookies } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/server/supabase-admin'
-import { getAccessContext } from '@/lib/server/access-control'
+import { getAccessContext, isPrimaryAdminEmail, USER_ROLES } from '@/lib/server/access-control'
 import { getDashboardState, saveDashboardState } from '@/lib/server/dashboard-store'
+import { PLATFORM_AUTH_COOKIE } from '@/lib/saas/auth'
+import { verifyLocalAccessToken } from '@/lib/server/platform-auth-fallback'
+
+async function getDashboardAccessContext() {
+  const supabase = await createClient()
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser()
+
+  if (error) throw error
+
+  const adminSupabase = createAdminClient()
+  if (user) {
+    return {
+      adminSupabase,
+      accessContext: await getAccessContext(supabase, user, { adminSupabase }),
+    }
+  }
+
+  const token = (await cookies()).get(PLATFORM_AUTH_COOKIE)?.value
+  if (!token) return { errorResponse: NextResponse.json({ error: 'Não autenticado.' }, { status: 401 }) }
+
+  const payload = await verifyLocalAccessToken(token)
+  const userId = String(payload.sub || '').replace(/^supabase:/, '')
+  const { data: profile, error: profileError } = await adminSupabase
+    .from('profiles')
+    .select('id, email, full_name, role, ai_access_level, can_edit_integrations, workspace_id')
+    .eq('id', userId)
+    .maybeSingle()
+
+  if (profileError) throw profileError
+  if (!profile?.workspace_id) {
+    return { errorResponse: NextResponse.json({ error: 'Workspace não encontrado.' }, { status: 404 }) }
+  }
+
+  const { data: workspace, error: workspaceError } = await adminSupabase
+    .from('workspaces')
+    .select('id, name, owner_user_id')
+    .eq('id', profile.workspace_id)
+    .maybeSingle()
+
+  if (workspaceError) throw workspaceError
+
+  const isPrimaryAdmin = isPrimaryAdminEmail(profile.email)
+  const isWorkspaceOwner = Boolean(workspace?.owner_user_id && workspace.owner_user_id === profile.id)
+  const role = isPrimaryAdmin ? USER_ROLES.MASTER : profile.role === USER_ROLES.MASTER ? USER_ROLES.VIEWER : profile.role || USER_ROLES.VIEWER
+
+  return {
+    adminSupabase,
+    accessContext: {
+      profile,
+      role,
+      aiAccessLevel: profile.ai_access_level || (isPrimaryAdmin ? 'master' : 'team'),
+      workspaceId: profile.workspace_id,
+      workspace: workspace || null,
+      isWorkspaceOwner,
+      canManageUsers: isPrimaryAdmin || isWorkspaceOwner,
+      canManageClients: isPrimaryAdmin || isWorkspaceOwner || role === USER_ROLES.OPERATOR,
+      canEditIntegrations: isPrimaryAdmin || isWorkspaceOwner || Boolean(profile.can_edit_integrations),
+      canViewDashboard: isPrimaryAdmin || isWorkspaceOwner || role === USER_ROLES.OPERATOR,
+      canUseAi: profile.ai_access_level !== 'none',
+      isClientRole: role === USER_ROLES.CLIENT,
+      viewableClientIds: [],
+      editableClientIds: [],
+    },
+  }
+}
 
 export async function GET() {
   try {
-    const supabase = await createClient()
-    const {
-      data: { user },
-      error,
-    } = await supabase.auth.getUser()
+    const authorized = await getDashboardAccessContext()
+    if (authorized.errorResponse) return authorized.errorResponse
 
-    if (error) {
-      throw error
-    }
-
-    if (!user) {
-      return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 })
-    }
-
-    const adminSupabase = createAdminClient()
-    const accessContext = await getAccessContext(supabase, user, { adminSupabase })
-    const state = await getDashboardState(supabase, accessContext)
+    const { adminSupabase, accessContext } = authorized
+    const state = await getDashboardState(adminSupabase, accessContext)
 
     return NextResponse.json({
       ...state,
@@ -48,24 +105,12 @@ export async function GET() {
 
 export async function PUT(request) {
   try {
-    const supabase = await createClient()
-    const {
-      data: { user },
-      error,
-    } = await supabase.auth.getUser()
-
-    if (error) {
-      throw error
-    }
-
-    if (!user) {
-      return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 })
-    }
-
     const body = await request.json()
-    const adminSupabase = createAdminClient()
-    const accessContext = await getAccessContext(supabase, user, { adminSupabase })
-    const savedState = await saveDashboardState(supabase, accessContext, body)
+    const authorized = await getDashboardAccessContext()
+    if (authorized.errorResponse) return authorized.errorResponse
+
+    const { adminSupabase, accessContext } = authorized
+    const savedState = await saveDashboardState(adminSupabase, accessContext, body)
 
     return NextResponse.json({
       ...savedState,
