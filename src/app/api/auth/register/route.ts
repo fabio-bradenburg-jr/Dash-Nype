@@ -39,6 +39,20 @@ function getAuthErrorStatus(error: unknown) {
   return 500
 }
 
+function isRecoverablePlatformSyncError(error: unknown) {
+  const message = error instanceof Error ? error.message.toLowerCase() : String(error || '').toLowerCase()
+  return (
+    message.includes('tenant or user not found') ||
+    message.includes('tenant/user') ||
+    message.includes('database_url') ||
+    message.includes('password authentication failed') ||
+    message.includes('connection terminated') ||
+    message.includes('econnrefused') ||
+    message.includes('enotfound') ||
+    message.includes('timeout')
+  )
+}
+
 async function findSupabaseUserByEmail(adminSupabase: any, email: string) {
   const targetEmail = String(email || '').trim().toLowerCase()
   if (!targetEmail) return null
@@ -221,18 +235,26 @@ async function registerWithLegacySupabase(body: {
 
   // O Supabase antigo pode exigir confirmação de e-mail e não devolver session.
   // Para este app, a sessão principal é o cookie da plataforma, então criamos o acesso local imediatamente.
-  const platformUser = await ensurePlatformUserForSupabase({
-    user_id: user.id,
-    tenant_id: profile?.workspace_id || user.id,
-    tenant_name: companyName || 'Workspace principal',
-    email: user.email || body.email || '',
-    full_name: profile?.full_name || fullName || user.user_metadata?.full_name || user.email || '',
-    role: profile?.role || role,
-  })
+  let platformUser = null
+  try {
+    platformUser = await ensurePlatformUserForSupabase({
+      user_id: user.id,
+      tenant_id: profile?.workspace_id || user.id,
+      tenant_name: companyName || 'Workspace principal',
+      email: user.email || body.email || '',
+      full_name: profile?.full_name || fullName || user.user_metadata?.full_name || user.email || '',
+      role: profile?.role || role,
+    })
+  } catch (platformError) {
+    if (!isRecoverablePlatformSyncError(platformError)) {
+      throw platformError
+    }
+  }
+
   const token = await createLocalAccessToken({
-    sub: platformUser.user_id,
-    tenant_id: platformUser.tenant_id,
-    role: platformUser.role,
+    sub: platformUser?.user_id || `supabase:${user.id}`,
+    tenant_id: platformUser?.tenant_id || profile?.workspace_id || user.id,
+    role: platformUser?.role || profile?.role || role,
     email: user.email || body.email || '',
     full_name: profile?.full_name || fullName || user.user_metadata?.full_name || user.email || '',
     provider: 'supabase',
