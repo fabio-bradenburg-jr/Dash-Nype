@@ -21,7 +21,15 @@ const legacyPrefixes = [
 
 export function proxy(request) {
   const { pathname } = request.nextUrl
+  const host = request.headers.get('host') || ''
   const hasAuthCookie = Boolean(request.cookies.get(PLATFORM_AUTH_COOKIE)?.value)
+
+  if (host === 'app.nype.company' || host === 'nype.company') {
+    const url = request.nextUrl.clone()
+    url.protocol = 'https:'
+    url.host = 'app.assessorialp.com.br'
+    return NextResponse.redirect(url, 308)
+  }
 
   if (pathname === '/login') {
     // A tela de login valida a sessão no client. Não redirecionamos só por cookie,
