@@ -35,6 +35,7 @@ function getAuthErrorStatus(error: unknown) {
 
   if (message.includes('already') || message.includes('registered') || message.includes('já')) return 409
   if (message.includes('password') || message.includes('senha')) return 400
+  if (message.includes('email') || message.includes('invalid') || message.includes('validate')) return 400
   return 500
 }
 
