@@ -16309,38 +16309,6 @@ export default function DashboardShell({
               </>
             )}
 
-            {activeTab === 'anuncios' && (
-              <>
-                {draftDateRange === 'custom' && (
-                  <div className="date-picker glass-item custom-range">
-                    <input type="date" value={draftCustomSince} onChange={(event) => setDraftCustomSince(event.target.value)} />
-                    <span>Até</span>
-                    <input type="date" value={draftCustomUntil} onChange={(event) => setDraftCustomUntil(event.target.value)} />
-                  </div>
-                )}
-
-                <div className="date-picker glass-item">
-                  <i className="bx bx-calendar"></i>
-                  <select value={draftDateRange} onChange={(event) => setDraftDateRange(event.target.value)}>
-                    {DATE_PRESETS.map((preset) => (
-                      <option key={preset.value} value={preset.value}>
-                        {preset.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={handleApplyDashboardFilters}
-                  disabled={isApplyDashboardFiltersDisabled}
-                  className="btn btn-secondary"
-                >
-                  <i className="bx bx-filter-alt"></i>
-                  Aplicar período
-                </button>
-              </>
-            )}
           </div>
         </header>
 
@@ -17366,10 +17334,32 @@ export default function DashboardShell({
                 <p>Anúncios com investimento dentro do período selecionado, ordenados pela saúde da carteira para priorizar leitura.</p>
               </div>
               <div className="ads-overview-hero-actions">
-                <span className="ads-overview-period">
+                {draftDateRange === 'custom' && (
+                  <div className="date-picker glass-item custom-range ads-overview-custom-range">
+                    <input type="date" value={draftCustomSince} onChange={(event) => setDraftCustomSince(event.target.value)} />
+                    <span>Até</span>
+                    <input type="date" value={draftCustomUntil} onChange={(event) => setDraftCustomUntil(event.target.value)} />
+                  </div>
+                )}
+                <label className="ads-overview-period">
                   <i className="bx bx-calendar"></i>
-                  {getDatePresetLabel(dateRange, customSince, customUntil)}
-                </span>
+                  <select value={draftDateRange} onChange={(event) => setDraftDateRange(event.target.value)}>
+                    {DATE_PRESETS.map((preset) => (
+                      <option key={preset.value} value={preset.value}>
+                        {preset.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <button
+                  type="button"
+                  onClick={handleApplyDashboardFilters}
+                  disabled={isApplyDashboardFiltersDisabled}
+                  className="btn btn-secondary"
+                >
+                  <i className="bx bx-filter-alt"></i>
+                  Aplicar período
+                </button>
                 <button
                   type="button"
                   className="btn btn-primary"
@@ -31323,6 +31313,26 @@ export default function DashboardShell({
           color: var(--accent-blue);
         }
 
+        .ads-overview-period select {
+          min-width: 132px;
+          border: 0;
+          outline: 0;
+          appearance: none;
+          background: transparent;
+          color: inherit;
+          font: inherit;
+          font-weight: 700;
+          cursor: pointer;
+        }
+
+        .ads-overview-period select option {
+          color: #0f172a;
+        }
+
+        .ads-overview-custom-range {
+          min-height: 44px;
+        }
+
         .ads-overview-board {
           padding: 24px;
           border-radius: 28px;
@@ -32082,8 +32092,14 @@ export default function DashboardShell({
           }
 
           .ads-overview-hero-actions,
+          .ads-overview-period,
+          .ads-overview-custom-range,
           .ads-overview-hero .btn,
           .ad-balance-hero .btn {
+            width: 100%;
+          }
+
+          .ads-overview-period select {
             width: 100%;
           }
 
