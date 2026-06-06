@@ -91,7 +91,7 @@ async function loginWithLegacySupabase(body: { email: string; password: string }
       )
     }
 
-    if (!isRecoverableLoginError(accessError) && !isPrimaryAdmin) {
+    if (!isPrimaryAdmin) {
       throw accessError
     }
   }

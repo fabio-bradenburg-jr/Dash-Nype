@@ -13,6 +13,7 @@ export const AI_ACCESS_LEVELS = {
 
 export const PRIMARY_ADMIN_EMAIL = 'fbrandenburgjunior@gmail.com'
 export const PREVIOUS_PRIMARY_ADMIN_EMAILS = ['fabiobrandenburgjr@gmail.com']
+export const ASSESSORIA_LP_MEMBER_EMAILS = ['fabiobrandenburgjr@gmail.com']
 
 export function normalizeEmail(email) {
   return String(email || '').trim().toLowerCase()
@@ -26,9 +27,36 @@ export function isPreviousPrimaryAdminEmail(email) {
   return PREVIOUS_PRIMARY_ADMIN_EMAILS.includes(normalizeEmail(email))
 }
 
+export function isAssessoriaLpMemberEmail(email) {
+  return ASSESSORIA_LP_MEMBER_EMAILS.includes(normalizeEmail(email))
+}
+
 function isMissingRelationError(error) {
   const message = String(error?.message || '').toLowerCase()
   return error?.code === 'PGRST205' || message.includes('schema cache') || message.includes('could not find the table')
+}
+
+export async function resolveAssessoriaLpWorkspaceId(adminSupabase) {
+  const { data: connectedWorkspace, error: connectionError } = await adminSupabase
+    .from('workspace_meta_connections')
+    .select('workspace_id')
+    .order('updated_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (connectionError && !isMissingRelationError(connectionError)) throw connectionError
+  if (connectedWorkspace?.workspace_id) return connectedWorkspace.workspace_id
+
+  const { data: namedWorkspace, error: namedWorkspaceError } = await adminSupabase
+    .from('workspaces')
+    .select('id')
+    .eq('name', 'Assessoria LP')
+    .order('created_at', { ascending: true })
+    .limit(1)
+    .maybeSingle()
+
+  if (namedWorkspaceError) throw namedWorkspaceError
+  return namedWorkspace?.id || null
 }
 
 function resolveAiAccessLevel(profileLike, fallbackRole) {
@@ -92,7 +120,13 @@ export async function ensureUserProfile(adminSupabase, user) {
   let workspaceId = null
   let role = USER_ROLES.VIEWER
 
-  if (!workspaceCount) {
+  if (isAssessoriaLpMemberEmail(user.email)) {
+    workspaceId = await resolveAssessoriaLpWorkspaceId(adminSupabase)
+    if (!workspaceId) {
+      throw new Error('Workspace da Assessoria LP não encontrado para vincular este usuário.')
+    }
+    role = USER_ROLES.OPERATOR
+  } else if (!workspaceCount) {
     const { data: createdWorkspace, error: workspaceError } = await adminSupabase
       .from('workspaces')
       .insert({

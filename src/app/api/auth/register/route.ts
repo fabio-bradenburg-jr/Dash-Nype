@@ -2,7 +2,12 @@ import { NextResponse } from 'next/server'
 
 import { PLATFORM_AUTH_COOKIE } from '@/lib/saas/auth'
 import { createLocalAccessToken } from '@/lib/server/platform-auth-fallback'
-import { isPrimaryAdminEmail, USER_ROLES } from '@/lib/server/access-control'
+import {
+  isAssessoriaLpMemberEmail,
+  isPrimaryAdminEmail,
+  resolveAssessoriaLpWorkspaceId,
+  USER_ROLES,
+} from '@/lib/server/access-control'
 
 function getSupabaseAuthConfig() {
   const missing: string[] = []
@@ -75,6 +80,7 @@ async function ensureSupabaseProfileForRegistration(input: {
   const adminSupabase = createAdminClient()
   const email = String(input.user.email || '').trim().toLowerCase()
   const isPrimaryAdmin = isPrimaryAdminEmail(email)
+  const isAssessoriaMember = isAssessoriaLpMemberEmail(email)
 
   const { data: existingProfile, error: existingProfileError } = await adminSupabase
     .from('profiles')
@@ -89,7 +95,12 @@ async function ensureSupabaseProfileForRegistration(input: {
 
   let workspaceId = null
 
-  if (isPrimaryAdmin) {
+  if (isAssessoriaMember) {
+    workspaceId = await resolveAssessoriaLpWorkspaceId(adminSupabase)
+    if (!workspaceId) {
+      throw new Error('Workspace da Assessoria LP não encontrado para vincular este usuário.')
+    }
+  } else if (isPrimaryAdmin) {
     const { data: firstWorkspace, error: firstWorkspaceError } = await adminSupabase
       .from('workspaces')
       .select('id, owner_user_id')
