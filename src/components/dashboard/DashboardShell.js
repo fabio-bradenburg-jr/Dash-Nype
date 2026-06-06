@@ -3413,6 +3413,7 @@ export default function DashboardShell({
   const [adsOverviewSearch, setAdsOverviewSearch] = useState('')
   const [adsOverviewManagerFilter, setAdsOverviewManagerFilter] = useState('all')
   const [adsOverviewRefreshNonce, setAdsOverviewRefreshNonce] = useState(0)
+  const [adsOverviewExpandedClientIds, setAdsOverviewExpandedClientIds] = useState([])
   const [adsOverviewPreviewItem, setAdsOverviewPreviewItem] = useState(null)
   const [adsOverviewPreview, setAdsOverviewPreview] = useState(null)
   const [adsOverviewPreviewLoading, setAdsOverviewPreviewLoading] = useState(false)
@@ -3699,7 +3700,7 @@ export default function DashboardShell({
 
   const loadWeeklyRecords = useCallback(async () => {
     if (!hasLoadedPreferences) return
-    if (activeTab !== 'semanal' && activeTab !== 'clientes') return
+    if (activeTab !== 'semanal' && activeTab !== 'clientes' && activeTab !== 'anuncios') return
 
     setIsWeeklyLoading(true)
     setWeeklyError('')
@@ -4908,6 +4909,21 @@ export default function DashboardShell({
       withErrors,
     }
   }, [filteredAdsOverviewRows])
+  const visibleAdsOverviewClientIds = useMemo(
+    () => new Set(filteredAdsOverviewRows.map((row) => row.clientId)),
+    [filteredAdsOverviewRows]
+  )
+  const handleToggleAdsOverviewClient = useCallback((clientId) => {
+    setAdsOverviewExpandedClientIds((current) =>
+      current.includes(clientId)
+        ? current.filter((item) => item !== clientId)
+        : [...current, clientId]
+    )
+  }, [])
+
+  useEffect(() => {
+    setAdsOverviewExpandedClientIds((current) => current.filter((clientId) => visibleAdsOverviewClientIds.has(clientId)))
+  }, [visibleAdsOverviewClientIds])
 
   const weeklyVisibleRecords = useMemo(() => {
     if (weeklyPeriodPreset === 'filled') {
@@ -17417,81 +17433,91 @@ export default function DashboardShell({
                       ? (WEEKLY_HEALTH_BY_KEY[latestHealthRecord.healthStatus] || WEEKLY_HEALTH_BY_KEY.attention)
                       : null
                     const ads = Array.isArray(row.ads) ? row.ads : []
+                    const isExpanded = adsOverviewExpandedClientIds.includes(row.clientId)
+                    const healthDetail = latestHealthRecord
+                      ? `Input semanal: ${formatWeekRangeLabel(latestHealthRecord.weekStart, latestHealthRecord.weekEnd)}`
+                      : 'Sem input semanal preenchido'
 
                     return (
-                      <article key={`ads-client-${row.clientId}`} className="ads-overview-client-card glass-item">
-                        <div className="ads-overview-client-head">
+                      <article key={`ads-client-${row.clientId}`} className={'ads-overview-client-card glass-item ' + (isExpanded ? 'expanded' : '')}>
+                        <button type="button" className="ads-overview-client-head ads-overview-client-toggle" onClick={() => handleToggleAdsOverviewClient(row.clientId)} aria-expanded={isExpanded}>
                           <div className="ads-overview-client-identity">
                             <span className="ads-overview-client-logo">
                               {row.clientLogoUrl ? <img src={row.clientLogoUrl} alt={`Logo ${row.clientName}`} /> : <i className="bx bx-building-house"></i>}
                             </span>
                             <div>
                               <strong>{row.clientName}</strong>
-                              <small>{row.resultManagerName || 'Sem gestor de resultado'}</small>
+                              <small>{row.resultManagerName || 'Sem gestor de resultado'} • {formatNumber(ads.length)} criativo(s)</small>
                             </div>
                           </div>
                           <div className="ads-overview-client-meta">
                             <span className={'simple-client-health compact ' + (healthConfig ? 'active ' + healthConfig.key : 'empty')} style={healthConfig ? { '--client-health-color': healthConfig.color } : undefined}>
                               <b>{healthConfig?.label || 'Sem saúde'}</b>
+                              <small>{healthDetail}</small>
                             </span>
                             <span className="ads-overview-account">act_{row.metaAdAccountId}</span>
+                            <span className="ads-overview-expand-button">
+                              <i className={'bx ' + (isExpanded ? 'bx-chevron-up' : 'bx-chevron-down')}></i>
+                            </span>
                           </div>
-                        </div>
+                        </button>
 
-                        {row.error ? (
-                          <div className="api-error-banner ads-overview-client-error" role="status">
-                            <i className="bx bx-error-circle"></i>
-                            <span>{row.error}</span>
-                          </div>
-                        ) : ads.length ? (
-                          <div className="ads-overview-ad-list">
-                            {ads.map((ad, index) => {
-                              const resultValue = getMetaBreakdownResultValue(ad, activeMetaRankingResultConfig?.resultMetricKey)
-                              const averageCost = getMetaBreakdownAverageCost(ad, activeMetaRankingResultConfig?.resultMetricKey)
+                        {isExpanded ? (
+                          row.error ? (
+                            <div className="api-error-banner ads-overview-client-error" role="status">
+                              <i className="bx bx-error-circle"></i>
+                              <span>{row.error}</span>
+                            </div>
+                          ) : ads.length ? (
+                            <div className="ads-overview-ad-list">
+                              {ads.map((ad, index) => {
+                                const resultValue = getMetaBreakdownResultValue(ad, activeMetaRankingResultConfig?.resultMetricKey)
+                                const averageCost = getMetaBreakdownAverageCost(ad, activeMetaRankingResultConfig?.resultMetricKey)
 
-                              return (
-                                <button
-                                  key={`${row.clientId}-${ad.adId || index}`}
-                                  type="button"
-                                  className="ads-overview-ad-row"
-                                  onClick={() => setAdsOverviewPreviewItem({
-                                    ...ad,
-                                    adAccountId: row.metaAdAccountId,
-                                    clientName: row.clientName,
-                                    resultLabel: activeMetaRankingResultConfig?.resultLabel || 'Resultados',
-                                    resultMetricKey: activeMetaRankingResultConfig?.resultMetricKey || 'totalConversions',
-                                  })}
-                                >
-                                  <span className="ads-overview-ad-rank">#{index + 1}</span>
-                                  <span className="ads-overview-ad-thumb">
-                                    {ad.imageUrl ? <img src={ad.imageUrl} alt={ad.label} loading="lazy" /> : <i className="bx bx-image-alt"></i>}
-                                  </span>
-                                  <span className="ads-overview-ad-copy">
-                                    <strong>{ad.label}</strong>
-                                    <small>{formatNumber(ad.impressions || 0)} impressões • {formatNumber(ad.clicks || 0)} cliques</small>
-                                  </span>
-                                  <span className="ads-overview-ad-metric">
-                                    <small>{activeMetaRankingResultConfig?.resultLabel || 'Resultados'}</small>
-                                    <strong>{formatNumber(resultValue)}</strong>
-                                  </span>
-                                  <span className="ads-overview-ad-metric">
-                                    <small>Custo</small>
-                                    <strong>{averageCost > 0 ? formatCurrency(averageCost) : '-'}</strong>
-                                  </span>
-                                  <span className="ads-overview-ad-metric">
-                                    <small>Investimento</small>
-                                    <strong>{formatCurrency(ad.spend || 0)}</strong>
-                                  </span>
-                                </button>
-                              )
-                            })}
-                          </div>
-                        ) : (
-                          <div className="ads-overview-no-ads">
-                            <i className="bx bx-low-vision"></i>
-                            <span>Sem anúncios com investimento no período selecionado.</span>
-                          </div>
-                        )}
+                                return (
+                                  <button
+                                    key={`${row.clientId}-${ad.adId || index}`}
+                                    type="button"
+                                    className="ads-overview-ad-row"
+                                    onClick={() => setAdsOverviewPreviewItem({
+                                      ...ad,
+                                      adAccountId: row.metaAdAccountId,
+                                      clientName: row.clientName,
+                                      resultLabel: activeMetaRankingResultConfig?.resultLabel || 'Resultados',
+                                      resultMetricKey: activeMetaRankingResultConfig?.resultMetricKey || 'totalConversions',
+                                    })}
+                                  >
+                                    <span className="ads-overview-ad-rank">#{index + 1}</span>
+                                    <span className="ads-overview-ad-thumb">
+                                      {ad.imageUrl ? <img src={ad.imageUrl} alt={ad.label} loading="lazy" /> : <i className="bx bx-image-alt"></i>}
+                                    </span>
+                                    <span className="ads-overview-ad-copy">
+                                      <strong>{ad.label}</strong>
+                                      <small>{formatNumber(ad.impressions || 0)} impressões • {formatNumber(ad.clicks || 0)} cliques</small>
+                                    </span>
+                                    <span className="ads-overview-ad-metric">
+                                      <small>{activeMetaRankingResultConfig?.resultLabel || 'Resultados'}</small>
+                                      <strong>{formatNumber(resultValue)}</strong>
+                                    </span>
+                                    <span className="ads-overview-ad-metric">
+                                      <small>Custo</small>
+                                      <strong>{averageCost > 0 ? formatCurrency(averageCost) : '-'}</strong>
+                                    </span>
+                                    <span className="ads-overview-ad-metric">
+                                      <small>Investimento</small>
+                                      <strong>{formatCurrency(ad.spend || 0)}</strong>
+                                    </span>
+                                  </button>
+                                )
+                              })}
+                            </div>
+                          ) : (
+                            <div className="ads-overview-no-ads">
+                              <i className="bx bx-low-vision"></i>
+                              <span>Sem anúncios com investimento no período selecionado.</span>
+                            </div>
+                          )
+                        ) : null}
                       </article>
                     )
                   })}
@@ -31356,14 +31382,21 @@ export default function DashboardShell({
 
         .ads-overview-client-list {
           display: grid;
-          gap: 16px;
+          gap: 8px;
         }
 
         .ads-overview-client-card {
-          padding: 18px;
-          border-radius: 24px;
+          padding: 0;
+          border-radius: 18px;
           display: grid;
-          gap: 16px;
+          gap: 0;
+          overflow: hidden;
+        }
+
+        .ads-overview-client-card.expanded {
+          gap: 14px;
+          padding-bottom: 14px;
+          border-color: rgba(129, 216, 167, 0.26);
         }
 
         .ads-overview-client-head {
@@ -31371,6 +31404,22 @@ export default function DashboardShell({
           align-items: center;
           justify-content: space-between;
           gap: 16px;
+        }
+
+        .ads-overview-client-toggle {
+          width: 100%;
+          min-height: 78px;
+          padding: 12px 14px;
+          border: 0;
+          background: transparent;
+          color: inherit;
+          cursor: pointer;
+          text-align: left;
+          transition: background 0.2s ease;
+        }
+
+        .ads-overview-client-toggle:hover {
+          background: rgba(38, 194, 129, 0.055);
         }
 
         .ads-overview-client-identity {
@@ -31435,11 +31484,35 @@ export default function DashboardShell({
           min-height: 36px;
           padding: 8px 12px;
           border-radius: 999px;
+          align-items: center;
+        }
+
+        .simple-client-health.compact small {
+          display: block;
+          margin-top: 2px;
+          color: var(--text-muted);
+          font-size: 10px;
+          font-weight: 800;
+          letter-spacing: 0;
+          text-transform: none;
+        }
+
+        .ads-overview-expand-button {
+          width: 38px;
+          height: 38px;
+          border-radius: 999px;
+          display: grid;
+          place-items: center;
+          border: 1px solid rgba(190, 201, 191, 0.14);
+          background: rgba(255, 255, 255, 0.035);
+          color: var(--accent-blue);
+          font-size: 20px;
         }
 
         .ads-overview-ad-list {
           display: grid;
           gap: 10px;
+          padding: 0 14px;
         }
 
         .ads-overview-ad-row {
