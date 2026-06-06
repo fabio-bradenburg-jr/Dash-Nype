@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { Database, FileText, Link2 } from 'lucide-react'
+import { FileText, Link2 } from 'lucide-react'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -9,13 +9,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { KnowledgeSource } from '@/lib/saas/types'
 
 const sourceTypeOptions: Array<{ value: KnowledgeSource['type']; label: string }> = [
-  { value: 'google_sheets', label: 'Google Sheets' },
   { value: 'google_docs', label: 'Google Docs' },
   { value: 'link', label: 'Link de referência' },
 ]
 
 function sourceIcon(type: KnowledgeSource['type']) {
-  if (type === 'google_sheets') return Database
   if (type === 'google_docs') return FileText
   return Link2
 }
@@ -31,12 +29,12 @@ export function ClientKnowledgePanel({ clientId, sources, onSaved }: Props) {
   const [error, setError] = useState('')
   const [form, setForm] = useState({
     title: '',
-    type: 'google_sheets' as KnowledgeSource['type'],
+    type: 'google_docs' as KnowledgeSource['type'],
     url: '',
     notes: '',
   })
 
-  const items = useMemo(() => sources || [], [sources])
+  const items = useMemo(() => (sources || []).filter((source) => source.type !== 'google_sheets'), [sources])
 
   async function persist(nextSources: KnowledgeSource[]) {
     setSaving(true)
@@ -82,7 +80,7 @@ export function ClientKnowledgePanel({ clientId, sources, onSaved }: Props) {
     await persist(nextSources)
     setForm({
       title: '',
-      type: 'google_sheets',
+      type: 'google_docs',
       url: '',
       notes: '',
     })
@@ -97,7 +95,7 @@ export function ClientKnowledgePanel({ clientId, sources, onSaved }: Props) {
       <CardHeader>
         <div>
           <CardTitle>Base de conhecimento</CardTitle>
-          <CardDescription>Vincule Docs, Sheets e links do cliente para a IA consultar no contexto da conta.</CardDescription>
+          <CardDescription>Vincule Docs e links do cliente para a IA consultar no contexto da conta.</CardDescription>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -133,13 +131,13 @@ export function ClientKnowledgePanel({ clientId, sources, onSaved }: Props) {
           </div>
         ) : (
           <div className="rounded-[28px] border border-dashed border-slate-300 bg-slate-50/80 px-4 py-5 text-sm leading-6 text-slate-500">
-            Nenhuma fonte vinculada ainda. Adicione uma planilha, documento ou link relevante do cliente para enriquecer a IA.
+            Nenhuma fonte vinculada ainda. Adicione um documento ou link relevante do cliente para enriquecer a IA.
           </div>
         )}
 
         <div className="rounded-[28px] border border-slate-200/80 bg-slate-50/80 p-4">
           <div className="mb-4 flex items-center gap-2">
-            <Database className="h-4 w-4 text-[var(--saas-primary)]" />
+            <FileText className="h-4 w-4 text-[var(--saas-primary)]" />
             <p className="font-semibold text-slate-900">Adicionar nova fonte</p>
           </div>
           <div className="grid gap-3 md:grid-cols-2">
@@ -149,7 +147,7 @@ export function ClientKnowledgePanel({ clientId, sources, onSaved }: Props) {
                 className="h-11 rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
                 value={form.title}
                 onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))}
-                placeholder="Ex.: Planilha comercial"
+                placeholder="Ex.: Documento comercial"
               />
             </label>
             <label className="grid gap-2 text-sm font-medium text-slate-600">
@@ -172,7 +170,7 @@ export function ClientKnowledgePanel({ clientId, sources, onSaved }: Props) {
                 className="h-11 rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none"
                 value={form.url}
                 onChange={(event) => setForm((current) => ({ ...current, url: event.target.value }))}
-                placeholder="Cole a URL do Docs, Sheets ou link de referência"
+                placeholder="Cole a URL do Docs ou link de referência"
               />
             </label>
             <label className="grid gap-2 text-sm font-medium text-slate-600 md:col-span-2">
@@ -181,7 +179,7 @@ export function ClientKnowledgePanel({ clientId, sources, onSaved }: Props) {
                 className="min-h-[96px] rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none"
                 value={form.notes}
                 onChange={(event) => setForm((current) => ({ ...current, notes: event.target.value }))}
-                placeholder="Ex.: esta planilha concentra o forecast comercial e a taxa de fechamento."
+                placeholder="Ex.: este documento concentra o processo comercial e as regras de atendimento."
               />
             </label>
           </div>

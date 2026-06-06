@@ -1491,17 +1491,6 @@ const CLIENT_INTEGRATION_GROUPS = [
     ],
   },
   {
-    title: 'Google Sheets',
-    icon: 'bx-spreadsheet',
-    accent: '#22c55e',
-    description: 'Cole a URL pública da planilha para transformar colunas numéricas em métricas personalizadas no dashboard.',
-    fields: [
-      { name: 'googleSheetsUrl', label: 'URL da planilha ou CSV publicado', placeholder: 'https://docs.google.com/spreadsheets/d/...', storage: 'client', type: 'text' },
-      { name: 'googleSheetsHeaderRow', label: 'Linha do cabeçalho', placeholder: '1', storage: 'client', type: 'number' },
-      { name: 'googleSheetsStatusColumn', label: 'Coluna de status / pipeline', placeholder: 'Status', storage: 'client', type: 'text' },
-    ],
-  },
-  {
     title: 'RD Station',
     icon: 'bx-signal-5',
     accent: '#14b8a6',
@@ -1538,7 +1527,6 @@ const CLIENT_DASHBOARD_INTEGRATION_OPTIONS = [
   { key: 'google_ads', label: 'Google Ads', description: 'Contas Google Ads e dados complementares.' },
   { key: 'tiktok_ads', label: 'TikTok Ads', description: 'Operação de mídia e contas do TikTok Ads.' },
   { key: 'linkedin_ads', label: 'LinkedIn Ads', description: 'Campanhas e contas do LinkedIn Ads.' },
-  { key: 'google_sheets', label: 'Google Sheets', description: 'Planilhas, pipelines e métricas customizadas.' },
   { key: 'rd_station', label: 'RD Station', description: 'CRM, pipeline e leitura comercial.' },
   { key: 'salesforce', label: 'Salesforce', description: 'Conta e estrutura de CRM no Salesforce.' },
   { key: 'agendor', label: 'Agendor', description: 'Conta comercial e pipeline no Agendor.' },
@@ -5547,11 +5535,7 @@ export default function DashboardShell({
     (activeClientVisibleIntegrationsSet.has('rd_station') || activeClientVisibleIntegrationsSet.has('agendor') || activeCrmProvider === 'agendor' || activeClientUsesManualCrm) &&
     (activeCrmToken || activeClientUsesManualCrm)
   )
-  const hasSheetsConfigured = Boolean(
-    isActiveClientDashboardEnabled &&
-    activeClientVisibleIntegrationsSet.has('google_sheets') &&
-    String(activeClient?.googleSheetsUrl || '').trim()
-  )
+  const hasSheetsConfigured = false
   const hasClickUpConfigured = Boolean(
     String(globalIntegrations.clickUpToken || '').trim() && String(globalIntegrations.clickUpListIds || '').trim()
   )
@@ -17749,7 +17733,6 @@ export default function DashboardShell({
                   <span role="columnheader">Saúde</span>
                   <span role="columnheader" aria-label="Meta Ads"><i className="bx bxl-meta"></i></span>
                   <span role="columnheader" aria-label="Agendor"><i className="bx bx-git-branch"></i></span>
-                  <span role="columnheader" aria-label="Google Sheets"><i className="bx bx-spreadsheet"></i></span>
                   <span role="columnheader">Editar</span>
                 </div>
 
@@ -17775,7 +17758,6 @@ export default function DashboardShell({
                     const metaAccount = adAccounts.find((account) => account.id === client.metaAdAccountId)
                     const hasMeta = Boolean(client.metaAdAccountId)
                     const hasAgendor = Boolean(client.agendorAccountId || client.integrations?.agendorToken)
-                    const hasSheets = Boolean(client.googleSheetsUrl)
                     const isChurnClient = String(client.status || '').trim().toLowerCase() === 'churn'
                     const latestHealthRecord = latestWeeklyHealthByClientId.get(client.id)
                     const latestHealth = isChurnClient
@@ -17834,9 +17816,6 @@ export default function DashboardShell({
                         </span>
                         <span className={hasAgendor ? 'simple-client-icon active' : 'simple-client-icon'} title={hasAgendor ? 'Agendor cadastrado' : 'Agendor não cadastrado'}>
                           <i className="bx bx-git-branch"></i>
-                        </span>
-                        <span className={hasSheets ? 'simple-client-icon active' : 'simple-client-icon'} title={hasSheets ? 'Planilha cadastrada' : 'Planilha não cadastrada'}>
-                          <i className="bx bx-spreadsheet"></i>
                         </span>
                         <button
                           type="button"
@@ -18075,21 +18054,6 @@ export default function DashboardShell({
                     </div>
                   </div>
 
-                  <div className="integration-block">
-                    <div className="integration-heading">
-                      <div className="integration-icon" style={{ color: '#22c55e', borderColor: '#22c55e33' }}>
-                        <i className="bx bx-spreadsheet"></i>
-                      </div>
-                      <div>
-                        <h3>Google Sheets</h3>
-                        <p>Opcional: URL publicada da planilha que alimenta dados auxiliares.</p>
-                      </div>
-                    </div>
-                    <div className="input-group">
-                      <label>URL da planilha</label>
-                      <input type="text" value={activeClient.googleSheetsUrl || ''} onChange={(event) => handleClientFieldChange('googleSheetsUrl', event.target.value)} placeholder="https://docs.google.com/spreadsheets/..." disabled={!canEditActiveClient} />
-                    </div>
-                  </div>
                 </div>
 
                 <div className="client-create-actions">
@@ -32150,7 +32114,7 @@ export default function DashboardShell({
         .simple-client-list { display: grid; gap: 10px; }
         .simple-client-row {
           display: grid;
-          grid-template-columns: minmax(220px, 1fr) minmax(128px, 0.32fr) minmax(132px, 0.42fr) 72px 72px 72px 110px;
+          grid-template-columns: minmax(220px, 1fr) minmax(128px, 0.32fr) minmax(132px, 0.42fr) 72px 72px 110px;
           align-items: center;
           gap: 12px;
           padding: 14px 16px;
@@ -36387,7 +36351,7 @@ export default function DashboardShell({
           }
 
           .simple-clients-layout .simple-client-row {
-            grid-template-columns: minmax(0, 1fr) repeat(3, 44px) minmax(92px, auto);
+            grid-template-columns: minmax(0, 1fr) repeat(2, 44px) minmax(92px, auto);
           }
 
           .simple-clients-layout .simple-client-row-head {
