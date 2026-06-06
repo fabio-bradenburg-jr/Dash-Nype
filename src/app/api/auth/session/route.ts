@@ -45,7 +45,7 @@ async function enrichLocalUserWithWorkspace(localUser: any) {
     const email = String(profile.email || localUser.email || '').trim().toLowerCase()
     const isPrimaryAdmin = isPrimaryAdminEmail(email)
     const isWorkspaceOwner = Boolean(workspace?.owner_user_id && workspace.owner_user_id === profile.id)
-    const role = isPrimaryAdmin ? USER_ROLES.MASTER : profile.role === USER_ROLES.MASTER ? USER_ROLES.VIEWER : profile.role || USER_ROLES.VIEWER
+    const role = isPrimaryAdmin ? USER_ROLES.MASTER : profile.role || USER_ROLES.VIEWER
     const branding = await getWorkspaceBranding(adminSupabase, profile.workspace_id, workspace?.name || '')
 
     return {
@@ -60,9 +60,9 @@ async function enrichLocalUserWithWorkspace(localUser: any) {
       workspace,
       branding,
       is_workspace_owner: isWorkspaceOwner,
-      can_manage_users: isPrimaryAdmin || isWorkspaceOwner,
-      can_manage_clients: isPrimaryAdmin || isWorkspaceOwner || role === USER_ROLES.OPERATOR,
-      can_edit_integrations: isPrimaryAdmin || isWorkspaceOwner || Boolean(profile.can_edit_integrations),
+      can_manage_users: isPrimaryAdmin || isWorkspaceOwner || role === USER_ROLES.MASTER,
+      can_manage_clients: isPrimaryAdmin || isWorkspaceOwner || role === USER_ROLES.MASTER || role === USER_ROLES.OPERATOR,
+      can_edit_integrations: isPrimaryAdmin || isWorkspaceOwner || role === USER_ROLES.MASTER || Boolean(profile.can_edit_integrations),
     }
   } catch (error) {
     console.error('Auth session workspace enrichment error:', error)

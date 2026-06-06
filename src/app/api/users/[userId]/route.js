@@ -104,8 +104,8 @@ export async function PATCH(request, context) {
     const targetEmail = targetProfile?.email || ''
     let role = Object.values(USER_ROLES).includes(body.role) ? body.role : USER_ROLES.VIEWER
 
-    if (role === USER_ROLES.MASTER && !isPrimaryAdminEmail(targetEmail)) {
-      return NextResponse.json({ error: 'Apenas a conta administradora principal pode ter perfil master.' }, { status: 403 })
+    if (role === USER_ROLES.MASTER && !isPrimaryAdminEmail(targetEmail) && !accessContext.canManageUsers) {
+      return NextResponse.json({ error: 'Sem permissão para definir um master neste workspace.' }, { status: 403 })
     }
 
     if (isPrimaryAdminEmail(targetEmail)) {

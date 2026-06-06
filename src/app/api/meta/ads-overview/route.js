@@ -56,7 +56,7 @@ async function getDashboardAccessContext() {
 
   const isPrimaryAdmin = isPrimaryAdminEmail(profile.email)
   const isWorkspaceOwner = Boolean(workspace?.owner_user_id && workspace.owner_user_id === profile.id)
-  const role = isPrimaryAdmin ? USER_ROLES.MASTER : profile.role === USER_ROLES.MASTER ? USER_ROLES.VIEWER : profile.role || USER_ROLES.VIEWER
+  const role = isPrimaryAdmin ? USER_ROLES.MASTER : profile.role || USER_ROLES.VIEWER
 
   return {
     adminSupabase,
@@ -67,10 +67,10 @@ async function getDashboardAccessContext() {
       workspaceId: profile.workspace_id,
       workspace: workspace || null,
       isWorkspaceOwner,
-      canManageUsers: isPrimaryAdmin || isWorkspaceOwner,
-      canManageClients: isPrimaryAdmin || isWorkspaceOwner || role === USER_ROLES.OPERATOR,
-      canEditIntegrations: isPrimaryAdmin || isWorkspaceOwner || Boolean(profile.can_edit_integrations),
-      canViewDashboard: isPrimaryAdmin || isWorkspaceOwner || role === USER_ROLES.OPERATOR,
+      canManageUsers: isPrimaryAdmin || isWorkspaceOwner || role === USER_ROLES.MASTER,
+      canManageClients: isPrimaryAdmin || isWorkspaceOwner || role === USER_ROLES.MASTER || role === USER_ROLES.OPERATOR,
+      canEditIntegrations: isPrimaryAdmin || isWorkspaceOwner || role === USER_ROLES.MASTER || Boolean(profile.can_edit_integrations),
+      canViewDashboard: isPrimaryAdmin || isWorkspaceOwner || role === USER_ROLES.MASTER || role === USER_ROLES.OPERATOR,
       canUseAi: profile.ai_access_level !== 'none',
       isClientRole: role === USER_ROLES.CLIENT,
       viewableClientIds: [],

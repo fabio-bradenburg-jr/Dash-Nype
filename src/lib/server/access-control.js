@@ -41,7 +41,7 @@ function resolveAiAccessLevel(profileLike, fallbackRole) {
 }
 
 function buildProfilePayload(user, role, workspaceId) {
-  const resolvedRole = isPrimaryAdminEmail(user.email) ? USER_ROLES.MASTER : role === USER_ROLES.MASTER ? USER_ROLES.VIEWER : role
+  const resolvedRole = isPrimaryAdminEmail(user.email) ? USER_ROLES.MASTER : role
 
   return {
     id: user.id,
@@ -122,15 +122,6 @@ export async function ensureUserProfile(adminSupabase, user) {
     workspaceId = firstWorkspace.id
   }
 
-  if (workspaceId && isPrimaryAdminEmail(user.email)) {
-    const { error: workspaceOwnerError } = await adminSupabase
-      .from('workspaces')
-      .update({ owner_user_id: user.id })
-      .eq('id', workspaceId)
-
-    if (workspaceOwnerError) throw workspaceOwnerError
-  }
-
   const payload = buildProfilePayload(user, role, workspaceId)
   const { data: createdProfile, error: createProfileError } = await adminSupabase
     .from('profiles')
@@ -164,7 +155,7 @@ export async function getAccessContext(supabase, user, options = {}) {
   }
 
   const isPrimaryAdmin = isPrimaryAdminEmail(profile.email || user.email)
-  const role = isPrimaryAdmin ? USER_ROLES.MASTER : profile.role === USER_ROLES.MASTER ? USER_ROLES.VIEWER : profile.role || USER_ROLES.VIEWER
+  const role = isPrimaryAdmin ? USER_ROLES.MASTER : profile.role || USER_ROLES.VIEWER
   const aiAccessLevel = isPrimaryAdmin ? AI_ACCESS_LEVELS.MASTER : resolveAiAccessLevel(profile, role)
   let workspaceId = profile.workspace_id || null
   let workspace = null
@@ -186,15 +177,6 @@ export async function getAccessContext(supabase, user, options = {}) {
         .update({ role: USER_ROLES.MASTER, workspace_id: workspaceId, ai_access_level: AI_ACCESS_LEVELS.MASTER, can_edit_integrations: true })
         .eq('id', profile.id)
     }
-  }
-
-  if (isPrimaryAdmin && workspaceId && adminSupabase) {
-    const { error: workspaceOwnerError } = await adminSupabase
-      .from('workspaces')
-      .update({ owner_user_id: user.id })
-      .eq('id', workspaceId)
-
-    if (workspaceOwnerError) throw workspaceOwnerError
   }
 
   if (workspaceId && adminSupabase) {
@@ -274,11 +256,11 @@ export async function getAccessContext(supabase, user, options = {}) {
     workspaceId,
     workspace,
     isWorkspaceOwner,
-    canManageUsers: isPrimaryAdmin || isWorkspaceOwner,
-    canManageClients: isPrimaryAdmin || isWorkspaceOwner || role === USER_ROLES.OPERATOR,
-    canEditIntegrations: isPrimaryAdmin || isWorkspaceOwner || Boolean(profile.can_edit_integrations),
-    canViewDashboard: isPrimaryAdmin || isWorkspaceOwner || role === USER_ROLES.OPERATOR || viewableClientIds.size > 0,
-    canUseAi: aiAccessLevel !== AI_ACCESS_LEVELS.NONE && (isPrimaryAdmin || isWorkspaceOwner || role === USER_ROLES.OPERATOR || viewableClientIds.size > 0),
+    canManageUsers: isPrimaryAdmin || isWorkspaceOwner || role === USER_ROLES.MASTER,
+    canManageClients: isPrimaryAdmin || isWorkspaceOwner || role === USER_ROLES.MASTER || role === USER_ROLES.OPERATOR,
+    canEditIntegrations: isPrimaryAdmin || isWorkspaceOwner || role === USER_ROLES.MASTER || Boolean(profile.can_edit_integrations),
+    canViewDashboard: isPrimaryAdmin || isWorkspaceOwner || role === USER_ROLES.MASTER || role === USER_ROLES.OPERATOR || viewableClientIds.size > 0,
+    canUseAi: aiAccessLevel !== AI_ACCESS_LEVELS.NONE && (isPrimaryAdmin || isWorkspaceOwner || role === USER_ROLES.MASTER || role === USER_ROLES.OPERATOR || viewableClientIds.size > 0),
     isClientRole: role === USER_ROLES.CLIENT,
     viewableClientIds: Array.from(viewableClientIds),
     editableClientIds: Array.from(editableClientIds),

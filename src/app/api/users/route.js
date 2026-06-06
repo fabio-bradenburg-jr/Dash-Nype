@@ -99,9 +99,7 @@ async function syncRegisteredAuthProfiles(adminSupabase, workspaceId) {
       const isPrimaryAdmin = isPrimaryAdminEmail(email)
       const role = isPrimaryAdmin
         ? USER_ROLES.MASTER
-        : existingProfile?.role === USER_ROLES.MASTER
-          ? USER_ROLES.VIEWER
-          : existingProfile?.role || USER_ROLES.VIEWER
+        : existingProfile?.role || USER_ROLES.VIEWER
       const aiAccessLevel = isPrimaryAdmin
         ? AI_ACCESS_LEVELS.MASTER
         : existingProfile?.ai_access_level || AI_ACCESS_LEVELS.NONE
@@ -181,7 +179,7 @@ async function getAuthorizedContext(options = {}) {
 
     const isPrimaryAdmin = isPrimaryAdminEmail(profile.email)
     const isWorkspaceOwner = Boolean(workspace?.owner_user_id && workspace.owner_user_id === profile.id)
-    const role = isPrimaryAdmin ? USER_ROLES.MASTER : profile.role === USER_ROLES.MASTER ? USER_ROLES.VIEWER : profile.role || USER_ROLES.VIEWER
+    const role = isPrimaryAdmin ? USER_ROLES.MASTER : profile.role || USER_ROLES.VIEWER
 
     accessContext = {
       profile,
@@ -189,9 +187,9 @@ async function getAuthorizedContext(options = {}) {
       workspaceId: profile.workspace_id,
       workspace: workspace || null,
       isWorkspaceOwner,
-      canManageUsers: isPrimaryAdmin || isWorkspaceOwner,
-      canManageClients: isPrimaryAdmin || isWorkspaceOwner || role === USER_ROLES.OPERATOR,
-      canEditIntegrations: isPrimaryAdmin || isWorkspaceOwner || Boolean(profile.can_edit_integrations),
+      canManageUsers: isPrimaryAdmin || isWorkspaceOwner || role === USER_ROLES.MASTER,
+      canManageClients: isPrimaryAdmin || isWorkspaceOwner || role === USER_ROLES.MASTER || role === USER_ROLES.OPERATOR,
+      canEditIntegrations: isPrimaryAdmin || isWorkspaceOwner || role === USER_ROLES.MASTER || Boolean(profile.can_edit_integrations),
       viewableClientIds: [],
       editableClientIds: [],
       isClientRole: role === USER_ROLES.CLIENT,
@@ -288,8 +286,8 @@ export async function POST(request) {
     const fullName = String(body.fullName || '').trim()
     let role = Object.values(USER_ROLES).includes(body.role) ? body.role : USER_ROLES.VIEWER
 
-    if (role === USER_ROLES.MASTER && !isPrimaryAdminEmail(email)) {
-      return NextResponse.json({ error: 'Apenas a conta administradora principal pode ter perfil master.' }, { status: 403 })
+    if (role === USER_ROLES.MASTER && !isPrimaryAdminEmail(email) && !accessContext.canManageUsers) {
+      return NextResponse.json({ error: 'Sem permissão para criar um master neste workspace.' }, { status: 403 })
     }
 
     if (isPrimaryAdminEmail(email)) {

@@ -55,7 +55,7 @@ function isPrimaryAdminEmail(email?: string | null) {
 
 function buildPlatformProfile(platformUser: PlatformSessionUser): UserProfile {
   const isPrimaryAdmin = isPrimaryAdminEmail(platformUser.email)
-  const role = isPrimaryAdmin ? 'master' : normalizePlatformRole(platformUser.role) === 'master' ? 'visualizador' : normalizePlatformRole(platformUser.role)
+  const role = isPrimaryAdmin ? 'master' : normalizePlatformRole(platformUser.role)
 
   return {
     id: platformUser.id,

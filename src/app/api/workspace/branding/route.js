@@ -46,7 +46,7 @@ async function getAuthorizedBrandingContext() {
 
     const isPrimaryAdmin = isPrimaryAdminEmail(profile.email)
     const isWorkspaceOwner = Boolean(workspace?.owner_user_id && workspace.owner_user_id === profile.id)
-    const role = isPrimaryAdmin ? USER_ROLES.MASTER : profile.role === USER_ROLES.MASTER ? USER_ROLES.VIEWER : profile.role || USER_ROLES.VIEWER
+    const role = isPrimaryAdmin ? USER_ROLES.MASTER : profile.role || USER_ROLES.VIEWER
 
     return {
       adminSupabase,
@@ -56,7 +56,7 @@ async function getAuthorizedBrandingContext() {
         workspaceId: profile.workspace_id,
         workspace: workspace || null,
         isWorkspaceOwner,
-        canManageUsers: isPrimaryAdmin || isWorkspaceOwner,
+        canManageUsers: isPrimaryAdmin || isWorkspaceOwner || role === USER_ROLES.MASTER,
       },
     }
   }
