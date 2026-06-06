@@ -17731,8 +17731,7 @@ export default function DashboardShell({
                   <span role="columnheader">Cliente</span>
                   <span role="columnheader">Status</span>
                   <span role="columnheader">Saúde</span>
-                  <span role="columnheader" aria-label="Meta Ads"><i className="bx bxl-meta"></i></span>
-                  <span role="columnheader" aria-label="Agendor"><i className="bx bx-git-branch"></i></span>
+                  <span role="columnheader">Integrações</span>
                   <span role="columnheader">Editar</span>
                 </div>
 
@@ -17811,12 +17810,14 @@ export default function DashboardShell({
                           <b>{latestHealth?.label || 'Sem registro'}</b>
                           <small>{healthDetail}</small>
                         </span>
-                        <span className={hasMeta ? 'simple-client-icon active' : 'simple-client-icon'} title={hasMeta ? 'Meta conectada' : 'Meta não conectada'}>
-                          <i className="bx bxl-meta"></i>
-                        </span>
-                        <span className={hasAgendor ? 'simple-client-icon active' : 'simple-client-icon'} title={hasAgendor ? 'Agendor cadastrado' : 'Agendor não cadastrado'}>
-                          <i className="bx bx-git-branch"></i>
-                        </span>
+                        <div className="simple-client-integration-icons" aria-label="Integrações do cliente">
+                          <span className={hasMeta ? 'simple-client-icon active' : 'simple-client-icon'} title={hasMeta ? 'Meta conectada' : 'Meta não conectada'}>
+                            <i className="bx bxl-meta"></i>
+                          </span>
+                          <span className={hasAgendor ? 'simple-client-icon active' : 'simple-client-icon'} title={hasAgendor ? 'Agendor cadastrado' : 'Agendor não cadastrado'}>
+                            <i className="bx bx-git-branch"></i>
+                          </span>
+                        </div>
                         <button
                           type="button"
                           className="btn btn-secondary simple-client-edit"
@@ -17982,7 +17983,7 @@ export default function DashboardShell({
                     </label>
                   </div>
 
-                  <div className="integration-block">
+                  <div className="integration-block agendor-integration-block">
                     <div className="integration-heading">
                       <div className="integration-icon" style={{ color: '#f97316', borderColor: '#f9731633' }}>
                         <i className="bx bx-git-branch"></i>
@@ -32114,13 +32115,16 @@ export default function DashboardShell({
         .simple-client-list { display: grid; gap: 10px; }
         .simple-client-row {
           display: grid;
-          grid-template-columns: minmax(220px, 1fr) minmax(128px, 0.32fr) minmax(132px, 0.42fr) 72px 72px 110px;
+          grid-template-columns: minmax(260px, 1fr) minmax(136px, 0.34fr) minmax(160px, 0.44fr) minmax(112px, 0.24fr) 108px;
           align-items: center;
           gap: 12px;
           padding: 14px 16px;
           border: 1px solid rgba(148, 163, 184, 0.18);
           border-radius: 18px;
           background: rgba(255, 255, 255, 0.045);
+        }
+        .simple-client-row:not(.simple-client-row-head) {
+          min-height: 78px;
         }
         .simple-client-row-head {
           color: var(--muted-text);
@@ -32236,6 +32240,18 @@ export default function DashboardShell({
         .simple-client-health.empty b {
           color: rgba(241, 241, 241, 0.6);
         }
+        .simple-client-integration-icons {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          min-width: 0;
+          padding: 6px;
+          border: 1px solid rgba(148, 163, 184, 0.12);
+          border-radius: 16px;
+          background: rgba(255, 255, 255, 0.025);
+          justify-self: stretch;
+        }
         .simple-client-icon {
           width: 38px;
           height: 38px;
@@ -32270,11 +32286,26 @@ export default function DashboardShell({
           grid-template-columns: repeat(2, minmax(0, 1fr));
           gap: 28px 30px;
         }
+        .simple-client-modal .client-identity-block,
+        .simple-client-modal .manual-crm-toggle-block,
+        .simple-client-modal .agendor-integration-block {
+          grid-column: 1 / -1;
+        }
         .simple-client-modal .integration-block {
           min-width: 0;
           overflow: hidden;
           padding: 28px;
           border-radius: 24px;
+        }
+        .simple-client-modal .client-identity-block {
+          display: grid;
+          gap: 20px;
+        }
+        .simple-client-modal .manual-crm-toggle-block {
+          padding: 18px 22px;
+        }
+        .simple-client-modal .agendor-integration-block {
+          padding-bottom: 30px;
         }
         .simple-client-modal .client-form-grid,
         .simple-client-modal .client-form-grid-2 {
@@ -34837,6 +34868,7 @@ export default function DashboardShell({
 
         :root[data-ui-mode='light'] .simple-client-card,
         :root[data-ui-mode='light'] .simple-client-row,
+        :root[data-ui-mode='light'] .simple-client-integration-icons,
         :root[data-ui-mode='light'] .users-toolbar-card,
         :root[data-ui-mode='light'] .management-directory-card {
           background: rgba(255, 255, 255, 0.95) !important;
@@ -36351,7 +36383,7 @@ export default function DashboardShell({
           }
 
           .simple-clients-layout .simple-client-row {
-            grid-template-columns: minmax(0, 1fr) repeat(2, 44px) minmax(92px, auto);
+            grid-template-columns: minmax(0, 1fr) minmax(96px, auto) minmax(92px, auto);
           }
 
           .simple-clients-layout .simple-client-row-head {
@@ -36362,6 +36394,10 @@ export default function DashboardShell({
           .simple-clients-layout .simple-client-status-select,
           .simple-clients-layout .simple-client-health {
             grid-column: 1 / -1;
+          }
+
+          .simple-clients-layout .simple-client-integration-icons {
+            justify-self: stretch;
           }
 
           .simple-clients-layout .simple-client-status-select span {
