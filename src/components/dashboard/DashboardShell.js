@@ -4893,22 +4893,6 @@ export default function DashboardShell({
       })
   }, [adsOverviewRows, adsOverviewSearch, adsOverviewManagerFilter, clientsById, operationUsersById, latestWeeklyHealthByClientId])
 
-  const adsOverviewSummary = useMemo(() => {
-    const clientsCount = filteredAdsOverviewRows.length
-    const adsCount = filteredAdsOverviewRows.reduce((sum, row) => sum + (Array.isArray(row.ads) ? row.ads.length : 0), 0)
-    const spend = filteredAdsOverviewRows.reduce(
-      (sum, row) => sum + (row.ads || []).reduce((clientSum, ad) => clientSum + Number(ad.spend || 0), 0),
-      0
-    )
-    const withErrors = filteredAdsOverviewRows.filter((row) => row.error).length
-
-    return {
-      clientsCount,
-      adsCount,
-      spend,
-      withErrors,
-    }
-  }, [filteredAdsOverviewRows])
   const visibleAdsOverviewClientIds = useMemo(
     () => new Set(filteredAdsOverviewRows.map((row) => row.clientId)),
     [filteredAdsOverviewRows]
@@ -17364,29 +17348,6 @@ export default function DashboardShell({
                 <span>{adsOverviewError}</span>
               </div>
             )}
-
-            <div className="ads-overview-summary-grid">
-              <article className="ads-overview-summary-card glass-panel">
-                <span>Clientes exibidos</span>
-                <strong>{formatNumber(adsOverviewSummary.clientsCount)}</strong>
-                <small>Ativos com Meta Ads vinculado</small>
-              </article>
-              <article className="ads-overview-summary-card glass-panel">
-                <span>Anúncios no top 5</span>
-                <strong>{formatNumber(adsOverviewSummary.adsCount)}</strong>
-                <small>Somente com investimento</small>
-              </article>
-              <article className="ads-overview-summary-card glass-panel">
-                <span>Investimento listado</span>
-                <strong>{formatCurrency(adsOverviewSummary.spend)}</strong>
-                <small>Somatório dos anúncios exibidos</small>
-              </article>
-              <article className="ads-overview-summary-card glass-panel">
-                <span>Resultado principal</span>
-                <strong>{activeMetaRankingResultConfig?.resultLabel || 'Compras'}</strong>
-                <small>Usa o filtro atual do Meta Ads</small>
-              </article>
-            </div>
 
             <section className="glass-panel ads-overview-board">
               <div className="ads-overview-toolbar">
@@ -31322,36 +31283,6 @@ export default function DashboardShell({
           color: var(--accent-blue);
         }
 
-        .ads-overview-summary-grid {
-          display: grid;
-          grid-template-columns: repeat(4, minmax(0, 1fr));
-          gap: 16px;
-        }
-
-        .ads-overview-summary-card {
-          min-height: 140px;
-          padding: 22px;
-          border-radius: 22px;
-          display: grid;
-          align-content: space-between;
-          gap: 12px;
-        }
-
-        .ads-overview-summary-card span,
-        .ads-overview-summary-card small {
-          color: var(--text-muted);
-          font-size: 12px;
-          font-weight: 800;
-          letter-spacing: 0.08em;
-          text-transform: uppercase;
-        }
-
-        .ads-overview-summary-card strong {
-          color: var(--text-primary);
-          font-size: clamp(24px, 2.2vw, 34px);
-          line-height: 1;
-        }
-
         .ads-overview-board {
           padding: 24px;
           border-radius: 28px;
@@ -32080,10 +32011,6 @@ export default function DashboardShell({
         }
 
         @media (max-width: 1180px) {
-          .ads-overview-summary-grid {
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-          }
-
           .ads-overview-toolbar {
             grid-template-columns: 1fr;
           }
@@ -32120,7 +32047,6 @@ export default function DashboardShell({
             width: 100%;
           }
 
-          .ads-overview-summary-grid,
           .ad-balance-summary-grid,
           .ad-balance-filter-row {
             grid-template-columns: 1fr;
