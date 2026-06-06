@@ -742,6 +742,7 @@ function normalizeClientRecord(client: LooseRecord): ClientRecord {
     drawflowUrl: payload.drawflowUrl || '',
     projectManager: payload.projectManager || '',
     trafficManager: payload.trafficManager || '',
+    resultManagerUserId: payload.resultManagerUserId || '',
     designer: payload.designer || '',
     csOwner: payload.csOwner || '',
     copyOwner: payload.copyOwner || '',

@@ -887,6 +887,7 @@ export function createClientRecord(overrides: ClientRecordOverrides = {}): Clien
     drawflowUrl: '',
     projectManager: '',
     trafficManager: '',
+    resultManagerUserId: '',
     designer: '',
     csOwner: '',
     copyOwner: '',

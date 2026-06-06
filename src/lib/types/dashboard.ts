@@ -285,6 +285,7 @@ export interface ClientRecord {
   drawflowUrl: string
   projectManager: string
   trafficManager: string
+  resultManagerUserId: string
   designer: string
   csOwner: string
   copyOwner: string

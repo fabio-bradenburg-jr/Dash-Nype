@@ -3344,6 +3344,7 @@ export default function DashboardShell({
   const [newClientGoogleAdsAccountId, setNewClientGoogleAdsAccountId] = useState('')
   const [newClientDashboardColor, setNewClientDashboardColor] = useState('#10B981')
   const [newClientLogoUrl, setNewClientLogoUrl] = useState('')
+  const [newClientResultManagerUserId, setNewClientResultManagerUserId] = useState('')
   const [newProductName, setNewProductName] = useState('')
   const [operationViewMode, setOperationViewMode] = useState('kanban')
   const [operationPeriodFilter, setOperationPeriodFilter] = useState('all')
@@ -3405,6 +3406,17 @@ export default function DashboardShell({
   const [adAccountBalanceValueFilter, setAdAccountBalanceValueFilter] = useState('all')
   const [adAccountBalanceDebtFilter, setAdAccountBalanceDebtFilter] = useState('all')
   const [adAccountBalanceRefreshNonce, setAdAccountBalanceRefreshNonce] = useState(0)
+  const [adsOverviewRows, setAdsOverviewRows] = useState([])
+  const [adsOverviewUpdatedAt, setAdsOverviewUpdatedAt] = useState('')
+  const [adsOverviewLoading, setAdsOverviewLoading] = useState(false)
+  const [adsOverviewError, setAdsOverviewError] = useState('')
+  const [adsOverviewSearch, setAdsOverviewSearch] = useState('')
+  const [adsOverviewManagerFilter, setAdsOverviewManagerFilter] = useState('all')
+  const [adsOverviewRefreshNonce, setAdsOverviewRefreshNonce] = useState(0)
+  const [adsOverviewPreviewItem, setAdsOverviewPreviewItem] = useState(null)
+  const [adsOverviewPreview, setAdsOverviewPreview] = useState(null)
+  const [adsOverviewPreviewLoading, setAdsOverviewPreviewLoading] = useState(false)
+  const [adsOverviewPreviewError, setAdsOverviewPreviewError] = useState('')
   const [insights, setInsights] = useState(null)
   const [previousInsights, setPreviousInsights] = useState(null)
   const [googleAdsSummary, setGoogleAdsSummary] = useState(null)
@@ -4834,6 +4846,68 @@ export default function DashboardShell({
 
     return latestByClient
   }, [weeklyRecords])
+
+  const filteredAdsOverviewRows = useMemo(() => {
+    const query = adsOverviewSearch.trim().toLowerCase()
+
+    return adsOverviewRows
+      .map((row) => {
+        const client = clientsById.get(row.clientId)
+        const manager = operationUsersById.get(client?.resultManagerUserId || row.resultManagerUserId || '')
+        return {
+          ...row,
+          client: client || null,
+          clientLogoUrl: client?.logoUrl || row.clientLogoUrl || '',
+          resultManagerUserId: client?.resultManagerUserId || row.resultManagerUserId || '',
+          resultManagerName: manager?.full_name || manager?.email || row.resultManagerName || 'Sem gestor',
+        }
+      })
+      .filter((row) => {
+        const matchesManager = adsOverviewManagerFilter === 'all'
+          ? true
+          : adsOverviewManagerFilter === '__none__'
+            ? !row.resultManagerUserId
+            : row.resultManagerUserId === adsOverviewManagerFilter
+        const matchesSearch = !query || [
+          row.clientName,
+          row.metaAdAccountId,
+          row.resultManagerName,
+          ...(row.ads || []).map((ad) => ad.label),
+        ]
+          .filter(Boolean)
+          .some((value) => String(value).toLowerCase().includes(query))
+
+        return matchesManager && matchesSearch
+      })
+      .sort((left, right) => {
+        const getClientHealthRank = (row) => {
+          const client = row.client || clientsById.get(row.clientId)
+          if (String(client?.status || row.clientStatus || '').trim().toLowerCase() === 'churn') return CLIENT_HEALTH_SORT_RANK.churn
+          const latestRecord = latestWeeklyHealthByClientId.get(row.clientId)
+          return CLIENT_HEALTH_SORT_RANK[latestRecord?.healthStatus] ?? CLIENT_HEALTH_SORT_RANK.empty
+        }
+        const rankCompare = getClientHealthRank(left) - getClientHealthRank(right)
+        if (rankCompare) return rankCompare
+        return String(left.clientName || '').localeCompare(String(right.clientName || ''), 'pt-BR')
+      })
+  }, [adsOverviewRows, adsOverviewSearch, adsOverviewManagerFilter, clientsById, operationUsersById, latestWeeklyHealthByClientId])
+
+  const adsOverviewSummary = useMemo(() => {
+    const clientsCount = filteredAdsOverviewRows.length
+    const adsCount = filteredAdsOverviewRows.reduce((sum, row) => sum + (Array.isArray(row.ads) ? row.ads.length : 0), 0)
+    const spend = filteredAdsOverviewRows.reduce(
+      (sum, row) => sum + (row.ads || []).reduce((clientSum, ad) => clientSum + Number(ad.spend || 0), 0),
+      0
+    )
+    const withErrors = filteredAdsOverviewRows.filter((row) => row.error).length
+
+    return {
+      clientsCount,
+      adsCount,
+      spend,
+      withErrors,
+    }
+  }, [filteredAdsOverviewRows])
 
   const weeklyVisibleRecords = useMemo(() => {
     if (weeklyPeriodPreset === 'filled') {
@@ -6427,6 +6501,7 @@ export default function DashboardShell({
     setCreateClientStep('identity')
     setNewClientManualCrmEnabled(false)
     setNewClientLogoUrl('')
+    setNewClientResultManagerUserId('')
   }, [])
 
   const openCreateClientModal = useCallback(() => {
@@ -6434,6 +6509,7 @@ export default function DashboardShell({
     setNewClientDashboardColor(appAccentColor)
     setNewClientLogoUrl('')
     setNewClientManualCrmEnabled(false)
+    setNewClientResultManagerUserId('')
     setIsCreateClientModalOpen(true)
     window.setTimeout(() => {
       document.querySelector('.modal-create-client input')?.focus()
@@ -6796,6 +6872,7 @@ export default function DashboardShell({
       logoUrl: newClientLogoUrl,
       metaAdAccountId: newClientMetaAdAccountId,
       googleAdsAccountId: newClientGoogleAdsAccountId,
+      resultManagerUserId: newClientResultManagerUserId,
       dashboardColor: normalizedNewClientDashboardColor,
       operationEnabled: false,
       dashboardEnabled: true,
@@ -6820,6 +6897,7 @@ export default function DashboardShell({
     setNewClientGoogleAdsAccountId('')
     setNewClientDashboardColor(appAccentColor)
     setNewClientLogoUrl('')
+    setNewClientResultManagerUserId('')
     setNewClientManualCrmEnabled(false)
     setNewClientOperationEnabled(false)
     setNewClientDashboardEnabled(true)
@@ -9710,6 +9788,55 @@ export default function DashboardShell({
   }, [hasLoadedPreferences, activeTab, clients, metaRequestHeaders, adAccountBalanceRefreshNonce])
 
   useEffect(() => {
+    if (!hasLoadedPreferences || activeTab !== 'anuncios') return
+    if (dateRange === 'custom' && (!customSince || !customUntil)) return
+
+    let cancelled = false
+
+    const loadAdsOverview = async () => {
+      setAdsOverviewLoading(true)
+      setAdsOverviewError('')
+
+      try {
+        const params = new URLSearchParams({
+          date_preset: dateRange,
+        })
+
+        if (dateRange === 'custom') {
+          params.set('since', customSince)
+          params.set('until', customUntil)
+        }
+
+        const response = await fetch(`/api/meta/ads-overview?${params.toString()}`, {
+          headers: metaRequestHeaders,
+        })
+        const data = await response.json().catch(() => ({}))
+
+        if (!response.ok) {
+          throw new Error(data.error || 'Não foi possível carregar os anúncios.')
+        }
+
+        if (cancelled) return
+        setAdsOverviewRows(Array.isArray(data.rows) ? data.rows : [])
+        setAdsOverviewUpdatedAt(data.updatedAt || new Date().toISOString())
+      } catch (error) {
+        if (cancelled) return
+        setAdsOverviewRows([])
+        setAdsOverviewUpdatedAt('')
+        setAdsOverviewError(error.message || 'Não foi possível carregar os anúncios.')
+      } finally {
+        if (!cancelled) setAdsOverviewLoading(false)
+      }
+    }
+
+    loadAdsOverview()
+
+    return () => {
+      cancelled = true
+    }
+  }, [hasLoadedPreferences, activeTab, dateRange, customSince, customUntil, metaRequestHeaders, adsOverviewRefreshNonce])
+
+  useEffect(() => {
     if (activeTab !== 'apresentacao') return
 
     if (!activeClientId) {
@@ -11909,6 +12036,52 @@ export default function DashboardShell({
     metaRequestHeaders,
     selectedAdAccount,
   ])
+
+  useEffect(() => {
+    if (!adsOverviewPreviewItem?.adId || !adsOverviewPreviewItem?.adAccountId || !hasMetaConfigured) {
+      setAdsOverviewPreview(null)
+      setAdsOverviewPreviewLoading(false)
+      setAdsOverviewPreviewError('')
+      return
+    }
+
+    let cancelled = false
+
+    const fetchCreativePreview = async () => {
+      try {
+        setAdsOverviewPreview(null)
+        setAdsOverviewPreviewLoading(true)
+        setAdsOverviewPreviewError('')
+
+        const params = new URLSearchParams({
+          ad_id: adsOverviewPreviewItem.adId,
+          ad_account_id: adsOverviewPreviewItem.adAccountId,
+        })
+        const response = await fetch(`/api/meta/creative-preview?${params.toString()}`, {
+          headers: metaRequestHeaders,
+        })
+        const data = await response.json().catch(() => ({}))
+
+        if (!response.ok) {
+          throw new Error(data?.error || 'Não foi possível carregar o preview real desse criativo.')
+        }
+
+        if (!cancelled) setAdsOverviewPreview(data)
+      } catch (error) {
+        if (!cancelled) {
+          setAdsOverviewPreviewError(error.message || 'Não foi possível carregar o preview real desse criativo.')
+        }
+      } finally {
+        if (!cancelled) setAdsOverviewPreviewLoading(false)
+      }
+    }
+
+    fetchCreativePreview()
+
+    return () => {
+      cancelled = true
+    }
+  }, [adsOverviewPreviewItem?.adId, adsOverviewPreviewItem?.adAccountId, hasMetaConfigured, metaRequestHeaders])
 
   useEffect(() => {
     if (!metaRankingDrilldown?.type || !activeMetaRankingDrilldownItem || !selectedAdAccount || !hasMetaConfigured) {
@@ -15906,6 +16079,10 @@ export default function DashboardShell({
             <i className="bx bx-pulse"></i>
             {!isSidebarCollapsed && 'Controle da Operação'}
           </button>
+          <button type="button" data-tooltip="Anúncios" aria-label="Anúncios" className={`nav-item nav-button ${activeTab === 'anuncios' ? 'active' : ''}`} onClick={() => setActiveTab('anuncios')}>
+            <i className="bx bx-bullseye"></i>
+            {!isSidebarCollapsed && 'Anúncios'}
+          </button>
           <button type="button" data-tooltip="Saldos" aria-label="Saldos das contas" className={`nav-item nav-button ${activeTab === 'saldos' ? 'active' : ''}`} onClick={() => setActiveTab('saldos')}>
             <i className="bx bx-wallet-alt"></i>
             {!isSidebarCollapsed && 'Saldos'}
@@ -15968,6 +16145,7 @@ export default function DashboardShell({
                 {activeTab === 'monday' && 'Board Operations'}
                 {activeTab === 'usuarios' && (canManageUsers ? 'Team Performance' : 'My Performance')}
                 {activeTab === 'semanal' && 'Controle da Operação'}
+                {activeTab === 'anuncios' && 'Anúncios'}
                 {activeTab === 'saldos' && 'Saldos de Anúncios'}
                 {activeTab === 'settings' && 'Settings'}
               </h1>
@@ -15981,6 +16159,7 @@ export default function DashboardShell({
                   {activeTab === 'monday' && 'Entenda carga, status, throughput e gargalos dos boards em uma leitura executiva da operação.'}
                   {activeTab === 'usuarios' && (canManageUsers ? 'Acompanhe performance, escopo, metas e evolução do time em um dashboard unificado.' : 'Acompanhe sua evolução, metas e contexto operacional dentro do hub da agência.')}
                   {activeTab === 'semanal' && 'Registre investimento, leads, SQL, saúde e plano de ação por semana, de segunda a domingo.'}
+                  {activeTab === 'anuncios' && 'Veja os top 5 anúncios com investimento por cliente, por período e por gestor de resultado.'}
                   {activeTab === 'saldos' && 'Monitore saldo, cartão vinculado e valor pendente das contas de anúncio dos clientes.'}
                   {activeTab === 'settings' && 'Ajuste integrações, IA, aparência, campos de clientes e estrutura operacional sem sair do domínio principal.'}
                 </p>
@@ -17138,6 +17317,194 @@ export default function DashboardShell({
 
         {activeTab === 'monday' && renderMondayOperationalPanel()}
 
+        {activeTab === 'anuncios' && (
+          <section className="ads-overview-page">
+            <div className="ads-overview-hero glass-panel">
+              <div className="ads-overview-hero-copy">
+                <span className="management-card-kicker">Criativos em veiculação</span>
+                <h2>Top 5 anúncios por cliente</h2>
+                <p>Anúncios com investimento dentro do período selecionado, ordenados pela saúde da carteira para priorizar leitura.</p>
+              </div>
+              <div className="ads-overview-hero-actions">
+                <span className="ads-overview-period">
+                  <i className="bx bx-calendar"></i>
+                  {getDatePresetLabel(dateRange, customSince, customUntil)}
+                </span>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={() => setAdsOverviewRefreshNonce((current) => current + 1)}
+                  disabled={adsOverviewLoading}
+                >
+                  <i className={'bx ' + (adsOverviewLoading ? 'bx-loader-alt bx-spin' : 'bx-refresh')}></i>
+                  {adsOverviewLoading ? 'Atualizando' : 'Atualizar anúncios'}
+                </button>
+              </div>
+            </div>
+
+            {adsOverviewError && (
+              <div className="api-error-banner" role="status">
+                <i className="bx bx-error-circle"></i>
+                <span>{adsOverviewError}</span>
+              </div>
+            )}
+
+            <div className="ads-overview-summary-grid">
+              <article className="ads-overview-summary-card glass-panel">
+                <span>Clientes exibidos</span>
+                <strong>{formatNumber(adsOverviewSummary.clientsCount)}</strong>
+                <small>Ativos com Meta Ads vinculado</small>
+              </article>
+              <article className="ads-overview-summary-card glass-panel">
+                <span>Anúncios no top 5</span>
+                <strong>{formatNumber(adsOverviewSummary.adsCount)}</strong>
+                <small>Somente com investimento</small>
+              </article>
+              <article className="ads-overview-summary-card glass-panel">
+                <span>Investimento listado</span>
+                <strong>{formatCurrency(adsOverviewSummary.spend)}</strong>
+                <small>Somatório dos anúncios exibidos</small>
+              </article>
+              <article className="ads-overview-summary-card glass-panel">
+                <span>Resultado principal</span>
+                <strong>{activeMetaRankingResultConfig?.resultLabel || 'Compras'}</strong>
+                <small>Usa o filtro atual do Meta Ads</small>
+              </article>
+            </div>
+
+            <section className="glass-panel ads-overview-board">
+              <div className="ads-overview-toolbar">
+                <div className="client-registry-search ads-overview-search">
+                  <i className="bx bx-search"></i>
+                  <input
+                    type="text"
+                    value={adsOverviewSearch}
+                    onChange={(event) => setAdsOverviewSearch(event.target.value)}
+                    placeholder="Buscar cliente, gestor ou anúncio..."
+                  />
+                </div>
+                <label className="date-picker glass-item compact-filter">
+                  <i className="bx bx-user-check"></i>
+                  <select value={adsOverviewManagerFilter} onChange={(event) => setAdsOverviewManagerFilter(event.target.value)}>
+                    <option value="all">Todos os gestores</option>
+                    <option value="__none__">Sem gestor definido</option>
+                    {operationAssignableUsers.map((managedUser) => (
+                      <option key={`ads-manager-${managedUser.id}`} value={managedUser.id}>
+                        {managedUser.full_name || managedUser.email || 'Usuário'}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+
+              <div className="ads-overview-status-row">
+                <span>{formatNumber(filteredAdsOverviewRows.length)} cliente(s) exibido(s)</span>
+                {adsOverviewUpdatedAt && (
+                  <span>Atualizado em {formatClientDateTime(adsOverviewUpdatedAt)}</span>
+                )}
+              </div>
+
+              {adsOverviewLoading && !adsOverviewRows.length ? (
+                <div className="ranking-empty ads-overview-empty">
+                  <i className="bx bx-loader-alt bx-spin"></i>
+                  Carregando top anúncios dos clientes ativos...
+                </div>
+              ) : filteredAdsOverviewRows.length ? (
+                <div className="ads-overview-client-list">
+                  {filteredAdsOverviewRows.map((row) => {
+                    const latestHealthRecord = latestWeeklyHealthByClientId.get(row.clientId)
+                    const healthConfig = latestHealthRecord
+                      ? (WEEKLY_HEALTH_BY_KEY[latestHealthRecord.healthStatus] || WEEKLY_HEALTH_BY_KEY.attention)
+                      : null
+                    const ads = Array.isArray(row.ads) ? row.ads : []
+
+                    return (
+                      <article key={`ads-client-${row.clientId}`} className="ads-overview-client-card glass-item">
+                        <div className="ads-overview-client-head">
+                          <div className="ads-overview-client-identity">
+                            <span className="ads-overview-client-logo">
+                              {row.clientLogoUrl ? <img src={row.clientLogoUrl} alt={`Logo ${row.clientName}`} /> : <i className="bx bx-building-house"></i>}
+                            </span>
+                            <div>
+                              <strong>{row.clientName}</strong>
+                              <small>{row.resultManagerName || 'Sem gestor de resultado'}</small>
+                            </div>
+                          </div>
+                          <div className="ads-overview-client-meta">
+                            <span className={'simple-client-health compact ' + (healthConfig ? 'active ' + healthConfig.key : 'empty')} style={healthConfig ? { '--client-health-color': healthConfig.color } : undefined}>
+                              <b>{healthConfig?.label || 'Sem saúde'}</b>
+                            </span>
+                            <span className="ads-overview-account">act_{row.metaAdAccountId}</span>
+                          </div>
+                        </div>
+
+                        {row.error ? (
+                          <div className="api-error-banner ads-overview-client-error" role="status">
+                            <i className="bx bx-error-circle"></i>
+                            <span>{row.error}</span>
+                          </div>
+                        ) : ads.length ? (
+                          <div className="ads-overview-ad-list">
+                            {ads.map((ad, index) => {
+                              const resultValue = getMetaBreakdownResultValue(ad, activeMetaRankingResultConfig?.resultMetricKey)
+                              const averageCost = getMetaBreakdownAverageCost(ad, activeMetaRankingResultConfig?.resultMetricKey)
+
+                              return (
+                                <button
+                                  key={`${row.clientId}-${ad.adId || index}`}
+                                  type="button"
+                                  className="ads-overview-ad-row"
+                                  onClick={() => setAdsOverviewPreviewItem({
+                                    ...ad,
+                                    adAccountId: row.metaAdAccountId,
+                                    clientName: row.clientName,
+                                    resultLabel: activeMetaRankingResultConfig?.resultLabel || 'Resultados',
+                                    resultMetricKey: activeMetaRankingResultConfig?.resultMetricKey || 'totalConversions',
+                                  })}
+                                >
+                                  <span className="ads-overview-ad-rank">#{index + 1}</span>
+                                  <span className="ads-overview-ad-thumb">
+                                    {ad.imageUrl ? <img src={ad.imageUrl} alt={ad.label} loading="lazy" /> : <i className="bx bx-image-alt"></i>}
+                                  </span>
+                                  <span className="ads-overview-ad-copy">
+                                    <strong>{ad.label}</strong>
+                                    <small>{formatNumber(ad.impressions || 0)} impressões • {formatNumber(ad.clicks || 0)} cliques</small>
+                                  </span>
+                                  <span className="ads-overview-ad-metric">
+                                    <small>{activeMetaRankingResultConfig?.resultLabel || 'Resultados'}</small>
+                                    <strong>{formatNumber(resultValue)}</strong>
+                                  </span>
+                                  <span className="ads-overview-ad-metric">
+                                    <small>Custo</small>
+                                    <strong>{averageCost > 0 ? formatCurrency(averageCost) : '-'}</strong>
+                                  </span>
+                                  <span className="ads-overview-ad-metric">
+                                    <small>Investimento</small>
+                                    <strong>{formatCurrency(ad.spend || 0)}</strong>
+                                  </span>
+                                </button>
+                              )
+                            })}
+                          </div>
+                        ) : (
+                          <div className="ads-overview-no-ads">
+                            <i className="bx bx-low-vision"></i>
+                            <span>Sem anúncios com investimento no período selecionado.</span>
+                          </div>
+                        )}
+                      </article>
+                    )
+                  })}
+                </div>
+              ) : (
+                <div className="ranking-empty ads-overview-empty">
+                  Nenhum cliente encontrado para os filtros selecionados.
+                </div>
+              )}
+            </section>
+          </section>
+        )}
+
         {activeTab === 'saldos' && (
           <section className="ad-balance-page">
             <div className="ad-balance-hero glass-panel">
@@ -17505,7 +17872,7 @@ export default function DashboardShell({
                         <p>Dados mínimos para identificar a conta dentro do app.</p>
                       </div>
                     </div>
-                    <div className="client-form-grid client-form-grid-2">
+                    <div className="client-form-grid client-form-grid-3">
                       <div className="input-group">
                         <label>Nome do cliente</label>
                         <input type="text" value={activeClient.name} onChange={(event) => handleClientFieldChange('name', event.target.value)} placeholder="Nome do cliente" disabled={!canEditActiveClient} />
@@ -17513,6 +17880,17 @@ export default function DashboardShell({
                       <div className="input-group">
                         <label>CNPJ</label>
                         <input type="text" value={activeClient.cnpj || ''} onChange={(event) => handleClientFieldChange('cnpj', event.target.value)} placeholder="00.000.000/0000-00" disabled={!canEditActiveClient} />
+                      </div>
+                      <div className="input-group">
+                        <label>Gestor de Resultado</label>
+                        <select className="client-select-input" value={activeClient.resultManagerUserId || ''} onChange={(event) => handleClientFieldChange('resultManagerUserId', event.target.value)} disabled={!canEditActiveClient}>
+                          <option value="">Sem gestor selecionado</option>
+                          {operationAssignableUsers.map((managedUser) => (
+                            <option key={`client-result-manager-${managedUser.id}`} value={managedUser.id}>
+                              {managedUser.full_name || managedUser.email || 'Usuário'}
+                            </option>
+                          ))}
+                        </select>
                       </div>
                     </div>
 
@@ -17998,6 +18376,18 @@ export default function DashboardShell({
                     <div className="client-create-inline client-create-identity-only">
                       <input type="text" value={newClientName} onChange={(event) => setNewClientName(event.target.value)} placeholder="Nome do cliente" disabled={!isMaster} />
                       <input type="text" value={newClientCnpj} onChange={(event) => setNewClientCnpj(normalizeCnpjInput(event.target.value))} placeholder="CNPJ opcional" disabled={!isMaster} />
+                    </div>
+
+                    <div className="input-group client-create-result-manager">
+                      <label>Gestor de Resultado</label>
+                      <select className="client-select-input" value={newClientResultManagerUserId} onChange={(event) => setNewClientResultManagerUserId(event.target.value)} disabled={!isMaster}>
+                        <option value="">Selecionar depois</option>
+                        {operationAssignableUsers.map((managedUser) => (
+                          <option key={`new-client-result-manager-${managedUser.id}`} value={managedUser.id}>
+                            {managedUser.full_name || managedUser.email || 'Usuário'}
+                          </option>
+                        ))}
+                      </select>
                     </div>
 
                     <div className="client-logo-uploader client-logo-uploader-create">
@@ -19942,6 +20332,92 @@ export default function DashboardShell({
               ) : (
                 <div className="ranking-empty">Sem histórico suficiente para montar esse comparativo no período atual.</div>
               )}
+            </div>
+          </div>,
+          document.body
+        )}
+
+        {adsOverviewPreviewItem && typeof document !== 'undefined' && createPortal(
+          <div className="modal-overlay meta-ranking-detail-overlay" onClick={() => setAdsOverviewPreviewItem(null)}>
+            <div className="modal-card glass-panel meta-ranking-detail-modal ads-overview-preview-modal" onClick={(event) => event.stopPropagation()}>
+              <div className="modal-header">
+                <div>
+                  <h3>{adsOverviewPreviewItem.label}</h3>
+                  <p>{adsOverviewPreviewItem.clientName} • Preview real do anúncio quando disponível.</p>
+                </div>
+                <button type="button" className="modal-close" onClick={() => setAdsOverviewPreviewItem(null)} aria-label="Fechar preview do anúncio">
+                  <i className="bx bx-x"></i>
+                </button>
+              </div>
+
+              <div className="meta-ranking-detail-content">
+                <aside className="glass-item meta-ranking-detail-sidebar">
+                  <span className="meta-ranking-detail-kicker">Resumo do anúncio</span>
+                  <h4>{adsOverviewPreviewItem.resultLabel || 'Resultados'}</h4>
+                  <div className="meta-ranking-detail-stats">
+                    <span>
+                      <small>{adsOverviewPreviewItem.resultLabel || 'Resultados'}</small>
+                      <strong>{formatNumber(getMetaBreakdownResultValue(adsOverviewPreviewItem, adsOverviewPreviewItem.resultMetricKey || 'totalConversions'))}</strong>
+                    </span>
+                    <span>
+                      <small>Custo</small>
+                      <strong>{getMetaBreakdownAverageCost(adsOverviewPreviewItem, adsOverviewPreviewItem.resultMetricKey || 'totalConversions') > 0 ? formatCurrency(getMetaBreakdownAverageCost(adsOverviewPreviewItem, adsOverviewPreviewItem.resultMetricKey || 'totalConversions')) : '-'}</strong>
+                    </span>
+                    <span>
+                      <small>Investimento</small>
+                      <strong>{formatCurrency(adsOverviewPreviewItem.spend || 0)}</strong>
+                    </span>
+                    <span>
+                      <small>Cliques</small>
+                      <strong>{formatNumber(adsOverviewPreviewItem.clicks || 0)}</strong>
+                    </span>
+                    <span>
+                      <small>Impressões</small>
+                      <strong>{formatNumber(adsOverviewPreviewItem.impressions || 0)}</strong>
+                    </span>
+                  </div>
+                </aside>
+
+                <div className="glass-item meta-ranking-detail-panel">
+                  <div className="meta-ranking-detail-head">
+                    <span className="meta-ranking-detail-kicker">Criativo real</span>
+                    <h4>Visualização do anúncio</h4>
+                    <p>Use este preview para conferir imagem, descrição e vídeos quando a Meta disponibilizar reprodução.</p>
+                  </div>
+
+                  <div className="meta-ranking-preview-frame">
+                    {adsOverviewPreviewLoading ? (
+                      <div className="meta-ranking-preview-fallback">
+                        <i className="bx bx-loader-alt bx-spin"></i>
+                        <span>Carregando preview real...</span>
+                      </div>
+                    ) : adsOverviewPreview?.previewHtml ? (
+                      <iframe
+                        title={`Preview de ${adsOverviewPreviewItem.label}`}
+                        srcDoc={adsOverviewPreview.previewHtml}
+                        sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
+                        allow="autoplay; encrypted-media; picture-in-picture"
+                      />
+                    ) : (adsOverviewPreview?.imageUrl || adsOverviewPreviewItem.imageUrl) ? (
+                      <img src={adsOverviewPreview?.imageUrl || adsOverviewPreviewItem.imageUrl} alt={adsOverviewPreviewItem.label} />
+                    ) : (
+                      <div className="meta-ranking-preview-fallback">
+                        <i className="bx bx-image-alt"></i>
+                        <span>Preview indisponível</span>
+                      </div>
+                    )}
+                  </div>
+                  {adsOverviewPreviewError ? (
+                    <p className="meta-ranking-preview-error">{adsOverviewPreviewError}</p>
+                  ) : null}
+                  {adsOverviewPreview?.description ? (
+                    <div className="meta-ranking-creative-description">
+                      <span>Texto do anúncio</span>
+                      <p>{adsOverviewPreview.description}</p>
+                    </div>
+                  ) : null}
+                </div>
+              </div>
             </div>
           </div>,
           document.body
@@ -30757,6 +31233,363 @@ export default function DashboardShell({
           line-height: 1.5;
         }
 
+        .ads-overview-page {
+          display: grid;
+          gap: 28px;
+        }
+
+        .ads-overview-hero {
+          padding: 28px;
+          border-radius: 28px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 24px;
+          background:
+            radial-gradient(circle at top right, rgba(38, 194, 129, 0.14), transparent 36%),
+            linear-gradient(135deg, rgba(13, 17, 16, 0.96), rgba(7, 9, 8, 0.92));
+        }
+
+        .ads-overview-hero-copy {
+          display: grid;
+          gap: 8px;
+        }
+
+        .ads-overview-hero-copy h2 {
+          margin: 0;
+          color: var(--text-primary);
+          font-size: clamp(28px, 4vw, 46px);
+          line-height: 1.04;
+          letter-spacing: -0.01em;
+        }
+
+        .ads-overview-hero-copy p {
+          margin: 0;
+          max-width: 760px;
+          color: var(--text-secondary);
+          font-size: 16px;
+          line-height: 1.55;
+        }
+
+        .ads-overview-hero-actions {
+          display: flex;
+          align-items: center;
+          justify-content: flex-end;
+          flex-wrap: wrap;
+          gap: 12px;
+        }
+
+        .ads-overview-period {
+          min-height: 44px;
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          padding: 0 16px;
+          border-radius: 999px;
+          border: 1px solid rgba(129, 216, 167, 0.24);
+          background: rgba(38, 194, 129, 0.08);
+          color: var(--text-secondary);
+          font-weight: 700;
+        }
+
+        .ads-overview-period i {
+          color: var(--accent-blue);
+        }
+
+        .ads-overview-summary-grid {
+          display: grid;
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+          gap: 16px;
+        }
+
+        .ads-overview-summary-card {
+          min-height: 140px;
+          padding: 22px;
+          border-radius: 22px;
+          display: grid;
+          align-content: space-between;
+          gap: 12px;
+        }
+
+        .ads-overview-summary-card span,
+        .ads-overview-summary-card small {
+          color: var(--text-muted);
+          font-size: 12px;
+          font-weight: 800;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+        }
+
+        .ads-overview-summary-card strong {
+          color: var(--text-primary);
+          font-size: clamp(24px, 2.2vw, 34px);
+          line-height: 1;
+        }
+
+        .ads-overview-board {
+          padding: 24px;
+          border-radius: 28px;
+          display: grid;
+          gap: 18px;
+        }
+
+        .ads-overview-toolbar {
+          display: grid;
+          grid-template-columns: minmax(260px, 1fr) minmax(240px, 320px);
+          gap: 14px;
+          align-items: center;
+        }
+
+        .ads-overview-search {
+          min-height: 56px;
+        }
+
+        .ads-overview-status-row {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          color: var(--text-muted);
+          font-size: 13px;
+          font-weight: 700;
+        }
+
+        .ads-overview-client-list {
+          display: grid;
+          gap: 16px;
+        }
+
+        .ads-overview-client-card {
+          padding: 18px;
+          border-radius: 24px;
+          display: grid;
+          gap: 16px;
+        }
+
+        .ads-overview-client-head {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 16px;
+        }
+
+        .ads-overview-client-identity {
+          display: flex;
+          align-items: center;
+          gap: 14px;
+          min-width: 0;
+        }
+
+        .ads-overview-client-logo {
+          width: 54px;
+          height: 54px;
+          border-radius: 18px;
+          display: grid;
+          place-items: center;
+          flex: 0 0 auto;
+          overflow: hidden;
+          border: 1px solid rgba(129, 216, 167, 0.28);
+          background: rgba(38, 194, 129, 0.12);
+          color: var(--accent-blue);
+          font-size: 24px;
+        }
+
+        .ads-overview-client-logo img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+        }
+
+        .ads-overview-client-identity strong {
+          display: block;
+          color: var(--text-primary);
+          font-size: 18px;
+          line-height: 1.2;
+        }
+
+        .ads-overview-client-identity small {
+          display: block;
+          margin-top: 4px;
+          color: var(--text-muted);
+          font-size: 13px;
+        }
+
+        .ads-overview-client-meta {
+          display: flex;
+          align-items: center;
+          justify-content: flex-end;
+          flex-wrap: wrap;
+          gap: 10px;
+        }
+
+        .ads-overview-account {
+          padding: 8px 10px;
+          border-radius: 999px;
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          color: var(--text-muted);
+          font-size: 12px;
+          font-weight: 800;
+        }
+
+        .simple-client-health.compact {
+          min-height: 36px;
+          padding: 8px 12px;
+          border-radius: 999px;
+        }
+
+        .ads-overview-ad-list {
+          display: grid;
+          gap: 10px;
+        }
+
+        .ads-overview-ad-row {
+          width: 100%;
+          display: grid;
+          grid-template-columns: 44px 70px minmax(220px, 1fr) repeat(3, minmax(110px, 0.55fr));
+          align-items: center;
+          gap: 14px;
+          padding: 12px;
+          border: 1px solid rgba(190, 201, 191, 0.14);
+          border-radius: 18px;
+          background: rgba(255, 255, 255, 0.025);
+          color: var(--text-primary);
+          text-align: left;
+          cursor: pointer;
+          transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+        }
+
+        .ads-overview-ad-row:hover {
+          transform: translateY(-1px);
+          border-color: rgba(129, 216, 167, 0.32);
+          background: rgba(38, 194, 129, 0.06);
+        }
+
+        .ads-overview-ad-rank {
+          width: 36px;
+          height: 36px;
+          border-radius: 999px;
+          display: grid;
+          place-items: center;
+          background: rgba(38, 194, 129, 0.12);
+          color: var(--accent-blue);
+          font-weight: 900;
+        }
+
+        .ads-overview-ad-thumb {
+          width: 64px;
+          height: 64px;
+          border-radius: 16px;
+          overflow: hidden;
+          display: grid;
+          place-items: center;
+          border: 1px solid rgba(190, 201, 191, 0.14);
+          background: rgba(255, 255, 255, 0.04);
+          color: var(--text-muted);
+          font-size: 22px;
+        }
+
+        .ads-overview-ad-thumb img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+        }
+
+        .ads-overview-ad-copy {
+          min-width: 0;
+          display: grid;
+          gap: 5px;
+        }
+
+        .ads-overview-ad-copy strong {
+          color: var(--text-primary);
+          font-size: 15px;
+          line-height: 1.25;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        .ads-overview-ad-copy small,
+        .ads-overview-ad-metric small {
+          color: var(--text-muted);
+          font-size: 12px;
+          line-height: 1.25;
+        }
+
+        .ads-overview-ad-metric {
+          display: grid;
+          gap: 4px;
+          justify-items: start;
+        }
+
+        .ads-overview-ad-metric strong {
+          color: var(--text-primary);
+          font-size: 17px;
+          line-height: 1;
+        }
+
+        .ads-overview-no-ads,
+        .ads-overview-empty {
+          min-height: 120px;
+          display: grid;
+          place-items: center;
+          gap: 8px;
+          text-align: center;
+          color: var(--text-muted);
+        }
+
+        .ads-overview-no-ads {
+          border: 1px dashed rgba(190, 201, 191, 0.16);
+          border-radius: 18px;
+          background: rgba(255, 255, 255, 0.02);
+        }
+
+        .ads-overview-no-ads i,
+        .ads-overview-empty i {
+          color: var(--accent-blue);
+          font-size: 22px;
+        }
+
+        .ads-overview-client-error {
+          margin: 0;
+        }
+
+        .client-form-grid-3 {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+
+        .client-create-result-manager {
+          margin-bottom: 0;
+        }
+
+        .dashboard-light-mode:not([data-active-tab='apresentacao']) .ads-overview-hero,
+        :root[data-ui-mode='light'] .ads-overview-hero {
+          background:
+            radial-gradient(circle at top right, rgba(38, 194, 129, 0.12), transparent 38%),
+            linear-gradient(135deg, #ffffff, #f7fbf9);
+        }
+
+        .dashboard-light-mode:not([data-active-tab='apresentacao']) .ads-overview-account,
+        :root[data-ui-mode='light'] .ads-overview-account {
+          border-color: #d8e5dc;
+          color: #53645a;
+          background: #ffffff;
+        }
+
+        .dashboard-light-mode:not([data-active-tab='apresentacao']) .ads-overview-ad-row,
+        .dashboard-light-mode:not([data-active-tab='apresentacao']) .ads-overview-client-card,
+        :root[data-ui-mode='light'] .ads-overview-ad-row,
+        :root[data-ui-mode='light'] .ads-overview-client-card {
+          background: #ffffff;
+          border-color: #d8e5dc;
+        }
+
+        .dashboard-light-mode:not([data-active-tab='apresentacao']) .ads-overview-no-ads,
+        :root[data-ui-mode='light'] .ads-overview-no-ads {
+          background: #f8fbf9;
+          border-color: #c8d9ce;
+        }
+
         .ad-balance-page {
           display: grid;
           gap: 22px;
@@ -31174,6 +32007,22 @@ export default function DashboardShell({
         }
 
         @media (max-width: 1180px) {
+          .ads-overview-summary-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
+
+          .ads-overview-toolbar {
+            grid-template-columns: 1fr;
+          }
+
+          .ads-overview-ad-row {
+            grid-template-columns: 38px 62px minmax(220px, 1fr) repeat(2, minmax(100px, 0.55fr));
+          }
+
+          .ads-overview-ad-metric:last-child {
+            grid-column: 3 / -1;
+          }
+
           .ad-balance-summary-grid {
             grid-template-columns: repeat(2, minmax(0, 1fr));
           }
@@ -31184,23 +32033,56 @@ export default function DashboardShell({
         }
 
         @media (max-width: 760px) {
+          .ads-overview-hero,
           .ad-balance-hero {
             grid-template-columns: 1fr;
             padding: 22px;
+            align-items: flex-start;
+            flex-direction: column;
           }
 
+          .ads-overview-hero-actions,
+          .ads-overview-hero .btn,
           .ad-balance-hero .btn {
             width: 100%;
           }
 
+          .ads-overview-summary-grid,
           .ad-balance-summary-grid,
           .ad-balance-filter-row {
             grid-template-columns: 1fr;
           }
 
+          .ads-overview-status-row,
           .ad-balance-status-row {
             align-items: flex-start;
             flex-direction: column;
+          }
+
+          .ads-overview-client-head {
+            align-items: flex-start;
+            flex-direction: column;
+          }
+
+          .ads-overview-client-meta {
+            justify-content: flex-start;
+          }
+
+          .ads-overview-ad-row {
+            grid-template-columns: 36px 58px minmax(0, 1fr);
+          }
+
+          .ads-overview-ad-metric {
+            grid-column: span 1;
+            justify-items: start;
+          }
+
+          .ads-overview-ad-metric:last-child {
+            grid-column: span 1;
+          }
+
+          .client-form-grid-3 {
+            grid-template-columns: 1fr;
           }
         }
 
