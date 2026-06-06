@@ -16555,7 +16555,7 @@ export default function DashboardShell({
                   </div>
                 </div>
                 <div className="modal-foot">
-                  <span className="form-note">O e-mail master global continua sendo fabiobrandenburgjr@gmail.com. Este painel configura a marca do workspace atual.</span>
+                  <span className="form-note">O e-mail master global é fbrandenburgjunior@gmail.com. Este painel configura a marca do workspace atual.</span>
                   <div className="modal-actions">
                     <button type="button" className="btn btn-secondary" onClick={() => setIsBrandingModalOpen(false)}>Cancelar</button>
                     <button type="submit" className="btn btn-primary" disabled={isSavingBranding}>{isSavingBranding ? 'Salvando...' : 'Salvar marca'}</button>

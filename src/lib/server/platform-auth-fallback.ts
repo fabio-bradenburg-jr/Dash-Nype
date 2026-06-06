@@ -1,6 +1,6 @@
 import { SignJWT, jwtVerify } from 'jose'
 
-const PRIMARY_ADMIN_EMAIL = 'fabiobrandenburgjr@gmail.com'
+const PRIMARY_ADMIN_EMAIL = 'fbrandenburgjunior@gmail.com'
 
 function secretKey() {
   return new TextEncoder().encode(process.env.JWT_SECRET || 'change-me')

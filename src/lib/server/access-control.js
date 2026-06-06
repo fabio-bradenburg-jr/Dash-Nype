@@ -11,7 +11,8 @@ export const AI_ACCESS_LEVELS = {
   NONE: 'none',
 }
 
-export const PRIMARY_ADMIN_EMAIL = 'fabiobrandenburgjr@gmail.com'
+export const PRIMARY_ADMIN_EMAIL = 'fbrandenburgjunior@gmail.com'
+export const PREVIOUS_PRIMARY_ADMIN_EMAILS = ['fabiobrandenburgjr@gmail.com']
 
 export function normalizeEmail(email) {
   return String(email || '').trim().toLowerCase()
@@ -19,6 +20,10 @@ export function normalizeEmail(email) {
 
 export function isPrimaryAdminEmail(email) {
   return normalizeEmail(email) === PRIMARY_ADMIN_EMAIL
+}
+
+export function isPreviousPrimaryAdminEmail(email) {
+  return PREVIOUS_PRIMARY_ADMIN_EMAILS.includes(normalizeEmail(email))
 }
 
 function isMissingRelationError(error) {
@@ -117,6 +122,15 @@ export async function ensureUserProfile(adminSupabase, user) {
     workspaceId = firstWorkspace.id
   }
 
+  if (workspaceId && isPrimaryAdminEmail(user.email)) {
+    const { error: workspaceOwnerError } = await adminSupabase
+      .from('workspaces')
+      .update({ owner_user_id: user.id })
+      .eq('id', workspaceId)
+
+    if (workspaceOwnerError) throw workspaceOwnerError
+  }
+
   const payload = buildProfilePayload(user, role, workspaceId)
   const { data: createdProfile, error: createProfileError } = await adminSupabase
     .from('profiles')
@@ -172,6 +186,15 @@ export async function getAccessContext(supabase, user, options = {}) {
         .update({ role: USER_ROLES.MASTER, workspace_id: workspaceId, ai_access_level: AI_ACCESS_LEVELS.MASTER, can_edit_integrations: true })
         .eq('id', profile.id)
     }
+  }
+
+  if (isPrimaryAdmin && workspaceId && adminSupabase) {
+    const { error: workspaceOwnerError } = await adminSupabase
+      .from('workspaces')
+      .update({ owner_user_id: user.id })
+      .eq('id', workspaceId)
+
+    if (workspaceOwnerError) throw workspaceOwnerError
   }
 
   if (workspaceId && adminSupabase) {

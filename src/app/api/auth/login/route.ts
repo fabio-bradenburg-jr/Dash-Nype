@@ -69,7 +69,7 @@ async function loginWithLegacySupabase(body: { email: string; password: string }
   }
 
   const email = String(data.user.email || body.email || '').trim().toLowerCase()
-  const isPrimaryAdmin = email === 'fabiobrandenburgjr@gmail.com'
+  const isPrimaryAdmin = email === 'fbrandenburgjunior@gmail.com'
   const fallbackAccessContext = {
     profile: {
       full_name: data.user.user_metadata?.full_name || data.user.email || 'Usuário',

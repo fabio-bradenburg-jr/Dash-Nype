@@ -1,7 +1,7 @@
 import { cookies } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/server/supabase-admin'
-import { getAccessContext } from '@/lib/server/access-control'
+import { getAccessContext, isPreviousPrimaryAdminEmail, isPrimaryAdminEmail } from '@/lib/server/access-control'
 import { PLATFORM_AUTH_COOKIE } from '@/lib/saas/auth'
 import { verifyLocalAccessToken } from '@/lib/server/platform-auth-fallback'
 import { isMissingRelationError } from '@/lib/server/meta-connection'
@@ -136,7 +136,8 @@ export async function getPlatformGoogleAdsContext({ requireEdit = false } = {}) 
   const workspaceId = String(payload.tenant_id || '')
   if (!workspaceId) throw new Error('Workspace não encontrado na sessão do SaaS.')
 
-  const canEditIntegrations = String(payload.email || '').trim().toLowerCase() === 'fabiobrandenburgjr@gmail.com' || Boolean(payload.can_edit_integrations)
+  const payloadEmail = String(payload.email || '').trim().toLowerCase()
+  const canEditIntegrations = isPrimaryAdminEmail(payloadEmail) || (!isPreviousPrimaryAdminEmail(payloadEmail) && Boolean(payload.can_edit_integrations))
   if (requireEdit && !canEditIntegrations) {
     throw new Error('Sem permissão para gerenciar a conexão do Google Ads.')
   }
@@ -413,4 +414,3 @@ export async function listGoogleAdsAccounts(request) {
 
   return accounts.sort((left, right) => left.name.localeCompare(right.name, 'pt-BR'))
 }
-
