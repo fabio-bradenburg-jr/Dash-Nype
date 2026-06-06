@@ -3406,6 +3406,15 @@ export default function DashboardShell({
   const [adsOverviewPreview, setAdsOverviewPreview] = useState(null)
   const [adsOverviewPreviewLoading, setAdsOverviewPreviewLoading] = useState(false)
   const [adsOverviewPreviewError, setAdsOverviewPreviewError] = useState('')
+  const [campaignOverviewRows, setCampaignOverviewRows] = useState([])
+  const [campaignOverviewUpdatedAt, setCampaignOverviewUpdatedAt] = useState('')
+  const [campaignOverviewLoading, setCampaignOverviewLoading] = useState(false)
+  const [campaignOverviewError, setCampaignOverviewError] = useState('')
+  const [campaignOverviewSearch, setCampaignOverviewSearch] = useState('')
+  const [campaignOverviewRefreshNonce, setCampaignOverviewRefreshNonce] = useState(0)
+  const [campaignOverviewExpandedClientIds, setCampaignOverviewExpandedClientIds] = useState([])
+  const [campaignOverviewExpandedCampaignIds, setCampaignOverviewExpandedCampaignIds] = useState([])
+  const [campaignOverviewExpandedAdsetIds, setCampaignOverviewExpandedAdsetIds] = useState([])
   const [insights, setInsights] = useState(null)
   const [previousInsights, setPreviousInsights] = useState(null)
   const [googleAdsSummary, setGoogleAdsSummary] = useState(null)
@@ -3688,7 +3697,7 @@ export default function DashboardShell({
 
   const loadWeeklyRecords = useCallback(async () => {
     if (!hasLoadedPreferences) return
-    if (activeTab !== 'semanal' && activeTab !== 'clientes' && activeTab !== 'anuncios') return
+    if (activeTab !== 'semanal' && activeTab !== 'clientes' && activeTab !== 'anuncios' && activeTab !== 'campanhas') return
 
     setIsWeeklyLoading(true)
     setWeeklyError('')
@@ -4885,11 +4894,74 @@ export default function DashboardShell({
     () => new Set(filteredAdsOverviewRows.map((row) => row.clientId)),
     [filteredAdsOverviewRows]
   )
+  const filteredCampaignOverviewRows = useMemo(() => {
+    const query = campaignOverviewSearch.trim().toLowerCase()
+
+    return campaignOverviewRows
+      .map((row) => {
+        const client = clientsById.get(row.clientId)
+        return {
+          ...row,
+          client: client || null,
+          clientLogoUrl: client?.logoUrl || row.clientLogoUrl || '',
+        }
+      })
+      .filter((row) => {
+        if (!query) return true
+        const campaignNames = (row.campaigns || []).flatMap((campaign) => [
+          campaign.name,
+          ...(campaign.adsets || []).flatMap((adset) => [
+            adset.name,
+            ...(adset.ads || []).map((ad) => ad.name),
+          ]),
+        ])
+
+        return [
+          row.clientName,
+          row.metaAdAccountId,
+          ...campaignNames,
+        ]
+          .filter(Boolean)
+          .some((value) => String(value).toLowerCase().includes(query))
+      })
+      .sort((left, right) => {
+        const getClientHealthRank = (row) => {
+          const client = row.client || clientsById.get(row.clientId)
+          if (String(client?.status || row.clientStatus || '').trim().toLowerCase() === 'churn') return CLIENT_HEALTH_SORT_RANK.churn
+          const latestRecord = latestWeeklyHealthByClientId.get(row.clientId)
+          return CLIENT_HEALTH_SORT_RANK[latestRecord?.healthStatus] ?? CLIENT_HEALTH_SORT_RANK.empty
+        }
+        const rankCompare = getClientHealthRank(left) - getClientHealthRank(right)
+        if (rankCompare) return rankCompare
+        return String(left.clientName || '').localeCompare(String(right.clientName || ''), 'pt-BR')
+      })
+  }, [campaignOverviewRows, campaignOverviewSearch, clientsById, latestWeeklyHealthByClientId])
   const handleToggleAdsOverviewClient = useCallback((clientId) => {
     setAdsOverviewExpandedClientIds((current) =>
       current.includes(clientId)
         ? current.filter((item) => item !== clientId)
         : [...current, clientId]
+    )
+  }, [])
+  const handleToggleCampaignOverviewClient = useCallback((clientId) => {
+    setCampaignOverviewExpandedClientIds((current) =>
+      current.includes(clientId)
+        ? current.filter((item) => item !== clientId)
+        : [...current, clientId]
+    )
+  }, [])
+  const handleToggleCampaignOverviewCampaign = useCallback((campaignKey) => {
+    setCampaignOverviewExpandedCampaignIds((current) =>
+      current.includes(campaignKey)
+        ? current.filter((item) => item !== campaignKey)
+        : [...current, campaignKey]
+    )
+  }, [])
+  const handleToggleCampaignOverviewAdset = useCallback((adsetKey) => {
+    setCampaignOverviewExpandedAdsetIds((current) =>
+      current.includes(adsetKey)
+        ? current.filter((item) => item !== adsetKey)
+        : [...current, adsetKey]
     )
   }, [])
 
@@ -7905,7 +7977,7 @@ export default function DashboardShell({
       return
     }
 
-    if (activeTab === 'anuncios') {
+    if (activeTab === 'anuncios' || activeTab === 'campanhas') {
       setDateRange(draftDateRange)
       setCustomSince(draftCustomSince)
       setCustomUntil(draftCustomUntil)
@@ -9826,6 +9898,55 @@ export default function DashboardShell({
       cancelled = true
     }
   }, [hasLoadedPreferences, activeTab, dateRange, customSince, customUntil, metaRequestHeaders, adsOverviewRefreshNonce])
+
+  useEffect(() => {
+    if (!hasLoadedPreferences || activeTab !== 'campanhas') return
+    if (dateRange === 'custom' && (!customSince || !customUntil)) return
+
+    let cancelled = false
+
+    const loadCampaignOverview = async () => {
+      setCampaignOverviewLoading(true)
+      setCampaignOverviewError('')
+
+      try {
+        const params = new URLSearchParams({
+          date_preset: dateRange,
+        })
+
+        if (dateRange === 'custom') {
+          params.set('since', customSince)
+          params.set('until', customUntil)
+        }
+
+        const response = await fetch(`/api/meta/campaigns-overview?${params.toString()}`, {
+          headers: metaRequestHeaders,
+        })
+        const data = await response.json().catch(() => ({}))
+
+        if (!response.ok) {
+          throw new Error(data.error || 'Não foi possível carregar as campanhas.')
+        }
+
+        if (cancelled) return
+        setCampaignOverviewRows(Array.isArray(data.rows) ? data.rows : [])
+        setCampaignOverviewUpdatedAt(data.updatedAt || new Date().toISOString())
+      } catch (error) {
+        if (cancelled) return
+        setCampaignOverviewRows([])
+        setCampaignOverviewUpdatedAt('')
+        setCampaignOverviewError(error.message || 'Não foi possível carregar as campanhas.')
+      } finally {
+        if (!cancelled) setCampaignOverviewLoading(false)
+      }
+    }
+
+    loadCampaignOverview()
+
+    return () => {
+      cancelled = true
+    }
+  }, [hasLoadedPreferences, activeTab, dateRange, customSince, customUntil, metaRequestHeaders, campaignOverviewRefreshNonce])
 
   useEffect(() => {
     if (activeTab !== 'apresentacao') return
@@ -16070,6 +16191,10 @@ export default function DashboardShell({
             <i className="bx bx-pulse"></i>
             {!isSidebarCollapsed && 'Controle da Operação'}
           </button>
+          <button type="button" data-tooltip="Campanhas" aria-label="Campanhas" className={`nav-item nav-button ${activeTab === 'campanhas' ? 'active' : ''}`} onClick={() => setActiveTab('campanhas')}>
+            <i className="bx bx-sitemap"></i>
+            {!isSidebarCollapsed && 'Campanhas'}
+          </button>
           <button type="button" data-tooltip="Anúncios" aria-label="Anúncios" className={`nav-item nav-button ${activeTab === 'anuncios' ? 'active' : ''}`} onClick={() => setActiveTab('anuncios')}>
             <i className="bx bx-bullseye"></i>
             {!isSidebarCollapsed && 'Anúncios'}
@@ -16136,6 +16261,7 @@ export default function DashboardShell({
                 {activeTab === 'monday' && 'Board Operations'}
                 {activeTab === 'usuarios' && (canManageUsers ? 'Team Performance' : 'My Performance')}
                 {activeTab === 'semanal' && 'Controle da Operação'}
+                {activeTab === 'campanhas' && 'Campanhas'}
                 {activeTab === 'anuncios' && 'Anúncios'}
                 {activeTab === 'saldos' && 'Saldos de Anúncios'}
                 {activeTab === 'settings' && 'Settings'}
@@ -16150,6 +16276,7 @@ export default function DashboardShell({
                   {activeTab === 'monday' && 'Entenda carga, status, throughput e gargalos dos boards em uma leitura executiva da operação.'}
                   {activeTab === 'usuarios' && (canManageUsers ? 'Acompanhe performance, escopo, metas e evolução do time em um dashboard unificado.' : 'Acompanhe sua evolução, metas e contexto operacional dentro do hub da agência.')}
                   {activeTab === 'semanal' && 'Registre investimento, leads, SQL, saúde e plano de ação por semana, de segunda a domingo.'}
+                  {activeTab === 'campanhas' && 'Veja campanhas, conjuntos e anúncios ativos por cliente, com investimento consolidado por período.'}
                   {activeTab === 'anuncios' && 'Veja os top 5 anúncios com investimento por cliente, por período e por gestor de resultado.'}
                   {activeTab === 'saldos' && 'Monitore saldo, cartão vinculado e valor pendente das contas de anúncio dos clientes.'}
                   {activeTab === 'settings' && 'Ajuste integrações, IA, aparência, campos de clientes e estrutura operacional sem sair do domínio principal.'}
@@ -17308,6 +17435,275 @@ export default function DashboardShell({
         {activeTab === 'clickup' && renderClickUpOperationalPanel()}
 
         {activeTab === 'monday' && renderMondayOperationalPanel()}
+
+        {activeTab === 'campanhas' && (
+          <section className="campaign-overview-page ads-overview-page">
+            <div className="ads-overview-hero campaign-overview-hero glass-panel">
+              <div className="ads-overview-hero-copy">
+                <span className="management-card-kicker">Mapa de mídia</span>
+                <h2>Campanhas por cliente</h2>
+                <p>Clientes ordenados pela saúde do input semanal, com campanhas, conjuntos e anúncios ativos dentro do período selecionado.</p>
+              </div>
+              <div className="ads-overview-hero-actions">
+                {draftDateRange === 'custom' && (
+                  <div className="date-picker glass-item custom-range ads-overview-custom-range">
+                    <input type="date" value={draftCustomSince} onChange={(event) => setDraftCustomSince(event.target.value)} />
+                    <span>Até</span>
+                    <input type="date" value={draftCustomUntil} onChange={(event) => setDraftCustomUntil(event.target.value)} />
+                  </div>
+                )}
+                <label className="ads-overview-period">
+                  <i className="bx bx-calendar"></i>
+                  <select value={draftDateRange} onChange={(event) => setDraftDateRange(event.target.value)}>
+                    {DATE_PRESETS.map((preset) => (
+                      <option key={preset.value} value={preset.value}>
+                        {preset.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <button
+                  type="button"
+                  onClick={handleApplyDashboardFilters}
+                  disabled={isApplyDashboardFiltersDisabled}
+                  className="btn btn-secondary"
+                >
+                  <i className="bx bx-filter-alt"></i>
+                  Aplicar período
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={() => setCampaignOverviewRefreshNonce((current) => current + 1)}
+                  disabled={campaignOverviewLoading}
+                >
+                  <i className={'bx ' + (campaignOverviewLoading ? 'bx-loader-alt bx-spin' : 'bx-refresh')}></i>
+                  {campaignOverviewLoading ? 'Atualizando' : 'Atualizar campanhas'}
+                </button>
+              </div>
+            </div>
+
+            {campaignOverviewError && (
+              <div className="api-error-banner" role="status">
+                <i className="bx bx-error-circle"></i>
+                <span>{campaignOverviewError}</span>
+              </div>
+            )}
+
+            <section className="glass-panel ads-overview-board campaign-overview-board">
+              <div className="ads-overview-toolbar campaign-overview-toolbar">
+                <div className="client-registry-search ads-overview-search">
+                  <i className="bx bx-search"></i>
+                  <input
+                    type="text"
+                    value={campaignOverviewSearch}
+                    onChange={(event) => setCampaignOverviewSearch(event.target.value)}
+                    placeholder="Buscar cliente, campanha, conjunto ou anúncio..."
+                  />
+                </div>
+              </div>
+
+              <div className="ads-overview-status-row">
+                <span>{formatNumber(filteredCampaignOverviewRows.length)} cliente(s) exibido(s)</span>
+                {campaignOverviewUpdatedAt && (
+                  <span>Atualizado em {formatClientDateTime(campaignOverviewUpdatedAt)}</span>
+                )}
+              </div>
+
+              {campaignOverviewLoading && !campaignOverviewRows.length ? (
+                <div className="ranking-empty ads-overview-empty">
+                  <i className="bx bx-loader-alt bx-spin"></i>
+                  Carregando campanhas dos clientes ativos...
+                </div>
+              ) : filteredCampaignOverviewRows.length ? (
+                <div className="ads-overview-client-list campaign-overview-client-list">
+                  {filteredCampaignOverviewRows.map((row) => {
+                    const latestHealthRecord = latestWeeklyHealthByClientId.get(row.clientId)
+                    const healthConfig = latestHealthRecord
+                      ? (WEEKLY_HEALTH_BY_KEY[latestHealthRecord.healthStatus] || WEEKLY_HEALTH_BY_KEY.attention)
+                      : null
+                    const campaigns = Array.isArray(row.campaigns) ? row.campaigns : []
+                    const totals = row.totals || {}
+                    const isExpanded = campaignOverviewExpandedClientIds.includes(row.clientId)
+                    const healthDetail = latestHealthRecord
+                      ? `Input semanal: ${formatWeekRangeLabel(latestHealthRecord.weekStart, latestHealthRecord.weekEnd)}`
+                      : 'Sem input semanal preenchido'
+
+                    return (
+                      <article key={`campaign-client-${row.clientId}`} className={'ads-overview-client-card campaign-overview-client-card glass-item ' + (isExpanded ? 'expanded' : '')}>
+                        <button type="button" className="ads-overview-client-head ads-overview-client-toggle campaign-overview-client-head" onClick={() => handleToggleCampaignOverviewClient(row.clientId)} aria-expanded={isExpanded}>
+                          <div className="ads-overview-client-identity">
+                            <span className="ads-overview-client-logo">
+                              {row.clientLogoUrl ? <img src={row.clientLogoUrl} alt={`Logo ${row.clientName}`} /> : <i className="bx bx-building-house"></i>}
+                            </span>
+                            <div>
+                              <strong>{row.clientName}</strong>
+                              <small>act_{row.metaAdAccountId} • {formatNumber(campaigns.length)} campanha(s)</small>
+                            </div>
+                          </div>
+                          <div className="campaign-overview-client-metrics">
+                            <span className="campaign-overview-total-pill">
+                              <small>Investimento</small>
+                              <strong>{formatCurrency(totals.spend || 0)}</strong>
+                            </span>
+                            <span className="campaign-overview-total-pill">
+                              <small>Resultados</small>
+                              <strong>{formatNumber(totals.results || 0)}</strong>
+                            </span>
+                            <span className={'simple-client-health compact ' + (healthConfig ? 'active ' + healthConfig.key : 'empty')} style={healthConfig ? { '--client-health-color': healthConfig.color } : undefined}>
+                              <b>{healthConfig?.label || 'Sem saúde'}</b>
+                              <small>{healthDetail}</small>
+                            </span>
+                            <span className="ads-overview-expand-button">
+                              <i className={'bx ' + (isExpanded ? 'bx-chevron-up' : 'bx-chevron-down')}></i>
+                            </span>
+                          </div>
+                        </button>
+
+                        {isExpanded ? (
+                          row.error ? (
+                            <div className="api-error-banner ads-overview-client-error" role="status">
+                              <i className="bx bx-error-circle"></i>
+                              <span>{row.error}</span>
+                            </div>
+                          ) : campaigns.length ? (
+                            <div className="campaign-overview-tree">
+                              {campaigns.map((campaign, campaignIndex) => {
+                                const campaignKey = `${row.clientId}:${campaign.campaignId || campaignIndex}`
+                                const campaignExpanded = campaignOverviewExpandedCampaignIds.includes(campaignKey)
+                                const adsets = Array.isArray(campaign.adsets) ? campaign.adsets : []
+
+                                return (
+                                  <div key={campaignKey} className="campaign-overview-tree-group">
+                                    <button type="button" className="campaign-overview-tree-row campaign-overview-campaign-row" onClick={() => handleToggleCampaignOverviewCampaign(campaignKey)} aria-expanded={campaignExpanded}>
+                                      <span className="campaign-overview-row-title">
+                                        <strong>{campaign.name || 'Campanha sem nome'}</strong>
+                                        <small>{formatNumber(adsets.length)} conjunto(s)</small>
+                                      </span>
+                                      <span className="campaign-overview-metric">
+                                        <small>Investimento</small>
+                                        <strong>{formatCurrency(campaign.spend || 0)}</strong>
+                                      </span>
+                                      <span className="campaign-overview-metric">
+                                        <small>Resultados</small>
+                                        <strong>{formatNumber(campaign.results || 0)}</strong>
+                                      </span>
+                                      <span className="campaign-overview-metric">
+                                        <small>Cliques</small>
+                                        <strong>{formatNumber(campaign.clicks || 0)}</strong>
+                                      </span>
+                                      <span className="campaign-overview-metric">
+                                        <small>Impressões</small>
+                                        <strong>{formatNumber(campaign.impressions || 0)}</strong>
+                                      </span>
+                                      <span className="campaign-overview-chevron">
+                                        <i className={'bx ' + (campaignExpanded ? 'bx-chevron-up' : 'bx-chevron-down')}></i>
+                                      </span>
+                                    </button>
+
+                                    {campaignExpanded ? (
+                                      adsets.length ? (
+                                        <div className="campaign-overview-adset-list">
+                                          {adsets.map((adset, adsetIndex) => {
+                                            const adsetKey = `${campaignKey}:${adset.adsetId || adsetIndex}`
+                                            const adsetExpanded = campaignOverviewExpandedAdsetIds.includes(adsetKey)
+                                            const ads = Array.isArray(adset.ads) ? adset.ads : []
+
+                                            return (
+                                              <div key={adsetKey} className="campaign-overview-tree-group">
+                                                <button type="button" className="campaign-overview-tree-row campaign-overview-adset-row" onClick={() => handleToggleCampaignOverviewAdset(adsetKey)} aria-expanded={adsetExpanded}>
+                                                  <span className="campaign-overview-row-title">
+                                                    <strong>{adset.name || 'Conjunto sem nome'}</strong>
+                                                    <small>{formatNumber(ads.length)} anúncio(s)</small>
+                                                  </span>
+                                                  <span className="campaign-overview-metric">
+                                                    <small>Investimento</small>
+                                                    <strong>{formatCurrency(adset.spend || 0)}</strong>
+                                                  </span>
+                                                  <span className="campaign-overview-metric">
+                                                    <small>Resultados</small>
+                                                    <strong>{formatNumber(adset.results || 0)}</strong>
+                                                  </span>
+                                                  <span className="campaign-overview-metric">
+                                                    <small>Cliques</small>
+                                                    <strong>{formatNumber(adset.clicks || 0)}</strong>
+                                                  </span>
+                                                  <span className="campaign-overview-metric">
+                                                    <small>Impressões</small>
+                                                    <strong>{formatNumber(adset.impressions || 0)}</strong>
+                                                  </span>
+                                                  <span className="campaign-overview-chevron">
+                                                    <i className={'bx ' + (adsetExpanded ? 'bx-chevron-up' : 'bx-chevron-down')}></i>
+                                                  </span>
+                                                </button>
+
+                                                {adsetExpanded ? (
+                                                  ads.length ? (
+                                                    <div className="campaign-overview-ad-list">
+                                                      {ads.map((ad, adIndex) => (
+                                                        <div key={`${adsetKey}:${ad.adId || adIndex}`} className="campaign-overview-tree-row campaign-overview-ad-row">
+                                                          <span className="campaign-overview-row-title">
+                                                            <strong>{ad.name || 'Anúncio sem nome'}</strong>
+                                                            <small>{ad.adId || 'Sem ID'}</small>
+                                                          </span>
+                                                          <span className="campaign-overview-metric">
+                                                            <small>Investimento</small>
+                                                            <strong>{formatCurrency(ad.spend || 0)}</strong>
+                                                          </span>
+                                                          <span className="campaign-overview-metric">
+                                                            <small>Resultados</small>
+                                                            <strong>{formatNumber(ad.results || 0)}</strong>
+                                                          </span>
+                                                          <span className="campaign-overview-metric">
+                                                            <small>Cliques</small>
+                                                            <strong>{formatNumber(ad.clicks || 0)}</strong>
+                                                          </span>
+                                                          <span className="campaign-overview-metric">
+                                                            <small>Impressões</small>
+                                                            <strong>{formatNumber(ad.impressions || 0)}</strong>
+                                                          </span>
+                                                        </div>
+                                                      ))}
+                                                    </div>
+                                                  ) : (
+                                                    <div className="ads-overview-no-ads campaign-overview-empty-node">
+                                                      Sem anúncios ativos com investimento neste conjunto.
+                                                    </div>
+                                                  )
+                                                ) : null}
+                                              </div>
+                                            )
+                                          })}
+                                        </div>
+                                      ) : (
+                                        <div className="ads-overview-no-ads campaign-overview-empty-node">
+                                          Sem conjuntos ativos com investimento nesta campanha.
+                                        </div>
+                                      )
+                                    ) : null}
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          ) : (
+                            <div className="ads-overview-no-ads">
+                              <i className="bx bx-low-vision"></i>
+                              <span>Sem campanhas ativas com investimento no período selecionado.</span>
+                            </div>
+                          )
+                        ) : null}
+                      </article>
+                    )
+                  })}
+                </div>
+              ) : (
+                <div className="ranking-empty ads-overview-empty">
+                  Nenhum cliente encontrado para os filtros selecionados.
+                </div>
+              )}
+            </section>
+          </section>
+        )}
 
         {activeTab === 'anuncios' && (
           <section className="ads-overview-page">
@@ -31573,6 +31969,164 @@ export default function DashboardShell({
           margin: 0;
         }
 
+        .campaign-overview-toolbar {
+          grid-template-columns: minmax(260px, 1fr);
+        }
+
+        .campaign-overview-client-head {
+          align-items: stretch;
+        }
+
+        .campaign-overview-client-metrics {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(118px, 0.55fr)) minmax(170px, auto) 38px;
+          align-items: center;
+          gap: 10px;
+          min-width: min(760px, 58%);
+        }
+
+        .campaign-overview-total-pill {
+          min-height: 48px;
+          padding: 8px 12px;
+          border-radius: 14px;
+          display: grid;
+          gap: 4px;
+          border: 1px solid rgba(129, 216, 167, 0.18);
+          background: rgba(38, 194, 129, 0.055);
+        }
+
+        .campaign-overview-total-pill small,
+        .campaign-overview-metric small {
+          color: var(--text-muted);
+          font-size: 11px;
+          font-weight: 800;
+          letter-spacing: 0.08em;
+          line-height: 1.1;
+          text-transform: uppercase;
+        }
+
+        .campaign-overview-total-pill strong {
+          color: var(--text-primary);
+          font-size: 16px;
+          line-height: 1.1;
+        }
+
+        .campaign-overview-tree {
+          display: grid;
+          gap: 10px;
+          padding: 0 14px;
+        }
+
+        .campaign-overview-tree-group {
+          display: grid;
+          gap: 10px;
+        }
+
+        .campaign-overview-tree-row {
+          width: 100%;
+          display: grid;
+          align-items: center;
+          gap: 12px;
+          border: 1px solid rgba(190, 201, 191, 0.14);
+          color: var(--text-primary);
+          text-align: left;
+        }
+
+        .campaign-overview-campaign-row,
+        .campaign-overview-adset-row {
+          grid-template-columns: minmax(240px, 1fr) repeat(4, minmax(104px, 0.44fr)) 38px;
+          min-height: 72px;
+          padding: 14px 16px;
+          border-radius: 18px;
+          background:
+            linear-gradient(90deg, rgba(38, 194, 129, 0.095), rgba(255, 255, 255, 0.018)),
+            rgba(255, 255, 255, 0.026);
+          cursor: pointer;
+          transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+        }
+
+        .campaign-overview-adset-row {
+          border-radius: 16px;
+          background: rgba(255, 255, 255, 0.026);
+        }
+
+        .campaign-overview-campaign-row:hover,
+        .campaign-overview-adset-row:hover {
+          transform: translateY(-1px);
+          border-color: rgba(129, 216, 167, 0.34);
+          background: rgba(38, 194, 129, 0.07);
+        }
+
+        .campaign-overview-row-title {
+          min-width: 0;
+          display: grid;
+          gap: 5px;
+        }
+
+        .campaign-overview-row-title strong {
+          color: var(--text-primary);
+          font-size: 15px;
+          line-height: 1.25;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        .campaign-overview-row-title small {
+          color: var(--text-muted);
+          font-size: 12px;
+          line-height: 1.2;
+        }
+
+        .campaign-overview-metric {
+          display: grid;
+          gap: 5px;
+          min-width: 0;
+        }
+
+        .campaign-overview-metric strong {
+          color: var(--text-primary);
+          font-size: 15px;
+          line-height: 1.1;
+        }
+
+        .campaign-overview-chevron {
+          width: 36px;
+          height: 36px;
+          border-radius: 999px;
+          display: grid;
+          place-items: center;
+          border: 1px solid rgba(129, 216, 167, 0.18);
+          background: rgba(38, 194, 129, 0.08);
+          color: var(--accent-blue);
+          font-size: 18px;
+        }
+
+        .campaign-overview-adset-list,
+        .campaign-overview-ad-list {
+          display: grid;
+          gap: 8px;
+          margin-left: 22px;
+          padding-left: 16px;
+          border-left: 1px solid rgba(129, 216, 167, 0.16);
+        }
+
+        .campaign-overview-ad-row {
+          grid-template-columns: minmax(240px, 1fr) repeat(4, minmax(104px, 0.42fr));
+          min-height: 64px;
+          padding: 12px 14px;
+          border-radius: 16px;
+          background: rgba(0, 0, 0, 0.12);
+        }
+
+        .campaign-overview-empty-node {
+          min-height: 74px;
+          margin-left: 22px;
+          padding: 16px;
+          display: grid;
+          align-items: center;
+        }
+
         .client-form-grid-3 {
           grid-template-columns: repeat(3, minmax(0, 1fr));
         }
@@ -31607,6 +32161,32 @@ export default function DashboardShell({
         :root[data-ui-mode='light'] .ads-overview-no-ads {
           background: #f8fbf9;
           border-color: #c8d9ce;
+        }
+
+        .dashboard-light-mode:not([data-active-tab='apresentacao']) .campaign-overview-total-pill,
+        .dashboard-light-mode:not([data-active-tab='apresentacao']) .campaign-overview-campaign-row,
+        .dashboard-light-mode:not([data-active-tab='apresentacao']) .campaign-overview-adset-row,
+        .dashboard-light-mode:not([data-active-tab='apresentacao']) .campaign-overview-ad-row,
+        :root[data-ui-mode='light'] .campaign-overview-total-pill,
+        :root[data-ui-mode='light'] .campaign-overview-campaign-row,
+        :root[data-ui-mode='light'] .campaign-overview-adset-row,
+        :root[data-ui-mode='light'] .campaign-overview-ad-row {
+          background: #ffffff;
+          border-color: #d8e5dc;
+        }
+
+        .dashboard-light-mode:not([data-active-tab='apresentacao']) .campaign-overview-campaign-row,
+        :root[data-ui-mode='light'] .campaign-overview-campaign-row {
+          background:
+            linear-gradient(90deg, rgba(38, 194, 129, 0.08), rgba(255, 255, 255, 0)),
+            #ffffff;
+        }
+
+        .dashboard-light-mode:not([data-active-tab='apresentacao']) .campaign-overview-adset-list,
+        .dashboard-light-mode:not([data-active-tab='apresentacao']) .campaign-overview-ad-list,
+        :root[data-ui-mode='light'] .campaign-overview-adset-list,
+        :root[data-ui-mode='light'] .campaign-overview-ad-list {
+          border-left-color: #c8d9ce;
         }
 
         .ad-balance-page {
@@ -32038,6 +32618,30 @@ export default function DashboardShell({
             grid-column: 3 / -1;
           }
 
+          .campaign-overview-client-metrics {
+            min-width: 100%;
+            grid-template-columns: repeat(2, minmax(120px, 1fr)) minmax(180px, 1fr) 38px;
+          }
+
+          .campaign-overview-campaign-row,
+          .campaign-overview-adset-row,
+          .campaign-overview-ad-row {
+            grid-template-columns: minmax(220px, 1fr) repeat(2, minmax(100px, 0.5fr)) 38px;
+          }
+
+          .campaign-overview-ad-row {
+            grid-template-columns: minmax(220px, 1fr) repeat(2, minmax(100px, 0.5fr));
+          }
+
+          .campaign-overview-campaign-row .campaign-overview-metric:nth-of-type(4),
+          .campaign-overview-campaign-row .campaign-overview-metric:nth-of-type(5),
+          .campaign-overview-adset-row .campaign-overview-metric:nth-of-type(4),
+          .campaign-overview-adset-row .campaign-overview-metric:nth-of-type(5),
+          .campaign-overview-ad-row .campaign-overview-metric:nth-of-type(4),
+          .campaign-overview-ad-row .campaign-overview-metric:nth-of-type(5) {
+            display: none;
+          }
+
           .ad-balance-summary-grid {
             grid-template-columns: repeat(2, minmax(0, 1fr));
           }
@@ -32086,6 +32690,27 @@ export default function DashboardShell({
 
           .ads-overview-client-meta {
             justify-content: flex-start;
+          }
+
+          .campaign-overview-client-metrics {
+            grid-template-columns: 1fr;
+          }
+
+          .campaign-overview-campaign-row,
+          .campaign-overview-adset-row,
+          .campaign-overview-ad-row {
+            grid-template-columns: 1fr;
+          }
+
+          .campaign-overview-chevron {
+            justify-self: start;
+          }
+
+          .campaign-overview-adset-list,
+          .campaign-overview-ad-list,
+          .campaign-overview-empty-node {
+            margin-left: 8px;
+            padding-left: 12px;
           }
 
           .ads-overview-ad-row {
