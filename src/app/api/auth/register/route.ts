@@ -4,7 +4,6 @@ import { PLATFORM_AUTH_COOKIE } from '@/lib/saas/auth'
 import { createLocalAccessToken } from '@/lib/server/platform-auth-fallback'
 import {
   isAssessoriaLpMemberEmail,
-  isPrimaryAdminEmail,
   resolveAssessoriaLpWorkspaceId,
   USER_ROLES,
 } from '@/lib/server/access-control'
@@ -79,7 +78,6 @@ async function ensureSupabaseProfileForRegistration(input: {
   ])
   const adminSupabase = createAdminClient()
   const email = String(input.user.email || '').trim().toLowerCase()
-  const isPrimaryAdmin = isPrimaryAdminEmail(email)
   const isAssessoriaMember = isAssessoriaLpMemberEmail(email)
 
   const { data: existingProfile, error: existingProfileError } = await adminSupabase
@@ -100,25 +98,6 @@ async function ensureSupabaseProfileForRegistration(input: {
     if (!workspaceId) {
       throw new Error('Workspace da Assessoria LP não encontrado para vincular este usuário.')
     }
-  } else if (isPrimaryAdmin) {
-    const { data: firstWorkspace, error: firstWorkspaceError } = await adminSupabase
-      .from('workspaces')
-      .select('id, owner_user_id')
-      .order('created_at', { ascending: true })
-      .limit(1)
-      .maybeSingle()
-
-    if (firstWorkspaceError) throw firstWorkspaceError
-    workspaceId = firstWorkspace?.id || null
-
-    if (workspaceId && !firstWorkspace?.owner_user_id) {
-      const { error: ownerError } = await adminSupabase
-        .from('workspaces')
-        .update({ owner_user_id: input.user.id })
-        .eq('id', workspaceId)
-
-      if (ownerError) throw ownerError
-    }
   }
 
   if (!workspaceId) {
@@ -135,15 +114,15 @@ async function ensureSupabaseProfileForRegistration(input: {
     workspaceId = createdWorkspace.id
   }
 
-  const role = isPrimaryAdmin ? USER_ROLES.MASTER : USER_ROLES.OPERATOR
+  const role = isAssessoriaMember ? USER_ROLES.OPERATOR : USER_ROLES.MASTER
   const profilePayload = {
     id: input.user.id,
     email,
     full_name: input.fullName || String(input.user.user_metadata?.full_name || input.user.email || '').trim(),
     avatar_url: String(input.user.user_metadata?.avatar_url || ''),
     role,
-    ai_access_level: isPrimaryAdmin ? AI_ACCESS_LEVELS.MASTER : AI_ACCESS_LEVELS.TEAM,
-    can_edit_integrations: true,
+    ai_access_level: role === USER_ROLES.MASTER ? AI_ACCESS_LEVELS.MASTER : AI_ACCESS_LEVELS.TEAM,
+    can_edit_integrations: role === USER_ROLES.MASTER,
     workspace_id: workspaceId,
   }
 
@@ -189,7 +168,7 @@ async function registerWithLegacySupabase(body: {
   const fullName = String(body.full_name || '').trim()
   const companyName = String(body.company_name || '').trim()
   const email = String(body.email || '').trim().toLowerCase()
-  const role = isPrimaryAdminEmail(email) ? USER_ROLES.MASTER : USER_ROLES.OPERATOR
+  const role = isAssessoriaLpMemberEmail(email) ? USER_ROLES.OPERATOR : USER_ROLES.MASTER
   const user = await createSupabaseUserWithoutEmail({
     email,
     password: String(body.password || '').trim(),
@@ -212,7 +191,7 @@ async function registerWithLegacySupabase(body: {
     email: user.email || body.email || '',
     full_name: profile?.full_name || fullName || user.user_metadata?.full_name || user.email || '',
     provider: 'supabase',
-    can_edit_integrations: Boolean(profile?.can_edit_integrations) || isPrimaryAdminEmail(user.email || body.email || ''),
+    can_edit_integrations: Boolean(profile?.can_edit_integrations),
   })
 
   return { token }

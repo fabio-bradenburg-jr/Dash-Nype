@@ -217,10 +217,6 @@ export async function GET() {
 
     const { supabase, adminSupabase, accessContext } = authorized
 
-    if (accessContext.canManageUsers) {
-      await syncRegisteredAuthProfiles(adminSupabase, accessContext.workspaceId)
-    }
-
     const profilesClient = accessContext.canManageUsers ? adminSupabase : supabase
     const accessRowsClient = accessContext.canManageUsers ? adminSupabase : supabase
 

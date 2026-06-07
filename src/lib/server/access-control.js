@@ -93,32 +93,8 @@ export async function ensureUserProfile(adminSupabase, user) {
   if (profileError) throw profileError
   if (existingProfile) return existingProfile
 
-  const [
-    { count: workspaceCount, error: workspaceCountError },
-    { count: masterCount, error: masterCountError },
-    { data: firstWorkspace, error: firstWorkspaceError },
-  ] = await Promise.all([
-    adminSupabase
-      .from('workspaces')
-      .select('*', { count: 'exact', head: true }),
-    adminSupabase
-      .from('profiles')
-      .select('*', { count: 'exact', head: true })
-      .eq('role', USER_ROLES.MASTER),
-    adminSupabase
-      .from('workspaces')
-      .select('*')
-      .order('created_at', { ascending: true })
-      .limit(1)
-      .maybeSingle(),
-  ])
-
-  if (workspaceCountError) throw workspaceCountError
-  if (masterCountError) throw masterCountError
-  if (firstWorkspaceError) throw firstWorkspaceError
-
   let workspaceId = null
-  let role = USER_ROLES.VIEWER
+  let role = USER_ROLES.MASTER
 
   if (isAssessoriaLpMemberEmail(user.email)) {
     workspaceId = await resolveAssessoriaLpWorkspaceId(adminSupabase)
@@ -126,11 +102,11 @@ export async function ensureUserProfile(adminSupabase, user) {
       throw new Error('Workspace da Assessoria LP não encontrado para vincular este usuário.')
     }
     role = USER_ROLES.OPERATOR
-  } else if (!workspaceCount) {
+  } else {
     const { data: createdWorkspace, error: workspaceError } = await adminSupabase
       .from('workspaces')
       .insert({
-        name: 'Workspace principal',
+        name: user.user_metadata?.company_name || user.user_metadata?.full_name || user.email || 'Workspace principal',
         owner_user_id: user.id,
       })
       .select('*')
@@ -139,21 +115,6 @@ export async function ensureUserProfile(adminSupabase, user) {
     if (workspaceError) throw workspaceError
 
     workspaceId = createdWorkspace.id
-    role = isPrimaryAdminEmail(user.email) ? USER_ROLES.MASTER : USER_ROLES.VIEWER
-  } else if (!masterCount && isPrimaryAdminEmail(user.email)) {
-    workspaceId = firstWorkspace?.id || null
-    role = USER_ROLES.MASTER
-
-    if (workspaceId && !firstWorkspace?.owner_user_id) {
-      const { error: workspaceOwnerError } = await adminSupabase
-        .from('workspaces')
-        .update({ owner_user_id: user.id })
-        .eq('id', workspaceId)
-
-      if (workspaceOwnerError) throw workspaceOwnerError
-    }
-  } else if (firstWorkspace?.id) {
-    workspaceId = firstWorkspace.id
   }
 
   const payload = buildProfilePayload(user, role, workspaceId)
