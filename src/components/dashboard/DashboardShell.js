@@ -9635,11 +9635,11 @@ export default function DashboardShell({
   const readClientLogoFile = (file, onLoad) => {
     if (!file) return
     if (!String(file.type || '').startsWith('image/')) {
-      alert('Envie uma imagem válida para a logo do cliente.')
+      alert('Envie uma imagem válida para a logo.')
       return
     }
     if (file.size > 2 * 1024 * 1024) {
-      alert('A logo precisa ter até 2MB para salvar com segurança no cadastro.')
+      alert('A logo precisa ter até 2MB para salvar com segurança.')
       return
     }
 
@@ -9659,6 +9659,13 @@ export default function DashboardShell({
     if (!canEditActiveClient) return
     const file = event.target.files?.[0]
     readClientLogoFile(file, (logoUrl) => handleClientFieldChange('logoUrl', logoUrl))
+    event.target.value = ''
+  }
+
+  const handleWorkspaceLogoUpload = (event) => {
+    if (!canManageUsers) return
+    const file = event.target.files?.[0]
+    readClientLogoFile(file, (logoUrl) => setBrandingForm((current) => ({ ...current, logoUrl })))
     event.target.value = ''
   }
 
@@ -16530,8 +16537,25 @@ export default function DashboardShell({
                     <input type="text" value={brandingForm.appSubtitle || ''} onChange={(event) => setBrandingForm((current) => ({ ...current, appSubtitle: event.target.value }))} placeholder="Ex.: Performance Hub" />
                   </div>
                   <div className="input-group">
-                    <label>URL da logo</label>
-                    <input type="url" value={brandingForm.logoUrl || ''} onChange={(event) => setBrandingForm((current) => ({ ...current, logoUrl: event.target.value }))} placeholder="https://..." />
+                    <label>Logo do app</label>
+                    <div className="client-logo-uploader client-logo-uploader-create workspace-logo-uploader">
+                      <div className="client-logo-preview">
+                        {brandingForm.logoUrl ? <img src={brandingForm.logoUrl} alt="Logo do app" /> : <i className="bx bx-image-add"></i>}
+                      </div>
+                      <div className="client-logo-actions">
+                        <label className="btn btn-secondary client-logo-upload-button">
+                          <i className="bx bx-upload" aria-hidden="true"></i>
+                          <span>{brandingForm.logoUrl ? 'Trocar logo' : 'Subir logo'}</span>
+                          <input type="file" accept="image/*" onChange={handleWorkspaceLogoUpload} />
+                        </label>
+                        {brandingForm.logoUrl && (
+                          <button type="button" className="btn btn-secondary" onClick={() => setBrandingForm((current) => ({ ...current, logoUrl: '' }))}>
+                            Remover
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                    <input type="url" value={brandingForm.logoUrl || ''} onChange={(event) => setBrandingForm((current) => ({ ...current, logoUrl: event.target.value }))} placeholder="Ou cole uma URL da logo" />
                   </div>
                   <div className="input-group">
                     <label>Cor principal</label>

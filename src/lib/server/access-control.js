@@ -11,16 +11,17 @@ export const AI_ACCESS_LEVELS = {
   NONE: 'none',
 }
 
-export const PRIMARY_ADMIN_EMAIL = 'fbrandenburgjunior@gmail.com'
-export const PREVIOUS_PRIMARY_ADMIN_EMAILS = ['fabiobrandenburgjr@gmail.com']
-export const ASSESSORIA_LP_MEMBER_EMAILS = ['fabiobrandenburgjr@gmail.com']
+export const PRIMARY_ADMIN_EMAIL = 'fabio@assessorialp.com.br'
+export const PRIMARY_ADMIN_EMAILS = ['fabio@assessorialp.com.br']
+export const PREVIOUS_PRIMARY_ADMIN_EMAILS = []
+export const ASSESSORIA_LP_MEMBER_EMAILS = []
 
 export function normalizeEmail(email) {
   return String(email || '').trim().toLowerCase()
 }
 
 export function isPrimaryAdminEmail(email) {
-  return normalizeEmail(email) === PRIMARY_ADMIN_EMAIL
+  return PRIMARY_ADMIN_EMAILS.includes(normalizeEmail(email))
 }
 
 export function isPreviousPrimaryAdminEmail(email) {

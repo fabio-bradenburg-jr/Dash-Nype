@@ -39,7 +39,7 @@ interface PlatformSessionResponse {
 
 const UserContext = createContext<UserContextValue | undefined>(undefined)
 const defaultAppearance = DEFAULT_USER_APPEARANCE as UserAppearance
-const PRIMARY_ADMIN_EMAIL = 'fbrandenburgjunior@gmail.com'
+const PRIMARY_ADMIN_EMAIL = 'fabio@assessorialp.com.br'
 
 function normalizePlatformRole(role?: string | null) {
   return String(role || 'operator').trim().toLowerCase()

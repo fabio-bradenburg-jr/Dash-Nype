@@ -52,7 +52,7 @@ async function loginWithLegacySupabase(body: { email: string; password: string }
     throw new Error(formatMissingSupabaseConfig(supabaseConfig.missing))
   }
 
-  const [{ createClient }, { createAdminClient }, { getAccessContext }] = await Promise.all([
+  const [{ createClient }, { createAdminClient }, { getAccessContext, isPrimaryAdminEmail }] = await Promise.all([
     import('@/lib/supabase/server'),
     import('@/lib/server/supabase-admin'),
     import('@/lib/server/access-control'),
@@ -69,7 +69,7 @@ async function loginWithLegacySupabase(body: { email: string; password: string }
   }
 
   const email = String(data.user.email || body.email || '').trim().toLowerCase()
-  const isPrimaryAdmin = email === 'fbrandenburgjunior@gmail.com'
+  const isPrimaryAdmin = isPrimaryAdminEmail(email)
   const fallbackAccessContext = {
     profile: {
       full_name: data.user.user_metadata?.full_name || data.user.email || 'Usuário',
