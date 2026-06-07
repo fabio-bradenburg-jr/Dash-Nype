@@ -226,27 +226,123 @@
   margin: 36px 0 64px;
 }
 
-.flowList {
+.journeyBoard {
+  position: relative;
   display: grid;
-  gap: 24px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 28px 32px;
+  padding: 36px;
+  border: 1px solid rgba(0, 209, 132, 0.2);
+  border-radius: 34px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.48)),
+    radial-gradient(circle at 16% 20%, rgba(0, 209, 132, 0.1), transparent 26%);
+  box-shadow: 0 28px 80px rgba(8, 37, 31, 0.07);
+  overflow: hidden;
+}
+
+.journeyHeader {
+  position: relative;
+  z-index: 2;
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+  margin-bottom: 18px;
+}
+
+.journeyHeader span,
+.journeyHeader strong {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 52px;
+  padding: 0 18px;
+  border: 1px solid var(--lp-line);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+  color: #52605d;
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.journeyHeader strong {
+  border-color: rgba(0, 209, 132, 0.44);
+  background: rgba(0, 209, 132, 0.1);
+  color: var(--lp-green-dark);
+}
+
+.journeyHeader i {
+  color: var(--lp-green);
+  font-size: 20px;
+}
+
+.journeyPath {
+  position: absolute;
+  inset: 144px 62px auto;
+  height: calc(100% - 224px);
+  pointer-events: none;
+}
+
+.journeyPath span {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 2px solid rgba(0, 169, 107, 0.18);
+  border-top-width: 0;
+  border-radius: 0 0 28px 28px;
 }
 
 .flowCard {
-  display: grid;
-  grid-template-columns: 84px 88px minmax(0, 1fr) minmax(320px, 0.76fr);
-  align-items: center;
-  gap: 28px;
-  padding: 34px;
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 390px;
+  padding: 28px;
   border: 1px solid var(--lp-line);
-  border-radius: 28px;
-  background: rgba(255, 255, 255, 0.56);
-  box-shadow: 0 18px 40px rgba(8, 37, 31, 0.04);
+  border-radius: 26px;
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: 0 18px 44px rgba(8, 37, 31, 0.055);
+}
+
+.flowCard::after {
+  content: '\2192';
+  position: absolute;
+  top: 50%;
+  right: -34px;
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid rgba(0, 209, 132, 0.42);
+  border-radius: 50%;
+  background: var(--lp-surface);
+  color: var(--lp-green-dark);
+  font-size: 22px;
+  font-weight: 900;
+  transform: translateY(-50%);
+}
+
+.flowCard:nth-of-type(3)::after,
+.flowCard:nth-of-type(6)::after {
+  display: none;
+}
+
+.flowCardTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 34px;
 }
 
 .flowIndex {
   color: var(--lp-green);
   font-family: "Courier New", monospace;
-  font-size: 40px;
+  font-size: 34px;
   font-weight: 800;
 }
 
@@ -254,12 +350,12 @@
 .practiceCard span {
   display: grid;
   place-items: center;
-  width: 66px;
-  height: 66px;
-  border-radius: 22px;
+  width: 58px;
+  height: 58px;
+  border-radius: 18px;
   background: var(--lp-green);
   color: #ffffff;
-  font-size: 30px;
+  font-size: 28px;
 }
 
 .flowCard h3,
@@ -287,7 +383,19 @@
   line-height: 1.5;
 }
 
+.flowCard > div:not(.flowCardTop) > small {
+  display: block;
+  margin-bottom: 14px;
+  color: var(--lp-green-dark);
+  font-family: "Courier New", monospace;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
 .flowCard aside {
+  margin-top: auto;
   padding: 20px;
   border: 1px solid rgba(0, 209, 132, 0.35);
   border-radius: 18px;
@@ -308,6 +416,41 @@
 .flowCard aside strong {
   font-size: 18px;
   line-height: 1.42;
+}
+
+.flowCard em {
+  position: absolute;
+  top: -18px;
+  right: 22px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 0 14px;
+  border: 1px solid rgba(0, 209, 132, 0.62);
+  border-radius: 999px;
+  background: #071110;
+  color: #63f5ba;
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 900;
+  line-height: 1;
+  box-shadow: 0 16px 32px rgba(0, 209, 132, 0.16);
+}
+
+.flowCard_current {
+  border-color: rgba(0, 209, 132, 0.72);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(238, 250, 245, 0.9));
+  box-shadow: 0 28px 70px rgba(0, 169, 107, 0.16);
+}
+
+.flowCard_next {
+  border-color: rgba(0, 209, 132, 0.38);
+}
+
+.flowCard_upcoming {
+  background: rgba(255, 255, 255, 0.62);
 }
 
 .impactBox,
@@ -623,13 +766,39 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .flowCard,
+  .journeyBoard,
+  .journeyHeader {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .splitContent {
     grid-template-columns: 1fr;
   }
 
   .flowCard {
-    align-items: start;
+    min-height: 360px;
+  }
+
+  .flowCard:nth-of-type(2)::after,
+  .flowCard:nth-of-type(4)::after {
+    display: none;
+  }
+
+  .flowCard:nth-of-type(3)::after {
+    display: grid;
+  }
+
+  .journeyHeader {
+    grid-column: 1 / -1;
+  }
+
+  .journeyHeader strong {
+    grid-column: 1 / -1;
+  }
+
+  .journeyPath {
+    inset: 180px 54px auto;
+    height: calc(100% - 260px);
   }
 }
 
@@ -685,6 +854,28 @@
     padding: 0 22px;
   }
 
+  .journeyBoard {
+    grid-template-columns: 1fr;
+    gap: 18px;
+    padding: 18px;
+    border-radius: 24px;
+  }
+
+  .journeyHeader {
+    grid-template-columns: 1fr;
+    margin-bottom: 8px;
+  }
+
+  .journeyHeader span,
+  .journeyHeader strong {
+    min-height: 48px;
+    border-radius: 16px;
+  }
+
+  .journeyPath {
+    display: none;
+  }
+
   .flowCard,
   .numberedList article,
   .checkCard,
@@ -697,8 +888,25 @@
   }
 
   .flowCard {
-    grid-template-columns: 1fr;
     gap: 18px;
+    min-height: auto;
+  }
+
+  .flowCard::after,
+  .flowCard:nth-of-type(3)::after {
+    left: auto;
+    top: auto;
+    right: 18px;
+    bottom: -28px;
+    transform: rotate(90deg);
+  }
+
+  .flowCard:nth-of-type(6)::after {
+    display: none;
+  }
+
+  .flowCardTop {
+    margin-bottom: 8px;
   }
 
   .methodGrid,

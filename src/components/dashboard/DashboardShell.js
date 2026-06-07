@@ -9690,7 +9690,7 @@ export default function DashboardShell({
   )
 
   useEffect(() => {
-    if (!hasLoadedPreferences || !activeClient) {
+    if (!hasLoadedPreferences) {
       setAdAccounts([])
       return
     }
@@ -9719,7 +9719,7 @@ export default function DashboardShell({
 
         setAdAccounts(data)
 
-        if (!activeClient.metaAdAccountId && data[0]?.id) {
+        if (activeClient && !activeClient.metaAdAccountId && data[0]?.id) {
           setClients((currentClients) =>
             currentClients.map((client) =>
               client.id === activeClientId
@@ -9746,7 +9746,7 @@ export default function DashboardShell({
   ])
 
   useEffect(() => {
-    if (!hasLoadedPreferences || !activeClient) {
+    if (!hasLoadedPreferences) {
       setGoogleAdsAccounts([])
       return
     }
@@ -9775,7 +9775,7 @@ export default function DashboardShell({
         const accounts = Array.isArray(data?.accounts) ? data.accounts : []
         setGoogleAdsAccounts(accounts)
 
-        if (!activeClient.googleAdsAccountId && accounts[0]?.id) {
+        if (activeClient && !activeClient.googleAdsAccountId && accounts[0]?.id) {
           setClients((currentClients) =>
             currentClients.map((client) =>
               client.id === activeClientId

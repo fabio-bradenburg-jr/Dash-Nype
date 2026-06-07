@@ -7,40 +7,52 @@ export const metadata = {
 
 const flowSteps = [
   {
+    phase: 'Passou por',
     title: 'Reunião de integração',
     text: 'Conversa inicial para entender o cenário da empresa, validar expectativas e alinhar prioridades.',
     deliverable: 'Ata de integração e definição dos próximos pontos a coletar.',
     icon: 'bx-calendar',
+    status: 'current',
   },
   {
+    phase: 'Próximo passo',
     title: 'Envio das informações e acessos',
     text: 'Cliente envia logins, materiais, dados comerciais e referências. Equipe centraliza tudo em um só lugar.',
     deliverable: 'Acessos validados e materiais organizados em pasta única.',
     icon: 'bx-paper-plane',
+    status: 'next',
   },
   {
+    phase: 'Depois',
     title: 'Planejamento estratégico',
     text: 'Definição de público, produto foco, região, posicionamento, oferta, metas e indicadores.',
     deliverable: 'Documento estratégico aprovado pelo cliente.',
     icon: 'bx-target-lock',
+    status: 'upcoming',
   },
   {
+    phase: 'Depois',
     title: 'Criação das campanhas',
     text: 'Produção de criativos, textos, segmentações e estrutura de testes para os primeiros anúncios.',
     deliverable: 'Campanhas montadas e revisadas, prontas para publicação.',
-    icon: 'bx-megaphone',
+    icon: 'bxs-megaphone',
+    status: 'upcoming',
   },
   {
+    phase: 'Operação ativa',
     title: 'Início dos anúncios',
     text: 'Publicação das campanhas, ativação do processo de captação e início do recebimento de leads.',
     deliverable: 'Operação no ar e leads chegando para o comercial.',
     icon: 'bx-bolt-circle',
+    status: 'upcoming',
   },
   {
+    phase: 'Rotina mensal',
     title: 'Acompanhamento comercial mensal',
     text: 'Reuniões mensais para analisar campanhas, leads, atendimento, oportunidades e próximos ajustes.',
     deliverable: 'Plano de ajustes para o próximo ciclo, com base nos dados.',
     icon: 'bx-bar-chart-alt-2',
+    status: 'upcoming',
   },
 ]
 
@@ -178,15 +190,26 @@ export default function IntegracaoPage() {
       <SlideShell eyebrow="Como funciona a partir de agora" className={styles.flowSlide}>
         <h2>Agora começa a estruturação da sua <Highlight>máquina comercial</Highlight></h2>
         <p className={styles.sectionIntro}>
-          Após a assinatura do contrato, iniciamos uma etapa de organização estratégica para entender o cenário da empresa,
-          preparar os acessos, alinhar produtos prioritários e definir os primeiros caminhos de geração de demanda.
+          Você já saiu da assinatura do contrato e chegou na reunião de integração. A partir daqui, seguimos uma trilha clara:
+          organizar informações, planejar a operação, lançar campanhas e acompanhar a evolução comercial mês a mês.
         </p>
-        <div id="como-funciona" className={styles.flowList}>
+        <div id="como-funciona" className={styles.journeyBoard} aria-label="Mapa da jornada de integração">
+          <div className={styles.journeyHeader}>
+            <span><i className="bx bx-check-double" />Contrato assinado</span>
+            <strong><i className="bx bx-current-location" />Você está aqui</strong>
+            <span><i className="bx bx-trending-up" />Máquina comercial em evolução</span>
+          </div>
+          <div className={styles.journeyPath}>
+            <span aria-hidden="true" />
+          </div>
           {flowSteps.map((step, index) => (
-            <article className={styles.flowCard} key={step.title}>
-              <span className={styles.flowIndex}>{String(index + 1).padStart(2, '0')}</span>
-              <span className={styles.flowIcon}><i className={`bx ${step.icon}`} /></span>
+            <article className={`${styles.flowCard} ${styles[`flowCard_${step.status}`]}`} key={step.title}>
+              <div className={styles.flowCardTop}>
+                <span className={styles.flowIndex}>{String(index + 1).padStart(2, '0')}</span>
+                <span className={styles.flowIcon}><i className={`bx ${step.icon}`} /></span>
+              </div>
               <div>
+                <small>{step.phase}</small>
                 <h3>{step.title}</h3>
                 <p>{step.text}</p>
               </div>
@@ -194,6 +217,9 @@ export default function IntegracaoPage() {
                 <small>Entregável</small>
                 <strong>{step.deliverable}</strong>
               </aside>
+              {step.status === 'current' && (
+                <em><i className="bx bx-map-pin" />Você está aqui</em>
+              )}
             </article>
           ))}
         </div>

@@ -56,7 +56,10 @@ export function getMetaOauthConfig(request) {
   return {
     appId,
     appSecret,
-    redirectUri: process.env.META_OAUTH_REDIRECT_URI || `${getBaseUrl(request)}/api/meta/auth/callback`,
+    redirectUri:
+      process.env.META_OAUTH_REDIRECT_URI ||
+      process.env.META_REDIRECT_URI ||
+      `${getBaseUrl(request)}/api/meta/auth/callback`,
   }
 }
 

@@ -226,7 +226,7 @@ export function AiAssistantPanel({
 
         <div className={`rounded-[28px] p-4 ${isDarkMode ? 'border border-white/10 bg-white/5' : 'border border-slate-200/80 bg-white'}`}>
           <div className={`mb-3 text-sm font-medium ${isDarkMode ? 'text-white/60' : 'text-slate-600'}`}>
-            Exemplos: "Quais campanhas estão puxando o ROAS para baixo?", "Qual cliente devo priorizar hoje?", "Leia a planilha vinculada e destaque gargalos do comercial".
+            Exemplos: &quot;Quais campanhas estão puxando o ROAS para baixo?&quot;, &quot;Qual cliente devo priorizar hoje?&quot;, &quot;Leia a planilha vinculada e destaque gargalos do comercial&quot;.
           </div>
           <div className="flex flex-col gap-3 md:flex-row">
             <textarea
