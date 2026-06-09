@@ -3580,6 +3580,7 @@ textarea:focus {
     transition: all 0.15s;
     user-select: none;
     overflow: hidden;
+    min-width: 0;
 }
 .client-access-item input[type="checkbox"] {
     display: none;

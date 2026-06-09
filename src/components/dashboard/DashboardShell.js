@@ -16231,9 +16231,9 @@ export default function DashboardShell({
         )}
 
         {!isSidebarCollapsed && (
-          <div className="sidebar-greeting glass-item" style={{ margin: '0 12px 8px', padding: '10px 14px', borderRadius: '14px', fontSize: '0.78rem', lineHeight: 1.4 }}>
-            <span style={{ display: 'block', opacity: 0.55, fontSize: '0.7rem', marginBottom: '2px' }}>{assistantGreeting}</span>
-            <span style={{ fontWeight: 600, fontSize: '0.82rem' }}>{profile?.full_name || user?.email || ''}</span>
+          <div className="sidebar-greeting glass-item" style={{ margin: '0 12px 8px', padding: '10px 14px', borderRadius: '14px', fontSize: '0.78rem', lineHeight: 1.4, overflow: 'hidden', minWidth: 0 }}>
+            <span style={{ display: 'block', fontSize: '0.7rem', marginBottom: '2px', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{assistantGreeting}</span>
+            <span style={{ fontWeight: 600, fontSize: '0.82rem', display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{profile?.full_name || user?.email || ''}</span>
           </div>
         )}
 
@@ -17710,6 +17710,7 @@ export default function DashboardShell({
                                                             <small>Impressões</small>
                                                             <strong>{formatNumber(ad.impressions || 0)}</strong>
                                                           </span>
+                                                          <span aria-hidden="true" />
                                                         </div>
                                                       ))}
                                                     </div>
@@ -32203,7 +32204,7 @@ export default function DashboardShell({
         }
 
         .campaign-overview-ad-row {
-          grid-template-columns: minmax(240px, 1fr) repeat(5, minmax(100px, 0.4fr));
+          grid-template-columns: minmax(240px, 1fr) repeat(5, minmax(100px, 0.4fr)) 38px;
           min-height: 64px;
           padding: 12px 14px;
           border-radius: 16px;
