@@ -1,7 +1,6 @@
 /** Maps each allowed domain to the email of its workspace owner. */
 export const DOMAIN_OWNER_EMAIL: Record<string, string> = {
   'app.assessorialp.com.br': 'fabio@assessorialp.com.br',
-  'app.nype.company': 'fabiobrandenburgjr@gmail.com',
 }
 
 export const ALLOWED_DOMAINS = Object.keys(DOMAIN_OWNER_EMAIL)
