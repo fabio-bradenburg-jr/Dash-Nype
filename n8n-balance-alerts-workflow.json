@@ -20,7 +20,7 @@
         "sendQuery": true,
         "queryParameters": {
           "parameters": [
-            { "name": "secret", "value": "81a80d02c2f19aa3afb06f04d28179fe36df08c01378fb7c" }
+            { "name": "secret", "value": "alertas-meta-2024" }
           ]
         },
         "options": {}
