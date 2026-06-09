@@ -87,6 +87,7 @@ export async function GET(request: Request) {
   const adminSupabase = createAdminClient()
 
   const params = new URL(request.url).searchParams
+  const zeroOnly = params.get('zero_only') === 'true'
   let workspaceIdFilter = params.get('workspace_id')
 
   // Filter by domain (e.g. domain=app.assessorialp.com.br)
@@ -149,6 +150,9 @@ export async function GET(request: Request) {
           }
           continue // skip regular thresholds when balance is zero
         }
+
+        // Skip regular thresholds when running in zero_only mode
+        if (zeroOnly) continue
 
         // Regular thresholds: find the lowest triggered one
         for (const threshold of THRESHOLDS) {
