@@ -20,7 +20,7 @@
         "sendQuery": true,
         "queryParameters": {
           "parameters": [
-            { "name": "secret", "value": "COLE_AQUI_O_BALANCE_ALERT_WEBHOOK_SECRET" }
+            { "name": "secret", "value": "81a80d02c2f19aa3afb06f04d28179fe36df08c01378fb7c" }
           ]
         },
         "options": {}
@@ -67,18 +67,18 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "=https://SEU_SERVIDOR_EVOLUTION/message/sendText/SUA_INSTANCIA",
+        "url": "https://evoapi.assessorialp.com.br/message/sendText/automacao-teste",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "apikey", "value": "SUA_EVOLUTION_API_KEY" },
+            { "name": "apikey", "value": "8ECACE50D872-4057-BFD5-05E460E11483" },
             { "name": "Content-Type", "value": "application/json" }
           ]
         },
         "sendBody": true,
         "contentType": "json",
         "body": {
-          "number": "ID_DO_GRUPO_WHATSAPP@g.us",
+          "number": "120363427711895391@g.us",
           "text": "={{ $json.message }}"
         },
         "options": {}
