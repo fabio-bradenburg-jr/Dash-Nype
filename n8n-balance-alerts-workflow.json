@@ -4,11 +4,14 @@
     {
       "parameters": {
         "rule": {
-          "interval": [{ "field": "hours", "hoursInterval": 1 }]
+          "interval": [
+            { "field": "cronExpression", "expression": "0 9 * * 1-5" },
+            { "field": "cronExpression", "expression": "0 14 * * 1-5" }
+          ]
         }
       },
       "id": "cron-trigger",
-      "name": "A cada hora",
+      "name": "09h e 14h (seg-sex)",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
       "position": [240, 300]
