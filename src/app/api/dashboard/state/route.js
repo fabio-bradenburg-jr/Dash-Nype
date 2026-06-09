@@ -29,47 +29,11 @@ async function getDashboardAccessContext() {
 
   const payload = await verifyLocalAccessToken(token)
   const userId = String(payload.sub || '').replace(/^supabase:/, '')
-  const { data: profile, error: profileError } = await adminSupabase
-    .from('profiles')
-    .select('id, email, full_name, role, ai_access_level, can_edit_integrations, workspace_id')
-    .eq('id', userId)
-    .maybeSingle()
 
-  if (profileError) throw profileError
-  if (!profile?.workspace_id) {
-    return { errorResponse: NextResponse.json({ error: 'Workspace não encontrado.' }, { status: 404 }) }
-  }
-
-  const { data: workspace, error: workspaceError } = await adminSupabase
-    .from('workspaces')
-    .select('id, name, owner_user_id')
-    .eq('id', profile.workspace_id)
-    .maybeSingle()
-
-  if (workspaceError) throw workspaceError
-
-  const isPrimaryAdmin = isPrimaryAdminEmail(profile.email)
-  const isWorkspaceOwner = Boolean(workspace?.owner_user_id && workspace.owner_user_id === profile.id)
-  const role = isPrimaryAdmin ? USER_ROLES.MASTER : profile.role || USER_ROLES.VIEWER
-
+  const fakeUser = { id: userId }
   return {
     adminSupabase,
-    accessContext: {
-      profile,
-      role,
-      aiAccessLevel: profile.ai_access_level || (isPrimaryAdmin ? 'master' : 'team'),
-      workspaceId: profile.workspace_id,
-      workspace: workspace || null,
-      isWorkspaceOwner,
-      canManageUsers: isPrimaryAdmin || isWorkspaceOwner || role === USER_ROLES.MASTER,
-      canManageClients: isPrimaryAdmin || isWorkspaceOwner || role === USER_ROLES.MASTER || role === USER_ROLES.OPERATOR,
-      canEditIntegrations: isPrimaryAdmin || isWorkspaceOwner || role === USER_ROLES.MASTER || Boolean(profile.can_edit_integrations),
-      canViewDashboard: isPrimaryAdmin || isWorkspaceOwner || role === USER_ROLES.MASTER || role === USER_ROLES.OPERATOR,
-      canUseAi: profile.ai_access_level !== 'none',
-      isClientRole: role === USER_ROLES.CLIENT,
-      viewableClientIds: [],
-      editableClientIds: [],
-    },
+    accessContext: await getAccessContext(adminSupabase, fakeUser, { adminSupabase }),
   }
 }
 
