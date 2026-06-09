@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { PLATFORM_AUTH_COOKIE } from '@/lib/saas/auth'
 
+const ALLOWED_DOMAINS = ['app.assessorialp.com.br', 'app.nype.company']
+
 const legacyPrefixes = [
   '/home',
   '/clientes',
@@ -22,13 +24,18 @@ const legacyPrefixes = [
 export function proxy(request) {
   const { pathname } = request.nextUrl
   const host = request.headers.get('host') || ''
+  const domain = host.split(':')[0].toLowerCase()
   const hasAuthCookie = Boolean(request.cookies.get(PLATFORM_AUTH_COOKIE)?.value)
 
-  if (host === 'app.nype.company' || host === 'nype.company') {
-    const url = request.nextUrl.clone()
-    url.protocol = 'https:'
-    url.host = 'app.assessorialp.com.br'
-    return NextResponse.redirect(url, 308)
+  // Block any domain that is not in the allowed list
+  // (allow localhost and Vercel preview deployments for development)
+  const isLocalDev = domain === 'localhost' || domain.endsWith('.localhost')
+  const isVercelPreview = domain.endsWith('.vercel.app')
+  if (!isLocalDev && !isVercelPreview && !ALLOWED_DOMAINS.includes(domain)) {
+    return new NextResponse(
+      '<!DOCTYPE html><html><head><title>Acesso não autorizado</title></head><body style="font-family:sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#f8fafc"><div style="text-align:center"><h1 style="color:#0f172a">Acesso não autorizado</h1><p style="color:#64748b">Este domínio não está autorizado a acessar a plataforma.</p></div></body></html>',
+      { status: 403, headers: { 'Content-Type': 'text/html' } }
+    )
   }
 
   if (pathname === '/login') {
