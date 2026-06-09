@@ -2,11 +2,8 @@ import { NextResponse } from 'next/server'
 
 import { PLATFORM_AUTH_COOKIE } from '@/lib/saas/auth'
 import { createLocalAccessToken } from '@/lib/server/platform-auth-fallback'
-import {
-  isAssessoriaLpMemberEmail,
-  resolveAssessoriaLpWorkspaceId,
-  USER_ROLES,
-} from '@/lib/server/access-control'
+import { USER_ROLES } from '@/lib/server/access-control'
+import { getOwnerEmailForHost, resolveWorkspaceForHost } from '@/lib/server/domain-config'
 
 function getSupabaseAuthConfig() {
   const missing: string[] = []
@@ -70,15 +67,14 @@ async function ensureSupabaseProfileForRegistration(input: {
   user: { id: string; email?: string | null; user_metadata?: Record<string, unknown> | null }
   fullName: string
   companyName: string
+  host: string
 }) {
-  const [{ createAdminClient }, { AI_ACCESS_LEVELS }, { saveWorkspaceBranding }] = await Promise.all([
+  const [{ createAdminClient }, { AI_ACCESS_LEVELS }] = await Promise.all([
     import('@/lib/server/supabase-admin'),
     import('@/lib/server/access-control'),
-    import('@/lib/server/workspace-branding'),
   ])
   const adminSupabase = createAdminClient()
   const email = String(input.user.email || '').trim().toLowerCase()
-  const isAssessoriaMember = isAssessoriaLpMemberEmail(email)
 
   const { data: existingProfile, error: existingProfileError } = await adminSupabase
     .from('profiles')
@@ -88,41 +84,28 @@ async function ensureSupabaseProfileForRegistration(input: {
 
   if (existingProfileError) throw existingProfileError
   if (existingProfile?.workspace_id) {
-    throw new Error('Este e-mail já está vinculado a um workspace. Entre pelo login ou use outro e-mail para criar uma nova empresa.')
+    throw new Error('Este e-mail já está vinculado a um workspace. Entre pelo login ou use outro e-mail.')
   }
 
-  let workspaceId = null
-
-  if (isAssessoriaMember) {
-    workspaceId = await resolveAssessoriaLpWorkspaceId(adminSupabase)
-    if (!workspaceId) {
-      throw new Error('Workspace da Assessoria LP não encontrado para vincular este usuário.')
-    }
-  }
-
+  // Always assign to the workspace that belongs to this domain
+  const { workspaceId, ownerEmail } = await resolveWorkspaceForHost(adminSupabase, input.host)
   if (!workspaceId) {
-    const { data: createdWorkspace, error: workspaceError } = await adminSupabase
-      .from('workspaces')
-      .insert({
-        name: input.companyName || 'Workspace principal',
-        owner_user_id: input.user.id,
-      })
-      .select('id')
-      .single()
-
-    if (workspaceError) throw workspaceError
-    workspaceId = createdWorkspace.id
+    throw new Error(
+      ownerEmail
+        ? `O workspace deste domínio ainda não foi configurado. Peça ao administrador (${ownerEmail}) para fazer o primeiro acesso.`
+        : 'Domínio não autorizado para cadastro.'
+    )
   }
 
-  const role = isAssessoriaMember ? USER_ROLES.OPERATOR : USER_ROLES.MASTER
+  const role = USER_ROLES.OPERATOR
   const profilePayload = {
     id: input.user.id,
     email,
     full_name: input.fullName || String(input.user.user_metadata?.full_name || input.user.email || '').trim(),
     avatar_url: String(input.user.user_metadata?.avatar_url || ''),
     role,
-    ai_access_level: role === USER_ROLES.MASTER ? AI_ACCESS_LEVELS.MASTER : AI_ACCESS_LEVELS.TEAM,
-    can_edit_integrations: role === USER_ROLES.MASTER,
+    ai_access_level: AI_ACCESS_LEVELS.TEAM,
+    can_edit_integrations: false,
     workspace_id: workspaceId,
   }
 
@@ -134,17 +117,6 @@ async function ensureSupabaseProfileForRegistration(input: {
 
   if (profileError) throw profileError
 
-  await saveWorkspaceBranding(
-    adminSupabase,
-    workspaceId,
-    {
-      appName: input.companyName || 'Novo workspace',
-      companyName: input.companyName || 'Novo workspace',
-      onboardingCompleted: false,
-    },
-    input.companyName || 'Novo workspace'
-  )
-
   return profile
 }
 
@@ -153,6 +125,7 @@ async function registerWithLegacySupabase(body: {
   company_name?: string
   email: string
   password: string
+  host: string
 }) {
   const supabaseConfig = getSupabaseAuthConfig()
   if (!supabaseConfig.enabled) {
@@ -165,10 +138,16 @@ async function registerWithLegacySupabase(body: {
     )
   }
 
+  // Block registration from unauthorized domains
+  const ownerEmail = getOwnerEmailForHost(body.host)
+  if (!ownerEmail) {
+    throw new Error('Cadastro não permitido neste domínio.')
+  }
+
   const fullName = String(body.full_name || '').trim()
   const companyName = String(body.company_name || '').trim()
   const email = String(body.email || '').trim().toLowerCase()
-  const role = isAssessoriaLpMemberEmail(email) ? USER_ROLES.OPERATOR : USER_ROLES.MASTER
+
   const user = await createSupabaseUserWithoutEmail({
     email,
     password: String(body.password || '').trim(),
@@ -180,14 +159,13 @@ async function registerWithLegacySupabase(body: {
     user,
     fullName,
     companyName,
+    host: body.host,
   })
 
-  // O Supabase pode não devolver session no cadastro administrativo.
-  // A sessão do app é o cookie local assinado, vinculado ao workspace atual.
   const token = await createLocalAccessToken({
     sub: `supabase:${user.id}`,
     tenant_id: profile?.workspace_id || user.id,
-    role: profile?.role || role,
+    role: profile?.role || USER_ROLES.OPERATOR,
     email: user.email || body.email || '',
     full_name: profile?.full_name || fullName || user.user_metadata?.full_name || user.email || '',
     provider: 'supabase',
@@ -199,9 +177,10 @@ async function registerWithLegacySupabase(body: {
 
 export async function POST(request: Request) {
   const body = await request.json()
+  const host = request.headers.get('host') || ''
 
   try {
-    const legacyResult = await registerWithLegacySupabase(body)
+    const legacyResult = await registerWithLegacySupabase({ ...body, host })
 
     const nextResponse = NextResponse.json({ ok: true, provider: 'supabase' })
     nextResponse.cookies.set({
