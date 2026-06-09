@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/server/supabase-admin'
 import { fetchMetaJson, normalizeMetaError } from '@/lib/server/meta-fetch'
 
-const THRESHOLDS = [150, 100, 50]
+const THRESHOLDS = [150, 100, 50, 0]
 // How many hours to wait before re-alerting the same account+threshold
 const COOLDOWN_HOURS = 12
 
@@ -119,7 +119,7 @@ export async function GET(request: Request) {
         if (!isPrepay || balance === null) continue
 
         for (const threshold of THRESHOLDS) {
-          if (balance < threshold) {
+          if (balance <= threshold) {
             const alreadySent = await wasAlertedRecently(adminSupabase, workspace.id, adAccountId, threshold)
             if (!alreadySent) {
               await recordAlert(adminSupabase, workspace.id, client.id, adAccountId, threshold, balance)
@@ -132,7 +132,9 @@ export async function GET(request: Request) {
                 balance,
                 currency,
                 threshold,
-                message: `⚠️ *Alerta de Saldo Meta Ads*\n\nCliente: *${client.name || client.payload?.name}*\nConta: act_${adAccountId}\nSaldo atual: *R$ ${balance.toFixed(2)}*\nLimite atingido: *R$ ${threshold}*\n\nRecarregue antes que as campanhas pausem.`,
+                message: threshold === 0
+                  ? `🚨 *Saldo Zerado - Meta Ads*\n\nCliente: *${client.name || client.payload?.name}*\nConta: act_${adAccountId}\nSaldo atual: *R$ 0,00*\n\n⛔ As campanhas foram pausadas. Recarregue agora!`
+                  : `⚠️ *Alerta de Saldo Meta Ads*\n\nCliente: *${client.name || client.payload?.name}*\nConta: act_${adAccountId}\nSaldo atual: *R$ ${balance.toFixed(2)}*\nLimite atingido: *R$ ${threshold}*\n\nRecarregue antes que as campanhas pausem.`,
               })
               // Only alert for the lowest triggered threshold
               break
