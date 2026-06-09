@@ -3509,6 +3509,7 @@ export default function DashboardShell({
   const [createUserError, setCreateUserError] = useState('')
   const [createdUserInvite, setCreatedUserInvite] = useState(null)
   const [editUserError, setEditUserError] = useState('')
+  const [editUserClientSearch, setEditUserClientSearch] = useState('')
   const [userForm, setUserForm] = useState({
     fullName: '',
     email: '',
@@ -19048,7 +19049,7 @@ export default function DashboardShell({
                           <span className="simple-client-status-text">{accessLabel}</span>
                           <span className={'integration-status-icon ' + (hasAiAccess ? 'active' : '')} title={hasAiAccess ? 'IA liberada' : 'IA bloqueada'}><i className={'bx ' + (hasAiAccess ? 'bx-brain' : 'bx-lock-alt')}></i></span>
                           <span className={'integration-status-icon ' + (hasIntegrationAccess ? 'active' : '')} title={hasIntegrationAccess ? 'Integrações liberadas' : 'Integrações bloqueadas'}><i className={'bx ' + (hasIntegrationAccess ? 'bx-plug' : 'bx-lock-alt')}></i></span>
-                          <button type="button" className="btn btn-secondary" onClick={() => { setSelectedUserId(managedUser.id); setIsEditUserModalOpen(true) }}><i className="bx bx-edit-alt" aria-hidden="true"></i><span>Editar</span></button>
+                          <button type="button" className="btn btn-secondary" onClick={() => { setSelectedUserId(managedUser.id); setIsEditUserModalOpen(true); setEditUserClientSearch('') }}><i className="bx bx-edit-alt" aria-hidden="true"></i><span>Editar</span></button>
                         </div>
                       )
                     })}
@@ -19091,7 +19092,50 @@ export default function DashboardShell({
                     <div className="input-group"><label>IA</label><select className="client-select-input" value={selectedManagedUser.ai_access_level || (selectedManagedUser.role === 'master' ? 'master' : 'team')} onChange={(event) => handleManagedUserChange(selectedManagedUser.id, (item) => ({ ...item, ai_access_level: event.target.value }))}>{selectedManagedUser.role === 'master' && <option value="master">IA Master</option>}<option value="team">Liberada</option><option value="none">Bloqueada</option></select></div>
                     <div className="input-group"><label>Integrações</label><select className="client-select-input" value={(selectedManagedUser.role === 'master' || selectedManagedUser.can_edit_integrations) ? 'enabled' : 'disabled'} disabled={selectedManagedUser.role === 'master'} onChange={(event) => handleManagedUserChange(selectedManagedUser.id, (item) => ({ ...item, can_edit_integrations: event.target.value === 'enabled' }))}><option value="disabled">Bloqueadas</option><option value="enabled">Liberadas</option></select></div>
                   </div>
-                  {selectedManagedUser.role !== 'master' && <div className="input-group"><label>Dashboards liberados</label><div className="stage-selector">{dashboardEligibleClients.length ? dashboardEligibleClients.map((client) => { const currentAccess = selectedManagedUser.clientAccess || []; const hasClient = currentAccess.some((item) => item.client_id === client.id); return (<label key={selectedManagedUser.id + '-' + client.id} className={'stage-chip ' + (hasClient ? 'active' : '')}><input type="checkbox" checked={hasClient} onChange={() => handleManagedUserChange(selectedManagedUser.id, (item) => { const baseAccess = item.clientAccess || []; const nextAccess = hasClient ? baseAccess.filter((accessItem) => accessItem.client_id !== client.id) : [...baseAccess, { client_id: client.id, can_view: true, can_edit: false }]; return { ...item, clientAccess: nextAccess } })} /><span>{client.name}</span></label>) }) : <div className="stage-empty">Cadastre clientes antes de liberar dashboards para o time.</div>}</div></div>}
+                  {selectedManagedUser.role !== 'master' && (() => {
+                    const currentAccess = selectedManagedUser.clientAccess || []
+                    const selectedCount = dashboardEligibleClients.filter((c) => currentAccess.some((a) => a.client_id === c.id)).length
+                    const filteredClients = editUserClientSearch.trim()
+                      ? dashboardEligibleClients.filter((c) => c.name.toLowerCase().includes(editUserClientSearch.toLowerCase()))
+                      : dashboardEligibleClients
+                    return (
+                      <div className="client-access-section">
+                        <div className="client-access-top">
+                          <label>Dashboards liberados</label>
+                          <span className="client-access-count">{selectedCount} de {dashboardEligibleClients.length}</span>
+                          <div className="client-access-quick">
+                            <button type="button" onClick={() => handleManagedUserChange(selectedManagedUser.id, (item) => ({ ...item, clientAccess: dashboardEligibleClients.map((c) => ({ client_id: c.id, can_view: true, can_edit: false })) }))}>Todos</button>
+                            <button type="button" onClick={() => handleManagedUserChange(selectedManagedUser.id, (item) => ({ ...item, clientAccess: [] }))}>Nenhum</button>
+                          </div>
+                        </div>
+                        <div className="client-access-search">
+                          <i className="bx bx-search"></i>
+                          <input type="text" placeholder="Buscar cliente..." value={editUserClientSearch} onChange={(e) => setEditUserClientSearch(e.target.value)} />
+                        </div>
+                        <div className="client-access-grid">
+                          {filteredClients.length ? filteredClients.map((client) => {
+                            const hasClient = currentAccess.some((a) => a.client_id === client.id)
+                            return (
+                              <label key={selectedManagedUser.id + '-' + client.id} className={'client-access-item ' + (hasClient ? 'selected' : '')}>
+                                <input type="checkbox" checked={hasClient} onChange={() => handleManagedUserChange(selectedManagedUser.id, (item) => {
+                                  const base = item.clientAccess || []
+                                  const next = hasClient ? base.filter((a) => a.client_id !== client.id) : [...base, { client_id: client.id, can_view: true, can_edit: false }]
+                                  return { ...item, clientAccess: next }
+                                })} />
+                                <span className="client-access-avatar">{(client.name || '?').charAt(0)}</span>
+                                <span className="client-access-name">{client.name}</span>
+                                <span className="client-access-check"><i className={'bx ' + (hasClient ? 'bx-check-circle' : 'bx-circle')}></i></span>
+                              </label>
+                            )
+                          }) : (
+                            <div className="client-access-empty">
+                              {editUserClientSearch ? 'Nenhum cliente encontrado.' : 'Cadastre clientes antes de liberar dashboards para o time.'}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })()}
                   <div className="modal-foot"><span className="form-note">Os acessos do time são salvos no Supabase e aplicados no login deste usuário.</span><div className="modal-actions"><button type="button" className="btn btn-secondary" onClick={() => setIsEditUserModalOpen(false)}>Cancelar</button><button type="button" className="btn btn-primary" onClick={() => handleUpdateUser(selectedManagedUser)}>Salvar membro</button></div></div>
                 </div></div>
               )}
