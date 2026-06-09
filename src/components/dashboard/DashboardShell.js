@@ -14116,7 +14116,7 @@ export default function DashboardShell({
     selectedMetaCampaignTableColumns,
     visibleMetaConversionGroups,
   ])
-  const userFirstName = (user?.user_metadata?.full_name || user?.email || 'por aí').split(' ')[0]
+  const userFirstName = (profile?.full_name || user?.user_metadata?.full_name || user?.email || 'por aí').split(' ')[0]
   const currentHour = new Date().getHours()
   const assistantGreeting =
     currentHour < 12
@@ -16226,6 +16226,13 @@ export default function DashboardShell({
           <div className="sidebar-client glass-item">
             <span className="sidebar-client-label">Cliente ativo</span>
             <strong>{activeClient?.name || 'Nenhum cliente selecionado'}</strong>
+          </div>
+        )}
+
+        {!isSidebarCollapsed && (
+          <div className="sidebar-greeting glass-item" style={{ margin: '0 12px 8px', padding: '10px 14px', borderRadius: '14px', fontSize: '0.78rem', lineHeight: 1.4 }}>
+            <span style={{ display: 'block', opacity: 0.55, fontSize: '0.7rem', marginBottom: '2px' }}>{assistantGreeting}</span>
+            <span style={{ fontWeight: 600, fontSize: '0.82rem' }}>{profile?.full_name || user?.email || ''}</span>
           </div>
         )}
 
