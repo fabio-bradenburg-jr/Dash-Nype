@@ -1,6 +1,5 @@
 /** Maps each allowed domain to the email of its workspace owner. */
 export const DOMAIN_OWNER_EMAIL: Record<string, string> = {
-  'app.assessorialp.com.br': 'fabio@assessorialp.com.br',
   'app.nype.company': 'fabiobrandenburgjr@gmail.com',
 }
 
@@ -13,9 +12,9 @@ export function parseDomain(host: string): string {
 /** Returns the workspace owner email for this host, or null if domain is not allowed. */
 export function getOwnerEmailForHost(host: string): string | null {
   const domain = parseDomain(host)
-  // In local development default to the assessorialp workspace
+  // In local development default to the nype workspace
   if (domain === 'localhost' || domain.endsWith('.localhost')) {
-    return DOMAIN_OWNER_EMAIL['app.assessorialp.com.br']
+    return DOMAIN_OWNER_EMAIL['app.nype.company']
   }
   return DOMAIN_OWNER_EMAIL[domain] ?? null
 }
