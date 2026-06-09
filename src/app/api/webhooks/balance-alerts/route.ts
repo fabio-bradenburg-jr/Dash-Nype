@@ -3,7 +3,7 @@ import { createAdminClient } from '@/lib/server/supabase-admin'
 import { fetchMetaJson, normalizeMetaError } from '@/lib/server/meta-fetch'
 import { resolveWorkspaceForHost } from '@/lib/server/domain-config'
 
-const THRESHOLDS = [150, 100, 50, 0]
+const THRESHOLDS = [50, 100, 150] // checked from lowest to highest; zero handled separately
 // How many hours to wait before re-alerting the same account+threshold
 const COOLDOWN_HOURS = 12
 
@@ -128,8 +128,31 @@ export async function GET(request: Request) {
         const { balance, currency, isPrepay } = await fetchBalance(token, adAccountId)
         if (!isPrepay || balance === null) continue
 
+        const clientName = client.name || client.payload?.name || 'Cliente'
+
+        // Zero balance: highest priority, always check independently
+        if (balance <= 0) {
+          const alreadySent = await wasAlertedRecently(adminSupabase, workspace.id, adAccountId, 0)
+          if (!alreadySent) {
+            await recordAlert(adminSupabase, workspace.id, client.id, adAccountId, 0, balance)
+            alerts.push({
+              workspaceId: workspace.id,
+              workspaceName: workspace.name,
+              clientId: client.id,
+              clientName,
+              adAccountId,
+              balance,
+              currency,
+              threshold: 0,
+              message: `🚨 *Saldo Zerado - Meta Ads*\n\nCliente: *${clientName}*\nConta: act_${adAccountId}\nSaldo atual: *R$ 0,00*\n\n⛔ As campanhas foram pausadas. Recarregue agora!`,
+            })
+          }
+          continue // skip regular thresholds when balance is zero
+        }
+
+        // Regular thresholds: find the lowest triggered one
         for (const threshold of THRESHOLDS) {
-          if (balance <= threshold) {
+          if (balance < threshold) {
             const alreadySent = await wasAlertedRecently(adminSupabase, workspace.id, adAccountId, threshold)
             if (!alreadySent) {
               await recordAlert(adminSupabase, workspace.id, client.id, adAccountId, threshold, balance)
@@ -137,21 +160,15 @@ export async function GET(request: Request) {
                 workspaceId: workspace.id,
                 workspaceName: workspace.name,
                 clientId: client.id,
-                clientName: client.name || client.payload?.name || 'Cliente',
+                clientName,
                 adAccountId,
                 balance,
                 currency,
                 threshold,
-                message: threshold === 0
-                  ? `🚨 *Saldo Zerado - Meta Ads*\n\nCliente: *${client.name || client.payload?.name}*\nConta: act_${adAccountId}\nSaldo atual: *R$ 0,00*\n\n⛔ As campanhas foram pausadas. Recarregue agora!`
-                  : `⚠️ *Alerta de Saldo Meta Ads*\n\nCliente: *${client.name || client.payload?.name}*\nConta: act_${adAccountId}\nSaldo atual: *R$ ${balance.toFixed(2)}*\nLimite atingido: *R$ ${threshold}*\n\nRecarregue antes que as campanhas pausem.`,
+                message: `⚠️ *Alerta de Saldo Meta Ads*\n\nCliente: *${clientName}*\nConta: act_${adAccountId}\nSaldo atual: *R$ ${balance.toFixed(2)}*\nLimite atingido: *R$ ${threshold}*\n\nRecarregue antes que as campanhas pausem.`,
               })
-              // Only alert for the lowest triggered threshold
-              break
-            } else {
-              // Already alerted for this threshold, skip lower ones too
-              break
             }
+            break
           }
         }
       } catch {
