@@ -3509,6 +3509,7 @@ export default function DashboardShell({
   const [createUserError, setCreateUserError] = useState('')
   const [createdUserInvite, setCreatedUserInvite] = useState(null)
   const [editUserError, setEditUserError] = useState('')
+  const [editUserClientSearch, setEditUserClientSearch] = useState('')
   const [userForm, setUserForm] = useState({
     fullName: '',
     email: '',
@@ -14116,7 +14117,7 @@ export default function DashboardShell({
     selectedMetaCampaignTableColumns,
     visibleMetaConversionGroups,
   ])
-  const userFirstName = (user?.user_metadata?.full_name || user?.email || 'por aí').split(' ')[0]
+  const userFirstName = (profile?.full_name || user?.user_metadata?.full_name || user?.email || 'por aí').split(' ')[0]
   const currentHour = new Date().getHours()
   const assistantGreeting =
     currentHour < 12
@@ -16229,6 +16230,13 @@ export default function DashboardShell({
           </div>
         )}
 
+        {!isSidebarCollapsed && (
+          <div className="sidebar-greeting glass-item" style={{ margin: '0 12px 8px', padding: '10px 14px', borderRadius: '14px', fontSize: '0.78rem', lineHeight: 1.4 }}>
+            <span style={{ display: 'block', opacity: 0.55, fontSize: '0.7rem', marginBottom: '2px' }}>{assistantGreeting}</span>
+            <span style={{ fontWeight: 600, fontSize: '0.82rem' }}>{profile?.full_name || user?.email || ''}</span>
+          </div>
+        )}
+
         <div className="sidebar-bottom-actions">
           <button
             type="button"
@@ -17574,6 +17582,10 @@ export default function DashboardShell({
                               <small>Resultados</small>
                               <strong>{formatNumber(totals.results || 0)}</strong>
                             </span>
+                            <span className="campaign-overview-total-pill">
+                              <small>Custo/resultado</small>
+                              <strong>{totals.results > 0 ? formatCurrency((totals.spend || 0) / totals.results) : '—'}</strong>
+                            </span>
                             <span className={'simple-client-health compact ' + (healthConfig ? 'active ' + healthConfig.key : 'empty')} style={healthConfig ? { '--client-health-color': healthConfig.color } : undefined}>
                               <b>{healthConfig?.label || 'Sem saúde'}</b>
                               <small>{healthDetail}</small>
@@ -17613,6 +17625,10 @@ export default function DashboardShell({
                                         <strong>{formatNumber(campaign.results || 0)}</strong>
                                       </span>
                                       <span className="campaign-overview-metric">
+                                        <small>Custo/resultado</small>
+                                        <strong>{campaign.results > 0 ? formatCurrency((campaign.spend || 0) / campaign.results) : '—'}</strong>
+                                      </span>
+                                      <span className="campaign-overview-metric">
                                         <small>Cliques</small>
                                         <strong>{formatNumber(campaign.clicks || 0)}</strong>
                                       </span>
@@ -17649,6 +17665,10 @@ export default function DashboardShell({
                                                     <strong>{formatNumber(adset.results || 0)}</strong>
                                                   </span>
                                                   <span className="campaign-overview-metric">
+                                                    <small>Custo/resultado</small>
+                                                    <strong>{adset.results > 0 ? formatCurrency((adset.spend || 0) / adset.results) : '—'}</strong>
+                                                  </span>
+                                                  <span className="campaign-overview-metric">
                                                     <small>Cliques</small>
                                                     <strong>{formatNumber(adset.clicks || 0)}</strong>
                                                   </span>
@@ -17677,6 +17697,10 @@ export default function DashboardShell({
                                                           <span className="campaign-overview-metric">
                                                             <small>Resultados</small>
                                                             <strong>{formatNumber(ad.results || 0)}</strong>
+                                                          </span>
+                                                          <span className="campaign-overview-metric">
+                                                            <small>Custo/resultado</small>
+                                                            <strong>{ad.results > 0 ? formatCurrency((ad.spend || 0) / ad.results) : '—'}</strong>
                                                           </span>
                                                           <span className="campaign-overview-metric">
                                                             <small>Cliques</small>
@@ -19025,7 +19049,7 @@ export default function DashboardShell({
                           <span className="simple-client-status-text">{accessLabel}</span>
                           <span className={'integration-status-icon ' + (hasAiAccess ? 'active' : '')} title={hasAiAccess ? 'IA liberada' : 'IA bloqueada'}><i className={'bx ' + (hasAiAccess ? 'bx-brain' : 'bx-lock-alt')}></i></span>
                           <span className={'integration-status-icon ' + (hasIntegrationAccess ? 'active' : '')} title={hasIntegrationAccess ? 'Integrações liberadas' : 'Integrações bloqueadas'}><i className={'bx ' + (hasIntegrationAccess ? 'bx-plug' : 'bx-lock-alt')}></i></span>
-                          <button type="button" className="btn btn-secondary" onClick={() => { setSelectedUserId(managedUser.id); setIsEditUserModalOpen(true) }}><i className="bx bx-edit-alt" aria-hidden="true"></i><span>Editar</span></button>
+                          <button type="button" className="btn btn-secondary" onClick={() => { setSelectedUserId(managedUser.id); setIsEditUserModalOpen(true); setEditUserClientSearch('') }}><i className="bx bx-edit-alt" aria-hidden="true"></i><span>Editar</span></button>
                         </div>
                       )
                     })}
@@ -19068,7 +19092,50 @@ export default function DashboardShell({
                     <div className="input-group"><label>IA</label><select className="client-select-input" value={selectedManagedUser.ai_access_level || (selectedManagedUser.role === 'master' ? 'master' : 'team')} onChange={(event) => handleManagedUserChange(selectedManagedUser.id, (item) => ({ ...item, ai_access_level: event.target.value }))}>{selectedManagedUser.role === 'master' && <option value="master">IA Master</option>}<option value="team">Liberada</option><option value="none">Bloqueada</option></select></div>
                     <div className="input-group"><label>Integrações</label><select className="client-select-input" value={(selectedManagedUser.role === 'master' || selectedManagedUser.can_edit_integrations) ? 'enabled' : 'disabled'} disabled={selectedManagedUser.role === 'master'} onChange={(event) => handleManagedUserChange(selectedManagedUser.id, (item) => ({ ...item, can_edit_integrations: event.target.value === 'enabled' }))}><option value="disabled">Bloqueadas</option><option value="enabled">Liberadas</option></select></div>
                   </div>
-                  {selectedManagedUser.role !== 'master' && <div className="input-group"><label>Dashboards liberados</label><div className="stage-selector">{dashboardEligibleClients.length ? dashboardEligibleClients.map((client) => { const currentAccess = selectedManagedUser.clientAccess || []; const hasClient = currentAccess.some((item) => item.client_id === client.id); return (<label key={selectedManagedUser.id + '-' + client.id} className={'stage-chip ' + (hasClient ? 'active' : '')}><input type="checkbox" checked={hasClient} onChange={() => handleManagedUserChange(selectedManagedUser.id, (item) => { const baseAccess = item.clientAccess || []; const nextAccess = hasClient ? baseAccess.filter((accessItem) => accessItem.client_id !== client.id) : [...baseAccess, { client_id: client.id, can_view: true, can_edit: false }]; return { ...item, clientAccess: nextAccess } })} /><span>{client.name}</span></label>) }) : <div className="stage-empty">Cadastre clientes antes de liberar dashboards para o time.</div>}</div></div>}
+                  {selectedManagedUser.role !== 'master' && (() => {
+                    const currentAccess = selectedManagedUser.clientAccess || []
+                    const selectedCount = dashboardEligibleClients.filter((c) => currentAccess.some((a) => a.client_id === c.id)).length
+                    const filteredClients = editUserClientSearch.trim()
+                      ? dashboardEligibleClients.filter((c) => c.name.toLowerCase().includes(editUserClientSearch.toLowerCase()))
+                      : dashboardEligibleClients
+                    return (
+                      <div className="client-access-section">
+                        <div className="client-access-top">
+                          <label>Dashboards liberados</label>
+                          <span className="client-access-count">{selectedCount} de {dashboardEligibleClients.length}</span>
+                          <div className="client-access-quick">
+                            <button type="button" onClick={() => handleManagedUserChange(selectedManagedUser.id, (item) => ({ ...item, clientAccess: dashboardEligibleClients.map((c) => ({ client_id: c.id, can_view: true, can_edit: false })) }))}>Todos</button>
+                            <button type="button" onClick={() => handleManagedUserChange(selectedManagedUser.id, (item) => ({ ...item, clientAccess: [] }))}>Nenhum</button>
+                          </div>
+                        </div>
+                        <div className="client-access-search">
+                          <i className="bx bx-search"></i>
+                          <input type="text" placeholder="Buscar cliente..." value={editUserClientSearch} onChange={(e) => setEditUserClientSearch(e.target.value)} />
+                        </div>
+                        <div className="client-access-grid">
+                          {filteredClients.length ? filteredClients.map((client) => {
+                            const hasClient = currentAccess.some((a) => a.client_id === client.id)
+                            return (
+                              <label key={selectedManagedUser.id + '-' + client.id} className={'client-access-item ' + (hasClient ? 'selected' : '')}>
+                                <input type="checkbox" checked={hasClient} onChange={() => handleManagedUserChange(selectedManagedUser.id, (item) => {
+                                  const base = item.clientAccess || []
+                                  const next = hasClient ? base.filter((a) => a.client_id !== client.id) : [...base, { client_id: client.id, can_view: true, can_edit: false }]
+                                  return { ...item, clientAccess: next }
+                                })} />
+                                <span className="client-access-avatar">{(client.name || '?').charAt(0)}</span>
+                                <span className="client-access-name">{client.name}</span>
+                                <span className="client-access-check"><i className={'bx ' + (hasClient ? 'bx-check-circle' : 'bx-circle')}></i></span>
+                              </label>
+                            )
+                          }) : (
+                            <div className="client-access-empty">
+                              {editUserClientSearch ? 'Nenhum cliente encontrado.' : 'Cadastre clientes antes de liberar dashboards para o time.'}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })()}
                   <div className="modal-foot"><span className="form-note">Os acessos do time são salvos no Supabase e aplicados no login deste usuário.</span><div className="modal-actions"><button type="button" className="btn btn-secondary" onClick={() => setIsEditUserModalOpen(false)}>Cancelar</button><button type="button" className="btn btn-primary" onClick={() => handleUpdateUser(selectedManagedUser)}>Salvar membro</button></div></div>
                 </div></div>
               )}

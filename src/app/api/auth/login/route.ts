@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 
 import { PLATFORM_AUTH_COOKIE } from '@/lib/saas/auth'
 import { createLocalAccessToken } from '@/lib/server/platform-auth-fallback'
+import { getOwnerEmailForHost, resolveWorkspaceForHost } from '@/lib/server/domain-config'
 
 function getSupabaseAuthConfig() {
   const missing: string[] = []
@@ -46,10 +47,16 @@ function isRecoverableLoginError(error: unknown) {
   )
 }
 
-async function loginWithLegacySupabase(body: { email: string; password: string }) {
+async function loginWithLegacySupabase(body: { email: string; password: string; host: string }) {
   const supabaseConfig = getSupabaseAuthConfig()
   if (!supabaseConfig.enabled) {
     throw new Error(formatMissingSupabaseConfig(supabaseConfig.missing))
+  }
+
+  // Block login from unauthorized domains
+  const ownerEmail = getOwnerEmailForHost(body.host)
+  if (!ownerEmail) {
+    throw new Error('Acesso não permitido neste domínio.')
   }
 
   const [{ createClient }, { createAdminClient }, { getAccessContext, isPrimaryAdminEmail }] = await Promise.all([
@@ -96,6 +103,14 @@ async function loginWithLegacySupabase(body: { email: string; password: string }
     }
   }
 
+  // Verify the user belongs to the workspace for this domain
+  if (adminSupabase && accessContext.workspaceId) {
+    const { workspaceId: domainWorkspaceId } = await resolveWorkspaceForHost(adminSupabase, body.host)
+    if (domainWorkspaceId && accessContext.workspaceId !== domainWorkspaceId) {
+      throw new Error('Este e-mail não tem acesso a este domínio. Verifique se está acessando pelo endereço correto.')
+    }
+  }
+
   return createLocalAccessToken({
     sub: `supabase:${data.user.id}`,
     tenant_id: accessContext.workspaceId || data.user.id,
@@ -109,9 +124,10 @@ async function loginWithLegacySupabase(body: { email: string; password: string }
 
 export async function POST(request: Request) {
   const body = await request.json()
+  const host = request.headers.get('host') || ''
 
   try {
-    const legacyToken = await loginWithLegacySupabase(body)
+    const legacyToken = await loginWithLegacySupabase({ ...body, host })
     const nextResponse = NextResponse.json({ ok: true, provider: 'supabase' })
     nextResponse.cookies.set({
       name: PLATFORM_AUTH_COOKIE,
