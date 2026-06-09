@@ -77,9 +77,12 @@
         },
         "sendBody": true,
         "contentType": "json",
-        "body": {
-          "number": "120363427711895391@g.us",
-          "text": "={{ $json.message }}"
+        "specifyBody": "keypair",
+        "bodyParameters": {
+          "parameters": [
+            { "name": "number", "value": "120363427711895391@g.us" },
+            { "name": "text", "value": "={{ $json.message }}" }
+          ]
         },
         "options": {}
       },
