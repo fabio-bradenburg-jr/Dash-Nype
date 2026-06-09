@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/server/supabase-admin'
 import { fetchMetaJson, normalizeMetaError } from '@/lib/server/meta-fetch'
+import { resolveWorkspaceForHost } from '@/lib/server/domain-config'
 
 const THRESHOLDS = [150, 100, 50, 0]
 // How many hours to wait before re-alerting the same account+threshold
@@ -85,10 +86,19 @@ export async function GET(request: Request) {
 
   const adminSupabase = createAdminClient()
 
-  // Fetch all workspaces (or filter by workspace_id param)
-  const workspaceIdParam = new URL(request.url).searchParams.get('workspace_id')
+  const params = new URL(request.url).searchParams
+  let workspaceIdFilter = params.get('workspace_id')
+
+  // Filter by domain (e.g. domain=app.assessorialp.com.br)
+  const domainParam = params.get('domain')
+  if (domainParam && !workspaceIdFilter) {
+    const { workspaceId } = await resolveWorkspaceForHost(adminSupabase, domainParam)
+    if (!workspaceId) return NextResponse.json({ error: 'Domínio não encontrado.' }, { status: 404 })
+    workspaceIdFilter = workspaceId
+  }
+
   const workspacesQuery = adminSupabase.from('workspaces').select('id, name')
-  if (workspaceIdParam) workspacesQuery.eq('id', workspaceIdParam)
+  if (workspaceIdFilter) workspacesQuery.eq('id', workspaceIdFilter)
 
   const { data: workspaces, error: wsError } = await workspacesQuery
   if (wsError) return NextResponse.json({ error: wsError.message }, { status: 500 })

@@ -20,7 +20,8 @@
         "sendQuery": true,
         "queryParameters": {
           "parameters": [
-            { "name": "secret", "value": "alertas-meta-2024" }
+            { "name": "secret", "value": "alertas-meta-2024" },
+            { "name": "domain", "value": "app.assessorialp.com.br" }
           ]
         },
         "options": {}
