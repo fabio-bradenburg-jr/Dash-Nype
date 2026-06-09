@@ -32070,10 +32070,10 @@ export default function DashboardShell({
 
         .campaign-overview-client-metrics {
           display: grid;
-          grid-template-columns: repeat(2, minmax(118px, 0.55fr)) minmax(170px, auto) 38px;
+          grid-template-columns: repeat(3, minmax(110px, 0.45fr)) minmax(160px, auto) 38px;
           align-items: center;
           gap: 10px;
-          min-width: min(760px, 58%);
+          min-width: min(900px, 62%);
         }
 
         .campaign-overview-total-pill {
@@ -32125,7 +32125,7 @@ export default function DashboardShell({
 
         .campaign-overview-campaign-row,
         .campaign-overview-adset-row {
-          grid-template-columns: minmax(240px, 1fr) repeat(4, minmax(104px, 0.44fr)) 38px;
+          grid-template-columns: minmax(240px, 1fr) repeat(5, minmax(100px, 0.4fr)) 38px;
           min-height: 72px;
           padding: 14px 16px;
           border-radius: 18px;
@@ -32203,7 +32203,7 @@ export default function DashboardShell({
         }
 
         .campaign-overview-ad-row {
-          grid-template-columns: minmax(240px, 1fr) repeat(4, minmax(104px, 0.42fr));
+          grid-template-columns: minmax(240px, 1fr) repeat(5, minmax(100px, 0.4fr));
           min-height: 64px;
           padding: 12px 14px;
           border-radius: 16px;
@@ -32711,17 +32711,17 @@ export default function DashboardShell({
 
           .campaign-overview-client-metrics {
             min-width: 100%;
-            grid-template-columns: repeat(2, minmax(120px, 1fr)) minmax(180px, 1fr) 38px;
+            grid-template-columns: repeat(3, minmax(100px, 1fr)) minmax(160px, 1fr) 38px;
           }
 
           .campaign-overview-campaign-row,
           .campaign-overview-adset-row,
           .campaign-overview-ad-row {
-            grid-template-columns: minmax(220px, 1fr) repeat(2, minmax(100px, 0.5fr)) 38px;
+            grid-template-columns: minmax(220px, 1fr) repeat(3, minmax(100px, 0.5fr)) 38px;
           }
 
           .campaign-overview-ad-row {
-            grid-template-columns: minmax(220px, 1fr) repeat(2, minmax(100px, 0.5fr));
+            grid-template-columns: minmax(220px, 1fr) repeat(3, minmax(100px, 0.5fr));
           }
 
           .campaign-overview-campaign-row .campaign-overview-metric:nth-of-type(4),
