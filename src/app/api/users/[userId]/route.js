@@ -95,11 +95,15 @@ export async function PATCH(request, context) {
 
     const { data: targetProfile, error: targetProfileError } = await adminSupabase
       .from('profiles')
-      .select('email, can_edit_integrations')
+      .select('email, can_edit_integrations, workspace_id')
       .eq('id', userId)
       .maybeSingle()
 
     if (targetProfileError) throw targetProfileError
+
+    if (!targetProfile || targetProfile.workspace_id !== accessContext.workspaceId) {
+      return NextResponse.json({ error: 'Usuário não encontrado neste workspace.' }, { status: 403 })
+    }
 
     const targetEmail = targetProfile?.email || ''
     let role = Object.values(USER_ROLES).includes(body.role) ? body.role : USER_ROLES.VIEWER
@@ -138,6 +142,7 @@ export async function PATCH(request, context) {
       .from('user_client_access')
       .delete()
       .eq('user_id', userId)
+      .eq('workspace_id', accessContext.workspaceId)
 
     if (deleteAccessError) throw deleteAccessError
 
@@ -145,6 +150,7 @@ export async function PATCH(request, context) {
       .from('user_client_group_access')
       .delete()
       .eq('user_id', userId)
+      .eq('workspace_id', accessContext.workspaceId)
 
     if (deleteGroupAccessError && !isMissingRelationError(deleteGroupAccessError)) throw deleteGroupAccessError
     if (deleteGroupAccessError && isMissingRelationError(deleteGroupAccessError) && clientGroupIds.length > 0) {
@@ -208,6 +214,16 @@ export async function DELETE(_request, { params }) {
 
     if (user.id === userId) {
       return NextResponse.json({ error: 'A conta master não pode excluir a si mesma.' }, { status: 400 })
+    }
+
+    const { data: targetProfile } = await adminSupabase
+      .from('profiles')
+      .select('workspace_id')
+      .eq('id', userId)
+      .maybeSingle()
+
+    if (!targetProfile || targetProfile.workspace_id !== accessContext.workspaceId) {
+      return NextResponse.json({ error: 'Usuário não encontrado neste workspace.' }, { status: 403 })
     }
 
     const { error } = await adminSupabase.auth.admin.deleteUser(userId)
