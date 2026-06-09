@@ -1,0 +1,111 @@
+{
+  "name": "Alertas de Saldo Meta Ads → WhatsApp",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "hours", "hoursInterval": 1 }]
+        }
+      },
+      "id": "cron-trigger",
+      "name": "A cada hora",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://app.assessorialp.com.br/api/webhooks/balance-alerts",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "secret", "value": "COLE_AQUI_O_BALANCE_ALERT_WEBHOOK_SECRET" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "fetch-alerts",
+      "name": "Buscar alertas de saldo",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "has-alerts",
+              "leftValue": "={{ $json.count }}",
+              "rightValue": 0,
+              "operator": { "type": "number", "operation": "gt" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "check-has-alerts",
+      "name": "Tem alertas?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "alerts",
+        "options": {}
+      },
+      "id": "split-alerts",
+      "name": "Para cada alerta",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [900, 200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://SEU_SERVIDOR_EVOLUTION/message/sendText/SUA_INSTANCIA",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "SUA_EVOLUTION_API_KEY" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": {
+          "number": "ID_DO_GRUPO_WHATSAPP@g.us",
+          "text": "={{ $json.message }}"
+        },
+        "options": {}
+      },
+      "id": "send-whatsapp",
+      "name": "Enviar WhatsApp",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1120, 200]
+    }
+  ],
+  "connections": {
+    "A cada hora": {
+      "main": [[{ "node": "Buscar alertas de saldo", "type": "main", "index": 0 }]]
+    },
+    "Buscar alertas de saldo": {
+      "main": [[{ "node": "Tem alertas?", "type": "main", "index": 0 }]]
+    },
+    "Tem alertas?": {
+      "main": [
+        [{ "node": "Para cada alerta", "type": "main", "index": 0 }],
+        []
+      ]
+    },
+    "Para cada alerta": {
+      "main": [[{ "node": "Enviar WhatsApp", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" }
+}
