@@ -17581,6 +17581,10 @@ export default function DashboardShell({
                               <small>Resultados</small>
                               <strong>{formatNumber(totals.results || 0)}</strong>
                             </span>
+                            <span className="campaign-overview-total-pill">
+                              <small>Custo/resultado</small>
+                              <strong>{totals.results > 0 ? formatCurrency((totals.spend || 0) / totals.results) : '—'}</strong>
+                            </span>
                             <span className={'simple-client-health compact ' + (healthConfig ? 'active ' + healthConfig.key : 'empty')} style={healthConfig ? { '--client-health-color': healthConfig.color } : undefined}>
                               <b>{healthConfig?.label || 'Sem saúde'}</b>
                               <small>{healthDetail}</small>
@@ -17620,6 +17624,10 @@ export default function DashboardShell({
                                         <strong>{formatNumber(campaign.results || 0)}</strong>
                                       </span>
                                       <span className="campaign-overview-metric">
+                                        <small>Custo/resultado</small>
+                                        <strong>{campaign.results > 0 ? formatCurrency((campaign.spend || 0) / campaign.results) : '—'}</strong>
+                                      </span>
+                                      <span className="campaign-overview-metric">
                                         <small>Cliques</small>
                                         <strong>{formatNumber(campaign.clicks || 0)}</strong>
                                       </span>
@@ -17656,6 +17664,10 @@ export default function DashboardShell({
                                                     <strong>{formatNumber(adset.results || 0)}</strong>
                                                   </span>
                                                   <span className="campaign-overview-metric">
+                                                    <small>Custo/resultado</small>
+                                                    <strong>{adset.results > 0 ? formatCurrency((adset.spend || 0) / adset.results) : '—'}</strong>
+                                                  </span>
+                                                  <span className="campaign-overview-metric">
                                                     <small>Cliques</small>
                                                     <strong>{formatNumber(adset.clicks || 0)}</strong>
                                                   </span>
@@ -17684,6 +17696,10 @@ export default function DashboardShell({
                                                           <span className="campaign-overview-metric">
                                                             <small>Resultados</small>
                                                             <strong>{formatNumber(ad.results || 0)}</strong>
+                                                          </span>
+                                                          <span className="campaign-overview-metric">
+                                                            <small>Custo/resultado</small>
+                                                            <strong>{ad.results > 0 ? formatCurrency((ad.spend || 0) / ad.results) : '—'}</strong>
                                                           </span>
                                                           <span className="campaign-overview-metric">
                                                             <small>Cliques</small>
