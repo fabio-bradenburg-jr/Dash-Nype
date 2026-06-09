@@ -104,7 +104,7 @@ async function loginWithLegacySupabase(body: { email: string; password: string; 
   }
 
   // Verify the user belongs to the workspace for this domain
-  if (adminSupabase && accessContext.workspaceId) {
+  if (adminSupabase) {
     const { workspaceId: domainWorkspaceId } = await resolveWorkspaceForHost(adminSupabase, body.host)
     if (domainWorkspaceId && accessContext.workspaceId !== domainWorkspaceId) {
       throw new Error('Este e-mail não tem acesso a este domínio. Verifique se está acessando pelo endereço correto.')

@@ -1,11 +1,12 @@
 import { NextResponse } from 'next/server'
-import { cookies } from 'next/headers'
+import { cookies, headers } from 'next/headers'
 
 import { PLATFORM_AUTH_COOKIE } from '@/lib/saas/auth'
 import { getLocalSessionUser } from '@/lib/server/platform-auth-fallback'
 import { createAdminClient } from '@/lib/server/supabase-admin'
 import { getWorkspaceBranding } from '@/lib/server/workspace-branding'
 import { isPrimaryAdminEmail, USER_ROLES } from '@/lib/server/access-control'
+import { resolveWorkspaceForHost } from '@/lib/server/domain-config'
 
 function unauthenticatedResponse() {
   const response = NextResponse.json({ authenticated: false }, { status: 401 })
@@ -70,7 +71,7 @@ async function enrichLocalUserWithWorkspace(localUser: any) {
   }
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   const token = (await cookies()).get(PLATFORM_AUTH_COOKIE)?.value
 
   if (!token) {
@@ -79,6 +80,17 @@ export async function GET() {
 
   try {
     const user = await enrichLocalUserWithWorkspace(await getLocalSessionUser(token))
+
+    // Validate that the session's workspace matches the domain being accessed
+    if (user?.tenant_id && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      const host = request.headers.get('host') || ''
+      const adminSupabase = createAdminClient()
+      const { workspaceId: domainWorkspaceId } = await resolveWorkspaceForHost(adminSupabase, host)
+      if (domainWorkspaceId && user.tenant_id !== domainWorkspaceId) {
+        return unauthenticatedResponse()
+      }
+    }
+
     return NextResponse.json({ authenticated: true, user })
   } catch {
     return unauthenticatedResponse()
