@@ -144,7 +144,6 @@ async function listWorkspaceClients(token: string) {
 
   return (data || [])
     .map((row) => row as WorkspaceClientRow)
-    .filter(isWorkspaceSaasClient)
     .map((row) => serializeWorkspaceClient(row, user.tenant_id))
 }
 
