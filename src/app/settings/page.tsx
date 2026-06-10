@@ -989,6 +989,34 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
     })
   }
 
+  const handleAiProviderCardFieldChange = (
+    providerValue: string,
+    fieldName: keyof AiProviderConfig,
+    value: string
+  ) => {
+    if (!canEditIntegrations) {
+      setSettingsSaveFeedback('Sem permissão para alterar integrações.')
+      return
+    }
+    setGlobalIntegrations((current) => {
+      const defaults = createDefaultAiProviders()
+      const nextProviders = { ...defaults, ...(current.aiProviders || {}) } as AiProvidersMap
+      const nextIntegrations = {
+        ...current,
+        aiProviders: {
+          ...nextProviders,
+          [providerValue]: {
+            ...(nextProviders[providerValue] || defaults[providerValue]),
+            [fieldName]: value,
+          },
+        },
+      } as GlobalIntegrationsState
+      const normalized = { ...nextIntegrations, ...normalizeAiSettings(nextIntegrations) } as GlobalIntegrationsState
+      persistGlobalIntegrations(normalized).catch((e) => console.error(e))
+      return normalized
+    })
+  }
+
   const handleApplyPromptTemplate = (mode: 'text' | 'json') => {
     handleGlobalIntegrationChange(
       'aiDashboardPrompt',
@@ -2464,11 +2492,12 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
                               <i className="bx bx-bot"></i>
                             </div>
                             <div>
-                              <h3>Insights com IA</h3>
-                              <p>Você pode manter várias chaves salvas. O app usa sempre a IA selecionada como ativa, sem perder as configurações das demais.</p>
+                              <h3>Provedores de IA</h3>
+                              <p>Configure quantos provedores quiser. O selecionado como ativo é usado por padrão — mas você pode trocar por sessão no chat.</p>
                             </div>
                           </div>
 
+                          {/* Enable/disable toggle */}
                           <div className="settings-choice-row settings-choice-row-compact">
                             <button
                               type="button"
@@ -2476,7 +2505,7 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
                               onClick={() => handleGlobalIntegrationChange('aiAnalysisEnabled', true)}
                             >
                               <i className="bx bx-check-circle"></i>
-                              Ativar análise
+                              Ativar IA
                             </button>
                             <button
                               type="button"
@@ -2484,60 +2513,94 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
                               onClick={() => handleGlobalIntegrationChange('aiAnalysisEnabled', false)}
                             >
                               <i className="bx bx-x-circle"></i>
-                              Pausar análise
+                              Pausar IA
                             </button>
                           </div>
 
-                          <div className="settings-ai-grid">
-                            <div className="input-group">
-                              <label>IA ativa</label>
-                              <select
-                                value={globalIntegrations.aiProvider || selectedAiProvider.value}
-                                onChange={(event) => handleAiProviderChange(event.target.value)}
-                              >
-                                {AI_PROVIDER_OPTIONS.map((option) => (
-                                  <option key={option.value} value={option.value}>
-                                    {option.label}
-                                  </option>
-                                ))}
-                              </select>
-                              <small>{selectedAiProvider.description}</small>
-                            </div>
-
-                            <div className="input-group">
-                              <label>Base URL</label>
-                              <input
-                                type="text"
-                                value={activeAiProviderConfig?.baseUrl || ''}
-                                onChange={(event) => handleAiProviderFieldChange('baseUrl', event.target.value)}
-                                placeholder="https://api.openai.com/v1"
-                              />
-                              <small>Essa Base URL fica salva só para {selectedAiProvider.label}.</small>
-                            </div>
-
-                            <div className="input-group">
-                              <label>Modelo</label>
-                              <input
-                                type="text"
-                                value={activeAiProviderConfig?.model || ''}
-                                onChange={(event) => handleAiProviderFieldChange('model', event.target.value)}
-                                placeholder={selectedAiProvider.modelPlaceholder}
-                              />
-                            </div>
-
-                            <div className="input-group">
-                              <label>Chave da API</label>
-                              <input
-                                type="password"
-                                value={activeAiProviderConfig?.apiKey || ''}
-                                onChange={(event) => handleAiProviderFieldChange('apiKey', event.target.value)}
-                                placeholder="Cole aqui a chave da API"
-                              />
-                            </div>
+                          {/* Provider cards */}
+                          <div className="ai-provider-cards">
+                            {AI_PROVIDER_OPTIONS.map((option) => {
+                              const cfg = globalIntegrations.aiProviders?.[option.value] as { apiKey?: string; model?: string; baseUrl?: string } | undefined
+                              const isActive = (globalIntegrations.aiProvider || selectedAiProvider.value) === option.value
+                              const hasKey = Boolean(cfg?.apiKey)
+                              const apiKeyLinks: Record<string, string> = {
+                                openai: 'https://platform.openai.com/api-keys',
+                                anthropic: 'https://console.anthropic.com/settings/keys',
+                                gemini: 'https://aistudio.google.com/app/apikey',
+                                openrouter: 'https://openrouter.ai/keys',
+                                groq: 'https://console.groq.com/keys',
+                              }
+                              const keyLink = apiKeyLinks[option.value]
+                              return (
+                                <div
+                                  key={option.value}
+                                  className={`ai-provider-card ${isActive ? 'ai-provider-card-active' : ''}`}
+                                >
+                                  <div className="ai-provider-card-header">
+                                    <div className="ai-provider-card-title">
+                                      <span className="ai-provider-card-name">{option.label}</span>
+                                      {hasKey && <span className="ai-provider-card-badge">Configurado</span>}
+                                    </div>
+                                    <div className="ai-provider-card-actions">
+                                      {keyLink && (
+                                        <a href={keyLink} target="_blank" rel="noopener noreferrer" className="ai-provider-key-link">
+                                          <i className="bx bx-link-external"></i> Obter chave
+                                        </a>
+                                      )}
+                                      {!isActive && (
+                                        <button
+                                          type="button"
+                                          className="ai-provider-set-active"
+                                          onClick={() => handleAiProviderChange(option.value)}
+                                        >
+                                          Usar como ativo
+                                        </button>
+                                      )}
+                                      {isActive && (
+                                        <span className="ai-provider-active-label"><i className="bx bx-check"></i> Ativo</span>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <p className="ai-provider-card-desc">{option.description}</p>
+                                  <div className="ai-provider-card-fields">
+                                    <div className="input-group">
+                                      <label>Chave da API</label>
+                                      <input
+                                        type="password"
+                                        value={cfg?.apiKey || ''}
+                                        onChange={(e) => handleAiProviderCardFieldChange(option.value, 'apiKey', e.target.value)}
+                                        placeholder={keyLink ? `Cole a chave de ${option.label}` : 'Cole a chave da API'}
+                                      />
+                                    </div>
+                                    <div className="input-group">
+                                      <label>Modelo</label>
+                                      <input
+                                        type="text"
+                                        value={cfg?.model || ''}
+                                        onChange={(e) => handleAiProviderCardFieldChange(option.value, 'model', e.target.value)}
+                                        placeholder={option.modelPlaceholder}
+                                      />
+                                    </div>
+                                    {(!option.baseUrl || option.value === 'custom' || option.value === 'manus') && (
+                                      <div className="input-group">
+                                        <label>Base URL</label>
+                                        <input
+                                          type="text"
+                                          value={cfg?.baseUrl || option.baseUrl || ''}
+                                          onChange={(e) => handleAiProviderCardFieldChange(option.value, 'baseUrl', e.target.value)}
+                                          placeholder="https://..."
+                                        />
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              )
+                            })}
                           </div>
 
                           <div className="settings-callout info">
-                            A chamada da IA roda somente no servidor. Claude usa a API nativa da Anthropic, Gemini funciona pelo endpoint compatível, e OpenRouter/Groq/Manus podem ser configurados pela Base URL do provider. Trocar a IA ativa não apaga os dados salvos das outras.
+                            <i className="bx bx-info-circle"></i>
+                            As chaves ficam salvas por provider. Trocar o ativo não apaga as demais. A IA roda sempre no servidor — sua chave nunca aparece no navegador.
                           </div>
                         </div>
 
@@ -4208,6 +4271,116 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
 
         .settings-ai-grid-full {
           grid-column: 1 / -1;
+        }
+
+        /* Provider cards */
+        .ai-provider-cards {
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+        }
+
+        .ai-provider-card {
+          border: 1px solid rgba(255, 255, 255, 0.07);
+          border-radius: 14px;
+          padding: 16px;
+          background: rgba(255, 255, 255, 0.025);
+          transition: border-color 0.15s;
+        }
+
+        .ai-provider-card-active {
+          border-color: color-mix(in srgb, var(--button-primary, #26c281) 40%, transparent);
+          background: color-mix(in srgb, var(--button-primary, #26c281) 5%, transparent);
+        }
+
+        .ai-provider-card-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-bottom: 6px;
+          gap: 10px;
+        }
+
+        .ai-provider-card-title {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .ai-provider-card-name {
+          font-size: 13px;
+          font-weight: 700;
+          color: var(--text-primary, #f5f5f7);
+        }
+
+        .ai-provider-card-badge {
+          font-size: 10px;
+          font-weight: 700;
+          padding: 2px 7px;
+          border-radius: 20px;
+          background: color-mix(in srgb, var(--button-primary, #26c281) 18%, transparent);
+          color: var(--button-primary, #26c281);
+          border: 1px solid color-mix(in srgb, var(--button-primary, #26c281) 35%, transparent);
+        }
+
+        .ai-provider-card-actions {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          flex-shrink: 0;
+        }
+
+        .ai-provider-key-link {
+          font-size: 11px;
+          color: var(--button-primary, #26c281);
+          text-decoration: none;
+          display: inline-flex;
+          align-items: center;
+          gap: 3px;
+          opacity: 0.8;
+          transition: opacity 0.15s;
+        }
+
+        .ai-provider-key-link:hover { opacity: 1; }
+
+        .ai-provider-set-active {
+          font-size: 11px;
+          font-weight: 600;
+          font-family: inherit;
+          padding: 3px 10px;
+          border: 1px solid rgba(255, 255, 255, 0.12);
+          border-radius: 8px;
+          background: transparent;
+          color: var(--text-secondary, rgba(245, 245, 247, 0.72));
+          cursor: pointer;
+          transition: background 0.15s, border-color 0.15s;
+        }
+
+        .ai-provider-set-active:hover {
+          background: rgba(255, 255, 255, 0.06);
+          border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .ai-provider-active-label {
+          font-size: 11px;
+          font-weight: 700;
+          color: var(--button-primary, #26c281);
+          display: inline-flex;
+          align-items: center;
+          gap: 3px;
+        }
+
+        .ai-provider-card-desc {
+          font-size: 12px;
+          color: var(--text-muted, rgba(245, 245, 247, 0.44));
+          margin: 0 0 12px;
+          line-height: 1.5;
+        }
+
+        .ai-provider-card-fields {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 10px;
         }
 
         .settings-preset-swatch {
