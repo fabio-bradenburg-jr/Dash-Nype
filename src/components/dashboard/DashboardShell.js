@@ -14016,7 +14016,7 @@ export default function DashboardShell({
         pdf.text(`Assessoria LP • ${activeClient?.name || 'Cliente'} • ${getDatePresetLabel(dateRange, customSince, customUntil)}`, margin, cursorY)
         cursorY += 30
 
-        drawClientSectionTitle('Contexto dos últimos 7 dias')
+        drawClientSectionTitle(`Contexto — ${getDatePresetLabel(dateRange, customSince, customUntil)}`)
         drawClientCards([
           { title: 'Cliente', value: activeClient?.name || 'Cliente selecionado', note: [
             selectedAdAccount ? `Meta ${selectedAdAccount}` : '',
