@@ -1154,108 +1154,67 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
   }
 
   return (
-    <div
-      className={`saas-app-shell min-h-screen ${isDarkMode ? 'text-white' : 'text-slate-900'}`}
-      style={{
-        background: isDarkMode
-          ? 'radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--saas-primary) 20%, transparent), transparent 28%), radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--saas-accent) 18%, transparent), transparent 24%), linear-gradient(180deg,color-mix(in srgb,var(--saas-page-bg) 94%,#000000),var(--saas-page-bg))'
-          : 'radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--saas-primary) 18%, transparent), transparent 28%), radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--saas-accent) 22%, transparent), transparent 24%), radial-gradient(circle at 50% 100%, rgba(15,23,42,0.05), transparent 36%), linear-gradient(180deg, color-mix(in srgb, var(--saas-surface) 94%, white), #ffffff)',
-      }}
-    >
-      <div className="flex min-h-screen w-full flex-col gap-4 px-3 py-4 sm:px-4 lg:flex-row lg:gap-6 lg:px-6 xl:px-8">
+    <div className={`saas-app-shell flex min-h-screen ${isDarkMode ? 'bg-[#060607] text-white' : 'bg-[#f5f5f7] text-[#1c1c1e]'}`}>
+      <div className="flex min-h-screen w-full flex-col lg:flex-row">
         <section className="lg:hidden">
-          <div className="rounded-[30px] border border-white/80 bg-[linear-gradient(135deg,rgba(255,255,255,0.94),rgba(248,250,252,0.82))] p-4 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur-xl">
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="grid h-12 w-12 place-items-center rounded-2xl bg-[linear-gradient(180deg,#070908,#121817)] ring-1 ring-white/15">
+          <div className={`flex items-center justify-between border-b px-4 py-3 ${isDarkMode ? 'border-white/[0.06] bg-[#060607]' : 'border-black/[0.06] bg-white'}`}>
+            <div className="flex items-center gap-3">
+              <div className="grid h-8 w-8 place-items-center rounded-[9px] bg-[var(--saas-primary)]">
                 {currentTheme.logoUrl ? (
-                  <img src={currentTheme.logoUrl} alt={`Logo ${currentTheme.appName || 'Assessoria LP'}`} className="h-full w-full rounded-2xl object-contain p-2" />
+                  <img src={currentTheme.logoUrl} alt="" className="h-full w-full rounded-[9px] object-contain p-1.5" />
                 ) : (
                   <span className="brand-logo-mark saas-brand-logo-mark" aria-hidden="true"></span>
                 )}
               </div>
-              <div className="min-w-0 flex-1">
-                <p className="truncate font-manrope text-lg font-extrabold text-slate-950">{currentTheme.appName || 'Assessoria LP'}</p>
-                <p className="truncate text-xs uppercase tracking-[0.3em] text-slate-400">{currentTheme.appSubtitle || 'Performance Hub'}</p>
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={handleToggleColorMode}
-                  disabled={themeModeSaving}
-                  className="grid h-11 w-11 place-items-center rounded-2xl border border-slate-200 bg-white text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:cursor-wait disabled:opacity-70"
-                  aria-label={currentTheme.darkMode ? 'Ativar modo claro' : 'Ativar modo escuro'}
-                  title={currentTheme.darkMode ? 'Ativar modo claro' : 'Ativar modo escuro'}
-                >
-                  {currentTheme.darkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-                </button>
-                <button
-                  type="button"
-                  onClick={handleLogout}
-                  className="grid h-11 w-11 place-items-center rounded-2xl border border-slate-200 bg-white text-slate-700 shadow-sm transition hover:bg-slate-50"
-                  aria-label="Sair"
-                  title="Sair"
-                >
-                  <LogOut className="h-4 w-4" />
-                </button>
-              </div>
+              <p className={`font-manrope text-[15px] font-bold tracking-[-0.02em] ${isDarkMode ? 'text-white' : 'text-[#1c1c1e]'}`}>{currentTheme.appName || 'Assessoria LP'}</p>
             </div>
-            <div className="mt-4 overflow-x-auto pb-1">
-              <div className="flex min-w-max gap-2">
-                {navigation.map((item) => {
-                  const Icon = item.icon
-                  const active = item.key === activeModule
-                  return (
-                    <button
-                      key={`mobile-${item.label}`}
-                      onClick={() => setActiveModule(item.key)}
-                      className={`flex items-center gap-2 rounded-2xl px-4 py-3 text-[13px] font-medium transition ${
-                        active
-                          ? 'bg-[var(--saas-primary)] text-white shadow-none'
-                          : 'border border-white/10 bg-white/[0.05] text-white/60'
-                      }`}
-                      type="button"
-                    >
-                      <Icon className="h-4 w-4" />
-                      {item.label}
-                    </button>
-                  )
-                })}
-              </div>
+            <div className="flex items-center gap-1">
+              <button type="button" onClick={handleToggleColorMode} disabled={themeModeSaving} className={`grid h-8 w-8 place-items-center rounded-[9px] ${isDarkMode ? 'text-white/50' : 'text-black/50'}`}>
+                {currentTheme.darkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+              </button>
+              <button type="button" onClick={handleLogout} className={`grid h-8 w-8 place-items-center rounded-[9px] ${isDarkMode ? 'text-white/50' : 'text-black/50'}`}>
+                <LogOut className="h-4 w-4" />
+              </button>
             </div>
+          </div>
+          <div className={`flex overflow-x-auto border-b px-4 ${isDarkMode ? 'border-white/[0.06]' : 'border-black/[0.06]'}`}>
+            {navigation.map((item) => {
+              const Icon = item.icon
+              const active = item.key === activeModule
+              return (
+                <button
+                  key={`mobile-${item.label}`}
+                  onClick={() => setActiveModule(item.key)}
+                  type="button"
+                  className={`flex flex-none items-center gap-1.5 border-b-2 px-3 py-3 text-[12px] font-medium transition ${
+                    active
+                      ? 'border-[var(--saas-primary)] text-[var(--saas-primary)]'
+                      : `border-transparent ${isDarkMode ? 'text-white/45' : 'text-black/45'}`
+                  }`}
+                >
+                  <Icon className="h-3.5 w-3.5" />
+                  {item.label}
+                </button>
+              )
+            })}
           </div>
         </section>
 
-        <aside className={`relative sticky top-4 hidden h-[calc(100vh-2rem)] flex-none flex-col rounded-[24px] border border-white/[0.07] bg-[rgba(10,10,12,0.97)] py-6 text-white shadow-[0_24px_64px_rgba(0,0,0,0.5)] backdrop-blur-2xl transition-all duration-300 lg:flex ${isSidebarCollapsed ? 'w-[72px] px-3' : 'w-[252px] px-5'}`}>
+        <aside className={`fixed left-0 top-0 z-40 hidden h-full w-[64px] flex-col items-center border-r py-5 lg:flex ${isDarkMode ? 'border-white/[0.06] bg-[#060607]' : 'border-black/[0.06] bg-white'}`}>
           {/* Logo */}
-          <div className={`flex items-center ${isSidebarCollapsed ? 'justify-center' : 'gap-3'} mb-7`}>
-            <div className="grid h-10 w-10 flex-none place-items-center rounded-[12px] bg-[var(--saas-primary)]">
-              {currentTheme.logoUrl ? (
-                <img src={currentTheme.logoUrl} alt={`Logo ${currentTheme.appName || 'Assessoria LP'}`} className="h-full w-full rounded-[12px] object-contain p-1.5" />
-              ) : (
-                <span className="brand-logo-mark saas-brand-logo-mark" aria-hidden="true"></span>
-              )}
-            </div>
-            {!isSidebarCollapsed ? (
-              <div className="min-w-0 flex-1">
-                <p className="font-manrope text-[15px] font-bold tracking-[-0.02em] text-white truncate">{currentTheme.appName || 'Assessoria LP'}</p>
-                <p className="text-[10px] uppercase tracking-[0.25em] text-white/40 mt-0.5">{currentTheme.appSubtitle || 'Performance Hub'}</p>
-              </div>
-            ) : null}
-            <button
-              type="button"
-              onClick={() => setIsSidebarCollapsed((current) => !current)}
-              className={`grid h-7 w-7 flex-none place-items-center rounded-[8px] text-white/30 transition hover:bg-white/8 hover:text-white/70 ${isSidebarCollapsed ? '' : 'ml-auto'}`}
-              aria-label={isSidebarCollapsed ? 'Expandir menu lateral' : 'Recolher menu lateral'}
-            >
-              <ChevronRight className={`h-3.5 w-3.5 transition-transform ${isSidebarCollapsed ? '' : 'rotate-180'}`} />
-            </button>
+          <div className={`mb-6 grid h-9 w-9 flex-none place-items-center rounded-[11px] bg-[var(--saas-primary)]`}>
+            {currentTheme.logoUrl ? (
+              <img src={currentTheme.logoUrl} alt="" className="h-full w-full rounded-[11px] object-contain p-1.5" />
+            ) : (
+              <span className="brand-logo-mark saas-brand-logo-mark" aria-hidden="true"></span>
+            )}
           </div>
 
-          {/* Separator */}
-          <div className="mb-5 h-px bg-white/[0.06]" />
+          {/* Divider */}
+          <div className={`mb-4 h-px w-8 ${isDarkMode ? 'bg-white/[0.08]' : 'bg-black/[0.08]'}`} />
 
-          {/* Navigation */}
-          <nav className="space-y-0.5">
+          {/* Nav */}
+          <nav className="flex flex-col items-center gap-1">
             {navigation.map((item) => {
               const Icon = item.icon
               const active = item.key === activeModule
@@ -1263,153 +1222,112 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
                 <button
                   key={item.label}
                   onClick={() => setActiveModule(item.key)}
-                  className={`flex w-full items-center rounded-[12px] py-2.5 text-left text-[13px] font-medium transition-all ${
+                  title={item.label}
+                  type="button"
+                  className={`group relative grid h-9 w-9 place-items-center rounded-[10px] transition-all ${
                     active
                       ? 'bg-[rgba(38,194,129,0.13)] text-[var(--saas-primary)]'
-                      : 'text-white/50 hover:bg-white/[0.06] hover:text-white/80'
-                  } ${isSidebarCollapsed ? 'justify-center px-0' : 'gap-3 px-3'}`}
-                  type="button"
-                  title={isSidebarCollapsed ? item.label : undefined}
+                      : isDarkMode
+                      ? 'text-white/35 hover:bg-white/[0.07] hover:text-white/75'
+                      : 'text-black/35 hover:bg-black/[0.06] hover:text-black/75'
+                  }`}
                 >
-                  <Icon className={`h-4 w-4 flex-none ${active ? 'text-[var(--saas-primary)]' : ''}`} />
-                  {!isSidebarCollapsed ? <span className="tracking-[-0.01em]">{item.label}</span> : null}
-                  {!isSidebarCollapsed && active ? <span className="ml-auto h-1.5 w-1.5 rounded-full bg-[var(--saas-primary)]" /> : null}
+                  <Icon className="h-[18px] w-[18px]" />
+                  {active && <span className="absolute right-0.5 top-1/2 h-4 w-0.5 -translate-y-1/2 rounded-full bg-[var(--saas-primary)]" />}
                 </button>
               )
             })}
           </nav>
 
-          {/* Bottom actions */}
-          <div className="mt-auto space-y-1">
-            <div className="mb-3 h-px bg-white/[0.06]" />
-            {!isSidebarCollapsed ? (
-              <div className="mb-3 px-3">
-                <p className="text-[11px] font-medium text-white/30 uppercase tracking-[0.15em]">
-                  {currentUserName || 'Usuário'}
-                </p>
-              </div>
-            ) : null}
+          {/* Bottom */}
+          <div className="mt-auto flex flex-col items-center gap-1">
             <button
               type="button"
               onClick={handleToggleColorMode}
               disabled={themeModeSaving}
-              className={`flex w-full items-center rounded-[12px] py-2.5 text-[13px] font-medium text-white/50 transition hover:bg-white/[0.06] hover:text-white/80 disabled:opacity-50 ${isSidebarCollapsed ? 'justify-center px-0' : 'gap-3 px-3'}`}
-              title={currentTheme.darkMode ? 'Ativar modo claro' : 'Ativar modo escuro'}
+              title={currentTheme.darkMode ? 'Modo claro' : 'Modo escuro'}
+              className={`grid h-9 w-9 place-items-center rounded-[10px] transition-all disabled:opacity-50 ${isDarkMode ? 'text-white/35 hover:bg-white/[0.07] hover:text-white/75' : 'text-black/35 hover:bg-black/[0.06] hover:text-black/75'}`}
             >
-              {currentTheme.darkMode ? <Sun className="h-4 w-4 flex-none" /> : <Moon className="h-4 w-4 flex-none" />}
-              {!isSidebarCollapsed ? (themeModeSaving ? 'Salvando...' : currentTheme.darkMode ? 'Modo claro' : 'Modo escuro') : null}
+              {currentTheme.darkMode ? <Sun className="h-[17px] w-[17px]" /> : <Moon className="h-[17px] w-[17px]" />}
             </button>
             <button
               type="button"
               onClick={handleLogout}
-              className={`flex w-full items-center rounded-[12px] py-2.5 text-[13px] font-medium text-white/50 transition hover:bg-white/[0.06] hover:text-white/80 ${isSidebarCollapsed ? 'justify-center px-0' : 'gap-3 px-3'}`}
               title="Sair"
+              className={`grid h-9 w-9 place-items-center rounded-[10px] transition-all ${isDarkMode ? 'text-white/35 hover:bg-white/[0.07] hover:text-white/75' : 'text-black/35 hover:bg-black/[0.06] hover:text-black/75'}`}
             >
-              <LogOut className="h-4 w-4 flex-none" />
-              {!isSidebarCollapsed ? 'Sair' : null}
+              <LogOut className="h-[17px] w-[17px]" />
             </button>
           </div>
         </aside>
 
-        <main className="min-w-0 flex-1 space-y-6 pb-6">
+        <main className="ml-[64px] min-w-0 flex-1 space-y-0 pb-0">
           {!showDashs ? (
-          <section className={`relative overflow-hidden rounded-[28px] p-4 backdrop-blur-xl sm:rounded-[28px] sm:p-5 ${isDarkMode ? 'border border-white/[0.07] bg-[rgba(14,14,16,0.85)] shadow-[0_1px_0_rgba(255,255,255,0.05)_inset,0_20px_60px_rgba(0,0,0,0.3)]' : 'border border-black/[0.06] bg-white/90 shadow-[0_4px_24px_rgba(0,0,0,0.05)]'}`}>
-            <div className="pointer-events-none absolute inset-y-0 right-0 hidden w-[38%] bg-[radial-gradient(circle_at_top,rgba(249,115,22,0.15),transparent_46%),radial-gradient(circle_at_bottom,rgba(15,118,110,0.18),transparent_42%)] lg:block" />
-            <div className={`relative flex flex-col gap-6 ${showDashs ? 'xl:items-start xl:justify-end' : 'xl:flex-row xl:items-end xl:justify-between'}`}>
-              {!showDashs ? (
-              <div className="max-w-3xl">
-                <h1 className={`font-manrope text-[28px] font-bold leading-tight tracking-[-0.04em] sm:text-[34px] md:text-[40px] ${isDarkMode ? 'text-white' : 'text-slate-950'}`}>
+          <header className={`border-b px-8 py-6 ${isDarkMode ? 'border-white/[0.06]' : 'border-black/[0.06]'}`}>
+            {/* Page title row */}
+            <div className="flex items-center justify-between gap-6">
+              <div>
+                <h1 className={`font-manrope text-[22px] font-bold tracking-[-0.03em] ${isDarkMode ? 'text-white' : 'text-[#1c1c1e]'}`}>
                   {showOverview ? `Boas-vindas, ${currentUserName}` : currentModule.title}
                 </h1>
-                <p className={`mt-4 max-w-2xl text-[15px] leading-relaxed ${isDarkMode ? 'text-white/65' : 'text-slate-600'}`}>
-                  {showOverview
-                    ? 'Use a IA para consultar clientes, campanhas, dashs, integrações e arquivos vinculados.'
-                    : currentModule.description}
+                <p className={`mt-1 text-[13px] ${isDarkMode ? 'text-white/45' : 'text-black/45'}`}>
+                  {showOverview ? 'Consulte clientes, campanhas e métricas com IA.' : currentModule.description}
                 </p>
-                {showWorkspaceControls ? (
-                <div className="mt-6 flex flex-wrap gap-3">
-                  {positiveMetrics.map((metric) => (
-                    <div key={metric.label} className={`rounded-2xl px-4 py-3 shadow-sm ${isDarkMode ? 'border border-white/[0.07] bg-white/[0.04]' : 'border border-black/[0.06] bg-white/95'}`}>
-                      <p className={`text-[10px] font-medium uppercase tracking-[0.18em] ${isDarkMode ? 'text-white/40' : 'text-slate-400'}`}>{metric.label}</p>
-                      <p className={`mt-1.5 font-manrope text-[20px] font-bold tracking-[-0.02em] ${isDarkMode ? 'text-white' : 'text-slate-950'}`}>{formatValue(metric.value, metric.format)}</p>
-                    </div>
-                  ))}
-                </div>
-                ) : null}
               </div>
-              ) : null}
               {showWorkspaceControls ? (
-              <div className="grid gap-3 xl:min-w-0 xl:max-w-[520px]">
-                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-[1fr_auto_auto_auto]">
+                <div className="flex items-center gap-2">
                   <select
-                    className={`h-12 rounded-2xl px-4 text-sm font-medium shadow-sm ${isDarkMode ? 'border border-white/10 bg-slate-950/70 text-white' : 'border border-slate-200 bg-white text-slate-700'}`}
+                    className={`h-9 rounded-[10px] px-3 text-[13px] font-medium transition ${isDarkMode ? 'border border-white/[0.08] bg-white/[0.05] text-white' : 'border border-black/[0.08] bg-black/[0.04] text-[#1c1c1e]'}`}
                     disabled={snapshot.clients.length === 0}
                     value={selectedClientId || selectedClient.id}
                     onChange={(event) => setSelectedClientId(event.target.value)}
                   >
                     {snapshot.clients.length > 0 ? (
                       snapshot.clients.map((client) => (
-                        <option key={client.id} value={client.id}>
-                          {client.name}
-                        </option>
+                        <option key={client.id} value={client.id}>{client.name}</option>
                       ))
                     ) : (
-                      <option value="">Nenhum cliente cadastrado</option>
+                      <option value="">Nenhum cliente</option>
                     )}
                   </select>
-                  <Button variant="secondary" className="h-12" onClick={handleSyncSources} disabled={syncing}>
+                  <button
+                    type="button"
+                    onClick={handleSyncSources}
+                    disabled={syncing}
+                    className={`h-9 rounded-[10px] px-4 text-[13px] font-medium transition ${isDarkMode ? 'border border-white/[0.08] bg-white/[0.05] text-white/70 hover:bg-white/[0.09] hover:text-white' : 'border border-black/[0.08] bg-black/[0.04] text-black/60 hover:bg-black/[0.07] hover:text-black'}`}
+                  >
                     {syncing ? 'Sincronizando...' : 'Sincronizar'}
-                  </Button>
-                  <Button className="h-12" onClick={() => setShowClientForm((value) => !value)}>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowClientForm((value) => !value)}
+                    className="h-9 rounded-[10px] bg-[var(--saas-primary)] px-4 text-[13px] font-semibold text-white transition hover:opacity-90"
+                  >
                     Novo cliente
-                  </Button>
-                  <Button className="h-12" variant="ghost" onClick={handleLogout}>Sair</Button>
+                  </button>
                 </div>
-                {showDashs ? (
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <div className={`rounded-2xl px-4 py-3 ${isDarkMode ? 'border border-white/10 bg-white/5' : 'border border-slate-200/70 bg-white/80'}`}>
-                      <p className={`text-xs uppercase tracking-[0.22em] ${isDarkMode ? 'text-white/40' : 'text-slate-400'}`}>Conta de anúncio</p>
-                      <p className={`mt-2 font-manrope text-xl font-extrabold ${isDarkMode ? 'text-white' : 'text-slate-950'}`}>{selectedMetaIntegration?.external_account_id || selectedMetaIntegration?.account_name || 'Não vinculada'}</p>
-                    </div>
-                    <div className={`rounded-2xl px-4 py-3 ${isDarkMode ? 'border border-white/10 bg-white/5' : 'border border-slate-200/70 bg-white/80'}`}>
-                      <p className={`text-xs uppercase tracking-[0.22em] ${isDarkMode ? 'text-white/40' : 'text-slate-400'}`}>CRM</p>
-                      <p className={`mt-2 font-manrope text-xl font-extrabold ${isDarkMode ? 'text-white' : 'text-slate-950'}`}>{selectedAgendorPipelines.join(', ') || 'Não vinculado'}</p>
-                    </div>
-                    <div className={`rounded-2xl px-4 py-3 ${isDarkMode ? 'border border-white/10 bg-white/5' : 'border border-slate-200/70 bg-white/80'}`}>
-                      <p className={`text-xs uppercase tracking-[0.22em] ${isDarkMode ? 'text-white/40' : 'text-slate-400'}`}>Vendedor</p>
-                      <p className={`mt-2 font-manrope text-xl font-extrabold ${isDarkMode ? 'text-white' : 'text-slate-950'}`}>Todos os vendedores</p>
-                    </div>
-                    <div className={`rounded-2xl px-4 py-3 ${isDarkMode ? 'border border-white/10 bg-white/5' : 'border border-slate-200/70 bg-white/80'}`}>
-                      <p className={`text-xs uppercase tracking-[0.22em] ${isDarkMode ? 'text-white/40' : 'text-slate-400'}`}>Demais integrações mapeadas</p>
-                      <p className={`mt-2 font-manrope text-xl font-extrabold ${isDarkMode ? 'text-white' : 'text-slate-950'}`}>{selectedClientIntegrations.length} conta(s) vinculada(s)</p>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="grid gap-3 sm:grid-cols-1">
-                    <div className={`rounded-2xl px-4 py-3 ${isDarkMode ? 'border border-white/10 bg-white/5' : 'border border-slate-200/70 bg-white/80'}`}>
-                      <p className={`text-xs uppercase tracking-[0.22em] ${isDarkMode ? 'text-white/40' : 'text-slate-400'}`}>Integrações</p>
-                      <p className={`mt-2 font-manrope text-2xl font-extrabold ${isDarkMode ? 'text-white' : 'text-slate-950'}`}>{selectedClientIntegrations.length}</p>
-                    </div>
-                  </div>
-                )}
-                {loadingClientContext ? (
-                  <div className={`rounded-2xl px-4 py-3 text-sm font-medium ${isDarkMode ? 'border border-amber-500/30 bg-amber-500/10 text-amber-200' : 'border border-amber-200 bg-amber-50 text-amber-700'}`}>
-                    Carregando o contexto completo do cliente selecionado...
-                  </div>
-                ) : null}
-              </div>
-              ) : (
-                <div className={`rounded-[30px] p-5 shadow-sm xl:min-w-0 xl:max-w-[420px] ${isDarkMode ? 'border border-white/10 bg-white/5' : 'border border-slate-200/80 bg-white/80'}`}>
-                  <p className={`text-xs font-semibold uppercase tracking-[0.22em] ${isDarkMode ? 'text-white/40' : 'text-slate-400'}`}>Atalho inteligente</p>
-                  <p className={`mt-2 text-sm leading-6 ${isDarkMode ? 'text-white/60' : 'text-slate-600'}`}>
-                    Pergunte sobre a carteira inteira ou selecione um cliente para consultar desempenho, campanhas, CRM e arquivos vinculados.
-                  </p>
-                </div>
-              )}
+              ) : null}
             </div>
-          </section>
+            {/* Positive metrics strip */}
+            {showWorkspaceControls && positiveMetrics.length > 0 ? (
+              <div className="mt-5 flex flex-wrap gap-6">
+                {positiveMetrics.map((metric) => (
+                  <div key={metric.label}>
+                    <p className={`text-[11px] font-medium uppercase tracking-[0.14em] ${isDarkMode ? 'text-white/35' : 'text-black/35'}`}>{metric.label}</p>
+                    <p className={`mt-1 font-manrope text-[19px] font-bold tracking-[-0.02em] ${isDarkMode ? 'text-white' : 'text-[#1c1c1e]'}`}>{formatValue(metric.value, metric.format)}</p>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+            {loadingClientContext ? (
+              <p className={`mt-3 text-[12px] ${isDarkMode ? 'text-amber-400/70' : 'text-amber-600'}`}>
+                Carregando contexto do cliente...
+              </p>
+            ) : null}
+          </header>
           ) : null}
 
+          <div className="px-8 py-6 space-y-6">
           {showDashs ? (
           <section className="saas-legacy-dashboard-frame">
             <LegacyDashboardShell
@@ -1980,6 +1898,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
             <ReportsTab clients={snapshot.clients} />
           </section>
           ) : null}
+          </div>
         </main>
       </div>
 
