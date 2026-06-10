@@ -203,13 +203,6 @@ body {
     --accent-orange: var(--saas-accent, #f97316);
     --shell-sidebar: #020617;
     overflow: hidden;
-    border-radius: 34px;
-    border: 1px solid rgba(255, 255, 255, 0.78);
-    background:
-        radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--saas-primary, #0f766e) 16%, transparent), transparent 28%),
-        radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--saas-accent, #f97316) 18%, transparent), transparent 24%),
-        linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(248, 250, 252, 0.78));
-    box-shadow: 0 28px 90px rgba(15, 23, 42, 0.12);
 }
 
 .saas-legacy-dashboard-frame .dashboard-container {

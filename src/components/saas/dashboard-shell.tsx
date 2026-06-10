@@ -1263,21 +1263,22 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
 
         <main className="ml-[64px] min-w-0 flex-1 space-y-0 pb-0">
           {!showDashs ? (
-          <header className={`border-b px-8 py-6 ${isDarkMode ? 'border-white/[0.06]' : 'border-black/[0.06]'}`}>
+          <header className={`border-b px-4 py-4 sm:px-6 sm:py-5 ${isDarkMode ? 'border-white/[0.06]' : 'border-black/[0.06]'}`}>
+            <div className="mx-auto max-w-screen-xl">
             {/* Page title row */}
-            <div className="flex items-center justify-between gap-6">
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <h1 className={`font-manrope text-[22px] font-bold tracking-[-0.03em] ${isDarkMode ? 'text-white' : 'text-[#1c1c1e]'}`}>
+                <h1 className={`font-manrope text-[18px] font-bold tracking-[-0.03em] sm:text-[20px] ${isDarkMode ? 'text-white' : 'text-[#1c1c1e]'}`}>
                   {showOverview ? `Boas-vindas, ${currentUserName}` : currentModule.title}
                 </h1>
-                <p className={`mt-1 text-[13px] ${isDarkMode ? 'text-white/45' : 'text-black/45'}`}>
+                <p className={`mt-0.5 text-[12px] sm:text-[13px] ${isDarkMode ? 'text-white/45' : 'text-black/45'}`}>
                   {showOverview ? 'Consulte clientes, campanhas e métricas com IA.' : currentModule.description}
                 </p>
               </div>
               {showWorkspaceControls ? (
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <select
-                    className={`h-9 rounded-[10px] px-3 text-[13px] font-medium transition ${isDarkMode ? 'border border-white/[0.08] bg-white/[0.05] text-white' : 'border border-black/[0.08] bg-black/[0.04] text-[#1c1c1e]'}`}
+                    className={`h-8 rounded-[8px] px-2.5 text-[12px] font-medium transition sm:h-9 sm:px-3 sm:text-[13px] ${isDarkMode ? 'border border-white/[0.08] bg-white/[0.05] text-white' : 'border border-black/[0.08] bg-black/[0.04] text-[#1c1c1e]'}`}
                     disabled={snapshot.clients.length === 0}
                     value={selectedClientId || selectedClient.id}
                     onChange={(event) => setSelectedClientId(event.target.value)}
@@ -1294,14 +1295,14 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
                     type="button"
                     onClick={handleSyncSources}
                     disabled={syncing}
-                    className={`h-9 rounded-[10px] px-4 text-[13px] font-medium transition ${isDarkMode ? 'border border-white/[0.08] bg-white/[0.05] text-white/70 hover:bg-white/[0.09] hover:text-white' : 'border border-black/[0.08] bg-black/[0.04] text-black/60 hover:bg-black/[0.07] hover:text-black'}`}
+                    className={`h-8 rounded-[8px] px-3 text-[12px] font-medium transition sm:h-9 sm:px-4 sm:text-[13px] ${isDarkMode ? 'border border-white/[0.08] bg-white/[0.05] text-white/70 hover:bg-white/[0.09] hover:text-white' : 'border border-black/[0.08] bg-black/[0.04] text-black/60 hover:bg-black/[0.07] hover:text-black'}`}
                   >
                     {syncing ? 'Sincronizando...' : 'Sincronizar'}
                   </button>
                   <button
                     type="button"
                     onClick={() => setShowClientForm((value) => !value)}
-                    className="h-9 rounded-[10px] bg-[var(--saas-primary)] px-4 text-[13px] font-semibold text-white transition hover:opacity-90"
+                    className="h-8 rounded-[8px] bg-[var(--saas-primary)] px-3 text-[12px] font-semibold text-white transition hover:opacity-90 sm:h-9 sm:px-4 sm:text-[13px]"
                   >
                     Novo cliente
                   </button>
@@ -1310,24 +1311,25 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
             </div>
             {/* Positive metrics strip */}
             {showWorkspaceControls && positiveMetrics.length > 0 ? (
-              <div className="mt-5 flex flex-wrap gap-6">
+              <div className="mt-4 flex flex-wrap gap-5">
                 {positiveMetrics.map((metric) => (
                   <div key={metric.label}>
-                    <p className={`text-[11px] font-medium uppercase tracking-[0.14em] ${isDarkMode ? 'text-white/35' : 'text-black/35'}`}>{metric.label}</p>
-                    <p className={`mt-1 font-manrope text-[19px] font-bold tracking-[-0.02em] ${isDarkMode ? 'text-white' : 'text-[#1c1c1e]'}`}>{formatValue(metric.value, metric.format)}</p>
+                    <p className={`text-[10px] font-medium uppercase tracking-[0.14em] ${isDarkMode ? 'text-white/35' : 'text-black/35'}`}>{metric.label}</p>
+                    <p className={`mt-0.5 font-manrope text-[16px] font-bold tracking-[-0.02em] sm:text-[18px] ${isDarkMode ? 'text-white' : 'text-[#1c1c1e]'}`}>{formatValue(metric.value, metric.format)}</p>
                   </div>
                 ))}
               </div>
             ) : null}
             {loadingClientContext ? (
-              <p className={`mt-3 text-[12px] ${isDarkMode ? 'text-amber-400/70' : 'text-amber-600'}`}>
+              <p className={`mt-2 text-[12px] ${isDarkMode ? 'text-amber-400/70' : 'text-amber-600'}`}>
                 Carregando contexto do cliente...
               </p>
             ) : null}
+            </div>
           </header>
           ) : null}
 
-          <div className="px-8 py-6 space-y-6">
+          <div className="mx-auto max-w-screen-xl px-4 py-5 space-y-5 sm:px-6 sm:py-6">
           {showDashs ? (
           <section className="saas-legacy-dashboard-frame">
             <LegacyDashboardShell
