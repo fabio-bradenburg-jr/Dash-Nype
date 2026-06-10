@@ -1,13 +1,14 @@
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 
-import { DashboardShell } from '@/components/saas/dashboard-shell'
-import { getPlatformSnapshot } from '@/lib/saas/api'
+import DashboardShell from '@/components/dashboard/DashboardShell'
 import { PLATFORM_AUTH_COOKIE } from '@/lib/saas/auth'
 
 export const dynamic = 'force-dynamic'
 
-export default async function RootPage() {
+const ROOT_TABS = new Set(['assistant', 'clientes', 'apresentacao', 'usuarios', 'settings', 'semanal', 'saldos', 'anuncios'])
+
+export default async function RootPage({ searchParams }) {
   const cookieStore = await cookies()
   const hasAccessToken = Boolean(cookieStore.get(PLATFORM_AUTH_COOKIE)?.value)
 
@@ -15,7 +16,9 @@ export default async function RootPage() {
     redirect('/login')
   }
 
-  const snapshot = await getPlatformSnapshot()
+  const params = await searchParams
+  const requestedTab = typeof params?.tab === 'string' ? params.tab : 'assistant'
+  const initialTab = ROOT_TABS.has(requestedTab) ? requestedTab : 'assistant'
 
-  return <DashboardShell snapshot={snapshot} />
+  return <DashboardShell initialTab={initialTab} />
 }
