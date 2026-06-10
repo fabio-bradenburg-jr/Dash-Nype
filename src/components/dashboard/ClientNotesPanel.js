@@ -28,7 +28,7 @@ function notePreview(content) {
   return lines[1] || 'Sem conteúdo adicional'
 }
 
-export default function ClientNotesPanel({ clientId, clientName }) {
+export default function ClientNotesPanel({ clientId, clientName, clients = [], onSelectClient }) {
   const [notes, setNotes] = useState([])
   const [isLoading, setIsLoading] = useState(true)
   const [selectedId, setSelectedId] = useState(null)
@@ -54,14 +54,19 @@ export default function ClientNotesPanel({ clientId, clientName }) {
     }
   }, [clientId])
 
-  useEffect(() => { fetchNotes() }, [fetchNotes])
+  useEffect(() => {
+    setSelectedId(null)
+    setEditorContent('')
+    setNotes([])
+    isNew.current = false
+    fetchNotes()
+  }, [fetchNotes])
 
   // Select first note by default when notes load
   useEffect(() => {
-    if (!isLoading && notes.length > 0 && selectedId === null) {
+    if (!isLoading && notes.length > 0 && selectedId === null && !isNew.current) {
       setSelectedId(notes[0].id)
       setEditorContent(notes[0].content)
-      isNew.current = false
     }
   }, [isLoading, notes, selectedId])
 
@@ -163,13 +168,31 @@ export default function ClientNotesPanel({ clientId, clientName }) {
       {/* Left panel — note list */}
       <div className="ios-notes-list-panel">
         <div className="ios-notes-list-header">
-          <span className="ios-notes-client-name">{clientName || 'Notas'}</span>
-          <button className="ios-notes-new-btn" onClick={handleNew} title="Nova nota">
+          {clients.length > 0 ? (
+            <select
+              className="ios-notes-client-select"
+              value={clientId || ''}
+              onChange={(e) => {
+                const c = clients.find((x) => String(x.id) === e.target.value)
+                if (c && onSelectClient) onSelectClient(c)
+              }}
+            >
+              <option value="" disabled>Selecionar cliente</option>
+              {clients.map((c) => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+          ) : (
+            <span className="ios-notes-client-name">{clientName || 'Notas'}</span>
+          )}
+          <button className="ios-notes-new-btn" onClick={handleNew} title="Nova nota" disabled={!clientId}>
             <i className="bx bx-edit-alt"></i>
           </button>
         </div>
 
-        {isLoading ? (
+        {!clientId ? (
+          <div className="ios-notes-state">Selecione um cliente acima.</div>
+        ) : isLoading ? (
           <div className="ios-notes-state">Carregando...</div>
         ) : notes.length === 0 ? (
           <div className="ios-notes-state">Nenhuma nota ainda.</div>
@@ -201,7 +224,12 @@ export default function ClientNotesPanel({ clientId, clientName }) {
 
       {/* Right panel — editor */}
       <div className="ios-notes-editor-panel">
-        {(selectedId !== null || isNew.current) ? (
+        {!clientId ? (
+          <div className="ios-notes-editor-empty">
+            <i className="bx bx-user"></i>
+            <p>Selecione um cliente para ver as notas</p>
+          </div>
+        ) : (selectedId !== null || isNew.current) ? (
           <>
             <div className="ios-notes-editor-meta">
               {selectedNote && (
@@ -266,6 +294,27 @@ export default function ClientNotesPanel({ clientId, clientName }) {
           font-weight: 700;
           color: var(--text-primary, #f5f5f7);
           letter-spacing: -0.01em;
+        }
+
+        .ios-notes-client-select {
+          flex: 1;
+          min-width: 0;
+          background: transparent;
+          border: none;
+          outline: none;
+          color: var(--text-primary, #f5f5f7);
+          font-size: 14px;
+          font-weight: 700;
+          font-family: inherit;
+          cursor: pointer;
+          appearance: none;
+          -webkit-appearance: none;
+          padding-right: 4px;
+        }
+
+        .ios-notes-client-select option {
+          background: #1a1a1e;
+          color: #f5f5f7;
         }
 
         .ios-notes-new-btn {

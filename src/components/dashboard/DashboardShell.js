@@ -18233,14 +18233,12 @@ export default function DashboardShell({
 
         {activeTab === 'notas' && (
           <section style={{ padding: '16px 20px', height: '100%', boxSizing: 'border-box' }}>
-            {activeClient ? (
-              <ClientNotesPanel clientId={activeClient.id} clientName={activeClient.name} />
-            ) : (
-              <div className="empty-panel glass-panel">
-                <h3>Nenhum cliente selecionado</h3>
-                <p>Selecione um cliente na aba de Apresentação para ver e registrar notas.</p>
-              </div>
-            )}
+            <ClientNotesPanel
+              clientId={activeClient?.id || null}
+              clientName={activeClient?.name || null}
+              clients={clients}
+              onSelectClient={(client) => setActiveClient(client)}
+            />
           </section>
         )}
 
