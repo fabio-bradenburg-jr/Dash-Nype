@@ -71,7 +71,7 @@ interface GoogleAdsConnectionState {
   managerCustomerId: string
 }
 
-type SettingsTab = 'panel' | 'general' | 'operation' | 'clients'
+type SettingsTab = 'panel' | 'general' | 'ai' | 'operation' | 'clients'
 
 const SETTINGS_TAB_STORAGE_KEY = 'dash_settings_active_tab'
 
@@ -1904,8 +1904,19 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
                   >
                     <i className="bx bx-link-alt"></i>
                     <div>
-                      <strong>Integrações gerais</strong>
-                      <span>Credenciais de mídia, CRM e IA.</span>
+                      <strong>Integrações</strong>
+                      <span>Meta, Google Ads e demais ferramentas.</span>
+                    </div>
+                  </button>
+                  <button
+                    type="button"
+                    className={`settings-sidebar-link ${activeSettingsTab === 'ai' ? 'active' : ''}`}
+                    onClick={() => handleSettingsTabChange('ai')}
+                  >
+                    <i className="bx bx-bot"></i>
+                    <div>
+                      <strong>Inteligência Artificial</strong>
+                      <span>Providers, prompts e agentes.</span>
                     </div>
                   </button>
                 </>
@@ -2214,8 +2225,8 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
                 <div className="glass-item settings-block settings-block-full">
                   <div className="settings-section-head">
                     <div>
-                      <h2>Integrações gerais</h2>
-                      <p>Essas credenciais abastecem o app inteiro. Separe ferramentas operacionais da camada de IA para configurar cada frente sem mistura.</p>
+                      <h2>Integrações de ferramentas</h2>
+                      <p>Conecte as plataformas operacionais usadas no dia a dia — mídia, CRM e outras fontes de dados.</p>
                     </div>
                   </div>
 
@@ -2471,11 +2482,25 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
                       </div>
                     </section>
 
+                  </div>
+                </div>
+              )}
+
+              {canEditIntegrations && activeSettingsTab === 'ai' && (
+                <div className="glass-item settings-block settings-block-full">
+                  <div className="settings-section-head">
+                    <div>
+                      <h2>Inteligência Artificial</h2>
+                      <p>Configure os provedores de IA, o prompt global do dashboard e os agentes usados no chat.</p>
+                    </div>
+                  </div>
+
+                  <div className="settings-general-layout">
                     <section className="settings-integration-family settings-integration-family-ai">
                       <div className="settings-category-head settings-integration-family-head">
                         <span className="settings-category-kicker">Integração de IA</span>
                         <h3>Provider, prompts e agentes</h3>
-                        <p>Defina a IA ativa, o prompt global do dashboard e os agentes usados no chat, isolados das integrações de ferramentas.</p>
+                        <p>Defina a IA ativa, o prompt global do dashboard e os agentes usados no chat.</p>
                       </div>
 
                       <section className="settings-category-shell">
@@ -2789,7 +2814,9 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
                         ? 'Ajuste aparência, modo e atmosfera. Salve quando quiser aplicar o tema em todo o app.'
                         : activeSettingsTab === 'operation'
                           ? 'Salve a meta operacional para aplicar no Controle da Operação.'
-                          : 'As integrações do app já sincronizam em tempo real, mas você pode usar este botão para confirmar e reaplicar a configuração atual.')}
+                          : activeSettingsTab === 'ai'
+                            ? 'Salve para aplicar as configurações de IA — providers, prompt e agentes.'
+                            : 'As integrações do app já sincronizam em tempo real, mas você pode usar este botão para confirmar e reaplicar a configuração atual.')}
                   </span>
                 </div>
                 <div className="settings-action-buttons">
