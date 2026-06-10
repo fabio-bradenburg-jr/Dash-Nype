@@ -4667,19 +4667,21 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
         }
 
         .settings-workspace {
-          gap: 24px;
-          grid-template-columns: minmax(0, 1fr);
+          gap: 16px;
+          grid-template-columns: minmax(0, 1fr) !important;
         }
 
         .settings-section-sidebar {
-          padding: 14px;
-          border-radius: 18px;
+          padding: 12px 16px;
+          border-radius: 14px;
           position: static;
           justify-self: stretch;
-          display: grid;
-          grid-template-columns: minmax(180px, 0.28fr) minmax(0, 1fr);
-          gap: 16px;
+          display: flex;
+          flex-wrap: nowrap;
           align-items: center;
+          gap: 12px;
+          overflow-x: auto;
+          scrollbar-width: none;
           background:
             linear-gradient(180deg, rgba(18, 24, 23, 0.9), rgba(13, 17, 16, 0.88)),
             rgba(18, 24, 23, 0.78);
@@ -4689,9 +4691,10 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
         }
 
         .settings-sidebar-title {
-          padding: 8px 14px 8px 8px;
+          padding: 4px 14px 4px 4px;
           border-right: 1px solid rgba(190, 201, 191, 0.12);
           border-bottom: 0;
+          flex-shrink: 0;
         }
 
         .settings-sidebar-title span,
@@ -4712,8 +4715,9 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
         .settings-sidebar-nav {
           display: flex;
           flex-wrap: nowrap;
-          gap: 10px;
+          gap: 8px;
           min-width: 0;
+          flex: 1;
           overflow-x: auto;
           scrollbar-width: none;
         }
@@ -4724,9 +4728,10 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
 
         .settings-sidebar-link {
           flex: 1 1 0;
-          min-width: 210px;
+          min-width: 140px;
+          max-width: 220px;
           border-radius: 12px;
-          padding: 12px;
+          padding: 10px 12px;
           background: rgba(255, 255, 255, 0.025);
           border-color: rgba(190, 201, 191, 0.12);
           grid-template-columns: 22px minmax(0, 1fr);
@@ -5245,6 +5250,82 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
         :global(.dashboard-light-mode) .ai-provider-set-active:hover {
           background: rgba(38, 194, 129, 0.08) !important;
           border-color: #26c281 !important;
+        }
+
+        /* Embedded settings – comprehensive light mode pass */
+        :global(.dashboard-light-mode) .settings-embedded-shell .settings-panel,
+        :global(.dashboard-light-mode) .settings-embedded-shell .settings-section-sidebar {
+          background: rgba(255, 255, 255, 0.96) !important;
+          border-color: rgba(187, 202, 190, 0.86) !important;
+          box-shadow: 0 8px 24px rgba(20, 90, 50, 0.05) !important;
+        }
+
+        :global(.dashboard-light-mode) .settings-embedded-shell :where(
+          h1, h2, h3, h4, h5, h6, strong, b
+        ):not(.btn-primary):not(.btn-primary *):not(.settings-save-button):not(.settings-save-button *) {
+          color: #1a1c1c !important;
+        }
+
+        :global(.dashboard-light-mode) .settings-embedded-shell :where(
+          p, span, small, label
+        ):not(.btn-primary):not(.btn-primary *):not(.ai-provider-badge):not(.ai-provider-active-label):not(.ai-provider-card-badge) {
+          color: #3d4a41 !important;
+        }
+
+        :global(.dashboard-light-mode) .settings-embedded-shell .settings-block,
+        :global(.dashboard-light-mode) .settings-embedded-shell .settings-category-shell,
+        :global(.dashboard-light-mode) .settings-embedded-shell .integration-block,
+        :global(.dashboard-light-mode) .settings-embedded-shell .meta-connection-card,
+        :global(.dashboard-light-mode) .settings-embedded-shell .settings-mode-card,
+        :global(.dashboard-light-mode) .settings-embedded-shell .settings-stack-card {
+          background: #ffffff !important;
+          border-color: rgba(187, 202, 190, 0.86) !important;
+          box-shadow: 0 6px 18px rgba(20, 90, 50, 0.04) !important;
+          color: #1a1c1c !important;
+        }
+
+        :global(.dashboard-light-mode) .settings-embedded-shell .settings-sidebar-link {
+          background: #ffffff !important;
+          border-color: rgba(187, 202, 190, 0.92) !important;
+          color: #1a1c1c !important;
+        }
+
+        :global(.dashboard-light-mode) .settings-embedded-shell .settings-sidebar-link.active {
+          background: color-mix(in srgb, #26c281 12%, #ffffff) !important;
+          border-color: color-mix(in srgb, #006c44 34%, #bbcabe) !important;
+          box-shadow: inset 0 -3px 0 #006c44 !important;
+        }
+
+        :global(.dashboard-light-mode) .settings-embedded-shell .input-group input,
+        :global(.dashboard-light-mode) .settings-embedded-shell .input-group select,
+        :global(.dashboard-light-mode) .settings-embedded-shell .input-group textarea,
+        :global(.dashboard-light-mode) .settings-embedded-shell .settings-color-code-row input,
+        :global(.dashboard-light-mode) .settings-embedded-shell .settings-rgb-field input {
+          background: #f8fafc !important;
+          border-color: rgba(187, 202, 190, 0.9) !important;
+          color: #1a1c1c !important;
+        }
+
+        :global(.dashboard-light-mode) .settings-embedded-shell .settings-action-bar-global {
+          background: rgba(255, 255, 255, 0.98) !important;
+          border-color: rgba(187, 202, 190, 0.92) !important;
+          color: #1a1c1c !important;
+          box-shadow: 0 18px 36px rgba(20, 90, 50, 0.08) !important;
+        }
+
+        :global(.dashboard-light-mode) .settings-embedded-shell .settings-choice,
+        :global(.dashboard-light-mode) .settings-embedded-shell .settings-preset,
+        :global(.dashboard-light-mode) .settings-embedded-shell .settings-tab {
+          background: #ffffff !important;
+          border-color: rgba(187, 202, 190, 0.92) !important;
+          color: #1a1c1c !important;
+        }
+
+        :global(.dashboard-light-mode) .settings-embedded-shell .settings-choice.active,
+        :global(.dashboard-light-mode) .settings-embedded-shell .settings-preset.active,
+        :global(.dashboard-light-mode) .settings-embedded-shell .settings-tab.active {
+          background: color-mix(in srgb, #26c281 12%, #ffffff) !important;
+          border-color: color-mix(in srgb, #006c44 34%, #bbcabe) !important;
         }
       `}</style>
     </div>
