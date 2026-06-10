@@ -1,35 +1,51 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 
-function formatDateBR(dateString) {
+function formatRelative(dateString) {
   if (!dateString) return ''
   const date = new Date(dateString)
-  const day = String(date.getDate()).padStart(2, '0')
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const year = date.getFullYear()
-  const hours = String(date.getHours()).padStart(2, '0')
-  const minutes = String(date.getMinutes()).padStart(2, '0')
-  return `${day}/${month}/${year} ${hours}:${minutes}`
+  const now = new Date()
+  const diff = now - date
+  const days = Math.floor(diff / 86400000)
+  if (days === 0) {
+    return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+  }
+  if (days === 1) return 'Ontem'
+  if (days < 7) {
+    return date.toLocaleDateString('pt-BR', { weekday: 'long' })
+  }
+  return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })
+}
+
+function noteTitle(content) {
+  const first = (content || '').split('\n')[0].trim()
+  return first || 'Nova nota'
+}
+
+function notePreview(content) {
+  const lines = (content || '').split('\n').filter(Boolean)
+  return lines[1] || 'Sem conteúdo adicional'
 }
 
 export default function ClientNotesPanel({ clientId, clientName }) {
   const [notes, setNotes] = useState([])
   const [isLoading, setIsLoading] = useState(true)
-  const [newContent, setNewContent] = useState('')
+  const [selectedId, setSelectedId] = useState(null)
+  const [editorContent, setEditorContent] = useState('')
   const [isSaving, setIsSaving] = useState(false)
-  const [editingId, setEditingId] = useState(null)
-  const [editContent, setEditContent] = useState('')
   const [error, setError] = useState(null)
+  const saveTimer = useRef(null)
+  const isNew = useRef(false)
 
   const fetchNotes = useCallback(async () => {
     if (!clientId) return
     setIsLoading(true)
     setError(null)
     try {
-      const response = await fetch(`/api/clients/${clientId}/notes`)
-      const data = await response.json()
-      if (!response.ok) throw new Error(data.error || 'Erro ao buscar notas.')
+      const res = await fetch(`/api/clients/${clientId}/notes`)
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Erro ao buscar notas.')
       setNotes(data.notes || [])
     } catch (err) {
       setError(err.message)
@@ -38,25 +54,51 @@ export default function ClientNotesPanel({ clientId, clientName }) {
     }
   }, [clientId])
 
-  useEffect(() => {
-    fetchNotes()
-  }, [fetchNotes])
+  useEffect(() => { fetchNotes() }, [fetchNotes])
 
-  async function handleCreate(event) {
-    event.preventDefault()
-    const content = newContent.trim()
-    if (!content) return
+  // Select first note by default when notes load
+  useEffect(() => {
+    if (!isLoading && notes.length > 0 && selectedId === null) {
+      setSelectedId(notes[0].id)
+      setEditorContent(notes[0].content)
+      isNew.current = false
+    }
+  }, [isLoading, notes, selectedId])
+
+  function selectNote(note) {
+    if (saveTimer.current) {
+      clearTimeout(saveTimer.current)
+      saveTimer.current = null
+    }
+    setSelectedId(note.id)
+    setEditorContent(note.content)
+    isNew.current = false
+  }
+
+  function handleNew() {
+    if (saveTimer.current) {
+      clearTimeout(saveTimer.current)
+      saveTimer.current = null
+    }
+    setSelectedId(null)
+    setEditorContent('')
+    isNew.current = true
+  }
+
+  async function saveNew(content) {
+    if (!content.trim()) return
     setIsSaving(true)
-    setError(null)
     try {
-      const response = await fetch(`/api/clients/${clientId}/notes`, {
+      const res = await fetch(`/api/clients/${clientId}/notes`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ content }),
       })
-      const data = await response.json()
-      if (!response.ok) throw new Error(data.error || 'Erro ao criar nota.')
-      setNewContent('')
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Erro ao criar nota.')
+      isNew.current = false
+      const newNote = data.note || { id: data.id, content, created_at: new Date().toISOString() }
+      setSelectedId(newNote.id)
       await fetchNotes()
     } catch (err) {
       setError(err.message)
@@ -65,165 +107,429 @@ export default function ClientNotesPanel({ clientId, clientName }) {
     }
   }
 
-  function startEdit(note) {
-    setEditingId(note.id)
-    setEditContent(note.content)
-  }
-
-  function cancelEdit() {
-    setEditingId(null)
-    setEditContent('')
-  }
-
-  async function handleEdit(noteId) {
-    const content = editContent.trim()
-    if (!content) return
-    setError(null)
+  async function saveEdit(noteId, content) {
+    if (!content.trim()) return
+    setIsSaving(true)
     try {
-      const response = await fetch(`/api/clients/${clientId}/notes/${noteId}`, {
+      const res = await fetch(`/api/clients/${clientId}/notes/${noteId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ content }),
       })
-      const data = await response.json()
-      if (!response.ok) throw new Error(data.error || 'Erro ao atualizar nota.')
-      setEditingId(null)
-      setEditContent('')
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Erro ao salvar.')
+      await fetchNotes()
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  function handleEditorChange(value) {
+    setEditorContent(value)
+    if (saveTimer.current) clearTimeout(saveTimer.current)
+    saveTimer.current = setTimeout(() => {
+      if (isNew.current) {
+        saveNew(value)
+      } else if (selectedId) {
+        saveEdit(selectedId, value)
+      }
+    }, 1200)
+  }
+
+  async function handleDelete(noteId, e) {
+    e.stopPropagation()
+    if (!window.confirm('Excluir esta nota?')) return
+    try {
+      const res = await fetch(`/api/clients/${clientId}/notes/${noteId}`, { method: 'DELETE' })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Erro ao excluir.')
+      if (selectedId === noteId) {
+        setSelectedId(null)
+        setEditorContent('')
+        isNew.current = false
+      }
       await fetchNotes()
     } catch (err) {
       setError(err.message)
     }
   }
 
-  async function handleDelete(noteId) {
-    if (!window.confirm('Tem certeza que deseja excluir esta nota?')) return
-    setError(null)
-    try {
-      const response = await fetch(`/api/clients/${clientId}/notes/${noteId}`, {
-        method: 'DELETE',
-      })
-      const data = await response.json()
-      if (!response.ok) throw new Error(data.error || 'Erro ao excluir nota.')
-      await fetchNotes()
-    } catch (err) {
-      setError(err.message)
-    }
-  }
+  const selectedNote = notes.find((n) => n.id === selectedId)
 
   return (
-    <section className="glass-panel client-notes-panel">
-      <div className="client-notes-header">
-        <div>
-          <h3>Notas do cliente</h3>
-          {clientName && <p>{clientName}</p>}
-        </div>
-      </div>
-
-      <form className="client-notes-form" onSubmit={handleCreate}>
-        <textarea
-          className="client-notes-textarea"
-          value={newContent}
-          onChange={(e) => setNewContent(e.target.value)}
-          placeholder="Escreva uma nota sobre este cliente..."
-          rows={3}
-          disabled={isSaving}
-        />
-        <div className="client-notes-form-actions">
-          <button
-            type="submit"
-            className="btn btn-primary btn-sm"
-            disabled={isSaving || !newContent.trim()}
-          >
-            {isSaving ? 'Salvando...' : 'Salvar nota'}
+    <div className="ios-notes-shell">
+      {/* Left panel — note list */}
+      <div className="ios-notes-list-panel">
+        <div className="ios-notes-list-header">
+          <span className="ios-notes-client-name">{clientName || 'Notas'}</span>
+          <button className="ios-notes-new-btn" onClick={handleNew} title="Nova nota">
+            <i className="bx bx-edit-alt"></i>
           </button>
         </div>
-      </form>
 
-      {error && (
-        <div className="client-notes-error" role="alert">
-          <i className="bx bx-error-circle"></i>
-          <span>{error}</span>
-        </div>
-      )}
-
-      <div className="client-notes-list">
         {isLoading ? (
-          <div className="client-notes-state">
-            <p>Carregando notas...</p>
-          </div>
+          <div className="ios-notes-state">Carregando...</div>
         ) : notes.length === 0 ? (
-          <div className="client-notes-state">
-            <p>Nenhuma nota para este cliente ainda.</p>
-          </div>
+          <div className="ios-notes-state">Nenhuma nota ainda.</div>
         ) : (
-          notes.map((note) => (
-            <div key={note.id} className="glass-item client-note-item">
-              {editingId === note.id ? (
-                <div className="client-note-edit">
-                  <textarea
-                    className="client-notes-textarea"
-                    value={editContent}
-                    onChange={(e) => setEditContent(e.target.value)}
-                    rows={3}
-                    autoFocus
-                  />
-                  <div className="client-note-edit-actions">
-                    <button
-                      type="button"
-                      className="btn btn-primary btn-sm"
-                      onClick={() => handleEdit(note.id)}
-                      disabled={!editContent.trim()}
-                    >
-                      Salvar
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn-secondary btn-sm"
-                      onClick={cancelEdit}
-                    >
-                      Cancelar
-                    </button>
-                  </div>
+          <ul className="ios-notes-list">
+            {notes.map((note) => (
+              <li
+                key={note.id}
+                className={`ios-notes-list-item ${note.id === selectedId ? 'selected' : ''}`}
+                onClick={() => selectNote(note)}
+              >
+                <div className="ios-note-title">{noteTitle(note.content)}</div>
+                <div className="ios-note-meta">
+                  <span className="ios-note-date">{formatRelative(note.created_at)}</span>
+                  <span className="ios-note-preview">{notePreview(note.content)}</span>
                 </div>
-              ) : (
-                <>
-                  <p className="client-note-content">{note.content}</p>
-                  <div className="client-note-meta">
-                    <span className="client-note-author">
-                      <i className="bx bx-user"></i>
-                      {note.created_by_name || 'Usuário'}
-                    </span>
-                    <span className="client-note-date">
-                      <i className="bx bx-time-five"></i>
-                      {formatDateBR(note.created_at)}
-                    </span>
-                    <div className="client-note-actions">
-                      <button
-                        type="button"
-                        className="btn btn-secondary btn-sm"
-                        onClick={() => startEdit(note)}
-                        aria-label="Editar nota"
-                      >
-                        <i className="bx bx-edit"></i>
-                        Editar
-                      </button>
-                      <button
-                        type="button"
-                        className="btn btn-secondary btn-sm client-note-delete-btn"
-                        onClick={() => handleDelete(note.id)}
-                        aria-label="Excluir nota"
-                      >
-                        <i className="bx bx-trash"></i>
-                        Excluir
-                      </button>
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
-          ))
+                <button
+                  className="ios-note-delete"
+                  onClick={(e) => handleDelete(note.id, e)}
+                  title="Excluir"
+                >
+                  <i className="bx bx-trash"></i>
+                </button>
+              </li>
+            ))}
+          </ul>
         )}
       </div>
-    </section>
+
+      {/* Right panel — editor */}
+      <div className="ios-notes-editor-panel">
+        {(selectedId !== null || isNew.current) ? (
+          <>
+            <div className="ios-notes-editor-meta">
+              {selectedNote && (
+                <span>{formatRelative(selectedNote.created_at)} · {selectedNote.created_by_name || 'Você'}</span>
+              )}
+              {isSaving && <span className="ios-notes-saving">Salvando...</span>}
+            </div>
+            <textarea
+              className="ios-notes-editor"
+              value={editorContent}
+              onChange={(e) => handleEditorChange(e.target.value)}
+              placeholder="Escreva sua nota..."
+              autoFocus
+            />
+          </>
+        ) : (
+          <div className="ios-notes-editor-empty">
+            <i className="bx bx-notepad"></i>
+            <p>Selecione uma nota ou crie uma nova</p>
+            <button className="ios-notes-new-btn-cta" onClick={handleNew}>
+              <i className="bx bx-plus"></i> Nova nota
+            </button>
+          </div>
+        )}
+        {error && (
+          <div className="ios-notes-error">
+            <i className="bx bx-error-circle"></i> {error}
+          </div>
+        )}
+      </div>
+
+      <style jsx>{`
+        .ios-notes-shell {
+          display: flex;
+          height: calc(100vh - 80px);
+          border-radius: 16px;
+          overflow: hidden;
+          border: 1px solid var(--border-color, rgba(255,255,255,0.08));
+          background: var(--bg-panel, #111113);
+        }
+
+        /* List panel */
+        .ios-notes-list-panel {
+          width: 260px;
+          min-width: 260px;
+          border-right: 1px solid var(--border-color, rgba(255,255,255,0.08));
+          display: flex;
+          flex-direction: column;
+          background: var(--bg-dark, #0a0a0c);
+        }
+
+        .ios-notes-list-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 18px 16px 12px;
+          border-bottom: 1px solid var(--border-color, rgba(255,255,255,0.06));
+        }
+
+        .ios-notes-client-name {
+          font-size: 16px;
+          font-weight: 700;
+          color: var(--text-primary, #f5f5f7);
+          letter-spacing: -0.01em;
+        }
+
+        .ios-notes-new-btn {
+          width: 32px;
+          height: 32px;
+          border: none;
+          background: none;
+          cursor: pointer;
+          color: var(--button-primary, #26c281);
+          font-size: 20px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: 8px;
+          transition: background 0.15s;
+        }
+
+        .ios-notes-new-btn:hover {
+          background: rgba(255,255,255,0.06);
+        }
+
+        .ios-notes-state {
+          padding: 24px 16px;
+          font-size: 13px;
+          color: var(--text-muted, rgba(245,245,247,0.44));
+          text-align: center;
+        }
+
+        .ios-notes-list {
+          list-style: none;
+          margin: 0;
+          padding: 6px 0;
+          flex: 1;
+          overflow-y: auto;
+        }
+
+        .ios-notes-list-item {
+          position: relative;
+          padding: 11px 16px;
+          cursor: pointer;
+          border-radius: 10px;
+          margin: 2px 6px;
+          transition: background 0.15s;
+        }
+
+        .ios-notes-list-item:hover {
+          background: rgba(255,255,255,0.05);
+        }
+
+        .ios-notes-list-item:hover .ios-note-delete {
+          opacity: 1;
+        }
+
+        .ios-notes-list-item.selected {
+          background: rgba(38, 194, 129, 0.12);
+        }
+
+        .ios-note-title {
+          font-size: 13px;
+          font-weight: 600;
+          color: var(--text-primary, #f5f5f7);
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          padding-right: 24px;
+        }
+
+        .ios-note-meta {
+          display: flex;
+          gap: 6px;
+          margin-top: 3px;
+          align-items: baseline;
+        }
+
+        .ios-note-date {
+          font-size: 11px;
+          color: var(--text-muted, rgba(245,245,247,0.44));
+          white-space: nowrap;
+          flex-shrink: 0;
+        }
+
+        .ios-note-preview {
+          font-size: 11px;
+          color: var(--text-muted, rgba(245,245,247,0.44));
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        .ios-note-delete {
+          position: absolute;
+          top: 50%;
+          right: 10px;
+          transform: translateY(-50%);
+          opacity: 0;
+          border: none;
+          background: none;
+          cursor: pointer;
+          color: rgba(255, 59, 48, 0.7);
+          font-size: 15px;
+          display: flex;
+          align-items: center;
+          transition: opacity 0.15s, color 0.15s;
+          padding: 4px;
+          border-radius: 6px;
+        }
+
+        .ios-note-delete:hover {
+          color: #ff3b30;
+        }
+
+        /* Editor panel */
+        .ios-notes-editor-panel {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          background: var(--bg-panel, #111113);
+          position: relative;
+        }
+
+        .ios-notes-editor-meta {
+          padding: 14px 24px 6px;
+          font-size: 11px;
+          color: var(--text-muted, rgba(245,245,247,0.44));
+          display: flex;
+          gap: 12px;
+          align-items: center;
+          border-bottom: 1px solid var(--border-color, rgba(255,255,255,0.06));
+        }
+
+        .ios-notes-saving {
+          color: var(--button-primary, #26c281);
+          font-style: italic;
+        }
+
+        .ios-notes-editor {
+          flex: 1;
+          width: 100%;
+          border: none;
+          outline: none;
+          resize: none;
+          background: transparent;
+          color: var(--text-primary, #f5f5f7);
+          font-family: inherit;
+          font-size: 14px;
+          line-height: 1.7;
+          padding: 20px 28px;
+          caret-color: var(--button-primary, #26c281);
+        }
+
+        .ios-notes-editor::placeholder {
+          color: var(--text-muted, rgba(245,245,247,0.3));
+        }
+
+        .ios-notes-editor-empty {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 12px;
+          color: var(--text-muted, rgba(245,245,247,0.44));
+        }
+
+        .ios-notes-editor-empty i {
+          font-size: 40px;
+          opacity: 0.3;
+        }
+
+        .ios-notes-editor-empty p {
+          font-size: 14px;
+          margin: 0;
+        }
+
+        .ios-notes-new-btn-cta {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          padding: 8px 16px;
+          border: 1px solid var(--border-color, rgba(255,255,255,0.1));
+          border-radius: 10px;
+          background: none;
+          color: var(--button-primary, #26c281);
+          font-size: 13px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: background 0.15s;
+        }
+
+        .ios-notes-new-btn-cta:hover {
+          background: rgba(38,194,129,0.08);
+        }
+
+        .ios-notes-error {
+          position: absolute;
+          bottom: 16px;
+          left: 50%;
+          transform: translateX(-50%);
+          background: rgba(255, 59, 48, 0.12);
+          border: 1px solid rgba(255, 59, 48, 0.3);
+          border-radius: 10px;
+          padding: 8px 14px;
+          font-size: 12px;
+          color: #ff3b30;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          white-space: nowrap;
+        }
+
+        /* Light mode overrides */
+        :global(.dashboard-light-mode) .ios-notes-shell {
+          background: #f5f5f0;
+          border-color: rgba(0,0,0,0.08);
+        }
+        :global(.dashboard-light-mode) .ios-notes-list-panel {
+          background: #ebe9e4;
+          border-right-color: rgba(0,0,0,0.08);
+        }
+        :global(.dashboard-light-mode) .ios-notes-list-header {
+          border-bottom-color: rgba(0,0,0,0.07);
+        }
+        :global(.dashboard-light-mode) .ios-notes-client-name {
+          color: #1c1c1e;
+        }
+        :global(.dashboard-light-mode) .ios-notes-new-btn {
+          color: var(--button-primary, #26c281);
+        }
+        :global(.dashboard-light-mode) .ios-notes-new-btn:hover {
+          background: rgba(0,0,0,0.05);
+        }
+        :global(.dashboard-light-mode) .ios-notes-list-item:hover {
+          background: rgba(0,0,0,0.04);
+        }
+        :global(.dashboard-light-mode) .ios-notes-list-item.selected {
+          background: rgba(38,194,129,0.12);
+        }
+        :global(.dashboard-light-mode) .ios-note-title {
+          color: #1c1c1e;
+        }
+        :global(.dashboard-light-mode) .ios-note-date,
+        :global(.dashboard-light-mode) .ios-note-preview {
+          color: rgba(28,28,30,0.45);
+        }
+        :global(.dashboard-light-mode) .ios-notes-editor-panel {
+          background: #faf9f7;
+        }
+        :global(.dashboard-light-mode) .ios-notes-editor-meta {
+          border-bottom-color: rgba(0,0,0,0.07);
+          color: rgba(28,28,30,0.45);
+        }
+        :global(.dashboard-light-mode) .ios-notes-editor {
+          color: #1c1c1e;
+        }
+        :global(.dashboard-light-mode) .ios-notes-editor::placeholder {
+          color: rgba(28,28,30,0.3);
+        }
+        :global(.dashboard-light-mode) .ios-notes-state {
+          color: rgba(28,28,30,0.44);
+        }
+        :global(.dashboard-light-mode) .ios-notes-editor-empty {
+          color: rgba(28,28,30,0.44);
+        }
+      `}</style>
+    </div>
   )
 }

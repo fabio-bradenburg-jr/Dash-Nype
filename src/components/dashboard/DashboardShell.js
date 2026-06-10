@@ -18232,7 +18232,7 @@ export default function DashboardShell({
         )}
 
         {activeTab === 'notas' && (
-          <section style={{ padding: '24px', maxWidth: 900 }}>
+          <section style={{ padding: '16px 20px', height: '100%', boxSizing: 'border-box' }}>
             {activeClient ? (
               <ClientNotesPanel clientId={activeClient.id} clientName={activeClient.name} />
             ) : (
