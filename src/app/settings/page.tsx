@@ -2858,11 +2858,11 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
         }
 
         .settings-head h1 {
-          font-size: 48px;
-          margin-bottom: 8px;
+          font-size: 26px;
+          margin-bottom: 6px;
           font-family: var(--font-family-headline);
-          font-weight: 800;
-          letter-spacing: -0.04em;
+          font-weight: 700;
+          letter-spacing: -0.02em;
         }
 
         .settings-head p,
@@ -2905,9 +2905,9 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
 
         .settings-sidebar-title span {
           color: var(--accent-blue);
-          font-size: 11px;
-          font-weight: 800;
-          letter-spacing: 0.16em;
+          font-size: 10px;
+          font-weight: 700;
+          letter-spacing: 0.07em;
           text-transform: uppercase;
         }
 
@@ -3014,18 +3014,18 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
         }
 
         .settings-block h2 {
-          font-size: 22px;
+          font-size: 17px;
           font-family: var(--font-family-headline);
-          font-weight: 800;
-          letter-spacing: -0.03em;
+          font-weight: 700;
+          letter-spacing: -0.02em;
         }
 
         .settings-hero-kicker,
         .settings-obsidian-head span {
           color: var(--accent-blue);
-          font-size: 11px;
-          font-weight: 800;
-          letter-spacing: 0.16em;
+          font-size: 10px;
+          font-weight: 700;
+          letter-spacing: 0.07em;
           text-transform: uppercase;
         }
 
@@ -3985,7 +3985,7 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
         }
 
         .settings-integration-family-head h3 {
-          font-size: 26px;
+          font-size: 18px;
         }
 
         .settings-integration-family-grid {
@@ -4039,8 +4039,10 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
         }
 
         .settings-category-head h3 {
-          font-size: 24px;
+          font-size: 17px;
           margin: 0;
+          font-weight: 700;
+          letter-spacing: -0.01em;
         }
 
         .settings-category-head p {
@@ -4670,7 +4672,8 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
         .settings-obsidian-head span,
         .settings-category-kicker {
           color: color-mix(in srgb, var(--button-primary, #26c281) 72%, #f1f1f1);
-          letter-spacing: 0.14em;
+          letter-spacing: 0.07em;
+          font-size: 10px;
         }
 
         .settings-sidebar-title strong {
@@ -4744,8 +4747,8 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
         }
 
         .settings-head h1 {
-          font-size: clamp(2rem, 3vw, 3rem);
-          line-height: 1.05;
+          font-size: clamp(1.4rem, 2vw, 1.75rem);
+          line-height: 1.1;
           letter-spacing: -0.02em;
         }
 
@@ -5134,7 +5137,7 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
           }
 
           .settings-head h1 {
-            font-size: 34px;
+            font-size: 22px;
           }
 
           .settings-form-grid,
@@ -5179,6 +5182,42 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
           .settings-help-text
         ):not(.settings-save-button):not(.settings-save-button *) {
           color: #3d4a41 !important;
+        }
+
+        /* AI provider cards – light mode */
+        :root[data-ui-mode='light'] .ai-provider-card,
+        :global(.dashboard-light-mode) .ai-provider-card {
+          background: #ffffff !important;
+          border-color: rgba(187, 202, 190, 0.86) !important;
+          box-shadow: 0 4px 12px rgba(20, 90, 50, 0.04) !important;
+        }
+
+        :root[data-ui-mode='light'] .ai-provider-card-active,
+        :global(.dashboard-light-mode) .ai-provider-card-active {
+          background: color-mix(in srgb, #26c281 8%, #ffffff) !important;
+          border-color: color-mix(in srgb, #006c44 30%, #bbcabe) !important;
+        }
+
+        :root[data-ui-mode='light'] .ai-provider-card-name,
+        :global(.dashboard-light-mode) .ai-provider-card-name {
+          color: #1a1c1c !important;
+        }
+
+        :root[data-ui-mode='light'] .ai-provider-card-desc,
+        :global(.dashboard-light-mode) .ai-provider-card-desc {
+          color: #3d4a41 !important;
+        }
+
+        :root[data-ui-mode='light'] .ai-provider-set-active,
+        :global(.dashboard-light-mode) .ai-provider-set-active {
+          border-color: rgba(187, 202, 190, 0.9) !important;
+          color: #1a1c1c !important;
+        }
+
+        :root[data-ui-mode='light'] .ai-provider-set-active:hover,
+        :global(.dashboard-light-mode) .ai-provider-set-active:hover {
+          background: rgba(38, 194, 129, 0.08) !important;
+          border-color: #26c281 !important;
         }
       `}</style>
     </div>
