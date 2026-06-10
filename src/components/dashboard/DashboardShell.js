@@ -3525,7 +3525,7 @@ export default function DashboardShell({
     clientGroupIds: [],
   })
   const [savingUser, setSavingUser] = useState(false)
-  const ADS_TABS = ['apresentacao', 'campanhas', 'anuncios', 'saldos']
+  const ADS_TABS = ['apresentacao', 'campanhas', 'anuncios', 'saldos', 'relatorios']
   const [isAdsMenuOpen, setIsAdsMenuOpen] = useState(() => ADS_TABS.includes(initialTab))
   const [globalIntegrations, setGlobalIntegrations] = useState({
     ...DEFAULT_PREFERENCES.globalIntegrations,
@@ -16278,6 +16278,10 @@ export default function DashboardShell({
                 <i className="bx bx-wallet-alt"></i>
                 {!isSidebarCollapsed && 'Saldos'}
               </button>
+              <button type="button" className={`nav-item nav-button nav-sub-item ${activeTab === 'relatorios' ? 'active' : ''}`} onClick={() => setActiveTab('relatorios')}>
+                <i className="bx bx-file"></i>
+                {!isSidebarCollapsed && 'Relatórios'}
+              </button>
             </div>
           )}
           {canAccessTeamTab && (
@@ -16286,10 +16290,7 @@ export default function DashboardShell({
               {!isSidebarCollapsed && 'Time'}
             </button>
           )}
-          <button type="button" data-tooltip="Relatórios" aria-label="Relatórios" className={`nav-item nav-button ${activeTab === 'relatorios' ? 'active' : ''}`} onClick={() => setActiveTab('relatorios')}>
-            <i className="bx bx-file"></i>
-            {!isSidebarCollapsed && 'Relatórios'}
-          </button>
+
           <button type="button" data-tooltip="Configurações" aria-label="Configurações" className={"nav-item nav-button " + (activeTab === "settings" ? "active" : "")} onClick={() => setActiveTab('settings')}>
             <i className="bx bx-cog"></i>
             {!isSidebarCollapsed && 'Configurações'}
