@@ -3777,20 +3777,23 @@ textarea:focus {
 
 /* Collapsed sidebar — compact */
 .dashboard-container .sidebar-collapsed {
-    width: 60px !important;
-    padding: 12px 6px !important;
+    width: 72px !important;
+    padding: 12px 10px !important;
 }
 .dashboard-container .main-content-expanded {
-    margin-left: 60px !important;
+    margin-left: 72px !important;
 }
 .dashboard-container .sidebar-collapsed :global(.nav-item) {
-    width: 42px !important;
-    height: 42px !important;
+    width: 48px !important;
+    height: 44px !important;
     border-radius: 12px !important;
     margin-bottom: 2px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
 }
 .dashboard-container .sidebar-collapsed :global(.nav-item i) {
-    font-size: 19px !important;
+    font-size: 20px !important;
 }
 
 /* Nav items spacing in expanded mode */
@@ -3855,4 +3858,12 @@ textarea:focus {
 }
 .dashboard-container:not([data-active-tab='apresentacao']):not(.dashboard-light-mode) .nav-sub-group {
     border-left-color: rgba(255, 255, 255, 0.15) !important;
+}
+
+/* Fix sidebar-toggle button in light mode */
+.dashboard-light-mode .sidebar-toggle {
+    background: #ffffff !important;
+    border-color: rgba(15, 23, 42, 0.1) !important;
+    color: #0f172a !important;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.1) !important;
 }
