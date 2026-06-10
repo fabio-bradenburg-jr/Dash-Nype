@@ -16406,26 +16406,6 @@ export default function DashboardShell({
                       </select>
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={handleSaveDashboardLayout}
-                      className="btn btn-secondary"
-                      disabled={isSavingDashboardLayout}
-                    >
-                      <i className="bx bx-save"></i>
-                      {isSavingDashboardLayout ? 'Salvando...' : 'Salvar layout'}
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={handleSaveDashboardTemplate}
-                      className="btn btn-secondary"
-                      disabled={isSavingDashboardLayout}
-                    >
-                      <i className="bx bx-bookmark-plus"></i>
-                      Salvar versão
-                    </button>
-
                     {layoutSaveMessage && (
                       <span className="layout-save-message">{layoutSaveMessage}</span>
                     )}
