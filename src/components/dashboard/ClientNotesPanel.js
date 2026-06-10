@@ -29,6 +29,7 @@ export default function ClientNotesPanel({ clientId: initialClientId, clientName
   const [activeClientId, setActiveClientId] = useState(initialClientId || null)
   const [activeClientName, setActiveClientName] = useState(initialClientName || null)
 
+  const [filter, setFilter] = useState('mine') // 'all' | 'mine'
   const [notes, setNotes] = useState([])
   const [isLoading, setIsLoading] = useState(false)
   const [selectedId, setSelectedId] = useState(null)
@@ -46,7 +47,7 @@ export default function ClientNotesPanel({ clientId: initialClientId, clientName
     }
   }, [initialClientId, initialClientName])
 
-  // Fetch notes whenever activeClientId changes
+  // Fetch notes whenever activeClientId or filter changes
   useEffect(() => {
     if (!activeClientId) {
       setNotes([])
@@ -63,7 +64,8 @@ export default function ClientNotesPanel({ clientId: initialClientId, clientName
     setEditorContent('')
     isNew.current = false
 
-    fetch(`/api/clients/${activeClientId}/notes`)
+    const fetchUrl = `/api/clients/${activeClientId}/notes${filter === 'mine' ? '?mine=true' : ''}`
+    fetch(fetchUrl)
       .then((r) => r.json())
       .then((data) => {
         if (cancelled) return
@@ -78,7 +80,7 @@ export default function ClientNotesPanel({ clientId: initialClientId, clientName
       .finally(() => { if (!cancelled) setIsLoading(false) })
 
     return () => { cancelled = true }
-  }, [activeClientId])
+  }, [activeClientId, filter])
 
   function handleClientChange(e) {
     const id = e.target.value
@@ -114,7 +116,7 @@ export default function ClientNotesPanel({ clientId: initialClientId, clientName
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Erro ao criar nota.')
       isNew.current = false
-      const r = await fetch(`/api/clients/${activeClientId}/notes`)
+      const r = await fetch(`/api/clients/${activeClientId}/notes${filter === 'mine' ? '?mine=true' : ''}`)
       const d = await r.json()
       const list = d.notes || []
       setNotes(list)
@@ -135,7 +137,7 @@ export default function ClientNotesPanel({ clientId: initialClientId, clientName
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Erro ao salvar.')
-      const r = await fetch(`/api/clients/${activeClientId}/notes`)
+      const r = await fetch(`/api/clients/${activeClientId}/notes${filter === 'mine' ? '?mine=true' : ''}`)
       const d = await r.json()
       setNotes(d.notes || [])
     } catch (err) { setError(err.message) }
@@ -159,7 +161,7 @@ export default function ClientNotesPanel({ clientId: initialClientId, clientName
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Erro ao excluir.')
       if (selectedId === noteId) { setSelectedId(null); setEditorContent(''); isNew.current = false }
-      const r = await fetch(`/api/clients/${activeClientId}/notes`)
+      const r = await fetch(`/api/clients/${activeClientId}/notes${filter === 'mine' ? '?mine=true' : ''}`)
       const d = await r.json()
       setNotes(d.notes || [])
     } catch (err) { setError(err.message) }
@@ -194,6 +196,17 @@ export default function ClientNotesPanel({ clientId: initialClientId, clientName
           >
             <i className="bx bx-edit-alt"></i>
           </button>
+        </div>
+
+        <div className="ios-notes-filter-bar">
+          <button
+            className={`ios-notes-filter-btn ${filter === 'mine' ? 'active' : ''}`}
+            onClick={() => setFilter('mine')}
+          >Minhas</button>
+          <button
+            className={`ios-notes-filter-btn ${filter === 'all' ? 'active' : ''}`}
+            onClick={() => setFilter('all')}
+          >Todas</button>
         </div>
 
         {!activeClientId ? (
@@ -350,6 +363,37 @@ export default function ClientNotesPanel({ clientId: initialClientId, clientName
         .ios-notes-new-btn:disabled {
           opacity: 0.3;
           cursor: default;
+        }
+
+        .ios-notes-filter-bar {
+          display: flex;
+          gap: 4px;
+          padding: 8px 10px 6px;
+          border-bottom: 1px solid var(--border-color, rgba(255,255,255,0.06));
+        }
+
+        .ios-notes-filter-btn {
+          flex: 1;
+          padding: 5px 8px;
+          border: none;
+          border-radius: 8px;
+          background: transparent;
+          color: var(--text-muted, rgba(245,245,247,0.5));
+          font-size: 12px;
+          font-weight: 600;
+          font-family: inherit;
+          cursor: pointer;
+          transition: background 0.15s, color 0.15s;
+        }
+
+        .ios-notes-filter-btn.active {
+          background: rgba(38,194,129,0.14);
+          color: var(--button-primary, #26c281);
+        }
+
+        .ios-notes-filter-btn:hover:not(.active) {
+          background: rgba(255,255,255,0.05);
+          color: var(--text-primary, #f5f5f7);
         }
 
         .ios-notes-state {
@@ -555,6 +599,10 @@ export default function ClientNotesPanel({ clientId: initialClientId, clientName
         :global(.dashboard-light-mode) .ios-notes-editor::placeholder { color: rgba(28,28,30,0.3); }
         :global(.dashboard-light-mode) .ios-notes-state,
         :global(.dashboard-light-mode) .ios-notes-editor-empty { color: rgba(28,28,30,0.44); }
+        :global(.dashboard-light-mode) .ios-notes-filter-bar { border-bottom-color: rgba(0,0,0,0.07); }
+        :global(.dashboard-light-mode) .ios-notes-filter-btn { color: rgba(28,28,30,0.45); }
+        :global(.dashboard-light-mode) .ios-notes-filter-btn:hover:not(.active) { background: rgba(0,0,0,0.04); color: #1c1c1e; }
+        :global(.dashboard-light-mode) .ios-notes-filter-btn.active { background: rgba(38,194,129,0.12); color: #1a7a52; }
       `}</style>
     </div>
   )

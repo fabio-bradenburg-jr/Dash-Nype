@@ -54,12 +54,21 @@ export async function GET(request, { params }) {
       return NextResponse.json({ error: 'Cliente não encontrado.' }, { status: 404 })
     }
 
-    const { data: notes, error } = await adminSupabase
+    const url = new URL(request.url)
+    const mineOnly = url.searchParams.get('mine') === 'true'
+    const userId = accessContext.profile?.id
+
+    let query = adminSupabase
       .from('client_notes')
       .select('*')
       .eq('workspace_id', workspaceId)
       .eq('client_id', clientId)
-      .order('created_at', { ascending: false })
+
+    if (mineOnly && userId) {
+      query = query.eq('created_by', userId)
+    }
+
+    const { data: notes, error } = await query.order('created_at', { ascending: false })
 
     if (error) throw error
 
