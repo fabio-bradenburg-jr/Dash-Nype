@@ -49,30 +49,50 @@ export async function GET(request) {
       return NextResponse.json({ error: 'Informe um criativo válido.' }, { status: 400 })
     }
 
+    let imageUrl = null
+
     const savedCreative = await readSavedCreative(clientKey, adId)
     if (savedCreative?.imageUrl) {
-      return NextResponse.redirect(savedCreative.imageUrl)
+      // Try cached URL first; if expired, fall through to re-fetch
+      const probe = await fetch(savedCreative.imageUrl, { method: 'HEAD' }).catch(() => null)
+      if (probe?.ok) {
+        imageUrl = savedCreative.imageUrl
+      }
     }
 
-    const params = new URLSearchParams({
-      fields: 'creative{thumbnail_url,image_url}',
-      access_token: token,
-    })
-    const adData = await fetchMetaJson(
-      `https://graph.facebook.com/v19.0/${adId}?${params.toString()}`,
-      'A Meta demorou para responder ao carregar a imagem desse criativo.',
-      { cacheContext: { clientKey, resourceKind: 'creative_thumbnail' } }
-    )
-    const creative = adData?.creative || {}
-    const imageUrl = creative.image_url || creative.thumbnail_url || ''
-
     if (!imageUrl) {
+      const params = new URLSearchParams({
+        fields: 'creative{thumbnail_url,image_url}',
+        access_token: token,
+      })
+      const adData = await fetchMetaJson(
+        `https://graph.facebook.com/v19.0/${adId}?${params.toString()}`,
+        'A Meta demorou para responder ao carregar a imagem desse criativo.',
+        { cacheContext: { clientKey, resourceKind: 'creative_thumbnail' } }
+      )
+      const creative = adData?.creative || {}
+      imageUrl = creative.image_url || creative.thumbnail_url || ''
+
+      if (!imageUrl) {
+        return new NextResponse(null, { status: 404 })
+      }
+
+      await saveCreativeThumbnail(clientKey, adId, savedCreative, imageUrl)
+    }
+
+    const imageResponse = await fetch(imageUrl)
+    if (!imageResponse.ok) {
       return new NextResponse(null, { status: 404 })
     }
 
-    await saveCreativeThumbnail(clientKey, adId, savedCreative, imageUrl)
-
-    return NextResponse.redirect(imageUrl)
+    const contentType = imageResponse.headers.get('content-type') || 'image/jpeg'
+    const buffer = await imageResponse.arrayBuffer()
+    return new NextResponse(buffer, {
+      headers: {
+        'Content-Type': contentType,
+        'Cache-Control': 'public, max-age=3600',
+      },
+    })
   } catch (error) {
     console.error('Meta creative thumbnail error:', error)
     return NextResponse.json(
