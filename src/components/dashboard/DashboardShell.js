@@ -86,7 +86,7 @@ const DEFAULT_WORKSPACE_BRANDING = {
   appSubtitle: 'Performance Hub',
   companyName: 'Assessoria LP',
   logoUrl: '',
-  mode: 'dark',
+  mode: 'light',
   primaryColor: '#26C281',
   accentColor: '#4FDF9B',
   backgroundColor: '#070908',
@@ -3524,6 +3524,8 @@ export default function DashboardShell({
     clientGroupIds: [],
   })
   const [savingUser, setSavingUser] = useState(false)
+  const ADS_TABS = ['apresentacao', 'campanhas', 'anuncios', 'saldos']
+  const [isAdsMenuOpen, setIsAdsMenuOpen] = useState(() => ADS_TABS.includes(initialTab))
   const [globalIntegrations, setGlobalIntegrations] = useState({
     ...DEFAULT_PREFERENCES.globalIntegrations,
   })
@@ -16233,10 +16235,6 @@ export default function DashboardShell({
               {!isSidebarCollapsed && 'Clientes'}
             </button>
           )}
-          <button type="button" data-tooltip="Apresentação" aria-label="Apresentação" className={`nav-item nav-button ${activeTab === 'apresentacao' ? 'active' : ''}`} onClick={() => setActiveTab('apresentacao')}>
-            <i className="bx bxs-dashboard"></i>
-            {!isSidebarCollapsed && 'Apresentação'}
-          </button>
           <button type="button" data-tooltip="Notas" aria-label="Notas" className={`nav-item nav-button ${activeTab === 'notas' ? 'active' : ''}`} onClick={() => setActiveTab('notas')}>
             <i className="bx bx-note"></i>
             {!isSidebarCollapsed && 'Notas'}
@@ -16245,18 +16243,42 @@ export default function DashboardShell({
             <i className="bx bx-pulse"></i>
             {!isSidebarCollapsed && 'Controle da Operação'}
           </button>
-          <button type="button" data-tooltip="Campanhas" aria-label="Campanhas" className={`nav-item nav-button ${activeTab === 'campanhas' ? 'active' : ''}`} onClick={() => setActiveTab('campanhas')}>
-            <i className="bx bx-sitemap"></i>
-            {!isSidebarCollapsed && 'Campanhas'}
-          </button>
-          <button type="button" data-tooltip="Anúncios" aria-label="Anúncios" className={`nav-item nav-button ${activeTab === 'anuncios' ? 'active' : ''}`} onClick={() => setActiveTab('anuncios')}>
+          {/* Anúncios sub-menu group */}
+          <button
+            type="button"
+            data-tooltip="Anúncios"
+            aria-label="Anúncios"
+            className={`nav-item nav-button nav-group-trigger ${ADS_TABS.includes(activeTab) ? 'active' : ''}`}
+            onClick={() => setIsAdsMenuOpen((v) => !v)}
+          >
             <i className="bx bx-bullseye"></i>
-            {!isSidebarCollapsed && 'Anúncios'}
+            {!isSidebarCollapsed && (
+              <>
+                <span style={{ flex: 1 }}>Anúncios</span>
+                <i className={`bx bx-chevron-${isAdsMenuOpen ? 'up' : 'down'}`} style={{ fontSize: 16, marginLeft: 4 }}></i>
+              </>
+            )}
           </button>
-          <button type="button" data-tooltip="Saldos" aria-label="Saldos das contas" className={`nav-item nav-button ${activeTab === 'saldos' ? 'active' : ''}`} onClick={() => setActiveTab('saldos')}>
-            <i className="bx bx-wallet-alt"></i>
-            {!isSidebarCollapsed && 'Saldos'}
-          </button>
+          {isAdsMenuOpen && (
+            <div className="nav-sub-group">
+              <button type="button" className={`nav-item nav-button nav-sub-item ${activeTab === 'apresentacao' ? 'active' : ''}`} onClick={() => setActiveTab('apresentacao')}>
+                <i className="bx bxs-dashboard"></i>
+                {!isSidebarCollapsed && 'Apresentação'}
+              </button>
+              <button type="button" className={`nav-item nav-button nav-sub-item ${activeTab === 'campanhas' ? 'active' : ''}`} onClick={() => setActiveTab('campanhas')}>
+                <i className="bx bx-sitemap"></i>
+                {!isSidebarCollapsed && 'Campanhas'}
+              </button>
+              <button type="button" className={`nav-item nav-button nav-sub-item ${activeTab === 'anuncios' ? 'active' : ''}`} onClick={() => setActiveTab('anuncios')}>
+                <i className="bx bx-layout"></i>
+                {!isSidebarCollapsed && 'Anúncios'}
+              </button>
+              <button type="button" className={`nav-item nav-button nav-sub-item ${activeTab === 'saldos' ? 'active' : ''}`} onClick={() => setActiveTab('saldos')}>
+                <i className="bx bx-wallet-alt"></i>
+                {!isSidebarCollapsed && 'Saldos'}
+              </button>
+            </div>
+          )}
           {canAccessTeamTab && (
             <button type="button" data-tooltip="Time" aria-label="Time" className={`nav-item nav-button ${activeTab === 'usuarios' ? 'active' : ''}`} onClick={() => setActiveTab('usuarios')}>
               <i className="bx bxs-user-detail"></i>
