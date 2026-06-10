@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { createPortal } from 'react-dom'
 import AssistantPage from '@/app/assistant/page'
 import SettingsPage from '@/app/settings/page'
+import ClientNotesPanel from '@/components/dashboard/ClientNotesPanel'
 import { useUser } from '@/lib/contexts/UserContext'
 import { createClient } from '@/lib/supabase/client'
 import {
@@ -16236,6 +16237,10 @@ export default function DashboardShell({
             <i className="bx bxs-dashboard"></i>
             {!isSidebarCollapsed && 'Apresentação'}
           </button>
+          <button type="button" data-tooltip="Notas" aria-label="Notas" className={`nav-item nav-button ${activeTab === 'notas' ? 'active' : ''}`} onClick={() => setActiveTab('notas')}>
+            <i className="bx bx-note"></i>
+            {!isSidebarCollapsed && 'Notas'}
+          </button>
           <button type="button" data-tooltip="Controle da Operação" aria-label="Controle da Operação" className={`nav-item nav-button ${activeTab === 'semanal' ? 'active' : ''}`} onClick={() => setActiveTab('semanal')}>
             <i className="bx bx-pulse"></i>
             {!isSidebarCollapsed && 'Controle da Operação'}
@@ -16264,7 +16269,7 @@ export default function DashboardShell({
           </button>
         </nav>
 
-        {!isSidebarCollapsed && activeTab === 'apresentacao' && (
+        {!isSidebarCollapsed && (activeTab === 'apresentacao' || activeTab === 'notas') && (
           <div className="sidebar-client glass-item">
             <span className="sidebar-client-label">Cliente ativo</span>
             <strong>{activeClient?.name || 'Nenhum cliente selecionado'}</strong>
@@ -16320,6 +16325,7 @@ export default function DashboardShell({
                 {activeTab === 'campanhas' && 'Campanhas'}
                 {activeTab === 'anuncios' && 'Anúncios'}
                 {activeTab === 'saldos' && 'Saldos de Anúncios'}
+                {activeTab === 'notas' && 'Notas de Clientes'}
                 {activeTab === 'settings' && 'Settings'}
               </h1>
               {activeTab !== 'assistant' && (
@@ -16335,6 +16341,7 @@ export default function DashboardShell({
                   {activeTab === 'campanhas' && 'Veja campanhas, conjuntos e anúncios ativos por cliente, com investimento consolidado por período.'}
                   {activeTab === 'anuncios' && 'Veja os top 5 anúncios com investimento por cliente, por período e por gestor de resultado.'}
                   {activeTab === 'saldos' && 'Monitore saldo, cartão vinculado e valor pendente das contas de anúncio dos clientes.'}
+                  {activeTab === 'notas' && 'Registre observações, histórico e informações relevantes sobre cada cliente da carteira.'}
                   {activeTab === 'settings' && 'Ajuste integrações, IA, aparência, campos de clientes e estrutura operacional sem sair do domínio principal.'}
                 </p>
               )}
@@ -18193,6 +18200,19 @@ export default function DashboardShell({
                 </table>
               </div>
             </section>
+          </section>
+        )}
+
+        {activeTab === 'notas' && (
+          <section className="clients-layout simple-clients-layout">
+            {activeClient ? (
+              <ClientNotesPanel clientId={activeClient.id} clientName={activeClient.name} />
+            ) : (
+              <div className="empty-panel glass-panel">
+                <h3>Nenhum cliente selecionado</h3>
+                <p>Selecione um cliente na aba de Apresentação para ver e registrar notas.</p>
+              </div>
+            )}
           </section>
         )}
 
