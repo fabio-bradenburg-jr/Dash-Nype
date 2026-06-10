@@ -36570,6 +36570,21 @@ export default function DashboardShell({
           box-shadow: 0 18px 42px rgba(15, 23, 42, 0.06) !important;
         }
 
+        .dashboard-light-mode.dashboard-shell-stellar .management-header-row {
+          background:
+            linear-gradient(135deg, color-mix(in srgb, var(--button-primary, #26c281) 6%, transparent), transparent 38%),
+            linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.98)) !important;
+          border-color: var(--lumina-page-border) !important;
+        }
+
+        .dashboard-light-mode.dashboard-shell-stellar .management-header-copy h2 {
+          color: #1a1c1c !important;
+        }
+
+        .dashboard-light-mode.dashboard-shell-stellar .management-header-copy p {
+          color: #3d4a41 !important;
+        }
+
         .dashboard-light-mode.dashboard-shell-stellar .modal-overlay,
         .dashboard-light-mode.dashboard-shell-stellar .weekly-modal-overlay {
           background: rgba(15, 23, 42, 0.34) !important;
