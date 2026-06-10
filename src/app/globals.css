@@ -3657,3 +3657,107 @@ textarea:focus {
 [data-ui-mode='light'] .client-access-name { color: rgba(15,23,42,0.65); }
 [data-ui-mode='light'] .client-access-item.selected .client-access-name { color: #0f172a; }
 [data-ui-mode='light'] .client-access-check { color: rgba(15,23,42,0.2); }
+
+/* =========================================
+   Visual polish overrides — spacing, radius, scale
+   Applied on top of DashboardShell.js without
+   changing structure or tabs.
+   ========================================= */
+
+/* Sidebar — thinner, tighter */
+.dashboard-container .sidebar {
+    width: 220px !important;
+    padding: 16px 10px !important;
+}
+.dashboard-container .sidebar-top {
+    margin-bottom: 16px !important;
+    padding: 0 4px !important;
+}
+.dashboard-container .main-content {
+    margin-left: 220px !important;
+}
+.dashboard-container .main-content-expanded {
+    margin-left: 0 !important;
+}
+
+/* Nav items — tighter, smaller radius */
+.dashboard-container .sidebar :global(.nav-item) {
+    padding: 8px 10px !important;
+    border-radius: 10px !important;
+    font-size: 13px !important;
+    margin-bottom: 1px !important;
+}
+.dashboard-container .sidebar :global(.nav-item i) {
+    font-size: 17px !important;
+    min-width: 20px !important;
+}
+
+/* Panels — lighter shadow, tighter radius */
+.dashboard-shell-stellar .glass-panel,
+.dashboard-shell-stellar .glass-item,
+.dashboard-shell-stellar .kpi-card,
+.dashboard-shell-stellar .source-section,
+.dashboard-shell-stellar .chart-container,
+.dashboard-shell-stellar .ranking-card,
+.dashboard-shell-stellar .campaigns-section,
+.dashboard-shell-stellar .grouped-results {
+    border-radius: 16px !important;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.18) !important;
+}
+
+/* Hero/header panels */
+.dashboard-shell-stellar .hero-panel,
+.dashboard-shell-stellar .management-header-row,
+.dashboard-shell-stellar .home-hub-hero {
+    border-radius: 16px !important;
+}
+
+/* KPI cards — compact */
+.dashboard-shell-stellar .kpi-card {
+    padding: 14px 16px !important;
+}
+.dashboard-shell-stellar .kpi-card .kpi-label {
+    font-size: 10px !important;
+    letter-spacing: 0.12em !important;
+}
+.dashboard-shell-stellar .kpi-card .kpi-value {
+    font-size: 22px !important;
+}
+
+/* Page header — tighter */
+.dashboard-shell-stellar .page-title {
+    padding: 16px 20px !important;
+    border-radius: 14px !important;
+}
+.dashboard-shell-stellar .page-title h1 {
+    font-size: 20px !important;
+}
+
+/* Main content padding */
+.dashboard-shell-stellar .main-content {
+    padding: 16px 20px !important;
+}
+
+/* Modals — tighter radius */
+.dashboard-shell-stellar .modal-card,
+.dashboard-shell-stellar .simple-client-modal,
+.dashboard-shell-stellar .weekly-entry-modal {
+    border-radius: 20px !important;
+}
+
+/* Topbar — slimmer */
+.dashboard-shell-stellar .app-shell-topbar {
+    padding: 10px 18px !important;
+    min-height: unset !important;
+}
+
+/* Tables — tighter rows */
+.dashboard-shell-stellar .table-container td,
+.dashboard-shell-stellar .table-container th {
+    padding: 9px 12px !important;
+    font-size: 13px !important;
+}
+
+/* Scrollbar inside dashboard */
+.dashboard-container ::-webkit-scrollbar { width: 4px; height: 4px; }
+.dashboard-container ::-webkit-scrollbar-thumb { border-radius: 4px; }
