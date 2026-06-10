@@ -11,6 +11,15 @@ export default function RootLayout({ children }) {
   return (
     <html lang="pt-BR">
       <head>
+        {/* Cache-buster: runs before React, forces reload when build-version.txt changes */}
+        <script dangerouslySetInnerHTML={{ __html: `
+(function(){try{
+  var v="a5fac07";
+  var s=localStorage.getItem("_bv");
+  if(!s){localStorage.setItem("_bv",v);}
+  else if(s!==v){localStorage.setItem("_bv",v);window.location.reload(true);}
+}catch(e){}}())
+        `}} />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&display=swap" rel="stylesheet" />
