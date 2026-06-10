@@ -1,4 +1,5 @@
 import { UserProvider } from '@/lib/contexts/UserContext'
+import AppVersionWatcher from '@/components/AppVersionWatcher'
 import './globals.css'
 
 export const metadata = {
@@ -22,6 +23,7 @@ export default function RootLayout({ children }) {
       </head>
       <body className="font-sans antialiased">
         <UserProvider>
+          <AppVersionWatcher />
           {children}
         </UserProvider>
       </body>
