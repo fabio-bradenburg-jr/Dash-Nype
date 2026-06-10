@@ -1208,10 +1208,10 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
                     <button
                       key={`mobile-${item.label}`}
                       onClick={() => setActiveModule(item.key)}
-                      className={`flex items-center gap-2 rounded-2xl px-4 py-3 text-sm font-medium transition ${
+                      className={`flex items-center gap-2 rounded-2xl px-4 py-3 text-[13px] font-medium transition ${
                         active
-                          ? 'bg-[var(--saas-primary)] text-[var(--saas-button-text)] shadow-[0_12px_30px_rgba(15,23,42,0.12)]'
-                          : 'border border-slate-200 bg-white text-slate-700'
+                          ? 'bg-[var(--saas-primary)] text-white shadow-none'
+                          : 'border border-white/10 bg-white/[0.05] text-white/60'
                       }`}
                       type="button"
                     >
@@ -1225,32 +1225,37 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
           </div>
         </section>
 
-        <aside className={`relative sticky top-4 hidden h-[calc(100vh-2rem)] flex-none flex-col rounded-[34px] border border-white/10 bg-[linear-gradient(180deg,#070908,#121817)] py-7 text-white shadow-[0_30px_100px_rgba(2,6,23,0.36)] transition-all duration-300 lg:flex ${isSidebarCollapsed ? 'w-[92px] px-3' : 'w-[272px] px-6 xl:w-[292px]'}`}>
-          <div className={`mb-8 flex items-center ${isSidebarCollapsed ? 'justify-center' : 'gap-3'}`}>
-            <div className="grid h-12 w-12 place-items-center rounded-2xl bg-white/10 ring-1 ring-white/15">
+        <aside className={`relative sticky top-4 hidden h-[calc(100vh-2rem)] flex-none flex-col rounded-[24px] border border-white/[0.07] bg-[rgba(10,10,12,0.97)] py-6 text-white shadow-[0_24px_64px_rgba(0,0,0,0.5)] backdrop-blur-2xl transition-all duration-300 lg:flex ${isSidebarCollapsed ? 'w-[72px] px-3' : 'w-[252px] px-5'}`}>
+          {/* Logo */}
+          <div className={`flex items-center ${isSidebarCollapsed ? 'justify-center' : 'gap-3'} mb-7`}>
+            <div className="grid h-10 w-10 flex-none place-items-center rounded-[12px] bg-[var(--saas-primary)]">
               {currentTheme.logoUrl ? (
-                <img src={currentTheme.logoUrl} alt={`Logo ${currentTheme.appName || 'Assessoria LP'}`} className="h-full w-full rounded-2xl object-contain p-2" />
+                <img src={currentTheme.logoUrl} alt={`Logo ${currentTheme.appName || 'Assessoria LP'}`} className="h-full w-full rounded-[12px] object-contain p-1.5" />
               ) : (
                 <span className="brand-logo-mark saas-brand-logo-mark" aria-hidden="true"></span>
               )}
             </div>
             {!isSidebarCollapsed ? (
-            <div>
-              <p className="font-manrope text-lg font-extrabold">{currentTheme.appName || 'Assessoria LP'}</p>
-              <p className="text-xs uppercase tracking-[0.3em] text-white/50">{currentTheme.appSubtitle || 'Performance Hub'}</p>
-            </div>
+              <div className="min-w-0 flex-1">
+                <p className="font-manrope text-[15px] font-bold tracking-[-0.02em] text-white truncate">{currentTheme.appName || 'Assessoria LP'}</p>
+                <p className="text-[10px] uppercase tracking-[0.25em] text-white/40 mt-0.5">{currentTheme.appSubtitle || 'Performance Hub'}</p>
+              </div>
             ) : null}
             <button
               type="button"
               onClick={() => setIsSidebarCollapsed((current) => !current)}
-              className={`grid h-10 w-10 place-items-center rounded-2xl border border-white/10 bg-white/5 text-white/70 transition hover:bg-white/10 hover:text-white ${isSidebarCollapsed ? 'absolute right-0 top-1' : 'ml-auto'}`}
+              className={`grid h-7 w-7 flex-none place-items-center rounded-[8px] text-white/30 transition hover:bg-white/8 hover:text-white/70 ${isSidebarCollapsed ? '' : 'ml-auto'}`}
               aria-label={isSidebarCollapsed ? 'Expandir menu lateral' : 'Recolher menu lateral'}
-              title={isSidebarCollapsed ? 'Expandir menu lateral' : 'Recolher menu lateral'}
             >
-              <ChevronRight className={`h-4 w-4 transition-transform ${isSidebarCollapsed ? '' : 'rotate-180'}`} />
+              <ChevronRight className={`h-3.5 w-3.5 transition-transform ${isSidebarCollapsed ? '' : 'rotate-180'}`} />
             </button>
           </div>
-          <nav className="space-y-2">
+
+          {/* Separator */}
+          <div className="mb-5 h-px bg-white/[0.06]" />
+
+          {/* Navigation */}
+          <nav className="space-y-0.5">
             {navigation.map((item) => {
               const Icon = item.icon
               const active = item.key === activeModule
@@ -1258,49 +1263,49 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
                 <button
                   key={item.label}
                   onClick={() => setActiveModule(item.key)}
-                  className={`flex w-full items-center rounded-2xl py-3 text-left text-sm font-medium transition ${
+                  className={`flex w-full items-center rounded-[12px] py-2.5 text-left text-[13px] font-medium transition-all ${
                     active
-                      ? 'bg-white text-slate-950 shadow-[0_12px_30px_rgba(255,255,255,0.12)]'
-                      : 'text-white/70 hover:bg-white/10 hover:text-white'
-                  } ${isSidebarCollapsed ? 'justify-center px-0' : 'gap-3 px-4'}`}
+                      ? 'bg-[rgba(38,194,129,0.13)] text-[var(--saas-primary)]'
+                      : 'text-white/50 hover:bg-white/[0.06] hover:text-white/80'
+                  } ${isSidebarCollapsed ? 'justify-center px-0' : 'gap-3 px-3'}`}
                   type="button"
                   title={isSidebarCollapsed ? item.label : undefined}
                 >
-                  <Icon className="h-4 w-4" />
-                  {!isSidebarCollapsed ? item.label : null}
+                  <Icon className={`h-4 w-4 flex-none ${active ? 'text-[var(--saas-primary)]' : ''}`} />
+                  {!isSidebarCollapsed ? <span className="tracking-[-0.01em]">{item.label}</span> : null}
+                  {!isSidebarCollapsed && active ? <span className="ml-auto h-1.5 w-1.5 rounded-full bg-[var(--saas-primary)]" /> : null}
                 </button>
               )
             })}
           </nav>
-          <div className={`mt-auto rounded-[30px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.09),rgba(255,255,255,0.03))] ${isSidebarCollapsed ? 'p-3' : 'p-5'}`}>
-            <div className={`flex items-center ${isSidebarCollapsed ? 'justify-center' : 'gap-2'}`}>
-              <ShieldCheck className="h-4 w-4 text-emerald-300" />
-              {!isSidebarCollapsed ? <p className="text-sm font-semibold">Segurança multi-tenant</p> : null}
-            </div>
+
+          {/* Bottom actions */}
+          <div className="mt-auto space-y-1">
+            <div className="mb-3 h-px bg-white/[0.06]" />
             {!isSidebarCollapsed ? (
-              <p className="mt-2 text-sm leading-6 text-white/60">Cada usuário acessa somente os clientes, dashs e integrações vinculados ao próprio tenant.</p>
+              <div className="mb-3 px-3">
+                <p className="text-[11px] font-medium text-white/30 uppercase tracking-[0.15em]">
+                  {currentUserName || 'Usuário'}
+                </p>
+              </div>
             ) : null}
-          </div>
-          <div className={`mt-3 flex ${isSidebarCollapsed ? 'flex-col gap-2' : 'items-center gap-2'}`}>
             <button
               type="button"
               onClick={handleToggleColorMode}
               disabled={themeModeSaving}
-              className={`flex items-center rounded-2xl border border-white/10 bg-white/5 py-3 text-sm font-medium text-white/70 transition hover:bg-white/10 hover:text-white disabled:cursor-wait disabled:opacity-70 ${isSidebarCollapsed ? 'justify-center px-0' : 'flex-1 gap-3 px-4'}`}
+              className={`flex w-full items-center rounded-[12px] py-2.5 text-[13px] font-medium text-white/50 transition hover:bg-white/[0.06] hover:text-white/80 disabled:opacity-50 ${isSidebarCollapsed ? 'justify-center px-0' : 'gap-3 px-3'}`}
               title={currentTheme.darkMode ? 'Ativar modo claro' : 'Ativar modo escuro'}
-              aria-label={currentTheme.darkMode ? 'Ativar modo claro' : 'Ativar modo escuro'}
             >
-              {currentTheme.darkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+              {currentTheme.darkMode ? <Sun className="h-4 w-4 flex-none" /> : <Moon className="h-4 w-4 flex-none" />}
               {!isSidebarCollapsed ? (themeModeSaving ? 'Salvando...' : currentTheme.darkMode ? 'Modo claro' : 'Modo escuro') : null}
             </button>
             <button
               type="button"
               onClick={handleLogout}
-              className={`flex items-center rounded-2xl border border-white/10 bg-white/5 py-3 text-sm font-medium text-white/70 transition hover:bg-white/10 hover:text-white ${isSidebarCollapsed ? 'justify-center px-0' : 'gap-3 px-4'}`}
+              className={`flex w-full items-center rounded-[12px] py-2.5 text-[13px] font-medium text-white/50 transition hover:bg-white/[0.06] hover:text-white/80 ${isSidebarCollapsed ? 'justify-center px-0' : 'gap-3 px-3'}`}
               title="Sair"
-              aria-label="Sair"
             >
-              <LogOut className="h-4 w-4" />
+              <LogOut className="h-4 w-4 flex-none" />
               {!isSidebarCollapsed ? 'Sair' : null}
             </button>
           </div>
@@ -1308,15 +1313,15 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
 
         <main className="min-w-0 flex-1 space-y-6 pb-6">
           {!showDashs ? (
-          <section className={`relative overflow-hidden rounded-[28px] p-4 backdrop-blur-xl sm:rounded-[34px] sm:p-5 ${isDarkMode ? 'border border-white/10 bg-[linear-gradient(135deg,rgba(15,23,42,0.88),rgba(2,6,23,0.94))] shadow-[0_26px_80px_rgba(0,0,0,0.35)]' : 'border border-white/80 bg-[linear-gradient(135deg,rgba(255,255,255,0.92),rgba(248,250,252,0.76))] shadow-[0_26px_80px_rgba(15,23,42,0.08)]'}`}>
+          <section className={`relative overflow-hidden rounded-[28px] p-4 backdrop-blur-xl sm:rounded-[28px] sm:p-5 ${isDarkMode ? 'border border-white/[0.07] bg-[rgba(14,14,16,0.85)] shadow-[0_1px_0_rgba(255,255,255,0.05)_inset,0_20px_60px_rgba(0,0,0,0.3)]' : 'border border-black/[0.06] bg-white/90 shadow-[0_4px_24px_rgba(0,0,0,0.05)]'}`}>
             <div className="pointer-events-none absolute inset-y-0 right-0 hidden w-[38%] bg-[radial-gradient(circle_at_top,rgba(249,115,22,0.15),transparent_46%),radial-gradient(circle_at_bottom,rgba(15,118,110,0.18),transparent_42%)] lg:block" />
             <div className={`relative flex flex-col gap-6 ${showDashs ? 'xl:items-start xl:justify-end' : 'xl:flex-row xl:items-end xl:justify-between'}`}>
               {!showDashs ? (
               <div className="max-w-3xl">
-                <h1 className={`font-manrope text-3xl font-extrabold tracking-[-0.05em] sm:text-4xl md:text-5xl ${isDarkMode ? 'text-white' : 'text-slate-950'}`}>
+                <h1 className={`font-manrope text-[28px] font-bold leading-tight tracking-[-0.04em] sm:text-[34px] md:text-[40px] ${isDarkMode ? 'text-white' : 'text-slate-950'}`}>
                   {showOverview ? `Boas-vindas, ${currentUserName}` : currentModule.title}
                 </h1>
-                <p className={`mt-4 max-w-2xl text-base leading-7 ${isDarkMode ? 'text-white/65' : 'text-slate-600'}`}>
+                <p className={`mt-4 max-w-2xl text-[15px] leading-relaxed ${isDarkMode ? 'text-white/65' : 'text-slate-600'}`}>
                   {showOverview
                     ? 'Use a IA para consultar clientes, campanhas, dashs, integrações e arquivos vinculados.'
                     : currentModule.description}
@@ -1324,9 +1329,9 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
                 {showWorkspaceControls ? (
                 <div className="mt-6 flex flex-wrap gap-3">
                   {positiveMetrics.map((metric) => (
-                    <div key={metric.label} className={`rounded-2xl px-4 py-3 shadow-sm ${isDarkMode ? 'border border-white/10 bg-white/5' : 'border border-slate-200/80 bg-white/90'}`}>
-                      <p className={`text-xs font-semibold uppercase tracking-[0.22em] ${isDarkMode ? 'text-white/40' : 'text-slate-400'}`}>{metric.label}</p>
-                      <p className={`mt-2 font-manrope text-xl font-extrabold ${isDarkMode ? 'text-white' : 'text-slate-950'}`}>{formatValue(metric.value, metric.format)}</p>
+                    <div key={metric.label} className={`rounded-2xl px-4 py-3 shadow-sm ${isDarkMode ? 'border border-white/[0.07] bg-white/[0.04]' : 'border border-black/[0.06] bg-white/95'}`}>
+                      <p className={`text-[10px] font-medium uppercase tracking-[0.18em] ${isDarkMode ? 'text-white/40' : 'text-slate-400'}`}>{metric.label}</p>
+                      <p className={`mt-1.5 font-manrope text-[20px] font-bold tracking-[-0.02em] ${isDarkMode ? 'text-white' : 'text-slate-950'}`}>{formatValue(metric.value, metric.format)}</p>
                     </div>
                   ))}
                 </div>

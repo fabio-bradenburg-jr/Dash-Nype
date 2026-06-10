@@ -9,26 +9,26 @@
 :root {
     --saas-primary: #26c281;
     --saas-accent: #4fdf9b;
-    --saas-surface: #070908;
-    --saas-page-bg: #070908;
-    --saas-panel-bg: #121817;
-    --saas-text: #f1f1f1;
-    --saas-button-text: #06110c;
+    --saas-surface: #050506;
+    --saas-page-bg: #050506;
+    --saas-panel-bg: #0f0f10;
+    --saas-text: #f5f5f7;
+    --saas-button-text: #fff;
     --button-primary: var(--saas-primary);
-    --button-primary-hover: color-mix(in srgb, var(--button-primary) 86%, #0f172a 14%);
-    --button-primary-soft: color-mix(in srgb, var(--button-primary) 14%, transparent);
-    --button-primary-shadow: color-mix(in srgb, var(--button-primary) 28%, transparent);
+    --button-primary-hover: color-mix(in srgb, var(--button-primary) 86%, #000 14%);
+    --button-primary-soft: color-mix(in srgb, var(--button-primary) 12%, transparent);
+    --button-primary-shadow: color-mix(in srgb, var(--button-primary) 22%, transparent);
     /* Colors */
-    --bg-dark: var(--saas-page-bg);
-    --bg-panel: var(--saas-panel-bg);
-    --border-color: rgba(255, 255, 255, 0.08);
-    --text-primary: var(--saas-text);
-    --text-secondary: rgba(229, 229, 229, 0.68);
-    --text-muted: rgba(161, 161, 170, 0.56);
-    --shell-rail: #040404;
-    --shell-sidebar: rgba(9, 9, 10, 0.92);
-    --panel-shadow: 0 30px 80px rgba(0, 0, 0, 0.34);
-    
+    --bg-dark: #050506;
+    --bg-panel: #111113;
+    --border-color: rgba(255, 255, 255, 0.07);
+    --text-primary: #f5f5f7;
+    --text-secondary: rgba(245, 245, 247, 0.72);
+    --text-muted: rgba(245, 245, 247, 0.44);
+    --shell-rail: #030303;
+    --shell-sidebar: rgba(8, 8, 10, 0.95);
+    --panel-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), 0 1px 0 rgba(255,255,255,0.05) inset;
+
     /* Brand Colors */
     --meta-blue: var(--saas-primary);
     --accent-blue: var(--saas-primary);
@@ -36,43 +36,42 @@
     --accent-purple: #8b5cf6;
     --accent-cyan: var(--accent-blue);
     --accent-emerald: #4fdf9b;
-    --accent-orange: var(--saas-accent);
-    --accent-red: #ef4444;
-    --accent-gold: #fbbf24;
-    --accent-pink: #ec4899;
+    --accent-orange: #f97316;
+    --accent-red: #ff3b30;
+    --accent-gold: #ffd60a;
+    --accent-pink: #ff375f;
 
-    /* Glows */
-    --glow-blue: rgba(var(--accent-rgb), 0.2);
-    --accent-soft: rgba(var(--accent-rgb), 0.12);
-    --accent-muted: rgba(var(--accent-rgb), 0.2);
-    --accent-strong: rgba(var(--accent-rgb), 0.3);
-    --theme-surface: color-mix(in srgb, var(--saas-primary) 10%, transparent);
-    --glow-emerald: rgba(78, 222, 99, 0.14);
-    --app-bg-primary: rgba(255, 255, 255, 0.035);
-    --app-bg-secondary: rgba(255, 255, 255, 0.02);
-    --app-bg-tertiary: rgba(255, 255, 255, 0.03);
-    --app-bg-rgb: 78, 137, 255;
+    --glow-blue: rgba(38, 194, 129, 0.18);
+    --accent-soft: rgba(38, 194, 129, 0.1);
+    --accent-muted: rgba(38, 194, 129, 0.18);
+    --accent-strong: rgba(38, 194, 129, 0.28);
+    --theme-surface: color-mix(in srgb, var(--saas-primary) 8%, transparent);
+    --glow-emerald: rgba(79, 223, 155, 0.12);
+    --app-bg-primary: rgba(38, 194, 129, 0.04);
+    --app-bg-secondary: rgba(255, 255, 255, 0.015);
+    --app-bg-tertiary: rgba(255, 255, 255, 0.02);
+    --app-bg-rgb: 38, 194, 129;
 
-    /* Typography */
-    --font-family: 'Plus Jakarta Sans', sans-serif;
-    --font-family-headline: 'Manrope', sans-serif;
-    
+    /* Typography — Apple-style */
+    --font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --font-family-headline: 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;
+
     /* Layout */
-    --sidebar-width: 286px;
-    --panel-radius: 26px;
-    --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --sidebar-width: 260px;
+    --panel-radius: 20px;
+    --transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 :root[data-ui-mode='light'] {
-    --bg-dark: #f4f2fb;
-    --bg-panel: rgba(255, 255, 255, 0.96);
-    --border-color: rgba(15, 23, 42, 0.08);
-    --text-primary: #0f172a;
-    --text-secondary: #464555;
-    --text-muted: #767587;
-    --shell-rail: #e7e4f3;
-    --shell-sidebar: #faf8ff;
-    --panel-shadow: 0 18px 40px rgba(26, 27, 32, 0.06);
+    --bg-dark: #f2f2f7;
+    --bg-panel: rgba(255, 255, 255, 0.98);
+    --border-color: rgba(0, 0, 0, 0.07);
+    --text-primary: #1c1c1e;
+    --text-secondary: #3a3a3c;
+    --text-muted: #8e8e93;
+    --shell-rail: #e5e5ea;
+    --shell-sidebar: rgba(242, 242, 247, 0.97);
+    --panel-shadow: 0 4px 24px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
 * {
@@ -86,12 +85,11 @@ body {
     background-color: var(--bg-dark);
     color: var(--text-primary);
     overflow-x: hidden;
-    background-image: 
-        radial-gradient(circle at 0% 0%, var(--app-bg-primary) 0%, transparent 24%),
-        radial-gradient(circle at 100% 0%, var(--app-bg-secondary) 0%, transparent 26%),
-        radial-gradient(circle at 50% 100%, var(--app-bg-tertiary) 0%, transparent 30%),
-        linear-gradient(180deg, rgba(255, 255, 255, 0.018), rgba(255, 255, 255, 0)),
-        linear-gradient(180deg, color-mix(in srgb, var(--bg-dark) 94%, #000000) 0%, var(--bg-dark) 100%);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    background-image:
+        radial-gradient(ellipse at 0% 0%, rgba(38, 194, 129, 0.05) 0%, transparent 40%),
+        radial-gradient(ellipse at 100% 100%, rgba(38, 194, 129, 0.03) 0%, transparent 40%);
     background-attachment: fixed;
 }
 
@@ -101,26 +99,47 @@ body {
 
 :root[data-ui-mode='light'] body {
     background-image:
-        radial-gradient(circle at 0% 0%, rgba(var(--accent-rgb), 0.1) 0%, transparent 18%),
-        radial-gradient(circle at 100% 0%, rgba(var(--accent-rgb), 0.08) 0%, transparent 22%),
-        radial-gradient(circle at 50% 100%, rgba(var(--accent-rgb), 0.06) 0%, transparent 24%),
-        linear-gradient(180deg, var(--bg-dark) 0%, color-mix(in srgb, var(--bg-dark) 94%, #eef7f1) 100%);
+        radial-gradient(ellipse at 0% 0%, rgba(38, 194, 129, 0.06) 0%, transparent 35%),
+        radial-gradient(ellipse at 100% 100%, rgba(38, 194, 129, 0.04) 0%, transparent 35%);
 }
 
 /* Scrollbar */
 ::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+    width: 5px;
+    height: 5px;
 }
 ::-webkit-scrollbar-track {
     background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.08);
     border-radius: 10px;
 }
 ::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.16);
+}
+:root[data-ui-mode='light'] ::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.1);
+}
+:root[data-ui-mode='light'] ::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 0, 0, 0.18);
+}
+
+/* Apple-style glass panels */
+.apple-panel {
+    background: var(--bg-panel);
+    border: 1px solid var(--border-color);
+    border-radius: 18px;
+    box-shadow: var(--panel-shadow);
+}
+
+/* Apple-style card */
+.apple-card {
+    background: var(--bg-panel);
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    padding: 20px;
+    transition: var(--transition);
 }
 
 /* Glassmorphism Utilities */
