@@ -46,6 +46,7 @@ interface AssistantDashboardState {
     aiProvider?: string
     aiModel?: string
     aiAgents?: AiAgent[]
+    aiProviders?: Record<string, { apiKey?: string; model?: string; baseUrl?: string } | undefined>
   }
 }
 
