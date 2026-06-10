@@ -6,6 +6,7 @@ import { createPortal } from 'react-dom'
 import AssistantPage from '@/app/assistant/page'
 import SettingsPage from '@/app/settings/page'
 import ClientNotesPanel from '@/components/dashboard/ClientNotesPanel'
+import ReportsTab from '@/components/dashboard/ReportsTab'
 import { useUser } from '@/lib/contexts/UserContext'
 import { createClient } from '@/lib/supabase/client'
 import {
@@ -16285,6 +16286,10 @@ export default function DashboardShell({
               {!isSidebarCollapsed && 'Time'}
             </button>
           )}
+          <button type="button" data-tooltip="Relatórios" aria-label="Relatórios" className={`nav-item nav-button ${activeTab === 'relatorios' ? 'active' : ''}`} onClick={() => setActiveTab('relatorios')}>
+            <i className="bx bx-file"></i>
+            {!isSidebarCollapsed && 'Relatórios'}
+          </button>
           <button type="button" data-tooltip="Configurações" aria-label="Configurações" className={"nav-item nav-button " + (activeTab === "settings" ? "active" : "")} onClick={() => setActiveTab('settings')}>
             <i className="bx bx-cog"></i>
             {!isSidebarCollapsed && 'Configurações'}
@@ -18226,7 +18231,7 @@ export default function DashboardShell({
         )}
 
         {activeTab === 'notas' && (
-          <section className="clients-layout simple-clients-layout">
+          <section style={{ padding: '24px', maxWidth: 900 }}>
             {activeClient ? (
               <ClientNotesPanel clientId={activeClient.id} clientName={activeClient.name} />
             ) : (
@@ -18235,6 +18240,12 @@ export default function DashboardShell({
                 <p>Selecione um cliente na aba de Apresentação para ver e registrar notas.</p>
               </div>
             )}
+          </section>
+        )}
+
+        {activeTab === 'relatorios' && (
+          <section style={{ padding: '24px' }}>
+            <ReportsTab clients={clients} />
           </section>
         )}
 
