@@ -3467,6 +3467,8 @@ export default function DashboardShell({
   const [isMetaStructureReady, setIsMetaStructureReady] = useState(false)
   const [isSavingIntegrations, setIsSavingIntegrations] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
+  const [isSavingReport, setIsSavingReport] = useState(false)
+  const [savedReportSuccess, setSavedReportSuccess] = useState(false)
   const [isAiInsightsModalOpen, setIsAiInsightsModalOpen] = useState(false)
   const [isAiInsightsLoading, setIsAiInsightsLoading] = useState(false)
   const [aiInsightsError, setAiInsightsError] = useState('')
@@ -14053,12 +14055,20 @@ export default function DashboardShell({
           drawClientCrmFunnel()
         }
 
+        if (format === 'client-pdf-save') {
+          return pdf.output('blob')
+        }
         pdf.save(`${dashboardExportFileName}-cliente.pdf`)
       }
 
       if (format === 'client-pdf') {
         await drawClientPdf()
         return
+      }
+
+      if (format === 'client-pdf-save') {
+        const blob = await drawClientPdf()
+        return blob
       }
 
       const groupedRows = dashboardExportRows.reduce((accumulator, row) => {
@@ -14117,6 +14127,37 @@ export default function DashboardShell({
     selectedMetaCampaignTableColumns,
     visibleMetaConversionGroups,
   ])
+  const handleSaveReport = useCallback(async () => {
+    if (!dashboardExportRows.length) {
+      window.alert('Nenhum dado encontrado para exportar no dashboard atual.')
+      return
+    }
+    setIsSavingReport(true)
+    setSavedReportSuccess(false)
+    try {
+      const blob = await handleExportDashboard('client-pdf-save')
+      if (!blob) throw new Error('Não foi possível gerar o PDF.')
+      const periodLabel = getDatePresetLabel(dateRange, customSince, customUntil)
+      const formData = new FormData()
+      formData.append('file', blob, `${dashboardExportFileName}-cliente.pdf`)
+      formData.append('clientId', activeClient?.id || '')
+      formData.append('clientName', activeClient?.name || '')
+      formData.append('reportType', 'client-pdf')
+      formData.append('periodLabel', periodLabel)
+      formData.append('periodSince', customSince || '')
+      formData.append('periodUntil', customUntil || '')
+      const res = await fetch('/api/reports', { method: 'POST', body: formData })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error || 'Erro ao salvar relatório.')
+      setSavedReportSuccess(true)
+      setTimeout(() => setSavedReportSuccess(false), 2000)
+    } catch (err) {
+      console.error('Erro ao salvar relatório', err)
+      window.alert(`Não foi possível salvar o relatório: ${err.message}`)
+    } finally {
+      setIsSavingReport(false)
+    }
+  }, [activeClient, customSince, customUntil, dashboardExportFileName, dashboardExportRows, dateRange, handleExportDashboard])
   const userFirstName = (profile?.full_name || user?.user_metadata?.full_name || user?.email || 'por aí').split(' ')[0]
   const currentHour = new Date().getHours()
   const assistantGreeting =
@@ -16398,6 +16439,16 @@ export default function DashboardShell({
                 <button type="button" onClick={() => handleExportDashboard('pdf')} disabled={isExporting || !dashboardExportRows.length} className="btn btn-secondary">
                   <i className={isExporting ? 'bx bx-loader-alt bx-spin' : 'bx bx-file-blank'}></i>
                   PDF interno
+                </button>
+
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  onClick={handleSaveReport}
+                  disabled={isSavingReport || isExporting || !dashboardExportRows.length}
+                >
+                  <i className={isSavingReport ? 'bx bx-loader-alt bx-spin' : savedReportSuccess ? 'bx bx-check' : 'bx bx-cloud-upload'}></i>
+                  {isSavingReport ? 'Salvando...' : savedReportSuccess ? 'Salvo' : 'Salvar relatório'}
                 </button>
               </>
             )}

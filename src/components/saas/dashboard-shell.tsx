@@ -16,12 +16,13 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
-import { Building2, ChevronRight, Cpu, LayoutDashboard, LineChart, LogOut, Moon, Settings2, ShieldCheck, Sparkles, Sun, Users } from 'lucide-react'
+import { Building2, ChevronRight, Cpu, FileText, LayoutDashboard, LineChart, LogOut, Moon, Settings2, ShieldCheck, Sparkles, Sun, Users } from 'lucide-react'
 
 import { AiAssistantPanel } from '@/components/saas/ai-assistant-panel'
 import { AiIntegrationPanel } from '@/components/saas/ai-integration-panel'
 import { ThemePanel } from '@/components/saas/theme-panel'
 import LegacyDashboardShell from '@/components/dashboard/DashboardShell'
+import ReportsTab from '@/components/dashboard/ReportsTab'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -35,6 +36,7 @@ const navigation = [
   { key: 'overview', label: 'Visão geral', icon: Cpu },
   { key: 'dashs', label: 'Dashs', icon: LayoutDashboard },
   { key: 'clients', label: 'Clientes', icon: Users },
+  { key: 'relatorios', label: 'Relatórios', icon: FileText },
   { key: 'settings', label: 'Configurações', icon: Settings2 },
 ] as const
 
@@ -67,6 +69,10 @@ const moduleCopy: Record<NavigationKey, { title: string; description: string }> 
   clients: {
     title: 'Gestão de clientes',
     description: 'Carteira, perfil do cliente, integrações, fontes de conhecimento e criação de novos clientes.',
+  },
+  relatorios: {
+    title: 'Relatórios salvos',
+    description: 'PDFs gerados e salvos para clientes, organizados por período.',
   },
   settings: {
     title: 'Configurações',
@@ -524,6 +530,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
   const showOverview = activeModule === 'overview'
   const showDashs = activeModule === 'dashs'
   const showClients = activeModule === 'clients'
+  const showRelatorios = activeModule === 'relatorios'
   const showSettings = activeModule === 'settings'
   const showWorkspaceControls = activeModule !== 'overview' && activeModule !== 'settings'
   const isDarkMode = currentTheme.darkMode
@@ -1960,6 +1967,12 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
                 )}
               </CardContent>
             </Card>
+          </section>
+          ) : null}
+
+          {showRelatorios ? (
+          <section>
+            <ReportsTab clients={snapshot.clients} />
           </section>
           ) : null}
         </main>
