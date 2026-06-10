@@ -41,3 +41,4 @@ apps/backend/.venv/
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+.claude/
