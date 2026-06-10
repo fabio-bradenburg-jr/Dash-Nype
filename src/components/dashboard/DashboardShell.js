@@ -1493,26 +1493,6 @@ const CLIENT_INTEGRATION_GROUPS = [
     ],
   },
   {
-    title: 'RD Station',
-    icon: 'bx-signal-5',
-    accent: '#14b8a6',
-    description: 'Separe a operação de automação e CRM do RD Station por cliente.',
-    fields: [
-      { name: 'rdStationToken', label: 'Chave / credencial', placeholder: 'Token do RD Station', storage: 'integrations', type: 'password' },
-      { name: 'rdStationAccountId', label: 'Conta / pipeline do cliente', placeholder: 'Conta, funil ou ID do RD', storage: 'client', type: 'text' },
-    ],
-  },
-  {
-    title: 'Salesforce',
-    icon: 'bx-cloud',
-    accent: '#60a5fa',
-    description: 'Mapeie a conta do Salesforce usada na jornada desse cliente.',
-    fields: [
-      { name: 'salesforceToken', label: 'Chave / credencial', placeholder: 'Token ou access token', storage: 'integrations', type: 'password' },
-      { name: 'salesforceAccountId', label: 'Conta / org do cliente', placeholder: 'Org ID, pipeline ou referência', storage: 'client', type: 'text' },
-    ],
-  },
-  {
     title: 'Agendor',
     icon: 'bx-briefcase-alt-2',
     accent: '#f97316',
@@ -16264,7 +16244,7 @@ export default function DashboardShell({
             <div className="nav-sub-group">
               <button type="button" className={`nav-item nav-button nav-sub-item ${activeTab === 'apresentacao' ? 'active' : ''}`} onClick={() => setActiveTab('apresentacao')}>
                 <i className="bx bxs-dashboard"></i>
-                {!isSidebarCollapsed && 'Apresentação'}
+                {!isSidebarCollapsed && 'Dash'}
               </button>
               <button type="button" className={`nav-item nav-button nav-sub-item ${activeTab === 'campanhas' ? 'active' : ''}`} onClick={() => setActiveTab('campanhas')}>
                 <i className="bx bx-sitemap"></i>
@@ -16354,6 +16334,7 @@ export default function DashboardShell({
                 {activeTab === 'anuncios' && 'Anúncios'}
                 {activeTab === 'saldos' && 'Saldos de Anúncios'}
                 {activeTab === 'notas' && 'Notas de Clientes'}
+                {activeTab === 'relatorios' && 'Relatórios Salvos'}
                 {activeTab === 'settings' && 'Settings'}
               </h1>
               {activeTab !== 'assistant' && (
@@ -16370,6 +16351,7 @@ export default function DashboardShell({
                   {activeTab === 'anuncios' && 'Veja os top 5 anúncios com investimento por cliente, por período e por gestor de resultado.'}
                   {activeTab === 'saldos' && 'Monitore saldo, cartão vinculado e valor pendente das contas de anúncio dos clientes.'}
                   {activeTab === 'notas' && 'Registre observações, histórico e informações relevantes sobre cada cliente da carteira.'}
+                  {activeTab === 'relatorios' && 'Acesse e baixe os relatórios PDF gerados para cada cliente.'}
                   {activeTab === 'settings' && 'Ajuste integrações, IA, aparência, campos de clientes e estrutura operacional sem sair do domínio principal.'}
                 </p>
               )}
@@ -22481,6 +22463,7 @@ export default function DashboardShell({
           box-shadow: 18px 0 36px rgba(20, 90, 50, 0.06);
         }
 
+        .dashboard-light-mode:not([data-active-tab='apresentacao']) .sidebar-toggle,
         .dashboard-light-mode:not([data-active-tab='apresentacao']) .logo,
         .dashboard-light-mode:not([data-active-tab='apresentacao']) .operation-stellar-search,
         .dashboard-light-mode:not([data-active-tab='apresentacao']) .operation-stellar-icon-button,

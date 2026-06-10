@@ -29,7 +29,6 @@ export default function ClientNotesPanel({ clientId: initialClientId, clientName
   const [activeClientId, setActiveClientId] = useState(initialClientId || null)
   const [activeClientName, setActiveClientName] = useState(initialClientName || null)
 
-  const [filter, setFilter] = useState('mine') // 'all' | 'mine'
   const [notes, setNotes] = useState([])
   const [isLoading, setIsLoading] = useState(false)
   const [selectedId, setSelectedId] = useState(null)
@@ -64,7 +63,7 @@ export default function ClientNotesPanel({ clientId: initialClientId, clientName
     setEditorContent('')
     isNew.current = false
 
-    const fetchUrl = `/api/clients/${activeClientId}/notes${filter === 'mine' ? '?mine=true' : ''}`
+    const fetchUrl = `/api/clients/${activeClientId}/notes?mine=true`
     fetch(fetchUrl)
       .then((r) => r.json())
       .then((data) => {
@@ -80,7 +79,7 @@ export default function ClientNotesPanel({ clientId: initialClientId, clientName
       .finally(() => { if (!cancelled) setIsLoading(false) })
 
     return () => { cancelled = true }
-  }, [activeClientId, filter])
+  }, [activeClientId])
 
   function handleClientChange(e) {
     const id = e.target.value
@@ -196,17 +195,6 @@ export default function ClientNotesPanel({ clientId: initialClientId, clientName
           >
             <i className="bx bx-edit-alt"></i>
           </button>
-        </div>
-
-        <div className="ios-notes-filter-bar">
-          <button
-            className={`ios-notes-filter-btn ${filter === 'mine' ? 'active' : ''}`}
-            onClick={() => setFilter('mine')}
-          >Minhas</button>
-          <button
-            className={`ios-notes-filter-btn ${filter === 'all' ? 'active' : ''}`}
-            onClick={() => setFilter('all')}
-          >Todas</button>
         </div>
 
         {!activeClientId ? (
