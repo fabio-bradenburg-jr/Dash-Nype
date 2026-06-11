@@ -2,8 +2,8 @@ import type { ThemeMode, ThemeSettings } from '@/lib/saas/types'
 
 export const LP_DARK_THEME = {
   mode: 'dark',
-  primaryColor: '#26c281',
-  accentColor: '#4fdf9b',
+  primaryColor: '#e53935',
+  accentColor: '#ef5350',
   backgroundColor: '#070908',
   panelColor: '#121817',
   textColor: '#f1f1f1',

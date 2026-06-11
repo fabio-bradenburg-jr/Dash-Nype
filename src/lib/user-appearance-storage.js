@@ -2,14 +2,14 @@ export const USER_APPEARANCE_KEY_PREFIX = 'nype-user-appearance'
 
 export const DEFAULT_USER_APPEARANCE = {
   mode: 'dark',
-  accent: '#26c281',
+  accent: '#e53935',
   backgroundTint: '#070908',
   panelColor: '#121817',
   textColor: '#f1f1f1',
 }
 
 export const USER_APPEARANCE_PRESETS = [
-  { label: 'Assessoria LP', value: '#26c281' },
+  { label: 'Nype', value: '#e53935' },
   { label: 'Azul', value: '#3b82f6' },
   { label: 'Esmeralda', value: '#10b981' },
   { label: 'Laranja', value: '#f59e0b' },

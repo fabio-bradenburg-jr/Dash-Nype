@@ -7,8 +7,8 @@
    ========================================= */
 
 :root {
-    --saas-primary: #26c281;
-    --saas-accent: #4fdf9b;
+    --saas-primary: #e53935;
+    --saas-accent: #ef5350;
     --saas-surface: #070908;
     --saas-page-bg: #070908;
     --saas-panel-bg: #121817;
@@ -32,10 +32,10 @@
     /* Brand Colors */
     --meta-blue: var(--saas-primary);
     --accent-blue: var(--saas-primary);
-    --accent-rgb: 38, 194, 129;
+    --accent-rgb: 229, 57, 53;
     --accent-purple: #8b5cf6;
     --accent-cyan: var(--accent-blue);
-    --accent-emerald: #4fdf9b;
+    --accent-emerald: #ef5350;
     --accent-orange: var(--saas-accent);
     --accent-red: #ef4444;
     --accent-gold: #fbbf24;
