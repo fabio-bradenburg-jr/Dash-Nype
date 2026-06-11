@@ -348,8 +348,8 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
     agendorAccountIds: [] as string[],
     agendorQualifiedStageIds: [] as string[],
     manualCrm: createEmptyManualCrmForm(),
-    dashboardButtonColor: currentTheme.primaryColor || '#26c281',
-    dashboardAccentColor: currentTheme.accentColor || '#4fdf9b',
+    dashboardButtonColor: currentTheme.primaryColor || '#e53935',
+    dashboardAccentColor: currentTheme.accentColor || '#ef5350',
     logoUrl: '',
   })
   const [clientAgendorOptions, setClientAgendorOptions] = useState<AgendorPipelineOption[]>([])
@@ -412,8 +412,8 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
         company: client.company,
         dashboardEnabled: true,
         operationEnabled: false,
-        dashboardColor: String(dashboardTheme.buttonColor || businessData.dashboardButtonColor || currentTheme.primaryColor || '#26c281'),
-        dashboardAccentColor: String(dashboardTheme.accentColor || businessData.dashboardAccentColor || currentTheme.accentColor || '#4fdf9b'),
+        dashboardColor: String(dashboardTheme.buttonColor || businessData.dashboardButtonColor || currentTheme.primaryColor || '#e53935'),
+        dashboardAccentColor: String(dashboardTheme.accentColor || businessData.dashboardAccentColor || currentTheme.accentColor || '#ef5350'),
         logoUrl: String(businessData.logoUrl || ''),
         dashboardVisibleIntegrationKeys: ['meta_ads', 'rd_station'],
         metaAdAccountId: metaIntegration?.external_account_id || String(businessData.metaAdAccountId || ''),

@@ -13,8 +13,8 @@ export const LP_DARK_THEME = {
 
 export const LP_LIGHT_THEME = {
   mode: 'light',
-  primaryColor: '#006c44',
-  accentColor: '#26c281',
+  primaryColor: '#c62828',
+  accentColor: '#e53935',
   backgroundColor: '#f7faf8',
   panelColor: '#ffffff',
   textColor: '#17201c',

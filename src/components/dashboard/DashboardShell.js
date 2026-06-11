@@ -3537,7 +3537,7 @@ export default function DashboardShell({
   )
   const appAccentColor = externalAppAccent
     || effectiveWorkspaceBranding.accentColor
-    || (appearance?.mode === 'custom' ? appearance?.accent : '#26c281')
+    || (appearance?.mode === 'custom' ? appearance?.accent : '#e53935')
     || currentTheme.main
   const appBackgroundTintHex = externalAppBackground
     || effectiveWorkspaceBranding.backgroundColor
@@ -13520,7 +13520,7 @@ export default function DashboardShell({
       const pageWidth = pdf.internal.pageSize.getWidth()
       const pageHeight = pdf.internal.pageSize.getHeight()
       const margin = 32
-      const brandGreen = '#26c281'
+      const brandGreen = '#e53935'
       const pageBackground = '#f8fafc'
       const panelBorder = '#dbe7df'
       const cardBorder = '#e2e8f0'
@@ -13531,8 +13531,8 @@ export default function DashboardShell({
       const cardWidth = (pageWidth - margin * 2 - cardGap * (cardColumns - 1)) / cardColumns
       const cardHeight = 76
       let cursorY = 34
-      const logoGreen = '#26c281'
-      const deepGreen = '#006c44'
+      const logoGreen = '#e53935'
+      const deepGreen = '#c62828'
 
       const hexToRgb = (hex) => {
         const sanitized = String(hex || '').replace('#', '')
@@ -22267,9 +22267,9 @@ export default function DashboardShell({
         }
 
         .dashboard-container:not([data-active-tab='apresentacao']) .operation-stellar-user-avatar {
-          background: linear-gradient(135deg, #006c44, #26c281) !important;
+          background: linear-gradient(135deg, var(--button-primary, #e53935), color-mix(in srgb, var(--button-primary, #e53935) 70%, #ffffff)) !important;
           color: #ffffff !important;
-          border-color: rgba(38, 194, 129, 0.4) !important;
+          border-color: rgba(var(--accent-rgb, 229, 57, 53), 0.4) !important;
         }
 
         .dashboard-container:not([data-active-tab='apresentacao']) .header {
@@ -22357,10 +22357,10 @@ export default function DashboardShell({
         }
 
         .dashboard-container:not([data-active-tab='apresentacao']) .btn-primary {
-          border-color: rgba(38, 194, 129, 0.32);
-          background: linear-gradient(135deg, #006c44 0%, #26c281 100%) !important;
+          border-color: rgba(var(--accent-rgb, 229, 57, 53), 0.32);
+          background: linear-gradient(135deg, color-mix(in srgb, var(--button-primary, #e53935) 70%, #000) 0%, var(--button-primary, #e53935) 100%) !important;
           color: #ffffff !important;
-          box-shadow: 0 14px 30px rgba(38, 194, 129, 0.16);
+          box-shadow: 0 14px 30px rgba(var(--accent-rgb, 229, 57, 53), 0.16);
         }
 
         .dashboard-container:not([data-active-tab='apresentacao']) .btn-secondary,
@@ -22435,8 +22435,8 @@ export default function DashboardShell({
 
         .dashboard-container:not([data-active-tab='apresentacao']) .simple-client-icon.active {
           color: #ffffff;
-          border-color: rgba(38, 194, 129, 0.38);
-          background: linear-gradient(135deg, #006c44, #26c281);
+          border-color: rgba(var(--accent-rgb, 229, 57, 53), 0.38);
+          background: linear-gradient(135deg, color-mix(in srgb, var(--button-primary, #e53935) 70%, #000), var(--button-primary, #e53935));
         }
 
         .dashboard-container:not([data-active-tab='apresentacao']) .modal-overlay {
@@ -22514,9 +22514,9 @@ export default function DashboardShell({
         .dashboard-light-mode:not([data-active-tab='apresentacao']) .sidebar :global(.nav-item.active),
         .dashboard-light-mode:not([data-active-tab='apresentacao']) .sidebar :global(.nav-item:hover) {
           color: #1a1c1c;
-          border-color: color-mix(in srgb, #006c44 28%, #bbcabe);
-          background: color-mix(in srgb, #26c281 10%, #ffffff);
-          box-shadow: inset 3px 0 0 #006c44;
+          border-color: color-mix(in srgb, var(--button-primary, #e53935) 28%, #bbcabe);
+          background: color-mix(in srgb, var(--button-primary, #e53935) 10%, #ffffff);
+          box-shadow: inset 3px 0 0 var(--button-primary, #e53935);
         }
 
         .dashboard-light-mode:not([data-active-tab='apresentacao']) input,
@@ -31782,7 +31782,7 @@ export default function DashboardShell({
           justify-content: space-between;
           gap: 24px;
           background:
-            radial-gradient(circle at top right, rgba(38, 194, 129, 0.14), transparent 36%),
+            radial-gradient(circle at top right, rgba(var(--accent-rgb, 229, 57, 53), 0.14), transparent 36%),
             linear-gradient(135deg, rgba(13, 17, 16, 0.96), rgba(7, 9, 8, 0.92));
         }
 
@@ -31823,7 +31823,7 @@ export default function DashboardShell({
           padding: 0 16px;
           border-radius: 999px;
           border: 1px solid rgba(129, 216, 167, 0.24);
-          background: rgba(38, 194, 129, 0.08);
+          background: rgba(var(--accent-rgb, 229, 57, 53), 0.08);
           color: var(--text-secondary);
           font-weight: 700;
         }
@@ -31919,7 +31919,7 @@ export default function DashboardShell({
         }
 
         .ads-overview-client-toggle:hover {
-          background: rgba(38, 194, 129, 0.055);
+          background: rgba(var(--accent-rgb, 229, 57, 53), 0.055);
         }
 
         .ads-overview-client-identity {
@@ -31938,7 +31938,7 @@ export default function DashboardShell({
           flex: 0 0 auto;
           overflow: hidden;
           border: 1px solid rgba(129, 216, 167, 0.28);
-          background: rgba(38, 194, 129, 0.12);
+          background: rgba(var(--accent-rgb, 229, 57, 53), 0.12);
           color: var(--accent-blue);
           font-size: 24px;
         }
@@ -32034,7 +32034,7 @@ export default function DashboardShell({
         .ads-overview-ad-row:hover {
           transform: translateY(-1px);
           border-color: rgba(129, 216, 167, 0.32);
-          background: rgba(38, 194, 129, 0.06);
+          background: rgba(var(--accent-rgb, 229, 57, 53), 0.06);
         }
 
         .ads-overview-ad-rank {
@@ -32043,7 +32043,7 @@ export default function DashboardShell({
           border-radius: 999px;
           display: grid;
           place-items: center;
-          background: rgba(38, 194, 129, 0.12);
+          background: rgba(var(--accent-rgb, 229, 57, 53), 0.12);
           color: var(--accent-blue);
           font-weight: 900;
         }
@@ -32150,7 +32150,7 @@ export default function DashboardShell({
           display: grid;
           gap: 4px;
           border: 1px solid rgba(129, 216, 167, 0.18);
-          background: rgba(38, 194, 129, 0.055);
+          background: rgba(var(--accent-rgb, 229, 57, 53), 0.055);
         }
 
         .campaign-overview-total-pill small,
@@ -32197,7 +32197,7 @@ export default function DashboardShell({
           padding: 14px 16px;
           border-radius: 18px;
           background:
-            linear-gradient(90deg, rgba(38, 194, 129, 0.095), rgba(255, 255, 255, 0.018)),
+            linear-gradient(90deg, rgba(var(--accent-rgb, 229, 57, 53), 0.095), rgba(255, 255, 255, 0.018)),
             rgba(255, 255, 255, 0.026);
           cursor: pointer;
           transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
@@ -32212,7 +32212,7 @@ export default function DashboardShell({
         .campaign-overview-adset-row:hover {
           transform: translateY(-1px);
           border-color: rgba(129, 216, 167, 0.34);
-          background: rgba(38, 194, 129, 0.07);
+          background: rgba(var(--accent-rgb, 229, 57, 53), 0.07);
         }
 
         .campaign-overview-row-title {
@@ -32255,7 +32255,7 @@ export default function DashboardShell({
           display: grid;
           place-items: center;
           border: 1px solid rgba(129, 216, 167, 0.18);
-          background: rgba(38, 194, 129, 0.08);
+          background: rgba(var(--accent-rgb, 229, 57, 53), 0.08);
           color: var(--accent-blue);
           font-size: 18px;
         }
@@ -32296,7 +32296,7 @@ export default function DashboardShell({
         .dashboard-light-mode:not([data-active-tab='apresentacao']) .ads-overview-hero,
         :root[data-ui-mode='light'] .ads-overview-hero {
           background:
-            radial-gradient(circle at top right, rgba(38, 194, 129, 0.12), transparent 38%),
+            radial-gradient(circle at top right, rgba(var(--accent-rgb, 229, 57, 53), 0.12), transparent 38%),
             linear-gradient(135deg, #ffffff, #f7fbf9);
         }
 
@@ -32336,7 +32336,7 @@ export default function DashboardShell({
         .dashboard-light-mode:not([data-active-tab='apresentacao']) .campaign-overview-campaign-row,
         :root[data-ui-mode='light'] .campaign-overview-campaign-row {
           background:
-            linear-gradient(90deg, rgba(38, 194, 129, 0.08), rgba(255, 255, 255, 0)),
+            linear-gradient(90deg, rgba(var(--accent-rgb, 229, 57, 53), 0.08), rgba(255, 255, 255, 0)),
             #ffffff;
         }
 
@@ -35181,7 +35181,7 @@ export default function DashboardShell({
         .dashboard-light-mode .modal-card,
         .dashboard-light-mode .simple-client-modal {
           background:
-            linear-gradient(145deg, color-mix(in srgb, var(--weekly-accent, var(--button-primary, #006c44)) 6%, #ffffff), rgba(255, 255, 255, 0.98) 36%),
+            linear-gradient(145deg, color-mix(in srgb, var(--weekly-accent, var(--button-primary, #e53935)) 6%, #ffffff), rgba(255, 255, 255, 0.98) 36%),
             #ffffff !important;
           border-color: rgba(15, 23, 42, 0.1) !important;
           color: #0f172a !important;
@@ -36084,9 +36084,9 @@ export default function DashboardShell({
 
         .simple-team-list .integration-status-icon.active {
           color: #f1f1f1;
-          background: linear-gradient(135deg, #006c44, #26c281);
-          border-color: rgba(38, 194, 129, 0.42);
-          box-shadow: 0 10px 24px rgba(38, 194, 129, 0.12);
+          background: linear-gradient(135deg, color-mix(in srgb, var(--button-primary, #e53935) 70%, #000), var(--button-primary, #e53935));
+          border-color: rgba(var(--accent-rgb, 229, 57, 53), 0.42);
+          box-shadow: 0 10px 24px rgba(var(--accent-rgb, 229, 57, 53), 0.12);
         }
 
         .simple-team-card .empty-panel {
@@ -36119,7 +36119,7 @@ export default function DashboardShell({
 
         :root[data-ui-mode='light'] .simple-team-layout .management-hero-kicker,
         :root[data-ui-mode='light'] .simple-team-layout .management-card-kicker {
-          color: #006c44 !important;
+          color: var(--button-primary, #e53935) !important;
         }
 
         :root[data-ui-mode='light'] .simple-team-layout .management-hero h2,
@@ -36164,9 +36164,9 @@ export default function DashboardShell({
         }
 
         :root[data-ui-mode='light'] .simple-team-list .simple-client-avatar {
-          background: color-mix(in srgb, #26c281 12%, #ffffff) !important;
-          border-color: color-mix(in srgb, #006c44 24%, #bbcabe) !important;
-          color: #006c44 !important;
+          background: color-mix(in srgb, var(--button-primary, #e53935) 12%, #ffffff) !important;
+          border-color: color-mix(in srgb, var(--button-primary, #e53935) 24%, #bbcabe) !important;
+          color: var(--button-primary, #e53935) !important;
         }
 
         :root[data-ui-mode='light'] .simple-team-list .integration-status-icon {
@@ -36176,9 +36176,9 @@ export default function DashboardShell({
         }
 
         :root[data-ui-mode='light'] .simple-team-list .integration-status-icon.active {
-          background: linear-gradient(135deg, #006c44, #26c281) !important;
+          background: linear-gradient(135deg, color-mix(in srgb, var(--button-primary, #e53935) 70%, #000), var(--button-primary, #e53935)) !important;
           color: #ffffff !important;
-          border-color: rgba(0, 108, 68, 0.34) !important;
+          border-color: rgba(var(--accent-rgb, 229, 57, 53), 0.34) !important;
         }
 
         @media (max-width: 1100px) {

@@ -43,16 +43,16 @@
     --accent-gold: #ffd60a;
     --accent-pink: #ff375f;
 
-    --glow-blue: rgba(38, 194, 129, 0.18);
-    --accent-soft: rgba(38, 194, 129, 0.1);
-    --accent-muted: rgba(38, 194, 129, 0.18);
-    --accent-strong: rgba(38, 194, 129, 0.28);
+    --glow-blue: rgba(var(--accent-rgb), 0.18);
+    --accent-soft: rgba(var(--accent-rgb), 0.1);
+    --accent-muted: rgba(var(--accent-rgb), 0.18);
+    --accent-strong: rgba(var(--accent-rgb), 0.28);
     --theme-surface: color-mix(in srgb, var(--saas-primary) 8%, transparent);
-    --glow-emerald: rgba(79, 223, 155, 0.12);
-    --app-bg-primary: rgba(38, 194, 129, 0.04);
+    --glow-emerald: rgba(var(--accent-rgb), 0.12);
+    --app-bg-primary: rgba(var(--accent-rgb), 0.04);
     --app-bg-secondary: rgba(255, 255, 255, 0.015);
     --app-bg-tertiary: rgba(255, 255, 255, 0.02);
-    --app-bg-rgb: 38, 194, 129;
+    --app-bg-rgb: var(--accent-rgb);
 
     /* Typography — Apple-style */
     --font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -475,9 +475,9 @@ body {
 }
 
 .workspace-logo-mark {
-    background: color-mix(in srgb, var(--bg-panel, #121817) 82%, var(--accent-blue, #26c281) 18%);
-    border: 1px solid color-mix(in srgb, var(--accent-blue, #26c281) 34%, transparent);
-    box-shadow: 0 16px 34px color-mix(in srgb, var(--accent-blue, #26c281) 20%, transparent);
+    background: color-mix(in srgb, var(--bg-panel, #121817) 82%, var(--saas-primary, #e53935) 18%);
+    border: 1px solid color-mix(in srgb, var(--saas-primary, #e53935) 34%, transparent);
+    box-shadow: 0 16px 34px color-mix(in srgb, var(--saas-primary, #e53935) 20%, transparent);
     display: grid;
     place-items: center;
     mask-image: none;
@@ -2147,7 +2147,7 @@ textarea:focus {
 }
 
 .weekly-dashboard-panel .weekly-risk-badge.healthy {
-    border-color: rgba(38, 194, 129, 0.34) !important;
+    border-color: rgba(var(--accent-rgb), 0.34) !important;
     background: color-mix(in srgb, var(--weekly-accent) 10%, rgba(255, 255, 255, 0.035)) !important;
 }
 
@@ -3593,8 +3593,8 @@ textarea:focus {
     border-color: rgba(255,255,255,0.15);
 }
 .client-access-item.selected {
-    background: rgba(38, 194, 129, 0.12);
-    border-color: rgba(38, 194, 129, 0.4);
+    background: rgba(var(--accent-rgb), 0.12);
+    border-color: rgba(var(--accent-rgb), 0.4);
 }
 .client-access-avatar {
     width: 28px;
@@ -3611,8 +3611,8 @@ textarea:focus {
     text-transform: uppercase;
 }
 .client-access-item.selected .client-access-avatar {
-    background: rgba(38, 194, 129, 0.25);
-    color: #26C281;
+    background: rgba(var(--accent-rgb), 0.25);
+    color: var(--saas-primary, #e53935);
 }
 .client-access-name {
     flex: 1;
@@ -3813,7 +3813,7 @@ textarea:focus {
     display: flex;
     flex-direction: column;
     gap: 1px;
-    border-left: 2px solid rgba(38, 194, 129, 0.25);
+    border-left: 2px solid rgba(var(--accent-rgb), 0.25);
     margin-left: 14px;
 }
 .nav-sub-item {

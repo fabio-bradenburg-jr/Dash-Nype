@@ -4926,9 +4926,9 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
         }
 
         :root[data-ui-mode='light'] .settings-sidebar-link.active {
-          background: color-mix(in srgb, #26c281 12%, #ffffff) !important;
-          border-color: color-mix(in srgb, #006c44 34%, #bbcabe) !important;
-          box-shadow: inset 0 -3px 0 #006c44 !important;
+          background: color-mix(in srgb, var(--button-primary, #e53935) 12%, #ffffff) !important;
+          border-color: color-mix(in srgb, var(--button-primary, #e53935) 34%, #bbcabe) !important;
+          box-shadow: inset 0 -3px 0 var(--button-primary, #e53935) !important;
         }
 
         :root[data-ui-mode='light'] .settings-block,
@@ -4956,8 +4956,8 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
         :root[data-ui-mode='light'] .settings-choice.active,
         :root[data-ui-mode='light'] .settings-preset.active,
         :root[data-ui-mode='light'] .settings-tab.active {
-          background: color-mix(in srgb, #26c281 12%, #ffffff) !important;
-          border-color: color-mix(in srgb, #006c44 34%, #bbcabe) !important;
+          background: color-mix(in srgb, var(--button-primary, #e53935) 12%, #ffffff) !important;
+          border-color: color-mix(in srgb, var(--button-primary, #e53935) 34%, #bbcabe) !important;
         }
 
         :root[data-ui-mode='light'] .settings-action-bar-global {
@@ -5013,9 +5013,9 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
         }
 
         :global(.dashboard-light-mode) .settings-sidebar-link.active {
-          background: color-mix(in srgb, #26c281 12%, #ffffff) !important;
-          border-color: color-mix(in srgb, #006c44 34%, #bbcabe) !important;
-          box-shadow: inset 0 -3px 0 #006c44 !important;
+          background: color-mix(in srgb, var(--button-primary, #e53935) 12%, #ffffff) !important;
+          border-color: color-mix(in srgb, var(--button-primary, #e53935) 34%, #bbcabe) !important;
+          box-shadow: inset 0 -3px 0 var(--button-primary, #e53935) !important;
         }
 
         :global(.dashboard-light-mode) .settings-block,
@@ -5227,7 +5227,7 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
         :root[data-ui-mode='light'] .ai-provider-card-active,
         :global(.dashboard-light-mode) .ai-provider-card-active {
           background: color-mix(in srgb, #26c281 8%, #ffffff) !important;
-          border-color: color-mix(in srgb, #006c44 30%, #bbcabe) !important;
+          border-color: color-mix(in srgb, var(--button-primary, #e53935) 30%, #bbcabe) !important;
         }
 
         :root[data-ui-mode='light'] .ai-provider-card-name,
@@ -5248,8 +5248,8 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
 
         :root[data-ui-mode='light'] .ai-provider-set-active:hover,
         :global(.dashboard-light-mode) .ai-provider-set-active:hover {
-          background: rgba(38, 194, 129, 0.08) !important;
-          border-color: #26c281 !important;
+          background: rgba(var(--accent-rgb, 229, 57, 53), 0.08) !important;
+          border-color: var(--button-primary, #e53935) !important;
         }
 
         /* Embedded settings – comprehensive light mode pass */
@@ -5291,9 +5291,9 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
         }
 
         :global(.dashboard-light-mode) .settings-embedded-shell .settings-sidebar-link.active {
-          background: color-mix(in srgb, #26c281 12%, #ffffff) !important;
-          border-color: color-mix(in srgb, #006c44 34%, #bbcabe) !important;
-          box-shadow: inset 0 -3px 0 #006c44 !important;
+          background: color-mix(in srgb, var(--button-primary, #e53935) 12%, #ffffff) !important;
+          border-color: color-mix(in srgb, var(--button-primary, #e53935) 34%, #bbcabe) !important;
+          box-shadow: inset 0 -3px 0 var(--button-primary, #e53935) !important;
         }
 
         :global(.dashboard-light-mode) .settings-embedded-shell .input-group input,
@@ -5324,8 +5324,8 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
         :global(.dashboard-light-mode) .settings-embedded-shell .settings-choice.active,
         :global(.dashboard-light-mode) .settings-embedded-shell .settings-preset.active,
         :global(.dashboard-light-mode) .settings-embedded-shell .settings-tab.active {
-          background: color-mix(in srgb, #26c281 12%, #ffffff) !important;
-          border-color: color-mix(in srgb, #006c44 34%, #bbcabe) !important;
+          background: color-mix(in srgb, var(--button-primary, #e53935) 12%, #ffffff) !important;
+          border-color: color-mix(in srgb, var(--button-primary, #e53935) 34%, #bbcabe) !important;
         }
       `}</style>
     </div>

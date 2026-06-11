@@ -78,7 +78,7 @@ export function applyUserAppearance(appearance) {
 
   const normalized = normalizeUserAppearance(appearance)
   const applied = normalized.mode === 'light'
-    ? { ...normalized, accent: '#26c281', backgroundTint: '#f7faf8', panelColor: '#ffffff', textColor: '#17201c' }
+    ? { ...normalized, accent: '#e53935', backgroundTint: '#fff5f5', panelColor: '#ffffff', textColor: '#1a0a0a' }
     : normalized.mode === 'dark'
       ? { ...normalized, ...DEFAULT_USER_APPEARANCE }
       : normalized
