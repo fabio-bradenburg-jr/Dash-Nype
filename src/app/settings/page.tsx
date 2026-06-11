@@ -5226,7 +5226,7 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
 
         :root[data-ui-mode='light'] .ai-provider-card-active,
         :global(.dashboard-light-mode) .ai-provider-card-active {
-          background: color-mix(in srgb, #26c281 8%, #ffffff) !important;
+          background: color-mix(in srgb, var(--button-primary, #e53935) 8%, #ffffff) !important;
           border-color: color-mix(in srgb, var(--button-primary, #e53935) 30%, #bbcabe) !important;
         }
 

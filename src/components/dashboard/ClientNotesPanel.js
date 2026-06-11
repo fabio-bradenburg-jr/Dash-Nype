@@ -335,7 +335,7 @@ export default function ClientNotesPanel({ clientId: initialClientId, clientName
           border: none;
           background: none;
           cursor: pointer;
-          color: var(--button-primary, #26c281);
+          color: var(--button-primary, #e53935);
           font-size: 20px;
           display: flex;
           align-items: center;
@@ -376,7 +376,7 @@ export default function ClientNotesPanel({ clientId: initialClientId, clientName
 
         .ios-notes-filter-btn.active {
           background: rgba(38,194,129,0.14);
-          color: var(--button-primary, #26c281);
+          color: var(--button-primary, #e53935);
         }
 
         .ios-notes-filter-btn:hover:not(.active) {
@@ -482,7 +482,7 @@ export default function ClientNotesPanel({ clientId: initialClientId, clientName
           border-bottom: 1px solid var(--border-color, rgba(255,255,255,0.06));
         }
 
-        .ios-notes-saving { color: var(--button-primary, #26c281); font-style: italic; }
+        .ios-notes-saving { color: var(--button-primary, #e53935); font-style: italic; }
 
         .ios-notes-editor {
           flex: 1;
@@ -496,7 +496,7 @@ export default function ClientNotesPanel({ clientId: initialClientId, clientName
           font-size: 14px;
           line-height: 1.7;
           padding: 20px 28px;
-          caret-color: var(--button-primary, #26c281);
+          caret-color: var(--button-primary, #e53935);
         }
 
         .ios-notes-editor::placeholder { color: var(--text-muted, rgba(245,245,247,0.3)); }
@@ -522,7 +522,7 @@ export default function ClientNotesPanel({ clientId: initialClientId, clientName
           border: 1px solid var(--border-color, rgba(255,255,255,0.1));
           border-radius: 10px;
           background: none;
-          color: var(--button-primary, #26c281);
+          color: var(--button-primary, #e53935);
           font-size: 13px;
           font-weight: 600;
           cursor: pointer;

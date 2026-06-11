@@ -13781,7 +13781,7 @@ export default function DashboardShell({
           const width = stepWidths[index]
           const x = centerX - width / 2
           const y = stepYPositions[index]
-          drawGradientRoundedRect(x, y, width, stepHeights[index], 9, index === 0 ? logoGreen : '#2ecc71', index === 2 ? deepGreen : '#008f5b')
+          drawGradientRoundedRect(x, y, width, stepHeights[index], 9, index === 0 ? logoGreen : '#ef5350', index === 2 ? deepGreen : '#c62828')
 
           pdf.setFont('helvetica', 'bold')
           pdf.setFontSize(9)
@@ -22072,7 +22072,7 @@ export default function DashboardShell({
           --lumina-muted: rgba(241, 241, 241, 0.62);
           --lumina-soft: rgba(241, 241, 241, 0.44);
           background:
-            radial-gradient(circle at 82% 0%, color-mix(in srgb, var(--button-primary, #26c281) 9%, transparent), transparent 30%),
+            radial-gradient(circle at 82% 0%, color-mix(in srgb, var(--button-primary, #e53935) 9%, transparent), transparent 30%),
             radial-gradient(circle at 8% 12%, rgba(var(--app-bg-rgb, 7, 9, 8), 0.34), transparent 28%),
             linear-gradient(180deg, var(--lumina-dark-bg) 0%, var(--lumina-dark-surface) 56%, var(--lumina-dark-bg) 100%) !important;
           color: var(--lumina-text);
@@ -22159,23 +22159,23 @@ export default function DashboardShell({
 
         .dashboard-container:not([data-active-tab='apresentacao']) .sidebar :global(.nav-item:hover) {
           color: #f1f1f1;
-          background: color-mix(in srgb, var(--button-primary, #26c281) 8%, rgba(255, 255, 255, 0.035));
-          border-color: color-mix(in srgb, var(--button-primary, #26c281) 22%, var(--lumina-dark-border));
-          box-shadow: inset 3px 0 0 color-mix(in srgb, var(--button-primary, #26c281) 62%, #f1f1f1);
+          background: color-mix(in srgb, var(--button-primary, #e53935) 8%, rgba(255, 255, 255, 0.035));
+          border-color: color-mix(in srgb, var(--button-primary, #e53935) 22%, var(--lumina-dark-border));
+          box-shadow: inset 3px 0 0 color-mix(in srgb, var(--button-primary, #e53935) 62%, #f1f1f1);
           transform: translateX(2px);
         }
 
         .dashboard-container:not([data-active-tab='apresentacao']) .sidebar :global(.nav-item.active) {
           color: #f1f1f1;
-          border-color: color-mix(in srgb, var(--button-primary, #26c281) 30%, var(--lumina-dark-border));
+          border-color: color-mix(in srgb, var(--button-primary, #e53935) 30%, var(--lumina-dark-border));
           background:
-            linear-gradient(90deg, color-mix(in srgb, var(--button-primary, #26c281) 16%, transparent), rgba(255, 255, 255, 0.034));
-          box-shadow: inset 3px 0 0 color-mix(in srgb, var(--button-primary, #26c281) 80%, #f1f1f1);
+            linear-gradient(90deg, color-mix(in srgb, var(--button-primary, #e53935) 16%, transparent), rgba(255, 255, 255, 0.034));
+          box-shadow: inset 3px 0 0 color-mix(in srgb, var(--button-primary, #e53935) 80%, #f1f1f1);
         }
 
         .dashboard-container:not([data-active-tab='apresentacao']) .sidebar :global(.nav-item.active i),
         .dashboard-container:not([data-active-tab='apresentacao']) .sidebar :global(.nav-item:hover i) {
-          color: color-mix(in srgb, var(--button-primary, #26c281) 72%, #f1f1f1);
+          color: color-mix(in srgb, var(--button-primary, #e53935) 72%, #f1f1f1);
         }
 
         .dashboard-container:not([data-active-tab='apresentacao']) .sidebar-collapsed {
@@ -22261,9 +22261,9 @@ export default function DashboardShell({
         }
 
         .dashboard-container:not([data-active-tab='apresentacao']) .operation-stellar-theme-option.active {
-          background: color-mix(in srgb, var(--button-primary, #26c281) 18%, rgba(255, 255, 255, 0.05)) !important;
+          background: color-mix(in srgb, var(--button-primary, #e53935) 18%, rgba(255, 255, 255, 0.05)) !important;
           color: #f1f1f1 !important;
-          box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--button-primary, #26c281) 28%, transparent) !important;
+          box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--button-primary, #e53935) 28%, transparent) !important;
         }
 
         .dashboard-container:not([data-active-tab='apresentacao']) .operation-stellar-user-avatar {
@@ -22283,7 +22283,7 @@ export default function DashboardShell({
           border-radius: 20px;
           border: 1px solid var(--lumina-dark-border);
           background:
-            radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--button-primary, #26c281) 10%, transparent), transparent 34%),
+            radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--button-primary, #e53935) 10%, transparent), transparent 34%),
             linear-gradient(180deg, rgba(18, 24, 23, 0.84), rgba(13, 17, 16, 0.88));
           box-shadow: 0 18px 44px rgba(0, 0, 0, 0.2);
         }
@@ -22386,8 +22386,8 @@ export default function DashboardShell({
         .dashboard-container:not([data-active-tab='apresentacao']) select:focus,
         .dashboard-container:not([data-active-tab='apresentacao']) textarea:focus {
           outline: none;
-          border-color: color-mix(in srgb, var(--button-primary, #26c281) 58%, #ffffff);
-          box-shadow: 0 0 0 3px color-mix(in srgb, var(--button-primary, #26c281) 15%, transparent);
+          border-color: color-mix(in srgb, var(--button-primary, #e53935) 58%, #ffffff);
+          box-shadow: 0 0 0 3px color-mix(in srgb, var(--button-primary, #e53935) 15%, transparent);
         }
 
         .dashboard-container:not([data-active-tab='apresentacao']) .input-group label,
@@ -22448,7 +22448,7 @@ export default function DashboardShell({
           border-radius: 18px;
           border: 1px solid var(--lumina-dark-border);
           background:
-            radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--button-primary, #26c281) 10%, transparent), transparent 32%),
+            radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--button-primary, #e53935) 10%, transparent), transparent 32%),
             linear-gradient(180deg, rgba(18, 24, 23, 0.96), rgba(13, 17, 16, 0.98));
         }
 
@@ -22553,9 +22553,9 @@ export default function DashboardShell({
           overflow: auto !important;
           padding: 42px !important;
           border-radius: 24px !important;
-          border: 1px solid color-mix(in srgb, var(--button-primary, #26c281) 24%, rgba(190, 201, 191, 0.16)) !important;
+          border: 1px solid color-mix(in srgb, var(--button-primary, #e53935) 24%, rgba(190, 201, 191, 0.16)) !important;
           background:
-            linear-gradient(145deg, color-mix(in srgb, var(--button-primary, #26c281) 8%, transparent), transparent 34%),
+            linear-gradient(145deg, color-mix(in srgb, var(--button-primary, #e53935) 8%, transparent), transparent 34%),
             linear-gradient(180deg, rgba(18, 24, 23, 0.98), rgba(9, 13, 12, 0.98)) !important;
           color: #f1f1f1 !important;
           box-shadow: 0 34px 100px rgba(0, 0, 0, 0.48) !important;
@@ -22592,7 +22592,7 @@ export default function DashboardShell({
         }
 
         .weekly-modal-overlay .weekly-history-heading h2 i {
-          color: var(--button-primary, #26c281) !important;
+          color: var(--button-primary, #e53935) !important;
           font-size: 20px !important;
         }
 
@@ -22648,10 +22648,10 @@ export default function DashboardShell({
           flex-direction: column !important;
           justify-content: space-between !important;
           gap: 20px !important;
-          border: 1px solid color-mix(in srgb, var(--button-primary, #26c281) 24%, rgba(190, 201, 191, 0.16)) !important;
+          border: 1px solid color-mix(in srgb, var(--button-primary, #e53935) 24%, rgba(190, 201, 191, 0.16)) !important;
           border-radius: 18px !important;
           background:
-            radial-gradient(circle at 12% 0%, color-mix(in srgb, var(--button-primary, #26c281) 12%, transparent), transparent 42%),
+            radial-gradient(circle at 12% 0%, color-mix(in srgb, var(--button-primary, #e53935) 12%, transparent), transparent 42%),
             rgba(255, 255, 255, 0.04) !important;
           padding: 22px !important;
         }
@@ -22696,7 +22696,7 @@ export default function DashboardShell({
         }
 
         .weekly-modal-overlay .weekly-history-card-metrics span i {
-          color: var(--button-primary, #26c281) !important;
+          color: var(--button-primary, #e53935) !important;
         }
 
         .weekly-modal-overlay .weekly-history-card-metrics strong {
@@ -22727,8 +22727,8 @@ export default function DashboardShell({
         }
 
         .weekly-modal-overlay .weekly-history-record-item.selected {
-          border-color: color-mix(in srgb, var(--button-primary, #26c281) 58%, rgba(190, 201, 191, 0.16)) !important;
-          background: color-mix(in srgb, var(--button-primary, #26c281) 12%, rgba(255, 255, 255, 0.035)) !important;
+          border-color: color-mix(in srgb, var(--button-primary, #e53935) 58%, rgba(190, 201, 191, 0.16)) !important;
+          background: color-mix(in srgb, var(--button-primary, #e53935) 12%, rgba(255, 255, 255, 0.035)) !important;
         }
 
         .weekly-modal-overlay .weekly-history-record-item input {
@@ -22746,9 +22746,9 @@ export default function DashboardShell({
         }
 
         .weekly-modal-overlay .weekly-history-record-item.selected .weekly-history-record-check {
-          border-color: var(--button-primary, #26c281) !important;
-          background: var(--button-primary, #26c281) !important;
-          box-shadow: 0 0 0 4px color-mix(in srgb, var(--button-primary, #26c281) 18%, transparent) !important;
+          border-color: var(--button-primary, #e53935) !important;
+          background: var(--button-primary, #e53935) !important;
+          box-shadow: 0 0 0 4px color-mix(in srgb, var(--button-primary, #e53935) 18%, transparent) !important;
         }
 
         .weekly-modal-overlay .weekly-history-record-copy {
@@ -22781,7 +22781,7 @@ export default function DashboardShell({
           gap: 12px !important;
           border: 0 !important;
           background: transparent !important;
-          color: color-mix(in srgb, var(--button-primary, #26c281) 82%, #f8fafc) !important;
+          color: color-mix(in srgb, var(--button-primary, #e53935) 82%, #f8fafc) !important;
           padding: 0 !important;
           font: inherit !important;
           font-size: 12px !important;
@@ -22798,9 +22798,9 @@ export default function DashboardShell({
         :root[data-ui-mode='light'] .weekly-modal-overlay .weekly-history-modal,
         .dashboard-light-mode .weekly-modal-overlay .weekly-history-modal {
           background:
-            linear-gradient(145deg, color-mix(in srgb, var(--button-primary, #26c281) 7%, #ffffff), rgba(255, 255, 255, 0.98) 36%),
+            linear-gradient(145deg, color-mix(in srgb, var(--button-primary, #e53935) 7%, #ffffff), rgba(255, 255, 255, 0.98) 36%),
             #ffffff !important;
-          border-color: color-mix(in srgb, var(--button-primary, #26c281) 18%, rgba(15, 23, 42, 0.08)) !important;
+          border-color: color-mix(in srgb, var(--button-primary, #e53935) 18%, rgba(15, 23, 42, 0.08)) !important;
           color: #0f172a !important;
           box-shadow: 0 34px 100px rgba(15, 23, 42, 0.2) !important;
         }
@@ -35871,7 +35871,7 @@ export default function DashboardShell({
           border-radius: 20px;
           border-color: rgba(190, 201, 191, 0.16);
           background:
-            radial-gradient(circle at top left, color-mix(in srgb, var(--button-primary, var(--accent-blue, #26c281)) 12%, transparent), transparent 30%),
+            radial-gradient(circle at top left, color-mix(in srgb, var(--button-primary, #e53935) 12%, transparent), transparent 30%),
             linear-gradient(180deg, rgba(18, 24, 23, 0.9), rgba(13, 17, 16, 0.92)),
             rgba(18, 24, 23, 0.84);
           box-shadow: 0 22px 52px rgba(0, 0, 0, 0.22);
@@ -35892,7 +35892,7 @@ export default function DashboardShell({
 
         .simple-team-layout .management-hero-kicker,
         .simple-team-layout .management-card-kicker {
-          color: color-mix(in srgb, var(--button-primary, var(--accent-blue, #26c281)) 74%, #f1f1f1);
+          color: color-mix(in srgb, var(--button-primary, #e53935) 74%, #f1f1f1);
           letter-spacing: 0.14em;
         }
 
@@ -36006,8 +36006,8 @@ export default function DashboardShell({
         }
 
         .simple-team-list .simple-client-row:not(.simple-client-row-head):not(.simple-client-head):hover {
-          border-color: color-mix(in srgb, var(--button-primary, var(--accent-blue, #26c281)) 28%, rgba(190, 201, 191, 0.16));
-          background: color-mix(in srgb, var(--button-primary, var(--accent-blue, #26c281)) 7%, rgba(255, 255, 255, 0.03));
+          border-color: color-mix(in srgb, var(--button-primary, #e53935) 28%, rgba(190, 201, 191, 0.16));
+          background: color-mix(in srgb, var(--button-primary, #e53935) 7%, rgba(255, 255, 255, 0.03));
           transform: translateY(-1px);
         }
 
@@ -36060,9 +36060,9 @@ export default function DashboardShell({
           border-radius: 12px;
           display: grid;
           place-items: center;
-          color: color-mix(in srgb, var(--button-primary, var(--accent-blue, #26c281)) 76%, #f1f1f1);
-          background: color-mix(in srgb, var(--button-primary, var(--accent-blue, #26c281)) 12%, rgba(255, 255, 255, 0.04));
-          border: 1px solid color-mix(in srgb, var(--button-primary, var(--accent-blue, #26c281)) 22%, rgba(190, 201, 191, 0.12));
+          color: color-mix(in srgb, var(--button-primary, #e53935) 76%, #f1f1f1);
+          background: color-mix(in srgb, var(--button-primary, #e53935) 12%, rgba(255, 255, 255, 0.04));
+          border: 1px solid color-mix(in srgb, var(--button-primary, #e53935) 22%, rgba(190, 201, 191, 0.12));
         }
 
         .simple-team-list .simple-client-status-text {
@@ -36276,7 +36276,7 @@ export default function DashboardShell({
           --lumina-page-muted: rgba(241, 241, 241, 0.68);
           --lumina-page-soft: rgba(241, 241, 241, 0.48);
           background:
-            radial-gradient(circle at 78% 0%, color-mix(in srgb, var(--button-primary, #26c281) 10%, transparent), transparent 30%),
+            radial-gradient(circle at 78% 0%, color-mix(in srgb, var(--button-primary, #e53935) 10%, transparent), transparent 30%),
             radial-gradient(circle at 10% 14%, rgba(var(--app-bg-rgb, 7, 9, 8), 0.34), transparent 28%),
             linear-gradient(180deg, var(--lumina-page-bg) 0%, color-mix(in srgb, var(--app-bg-color, #0d1110) 54%, #0d1110 46%) 52%, var(--lumina-page-bg) 100%) !important;
           color: var(--lumina-page-text);
@@ -36329,7 +36329,7 @@ export default function DashboardShell({
         .dashboard-shell-stellar .monday-command-panel,
         .dashboard-shell-stellar .management-header-row {
           background:
-            linear-gradient(135deg, color-mix(in srgb, var(--button-primary, #26c281) 10%, transparent), transparent 38%),
+            linear-gradient(135deg, color-mix(in srgb, var(--button-primary, #e53935) 10%, transparent), transparent 38%),
             linear-gradient(180deg, color-mix(in srgb, var(--app-bg-color, #121817) 18%, rgba(18, 24, 23, 0.94)), rgba(13, 17, 16, 0.92)) !important;
           border-color: var(--lumina-page-border-strong) !important;
         }
@@ -36337,7 +36337,7 @@ export default function DashboardShell({
         .dashboard-shell-stellar .modal-overlay,
         .dashboard-shell-stellar .weekly-modal-overlay {
           background:
-            radial-gradient(circle at 50% 0%, color-mix(in srgb, var(--button-primary, #26c281) 14%, transparent), transparent 32%),
+            radial-gradient(circle at 50% 0%, color-mix(in srgb, var(--button-primary, #e53935) 14%, transparent), transparent 32%),
             rgba(2, 6, 5, 0.78) !important;
           backdrop-filter: blur(18px) saturate(118%);
           -webkit-backdrop-filter: blur(18px) saturate(118%);
@@ -36356,7 +36356,7 @@ export default function DashboardShell({
           border: 1px solid var(--lumina-page-border-strong) !important;
           border-radius: 24px !important;
           background:
-            linear-gradient(145deg, color-mix(in srgb, var(--button-primary, #26c281) 8%, transparent), transparent 30%),
+            linear-gradient(145deg, color-mix(in srgb, var(--button-primary, #e53935) 8%, transparent), transparent 30%),
             linear-gradient(180deg, rgba(18, 24, 23, 0.98), rgba(9, 13, 12, 0.98)) !important;
           color: var(--lumina-page-text) !important;
           box-shadow: 0 30px 90px rgba(0, 0, 0, 0.44) !important;
@@ -36413,8 +36413,8 @@ export default function DashboardShell({
         .dashboard-shell-stellar .client-registry-display-btn:hover,
         .dashboard-shell-stellar .metric-library-chip:hover,
         .dashboard-shell-stellar .weekly-export-button:hover {
-          border-color: color-mix(in srgb, var(--button-primary, #26c281) 34%, var(--lumina-page-border)) !important;
-          background: color-mix(in srgb, var(--button-primary, #26c281) 10%, rgba(255, 255, 255, 0.035)) !important;
+          border-color: color-mix(in srgb, var(--button-primary, #e53935) 34%, var(--lumina-page-border)) !important;
+          background: color-mix(in srgb, var(--button-primary, #e53935) 10%, rgba(255, 255, 255, 0.035)) !important;
           color: var(--lumina-page-text) !important;
         }
 
@@ -36456,17 +36456,17 @@ export default function DashboardShell({
         .dashboard-shell-stellar textarea:focus,
         .dashboard-shell-stellar .client-select-input:focus-within,
         .dashboard-shell-stellar .operation-stellar-search:focus-within {
-          border-color: color-mix(in srgb, var(--button-primary, #26c281) 48%, var(--lumina-page-border)) !important;
-          box-shadow: 0 0 0 3px color-mix(in srgb, var(--button-primary, #26c281) 16%, transparent) !important;
+          border-color: color-mix(in srgb, var(--button-primary, #e53935) 48%, var(--lumina-page-border)) !important;
+          box-shadow: 0 0 0 3px color-mix(in srgb, var(--button-primary, #e53935) 16%, transparent) !important;
           outline: none !important;
         }
 
         .dashboard-shell-stellar .btn-primary {
-          border-color: color-mix(in srgb, var(--button-primary, #26c281) 72%, #ffffff 8%) !important;
+          border-color: color-mix(in srgb, var(--button-primary, #e53935) 72%, #ffffff 8%) !important;
           background:
-            linear-gradient(135deg, var(--button-primary, #26c281), color-mix(in srgb, var(--button-primary, #26c281) 78%, #2ecc71 22%)) !important;
+            linear-gradient(135deg, var(--button-primary, #e53935), color-mix(in srgb, var(--button-primary, #e53935) 78%, #ef5350 22%)) !important;
           color: #ffffff !important;
-          box-shadow: 0 14px 28px color-mix(in srgb, var(--button-primary, #26c281) 24%, transparent) !important;
+          box-shadow: 0 14px 28px color-mix(in srgb, var(--button-primary, #e53935) 24%, transparent) !important;
         }
 
         .dashboard-shell-stellar .btn-primary i,
@@ -36482,7 +36482,7 @@ export default function DashboardShell({
         .dashboard-shell-stellar .operation-stellar-tab.active,
         .dashboard-shell-stellar .metric-library-panel strong,
         .dashboard-shell-stellar .ai-insights-meta strong {
-          color: color-mix(in srgb, var(--button-primary, #26c281) 76%, #f1f1f1) !important;
+          color: color-mix(in srgb, var(--button-primary, #e53935) 76%, #f1f1f1) !important;
         }
 
         .dashboard-shell-stellar .stage-chip.active,
@@ -36491,8 +36491,8 @@ export default function DashboardShell({
         .dashboard-shell-stellar .operation-stellar-theme-option.active,
         .dashboard-shell-stellar .metric-library-chip.active,
         .dashboard-shell-stellar .weekly-range-pill.active {
-          border-color: color-mix(in srgb, var(--button-primary, #26c281) 38%, var(--lumina-page-border)) !important;
-          background: color-mix(in srgb, var(--button-primary, #26c281) 13%, rgba(255, 255, 255, 0.035)) !important;
+          border-color: color-mix(in srgb, var(--button-primary, #e53935) 38%, var(--lumina-page-border)) !important;
+          background: color-mix(in srgb, var(--button-primary, #e53935) 13%, rgba(255, 255, 255, 0.035)) !important;
         }
 
         .dashboard-shell-stellar .btn-secondary {
@@ -36532,7 +36532,7 @@ export default function DashboardShell({
           --lumina-page-muted: #3d4a41;
           --lumina-page-soft: #6c7a70;
           background:
-            radial-gradient(circle at 78% 0%, color-mix(in srgb, var(--button-primary, #006c44) 9%, transparent), transparent 28%),
+            radial-gradient(circle at 78% 0%, color-mix(in srgb, var(--button-primary, #c62828) 9%, transparent), transparent 28%),
             linear-gradient(180deg, #f9f9f9 0%, #f3f3f3 100%) !important;
           color: #1a1c1c !important;
         }
@@ -36572,7 +36572,7 @@ export default function DashboardShell({
 
         .dashboard-light-mode.dashboard-shell-stellar .management-header-row {
           background:
-            linear-gradient(135deg, color-mix(in srgb, var(--button-primary, #26c281) 6%, transparent), transparent 38%),
+            linear-gradient(135deg, color-mix(in srgb, var(--button-primary, #e53935) 6%, transparent), transparent 38%),
             linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.98)) !important;
           border-color: var(--lumina-page-border) !important;
         }
@@ -36600,7 +36600,7 @@ export default function DashboardShell({
         .dashboard-light-mode.dashboard-shell-stellar .weekly-history-modal,
         .dashboard-light-mode.dashboard-shell-stellar .operation-card-modal {
           background:
-            linear-gradient(145deg, color-mix(in srgb, var(--button-primary, #006c44) 6%, white), #ffffff 36%),
+            linear-gradient(145deg, color-mix(in srgb, var(--button-primary, #c62828) 6%, white), #ffffff 36%),
             #ffffff !important;
           color: #1a1c1c !important;
           border-color: var(--lumina-page-border-strong) !important;
