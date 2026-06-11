@@ -66,13 +66,19 @@ async function loginWithLegacySupabase(body: { email: string; password: string; 
   ])
 
   const supabase = await createClient()
+  console.log('[login] supabaseUrl:', process.env.NEXT_PUBLIC_SUPABASE_URL?.slice(0, 40))
+  console.log('[login] hasAnonKey:', !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
   const { data, error } = await supabase.auth.signInWithPassword({
     email: String(body.email || '').trim(),
     password: String(body.password || '').trim(),
+  }).catch((e: unknown) => {
+    console.error('[login] signInWithPassword threw:', e)
+    return { data: null, error: { message: e instanceof Error ? e.message : String(e) } }
   })
 
-  if (error || !data.user) {
-    throw new Error(error?.message || 'Credenciais inválidas.')
+  if (error || !data?.user) {
+    console.error('[login] auth error:', error)
+    throw new Error((error as any)?.message || 'Credenciais inválidas.')
   }
 
   const email = String(data.user.email || body.email || '').trim().toLowerCase()
