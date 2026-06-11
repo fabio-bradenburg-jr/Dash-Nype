@@ -46,6 +46,7 @@ interface AssistantDashboardState {
     aiProvider?: string
     aiModel?: string
     aiAgents?: AiAgent[]
+    aiProviders?: Record<string, { apiKey?: string; model?: string; baseUrl?: string } | undefined>
   }
 }
 
@@ -123,6 +124,7 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
   const [selectedConversationId, setSelectedConversationId] = useState('')
   const [selectedAgentId, setSelectedAgentId] = useState('copilot')
   const [isAgentMenuOpen, setIsAgentMenuOpen] = useState(false)
+  const [selectedProvider, setSelectedProvider] = useState('')
   const [isVoiceSupported, setIsVoiceSupported] = useState(false)
   const [isListening, setIsListening] = useState(false)
   const [voiceTranscript, setVoiceTranscript] = useState('')
@@ -140,6 +142,13 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
     () => (Array.isArray(dashboardState?.globalIntegrations?.aiAgents) ? dashboardState.globalIntegrations.aiAgents : []),
     [dashboardState]
   )
+  const configuredProviders = useMemo(() => {
+    const providers = dashboardState?.globalIntegrations?.aiProviders
+    if (!providers || typeof providers !== 'object') return []
+    return Object.entries(providers)
+      .filter(([, cfg]) => cfg && typeof cfg === 'object' && (cfg as Record<string, unknown>).apiKey)
+      .map(([key]) => key)
+  }, [dashboardState])
   const selectedAgent = useMemo(
     () => availableAgents.find((agent) => agent.id === selectedAgentId) || availableAgents[0] || null,
     [availableAgents, selectedAgentId]
@@ -442,6 +451,7 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
         body: JSON.stringify({
           conversationId: selectedConversationId,
           clientId: focusMode === 'operation' ? String(dashboardState?.activeClientId || '') : '',
+          providerOverride: selectedProvider || undefined,
           contextSnapshot: {
             focusMode,
             agentId: selectedAgentId,
@@ -821,6 +831,18 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
                         </div>
                       </div>
                     ) : null}
+                    {configuredProviders.length > 1 && (
+                      <select
+                        className="assistant-provider-select"
+                        value={selectedProvider || dashboardState?.globalIntegrations?.aiProvider || ''}
+                        onChange={(e) => setSelectedProvider(e.target.value)}
+                        title="Selecionar provider de IA"
+                      >
+                        {configuredProviders.map((p) => (
+                          <option key={p} value={p}>{p}</option>
+                        ))}
+                      </select>
+                    )}
                     <span><i className="bx bx-bolt-circle"></i> {dashboardState?.globalIntegrations?.aiModel || 'Modelo configurado'}</span>
                     <span><i className="bx bx-shield-quarter"></i> Contexto interno ativo</span>
                     <span><i className="bx bx-lock-open-alt"></i> {aiAccessLabel}</span>
@@ -1713,6 +1735,26 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
           display: inline-flex;
           align-items: center;
           gap: 6px;
+        }
+
+        .assistant-provider-select {
+          background: rgba(255, 255, 255, 0.06);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          border-radius: 8px;
+          color: var(--text-secondary, rgba(245, 245, 247, 0.72));
+          font-size: 12px;
+          font-family: inherit;
+          padding: 4px 8px;
+          cursor: pointer;
+          outline: none;
+          appearance: none;
+          -webkit-appearance: none;
+        }
+
+        :root[data-ui-mode='light'] .assistant-provider-select {
+          background: rgba(0, 0, 0, 0.04);
+          border-color: rgba(0, 0, 0, 0.1);
+          color: #3d4a41;
         }
 
         .assistant-main-embedded .assistant-content {

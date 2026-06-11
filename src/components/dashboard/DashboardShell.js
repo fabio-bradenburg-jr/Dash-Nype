@@ -5,6 +5,8 @@ import Link from 'next/link'
 import { createPortal } from 'react-dom'
 import AssistantPage from '@/app/assistant/page'
 import SettingsPage from '@/app/settings/page'
+import ClientNotesPanel from '@/components/dashboard/ClientNotesPanel'
+import ReportsTab from '@/components/dashboard/ReportsTab'
 import { useUser } from '@/lib/contexts/UserContext'
 import { createClient } from '@/lib/supabase/client'
 import {
@@ -85,7 +87,7 @@ const DEFAULT_WORKSPACE_BRANDING = {
   appSubtitle: 'Performance Hub',
   companyName: 'Assessoria LP',
   logoUrl: '',
-  mode: 'dark',
+  mode: 'light',
   primaryColor: '#26C281',
   accentColor: '#4FDF9B',
   backgroundColor: '#070908',
@@ -1488,26 +1490,6 @@ const CLIENT_INTEGRATION_GROUPS = [
     description: 'Selecione a conta LinkedIn Ads usada por este cliente.',
     fields: [
       { name: 'linkedInAdsAccountId', label: 'Conta LinkedIn Ads do cliente', placeholder: 'urn:li:sponsoredAccount:123', storage: 'client', type: 'text' },
-    ],
-  },
-  {
-    title: 'RD Station',
-    icon: 'bx-signal-5',
-    accent: '#14b8a6',
-    description: 'Separe a operação de automação e CRM do RD Station por cliente.',
-    fields: [
-      { name: 'rdStationToken', label: 'Chave / credencial', placeholder: 'Token do RD Station', storage: 'integrations', type: 'password' },
-      { name: 'rdStationAccountId', label: 'Conta / pipeline do cliente', placeholder: 'Conta, funil ou ID do RD', storage: 'client', type: 'text' },
-    ],
-  },
-  {
-    title: 'Salesforce',
-    icon: 'bx-cloud',
-    accent: '#60a5fa',
-    description: 'Mapeie a conta do Salesforce usada na jornada desse cliente.',
-    fields: [
-      { name: 'salesforceToken', label: 'Chave / credencial', placeholder: 'Token ou access token', storage: 'integrations', type: 'password' },
-      { name: 'salesforceAccountId', label: 'Conta / org do cliente', placeholder: 'Org ID, pipeline ou referência', storage: 'client', type: 'text' },
     ],
   },
   {
@@ -3467,6 +3449,8 @@ export default function DashboardShell({
   const [isMetaStructureReady, setIsMetaStructureReady] = useState(false)
   const [isSavingIntegrations, setIsSavingIntegrations] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
+  const [isSavingReport, setIsSavingReport] = useState(false)
+  const [savedReportSuccess, setSavedReportSuccess] = useState(false)
   const [isAiInsightsModalOpen, setIsAiInsightsModalOpen] = useState(false)
   const [isAiInsightsLoading, setIsAiInsightsLoading] = useState(false)
   const [aiInsightsError, setAiInsightsError] = useState('')
@@ -3521,6 +3505,8 @@ export default function DashboardShell({
     clientGroupIds: [],
   })
   const [savingUser, setSavingUser] = useState(false)
+  const ADS_TABS = ['apresentacao', 'campanhas', 'anuncios', 'saldos', 'relatorios']
+  const [isAdsMenuOpen, setIsAdsMenuOpen] = useState(() => ADS_TABS.includes(initialTab))
   const [globalIntegrations, setGlobalIntegrations] = useState({
     ...DEFAULT_PREFERENCES.globalIntegrations,
   })
@@ -14014,7 +14000,7 @@ export default function DashboardShell({
         pdf.text(`Assessoria LP • ${activeClient?.name || 'Cliente'} • ${getDatePresetLabel(dateRange, customSince, customUntil)}`, margin, cursorY)
         cursorY += 30
 
-        drawClientSectionTitle('Contexto dos últimos 7 dias')
+        drawClientSectionTitle(`Contexto — ${getDatePresetLabel(dateRange, customSince, customUntil)}`)
         drawClientCards([
           { title: 'Cliente', value: activeClient?.name || 'Cliente selecionado', note: [
             selectedAdAccount ? `Meta ${selectedAdAccount}` : '',
@@ -14053,12 +14039,20 @@ export default function DashboardShell({
           drawClientCrmFunnel()
         }
 
+        if (format === 'client-pdf-save') {
+          return pdf.output('blob')
+        }
         pdf.save(`${dashboardExportFileName}-cliente.pdf`)
       }
 
       if (format === 'client-pdf') {
         await drawClientPdf()
         return
+      }
+
+      if (format === 'client-pdf-save') {
+        const blob = await drawClientPdf()
+        return blob
       }
 
       const groupedRows = dashboardExportRows.reduce((accumulator, row) => {
@@ -14117,6 +14111,37 @@ export default function DashboardShell({
     selectedMetaCampaignTableColumns,
     visibleMetaConversionGroups,
   ])
+  const handleSaveReport = useCallback(async () => {
+    if (!dashboardExportRows.length) {
+      window.alert('Nenhum dado encontrado para exportar no dashboard atual.')
+      return
+    }
+    setIsSavingReport(true)
+    setSavedReportSuccess(false)
+    try {
+      const blob = await handleExportDashboard('client-pdf-save')
+      if (!blob) throw new Error('Não foi possível gerar o PDF.')
+      const periodLabel = getDatePresetLabel(dateRange, customSince, customUntil)
+      const formData = new FormData()
+      formData.append('file', blob, `${dashboardExportFileName}-cliente.pdf`)
+      formData.append('clientId', activeClient?.id || '')
+      formData.append('clientName', activeClient?.name || '')
+      formData.append('reportType', 'client-pdf')
+      formData.append('periodLabel', periodLabel)
+      formData.append('periodSince', customSince || '')
+      formData.append('periodUntil', customUntil || '')
+      const res = await fetch('/api/reports', { method: 'POST', body: formData })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error || 'Erro ao salvar relatório.')
+      setSavedReportSuccess(true)
+      setTimeout(() => setSavedReportSuccess(false), 2000)
+    } catch (err) {
+      console.error('Erro ao salvar relatório', err)
+      window.alert(`Não foi possível salvar o relatório: ${err.message}`)
+    } finally {
+      setIsSavingReport(false)
+    }
+  }, [activeClient, customSince, customUntil, dashboardExportFileName, dashboardExportRows, dateRange, handleExportDashboard])
   const userFirstName = (profile?.full_name || user?.user_metadata?.full_name || user?.email || 'por aí').split(' ')[0]
   const currentHour = new Date().getHours()
   const assistantGreeting =
@@ -16191,39 +16216,68 @@ export default function DashboardShell({
               {!isSidebarCollapsed && 'Clientes'}
             </button>
           )}
-          <button type="button" data-tooltip="Apresentação" aria-label="Apresentação" className={`nav-item nav-button ${activeTab === 'apresentacao' ? 'active' : ''}`} onClick={() => setActiveTab('apresentacao')}>
-            <i className="bx bxs-dashboard"></i>
-            {!isSidebarCollapsed && 'Apresentação'}
+          <button type="button" data-tooltip="Notas" aria-label="Notas" className={`nav-item nav-button ${activeTab === 'notas' ? 'active' : ''}`} onClick={() => setActiveTab('notas')}>
+            <i className="bx bx-note"></i>
+            {!isSidebarCollapsed && 'Notas'}
           </button>
           <button type="button" data-tooltip="Controle da Operação" aria-label="Controle da Operação" className={`nav-item nav-button ${activeTab === 'semanal' ? 'active' : ''}`} onClick={() => setActiveTab('semanal')}>
             <i className="bx bx-pulse"></i>
             {!isSidebarCollapsed && 'Controle da Operação'}
           </button>
-          <button type="button" data-tooltip="Campanhas" aria-label="Campanhas" className={`nav-item nav-button ${activeTab === 'campanhas' ? 'active' : ''}`} onClick={() => setActiveTab('campanhas')}>
-            <i className="bx bx-sitemap"></i>
-            {!isSidebarCollapsed && 'Campanhas'}
-          </button>
-          <button type="button" data-tooltip="Anúncios" aria-label="Anúncios" className={`nav-item nav-button ${activeTab === 'anuncios' ? 'active' : ''}`} onClick={() => setActiveTab('anuncios')}>
+          {/* Anúncios sub-menu group */}
+          <button
+            type="button"
+            data-tooltip="Anúncios"
+            aria-label="Anúncios"
+            className={`nav-item nav-button nav-group-trigger ${ADS_TABS.includes(activeTab) ? 'active' : ''}`}
+            onClick={() => setIsAdsMenuOpen((v) => !v)}
+          >
             <i className="bx bx-bullseye"></i>
-            {!isSidebarCollapsed && 'Anúncios'}
+            {!isSidebarCollapsed && (
+              <>
+                <span style={{ flex: 1 }}>Anúncios</span>
+                <i className={`bx bx-chevron-${isAdsMenuOpen ? 'up' : 'down'}`} style={{ fontSize: 16, marginLeft: 4 }}></i>
+              </>
+            )}
           </button>
-          <button type="button" data-tooltip="Saldos" aria-label="Saldos das contas" className={`nav-item nav-button ${activeTab === 'saldos' ? 'active' : ''}`} onClick={() => setActiveTab('saldos')}>
-            <i className="bx bx-wallet-alt"></i>
-            {!isSidebarCollapsed && 'Saldos'}
-          </button>
+          {isAdsMenuOpen && (
+            <div className="nav-sub-group">
+              <button type="button" className={`nav-item nav-button nav-sub-item ${activeTab === 'apresentacao' ? 'active' : ''}`} onClick={() => setActiveTab('apresentacao')}>
+                <i className="bx bxs-dashboard"></i>
+                {!isSidebarCollapsed && 'Dash'}
+              </button>
+              <button type="button" className={`nav-item nav-button nav-sub-item ${activeTab === 'campanhas' ? 'active' : ''}`} onClick={() => setActiveTab('campanhas')}>
+                <i className="bx bx-sitemap"></i>
+                {!isSidebarCollapsed && 'Campanhas'}
+              </button>
+              <button type="button" className={`nav-item nav-button nav-sub-item ${activeTab === 'anuncios' ? 'active' : ''}`} onClick={() => setActiveTab('anuncios')}>
+                <i className="bx bx-layout"></i>
+                {!isSidebarCollapsed && 'Anúncios'}
+              </button>
+              <button type="button" className={`nav-item nav-button nav-sub-item ${activeTab === 'saldos' ? 'active' : ''}`} onClick={() => setActiveTab('saldos')}>
+                <i className="bx bx-wallet-alt"></i>
+                {!isSidebarCollapsed && 'Saldos'}
+              </button>
+              <button type="button" className={`nav-item nav-button nav-sub-item ${activeTab === 'relatorios' ? 'active' : ''}`} onClick={() => setActiveTab('relatorios')}>
+                <i className="bx bx-file"></i>
+                {!isSidebarCollapsed && 'Relatórios'}
+              </button>
+            </div>
+          )}
           {canAccessTeamTab && (
             <button type="button" data-tooltip="Time" aria-label="Time" className={`nav-item nav-button ${activeTab === 'usuarios' ? 'active' : ''}`} onClick={() => setActiveTab('usuarios')}>
               <i className="bx bxs-user-detail"></i>
               {!isSidebarCollapsed && 'Time'}
             </button>
           )}
+
           <button type="button" data-tooltip="Configurações" aria-label="Configurações" className={"nav-item nav-button " + (activeTab === "settings" ? "active" : "")} onClick={() => setActiveTab('settings')}>
             <i className="bx bx-cog"></i>
             {!isSidebarCollapsed && 'Configurações'}
           </button>
         </nav>
 
-        {!isSidebarCollapsed && activeTab === 'apresentacao' && (
+        {!isSidebarCollapsed && (activeTab === 'apresentacao' || activeTab === 'notas') && (
           <div className="sidebar-client glass-item">
             <span className="sidebar-client-label">Cliente ativo</span>
             <strong>{activeClient?.name || 'Nenhum cliente selecionado'}</strong>
@@ -16279,6 +16333,8 @@ export default function DashboardShell({
                 {activeTab === 'campanhas' && 'Campanhas'}
                 {activeTab === 'anuncios' && 'Anúncios'}
                 {activeTab === 'saldos' && 'Saldos de Anúncios'}
+                {activeTab === 'notas' && 'Notas de Clientes'}
+                {activeTab === 'relatorios' && 'Relatórios Salvos'}
                 {activeTab === 'settings' && 'Settings'}
               </h1>
               {activeTab !== 'assistant' && (
@@ -16294,6 +16350,8 @@ export default function DashboardShell({
                   {activeTab === 'campanhas' && 'Veja campanhas, conjuntos e anúncios ativos por cliente, com investimento consolidado por período.'}
                   {activeTab === 'anuncios' && 'Veja os top 5 anúncios com investimento por cliente, por período e por gestor de resultado.'}
                   {activeTab === 'saldos' && 'Monitore saldo, cartão vinculado e valor pendente das contas de anúncio dos clientes.'}
+                  {activeTab === 'notas' && 'Registre observações, histórico e informações relevantes sobre cada cliente da carteira.'}
+                  {activeTab === 'relatorios' && 'Acesse e baixe os relatórios PDF gerados para cada cliente.'}
                   {activeTab === 'settings' && 'Ajuste integrações, IA, aparência, campos de clientes e estrutura operacional sem sair do domínio principal.'}
                 </p>
               )}
@@ -16329,26 +16387,6 @@ export default function DashboardShell({
                         ))}
                       </select>
                     </div>
-
-                    <button
-                      type="button"
-                      onClick={handleSaveDashboardLayout}
-                      className="btn btn-secondary"
-                      disabled={isSavingDashboardLayout}
-                    >
-                      <i className="bx bx-save"></i>
-                      {isSavingDashboardLayout ? 'Salvando...' : 'Salvar layout'}
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={handleSaveDashboardTemplate}
-                      className="btn btn-secondary"
-                      disabled={isSavingDashboardLayout}
-                    >
-                      <i className="bx bx-bookmark-plus"></i>
-                      Salvar versão
-                    </button>
 
                     {layoutSaveMessage && (
                       <span className="layout-save-message">{layoutSaveMessage}</span>
@@ -16398,6 +16436,16 @@ export default function DashboardShell({
                 <button type="button" onClick={() => handleExportDashboard('pdf')} disabled={isExporting || !dashboardExportRows.length} className="btn btn-secondary">
                   <i className={isExporting ? 'bx bx-loader-alt bx-spin' : 'bx bx-file-blank'}></i>
                   PDF interno
+                </button>
+
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  onClick={handleSaveReport}
+                  disabled={isSavingReport || isExporting || !dashboardExportRows.length}
+                >
+                  <i className={isSavingReport ? 'bx bx-loader-alt bx-spin' : savedReportSuccess ? 'bx bx-check' : 'bx bx-cloud-upload'}></i>
+                  {isSavingReport ? 'Salvando...' : savedReportSuccess ? 'Salvo' : 'Salvar relatório'}
                 </button>
               </>
             )}
@@ -18142,6 +18190,23 @@ export default function DashboardShell({
                 </table>
               </div>
             </section>
+          </section>
+        )}
+
+        {activeTab === 'notas' && (
+          <section style={{ padding: '16px 20px', height: '100%', boxSizing: 'border-box' }}>
+            <ClientNotesPanel
+              clientId={activeClient?.id || null}
+              clientName={activeClient?.name || null}
+              clients={clients}
+              onSelectClient={(client) => setActiveClient(client)}
+            />
+          </section>
+        )}
+
+        {activeTab === 'relatorios' && (
+          <section style={{ padding: '24px' }}>
+            <ReportsTab clients={clients} />
           </section>
         )}
 
@@ -22398,6 +22463,7 @@ export default function DashboardShell({
           box-shadow: 18px 0 36px rgba(20, 90, 50, 0.06);
         }
 
+        .dashboard-light-mode:not([data-active-tab='apresentacao']) .sidebar-toggle,
         .dashboard-light-mode:not([data-active-tab='apresentacao']) .logo,
         .dashboard-light-mode:not([data-active-tab='apresentacao']) .operation-stellar-search,
         .dashboard-light-mode:not([data-active-tab='apresentacao']) .operation-stellar-icon-button,
@@ -36502,6 +36568,21 @@ export default function DashboardShell({
           background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.98)) !important;
           border-color: var(--lumina-page-border) !important;
           box-shadow: 0 18px 42px rgba(15, 23, 42, 0.06) !important;
+        }
+
+        .dashboard-light-mode.dashboard-shell-stellar .management-header-row {
+          background:
+            linear-gradient(135deg, color-mix(in srgb, var(--button-primary, #26c281) 6%, transparent), transparent 38%),
+            linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.98)) !important;
+          border-color: var(--lumina-page-border) !important;
+        }
+
+        .dashboard-light-mode.dashboard-shell-stellar .management-header-copy h2 {
+          color: #1a1c1c !important;
+        }
+
+        .dashboard-light-mode.dashboard-shell-stellar .management-header-copy p {
+          color: #3d4a41 !important;
         }
 
         .dashboard-light-mode.dashboard-shell-stellar .modal-overlay,

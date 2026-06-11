@@ -6,7 +6,7 @@ import { getDashboardState } from '@/lib/server/dashboard-store'
 import { requestAssistantReply, resolveAssistantAiConfig } from '@/lib/server/ai-chat'
 import type { AssistantChatBody, AssistantContextSnapshot, AssistantMessage } from '@/lib/types/ai'
 
-function normalizeChatBody(body: unknown): AssistantChatBody {
+function normalizeChatBody(body: unknown): AssistantChatBody & { providerOverride?: string } {
   const payload = body && typeof body === 'object' ? (body as Record<string, unknown>) : {}
 
   return {
@@ -17,6 +17,7 @@ function normalizeChatBody(body: unknown): AssistantChatBody {
       payload.contextSnapshot && typeof payload.contextSnapshot === 'object'
         ? (payload.contextSnapshot as AssistantContextSnapshot)
         : null,
+    providerOverride: payload.providerOverride ? String(payload.providerOverride).trim() : undefined,
   }
 }
 
@@ -48,7 +49,11 @@ export async function POST(request: Request) {
     }
 
     const dashboardState = await getDashboardState(supabase, accessContext)
-    const aiConfig = resolveAssistantAiConfig(dashboardState.globalIntegrations)
+    const baseIntegrations = dashboardState.globalIntegrations || {}
+    const mergedIntegrations = body.providerOverride
+      ? { ...baseIntegrations, aiProvider: body.providerOverride }
+      : baseIntegrations
+    const aiConfig = resolveAssistantAiConfig(mergedIntegrations)
     const result = await requestAssistantReply({
       config: aiConfig,
       adminSupabase: supabase,
