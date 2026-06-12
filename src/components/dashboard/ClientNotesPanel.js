@@ -44,7 +44,7 @@ function execCmd(command, value) {
 
 /* ─── NoteListItem sub-component ─────────────────────────────── */
 
-function NoteListItem({ note, selectedId, children, onSelect, onDelete, onCreateSubNote, isChild }) {
+function NoteListItem({ note, selectedId, children, onSelect, onDelete, onCreateSubNote, isChild, clientLabel }) {
   return (
     <>
       <li
@@ -57,6 +57,7 @@ function NoteListItem({ note, selectedId, children, onSelect, onDelete, onCreate
         </div>
         <div className="ios-note-meta">
           <span className="ios-note-date">{formatRelative(note.created_at)}</span>
+          {clientLabel && <span className="ios-note-client-badge">{clientLabel}</span>}
           <span className="ios-note-preview">{notePreview(note.content)}</span>
         </div>
         <div className="ios-note-actions">
@@ -94,13 +95,18 @@ function NoteListItem({ note, selectedId, children, onSelect, onDelete, onCreate
 
 /* ─── main component ──────────────────────────────────────────── */
 
+const ALL_CLIENTS = '__all__'
+
 export default function ClientNotesPanel({ clientId: initialClientId, clientName: initialClientName, clients = [], isLightMode }) {
-  const [activeClientId, setActiveClientId] = useState(initialClientId || null)
-  const [activeClientName, setActiveClientName] = useState(initialClientName || null)
+  // Default to "all clients" unless a specific clientId is passed in
+  const [activeClientId, setActiveClientId] = useState(initialClientId || ALL_CLIENTS)
+  const [activeClientName, setActiveClientName] = useState(initialClientName || 'Todos os clientes')
 
   const [notes, setNotes] = useState([])
   const [isLoading, setIsLoading] = useState(false)
   const [selectedId, setSelectedId] = useState(null)
+  // showEditor as state so clicking "nova nota" immediately renders the editor
+  const [showEditor, setShowEditor] = useState(false)
   const [saveStatus, setSaveStatus] = useState('idle') // 'idle' | 'saving' | 'saved' | 'error'
   const [error, setError] = useState(null)
   const [searchQuery, setSearchQuery] = useState('')
@@ -115,7 +121,7 @@ export default function ClientNotesPanel({ clientId: initialClientId, clientName
     currentNoteIdRef.current = selectedId
   }, [selectedId])
 
-  // Sync if parent prop changes
+  // Sync if parent prop changes (e.g. clicking a client from the sidebar)
   useEffect(() => {
     if (initialClientId && initialClientId !== activeClientId) {
       setActiveClientId(initialClientId)
@@ -125,6 +131,11 @@ export default function ClientNotesPanel({ clientId: initialClientId, clientName
 
   /* ── fetch notes ── */
   const fetchNotes = useCallback(async (clientId) => {
+    if (clientId === ALL_CLIENTS) {
+      const res = await fetch('/api/notes?mine=true')
+      const data = await res.json()
+      return data.notes || []
+    }
     if (!clientId) return []
     const res = await fetch(`/api/clients/${clientId}/notes?mine=true`)
     const data = await res.json()
@@ -132,17 +143,14 @@ export default function ClientNotesPanel({ clientId: initialClientId, clientName
   }, [])
 
   useEffect(() => {
-    if (!activeClientId) {
-      setNotes([])
-      setSelectedId(null)
-      currentNoteIdRef.current = null
-      isNew.current = false
-      if (editorRef.current) editorRef.current.innerHTML = ''
-      return
-    }
     let cancelled = false
     setIsLoading(true)
     setError(null)
+    setShowEditor(false)
+    setSelectedId(null)
+    currentNoteIdRef.current = null
+    isNew.current = false
+    if (editorRef.current) editorRef.current.innerHTML = ''
 
     fetchNotes(activeClientId).then((list) => {
       if (cancelled) return
@@ -151,11 +159,8 @@ export default function ClientNotesPanel({ clientId: initialClientId, clientName
         setSelectedId(list[0].id)
         currentNoteIdRef.current = list[0].id
         isNew.current = false
+        setShowEditor(true)
         if (editorRef.current) editorRef.current.innerHTML = list[0].content || ''
-      } else {
-        setSelectedId(null)
-        currentNoteIdRef.current = null
-        if (editorRef.current) editorRef.current.innerHTML = ''
       }
     }).catch((err) => {
       if (!cancelled) setError(err.message)
@@ -200,15 +205,17 @@ export default function ClientNotesPanel({ clientId: initialClientId, clientName
     if (!content.trim()) return
     setSaveStatus('saving')
     try {
-      const res = await fetch(`/api/clients/${activeClientId}/notes/${noteId}`, {
+      // Resolve the correct clientId even when in "all clients" mode
+      const noteClientId = notes.find((n) => n.id === noteId)?.client_id || activeClientId
+      const res = await fetch(`/api/clients/${noteClientId}/notes/${noteId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ content }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Erro ao salvar.')
-      const list = await fetchNotes(activeClientId)
-      setNotes(list)
+      // Don't refetch all notes on every auto-save keystroke — just update in place
+      setNotes((prev) => prev.map((n) => n.id === noteId ? { ...n, content } : n))
       setSaveStatus('saved')
       setTimeout(() => setSaveStatus('idle'), 2000)
     } catch (err) {
@@ -245,6 +252,7 @@ export default function ClientNotesPanel({ clientId: initialClientId, clientName
   function selectNote(note) {
     if (saveTimer.current) { clearTimeout(saveTimer.current); saveTimer.current = null }
     setSelectedId(note.id)
+    setShowEditor(true)
     currentNoteIdRef.current = note.id
     isNew.current = false
     newParentId.current = null
@@ -255,27 +263,39 @@ export default function ClientNotesPanel({ clientId: initialClientId, clientName
   }
 
   function handleNew(parentId) {
-    if (!activeClientId) { setError('Selecione um cliente para criar uma nota'); return }
+    // In "all clients" mode, can't create a note without a specific client selected
+    if (activeClientId === ALL_CLIENTS) {
+      setError('Selecione um cliente específico para criar uma nota')
+      return
+    }
     if (saveTimer.current) { clearTimeout(saveTimer.current); saveTimer.current = null }
     setSelectedId(null)
+    setShowEditor(true)
     currentNoteIdRef.current = null
     isNew.current = true
     newParentId.current = parentId || null
-    if (editorRef.current) {
-      editorRef.current.innerHTML = ''
-      editorRef.current.focus()
-    }
+    // Focus after React re-renders the editor
+    setTimeout(() => {
+      if (editorRef.current) {
+        editorRef.current.innerHTML = ''
+        editorRef.current.focus()
+      }
+    }, 0)
   }
 
   async function handleDelete(noteId, e) {
     e.stopPropagation()
     if (!window.confirm('Excluir esta nota?')) return
     try {
-      const res = await fetch(`/api/clients/${activeClientId}/notes/${noteId}`, { method: 'DELETE' })
+      // Find the client_id for this note (needed when in "all clients" mode)
+      const note = notes.find((n) => n.id === noteId)
+      const clientIdForNote = note?.client_id || activeClientId
+      const res = await fetch(`/api/clients/${clientIdForNote}/notes/${noteId}`, { method: 'DELETE' })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Erro ao excluir.')
       if (currentNoteIdRef.current === noteId) {
         setSelectedId(null)
+        setShowEditor(false)
         currentNoteIdRef.current = null
         isNew.current = false
         if (editorRef.current) editorRef.current.innerHTML = ''
@@ -287,11 +307,15 @@ export default function ClientNotesPanel({ clientId: initialClientId, clientName
 
   async function handleCreateSubNote(parentId, e) {
     e.stopPropagation()
-    if (!activeClientId) return
+    if (!activeClientId || activeClientId === ALL_CLIENTS) return
+    // Find client_id from parent note (needed in all-clients mode)
+    const parentNote = notes.find((n) => n.id === parentId)
+    const clientIdForNote = parentNote?.client_id || activeClientId
+    if (!clientIdForNote || clientIdForNote === ALL_CLIENTS) return
     if (saveTimer.current) { clearTimeout(saveTimer.current); saveTimer.current = null }
     setSaveStatus('saving')
     try {
-      const res = await fetch(`/api/clients/${activeClientId}/notes`, {
+      const res = await fetch(`/api/clients/${clientIdForNote}/notes`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ content: '<p>Nova sub-nota</p>', parentId }),
@@ -303,6 +327,7 @@ export default function ClientNotesPanel({ clientId: initialClientId, clientName
       setNotes(list)
       if (created) {
         setSelectedId(created.id)
+        setShowEditor(true)
         currentNoteIdRef.current = created.id
         isNew.current = false
         newParentId.current = null
@@ -321,6 +346,11 @@ export default function ClientNotesPanel({ clientId: initialClientId, clientName
 
   function handleClientChange(e) {
     const id = e.target.value
+    if (id === ALL_CLIENTS) {
+      setActiveClientId(ALL_CLIENTS)
+      setActiveClientName('Todos os clientes')
+      return
+    }
     const client = clients.find((c) => String(c.id) === id)
     if (!client) return
     setActiveClientId(client.id)
@@ -425,7 +455,7 @@ export default function ClientNotesPanel({ clientId: initialClientId, clientName
     : topLevelNotes
 
   const selectedNote = notes.find((n) => n.id === selectedId)
-  const hasEditor = selectedId !== null || isNew.current
+  const hasEditor = showEditor
 
   const saveLabel = saveStatus === 'saving' ? 'Salvando...'
     : saveStatus === 'saved' ? 'Salvo'
@@ -441,10 +471,10 @@ export default function ClientNotesPanel({ clientId: initialClientId, clientName
           {clients.length > 0 ? (
             <select
               className="ios-notes-client-select"
-              value={activeClientId ? String(activeClientId) : ''}
+              value={activeClientId ? String(activeClientId) : ALL_CLIENTS}
               onChange={handleClientChange}
             >
-              <option value="" disabled>Selecionar cliente</option>
+              <option value={ALL_CLIENTS}>Todos os clientes</option>
               {clients.map((c) => (
                 <option key={c.id} value={String(c.id)}>{c.name}</option>
               ))}
@@ -455,8 +485,8 @@ export default function ClientNotesPanel({ clientId: initialClientId, clientName
           <button
             className="ios-notes-new-btn"
             onClick={() => handleNew(null)}
-            title="Nova nota"
-            disabled={!activeClientId}
+            title={activeClientId === ALL_CLIENTS ? 'Selecione um cliente para criar nota' : 'Nova nota'}
+            disabled={activeClientId === ALL_CLIENTS}
           >
             <i className="bx bx-edit-alt" />
           </button>
@@ -478,9 +508,7 @@ export default function ClientNotesPanel({ clientId: initialClientId, clientName
           )}
         </div>
 
-        {!activeClientId ? (
-          <div className="ios-notes-state">Selecione um cliente acima.</div>
-        ) : isLoading ? (
+        {isLoading ? (
           <div className="ios-notes-state">Carregando...</div>
         ) : notes.length === 0 ? (
           <div className="ios-notes-state">Nenhuma nota ainda.</div>
@@ -488,30 +516,31 @@ export default function ClientNotesPanel({ clientId: initialClientId, clientName
           <div className="ios-notes-state">Nenhum resultado.</div>
         ) : (
           <ul className="ios-notes-list">
-            {filteredTopLevel.map((note) => (
-              <NoteListItem
-                key={note.id}
-                note={note}
-                selectedId={selectedId}
-                children={searchQuery ? [] : childrenOf(note.id)}
-                onSelect={selectNote}
-                onDelete={handleDelete}
-                onCreateSubNote={handleCreateSubNote}
-                isChild={false}
-              />
-            ))}
+            {filteredTopLevel.map((note) => {
+              const clientLabel = activeClientId === ALL_CLIENTS
+                ? (clients.find((c) => String(c.id) === String(note.client_id))?.name || null)
+                : null
+              return (
+                <NoteListItem
+                  key={note.id}
+                  note={note}
+                  selectedId={selectedId}
+                  children={searchQuery ? [] : childrenOf(note.id)}
+                  onSelect={selectNote}
+                  onDelete={handleDelete}
+                  onCreateSubNote={handleCreateSubNote}
+                  isChild={false}
+                  clientLabel={clientLabel}
+                />
+              )
+            })}
           </ul>
         )}
       </div>
 
       {/* ── Right panel ── */}
       <div className="ios-notes-editor-panel">
-        {!activeClientId ? (
-          <div className="ios-notes-editor-empty">
-            <i className="bx bx-user" />
-            <p>Selecione um cliente para ver as notas</p>
-          </div>
-        ) : hasEditor ? (
+        {hasEditor ? (
           <>
             {/* Toolbar */}
             <div className="ios-toolbar">
@@ -604,9 +633,10 @@ export default function ClientNotesPanel({ clientId: initialClientId, clientName
               ) : (
                 <span>Nova nota</span>
               )}
-              {!activeClientId && (
-                <span className="ios-notes-warning">Selecione um cliente para salvar</span>
-              )}
+              {selectedNote && activeClientId === ALL_CLIENTS && (() => {
+                const cn = clients.find((c) => String(c.id) === String(selectedNote.client_id))?.name
+                return cn ? <span className="ios-notes-warning" style={{ color: 'var(--button-primary,#26c281)', fontStyle: 'normal', fontWeight: 600 }}>{cn}</span> : null
+              })()}
             </div>
 
             {/* Contenteditable editor */}
@@ -1098,6 +1128,17 @@ export default function ClientNotesPanel({ clientId: initialClientId, clientName
           text-overflow: ellipsis;
         }
 
+        :global(.ios-note-client-badge) {
+          font-size: 10px;
+          font-weight: 600;
+          color: var(--button-primary, #26c281);
+          background: rgba(38,194,129,0.12);
+          border-radius: 4px;
+          padding: 1px 5px;
+          white-space: nowrap;
+          flex-shrink: 0;
+        }
+
         :global(.ios-note-actions) {
           position: absolute;
           top: 50%;
@@ -1163,6 +1204,7 @@ export default function ClientNotesPanel({ clientId: initialClientId, clientName
         :global(.dashboard-light-mode .ios-note-title) { color: #1c1c1e; }
         :global(.dashboard-light-mode .ios-note-date),
         :global(.dashboard-light-mode .ios-note-preview) { color: rgba(28,28,30,0.45); }
+        :global(.dashboard-light-mode .ios-note-client-badge) { background: rgba(38,194,129,0.15); }
         :global(.dashboard-light-mode .ios-notes-editor pre) { background: rgba(0,0,0,0.04); }
       `}</style>
     </div>
