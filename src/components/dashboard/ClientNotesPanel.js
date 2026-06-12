@@ -1,6 +1,8 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
+
+/* ─── helpers ─────────────────────────────────────────────────── */
 
 function formatRelative(dateString) {
   if (!dateString) return ''
@@ -14,31 +16,106 @@ function formatRelative(dateString) {
   return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })
 }
 
-function noteTitle(content) {
-  const first = (content || '').split('\n')[0].trim()
+function stripHtml(html) {
+  if (!html) return ''
+  return html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
+}
+
+function noteTitle(html) {
+  if (!html) return 'Nova nota'
+  const m = html.match(/<h[1-3][^>]*>(.*?)<\/h[1-3]>/i)
+  if (m) return stripHtml(m[1]) || 'Nova nota'
+  const plain = stripHtml(html)
+  const first = plain.split('\n')[0].trim()
   return first || 'Nova nota'
 }
 
-function notePreview(content) {
-  const lines = (content || '').split('\n').filter(Boolean)
-  return lines[1] || 'Sem conteúdo adicional'
+function notePreview(html) {
+  if (!html) return 'Sem conteúdo adicional'
+  const plain = stripHtml(html)
+  const lines = plain.split('\n').filter(Boolean)
+  const preview = lines.slice(1).join(' ')
+  return preview.slice(0, 80) || 'Sem conteúdo adicional'
 }
 
-export default function ClientNotesPanel({ clientId: initialClientId, clientName: initialClientName, clients = [] }) {
-  // Internal client state — dropdown controls this independently
+function execCmd(command, value) {
+  try { document.execCommand(command, false, value ?? null) } catch (_) {}
+}
+
+/* ─── NoteListItem sub-component ─────────────────────────────── */
+
+function NoteListItem({ note, selectedId, children, onSelect, onDelete, onCreateSubNote, isChild }) {
+  return (
+    <>
+      <li
+        className={`ios-notes-list-item${note.id === selectedId ? ' selected' : ''}${isChild ? ' child-item' : ''}`}
+        onClick={() => onSelect(note)}
+      >
+        <div className="ios-note-title">
+          {isChild && <span className="ios-note-child-prefix">&#8627;</span>}
+          {noteTitle(note.content)}
+        </div>
+        <div className="ios-note-meta">
+          <span className="ios-note-date">{formatRelative(note.created_at)}</span>
+          <span className="ios-note-preview">{notePreview(note.content)}</span>
+        </div>
+        <div className="ios-note-actions">
+          <button
+            className="ios-note-action-btn ios-note-subnote-btn"
+            onClick={(e) => onCreateSubNote(note.id, e)}
+            title="Sub-nota"
+          >
+            +
+          </button>
+          <button
+            className="ios-note-action-btn ios-note-delete-btn"
+            onClick={(e) => onDelete(note.id, e)}
+            title="Excluir"
+          >
+            <i className="bx bx-trash" />
+          </button>
+        </div>
+      </li>
+      {children && children.length > 0 && children.map((child) => (
+        <NoteListItem
+          key={child.id}
+          note={child}
+          selectedId={selectedId}
+          children={[]}
+          onSelect={onSelect}
+          onDelete={onDelete}
+          onCreateSubNote={onCreateSubNote}
+          isChild={true}
+        />
+      ))}
+    </>
+  )
+}
+
+/* ─── main component ──────────────────────────────────────────── */
+
+export default function ClientNotesPanel({ clientId: initialClientId, clientName: initialClientName, clients = [], isLightMode }) {
   const [activeClientId, setActiveClientId] = useState(initialClientId || null)
   const [activeClientName, setActiveClientName] = useState(initialClientName || null)
 
   const [notes, setNotes] = useState([])
   const [isLoading, setIsLoading] = useState(false)
   const [selectedId, setSelectedId] = useState(null)
-  const [editorContent, setEditorContent] = useState('')
-  const [isSaving, setIsSaving] = useState(false)
+  const [saveStatus, setSaveStatus] = useState('idle') // 'idle' | 'saving' | 'saved' | 'error'
   const [error, setError] = useState(null)
+  const [searchQuery, setSearchQuery] = useState('')
+
+  const editorRef = useRef(null)
   const saveTimer = useRef(null)
   const isNew = useRef(false)
+  const newParentId = useRef(null)
+  const currentNoteIdRef = useRef(null)
 
-  // Sync if parent activeClient changes (e.g. user clicks client on another tab)
+  useEffect(() => {
+    currentNoteIdRef.current = selectedId
+  }, [selectedId])
+
+  // Sync if parent prop changes
   useEffect(() => {
     if (initialClientId && initialClientId !== activeClientId) {
       setActiveClientId(initialClientId)
@@ -46,88 +123,82 @@ export default function ClientNotesPanel({ clientId: initialClientId, clientName
     }
   }, [initialClientId, initialClientName])
 
-  // Fetch notes whenever activeClientId or filter changes
+  /* ── fetch notes ── */
+  const fetchNotes = useCallback(async (clientId) => {
+    if (!clientId) return []
+    const res = await fetch(`/api/clients/${clientId}/notes?mine=true`)
+    const data = await res.json()
+    return data.notes || []
+  }, [])
+
   useEffect(() => {
     if (!activeClientId) {
       setNotes([])
       setSelectedId(null)
-      setEditorContent('')
+      currentNoteIdRef.current = null
       isNew.current = false
+      if (editorRef.current) editorRef.current.innerHTML = ''
       return
     }
     let cancelled = false
     setIsLoading(true)
     setError(null)
-    setNotes([])
-    setSelectedId(null)
-    setEditorContent('')
-    isNew.current = false
 
-    const fetchUrl = `/api/clients/${activeClientId}/notes?mine=true`
-    fetch(fetchUrl)
-      .then((r) => r.json())
-      .then((data) => {
-        if (cancelled) return
-        const list = data.notes || []
-        setNotes(list)
-        if (list.length > 0) {
-          setSelectedId(list[0].id)
-          setEditorContent(list[0].content)
-        }
-      })
-      .catch((err) => { if (!cancelled) setError(err.message) })
-      .finally(() => { if (!cancelled) setIsLoading(false) })
+    fetchNotes(activeClientId).then((list) => {
+      if (cancelled) return
+      setNotes(list)
+      if (list.length > 0) {
+        setSelectedId(list[0].id)
+        currentNoteIdRef.current = list[0].id
+        isNew.current = false
+        if (editorRef.current) editorRef.current.innerHTML = list[0].content || ''
+      } else {
+        setSelectedId(null)
+        currentNoteIdRef.current = null
+        if (editorRef.current) editorRef.current.innerHTML = ''
+      }
+    }).catch((err) => {
+      if (!cancelled) setError(err.message)
+    }).finally(() => {
+      if (!cancelled) setIsLoading(false)
+    })
 
     return () => { cancelled = true }
-  }, [activeClientId])
+  }, [activeClientId, fetchNotes])
 
-  function handleClientChange(e) {
-    const id = e.target.value
-    const client = clients.find((c) => String(c.id) === id)
-    if (!client) return
-    setActiveClientId(client.id)
-    setActiveClientName(client.name)
-  }
-
-  function selectNote(note) {
-    if (saveTimer.current) { clearTimeout(saveTimer.current); saveTimer.current = null }
-    setSelectedId(note.id)
-    setEditorContent(note.content)
-    isNew.current = false
-  }
-
-  function handleNew() {
-    if (saveTimer.current) { clearTimeout(saveTimer.current); saveTimer.current = null }
-    setSelectedId(null)
-    setEditorContent('')
-    isNew.current = true
-  }
-
-  async function saveNew(content) {
+  /* ── save logic ── */
+  async function saveNew(content, parentId) {
+    if (!activeClientId) { setError('Selecione um cliente para salvar'); return }
     if (!content.trim()) return
-    setIsSaving(true)
+    setSaveStatus('saving')
     try {
       const res = await fetch(`/api/clients/${activeClientId}/notes`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content }),
+        body: JSON.stringify({ content, parentId: parentId || null }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Erro ao criar nota.')
       isNew.current = false
-      const r = await fetch(`/api/clients/${activeClientId}/notes${filter === 'mine' ? '?mine=true' : ''}`)
-      const d = await r.json()
-      const list = d.notes || []
+      newParentId.current = null
+      const created = data.note
+      if (created) {
+        setSelectedId(created.id)
+        currentNoteIdRef.current = created.id
+      }
+      const list = await fetchNotes(activeClientId)
       setNotes(list)
-      const created = data.note || list[0]
-      if (created) { setSelectedId(created.id); setEditorContent(created.content) }
-    } catch (err) { setError(err.message) }
-    finally { setIsSaving(false) }
+      setSaveStatus('saved')
+      setTimeout(() => setSaveStatus('idle'), 2000)
+    } catch (err) {
+      setError(err.message)
+      setSaveStatus('error')
+    }
   }
 
   async function saveEdit(noteId, content) {
     if (!content.trim()) return
-    setIsSaving(true)
+    setSaveStatus('saving')
     try {
       const res = await fetch(`/api/clients/${activeClientId}/notes/${noteId}`, {
         method: 'PATCH',
@@ -136,20 +207,64 @@ export default function ClientNotesPanel({ clientId: initialClientId, clientName
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Erro ao salvar.')
-      const r = await fetch(`/api/clients/${activeClientId}/notes${filter === 'mine' ? '?mine=true' : ''}`)
-      const d = await r.json()
-      setNotes(d.notes || [])
-    } catch (err) { setError(err.message) }
-    finally { setIsSaving(false) }
+      const list = await fetchNotes(activeClientId)
+      setNotes(list)
+      setSaveStatus('saved')
+      setTimeout(() => setSaveStatus('idle'), 2000)
+    } catch (err) {
+      setError(err.message)
+      setSaveStatus('error')
+    }
   }
 
-  function handleEditorChange(value) {
-    setEditorContent(value)
+  function scheduleSave() {
     if (saveTimer.current) clearTimeout(saveTimer.current)
     saveTimer.current = setTimeout(() => {
-      if (isNew.current) saveNew(value)
-      else if (selectedId) saveEdit(selectedId, value)
-    }, 1200)
+      const content = editorRef.current?.innerHTML || ''
+      if (isNew.current) {
+        saveNew(content, newParentId.current)
+      } else if (currentNoteIdRef.current) {
+        saveEdit(currentNoteIdRef.current, content)
+      }
+    }, 1500)
+  }
+
+  function forceSave() {
+    if (saveTimer.current) { clearTimeout(saveTimer.current); saveTimer.current = null }
+    const content = editorRef.current?.innerHTML || ''
+    if (isNew.current) {
+      saveNew(content, newParentId.current)
+    } else if (currentNoteIdRef.current) {
+      saveEdit(currentNoteIdRef.current, content)
+    } else {
+      if (!activeClientId) setError('Selecione um cliente para salvar')
+    }
+  }
+
+  /* ── note operations ── */
+  function selectNote(note) {
+    if (saveTimer.current) { clearTimeout(saveTimer.current); saveTimer.current = null }
+    setSelectedId(note.id)
+    currentNoteIdRef.current = note.id
+    isNew.current = false
+    newParentId.current = null
+    if (editorRef.current) {
+      editorRef.current.innerHTML = note.content || ''
+      editorRef.current.focus()
+    }
+  }
+
+  function handleNew(parentId) {
+    if (!activeClientId) { setError('Selecione um cliente para criar uma nota'); return }
+    if (saveTimer.current) { clearTimeout(saveTimer.current); saveTimer.current = null }
+    setSelectedId(null)
+    currentNoteIdRef.current = null
+    isNew.current = true
+    newParentId.current = parentId || null
+    if (editorRef.current) {
+      editorRef.current.innerHTML = ''
+      editorRef.current.focus()
+    }
   }
 
   async function handleDelete(noteId, e) {
@@ -159,18 +274,168 @@ export default function ClientNotesPanel({ clientId: initialClientId, clientName
       const res = await fetch(`/api/clients/${activeClientId}/notes/${noteId}`, { method: 'DELETE' })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Erro ao excluir.')
-      if (selectedId === noteId) { setSelectedId(null); setEditorContent(''); isNew.current = false }
-      const r = await fetch(`/api/clients/${activeClientId}/notes${filter === 'mine' ? '?mine=true' : ''}`)
-      const d = await r.json()
-      setNotes(d.notes || [])
+      if (currentNoteIdRef.current === noteId) {
+        setSelectedId(null)
+        currentNoteIdRef.current = null
+        isNew.current = false
+        if (editorRef.current) editorRef.current.innerHTML = ''
+      }
+      const list = await fetchNotes(activeClientId)
+      setNotes(list)
     } catch (err) { setError(err.message) }
   }
 
-  const selectedNote = notes.find((n) => n.id === selectedId)
+  async function handleCreateSubNote(parentId, e) {
+    e.stopPropagation()
+    if (!activeClientId) return
+    if (saveTimer.current) { clearTimeout(saveTimer.current); saveTimer.current = null }
+    setSaveStatus('saving')
+    try {
+      const res = await fetch(`/api/clients/${activeClientId}/notes`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: '<p>Nova sub-nota</p>', parentId }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Erro ao criar sub-nota.')
+      const created = data.note
+      const list = await fetchNotes(activeClientId)
+      setNotes(list)
+      if (created) {
+        setSelectedId(created.id)
+        currentNoteIdRef.current = created.id
+        isNew.current = false
+        newParentId.current = null
+        if (editorRef.current) {
+          editorRef.current.innerHTML = created.content || ''
+          editorRef.current.focus()
+        }
+      }
+      setSaveStatus('saved')
+      setTimeout(() => setSaveStatus('idle'), 2000)
+    } catch (err) {
+      setError(err.message)
+      setSaveStatus('error')
+    }
+  }
 
+  function handleClientChange(e) {
+    const id = e.target.value
+    const client = clients.find((c) => String(c.id) === id)
+    if (!client) return
+    setActiveClientId(client.id)
+    setActiveClientName(client.name)
+  }
+
+  /* ── toolbar commands ── */
+  function applyFormat(formatCmd, value) {
+    editorRef.current?.focus()
+    execCmd(formatCmd, value)
+  }
+
+  function applyBlock(tag) {
+    editorRef.current?.focus()
+    execCmd('formatBlock', tag)
+  }
+
+  function applyTextColor(color) {
+    editorRef.current?.focus()
+    execCmd('foreColor', color)
+  }
+
+  function applyHighlight(color) {
+    editorRef.current?.focus()
+    execCmd('hiliteColor', color)
+  }
+
+  function insertChecklist() {
+    editorRef.current?.focus()
+    const sel = window.getSelection()
+    if (!sel || !sel.rangeCount) return
+    const range = sel.getRangeAt(0)
+    const ul = document.createElement('ul')
+    ul.className = 'checklist'
+    const li = document.createElement('li')
+    li.innerHTML = '<span class="check-circle" contenteditable="false"></span><span class="check-text">Item</span>'
+    ul.appendChild(li)
+    range.deleteContents()
+    range.insertNode(ul)
+    const textSpan = li.querySelector('.check-text')
+    if (textSpan) {
+      const r = document.createRange()
+      r.selectNodeContents(textSpan)
+      r.collapse(false)
+      sel.removeAllRanges()
+      sel.addRange(r)
+    }
+  }
+
+  /* ── editor event handlers ── */
+  function handleEditorInput() {
+    scheduleSave()
+  }
+
+  function handleEditorClick(e) {
+    if (e.target.classList.contains('check-circle')) {
+      const li = e.target.closest('li')
+      if (li) li.classList.toggle('checked')
+      scheduleSave()
+    }
+  }
+
+  function handleEditorKeyDown(e) {
+    if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+      e.preventDefault()
+      forceSave()
+    }
+    if ((e.ctrlKey || e.metaKey) && e.key === 'b') { e.preventDefault(); applyFormat('bold') }
+    if ((e.ctrlKey || e.metaKey) && e.key === 'i') { e.preventDefault(); applyFormat('italic') }
+    if ((e.ctrlKey || e.metaKey) && e.key === 'u') { e.preventDefault(); applyFormat('underline') }
+
+    if (e.key === 'Enter') {
+      const sel = window.getSelection()
+      if (sel && sel.rangeCount) {
+        const node = sel.getRangeAt(0).startContainer
+        const li = (node.nodeType === 3 ? node.parentElement : node)?.closest('li')
+        if (li && li.closest('ul.checklist')) {
+          e.preventDefault()
+          const ul = li.closest('ul.checklist')
+          const newLi = document.createElement('li')
+          newLi.innerHTML = '<span class="check-circle" contenteditable="false"></span><span class="check-text"></span>'
+          ul.insertBefore(newLi, li.nextSibling)
+          const textSpan = newLi.querySelector('.check-text')
+          if (textSpan) {
+            const r = document.createRange()
+            r.selectNodeContents(textSpan)
+            r.collapse(false)
+            sel.removeAllRanges()
+            sel.addRange(r)
+          }
+        }
+      }
+    }
+  }
+
+  /* ── derived state ── */
+  const topLevelNotes = notes.filter((n) => !n.parent_id)
+  const childrenOf = (parentId) => notes.filter((n) => n.parent_id === parentId)
+
+  const filteredTopLevel = searchQuery
+    ? notes.filter((n) => stripHtml(n.content).toLowerCase().includes(searchQuery.toLowerCase()))
+    : topLevelNotes
+
+  const selectedNote = notes.find((n) => n.id === selectedId)
+  const hasEditor = selectedId !== null || isNew.current
+
+  const saveLabel = saveStatus === 'saving' ? 'Salvando...'
+    : saveStatus === 'saved' ? 'Salvo'
+    : saveStatus === 'error' ? 'Erro' : ''
+
+  /* ── render ── */
   return (
     <div className="ios-notes-shell">
-      {/* Left panel */}
+
+      {/* ── Left panel ── */}
       <div className="ios-notes-list-panel">
         <div className="ios-notes-list-header">
           {clients.length > 0 ? (
@@ -189,12 +454,28 @@ export default function ClientNotesPanel({ clientId: initialClientId, clientName
           )}
           <button
             className="ios-notes-new-btn"
-            onClick={handleNew}
+            onClick={() => handleNew(null)}
             title="Nova nota"
             disabled={!activeClientId}
           >
-            <i className="bx bx-edit-alt"></i>
+            <i className="bx bx-edit-alt" />
           </button>
+        </div>
+
+        <div className="ios-notes-search-bar">
+          <i className="bx bx-search ios-notes-search-icon" />
+          <input
+            className="ios-notes-search-input"
+            type="text"
+            placeholder="Buscar notas..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+          {searchQuery && (
+            <button className="ios-notes-search-clear" onClick={() => setSearchQuery('')}>
+              <i className="bx bx-x" />
+            </button>
+          )}
         </div>
 
         {!activeClientId ? (
@@ -203,72 +484,162 @@ export default function ClientNotesPanel({ clientId: initialClientId, clientName
           <div className="ios-notes-state">Carregando...</div>
         ) : notes.length === 0 ? (
           <div className="ios-notes-state">Nenhuma nota ainda.</div>
+        ) : filteredTopLevel.length === 0 ? (
+          <div className="ios-notes-state">Nenhum resultado.</div>
         ) : (
           <ul className="ios-notes-list">
-            {notes.map((note) => (
-              <li
+            {filteredTopLevel.map((note) => (
+              <NoteListItem
                 key={note.id}
-                className={`ios-notes-list-item ${note.id === selectedId ? 'selected' : ''}`}
-                onClick={() => selectNote(note)}
-              >
-                <div className="ios-note-title">{noteTitle(note.content)}</div>
-                <div className="ios-note-meta">
-                  <span className="ios-note-date">{formatRelative(note.created_at)}</span>
-                  <span className="ios-note-preview">{notePreview(note.content)}</span>
-                </div>
-                <button
-                  className="ios-note-delete"
-                  onClick={(e) => handleDelete(note.id, e)}
-                  title="Excluir"
-                >
-                  <i className="bx bx-trash"></i>
-                </button>
-              </li>
+                note={note}
+                selectedId={selectedId}
+                children={searchQuery ? [] : childrenOf(note.id)}
+                onSelect={selectNote}
+                onDelete={handleDelete}
+                onCreateSubNote={handleCreateSubNote}
+                isChild={false}
+              />
             ))}
           </ul>
         )}
       </div>
 
-      {/* Right panel — editor */}
+      {/* ── Right panel ── */}
       <div className="ios-notes-editor-panel">
         {!activeClientId ? (
           <div className="ios-notes-editor-empty">
-            <i className="bx bx-user"></i>
+            <i className="bx bx-user" />
             <p>Selecione um cliente para ver as notas</p>
           </div>
-        ) : (selectedId !== null || isNew.current) ? (
+        ) : hasEditor ? (
           <>
-            <div className="ios-notes-editor-meta">
-              {selectedNote && (
-                <span>{formatRelative(selectedNote.created_at)} · {selectedNote.created_by_name || 'Você'}</span>
-              )}
-              {isSaving && <span className="ios-notes-saving">Salvando...</span>}
+            {/* Toolbar */}
+            <div className="ios-toolbar">
+              <select
+                className="ios-toolbar-select"
+                onChange={(e) => { applyBlock(e.target.value); e.target.value = 'p' }}
+                defaultValue="p"
+                title="Estilo do parágrafo"
+              >
+                <option value="p">Corpo</option>
+                <option value="h1">Título</option>
+                <option value="h2">Cabeçalho</option>
+                <option value="h3">Subcabeçalho</option>
+                <option value="pre">Monoespaçado</option>
+              </select>
+
+              <div className="ios-toolbar-sep" />
+
+              <button className="ios-tb-btn" title="Negrito (Ctrl+B)" onClick={() => applyFormat('bold')}>
+                <strong>B</strong>
+              </button>
+              <button className="ios-tb-btn" title="Itálico (Ctrl+I)" onClick={() => applyFormat('italic')}>
+                <em>I</em>
+              </button>
+              <button className="ios-tb-btn" title="Sublinhado (Ctrl+U)" onClick={() => applyFormat('underline')}>
+                <u>U</u>
+              </button>
+              <button className="ios-tb-btn" title="Tachado" onClick={() => applyFormat('strikeThrough')}>
+                <s>S</s>
+              </button>
+
+              <div className="ios-toolbar-sep" />
+
+              <label className="ios-tb-color-btn" title="Cor do texto">
+                <i className="bx bx-font-color" />
+                <input
+                  type="color"
+                  className="ios-tb-color-input"
+                  defaultValue="#26c281"
+                  onChange={(e) => applyTextColor(e.target.value)}
+                />
+              </label>
+
+              <label className="ios-tb-color-btn" title="Realçar texto">
+                <i className="bx bx-highlight" />
+                <input
+                  type="color"
+                  className="ios-tb-color-input"
+                  defaultValue="#ffe066"
+                  onChange={(e) => applyHighlight(e.target.value)}
+                />
+              </label>
+
+              <div className="ios-toolbar-sep" />
+
+              <button className="ios-tb-btn" title="Lista com marcadores" onClick={() => applyFormat('insertUnorderedList')}>
+                <i className="bx bx-list-ul" />
+              </button>
+              <button className="ios-tb-btn" title="Lista numerada" onClick={() => applyFormat('insertOrderedList')}>
+                <i className="bx bx-list-ol" />
+              </button>
+              <button className="ios-tb-btn" title="Checklist" onClick={insertChecklist}>
+                <i className="bx bx-checkbox-checked" />
+              </button>
+
+              <div className="ios-toolbar-sep" />
+
+              <button className="ios-tb-btn" title="Aumentar recuo" onClick={() => applyFormat('indent')}>
+                <i className="bx bx-indent" />
+              </button>
+              <button className="ios-tb-btn" title="Diminuir recuo" onClick={() => applyFormat('outdent')}>
+                <i className="bx bx-outdent" />
+              </button>
+
+              <div className="ios-toolbar-sep" />
+
+              <div className="ios-toolbar-spacer" />
+
+              {saveLabel ? <span className={`ios-save-status ${saveStatus}`}>{saveLabel}</span> : null}
+
+              <button className="ios-tb-btn ios-save-btn" title="Salvar (Ctrl+S)" onClick={forceSave}>
+                <i className="bx bx-save" />
+              </button>
             </div>
-            <textarea
+
+            {/* Editor meta */}
+            <div className="ios-notes-editor-meta">
+              {selectedNote ? (
+                <span>{formatRelative(selectedNote.created_at)} &middot; {selectedNote.created_by_name || 'Você'}</span>
+              ) : (
+                <span>Nova nota</span>
+              )}
+              {!activeClientId && (
+                <span className="ios-notes-warning">Selecione um cliente para salvar</span>
+              )}
+            </div>
+
+            {/* Contenteditable editor */}
+            <div
+              ref={editorRef}
               className="ios-notes-editor"
-              value={editorContent}
-              onChange={(e) => handleEditorChange(e.target.value)}
-              placeholder="Escreva sua nota..."
-              autoFocus
+              contentEditable
+              suppressContentEditableWarning
+              onInput={handleEditorInput}
+              onClick={handleEditorClick}
+              onKeyDown={handleEditorKeyDown}
+              data-placeholder="Escreva sua nota..."
             />
           </>
         ) : (
           <div className="ios-notes-editor-empty">
-            <i className="bx bx-notepad"></i>
+            <i className="bx bx-notepad" />
             <p>Selecione uma nota ou crie uma nova</p>
-            <button className="ios-notes-new-btn-cta" onClick={handleNew}>
-              <i className="bx bx-plus"></i> Nova nota
+            <button className="ios-notes-new-btn-cta" onClick={() => handleNew(null)}>
+              <i className="bx bx-plus" /> Nova nota
             </button>
           </div>
         )}
+
         {error && (
-          <div className="ios-notes-error">
-            <i className="bx bx-error-circle"></i> {error}
+          <div className="ios-notes-error" onClick={() => setError(null)}>
+            <i className="bx bx-error-circle" /> {error}
           </div>
         )}
       </div>
 
       <style jsx>{`
+        /* ── Shell ── */
         .ios-notes-shell {
           display: flex;
           height: calc(100vh - 80px);
@@ -278,9 +649,10 @@ export default function ClientNotesPanel({ clientId: initialClientId, clientName
           background: var(--bg-panel, #111113);
         }
 
+        /* ── Left panel ── */
         .ios-notes-list-panel {
-          width: 260px;
-          min-width: 260px;
+          width: 280px;
+          min-width: 280px;
           border-right: 1px solid var(--border-color, rgba(255,255,255,0.08));
           display: flex;
           flex-direction: column;
@@ -344,46 +716,51 @@ export default function ClientNotesPanel({ clientId: initialClientId, clientName
           transition: background 0.15s;
         }
 
-        .ios-notes-new-btn:hover:not(:disabled) {
-          background: rgba(255,255,255,0.06);
-        }
+        .ios-notes-new-btn:hover:not(:disabled) { background: rgba(255,255,255,0.06); }
+        .ios-notes-new-btn:disabled { opacity: 0.3; cursor: default; }
 
-        .ios-notes-new-btn:disabled {
-          opacity: 0.3;
-          cursor: default;
-        }
-
-        .ios-notes-filter-bar {
+        /* ── Search bar ── */
+        .ios-notes-search-bar {
           display: flex;
-          gap: 4px;
-          padding: 8px 10px 6px;
+          align-items: center;
+          gap: 6px;
+          padding: 8px 12px;
           border-bottom: 1px solid var(--border-color, rgba(255,255,255,0.06));
         }
 
-        .ios-notes-filter-btn {
+        .ios-notes-search-icon {
+          font-size: 15px;
+          color: var(--text-muted, rgba(245,245,247,0.4));
+          flex-shrink: 0;
+        }
+
+        .ios-notes-search-input {
           flex: 1;
-          padding: 5px 8px;
-          border: none;
-          border-radius: 8px;
+          min-width: 0;
           background: transparent;
-          color: var(--text-muted, rgba(245,245,247,0.5));
-          font-size: 12px;
-          font-weight: 600;
-          font-family: inherit;
-          cursor: pointer;
-          transition: background 0.15s, color 0.15s;
-        }
-
-        .ios-notes-filter-btn.active {
-          background: rgba(38,194,129,0.14);
-          color: var(--button-primary, #26c281);
-        }
-
-        .ios-notes-filter-btn:hover:not(.active) {
-          background: rgba(255,255,255,0.05);
+          border: none;
+          outline: none;
           color: var(--text-primary, #f5f5f7);
+          font-size: 13px;
+          font-family: inherit;
         }
 
+        .ios-notes-search-input::placeholder {
+          color: var(--text-muted, rgba(245,245,247,0.35));
+        }
+
+        .ios-notes-search-clear {
+          border: none;
+          background: none;
+          cursor: pointer;
+          color: var(--text-muted, rgba(245,245,247,0.4));
+          font-size: 16px;
+          display: flex;
+          align-items: center;
+          padding: 0;
+        }
+
+        /* ── Note list ── */
         .ios-notes-state {
           padding: 24px 16px;
           font-size: 13px;
@@ -399,108 +776,225 @@ export default function ClientNotesPanel({ clientId: initialClientId, clientName
           overflow-y: auto;
         }
 
-        .ios-notes-list-item {
-          position: relative;
-          padding: 11px 16px;
-          cursor: pointer;
-          border-radius: 10px;
-          margin: 2px 6px;
-          transition: background 0.15s;
-        }
-
-        .ios-notes-list-item:hover { background: rgba(255,255,255,0.05); }
-        .ios-notes-list-item:hover .ios-note-delete { opacity: 1; }
-        .ios-notes-list-item.selected { background: rgba(38,194,129,0.12); }
-
-        .ios-note-title {
-          font-size: 13px;
-          font-weight: 600;
-          color: var(--text-primary, #f5f5f7);
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          padding-right: 24px;
-        }
-
-        .ios-note-meta {
-          display: flex;
-          gap: 6px;
-          margin-top: 3px;
-          align-items: baseline;
-        }
-
-        .ios-note-date {
-          font-size: 11px;
-          color: var(--text-muted, rgba(245,245,247,0.44));
-          white-space: nowrap;
-          flex-shrink: 0;
-        }
-
-        .ios-note-preview {
-          font-size: 11px;
-          color: var(--text-muted, rgba(245,245,247,0.44));
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
-        }
-
-        .ios-note-delete {
-          position: absolute;
-          top: 50%;
-          right: 10px;
-          transform: translateY(-50%);
-          opacity: 0;
-          border: none;
-          background: none;
-          cursor: pointer;
-          color: rgba(255,59,48,0.7);
-          font-size: 15px;
-          display: flex;
-          align-items: center;
-          transition: opacity 0.15s, color 0.15s;
-          padding: 4px;
-          border-radius: 6px;
-        }
-
-        .ios-note-delete:hover { color: #ff3b30; }
-
+        /* ── Right panel ── */
         .ios-notes-editor-panel {
           flex: 1;
           display: flex;
           flex-direction: column;
           background: var(--bg-panel, #111113);
           position: relative;
+          min-width: 0;
         }
 
+        /* ── Toolbar ── */
+        .ios-toolbar {
+          display: flex;
+          align-items: center;
+          flex-wrap: wrap;
+          gap: 2px;
+          padding: 6px 12px;
+          border-bottom: 1px solid var(--border-color, rgba(255,255,255,0.06));
+          background: var(--bg-dark, #0a0a0c);
+        }
+
+        .ios-toolbar-sep {
+          width: 1px;
+          height: 20px;
+          background: var(--border-color, rgba(255,255,255,0.1));
+          margin: 0 4px;
+          flex-shrink: 0;
+        }
+
+        .ios-toolbar-spacer { flex: 1; }
+
+        .ios-toolbar-select {
+          background: transparent;
+          border: 1px solid transparent;
+          border-radius: 6px;
+          color: var(--text-primary, #f5f5f7);
+          font-size: 12px;
+          font-family: inherit;
+          padding: 3px 4px;
+          cursor: pointer;
+          outline: none;
+          transition: border-color 0.15s;
+        }
+
+        .ios-toolbar-select:hover {
+          border-color: var(--border-color, rgba(255,255,255,0.12));
+        }
+
+        .ios-toolbar-select option {
+          background: #1a1a1e;
+          color: #f5f5f7;
+        }
+
+        .ios-tb-btn {
+          min-width: 28px;
+          height: 28px;
+          padding: 0 6px;
+          border: none;
+          border-radius: 6px;
+          background: transparent;
+          color: var(--text-primary, #f5f5f7);
+          font-size: 13px;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: background 0.15s, color 0.15s;
+          font-family: inherit;
+        }
+
+        .ios-tb-btn:hover { background: rgba(255,255,255,0.08); }
+
+        .ios-save-btn { color: var(--button-primary, #26c281); }
+        .ios-save-btn:hover { background: rgba(38,194,129,0.12); }
+
+        .ios-tb-color-btn {
+          position: relative;
+          min-width: 28px;
+          height: 28px;
+          padding: 0 6px;
+          border-radius: 6px;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: var(--text-primary, #f5f5f7);
+          font-size: 13px;
+          transition: background 0.15s;
+        }
+
+        .ios-tb-color-btn:hover { background: rgba(255,255,255,0.08); }
+
+        .ios-tb-color-input {
+          position: absolute;
+          opacity: 0;
+          width: 1px;
+          height: 1px;
+          pointer-events: none;
+        }
+
+        .ios-save-status {
+          font-size: 11px;
+          padding: 2px 8px;
+          border-radius: 6px;
+          font-weight: 500;
+        }
+
+        .ios-save-status.saving { color: var(--text-muted, rgba(245,245,247,0.5)); }
+        .ios-save-status.saved { color: var(--button-primary, #26c281); }
+        .ios-save-status.error { color: #ff3b30; }
+
+        /* ── Editor meta ── */
         .ios-notes-editor-meta {
-          padding: 14px 24px 6px;
+          padding: 8px 24px 6px;
           font-size: 11px;
           color: var(--text-muted, rgba(245,245,247,0.44));
           display: flex;
           gap: 12px;
           align-items: center;
-          border-bottom: 1px solid var(--border-color, rgba(255,255,255,0.06));
+          border-bottom: 1px solid var(--border-color, rgba(255,255,255,0.05));
         }
 
-        .ios-notes-saving { color: var(--button-primary, #26c281); font-style: italic; }
+        .ios-notes-warning { color: #ff9f0a; font-style: italic; }
 
+        /* ── Contenteditable editor ── */
         .ios-notes-editor {
           flex: 1;
-          width: 100%;
-          border: none;
           outline: none;
-          resize: none;
-          background: transparent;
+          padding: 24px 28px;
           color: var(--text-primary, #f5f5f7);
           font-family: inherit;
           font-size: 14px;
-          line-height: 1.7;
-          padding: 20px 28px;
+          line-height: 1.75;
+          overflow-y: auto;
           caret-color: var(--button-primary, #26c281);
+          word-wrap: break-word;
         }
 
-        .ios-notes-editor::placeholder { color: var(--text-muted, rgba(245,245,247,0.3)); }
+        .ios-notes-editor:empty::before {
+          content: attr(data-placeholder);
+          color: var(--text-muted, rgba(245,245,247,0.3));
+          pointer-events: none;
+          display: block;
+        }
 
+        /* editor content styles via :global */
+        :global(.ios-notes-editor h1) { font-size: 22px; font-weight: 700; margin: 0 0 8px; }
+        :global(.ios-notes-editor h2) { font-size: 18px; font-weight: 700; margin: 12px 0 6px; }
+        :global(.ios-notes-editor h3) { font-size: 15px; font-weight: 600; margin: 10px 0 4px; }
+        :global(.ios-notes-editor pre) {
+          font-family: 'SF Mono', 'Menlo', monospace;
+          font-size: 12px;
+          background: rgba(255,255,255,0.05);
+          border-radius: 6px;
+          padding: 8px 12px;
+          white-space: pre-wrap;
+        }
+        :global(.ios-notes-editor p) { margin: 0 0 6px; }
+        :global(.ios-notes-editor ul:not(.checklist)), :global(.ios-notes-editor ol) {
+          padding-left: 20px;
+          margin: 4px 0;
+        }
+
+        /* ── Checklist ── */
+        :global(.ios-notes-editor ul.checklist) {
+          list-style: none;
+          padding-left: 0;
+          margin: 6px 0;
+        }
+
+        :global(.ios-notes-editor ul.checklist li) {
+          display: flex;
+          align-items: flex-start;
+          gap: 8px;
+          padding: 3px 0;
+          line-height: 1.5;
+        }
+
+        :global(.ios-notes-editor ul.checklist li .check-circle) {
+          width: 16px;
+          height: 16px;
+          min-width: 16px;
+          border-radius: 50%;
+          border: 2px solid var(--button-primary, #26c281);
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          margin-top: 3px;
+          transition: background 0.15s;
+          user-select: none;
+        }
+
+        :global(.ios-notes-editor ul.checklist li.checked .check-circle) {
+          background: var(--button-primary, #26c281);
+        }
+
+        :global(.ios-notes-editor ul.checklist li.checked .check-circle::after) {
+          content: '';
+          display: block;
+          width: 4px;
+          height: 7px;
+          border: 2px solid #fff;
+          border-top: none;
+          border-left: none;
+          transform: rotate(45deg) translateY(-1px);
+        }
+
+        :global(.ios-notes-editor ul.checklist li.checked .check-text) {
+          text-decoration: line-through;
+          opacity: 0.5;
+        }
+
+        :global(.ios-notes-editor ul.checklist li .check-text) {
+          flex: 1;
+          outline: none;
+        }
+
+        /* ── Editor empty state ── */
         .ios-notes-editor-empty {
           flex: 1;
           display: flex;
@@ -531,6 +1025,7 @@ export default function ClientNotesPanel({ clientId: initialClientId, clientName
 
         .ios-notes-new-btn-cta:hover { background: rgba(38,194,129,0.08); }
 
+        /* ── Error toast ── */
         .ios-notes-error {
           position: absolute;
           bottom: 16px;
@@ -546,9 +1041,92 @@ export default function ClientNotesPanel({ clientId: initialClientId, clientName
           align-items: center;
           gap: 6px;
           white-space: nowrap;
+          cursor: pointer;
+          z-index: 10;
         }
 
-        /* Light mode */
+        /* ── Note list items (global for NoteListItem) ── */
+        :global(.ios-notes-list-item) {
+          position: relative;
+          padding: 11px 16px;
+          cursor: pointer;
+          border-radius: 10px;
+          margin: 2px 6px;
+          transition: background 0.15s;
+          list-style: none;
+        }
+
+        :global(.ios-notes-list-item:hover) { background: rgba(255,255,255,0.05); }
+        :global(.ios-notes-list-item:hover .ios-note-action-btn) { opacity: 1; }
+        :global(.ios-notes-list-item.selected) { background: rgba(38,194,129,0.12); }
+        :global(.ios-notes-list-item.child-item) { margin-left: 22px; }
+
+        :global(.ios-note-title) {
+          font-size: 13px;
+          font-weight: 600;
+          color: var(--text-primary, #f5f5f7);
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          padding-right: 60px;
+        }
+
+        :global(.ios-note-child-prefix) {
+          color: var(--text-muted, rgba(245,245,247,0.5));
+          margin-right: 4px;
+        }
+
+        :global(.ios-note-meta) {
+          display: flex;
+          gap: 6px;
+          margin-top: 3px;
+          align-items: baseline;
+        }
+
+        :global(.ios-note-date) {
+          font-size: 11px;
+          color: var(--text-muted, rgba(245,245,247,0.44));
+          white-space: nowrap;
+          flex-shrink: 0;
+        }
+
+        :global(.ios-note-preview) {
+          font-size: 11px;
+          color: var(--text-muted, rgba(245,245,247,0.44));
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        :global(.ios-note-actions) {
+          position: absolute;
+          top: 50%;
+          right: 8px;
+          transform: translateY(-50%);
+          display: flex;
+          gap: 2px;
+          align-items: center;
+        }
+
+        :global(.ios-note-action-btn) {
+          opacity: 0;
+          border: none;
+          background: none;
+          cursor: pointer;
+          font-size: 14px;
+          display: flex;
+          align-items: center;
+          padding: 4px;
+          border-radius: 6px;
+          transition: opacity 0.15s, color 0.15s, background 0.15s;
+        }
+
+        :global(.ios-note-delete-btn) { color: rgba(255,59,48,0.7); }
+        :global(.ios-note-delete-btn:hover) { color: #ff3b30; background: rgba(255,59,48,0.1); }
+        :global(.ios-note-subnote-btn) { color: var(--button-primary, #26c281); font-size: 11px; font-weight: bold; }
+        :global(.ios-note-subnote-btn:hover) { background: rgba(38,194,129,0.12); }
+
+        /* ── Light mode overrides ── */
         :global(.dashboard-light-mode) .ios-notes-shell {
           background: #f5f5f0;
           border-color: rgba(0,0,0,0.08);
@@ -557,40 +1135,35 @@ export default function ClientNotesPanel({ clientId: initialClientId, clientName
           background: #ebe9e4;
           border-right-color: rgba(0,0,0,0.08);
         }
-        :global(.dashboard-light-mode) .ios-notes-list-header {
-          border-bottom-color: rgba(0,0,0,0.07);
-        }
-        :global(.dashboard-light-mode) .ios-notes-client-name,
-        :global(.dashboard-light-mode) .ios-note-title {
-          color: #1c1c1e;
-        }
-        :global(.dashboard-light-mode) .ios-notes-client-select {
-          color: #1c1c1e;
-        }
-        :global(.dashboard-light-mode) .ios-notes-client-select option {
-          background: #ebe9e4;
-          color: #1c1c1e;
-        }
-        :global(.dashboard-light-mode) .ios-notes-new-btn:hover:not(:disabled) {
-          background: rgba(0,0,0,0.05);
-        }
-        :global(.dashboard-light-mode) .ios-notes-list-item:hover { background: rgba(0,0,0,0.04); }
-        :global(.dashboard-light-mode) .ios-notes-list-item.selected { background: rgba(38,194,129,0.12); }
-        :global(.dashboard-light-mode) .ios-note-date,
-        :global(.dashboard-light-mode) .ios-note-preview { color: rgba(28,28,30,0.45); }
-        :global(.dashboard-light-mode) .ios-notes-editor-panel { background: #faf9f7; }
+        :global(.dashboard-light-mode) .ios-notes-list-header { border-bottom-color: rgba(0,0,0,0.07); }
+        :global(.dashboard-light-mode) .ios-notes-client-name { color: #1c1c1e; }
+        :global(.dashboard-light-mode) .ios-notes-client-select { color: #1c1c1e; }
+        :global(.dashboard-light-mode) .ios-notes-client-select option { background: #ebe9e4; color: #1c1c1e; }
+        :global(.dashboard-light-mode) .ios-notes-new-btn:hover:not(:disabled) { background: rgba(0,0,0,0.05); }
+        :global(.dashboard-light-mode) .ios-notes-search-input { color: #1c1c1e; }
+        :global(.dashboard-light-mode) .ios-notes-search-input::placeholder { color: rgba(28,28,30,0.35); }
+        :global(.dashboard-light-mode) .ios-notes-search-icon { color: rgba(28,28,30,0.4); }
+        :global(.dashboard-light-mode) .ios-notes-state { color: rgba(28,28,30,0.44); }
+        :global(.dashboard-light-mode) .ios-toolbar { background: #ebe9e4; border-bottom-color: rgba(0,0,0,0.07); }
+        :global(.dashboard-light-mode) .ios-toolbar-select { color: #1c1c1e; }
+        :global(.dashboard-light-mode) .ios-toolbar-select option { background: #ebe9e4; color: #1c1c1e; }
+        :global(.dashboard-light-mode) .ios-tb-btn { color: #1c1c1e; }
+        :global(.dashboard-light-mode) .ios-tb-btn:hover { background: rgba(0,0,0,0.05); }
+        :global(.dashboard-light-mode) .ios-tb-color-btn { color: #1c1c1e; }
         :global(.dashboard-light-mode) .ios-notes-editor-meta {
           border-bottom-color: rgba(0,0,0,0.07);
           color: rgba(28,28,30,0.45);
         }
+        :global(.dashboard-light-mode) .ios-notes-editor-panel { background: #faf9f7; }
         :global(.dashboard-light-mode) .ios-notes-editor { color: #1c1c1e; }
-        :global(.dashboard-light-mode) .ios-notes-editor::placeholder { color: rgba(28,28,30,0.3); }
-        :global(.dashboard-light-mode) .ios-notes-state,
+        :global(.dashboard-light-mode) .ios-notes-editor:empty::before { color: rgba(28,28,30,0.3); }
         :global(.dashboard-light-mode) .ios-notes-editor-empty { color: rgba(28,28,30,0.44); }
-        :global(.dashboard-light-mode) .ios-notes-filter-bar { border-bottom-color: rgba(0,0,0,0.07); }
-        :global(.dashboard-light-mode) .ios-notes-filter-btn { color: rgba(28,28,30,0.45); }
-        :global(.dashboard-light-mode) .ios-notes-filter-btn:hover:not(.active) { background: rgba(0,0,0,0.04); color: #1c1c1e; }
-        :global(.dashboard-light-mode) .ios-notes-filter-btn.active { background: rgba(38,194,129,0.12); color: #1a7a52; }
+        :global(.dashboard-light-mode .ios-notes-list-item:hover) { background: rgba(0,0,0,0.04); }
+        :global(.dashboard-light-mode .ios-notes-list-item.selected) { background: rgba(38,194,129,0.12); }
+        :global(.dashboard-light-mode .ios-note-title) { color: #1c1c1e; }
+        :global(.dashboard-light-mode .ios-note-date),
+        :global(.dashboard-light-mode .ios-note-preview) { color: rgba(28,28,30,0.45); }
+        :global(.dashboard-light-mode .ios-notes-editor pre) { background: rgba(0,0,0,0.04); }
       `}</style>
     </div>
   )
