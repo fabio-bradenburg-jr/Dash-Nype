@@ -18145,90 +18145,74 @@ export default function DashboardShell({
                 )}
               </div>
 
-              <div className="ad-balance-table-wrap">
-                <table className="data-table ad-balance-table">
-                  <thead>
-                    <tr>
-                      <th>Cliente</th>
-                      <th>Conta de anúncio</th>
-                      <th>Tipo</th>
-                      <th>Fundos disponíveis</th>
-                      <th>Forma de pagamento</th>
-                      <th>Saldo devedor</th>
-                      <th>Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {adAccountBalanceLoading && !adAccountBalanceRows.length ? (
-                      <tr>
-                        <td colSpan={7} className="ad-balance-empty-cell">
-                          Carregando saldos das contas cadastradas...
-                        </td>
-                      </tr>
-                    ) : filteredAdAccountBalanceRows.length ? (
-                      filteredAdAccountBalanceRows.map((row) => (
-                        <tr key={`${row.clientId}-${row.accountId || 'empty'}`} className={'ad-balance-row ' + (row.tone || 'empty')}>
-                          <td>
-                            <div className="ad-balance-client-cell">
-                              <span className="ad-balance-client-icon">
-                                {row.clientLogoUrl ? (
-                                  <img src={row.clientLogoUrl} alt={`Logo ${row.clientName}`} />
-                                ) : (
-                                  <i className="bx bx-building-house"></i>
-                                )}
-                              </span>
-                              <div>
-                                <strong>{row.clientName}</strong>
-                                <small>{row.error || (row.accountId ? 'Cliente cadastrado com Meta Ads' : 'Sem conta Meta vinculada')}</small>
-                              </div>
-                            </div>
-                          </td>
-                          <td>
-                            <div className="ad-balance-account-cell">
-                              <strong>{row.accountName || 'Sem conta'}</strong>
-                              <small>{row.accountId ? `act_${row.accountId}` : 'Configure no cadastro do cliente'}</small>
-                            </div>
-                          </td>
-                          <td>
-                            <span className={'ad-balance-billing-badge ' + (row.billingType || 'empty')}>
-                              <i className={'bx ' + (row.billingType === 'prepaid' ? 'bx-wallet' : row.billingType === 'postpaid' ? 'bx-credit-card' : 'bx-help-circle')}></i>
-                              {row.billingTypeLabel || 'Não identificado'}
-                            </span>
-                          </td>
-                          <td>
+              <div className="ad-balance-cards-grid">
+                {adAccountBalanceLoading && !adAccountBalanceRows.length ? (
+                  <div className="ad-balance-empty-cell" style={{ gridColumn: '1 / -1' }}>
+                    Carregando saldos das contas cadastradas...
+                  </div>
+                ) : filteredAdAccountBalanceRows.length ? (
+                  filteredAdAccountBalanceRows.map((row) => {
+                    const billingUrl = row.accountId
+                      ? `https://adsmanager.facebook.com/adsmanager/billing_hub/accounts/details?act=${row.accountId}&nav_entry_point=ads_ecosystem_navigation_menu`
+                      : null
+                    return (
+                      <div key={`${row.clientId}-${row.accountId || 'empty'}`} className={'ad-balance-account-card ' + (row.tone || 'empty')}>
+                        <div className="ad-balance-card-header">
+                          <span className="ad-balance-client-icon">
+                            {row.clientLogoUrl ? (
+                              <img src={row.clientLogoUrl} alt={`Logo ${row.clientName}`} />
+                            ) : (
+                              <i className="bx bx-building-house"></i>
+                            )}
+                          </span>
+                          <div className="ad-balance-card-client-info">
+                            <strong>{row.clientName}</strong>
+                            <small>{row.accountName || 'Sem conta vinculada'}</small>
+                          </div>
+                          {billingUrl && (
+                            <a href={billingUrl} target="_blank" rel="noopener noreferrer" className="ad-balance-billing-link" title="Abrir configurações de verba no Meta Ads">
+                              <i className="bx bx-link-external"></i>
+                            </a>
+                          )}
+                        </div>
+
+                        <div className="ad-balance-card-body">
+                          <div className="ad-balance-card-funds">
+                            <span className="ad-balance-card-funds-label">Fundos disponíveis</span>
                             <span className={'ad-balance-pill ' + (row.tone || 'empty')}>
                               {row.fundsAvailable == null ? (row.billingType === 'postpaid' ? 'Pós-pago' : '-') : formatCurrencyByCode(row.fundsAvailable, row.currency)}
                             </span>
-                          </td>
-                          <td>
-                            <span className={'ad-balance-card-status ' + (row.hasCard || row.billingType === 'prepaid' ? 'active' : '')}>
-                              <i className={'bx ' + (row.hasCard ? 'bx-credit-card-front' : row.billingType === 'prepaid' ? 'bx-wallet' : 'bx-credit-card')}></i>
-                              {row.cardLabel || 'Sem forma de pagamento'}
-                            </span>
-                          </td>
-                          <td>
-                            <strong>{row.pendingAmount == null ? '-' : formatCurrencyByCode(row.pendingAmount, row.currency)}</strong>
-                          </td>
-                          <td>
-                            <span
-                              className={'ad-balance-payment-status ' + (row.statusTone || (row.accountId ? 'success' : 'empty'))}
-                              title={row.statusDescription || ''}
-                            >
-                              <i className={'bx ' + (row.statusIcon || (row.accountId ? 'bx-check-circle' : 'bx-link-alt'))}></i>
-                              {row.statusLabel || 'Sem status'}
-                            </span>
-                          </td>
-                        </tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <td colSpan={7} className="ad-balance-empty-cell">
-                          Nenhum cliente encontrado para os filtros selecionados.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
+                          </div>
+                          {row.pendingAmount != null && (
+                            <div className="ad-balance-card-pending">
+                              <span className="ad-balance-card-funds-label">Saldo devedor</span>
+                              <strong>{formatCurrencyByCode(row.pendingAmount, row.currency)}</strong>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="ad-balance-card-footer">
+                          <span className={'ad-balance-billing-badge ' + (row.billingType || 'empty')}>
+                            <i className={'bx ' + (row.billingType === 'prepaid' ? 'bx-wallet' : row.billingType === 'postpaid' ? 'bx-credit-card' : 'bx-help-circle')}></i>
+                            {row.billingTypeLabel || 'Não identificado'}
+                          </span>
+                          <span className={'ad-balance-payment-status ' + (row.statusTone || (row.accountId ? 'success' : 'empty'))} title={row.statusDescription || ''}>
+                            <i className={'bx ' + (row.statusIcon || (row.accountId ? 'bx-check-circle' : 'bx-link-alt'))}></i>
+                            {row.statusLabel || 'Sem status'}
+                          </span>
+                        </div>
+
+                        {row.accountId && (
+                          <div className="ad-balance-card-account-id">act_{row.accountId}</div>
+                        )}
+                      </div>
+                    )
+                  })
+                ) : (
+                  <div className="ad-balance-empty-cell" style={{ gridColumn: '1 / -1' }}>
+                    Nenhum cliente encontrado para os filtros selecionados.
+                  </div>
+                )}
               </div>
             </section>
           </section>
@@ -32804,49 +32788,129 @@ export default function DashboardShell({
           font-weight: 800;
         }
 
-        .ad-balance-table-wrap {
-          overflow-x: auto;
-          border-radius: 22px;
+        .ad-balance-cards-grid {
+          display: grid;
+          grid-template-columns: repeat(5, 1fr);
+          gap: 14px;
+        }
+
+        .ad-balance-account-card {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+          padding: 16px;
+          border-radius: 16px;
+          background: rgba(255, 255, 255, 0.04);
           border: 1px solid rgba(148, 163, 184, 0.13);
-        }
-
-        .ad-balance-table {
-          min-width: 1120px;
-          border-collapse: separate;
-          border-spacing: 0;
-        }
-
-        .ad-balance-table thead th {
-          background: rgba(255, 255, 255, 0.035);
-        }
-
-        .ad-balance-row {
           transition: background 0.2s ease, box-shadow 0.2s ease;
+          position: relative;
+          overflow: hidden;
         }
 
-        .ad-balance-row.danger {
-          box-shadow: inset 4px 0 0 rgba(248, 113, 113, 0.92);
+        .ad-balance-account-card::before {
+          content: '';
+          position: absolute;
+          top: 0; left: 0; right: 0;
+          height: 3px;
+          border-radius: 16px 16px 0 0;
+          background: transparent;
+          transition: background 0.2s ease;
         }
 
-        .ad-balance-row.warning {
-          box-shadow: inset 4px 0 0 rgba(245, 158, 11, 0.92);
+        .ad-balance-account-card.danger::before {
+          background: rgba(248, 113, 113, 0.9);
         }
 
-        .ad-balance-row.success {
-          box-shadow: inset 4px 0 0 color-mix(in srgb, var(--accent-emerald) 85%, white 5%);
+        .ad-balance-account-card.warning::before {
+          background: rgba(245, 158, 11, 0.9);
         }
 
-        .ad-balance-client-cell,
-        .ad-balance-account-cell {
+        .ad-balance-account-card.success::before {
+          background: color-mix(in srgb, var(--accent-emerald) 85%, white 5%);
+        }
+
+        .ad-balance-card-header {
           display: flex;
           align-items: center;
-          gap: 12px;
+          gap: 10px;
           min-width: 0;
         }
 
-        .ad-balance-account-cell {
+        .ad-balance-card-client-info {
+          flex: 1;
+          min-width: 0;
           display: grid;
-          gap: 4px;
+          gap: 2px;
+        }
+
+        .ad-balance-card-client-info strong {
+          font-size: 0.88rem;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        .ad-balance-card-client-info small {
+          font-size: 0.75rem;
+          color: var(--muted-text);
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        .ad-balance-billing-link {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 28px;
+          height: 28px;
+          border-radius: 8px;
+          background: rgba(99, 102, 241, 0.12);
+          color: var(--accent-indigo, #6366f1);
+          font-size: 1rem;
+          text-decoration: none;
+          flex-shrink: 0;
+          transition: background 0.18s ease, transform 0.18s ease;
+        }
+
+        .ad-balance-billing-link:hover {
+          background: rgba(99, 102, 241, 0.22);
+          transform: scale(1.08);
+        }
+
+        .ad-balance-card-body {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+        }
+
+        .ad-balance-card-funds,
+        .ad-balance-card-pending {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 8px;
+        }
+
+        .ad-balance-card-funds-label {
+          font-size: 0.78rem;
+          color: var(--muted-text);
+        }
+
+        .ad-balance-card-footer {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 6px;
+          flex-wrap: wrap;
+          margin-top: auto;
+        }
+
+        .ad-balance-card-account-id {
+          font-size: 0.72rem;
+          color: var(--muted-text);
+          opacity: 0.6;
+          font-family: monospace;
         }
 
         .ad-balance-client-cell div {
