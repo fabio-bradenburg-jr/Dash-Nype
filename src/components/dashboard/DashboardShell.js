@@ -3232,7 +3232,7 @@ export default function DashboardShell({
   const [mondayCustomUntil, setMondayCustomUntil] = useState('')
   const [draftMondayCustomUntil, setDraftMondayCustomUntil] = useState('')
   const [themeColor, setThemeColor] = useState('blue')
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(true)
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
   const [isHomeToolsExpanded, setIsHomeToolsExpanded] = useState(false)
   const [metric1, setMetric1] = useState('spend')
   const [metric2, setMetric2] = useState('roas')
