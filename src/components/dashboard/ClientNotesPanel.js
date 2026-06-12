@@ -414,13 +414,65 @@ export default function ClientNotesPanel({ clientId: initialClientId, clientName
   }
 
   function handleEditorKeyDown(e) {
-    if ((e.ctrlKey || e.metaKey) && e.key === 's') {
-      e.preventDefault()
-      forceSave()
+    const ctrl = e.ctrlKey || e.metaKey
+
+    if (ctrl && e.key === 's') { e.preventDefault(); forceSave(); return }
+
+    // Bold / Italic / Underline
+    if (ctrl && e.key === 'b') { e.preventDefault(); applyFormat('bold'); return }
+    if (ctrl && e.key === 'i') { e.preventDefault(); applyFormat('italic'); return }
+    if (ctrl && e.key === 'u') { e.preventDefault(); applyFormat('underline'); return }
+
+    // Strikethrough: Ctrl+Shift+X (like Docs) or Ctrl+Shift+S (Word)
+    if (ctrl && e.shiftKey && (e.key === 'X' || e.key === 'x' || e.key === 'S' || e.key === 's')) {
+      e.preventDefault(); applyFormat('strikeThrough'); return
     }
-    if ((e.ctrlKey || e.metaKey) && e.key === 'b') { e.preventDefault(); applyFormat('bold') }
-    if ((e.ctrlKey || e.metaKey) && e.key === 'i') { e.preventDefault(); applyFormat('italic') }
-    if ((e.ctrlKey || e.metaKey) && e.key === 'u') { e.preventDefault(); applyFormat('underline') }
+
+    // Headings: Ctrl+Alt+1/2/3, Ctrl+Alt+0 for paragraph
+    if (ctrl && e.altKey) {
+      if (e.key === '1') { e.preventDefault(); applyBlock('h1'); return }
+      if (e.key === '2') { e.preventDefault(); applyBlock('h2'); return }
+      if (e.key === '3') { e.preventDefault(); applyBlock('h3'); return }
+      if (e.key === '0') { e.preventDefault(); applyBlock('p'); return }
+    }
+
+    // Bullet list: Ctrl+Shift+8 (Docs) or Ctrl+Shift+U
+    if (ctrl && e.shiftKey && (e.key === '8' || e.key === '*')) {
+      e.preventDefault(); applyFormat('insertUnorderedList'); return
+    }
+
+    // Numbered list: Ctrl+Shift+7 (Docs)
+    if (ctrl && e.shiftKey && (e.key === '7' || e.key === '&')) {
+      e.preventDefault(); applyFormat('insertOrderedList'); return
+    }
+
+    // Increase font size: Ctrl+Shift+. (like Docs)
+    if (ctrl && e.shiftKey && e.key === '.') {
+      e.preventDefault()
+      const sel = window.getSelection()
+      if (sel && sel.rangeCount && !sel.isCollapsed) {
+        const range = sel.getRangeAt(0)
+        const span = document.createElement('span')
+        const current = parseFloat(window.getComputedStyle(range.startContainer.parentElement).fontSize) || 14
+        span.style.fontSize = `${Math.min(current + 2, 72)}px`
+        range.surroundContents(span)
+      }
+      return
+    }
+
+    // Decrease font size: Ctrl+Shift+, (like Docs)
+    if (ctrl && e.shiftKey && e.key === ',') {
+      e.preventDefault()
+      const sel = window.getSelection()
+      if (sel && sel.rangeCount && !sel.isCollapsed) {
+        const range = sel.getRangeAt(0)
+        const span = document.createElement('span')
+        const current = parseFloat(window.getComputedStyle(range.startContainer.parentElement).fontSize) || 14
+        span.style.fontSize = `${Math.max(current - 2, 8)}px`
+        range.surroundContents(span)
+      }
+      return
+    }
 
     if (e.key === 'Enter') {
       const sel = window.getSelection()
@@ -548,12 +600,12 @@ export default function ClientNotesPanel({ clientId: initialClientId, clientName
                 className="ios-toolbar-select"
                 onChange={(e) => { applyBlock(e.target.value); e.target.value = 'p' }}
                 defaultValue="p"
-                title="Estilo do parágrafo"
+                title="Estilo do parágrafo (Ctrl+Alt+0/1/2/3)"
               >
-                <option value="p">Corpo</option>
-                <option value="h1">Título</option>
-                <option value="h2">Cabeçalho</option>
-                <option value="h3">Subcabeçalho</option>
+                <option value="p">Corpo (Ctrl+Alt+0)</option>
+                <option value="h1">Título (Ctrl+Alt+1)</option>
+                <option value="h2">Cabeçalho (Ctrl+Alt+2)</option>
+                <option value="h3">Subcabeçalho (Ctrl+Alt+3)</option>
                 <option value="pre">Monoespaçado</option>
               </select>
 
@@ -568,7 +620,7 @@ export default function ClientNotesPanel({ clientId: initialClientId, clientName
               <button className="ios-tb-btn" title="Sublinhado (Ctrl+U)" onClick={() => applyFormat('underline')}>
                 <u>U</u>
               </button>
-              <button className="ios-tb-btn" title="Tachado" onClick={() => applyFormat('strikeThrough')}>
+              <button className="ios-tb-btn" title="Tachado (Ctrl+Shift+X)" onClick={() => applyFormat('strikeThrough')}>
                 <s>S</s>
               </button>
 
@@ -596,10 +648,10 @@ export default function ClientNotesPanel({ clientId: initialClientId, clientName
 
               <div className="ios-toolbar-sep" />
 
-              <button className="ios-tb-btn" title="Lista com marcadores" onClick={() => applyFormat('insertUnorderedList')}>
+              <button className="ios-tb-btn" title="Lista com marcadores (Ctrl+Shift+8)" onClick={() => applyFormat('insertUnorderedList')}>
                 <i className="bx bx-list-ul" />
               </button>
-              <button className="ios-tb-btn" title="Lista numerada" onClick={() => applyFormat('insertOrderedList')}>
+              <button className="ios-tb-btn" title="Lista numerada (Ctrl+Shift+7)" onClick={() => applyFormat('insertOrderedList')}>
                 <i className="bx bx-list-ol" />
               </button>
               <button className="ios-tb-btn" title="Checklist" onClick={insertChecklist}>
@@ -964,9 +1016,23 @@ export default function ClientNotesPanel({ clientId: initialClientId, clientName
           white-space: pre-wrap;
         }
         :global(.ios-notes-editor p) { margin: 0 0 6px; }
-        :global(.ios-notes-editor ul:not(.checklist)), :global(.ios-notes-editor ol) {
-          padding-left: 20px;
+        :global(.ios-notes-editor ul:not(.checklist)) {
+          padding-left: 22px;
           margin: 4px 0;
+          list-style-type: disc;
+        }
+        :global(.ios-notes-editor ul:not(.checklist) li) {
+          display: list-item;
+          list-style-type: disc;
+        }
+        :global(.ios-notes-editor ol) {
+          padding-left: 22px;
+          margin: 4px 0;
+          list-style-type: decimal;
+        }
+        :global(.ios-notes-editor ol li) {
+          display: list-item;
+          list-style-type: decimal;
         }
 
         /* ── Checklist ── */
