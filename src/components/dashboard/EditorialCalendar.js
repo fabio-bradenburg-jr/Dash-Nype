@@ -39,6 +39,13 @@ const EMPTY_FORM = {
   status: 'pending', platforms: [],
 }
 
+const EMPTY_PLAN_ITEM = () => ({
+  id: Math.random().toString(36).slice(2),
+  clientId: '', title: '', description: '',
+  scheduledDate: '', scheduledTime: '',
+  status: 'pending', platforms: [],
+})
+
 export default function EditorialCalendar({ clients = [], isLightMode = false, defaultView = 'calendar' }) {
   const today = new Date()
   const [year, setYear]   = useState(today.getFullYear())
@@ -58,6 +65,13 @@ export default function EditorialCalendar({ clients = [], isLightMode = false, d
   const [deleting, setDeleting]     = useState(false)
   const [feedback, setFeedback]     = useState('')
   const titleRef = useRef(null)
+
+  // Planning
+  const [planOpen, setPlanOpen]     = useState(false)
+  const [planItems, setPlanItems]   = useState([EMPTY_PLAN_ITEM()])
+  const [planSaving, setPlanSaving] = useState(false)
+  const [planFeedback, setPlanFeedback] = useState('')
+  const planPrintRef = useRef(null)
 
   const fetchPosts = useCallback(async () => {
     setLoading(true)
@@ -182,6 +196,99 @@ export default function EditorialCalendar({ clients = [], isLightMode = false, d
     fetchPosts()
   }
 
+  // Planning helpers
+  function openPlanning() {
+    setPlanItems([EMPTY_PLAN_ITEM()])
+    setPlanFeedback('')
+    setPlanOpen(true)
+  }
+  function closePlanning() { setPlanOpen(false); setPlanFeedback('') }
+
+  function updatePlanItem(id, field, value) {
+    setPlanItems(items => items.map(it => it.id === id ? { ...it, [field]: value } : it))
+  }
+  function togglePlanPlatform(id, val) {
+    setPlanItems(items => items.map(it => it.id === id
+      ? { ...it, platforms: it.platforms.includes(val) ? it.platforms.filter(p => p !== val) : [...it.platforms, val] }
+      : it))
+  }
+  function addPlanItem() { setPlanItems(items => [...items, EMPTY_PLAN_ITEM()]) }
+  function removePlanItem(id) { setPlanItems(items => items.filter(it => it.id !== id)) }
+
+  async function savePlan() {
+    const incomplete = planItems.findIndex(it => !it.scheduledDate || !it.clientId)
+    if (incomplete !== -1) { setPlanFeedback(`Item ${incomplete + 1}: informe data e cliente.`); return }
+    setPlanSaving(true); setPlanFeedback('')
+    try {
+      await Promise.all(planItems.map(it =>
+        fetch('/api/editorial', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            clientId: it.clientId, title: it.title, description: it.description,
+            scheduledDate: it.scheduledDate, scheduledTime: it.scheduledTime || null,
+            status: it.status, platforms: it.platforms,
+          }),
+        })
+      ))
+      closePlanning()
+      fetchPosts()
+    } catch (e) {
+      setPlanFeedback('Erro ao salvar planejamento.')
+    } finally {
+      setPlanSaving(false)
+    }
+  }
+
+  function exportPlanPDF() {
+    const clientMap2 = {}
+    for (const c of clients) clientMap2[c.id] = c.name
+
+    const rows = planItems.map((it, i) => {
+      const sm = statusMeta(it.status)
+      const pls = it.platforms.map(p => PLATFORMS.find(x => x.value === p)?.label || p).join(', ')
+      return `
+        <tr>
+          <td>${i + 1}</td>
+          <td>${clientMap2[it.clientId] || it.clientId || '—'}</td>
+          <td>${it.title || '—'}</td>
+          <td>${it.scheduledDate ? it.scheduledDate.split('-').reverse().join('/') : '—'}${it.scheduledTime ? ' ' + it.scheduledTime.slice(0,5) : ''}</td>
+          <td>${pls || '—'}</td>
+          <td>${sm.label}</td>
+          <td>${it.description || '—'}</td>
+        </tr>`
+    }).join('')
+
+    const html = `<!DOCTYPE html><html lang="pt-BR"><head>
+      <meta charset="UTF-8"/>
+      <title>Planejamento Editorial — ${MONTHS[month]} ${year}</title>
+      <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Helvetica Neue', Arial, sans-serif; color: #111; padding: 40px; font-size: 12px; }
+        h1 { font-size: 20px; font-weight: 800; margin-bottom: 4px; }
+        .sub { color: #666; margin-bottom: 24px; font-size: 12px; }
+        table { width: 100%; border-collapse: collapse; }
+        th { background: #111; color: #fff; padding: 8px 10px; text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; }
+        td { padding: 8px 10px; border-bottom: 1px solid #e5e7eb; vertical-align: top; }
+        tr:nth-child(even) td { background: #f9fafb; }
+        .footer { margin-top: 32px; font-size: 11px; color: #999; }
+      </style>
+    </head><body>
+      <h1>Planejamento Editorial</h1>
+      <p class="sub">${MONTHS[month]} ${year} &mdash; ${planItems.length} post${planItems.length !== 1 ? 's' : ''} planejado${planItems.length !== 1 ? 's' : ''}</p>
+      <table>
+        <thead><tr><th>#</th><th>Cliente</th><th>Título</th><th>Data</th><th>Plataformas</th><th>Status</th><th>Descrição</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+      <p class="footer">Gerado em ${new Date().toLocaleDateString('pt-BR', { dateStyle: 'long' })}</p>
+    </body></html>`
+
+    const win = window.open('', '_blank')
+    win.document.write(html)
+    win.document.close()
+    win.focus()
+    setTimeout(() => { win.print() }, 400)
+  }
+
   const cells = buildCalendarGrid(year, month)
   const postsByDate = {}
   for (const p of posts) {
@@ -230,10 +337,16 @@ export default function EditorialCalendar({ clients = [], isLightMode = false, d
           <p className="editorial-subtitle">{defaultView === 'dash' ? 'Visão consolidada das publicações por status, cliente e plataforma.' : 'Planeje, agende e acompanhe as publicações dos clientes.'}</p>
         </div>
         {defaultView !== 'dash' && (
-          <button className="editorial-new-btn" onClick={() => openNew()}>
-            <i className="bx bx-plus"></i>
-            Novo post
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <button className="editorial-plan-btn" onClick={openPlanning}>
+              <i className="bx bx-spreadsheet"></i>
+              Planejamento
+            </button>
+            <button className="editorial-new-btn" onClick={() => openNew()}>
+              <i className="bx bx-plus"></i>
+              Novo post
+            </button>
+          </div>
         )}
       </div>
 
@@ -608,6 +721,133 @@ export default function EditorialCalendar({ clients = [], isLightMode = false, d
                 <button className="editorial-save-btn" onClick={handleSave} disabled={saving}>
                   {saving ? <i className="bx bx-loader-alt bx-spin"></i> : <i className="bx bx-save"></i>}
                   {editPost ? 'Salvar alterações' : 'Criar post'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Planning Modal */}
+      {planOpen && (
+        <div className="editorial-modal-overlay" onClick={e => { if (e.target === e.currentTarget) closePlanning() }}>
+          <div className="editorial-plan-modal">
+            <div className="editorial-plan-modal-header">
+              <div>
+                <h3>Planejamento Editorial</h3>
+                <p className="editorial-plan-modal-sub">{MONTHS[month]} {year} &mdash; organize todos os posts e exporte para PDF</p>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <button className="editorial-export-btn" onClick={exportPlanPDF} title="Exportar PDF">
+                  <i className="bx bx-file-export"></i>
+                  Exportar PDF
+                </button>
+                <button className="editorial-modal-close" onClick={closePlanning}><i className="bx bx-x"></i></button>
+              </div>
+            </div>
+
+            <div className="editorial-plan-modal-body" ref={planPrintRef}>
+              {planItems.map((item, idx) => (
+                <div key={item.id} className="editorial-plan-item">
+                  <div className="editorial-plan-item-header">
+                    <span className="editorial-plan-item-num">Post {idx + 1}</span>
+                    {planItems.length > 1 && (
+                      <button className="editorial-plan-remove-btn" onClick={() => removePlanItem(item.id)} title="Remover">
+                        <i className="bx bx-trash"></i>
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="editorial-plan-item-grid">
+                    {/* Row 1: client + title */}
+                    <div className="editorial-field editorial-plan-field-client">
+                      <label>Cliente</label>
+                      <select value={item.clientId} onChange={e => updatePlanItem(item.id, 'clientId', e.target.value)}>
+                        <option value="">Selecione…</option>
+                        {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                      </select>
+                    </div>
+                    <div className="editorial-field editorial-plan-field-title">
+                      <label>Título / Tema</label>
+                      <input
+                        type="text"
+                        value={item.title}
+                        onChange={e => updatePlanItem(item.id, 'title', e.target.value)}
+                        placeholder="Ex.: Lançamento, Dica da semana…"
+                      />
+                    </div>
+
+                    {/* Row 2: date + time + status */}
+                    <div className="editorial-field">
+                      <label>Data</label>
+                      <input
+                        type="date"
+                        value={item.scheduledDate}
+                        onChange={e => updatePlanItem(item.id, 'scheduledDate', e.target.value)}
+                      />
+                    </div>
+                    <div className="editorial-field">
+                      <label>Horário</label>
+                      <input
+                        type="time"
+                        value={item.scheduledTime}
+                        onChange={e => updatePlanItem(item.id, 'scheduledTime', e.target.value)}
+                      />
+                    </div>
+                    <div className="editorial-field editorial-plan-field-status">
+                      <label>Status</label>
+                      <select value={item.status} onChange={e => updatePlanItem(item.id, 'status', e.target.value)}>
+                        {STATUSES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Platforms */}
+                  <div className="editorial-field" style={{ marginTop: 10 }}>
+                    <label>Plataformas</label>
+                    <div className="editorial-platform-row">
+                      {PLATFORMS.map(p => (
+                        <button
+                          key={p.value}
+                          type="button"
+                          className={`editorial-platform-chip ${item.platforms.includes(p.value) ? 'active' : ''}`}
+                          onClick={() => togglePlanPlatform(item.id, p.value)}
+                        >
+                          <i className={`bx ${p.icon}`}></i>
+                          {p.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Description */}
+                  <div className="editorial-field" style={{ marginTop: 10 }}>
+                    <label>Descrição / Copy</label>
+                    <textarea
+                      value={item.description}
+                      onChange={e => updatePlanItem(item.id, 'description', e.target.value)}
+                      placeholder="Detalhes, referências, copy ou observações…"
+                      rows={2}
+                    />
+                  </div>
+                </div>
+              ))}
+
+              <button className="editorial-plan-add-btn" onClick={addPlanItem}>
+                <i className="bx bx-plus"></i>
+                Adicionar post
+              </button>
+
+              {planFeedback && <p className="editorial-feedback">{planFeedback}</p>}
+            </div>
+
+            <div className="editorial-modal-footer">
+              <span className="editorial-plan-count">{planItems.length} post{planItems.length !== 1 ? 's' : ''} planejado{planItems.length !== 1 ? 's' : ''}</span>
+              <div className="editorial-modal-footer-right">
+                <button className="editorial-cancel-btn" onClick={closePlanning}>Cancelar</button>
+                <button className="editorial-save-btn" onClick={savePlan} disabled={planSaving}>
+                  {planSaving ? <i className="bx bx-loader-alt bx-spin"></i> : <i className="bx bx-calendar-check"></i>}
+                  Salvar no calendário
                 </button>
               </div>
             </div>
@@ -1054,6 +1294,124 @@ export default function EditorialCalendar({ clients = [], isLightMode = false, d
         .editorial-upcoming-title em { color: var(--text-muted); font-style: italic; font-weight: 400; }
         .editorial-upcoming-client { font-size: 11px; color: var(--text-muted); }
         .editorial-upcoming-badge { font-size: 18px; text-align: center; }
+
+        /* Planning button */
+        .editorial-plan-btn {
+          display: inline-flex; align-items: center; gap: 7px;
+          padding: 9px 16px; border-radius: 10px;
+          border: 1px solid var(--border-color, rgba(255,255,255,0.12));
+          background: rgba(255,255,255,0.04); color: var(--text-secondary);
+          font: inherit; font-weight: 600; font-size: 13px; cursor: pointer;
+          transition: all 0.15s;
+        }
+        .editorial-plan-btn:hover {
+          background: rgba(255,255,255,0.08); color: var(--text-primary);
+          border-color: rgba(255,255,255,0.2);
+        }
+
+        /* Export button */
+        .editorial-export-btn {
+          display: inline-flex; align-items: center; gap: 7px;
+          padding: 8px 16px; border-radius: 10px;
+          border: 1px solid rgba(38,194,129,0.3);
+          background: rgba(38,194,129,0.1); color: #26c281;
+          font: inherit; font-weight: 700; font-size: 12px; cursor: pointer;
+          transition: all 0.15s;
+        }
+        .editorial-export-btn:hover { background: rgba(38,194,129,0.18); }
+
+        /* Planning modal */
+        .editorial-plan-modal {
+          width: 100%; max-width: 820px; max-height: 94vh;
+          background: var(--theme-bg, #0d1110);
+          border: 1px solid rgba(190,201,191,0.18);
+          border-radius: 22px; overflow: hidden;
+          display: flex; flex-direction: column;
+          box-shadow: 0 32px 80px rgba(0,0,0,0.4);
+        }
+        .editorial-plan-modal-header {
+          display: flex; align-items: flex-start; justify-content: space-between;
+          padding: 20px 24px 16px;
+          border-bottom: 1px solid rgba(190,201,191,0.12);
+          gap: 16px;
+        }
+        .editorial-plan-modal-header h3 {
+          font-size: 17px; font-weight: 700; margin: 0 0 3px;
+          letter-spacing: -0.01em;
+        }
+        .editorial-plan-modal-sub {
+          font-size: 12px; color: var(--text-muted); margin: 0;
+        }
+        .editorial-plan-modal-body {
+          overflow-y: auto; padding: 20px 24px;
+          display: flex; flex-direction: column; gap: 14px; flex: 1;
+        }
+
+        /* Plan item card */
+        .editorial-plan-item {
+          background: rgba(255,255,255,0.03);
+          border: 1px solid rgba(190,201,191,0.12);
+          border-radius: 14px; padding: 16px 18px;
+          display: flex; flex-direction: column; gap: 0;
+        }
+        .editorial-plan-item-header {
+          display: flex; align-items: center; justify-content: space-between;
+          margin-bottom: 12px;
+        }
+        .editorial-plan-item-num {
+          font-size: 11px; font-weight: 800; text-transform: uppercase;
+          letter-spacing: 0.07em; color: var(--text-muted);
+        }
+        .editorial-plan-remove-btn {
+          width: 28px; height: 28px; border-radius: 7px; border: none;
+          background: rgba(239,68,68,0.08); color: #f87171;
+          cursor: pointer; display: grid; place-items: center; font-size: 16px;
+          transition: background 0.15s;
+        }
+        .editorial-plan-remove-btn:hover { background: rgba(239,68,68,0.16); }
+
+        .editorial-plan-item-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr 140px 110px 140px;
+          gap: 10px;
+        }
+        .editorial-plan-field-client { grid-column: 1; }
+        .editorial-plan-field-title  { grid-column: 2; }
+        .editorial-plan-field-status { grid-column: 5; }
+
+        .editorial-plan-add-btn {
+          display: inline-flex; align-items: center; gap: 8px;
+          padding: 10px 18px; border-radius: 10px; align-self: flex-start;
+          border: 1px dashed rgba(190,201,191,0.22);
+          background: transparent; color: var(--text-muted);
+          font: inherit; font-size: 13px; font-weight: 600; cursor: pointer;
+          transition: all 0.15s;
+        }
+        .editorial-plan-add-btn:hover {
+          border-color: var(--button-primary, #26c281);
+          color: var(--button-primary, #26c281);
+          background: rgba(38,194,129,0.04);
+        }
+
+        .editorial-plan-count {
+          font-size: 12px; color: var(--text-muted);
+        }
+
+        /* Light mode — planning */
+        :global(.dashboard-light-mode) .editorial-plan-btn {
+          background: #ffffff; border-color: rgba(187,202,190,0.86); color: #3d4a41;
+        }
+        :global(.dashboard-light-mode) .editorial-plan-btn:hover { background: #f8faf9; }
+        :global(.dashboard-light-mode) .editorial-plan-modal {
+          background: #ffffff; border-color: rgba(187,202,190,0.72);
+        }
+        :global(.dashboard-light-mode) .editorial-plan-modal-header {
+          border-bottom-color: rgba(187,202,190,0.5);
+        }
+        :global(.dashboard-light-mode) .editorial-plan-item {
+          background: #f8faf9; border-color: rgba(187,202,190,0.72);
+        }
+        :global(.dashboard-light-mode) .editorial-plan-count { color: #6b7280; }
 
         /* Light mode */
         :global(.dashboard-light-mode) .editorial-title { color: #1a1c1c; }
