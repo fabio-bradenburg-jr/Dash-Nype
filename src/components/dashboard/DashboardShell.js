@@ -21068,7 +21068,7 @@ export default function DashboardShell({
                         <i className="bx bx-loader-alt bx-spin"></i>
                         <span>Carregando preview real...</span>
                       </div>
-                    ) : adsOverviewPreview?.previewHtml ? (
+                    ) : adsOverviewPreview?.previewHtml && !/expired|The requested preview has expired/i.test(adsOverviewPreview.previewHtml) ? (
                       <iframe
                         title={`Preview de ${adsOverviewPreviewItem.label}`}
                         srcDoc={adsOverviewPreview.previewHtml}
@@ -27589,7 +27589,32 @@ export default function DashboardShell({
         .meta-ranking-detail-stats {
           display: grid;
           grid-template-columns: repeat(2, minmax(0, 1fr));
-          gap: 12px;
+          gap: 14px 16px;
+        }
+
+        .meta-ranking-detail-stats span {
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+          background: rgba(255,255,255,0.04);
+          border-radius: 10px;
+          padding: 10px 12px;
+        }
+
+        .meta-ranking-detail-stats small {
+          font-size: 0.72rem;
+          color: var(--text-secondary);
+          font-weight: 500;
+          text-transform: uppercase;
+          letter-spacing: 0.04em;
+          line-height: 1;
+        }
+
+        .meta-ranking-detail-stats strong {
+          font-size: 1.15rem;
+          font-weight: 700;
+          color: var(--text-primary);
+          line-height: 1.2;
         }
 
         .meta-result-chart-head {
