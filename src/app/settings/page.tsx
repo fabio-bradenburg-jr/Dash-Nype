@@ -1878,77 +1878,85 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
 
       <main className={embeddedOverride ? "main-content settings-main settings-main-embedded" : "main-content settings-main"}>
         <div className="settings-workspace">
-          {/* Icon-only settings nav */}
-          <aside className="settings-icon-sidebar">
-            <div className="settings-icon-sidebar-label">Config.</div>
-
-            <button
-              type="button"
-              className={`settings-icon-btn ${activeSettingsTab === 'panel' ? 'active' : ''}`}
-              onClick={() => handleSettingsTabChange('panel')}
-              title="Interface"
-            >
-              <i className="bx bx-layout"></i>
-              <span>Interface</span>
-            </button>
-
-            {canEditIntegrations && (
-              <>
-                <button
-                  type="button"
-                  className={`settings-icon-btn ${activeSettingsTab === 'general' ? 'active' : ''}`}
-                  onClick={() => handleSettingsTabChange('general')}
-                  title="Integrações"
-                >
-                  <i className="bx bx-link-alt"></i>
-                  <span>Integrações</span>
-                </button>
-                <button
-                  type="button"
-                  className={`settings-icon-btn ${activeSettingsTab === 'ai' ? 'active' : ''}`}
-                  onClick={() => handleSettingsTabChange('ai')}
-                  title="IA"
-                >
-                  <i className="bx bx-bot"></i>
-                  <span>IA</span>
-                </button>
-              </>
-            )}
-
-            {canManageClients && (
+          {/* Category cards — shown when no popup is open */}
+          {!settingsPopupOpen && (
+            <div className="settings-category-grid">
               <button
                 type="button"
-                className={`settings-icon-btn ${activeSettingsTab === 'operation' ? 'active' : ''}`}
-                onClick={() => handleSettingsTabChange('operation')}
-                title="Operação"
+                className="settings-category-card"
+                onClick={() => handleSettingsTabChange('panel')}
               >
-                <i className="bx bx-pulse"></i>
-                <span>Operação</span>
+                <div className="settings-category-icon"><i className="bx bx-layout"></i></div>
+                <div className="settings-category-info">
+                  <strong>Interface</strong>
+                  <span>Destaque, fundo e assinatura visual do sistema</span>
+                </div>
+                <i className="bx bx-chevron-right settings-category-arrow"></i>
               </button>
-            )}
-          </aside>
+
+              {canEditIntegrations && (
+                <>
+                  <button
+                    type="button"
+                    className="settings-category-card"
+                    onClick={() => handleSettingsTabChange('general')}
+                  >
+                    <div className="settings-category-icon"><i className="bx bx-link-alt"></i></div>
+                    <div className="settings-category-info">
+                      <strong>Integrações</strong>
+                      <span>Meta, Google Ads e demais ferramentas</span>
+                    </div>
+                    <i className="bx bx-chevron-right settings-category-arrow"></i>
+                  </button>
+                  <button
+                    type="button"
+                    className="settings-category-card"
+                    onClick={() => handleSettingsTabChange('ai')}
+                  >
+                    <div className="settings-category-icon"><i className="bx bx-bot"></i></div>
+                    <div className="settings-category-info">
+                      <strong>Inteligência Artificial</strong>
+                      <span>Providers, prompts e agentes</span>
+                    </div>
+                    <i className="bx bx-chevron-right settings-category-arrow"></i>
+                  </button>
+                </>
+              )}
+
+              {canManageClients && (
+                <button
+                  type="button"
+                  className="settings-category-card"
+                  onClick={() => handleSettingsTabChange('operation')}
+                >
+                  <div className="settings-category-icon"><i className="bx bx-pulse"></i></div>
+                  <div className="settings-category-info">
+                    <strong>Operação</strong>
+                    <span>Meta de risco e saúde semanal dos clientes</span>
+                  </div>
+                  <i className="bx bx-chevron-right settings-category-arrow"></i>
+                </button>
+              )}
+            </div>
+          )}
 
           {/* Settings popup overlay */}
           {settingsPopupOpen && (
             <div className="settings-popup-overlay" onClick={(e) => { if (e.target === e.currentTarget) setSettingsPopupOpen(false) }}>
               <div className="settings-popup-panel">
                 <div className="settings-popup-header">
-                  <div className="settings-popup-header-info">
-                    <span className="settings-popup-tab-label">
-                      {activeSettingsTab === 'panel' && <><i className="bx bx-layout"></i>Interface</>}
-                      {activeSettingsTab === 'general' && <><i className="bx bx-link-alt"></i>Integrações</>}
-                      {activeSettingsTab === 'ai' && <><i className="bx bx-bot"></i>Inteligência Artificial</>}
-                      {activeSettingsTab === 'operation' && <><i className="bx bx-pulse"></i>Operação</>}
-                    </span>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <button type="button" className="btn btn-primary settings-save-button" onClick={handleSaveCurrentSettings}>
-                      Salvar
-                    </button>
-                    <button type="button" className="settings-popup-close" onClick={() => setSettingsPopupOpen(false)}>
-                      <i className="bx bx-x"></i>
-                    </button>
-                  </div>
+                  <button type="button" className="settings-popup-back" onClick={() => setSettingsPopupOpen(false)}>
+                    <i className="bx bx-arrow-back"></i>
+                  </button>
+                  <span className="settings-popup-tab-label">
+                    {activeSettingsTab === 'panel' && <><i className="bx bx-layout"></i>Interface</>}
+                    {activeSettingsTab === 'general' && <><i className="bx bx-link-alt"></i>Integrações</>}
+                    {activeSettingsTab === 'ai' && <><i className="bx bx-bot"></i>Inteligência Artificial</>}
+                    {activeSettingsTab === 'operation' && <><i className="bx bx-pulse"></i>Operação</>}
+                  </span>
+                  <button type="button" className="btn btn-primary settings-save-button" onClick={handleSaveCurrentSettings}>
+                    Salvar
+                  </button>
                 </div>
                 <div className="settings-section-content">
               {activeSettingsTab === 'panel' && (
@@ -2806,7 +2814,7 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
 
                 </div>
                 {settingsSaveFeedback && (
-                  <div className="settings-popup-feedback">{settingsSaveFeedback}</div>
+                  <p className="settings-popup-feedback">{settingsSaveFeedback}</p>
                 )}
               </div>
             </div>
@@ -2833,67 +2841,66 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
 
         .settings-workspace {
           width: 100%;
-          display: flex;
-          align-items: flex-start;
-          gap: 0;
-          position: relative;
         }
 
-        /* Icon sidebar */
-        .settings-icon-sidebar {
+        /* Category cards */
+        .settings-category-grid {
           display: flex;
           flex-direction: column;
+          gap: 8px;
+          max-width: 600px;
+          margin-top: 8px;
+        }
+        .settings-category-card {
+          display: flex;
           align-items: center;
-          gap: 4px;
-          padding: 16px 10px;
-          width: 72px;
-          flex-shrink: 0;
-          background: rgba(255,255,255,0.02);
+          gap: 16px;
+          width: 100%;
+          padding: 16px 18px;
+          border-radius: 14px;
           border: 1px solid rgba(255,255,255,0.07);
-          border-radius: 18px;
-          position: sticky;
-          top: 20px;
+          background: rgba(255,255,255,0.03);
+          color: inherit;
+          font: inherit;
+          cursor: pointer;
+          text-align: left;
+          transition: all 0.15s;
         }
-        .settings-icon-sidebar-label {
-          font-size: 10px;
-          font-weight: 800;
-          text-transform: uppercase;
-          letter-spacing: 0.07em;
-          color: rgba(241,241,241,0.3);
-          margin-bottom: 8px;
+        .settings-category-card:hover {
+          background: rgba(255,255,255,0.06);
+          border-color: rgba(255,255,255,0.12);
         }
-        .settings-icon-btn {
+        .settings-category-icon {
+          width: 42px;
+          height: 42px;
+          border-radius: 11px;
+          background: color-mix(in srgb, var(--button-primary, #26c281) 12%, transparent);
+          border: 1px solid color-mix(in srgb, var(--button-primary, #26c281) 24%, transparent);
+          display: grid;
+          place-items: center;
+          font-size: 20px;
+          color: var(--button-primary, #26c281);
+          flex-shrink: 0;
+        }
+        .settings-category-info {
+          flex: 1;
           display: flex;
           flex-direction: column;
-          align-items: center;
-          gap: 4px;
-          width: 52px;
-          padding: 10px 6px;
-          border-radius: 12px;
-          border: none;
-          background: transparent;
-          color: rgba(241,241,241,0.45);
-          cursor: pointer;
-          transition: all 0.15s;
-          font: inherit;
+          gap: 3px;
         }
-        .settings-icon-btn i {
-          font-size: 22px;
-          line-height: 1;
-        }
-        .settings-icon-btn span {
-          font-size: 9.5px;
+        .settings-category-info strong {
+          font-size: 14px;
           font-weight: 700;
-          letter-spacing: 0.02em;
-        }
-        .settings-icon-btn:hover {
-          background: rgba(255,255,255,0.07);
           color: #f1f1f1;
         }
-        .settings-icon-btn.active {
-          background: color-mix(in srgb, var(--button-primary, #26c281) 14%, transparent);
-          color: var(--button-primary, #26c281);
-          box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--button-primary, #26c281) 30%, transparent);
+        .settings-category-info span {
+          font-size: 12px;
+          color: rgba(241,241,241,0.45);
+        }
+        .settings-category-arrow {
+          font-size: 20px;
+          color: rgba(241,241,241,0.25);
+          flex-shrink: 0;
         }
 
         /* Settings popup overlay */
@@ -2901,45 +2908,36 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
           position: fixed;
           inset: 0;
           z-index: 800;
-          background: rgba(0,0,0,0.5);
-          backdrop-filter: blur(6px);
-          display: flex;
-          align-items: flex-start;
-          justify-content: flex-end;
-          padding: 16px 24px;
+          background: rgba(0,0,0,0.55);
+          backdrop-filter: blur(8px);
+          -webkit-backdrop-filter: blur(8px);
+          display: grid;
+          place-items: center;
+          padding: 20px;
         }
         .settings-popup-panel {
-          width: 720px;
-          max-width: calc(100vw - 100px);
-          max-height: calc(100vh - 32px);
+          width: 100%;
+          max-width: 700px;
+          max-height: calc(100vh - 40px);
           background: #161616;
           border: 1px solid rgba(255,255,255,0.09);
           border-radius: 22px;
           display: flex;
           flex-direction: column;
           overflow: hidden;
-          box-shadow: 0 32px 80px rgba(0,0,0,0.5);
+          box-shadow: 0 32px 80px rgba(0,0,0,0.55);
         }
         .settings-popup-header {
           display: flex;
           align-items: center;
-          justify-content: space-between;
-          padding: 18px 22px;
+          gap: 12px;
+          padding: 16px 20px;
           border-bottom: 1px solid rgba(255,255,255,0.07);
           flex-shrink: 0;
         }
-        .settings-popup-tab-label {
-          display: inline-flex;
-          align-items: center;
-          gap: 8px;
-          font-size: 16px;
-          font-weight: 700;
-          letter-spacing: -0.01em;
-        }
-        .settings-popup-tab-label i { font-size: 20px; color: var(--button-primary, #26c281); }
-        .settings-popup-close {
-          width: 34px;
-          height: 34px;
+        .settings-popup-back {
+          width: 32px;
+          height: 32px;
           border-radius: 9px;
           border: none;
           background: rgba(255,255,255,0.07);
@@ -2947,16 +2945,28 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
           cursor: pointer;
           display: grid;
           place-items: center;
-          font-size: 22px;
+          font-size: 18px;
           transition: background 0.15s;
+          flex-shrink: 0;
         }
-        .settings-popup-close:hover { background: rgba(255,255,255,0.12); }
+        .settings-popup-back:hover { background: rgba(255,255,255,0.12); }
+        .settings-popup-tab-label {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          font-size: 16px;
+          font-weight: 700;
+          letter-spacing: -0.01em;
+          flex: 1;
+        }
+        .settings-popup-tab-label i { font-size: 20px; color: var(--button-primary, #26c281); }
         .settings-popup-feedback {
           padding: 10px 22px;
           font-size: 13px;
           color: var(--button-primary, #26c281);
           border-top: 1px solid rgba(255,255,255,0.07);
           flex-shrink: 0;
+          margin: 0;
         }
 
         .settings-panel {
