@@ -6,6 +6,7 @@ import { createPortal } from 'react-dom'
 import AssistantPage from '@/app/assistant/page'
 import SettingsPage from '@/app/settings/page'
 import ClientNotesPanel from '@/components/dashboard/ClientNotesPanel'
+import EditorialCalendar from '@/components/dashboard/EditorialCalendar'
 import ReportsTab from '@/components/dashboard/ReportsTab'
 import { useUser } from '@/lib/contexts/UserContext'
 import { createClient } from '@/lib/supabase/client'
@@ -16220,6 +16221,10 @@ export default function DashboardShell({
             <i className="bx bx-note"></i>
             {!isSidebarCollapsed && 'Notas'}
           </button>
+          <button type="button" data-tooltip="Calendário Editorial" aria-label="Calendário Editorial" className={`nav-item nav-button ${activeTab === 'editorial' ? 'active' : ''}`} onClick={() => setActiveTab('editorial')}>
+            <i className="bx bx-calendar-alt"></i>
+            {!isSidebarCollapsed && 'Editorial'}
+          </button>
           <button type="button" data-tooltip="Controle da Operação" aria-label="Controle da Operação" className={`nav-item nav-button ${activeTab === 'semanal' ? 'active' : ''}`} onClick={() => setActiveTab('semanal')}>
             <i className="bx bx-pulse"></i>
             {!isSidebarCollapsed && 'Controle da Operação'}
@@ -16334,6 +16339,7 @@ export default function DashboardShell({
                 {activeTab === 'anuncios' && 'Anúncios'}
                 {activeTab === 'saldos' && 'Saldos de Anúncios'}
                 {activeTab === 'notas' && 'Notas de Clientes'}
+                {activeTab === 'editorial' && 'Calendário Editorial'}
                 {activeTab === 'relatorios' && 'Relatórios Salvos'}
                 {activeTab === 'settings' && 'Settings'}
               </h1>
@@ -16351,6 +16357,7 @@ export default function DashboardShell({
                   {activeTab === 'anuncios' && 'Veja os top 5 anúncios com investimento por cliente, por período e por gestor de resultado.'}
                   {activeTab === 'saldos' && 'Monitore saldo, cartão vinculado e valor pendente das contas de anúncio dos clientes.'}
                   {activeTab === 'notas' && 'Registre observações, histórico e informações relevantes sobre cada cliente da carteira.'}
+                  {activeTab === 'editorial' && 'Planeje e acompanhe as publicações dos clientes com datas, temas, plataformas e status de cada post.'}
                   {activeTab === 'relatorios' && 'Acesse e baixe os relatórios PDF gerados para cada cliente.'}
                   {activeTab === 'settings' && 'Ajuste integrações, IA, aparência, campos de clientes e estrutura operacional sem sair do domínio principal.'}
                 </p>
@@ -18200,6 +18207,15 @@ export default function DashboardShell({
               clientName={activeClient?.name || null}
               clients={clients}
               onSelectClient={(client) => setActiveClient(client)}
+            />
+          </section>
+        )}
+
+        {activeTab === 'editorial' && (
+          <section style={{ padding: '16px 20px', height: '100%', boxSizing: 'border-box' }}>
+            <EditorialCalendar
+              clients={clients}
+              isLightMode={isLightAppMode}
             />
           </section>
         )}
