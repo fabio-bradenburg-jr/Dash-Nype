@@ -22324,11 +22324,16 @@ export default function DashboardShell({
           width: calc(100% - 224px);
           padding: 20px 24px 36px;
           background: transparent !important;
-          height: 100vh;
           box-sizing: border-box;
           display: flex;
           flex-direction: column;
           overflow-y: auto;
+          min-height: 100vh;
+        }
+
+        .dashboard-container[data-active-tab='editorial'] .main-content {
+          height: 100vh;
+          overflow-y: hidden;
         }
 
         .dashboard-container:not([data-active-tab='apresentacao']) .main-content-expanded {

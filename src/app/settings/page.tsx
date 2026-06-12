@@ -430,6 +430,7 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
   const [googleAdsConnectionError, setGoogleAdsConnectionError] = useState('')
   const [googleAdsConnectionNotice, setGoogleAdsConnectionNotice] = useState('')
   const [activeSettingsTab, setActiveSettingsTab] = useState<SettingsTab>('panel')
+  const [settingsPopupOpen, setSettingsPopupOpen] = useState(false)
   const [panelDraft, setPanelDraft] = useState<UserAppearance>(appearance)
   const [panelFeedback, setPanelFeedback] = useState('')
   const [settingsSaveFeedback, setSettingsSaveFeedback] = useState('')
@@ -1836,6 +1837,7 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
 
   const handleSettingsTabChange = (nextTab: SettingsTab) => {
     setActiveSettingsTab(nextTab)
+    setSettingsPopupOpen(true)
 
     if (typeof window === 'undefined') return
     const params = new URLSearchParams(window.location.search)
@@ -1876,81 +1878,79 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
 
       <main className={embeddedOverride ? "main-content settings-main settings-main-embedded" : "main-content settings-main"}>
         <div className="settings-workspace">
-          <aside className="glass-item settings-section-sidebar">
-            <div className="settings-sidebar-title">
-              <span>Configuração</span>
-              <strong>Ajustes do app</strong>
-            </div>
+          {/* Icon-only settings nav */}
+          <aside className="settings-icon-sidebar">
+            <div className="settings-icon-sidebar-label">Config.</div>
 
-            <div className="settings-sidebar-nav">
-              <button
-                type="button"
-                className={`settings-sidebar-link ${activeSettingsTab === 'panel' ? 'active' : ''}`}
-                onClick={() => handleSettingsTabChange('panel')}
-              >
-                <i className="bx bx-layout"></i>
-                <div>
-                  <strong>Interface</strong>
-                  <span>Destaque, fundo e assinatura visual do sistema.</span>
-                </div>
-              </button>
+            <button
+              type="button"
+              className={`settings-icon-btn ${activeSettingsTab === 'panel' ? 'active' : ''}`}
+              onClick={() => handleSettingsTabChange('panel')}
+              title="Interface"
+            >
+              <i className="bx bx-layout"></i>
+              <span>Interface</span>
+            </button>
 
-              {canEditIntegrations && (
-                <>
-                  <button
-                    type="button"
-                    className={`settings-sidebar-link ${activeSettingsTab === 'general' ? 'active' : ''}`}
-                    onClick={() => handleSettingsTabChange('general')}
-                  >
-                    <i className="bx bx-link-alt"></i>
-                    <div>
-                      <strong>Integrações</strong>
-                      <span>Meta, Google Ads e demais ferramentas.</span>
-                    </div>
-                  </button>
-                  <button
-                    type="button"
-                    className={`settings-sidebar-link ${activeSettingsTab === 'ai' ? 'active' : ''}`}
-                    onClick={() => handleSettingsTabChange('ai')}
-                  >
-                    <i className="bx bx-bot"></i>
-                    <div>
-                      <strong>Inteligência Artificial</strong>
-                      <span>Providers, prompts e agentes.</span>
-                    </div>
-                  </button>
-                </>
-              )}
-
-              {canManageClients && (
+            {canEditIntegrations && (
+              <>
                 <button
                   type="button"
-                  className={`settings-sidebar-link ${activeSettingsTab === 'operation' ? 'active' : ''}`}
-                  onClick={() => handleSettingsTabChange('operation')}
+                  className={`settings-icon-btn ${activeSettingsTab === 'general' ? 'active' : ''}`}
+                  onClick={() => handleSettingsTabChange('general')}
+                  title="Integrações"
                 >
-                  <i className="bx bx-pulse"></i>
-                  <div>
-                    <strong>Operação</strong>
-                    <span>Meta de risco e saúde semanal dos clientes.</span>
-                  </div>
+                  <i className="bx bx-link-alt"></i>
+                  <span>Integrações</span>
                 </button>
-              )}
-            </div>
+                <button
+                  type="button"
+                  className={`settings-icon-btn ${activeSettingsTab === 'ai' ? 'active' : ''}`}
+                  onClick={() => handleSettingsTabChange('ai')}
+                  title="IA"
+                >
+                  <i className="bx bx-bot"></i>
+                  <span>IA</span>
+                </button>
+              </>
+            )}
+
+            {canManageClients && (
+              <button
+                type="button"
+                className={`settings-icon-btn ${activeSettingsTab === 'operation' ? 'active' : ''}`}
+                onClick={() => handleSettingsTabChange('operation')}
+                title="Operação"
+              >
+                <i className="bx bx-pulse"></i>
+                <span>Operação</span>
+              </button>
+            )}
           </aside>
 
-          <section className="glass-panel settings-panel">
-          <div className="settings-head">
-            <div>
-              <h1>Configurações</h1>
-              <p>Centralize aqui a aparência da sua conta e as credenciais globais do app.</p>
-            </div>
-            {!embeddedOverride && (
-              <Link href="/home" className="btn btn-secondary">
-                Voltar
-              </Link>
-            )}
-          </div>
-          <div className="settings-section-content">
+          {/* Settings popup overlay */}
+          {settingsPopupOpen && (
+            <div className="settings-popup-overlay" onClick={(e) => { if (e.target === e.currentTarget) setSettingsPopupOpen(false) }}>
+              <div className="settings-popup-panel">
+                <div className="settings-popup-header">
+                  <div className="settings-popup-header-info">
+                    <span className="settings-popup-tab-label">
+                      {activeSettingsTab === 'panel' && <><i className="bx bx-layout"></i>Interface</>}
+                      {activeSettingsTab === 'general' && <><i className="bx bx-link-alt"></i>Integrações</>}
+                      {activeSettingsTab === 'ai' && <><i className="bx bx-bot"></i>Inteligência Artificial</>}
+                      {activeSettingsTab === 'operation' && <><i className="bx bx-pulse"></i>Operação</>}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <button type="button" className="btn btn-primary settings-save-button" onClick={handleSaveCurrentSettings}>
+                      Salvar
+                    </button>
+                    <button type="button" className="settings-popup-close" onClick={() => setSettingsPopupOpen(false)}>
+                      <i className="bx bx-x"></i>
+                    </button>
+                  </div>
+                </div>
+                <div className="settings-section-content">
               {activeSettingsTab === 'panel' && (
                 <div className="settings-panel-layout settings-panel-layout-obsidian">
                   <div className="glass-item settings-block settings-block-full settings-block-hero">
@@ -2804,37 +2804,13 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
                 </div>
               )}
 
-              <div className="settings-action-bar settings-action-bar-global">
-                <div className="settings-action-copy">
-                  <strong>Configuração pronta para aplicar</strong>
-                  <span>
-                    {settingsSaveFeedback ||
-                      panelFeedback ||
-                      (activeSettingsTab === 'panel'
-                        ? 'Ajuste aparência, modo e atmosfera. Salve quando quiser aplicar o tema em todo o app.'
-                        : activeSettingsTab === 'operation'
-                          ? 'Salve a meta operacional para aplicar no Controle da Operação.'
-                          : activeSettingsTab === 'ai'
-                            ? 'Salve para aplicar as configurações de IA — providers, prompt e agentes.'
-                            : 'As integrações do app já sincronizam em tempo real, mas você pode usar este botão para confirmar e reaplicar a configuração atual.')}
-                  </span>
                 </div>
-                <div className="settings-action-buttons">
-                  <button
-                    type="button"
-                    className="btn btn-secondary settings-ghost-button"
-                    onClick={handleResetPanelDraft}
-                    disabled={!hasPendingPanelChanges}
-                  >
-                    Descartar alterações
-                  </button>
-                  <button type="button" className="btn btn-primary settings-save-button" onClick={handleSaveCurrentSettings}>
-                    Salvar configuração
-                  </button>
-                </div>
+                {settingsSaveFeedback && (
+                  <div className="settings-popup-feedback">{settingsSaveFeedback}</div>
+                )}
               </div>
-          </div>
-          </section>
+            </div>
+          )}
         </div>
       </main>
 
@@ -2857,22 +2833,134 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
 
         .settings-workspace {
           width: 100%;
+          display: flex;
+          align-items: flex-start;
+          gap: 0;
+          position: relative;
+        }
+
+        /* Icon sidebar */
+        .settings-icon-sidebar {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 4px;
+          padding: 16px 10px;
+          width: 72px;
+          flex-shrink: 0;
+          background: rgba(255,255,255,0.02);
+          border: 1px solid rgba(255,255,255,0.07);
+          border-radius: 18px;
+          position: sticky;
+          top: 20px;
+        }
+        .settings-icon-sidebar-label {
+          font-size: 10px;
+          font-weight: 800;
+          text-transform: uppercase;
+          letter-spacing: 0.07em;
+          color: rgba(241,241,241,0.3);
+          margin-bottom: 8px;
+        }
+        .settings-icon-btn {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 4px;
+          width: 52px;
+          padding: 10px 6px;
+          border-radius: 12px;
+          border: none;
+          background: transparent;
+          color: rgba(241,241,241,0.45);
+          cursor: pointer;
+          transition: all 0.15s;
+          font: inherit;
+        }
+        .settings-icon-btn i {
+          font-size: 22px;
+          line-height: 1;
+        }
+        .settings-icon-btn span {
+          font-size: 9.5px;
+          font-weight: 700;
+          letter-spacing: 0.02em;
+        }
+        .settings-icon-btn:hover {
+          background: rgba(255,255,255,0.07);
+          color: #f1f1f1;
+        }
+        .settings-icon-btn.active {
+          background: color-mix(in srgb, var(--button-primary, #26c281) 14%, transparent);
+          color: var(--button-primary, #26c281);
+          box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--button-primary, #26c281) 30%, transparent);
+        }
+
+        /* Settings popup overlay */
+        .settings-popup-overlay {
+          position: fixed;
+          inset: 0;
+          z-index: 800;
+          background: rgba(0,0,0,0.5);
+          backdrop-filter: blur(6px);
+          display: flex;
+          align-items: flex-start;
+          justify-content: flex-end;
+          padding: 16px 24px;
+        }
+        .settings-popup-panel {
+          width: 720px;
+          max-width: calc(100vw - 100px);
+          max-height: calc(100vh - 32px);
+          background: #161616;
+          border: 1px solid rgba(255,255,255,0.09);
+          border-radius: 22px;
+          display: flex;
+          flex-direction: column;
+          overflow: hidden;
+          box-shadow: 0 32px 80px rgba(0,0,0,0.5);
+        }
+        .settings-popup-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 18px 22px;
+          border-bottom: 1px solid rgba(255,255,255,0.07);
+          flex-shrink: 0;
+        }
+        .settings-popup-tab-label {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          font-size: 16px;
+          font-weight: 700;
+          letter-spacing: -0.01em;
+        }
+        .settings-popup-tab-label i { font-size: 20px; color: var(--button-primary, #26c281); }
+        .settings-popup-close {
+          width: 34px;
+          height: 34px;
+          border-radius: 9px;
+          border: none;
+          background: rgba(255,255,255,0.07);
+          color: rgba(241,241,241,0.7);
+          cursor: pointer;
           display: grid;
-          grid-template-columns: minmax(210px, 236px) minmax(0, 1fr);
-          gap: 18px;
-          align-items: start;
+          place-items: center;
+          font-size: 22px;
+          transition: background 0.15s;
+        }
+        .settings-popup-close:hover { background: rgba(255,255,255,0.12); }
+        .settings-popup-feedback {
+          padding: 10px 22px;
+          font-size: 13px;
+          color: var(--button-primary, #26c281);
+          border-top: 1px solid rgba(255,255,255,0.07);
+          flex-shrink: 0;
         }
 
         .settings-panel {
-          padding: 30px;
-          display: grid;
-          gap: 28px;
-          background:
-            radial-gradient(circle at 100% 0%, rgba(78, 137, 255, 0.1), transparent 26%),
-            radial-gradient(circle at 0% 100%, rgba(84, 121, 255, 0.08), transparent 24%),
-            rgba(8, 15, 30, 0.74);
-          border: 1px solid rgba(123, 148, 199, 0.14);
-          border-radius: 28px;
+          display: none;
         }
 
         .settings-head {
@@ -3008,6 +3096,10 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
         .settings-panel-layout {
           display: grid;
           gap: 24px;
+          overflow-y: auto;
+          padding: 22px;
+          flex: 1;
+          min-height: 0;
         }
 
         .settings-panel-layout-obsidian {
