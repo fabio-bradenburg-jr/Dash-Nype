@@ -44,7 +44,7 @@ export async function GET(request, { params }) {
 
     // Validate client belongs to workspace
     const { data: client } = await adminSupabase
-      .from('clients')
+      .from('workspace_clients')
       .select('id')
       .eq('id', clientId)
       .eq('workspace_id', workspaceId)
@@ -96,7 +96,7 @@ export async function POST(request, { params }) {
 
     // Validate client belongs to workspace
     const { data: client } = await adminSupabase
-      .from('clients')
+      .from('workspace_clients')
       .select('id')
       .eq('id', clientId)
       .eq('workspace_id', workspaceId)
