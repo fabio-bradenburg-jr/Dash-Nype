@@ -22436,10 +22436,11 @@ export default function DashboardShell({
         }
 
         .dashboard-container:not([data-active-tab='apresentacao']) .btn-primary {
-          border-color: color-mix(in srgb, var(--button-primary, #26c281) 40%, transparent);
-          background: var(--button-primary, #26c281) !important;
-          color: #ffffff !important;
+          border-color: #c8a951;
+          background: #c8a951 !important;
+          color: #0c0c0c !important;
           box-shadow: none;
+          font-weight: 700;
         }
 
         .dashboard-container:not([data-active-tab='apresentacao']) .btn-secondary,
@@ -36370,19 +36371,21 @@ export default function DashboardShell({
         }
 
         /* Lumina global finish pass for every app page and popup. */
+        /* C6 Gold Theme Override */
         .dashboard-shell-stellar {
-          --lumina-page-bg: color-mix(in srgb, var(--app-bg-color, #070908) 76%, #020605 24%);
-          --lumina-page-surface: rgba(var(--app-bg-rgb, 18, 24, 23), 0.18);
-          --lumina-page-surface-strong: color-mix(in srgb, var(--app-bg-color, #171c1b) 22%, rgba(23, 28, 27, 0.94));
-          --lumina-page-border: rgba(190, 201, 191, 0.16);
-          --lumina-page-border-strong: rgba(190, 201, 191, 0.28);
-          --lumina-page-text: #f1f1f1;
-          --lumina-page-muted: rgba(241, 241, 241, 0.68);
-          --lumina-page-soft: rgba(241, 241, 241, 0.48);
-          background:
-            radial-gradient(circle at 78% 0%, color-mix(in srgb, var(--button-primary, #26c281) 10%, transparent), transparent 30%),
-            radial-gradient(circle at 10% 14%, rgba(var(--app-bg-rgb, 7, 9, 8), 0.34), transparent 28%),
-            linear-gradient(180deg, var(--lumina-page-bg) 0%, color-mix(in srgb, var(--app-bg-color, #0d1110) 54%, #0d1110 46%) 52%, var(--lumina-page-bg) 100%) !important;
+          --lumina-page-bg: #0c0c0c;
+          --lumina-page-surface: rgba(22, 22, 22, 0.98);
+          --lumina-page-surface-strong: #1a1a1a;
+          --lumina-page-border: rgba(255, 255, 255, 0.07);
+          --lumina-page-border-strong: rgba(255, 255, 255, 0.12);
+          --lumina-page-text: #ffffff;
+          --lumina-page-muted: rgba(255, 255, 255, 0.65);
+          --lumina-page-soft: rgba(255, 255, 255, 0.4);
+          --button-primary: #c8a951 !important;
+          --button-primary-hover: #b8973f !important;
+          --button-primary-shadow: rgba(200, 169, 81, 0.2) !important;
+          --accent-blue: #c8a951 !important;
+          background: #0c0c0c !important;
           color: var(--lumina-page-text);
         }
 
@@ -36418,13 +36421,11 @@ export default function DashboardShell({
         .dashboard-shell-stellar .simple-client-card,
         .dashboard-shell-stellar .simple-team-card,
         .dashboard-shell-stellar .empty-panel {
-          border: 1px solid var(--lumina-page-border) !important;
-          background:
-            linear-gradient(180deg, color-mix(in srgb, var(--app-bg-color, #121817) 16%, rgba(18, 24, 23, 0.88)), rgba(13, 17, 16, 0.9)),
-            var(--lumina-page-surface) !important;
-          box-shadow: 0 22px 52px rgba(0, 0, 0, 0.22) !important;
-          backdrop-filter: blur(14px);
-          -webkit-backdrop-filter: blur(14px);
+          border: 1px solid rgba(255, 255, 255, 0.07) !important;
+          background: #161616 !important;
+          box-shadow: none !important;
+          backdrop-filter: none;
+          -webkit-backdrop-filter: none;
         }
 
         .dashboard-shell-stellar .hero-panel,
@@ -36432,19 +36433,15 @@ export default function DashboardShell({
         .dashboard-shell-stellar .weekly-command-center,
         .dashboard-shell-stellar .monday-command-panel,
         .dashboard-shell-stellar .management-header-row {
-          background:
-            linear-gradient(135deg, color-mix(in srgb, var(--button-primary, #26c281) 10%, transparent), transparent 38%),
-            linear-gradient(180deg, color-mix(in srgb, var(--app-bg-color, #121817) 18%, rgba(18, 24, 23, 0.94)), rgba(13, 17, 16, 0.92)) !important;
-          border-color: var(--lumina-page-border-strong) !important;
+          background: #1a1a1a !important;
+          border-color: rgba(255, 255, 255, 0.09) !important;
         }
 
         .dashboard-shell-stellar .modal-overlay,
         .dashboard-shell-stellar .weekly-modal-overlay {
-          background:
-            radial-gradient(circle at 50% 0%, color-mix(in srgb, var(--button-primary, #26c281) 14%, transparent), transparent 32%),
-            rgba(2, 6, 5, 0.78) !important;
-          backdrop-filter: blur(18px) saturate(118%);
-          -webkit-backdrop-filter: blur(18px) saturate(118%);
+          background: rgba(0, 0, 0, 0.82) !important;
+          backdrop-filter: blur(18px);
+          -webkit-backdrop-filter: blur(18px);
           padding: clamp(16px, 3vw, 32px);
         }
 
@@ -36457,11 +36454,9 @@ export default function DashboardShell({
         .dashboard-shell-stellar .weekly-entry-modal,
         .dashboard-shell-stellar .weekly-history-modal,
         .dashboard-shell-stellar .operation-card-modal {
-          border: 1px solid var(--lumina-page-border-strong) !important;
+          border: 1px solid rgba(255, 255, 255, 0.1) !important;
           border-radius: 24px !important;
-          background:
-            linear-gradient(145deg, color-mix(in srgb, var(--button-primary, #26c281) 8%, transparent), transparent 30%),
-            linear-gradient(180deg, rgba(18, 24, 23, 0.98), rgba(9, 13, 12, 0.98)) !important;
+          background: #1a1a1a !important;
           color: var(--lumina-page-text) !important;
           box-shadow: 0 30px 90px rgba(0, 0, 0, 0.44) !important;
         }
@@ -36517,8 +36512,8 @@ export default function DashboardShell({
         .dashboard-shell-stellar .client-registry-display-btn:hover,
         .dashboard-shell-stellar .metric-library-chip:hover,
         .dashboard-shell-stellar .weekly-export-button:hover {
-          border-color: color-mix(in srgb, var(--button-primary, #26c281) 34%, var(--lumina-page-border)) !important;
-          background: color-mix(in srgb, var(--button-primary, #26c281) 10%, rgba(255, 255, 255, 0.035)) !important;
+          border-color: rgba(200, 169, 81, 0.34) !important;
+          background: rgba(200, 169, 81, 0.1) !important;
           color: var(--lumina-page-text) !important;
         }
 
@@ -36528,13 +36523,12 @@ export default function DashboardShell({
         .dashboard-shell-stellar .operation-assignee-dropdown,
         .dashboard-shell-stellar .meta-campaign-filter-panel,
         .dashboard-shell-stellar .client-select-menu {
-          border: 1px solid var(--lumina-page-border-strong) !important;
+          border: 1px solid rgba(255, 255, 255, 0.12) !important;
           border-radius: 18px !important;
-          background:
-            linear-gradient(180deg, rgba(18, 24, 23, 0.98), rgba(9, 13, 12, 0.98)) !important;
+          background: #1a1a1a !important;
           box-shadow: 0 26px 70px rgba(0, 0, 0, 0.36) !important;
-          backdrop-filter: blur(16px);
-          -webkit-backdrop-filter: blur(16px);
+          backdrop-filter: none;
+          -webkit-backdrop-filter: none;
         }
 
         .dashboard-shell-stellar .input-group input:not([type="checkbox"]):not([type="file"]),
@@ -36566,11 +36560,10 @@ export default function DashboardShell({
         }
 
         .dashboard-shell-stellar .btn-primary {
-          border-color: color-mix(in srgb, var(--button-primary, #26c281) 72%, #ffffff 8%) !important;
-          background:
-            linear-gradient(135deg, var(--button-primary, #26c281), color-mix(in srgb, var(--button-primary, #26c281) 78%, #2ecc71 22%)) !important;
-          color: #ffffff !important;
-          box-shadow: 0 14px 28px color-mix(in srgb, var(--button-primary, #26c281) 24%, transparent) !important;
+          border-color: #c8a951 !important;
+          background: #c8a951 !important;
+          color: #0c0c0c !important;
+          box-shadow: none !important;
         }
 
         .dashboard-shell-stellar .btn-primary i,
@@ -36586,7 +36579,19 @@ export default function DashboardShell({
         .dashboard-shell-stellar .operation-stellar-tab.active,
         .dashboard-shell-stellar .metric-library-panel strong,
         .dashboard-shell-stellar .ai-insights-meta strong {
-          color: color-mix(in srgb, var(--button-primary, #26c281) 76%, #f1f1f1) !important;
+          color: #c8a951 !important;
+        }
+
+        .dashboard-shell-stellar .sidebar :global(.nav-item.active) {
+          color: #ffffff !important;
+          border-color: transparent !important;
+          background: rgba(200, 169, 81, 0.1) !important;
+          box-shadow: inset 2px 0 0 #c8a951 !important;
+        }
+
+        .dashboard-shell-stellar .sidebar :global(.nav-item.active i),
+        .dashboard-shell-stellar .sidebar :global(.nav-item:hover i) {
+          color: #c8a951 !important;
         }
 
         .dashboard-shell-stellar .stage-chip.active,
@@ -36595,8 +36600,8 @@ export default function DashboardShell({
         .dashboard-shell-stellar .operation-stellar-theme-option.active,
         .dashboard-shell-stellar .metric-library-chip.active,
         .dashboard-shell-stellar .weekly-range-pill.active {
-          border-color: color-mix(in srgb, var(--button-primary, #26c281) 38%, var(--lumina-page-border)) !important;
-          background: color-mix(in srgb, var(--button-primary, #26c281) 13%, rgba(255, 255, 255, 0.035)) !important;
+          border-color: rgba(200, 169, 81, 0.38) !important;
+          background: rgba(200, 169, 81, 0.13) !important;
         }
 
         .dashboard-shell-stellar .btn-secondary {
