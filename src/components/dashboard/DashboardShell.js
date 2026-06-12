@@ -16241,13 +16241,13 @@ export default function DashboardShell({
           </button>
           {isSocialMenuOpen && !isSidebarCollapsed && (
             <div className="nav-sub-group">
-              <button type="button" className={`nav-item nav-button nav-sub-item ${activeTab === 'editorial' ? 'active' : ''}`} onClick={() => setActiveTab('editorial')}>
-                <i className="bx bx-calendar-alt"></i>
-                {!isSidebarCollapsed && 'Calendário'}
-              </button>
               <button type="button" className={`nav-item nav-button nav-sub-item ${activeTab === 'editorial-dash' ? 'active' : ''}`} onClick={() => setActiveTab('editorial-dash')}>
                 <i className="bx bx-bar-chart-alt-2"></i>
                 {!isSidebarCollapsed && 'Painel'}
+              </button>
+              <button type="button" className={`nav-item nav-button nav-sub-item ${activeTab === 'editorial' ? 'active' : ''}`} onClick={() => setActiveTab('editorial')}>
+                <i className="bx bx-calendar-alt"></i>
+                {!isSidebarCollapsed && 'Calendário'}
               </button>
             </div>
           )}

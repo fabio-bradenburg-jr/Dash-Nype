@@ -290,6 +290,7 @@ export default function EditorialCalendar({ clients = [], isLightMode = false, d
   }
 
   const cells = buildCalendarGrid(year, month)
+  const numWeeks = cells.length / 7
   const postsByDate = {}
   for (const p of posts) {
     if (!postsByDate[p.scheduled_date]) postsByDate[p.scheduled_date] = []
@@ -410,7 +411,7 @@ export default function EditorialCalendar({ clients = [], isLightMode = false, d
           <div className="editorial-weekdays">
             {WEEKDAYS.map(d => <div key={d} className="editorial-weekday">{d}</div>)}
           </div>
-          <div className="editorial-grid">
+          <div className="editorial-grid" style={{ gridTemplateRows: `repeat(${numWeeks}, 1fr)` }}>
             {cells.map((day, idx) => {
               if (day === null) return <div key={`empty-${idx}`} className="editorial-cell editorial-cell-empty" />
 
@@ -858,8 +859,11 @@ export default function EditorialCalendar({ clients = [], isLightMode = false, d
       <style jsx>{`
         .editorial-shell {
           padding: 20px 28px;
-          display: grid;
+          display: flex;
+          flex-direction: column;
           gap: 16px;
+          height: 100%;
+          box-sizing: border-box;
         }
 
         /* Header */
@@ -943,11 +947,13 @@ export default function EditorialCalendar({ clients = [], isLightMode = false, d
           background: var(--theme-surface, rgba(255,255,255,0.03));
           border: 1px solid var(--border-color, rgba(255,255,255,0.08));
           border-radius: 16px; overflow: hidden;
+          flex: 1; display: flex; flex-direction: column; min-height: 0;
         }
         .editorial-weekdays {
           display: grid; grid-template-columns: repeat(7, 1fr);
           background: rgba(255,255,255,0.03);
           border-bottom: 1px solid var(--border-color, rgba(255,255,255,0.06));
+          flex-shrink: 0;
         }
         .editorial-weekday {
           padding: 10px 0; text-align: center;
@@ -957,9 +963,10 @@ export default function EditorialCalendar({ clients = [], isLightMode = false, d
         }
         .editorial-grid {
           display: grid; grid-template-columns: repeat(7, 1fr);
+          flex: 1;
         }
         .editorial-cell {
-          min-height: 110px; padding: 8px;
+          min-height: 0; padding: 8px;
           border-right: 1px solid var(--border-color, rgba(255,255,255,0.06));
           border-bottom: 1px solid var(--border-color, rgba(255,255,255,0.06));
           cursor: pointer; transition: background 0.12s;
