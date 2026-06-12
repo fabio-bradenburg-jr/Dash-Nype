@@ -47,7 +47,7 @@ export default function EditorialCalendar({ clients = [], isLightMode = false })
   const [loading, setLoading] = useState(false)
   const [filterClient, setFilterClient] = useState('')
   const [filterStatus, setFilterStatus] = useState('')
-  const [view, setView]    = useState('calendar') // 'calendar' | 'list'
+  const [view, setView]    = useState('calendar') // 'calendar' | 'list' | 'dash'
 
   // Modal
   const [modalOpen, setModalOpen]   = useState(false)
@@ -194,6 +194,33 @@ export default function EditorialCalendar({ clients = [], isLightMode = false })
 
   const todayStr = isoDate(today)
 
+  // Dashboard stats
+  const statusCounts = STATUSES.reduce((acc, s) => { acc[s.value] = 0; return acc }, {})
+  for (const p of posts) if (statusCounts[p.status] !== undefined) statusCounts[p.status]++
+
+  const clientBreakdown = Object.values(
+    posts.reduce((acc, p) => {
+      const key = p.client_id
+      if (!acc[key]) acc[key] = { clientId: key, name: clientMap[key] || key, total: 0, published: 0, pending: 0, scheduled: 0 }
+      acc[key].total++
+      if (p.status === 'published') acc[key].published++
+      else if (p.status === 'pending') acc[key].pending++
+      else if (p.status === 'scheduled') acc[key].scheduled++
+      return acc
+    }, {})
+  ).sort((a, b) => b.total - a.total)
+
+  const platformCounts = posts.reduce((acc, p) => {
+    for (const pl of (p.platforms || [])) acc[pl] = (acc[pl] || 0) + 1
+    return acc
+  }, {})
+
+  const sevenDaysLater = new Date(today); sevenDaysLater.setDate(today.getDate() + 7)
+  const sevenStr = isoDate(sevenDaysLater)
+  const upcoming = posts
+    .filter(p => p.scheduled_date >= todayStr && p.scheduled_date <= sevenStr && p.status !== 'cancelled')
+    .slice(0, 8)
+
   return (
     <div className="editorial-shell">
       {/* Header */}
@@ -247,6 +274,10 @@ export default function EditorialCalendar({ clients = [], isLightMode = false })
             className={`editorial-view-btn ${view === 'list' ? 'active' : ''}`}
             onClick={() => setView('list')}
           ><i className="bx bx-list-ul"></i> Lista</button>
+          <button
+            className={`editorial-view-btn ${view === 'dash' ? 'active' : ''}`}
+            onClick={() => setView('dash')}
+          ><i className="bx bx-bar-chart-alt-2"></i> Painel</button>
         </div>
       </div>
 
@@ -355,6 +386,105 @@ export default function EditorialCalendar({ clients = [], isLightMode = false })
               </div>
             )
           })}
+        </div>
+      )}
+
+      {/* Painel / Dashboard view */}
+      {view === 'dash' && (
+        <div className="editorial-dash">
+          {/* Stat cards row */}
+          <div className="editorial-stat-row">
+            <div className="editorial-stat-card editorial-stat-total">
+              <span className="editorial-stat-num">{posts.length}</span>
+              <span className="editorial-stat-label">Total do mês</span>
+            </div>
+            {STATUSES.map(s => (
+              <div key={s.value} className="editorial-stat-card" style={{ '--stat-color': s.color, '--stat-bg': s.bg }}>
+                <i className={`bx ${s.icon} editorial-stat-icon`}></i>
+                <span className="editorial-stat-num" style={{ color: s.color }}>{statusCounts[s.value]}</span>
+                <span className="editorial-stat-label">{s.label}</span>
+                {posts.length > 0 && (
+                  <div className="editorial-stat-bar">
+                    <div className="editorial-stat-bar-fill" style={{ width: `${Math.round(statusCounts[s.value] / posts.length * 100)}%`, background: s.color }} />
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+
+          <div className="editorial-dash-grid">
+            {/* Client breakdown */}
+            <div className="editorial-dash-panel">
+              <h4 className="editorial-dash-panel-title"><i className="bx bxs-buildings"></i>Por cliente</h4>
+              {clientBreakdown.length === 0 && <p className="editorial-dash-empty">Nenhum post no período.</p>}
+              {clientBreakdown.map(c => (
+                <div key={c.clientId} className="editorial-client-row">
+                  <div className="editorial-client-name">{c.name}</div>
+                  <div className="editorial-client-track">
+                    <div className="editorial-client-bar">
+                      <div className="editorial-client-bar-pub" style={{ width: `${posts.length ? Math.round(c.published / posts.length * 100) : 0}%` }} title={`${c.published} publicados`} />
+                      <div className="editorial-client-bar-sched" style={{ width: `${posts.length ? Math.round(c.scheduled / posts.length * 100) : 0}%` }} title={`${c.scheduled} agendados`} />
+                      <div className="editorial-client-bar-pend" style={{ width: `${posts.length ? Math.round(c.pending / posts.length * 100) : 0}%` }} title={`${c.pending} pendentes`} />
+                    </div>
+                    <div className="editorial-client-chips">
+                      {c.published > 0 && <span style={{ color: '#22c55e' }}><i className="bx bx-check-circle"></i>{c.published}</span>}
+                      {c.scheduled > 0 && <span style={{ color: '#3b82f6' }}><i className="bx bx-calendar-check"></i>{c.scheduled}</span>}
+                      {c.pending > 0 && <span style={{ color: '#f59e0b' }}><i className="bx bx-time-five"></i>{c.pending}</span>}
+                      <span className="editorial-client-total">{c.total} total</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Right column: platforms + upcoming */}
+            <div className="editorial-dash-right">
+              {/* Platform breakdown */}
+              <div className="editorial-dash-panel">
+                <h4 className="editorial-dash-panel-title"><i className="bx bx-share-alt"></i>Por plataforma</h4>
+                {PLATFORMS.filter(p => platformCounts[p.value]).length === 0 && <p className="editorial-dash-empty">Sem plataforma definida.</p>}
+                <div className="editorial-platform-stats">
+                  {PLATFORMS.filter(p => platformCounts[p.value]).sort((a, b) => (platformCounts[b.value] || 0) - (platformCounts[a.value] || 0)).map(p => {
+                    const count = platformCounts[p.value] || 0
+                    const maxCount = Math.max(...Object.values(platformCounts))
+                    return (
+                      <div key={p.value} className="editorial-platform-stat-row">
+                        <span className="editorial-platform-stat-label"><i className={`bx ${p.icon}`}></i>{p.label}</span>
+                        <div className="editorial-platform-stat-track">
+                          <div className="editorial-platform-stat-fill" style={{ width: `${Math.round(count / maxCount * 100)}%` }} />
+                        </div>
+                        <span className="editorial-platform-stat-count">{count}</span>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+
+              {/* Upcoming posts (next 7 days) */}
+              <div className="editorial-dash-panel">
+                <h4 className="editorial-dash-panel-title"><i className="bx bx-bell"></i>Próximos 7 dias</h4>
+                {upcoming.length === 0 && <p className="editorial-dash-empty">Nenhuma publicação nos próximos 7 dias.</p>}
+                {upcoming.map(post => {
+                  const sm = statusMeta(post.status)
+                  return (
+                    <div key={post.id} className="editorial-upcoming-row" onClick={() => openEdit(post)}>
+                      <div className="editorial-upcoming-date">
+                        <strong>{post.scheduled_date?.slice(8, 10)}</strong>
+                        <small>{MONTHS[parseInt(post.scheduled_date?.slice(5, 7)) - 1]?.slice(0, 3)}</small>
+                      </div>
+                      <div className="editorial-upcoming-info">
+                        <span className="editorial-upcoming-title">{post.title || <em>Sem título</em>}</span>
+                        <span className="editorial-upcoming-client">{clientMap[post.client_id] || post.client_id}</span>
+                      </div>
+                      <div className="editorial-upcoming-badge" style={{ color: sm.color }}>
+                        <i className={`bx ${sm.icon}`}></i>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
@@ -786,6 +916,145 @@ export default function EditorialCalendar({ clients = [], isLightMode = false })
         }
         .editorial-delete-btn:hover { background: rgba(239,68,68,0.16); }
 
+        /* Dashboard / Painel */
+        .editorial-dash { display: flex; flex-direction: column; gap: 20px; }
+
+        .editorial-stat-row {
+          display: grid;
+          grid-template-columns: repeat(5, 1fr);
+          gap: 12px;
+        }
+        .editorial-stat-card {
+          position: relative;
+          background: var(--theme-surface, rgba(255,255,255,0.04));
+          border: 1px solid var(--border-color, rgba(255,255,255,0.08));
+          border-radius: 16px; padding: 16px 18px;
+          display: flex; flex-direction: column; gap: 4px;
+          overflow: hidden;
+        }
+        .editorial-stat-total {
+          border-color: rgba(255,255,255,0.12);
+        }
+        .editorial-stat-icon {
+          font-size: 18px; opacity: 0.7; margin-bottom: 2px;
+        }
+        .editorial-stat-num {
+          font-size: 30px; font-weight: 800; letter-spacing: -0.03em; line-height: 1;
+          color: var(--text-primary);
+        }
+        .editorial-stat-label {
+          font-size: 11px; font-weight: 700; text-transform: uppercase;
+          letter-spacing: 0.07em; color: var(--text-muted);
+        }
+        .editorial-stat-bar {
+          margin-top: 10px; height: 4px; border-radius: 99px;
+          background: rgba(255,255,255,0.07); overflow: hidden;
+        }
+        .editorial-stat-bar-fill {
+          height: 100%; border-radius: 99px;
+          transition: width 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .editorial-dash-grid {
+          display: grid;
+          grid-template-columns: 1fr 360px;
+          gap: 16px;
+          align-items: start;
+        }
+        .editorial-dash-right { display: flex; flex-direction: column; gap: 16px; }
+        .editorial-dash-panel {
+          background: var(--theme-surface, rgba(255,255,255,0.04));
+          border: 1px solid var(--border-color, rgba(255,255,255,0.08));
+          border-radius: 16px; padding: 18px 20px;
+          display: flex; flex-direction: column; gap: 14px;
+        }
+        .editorial-dash-panel-title {
+          font-size: 13px; font-weight: 700; margin: 0;
+          color: var(--text-secondary);
+          display: flex; align-items: center; gap: 7px;
+        }
+        .editorial-dash-panel-title i { font-size: 16px; }
+        .editorial-dash-empty { font-size: 13px; color: var(--text-muted); margin: 0; }
+
+        /* Client breakdown */
+        .editorial-client-row {
+          display: flex; flex-direction: column; gap: 6px;
+        }
+        .editorial-client-name {
+          font-size: 13px; font-weight: 600; color: var(--text-primary);
+        }
+        .editorial-client-track { display: flex; flex-direction: column; gap: 5px; }
+        .editorial-client-bar {
+          height: 8px; border-radius: 99px;
+          background: rgba(255,255,255,0.06); overflow: hidden;
+          display: flex;
+        }
+        .editorial-client-bar-pub {
+          height: 100%; background: #22c55e; transition: width 0.5s ease;
+        }
+        .editorial-client-bar-sched {
+          height: 100%; background: #3b82f6; transition: width 0.5s ease;
+        }
+        .editorial-client-bar-pend {
+          height: 100%; background: #f59e0b; transition: width 0.5s ease;
+        }
+        .editorial-client-chips {
+          display: flex; align-items: center; gap: 12px;
+          font-size: 11px; font-weight: 700;
+        }
+        .editorial-client-chips span { display: inline-flex; align-items: center; gap: 3px; }
+        .editorial-client-total { margin-left: auto; color: var(--text-muted); font-weight: 600; }
+
+        /* Platform stats */
+        .editorial-platform-stats { display: flex; flex-direction: column; gap: 10px; }
+        .editorial-platform-stat-row {
+          display: grid; grid-template-columns: 110px 1fr 28px;
+          align-items: center; gap: 10px;
+        }
+        .editorial-platform-stat-label {
+          font-size: 12px; font-weight: 600; color: var(--text-secondary);
+          display: flex; align-items: center; gap: 6px;
+        }
+        .editorial-platform-stat-track {
+          height: 7px; border-radius: 99px;
+          background: rgba(255,255,255,0.06); overflow: hidden;
+        }
+        .editorial-platform-stat-fill {
+          height: 100%; border-radius: 99px;
+          background: var(--button-primary, #26c281);
+          transition: width 0.5s ease;
+        }
+        .editorial-platform-stat-count {
+          font-size: 12px; font-weight: 700; text-align: right;
+          color: var(--text-secondary);
+        }
+
+        /* Upcoming posts */
+        .editorial-upcoming-row {
+          display: grid; grid-template-columns: 40px 1fr 28px;
+          gap: 12px; align-items: center; padding: 10px 0;
+          border-top: 1px solid var(--border-color, rgba(255,255,255,0.06));
+          cursor: pointer; transition: opacity 0.15s;
+        }
+        .editorial-upcoming-row:first-of-type { border-top: none; padding-top: 0; }
+        .editorial-upcoming-row:hover { opacity: 0.8; }
+        .editorial-upcoming-date {
+          display: flex; flex-direction: column; align-items: center; line-height: 1.1;
+        }
+        .editorial-upcoming-date strong { font-size: 18px; font-weight: 800; }
+        .editorial-upcoming-date small {
+          font-size: 10px; color: var(--text-muted);
+          text-transform: uppercase; letter-spacing: 0.05em;
+        }
+        .editorial-upcoming-info { display: flex; flex-direction: column; gap: 2px; overflow: hidden; }
+        .editorial-upcoming-title {
+          font-size: 13px; font-weight: 600; color: var(--text-primary);
+          overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        }
+        .editorial-upcoming-title em { color: var(--text-muted); font-style: italic; font-weight: 400; }
+        .editorial-upcoming-client { font-size: 11px; color: var(--text-muted); }
+        .editorial-upcoming-badge { font-size: 18px; text-align: center; }
+
         /* Light mode */
         :global(.dashboard-light-mode) .editorial-title { color: #1a1c1c; }
         :global(.dashboard-light-mode) .editorial-subtitle { color: #3d4a41; }
@@ -831,6 +1100,17 @@ export default function EditorialCalendar({ clients = [], isLightMode = false })
         }
         :global(.dashboard-light-mode) .editorial-list-title { color: #1a1c1c; }
         :global(.dashboard-light-mode) .editorial-list-date strong { color: #1a1c1c; }
+        :global(.dashboard-light-mode) .editorial-stat-card,
+        :global(.dashboard-light-mode) .editorial-dash-panel {
+          background: #ffffff; border-color: rgba(187,202,190,0.72);
+        }
+        :global(.dashboard-light-mode) .editorial-stat-bar { background: rgba(0,0,0,0.08); }
+        :global(.dashboard-light-mode) .editorial-client-bar { background: rgba(0,0,0,0.07); }
+        :global(.dashboard-light-mode) .editorial-platform-stat-track { background: rgba(0,0,0,0.07); }
+        :global(.dashboard-light-mode) .editorial-upcoming-row { border-top-color: rgba(187,202,190,0.5); }
+        :global(.dashboard-light-mode) .editorial-upcoming-title { color: #1a1c1c; }
+        :global(.dashboard-light-mode) .editorial-client-name { color: #1a1c1c; }
+        :global(.dashboard-light-mode) .editorial-upcoming-date strong { color: #1a1c1c; }
       `}</style>
     </div>
   )
