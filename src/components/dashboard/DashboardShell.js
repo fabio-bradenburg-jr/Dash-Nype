@@ -5374,6 +5374,25 @@ export default function DashboardShell({
       if (healthCounts[record.healthStatus] != null) healthCounts[record.healthStatus] += 1
     })
 
+    // Monthly churn calculation
+    const now = new Date()
+    const thisYear = now.getFullYear()
+    const thisMonth = now.getMonth()
+    const startOfMonth = new Date(thisYear, thisMonth, 1)
+
+    // Clients who churned this month (churnDate set and falls in current month)
+    const churnedThisMonth = clients.filter((client) => {
+      if (String(client?.status || '').trim().toLowerCase() !== 'churn') return false
+      const d = client.churnDate ? new Date(client.churnDate) : null
+      return d && d >= startOfMonth && d.getFullYear() === thisYear && d.getMonth() === thisMonth
+    })
+
+    // Active at start of month = all non-churn now + those who churned this month
+    const activeAtStartOfMonth = activeBaseClientsCount + churnedThisMonth.length
+    const monthlyChurnRate = activeAtStartOfMonth > 0
+      ? (churnedThisMonth.length / activeAtStartOfMonth) * 100
+      : null
+
     return {
       recordsCount: weeklyVisibleRecords.length,
       monitoredClients: uniqueClientIds.size,
@@ -5385,6 +5404,9 @@ export default function DashboardShell({
       withResultCount: healthCounts.with_result,
       integrationCount: healthCounts.integration,
       churnCount: healthCounts.churn,
+      churnedThisMonthCount: churnedThisMonth.length,
+      activeAtStartOfMonth,
+      monthlyChurnRate,
       latestWeekLabel: weeklyHistoryCards[0]
         ? formatWeekRangeLabel(weeklyHistoryCards[0].weekStart, weeklyHistoryCards[0].weekEnd)
         : 'Sem semanas registradas',
@@ -14544,6 +14566,31 @@ export default function DashboardShell({
           <span className="eyebrow weekly-icon-label"><i className="bx bx-pulse"></i>Operação semanal</span>
           <h2>Controle da Operação</h2>
           <p>Leitura executiva da semana, saúde da carteira e custos de aquisição por cliente em uma rotina de segunda a domingo.</p>
+
+          <div className="weekly-churn-card">
+            <div className="weekly-churn-header">
+              <i className="bx bx-user-minus"></i>
+              <span>Churn do mês</span>
+            </div>
+            <div className="weekly-churn-rate">
+              {weeklyPortfolioStats.monthlyChurnRate == null
+                ? '—'
+                : weeklyPortfolioStats.monthlyChurnRate.toFixed(1) + '%'
+              }
+            </div>
+            <div className="weekly-churn-detail">
+              <span>
+                <strong>{weeklyPortfolioStats.churnedThisMonthCount}</strong> churn
+                {' '}de{' '}
+                <strong>{weeklyPortfolioStats.activeAtStartOfMonth}</strong> ativos no início do mês
+              </span>
+            </div>
+            {weeklyPortfolioStats.churnedThisMonthCount === 0 && (
+              <div className="weekly-churn-ok">
+                <i className="bx bx-check-circle"></i> Nenhum churn este mês
+              </div>
+            )}
+          </div>
         </div>
         <div className="weekly-command-filters">
           <label>
@@ -34105,6 +34152,58 @@ export default function DashboardShell({
         .weekly-command-primary div {
           display: grid;
           gap: 8px;
+        }
+
+        .weekly-churn-card {
+          margin-top: 24px;
+          padding: 18px 20px;
+          border-radius: 18px;
+          border: 1px solid rgba(248, 113, 113, 0.22);
+          background: rgba(248, 113, 113, 0.06);
+          display: grid;
+          gap: 6px;
+        }
+
+        .weekly-churn-card:has(.weekly-churn-ok) {
+          border-color: rgba(16, 185, 129, 0.22);
+          background: rgba(16, 185, 129, 0.06);
+        }
+
+        .weekly-churn-header {
+          display: flex;
+          align-items: center;
+          gap: 7px;
+          font-size: 0.8rem;
+          font-weight: 700;
+          color: var(--muted-text);
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+        }
+
+        .weekly-churn-header i {
+          font-size: 1rem;
+        }
+
+        .weekly-churn-rate {
+          font-size: clamp(2rem, 3.5vw, 2.8rem);
+          font-weight: 900;
+          letter-spacing: -0.04em;
+          line-height: 1;
+          color: var(--text-primary);
+        }
+
+        .weekly-churn-detail {
+          font-size: 0.82rem;
+          color: var(--muted-text);
+        }
+
+        .weekly-churn-ok {
+          display: flex;
+          align-items: center;
+          gap: 5px;
+          font-size: 0.82rem;
+          font-weight: 700;
+          color: #10b981;
         }
 
         .weekly-command-primary strong {
