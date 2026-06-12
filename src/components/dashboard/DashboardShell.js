@@ -14586,13 +14586,13 @@ export default function DashboardShell({
                 <i className={hasChurn ? 'bx bx-user-minus' : 'bx bx-user-check'} style={{ fontSize: '1.1rem' }}></i>
                 Churn do mês
               </div>
-              <div style={{ fontSize: 'clamp(2.2rem,3.5vw,3rem)', fontWeight: 900, letterSpacing: '-0.04em', lineHeight: 1, color: 'var(--text-primary)' }}>
+              <div style={{ fontSize: 'clamp(2.2rem,3.5vw,3rem)', fontWeight: 900, letterSpacing: '-0.04em', lineHeight: 1, color: isLightAppMode ? '#0f172a' : '#f8fafc' }}>
                 {weeklyPortfolioStats.monthlyChurnRate == null ? '—' : weeklyPortfolioStats.monthlyChurnRate.toFixed(1) + '%'}
               </div>
-              <div style={{ fontSize: '0.88rem', color: 'var(--muted-text)', lineHeight: 1.5 }}>
-                <strong style={{ color: 'var(--text-primary)' }}>{weeklyPortfolioStats.churnedThisMonthCount}</strong> cliente{weeklyPortfolioStats.churnedThisMonthCount !== 1 ? 's' : ''} em churn
+              <div style={{ fontSize: '0.88rem', color: isLightAppMode ? '#475569' : 'rgba(148,163,184,0.85)', lineHeight: 1.5 }}>
+                <strong style={{ color: isLightAppMode ? '#0f172a' : '#f8fafc' }}>{weeklyPortfolioStats.churnedThisMonthCount}</strong> cliente{weeklyPortfolioStats.churnedThisMonthCount !== 1 ? 's' : ''} em churn
                 {' '}de{' '}
-                <strong style={{ color: 'var(--text-primary)' }}>{weeklyPortfolioStats.activeAtStartOfMonth}</strong> ativos no início do mês
+                <strong style={{ color: isLightAppMode ? '#0f172a' : '#f8fafc' }}>{weeklyPortfolioStats.activeAtStartOfMonth}</strong> ativos no início do mês
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2, color, fontWeight: 700, fontSize: '0.85rem' }}>
                 <i className={hasChurn ? 'bx bx-error-circle' : 'bx bx-check-circle'} style={{ fontSize: '1rem' }}></i>
