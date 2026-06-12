@@ -14574,7 +14574,7 @@ export default function DashboardShell({
             const border = hasChurn ? 'rgba(239,68,68,0.3)' : 'rgba(16,185,129,0.3)'
             return (
               <div style={{
-                marginTop: 24, padding: '22px 24px', borderRadius: 20,
+                marginTop: 8, padding: '22px 24px', borderRadius: 20,
                 border: `1.5px solid ${border}`, background: bg,
                 display: 'flex', flexDirection: 'column', gap: 10, flex: 1,
               }}>
@@ -34037,7 +34037,7 @@ export default function DashboardShell({
           grid-template-columns: minmax(320px, 0.72fr) minmax(520px, 1fr);
           column-gap: 24px;
           row-gap: 14px;
-          align-items: start;
+          align-items: stretch;
           border: 1px solid rgba(255, 255, 255, 0.08);
           border-radius: 28px;
           background:
@@ -34056,6 +34056,7 @@ export default function DashboardShell({
           justify-content: flex-start;
           gap: 20px;
           padding-right: 12px;
+          grid-row: 1 / 3;
         }
 
         .weekly-command-heading h2 {
@@ -34135,7 +34136,7 @@ export default function DashboardShell({
           align-self: start;
           justify-self: end;
           width: 100%;
-          margin-top: 128px;
+          margin-top: 0;
           z-index: 1;
         }
 
