@@ -22114,6 +22114,96 @@ export default function DashboardShell({
           }
         }
 
+        /* Presentation page — same sidebar/layout as the rest of the app */
+        .dashboard-container[data-active-tab='apresentacao'] .sidebar {
+          width: 224px;
+          padding: 16px 10px;
+          border-right: 1px solid rgba(190, 201, 191, 0.16);
+          background: color-mix(in srgb, var(--app-bg-color, #0d1110) 88%, rgba(255,255,255,0.02)) !important;
+          box-shadow: 1px 0 0 rgba(190, 201, 191, 0.16);
+          backdrop-filter: blur(12px);
+        }
+
+        .dashboard-container[data-active-tab='apresentacao'] .sidebar.sidebar-collapsed {
+          width: 112px;
+        }
+
+        .dashboard-container[data-active-tab='apresentacao'] .main-content {
+          margin-left: 224px;
+          width: calc(100% - 224px);
+          padding: 20px 24px 36px;
+        }
+
+        .dashboard-container[data-active-tab='apresentacao'] .sidebar :global(.nav-item) {
+          min-height: 36px;
+          padding: 0 10px;
+          border-radius: 8px;
+          border: 1px solid transparent;
+          color: rgba(241, 241, 241, 0.55);
+          font-size: 13px;
+          font-weight: 500;
+          letter-spacing: 0;
+          background: transparent;
+          gap: 9px;
+        }
+
+        .dashboard-container[data-active-tab='apresentacao'] .sidebar :global(.nav-item i) {
+          font-size: 18px;
+          color: rgba(241, 241, 241, 0.4);
+        }
+
+        .dashboard-container[data-active-tab='apresentacao'] .sidebar :global(.nav-item.active) {
+          color: #ffffff;
+          background: color-mix(in srgb, var(--button-primary, #26c281) 14%, rgba(255,255,255,0.04));
+          border-color: color-mix(in srgb, var(--button-primary, #26c281) 26%, rgba(255,255,255,0.08));
+          box-shadow: inset 2px 0 0 var(--button-primary, #26c281);
+        }
+
+        .dashboard-container[data-active-tab='apresentacao'] .sidebar :global(.nav-item.active i),
+        .dashboard-container[data-active-tab='apresentacao'] .sidebar :global(.nav-item:hover i) {
+          color: color-mix(in srgb, var(--button-primary, #26c281) 80%, #f1f1f1);
+        }
+
+        .dashboard-container[data-active-tab='apresentacao'] .sidebar :global(.nav-item:hover) {
+          color: rgba(241, 241, 241, 0.9);
+          background: rgba(255, 255, 255, 0.06);
+          border-color: rgba(255, 255, 255, 0.08);
+        }
+
+        .dashboard-container[data-active-tab='apresentacao'] .nav-menu {
+          gap: 3px;
+        }
+
+        .dashboard-container[data-active-tab='apresentacao'] .sidebar-bottom-actions {
+          margin-top: auto;
+          display: grid;
+          gap: 2px;
+        }
+
+        .dashboard-container[data-active-tab='apresentacao'] .sidebar-theme-button,
+        .dashboard-container[data-active-tab='apresentacao'] .sidebar-logout-button {
+          color: rgba(241, 241, 241, 0.45);
+          border-color: transparent;
+          background: transparent;
+        }
+
+        .dashboard-container[data-active-tab='apresentacao'] .sidebar-collapsed {
+          width: 112px;
+        }
+
+        .dashboard-container[data-active-tab='apresentacao'] .sidebar-collapsed .main-content {
+          margin-left: 112px;
+          width: calc(100% - 112px);
+        }
+
+        .dashboard-container[data-active-tab='apresentacao'] .logo {
+          min-height: 48px;
+          padding: 8px 10px;
+          border-radius: 12px;
+          background: transparent;
+          border: none;
+        }
+
         /* Lumina app-wide pass, excluding the Presentation page. */
         .dashboard-container:not([data-active-tab='apresentacao']) {
           --lumina-dark-bg: color-mix(in srgb, var(--app-bg-color, #070908) 76%, #020605 24%);
@@ -22436,9 +22526,9 @@ export default function DashboardShell({
         }
 
         .dashboard-container:not([data-active-tab='apresentacao']) .btn-primary {
-          border-color: #c8a951;
-          background: #c8a951 !important;
-          color: #0c0c0c !important;
+          border-color: var(--button-primary, #26c281);
+          background: var(--button-primary, #26c281) !important;
+          color: #ffffff !important;
           box-shadow: none;
           font-weight: 700;
         }
@@ -27906,14 +27996,12 @@ export default function DashboardShell({
         }
 
         .home-hub-hero-obsidian {
-          padding: 34px;
+          padding: 22px 24px;
           display: grid;
-          grid-template-columns: minmax(0, 1.3fr) minmax(320px, 0.95fr);
-          gap: 24px;
-          background:
-            linear-gradient(180deg, rgba(255, 255, 255, 0.018), rgba(255, 255, 255, 0.008)),
-            radial-gradient(circle at top right, rgba(175, 198, 255, 0.12), transparent 34%);
-          border-radius: 24px;
+          grid-template-columns: minmax(0, 1.3fr) minmax(280px, 0.95fr);
+          gap: 20px;
+          background: transparent;
+          border-radius: 16px;
         }
 
         .home-hub-copy {
@@ -27937,17 +28025,18 @@ export default function DashboardShell({
         .home-hub-copy h2 {
           margin: 0;
           color: #ffffff;
-          font-size: clamp(34px, 4vw, 54px);
-          line-height: 0.98;
-          letter-spacing: -0.05em;
+          font-size: 22px;
+          line-height: 1.2;
+          font-weight: 700;
+          letter-spacing: -0.02em;
         }
 
         .home-hub-copy p {
           margin: 0;
           max-width: 56ch;
-          color: rgba(225, 226, 235, 0.7);
-          font-size: 17px;
-          line-height: 1.65;
+          color: rgba(225, 226, 235, 0.65);
+          font-size: 13px;
+          line-height: 1.6;
         }
 
         .home-hub-metrics-obsidian {
@@ -36381,10 +36470,6 @@ export default function DashboardShell({
           --lumina-page-text: #ffffff;
           --lumina-page-muted: rgba(255, 255, 255, 0.65);
           --lumina-page-soft: rgba(255, 255, 255, 0.4);
-          --button-primary: #c8a951 !important;
-          --button-primary-hover: #b8973f !important;
-          --button-primary-shadow: rgba(200, 169, 81, 0.2) !important;
-          --accent-blue: #c8a951 !important;
           background: #0c0c0c !important;
           color: var(--lumina-page-text);
         }
@@ -36512,8 +36597,8 @@ export default function DashboardShell({
         .dashboard-shell-stellar .client-registry-display-btn:hover,
         .dashboard-shell-stellar .metric-library-chip:hover,
         .dashboard-shell-stellar .weekly-export-button:hover {
-          border-color: rgba(200, 169, 81, 0.34) !important;
-          background: rgba(200, 169, 81, 0.1) !important;
+          border-color: rgba(38, 194, 129, 0.34) !important;
+          background: rgba(38, 194, 129, 0.1) !important;
           color: var(--lumina-page-text) !important;
         }
 
@@ -36560,9 +36645,9 @@ export default function DashboardShell({
         }
 
         .dashboard-shell-stellar .btn-primary {
-          border-color: #c8a951 !important;
-          background: #c8a951 !important;
-          color: #0c0c0c !important;
+          border-color: var(--button-primary, #26c281) !important;
+          background: var(--button-primary, #26c281) !important;
+          color: #ffffff !important;
           box-shadow: none !important;
         }
 
@@ -36579,19 +36664,19 @@ export default function DashboardShell({
         .dashboard-shell-stellar .operation-stellar-tab.active,
         .dashboard-shell-stellar .metric-library-panel strong,
         .dashboard-shell-stellar .ai-insights-meta strong {
-          color: #c8a951 !important;
+          color: var(--button-primary, #26c281) !important;
         }
 
         .dashboard-shell-stellar .sidebar :global(.nav-item.active) {
           color: #ffffff !important;
           border-color: transparent !important;
-          background: rgba(200, 169, 81, 0.1) !important;
-          box-shadow: inset 2px 0 0 #c8a951 !important;
+          background: rgba(38, 194, 129, 0.1) !important;
+          box-shadow: inset 2px 0 0 var(--button-primary, #26c281) !important;
         }
 
         .dashboard-shell-stellar .sidebar :global(.nav-item.active i),
         .dashboard-shell-stellar .sidebar :global(.nav-item:hover i) {
-          color: #c8a951 !important;
+          color: var(--button-primary, #26c281) !important;
         }
 
         .dashboard-shell-stellar .stage-chip.active,
@@ -36600,8 +36685,8 @@ export default function DashboardShell({
         .dashboard-shell-stellar .operation-stellar-theme-option.active,
         .dashboard-shell-stellar .metric-library-chip.active,
         .dashboard-shell-stellar .weekly-range-pill.active {
-          border-color: rgba(200, 169, 81, 0.38) !important;
-          background: rgba(200, 169, 81, 0.13) !important;
+          border-color: rgba(38, 194, 129, 0.38) !important;
+          background: rgba(38, 194, 129, 0.13) !important;
         }
 
         .dashboard-shell-stellar .btn-secondary {
