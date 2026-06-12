@@ -16239,7 +16239,7 @@ export default function DashboardShell({
               </>
             )}
           </button>
-          {isSocialMenuOpen && (
+          {isSocialMenuOpen && !isSidebarCollapsed && (
             <div className="nav-sub-group">
               <button type="button" className={`nav-item nav-button nav-sub-item ${activeTab === 'editorial' ? 'active' : ''}`} onClick={() => setActiveTab('editorial')}>
                 <i className="bx bx-calendar-alt"></i>
@@ -16271,7 +16271,7 @@ export default function DashboardShell({
               </>
             )}
           </button>
-          {isAdsMenuOpen && (
+          {isAdsMenuOpen && !isSidebarCollapsed && (
             <div className="nav-sub-group">
               <button type="button" className={`nav-item nav-button nav-sub-item ${activeTab === 'apresentacao' ? 'active' : ''}`} onClick={() => setActiveTab('apresentacao')}>
                 <i className="bx bxs-dashboard"></i>
