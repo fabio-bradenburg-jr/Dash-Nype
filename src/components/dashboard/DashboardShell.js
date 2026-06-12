@@ -14577,9 +14577,10 @@ export default function DashboardShell({
           return (
             <div style={{
               gridColumn: 1, gridRow: 2,
-              padding: '22px 24px', borderRadius: 20,
+              padding: '18px 20px', borderRadius: 16,
               border: `1.5px solid ${border}`, background: bg,
-              display: 'flex', flexDirection: 'column', gap: 10,
+              display: 'flex', flexDirection: 'column', gap: 8,
+              alignSelf: 'center', margin: '0 12px 12px 0',
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, color, fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                 <i className={hasChurn ? 'bx bx-user-minus' : 'bx bx-user-check'} style={{ fontSize: '1.1rem' }}></i>
