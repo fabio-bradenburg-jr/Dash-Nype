@@ -61,6 +61,7 @@ export default function EditorialCalendar({ clients = [], isLightMode = false, d
   const [editPost, setEditPost]     = useState(null) // null = new
   const [form, setForm]             = useState(EMPTY_FORM)
   const [formClient, setFormClient] = useState('')
+  const [formCalendarId, setFormCalendarId] = useState('') // '' = no calendar
   const [saving, setSaving]         = useState(false)
   const [deleting, setDeleting]     = useState(false)
   const [feedback, setFeedback]     = useState('')
@@ -118,6 +119,7 @@ export default function EditorialCalendar({ clients = [], isLightMode = false, d
     setEditPost(null)
     setForm({ ...EMPTY_FORM, scheduledDate: date })
     setFormClient(filterClient || (clients[0]?.id || ''))
+    setFormCalendarId('')
     setFeedback('')
     setModalOpen(true)
     setTimeout(() => titleRef.current?.focus(), 80)
@@ -125,6 +127,7 @@ export default function EditorialCalendar({ clients = [], isLightMode = false, d
 
   function openEdit(post) {
     setEditPost(post)
+    setFormCalendarId('')
     setForm({
       title: post.title || '',
       description: post.description || '',
@@ -178,6 +181,23 @@ export default function EditorialCalendar({ clients = [], isLightMode = false, d
       }
       const json = await res.json()
       if (!res.ok) { setFeedback(json.error || 'Erro ao salvar.'); return }
+      // If a calendar was selected, add this post to it
+      if (!editPost && formCalendarId && json.post) {
+        const newItem = {
+          id: EMPTY_PLAN_ITEM().id,
+          clientId: formClient,
+          title: form.title,
+          description: form.description,
+          scheduledDate: form.scheduledDate,
+          scheduledTime: form.scheduledTime,
+          status: form.status,
+          platforms: form.platforms,
+        }
+        const updated = savedPlans.map(p =>
+          p.id === formCalendarId ? { ...p, items: [...p.items, newItem] } : p
+        )
+        persistPlans(updated)
+      }
       closeModal()
       fetchPosts()
     } catch (e) {
@@ -691,11 +711,33 @@ export default function EditorialCalendar({ clients = [], isLightMode = false, d
               {/* Client */}
               <div className="editorial-field">
                 <label>Cliente</label>
-                <select value={formClient} onChange={e => setFormClient(e.target.value)}>
+                <select value={formClient} onChange={e => { setFormClient(e.target.value); setFormCalendarId('') }}>
                   <option value="">Selecione…</option>
                   {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
               </div>
+
+              {/* Calendar (only for new posts) */}
+              {!editPost && (
+                <div className="editorial-field">
+                  <label>Adicionar ao calendário <span className="editorial-field-optional">(opcional)</span></label>
+                  <select value={formCalendarId} onChange={e => setFormCalendarId(e.target.value)}>
+                    <option value="">Nenhum calendário</option>
+                    {savedPlans
+                      .filter(p => !formClient || p.items.some(it => it.clientId === formClient) || p.items.length === 0)
+                      .map(p => (
+                        <option key={p.id} value={p.id}>{p.label} ({p.items.length} posts)</option>
+                      ))
+                    }
+                  </select>
+                  {formCalendarId && (
+                    <span className="editorial-field-hint">
+                      <i className="bx bx-check-circle"></i>
+                      Post será adicionado ao planejamento selecionado
+                    </span>
+                  )}
+                </div>
+              )}
 
               {/* Title */}
               <div className="editorial-field">
@@ -1275,6 +1317,23 @@ export default function EditorialCalendar({ clients = [], isLightMode = false, d
           color: #26c281;
         }
         .editorial-platform-chip:hover { background: rgba(255,255,255,0.06); }
+
+        .editorial-field-optional {
+          font-weight: 400;
+          font-size: 10px;
+          text-transform: none;
+          letter-spacing: 0;
+          color: var(--text-muted);
+          margin-left: 4px;
+        }
+        .editorial-field-hint {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          font-size: 11px;
+          color: var(--button-primary, #26c281);
+          margin-top: 4px;
+        }
 
         .editorial-feedback {
           font-size: 13px; color: #f87171; margin: 0;

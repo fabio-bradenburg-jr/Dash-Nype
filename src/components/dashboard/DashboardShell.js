@@ -3232,7 +3232,7 @@ export default function DashboardShell({
   const [mondayCustomUntil, setMondayCustomUntil] = useState('')
   const [draftMondayCustomUntil, setDraftMondayCustomUntil] = useState('')
   const [themeColor, setThemeColor] = useState('blue')
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(true)
   const [isHomeToolsExpanded, setIsHomeToolsExpanded] = useState(false)
   const [metric1, setMetric1] = useState('spend')
   const [metric2, setMetric2] = useState('roas')
@@ -3507,7 +3507,7 @@ export default function DashboardShell({
   })
   const [savingUser, setSavingUser] = useState(false)
   const ADS_TABS = ['apresentacao', 'campanhas', 'anuncios', 'saldos', 'relatorios']
-  const [isAdsMenuOpen, setIsAdsMenuOpen] = useState(() => ADS_TABS.includes(initialTab))
+  const [isAdsMenuOpen, setIsAdsMenuOpen] = useState(true)
   const SOCIAL_TABS = ['editorial', 'editorial-dash', 'editorial-plans']
   const [isSocialMenuOpen, setIsSocialMenuOpen] = useState(true)
   const [globalIntegrations, setGlobalIntegrations] = useState({
