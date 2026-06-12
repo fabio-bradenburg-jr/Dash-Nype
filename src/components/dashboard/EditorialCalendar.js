@@ -862,7 +862,8 @@ export default function EditorialCalendar({ clients = [], isLightMode = false, d
           display: flex;
           flex-direction: column;
           gap: 16px;
-          height: 100%;
+          flex: 1;
+          min-height: 0;
           box-sizing: border-box;
         }
 

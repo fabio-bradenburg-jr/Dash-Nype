@@ -18240,7 +18240,7 @@ export default function DashboardShell({
         )}
 
         {activeTab === 'editorial' && (
-          <section style={{ padding: '16px 20px', height: '100%', boxSizing: 'border-box' }}>
+          <section style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
             <EditorialCalendar
               clients={clients}
               isLightMode={isLightAppMode}
@@ -22324,11 +22324,26 @@ export default function DashboardShell({
           width: calc(100% - 224px);
           padding: 20px 24px 36px;
           background: transparent !important;
+          height: 100vh;
+          box-sizing: border-box;
+          display: flex;
+          flex-direction: column;
+          overflow-y: auto;
         }
 
         .dashboard-container:not([data-active-tab='apresentacao']) .main-content-expanded {
           margin-left: 112px;
           width: calc(100% - 112px);
+        }
+
+        .dashboard-container:not([data-active-tab='apresentacao']) .header {
+          border: none !important;
+          background: transparent !important;
+          box-shadow: none !important;
+          border-radius: 0 !important;
+          min-height: 0 !important;
+          backdrop-filter: none !important;
+          -webkit-backdrop-filter: none !important;
         }
 
         .dashboard-container:not([data-active-tab='apresentacao']) .logo {

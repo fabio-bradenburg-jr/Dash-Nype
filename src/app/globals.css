@@ -453,7 +453,7 @@ body {
     -webkit-mask-repeat: no-repeat;
     -webkit-mask-position: center;
     -webkit-mask-size: contain;
-    filter: drop-shadow(0 12px 22px color-mix(in srgb, var(--brand-logo-color) 28%, transparent));
+    filter: none;
     transition: background 180ms ease, filter 180ms ease, transform 180ms ease;
 }
 
@@ -475,7 +475,7 @@ body {
 .workspace-logo-mark {
     background: color-mix(in srgb, var(--bg-panel, #121817) 82%, var(--accent-blue, #26c281) 18%);
     border: 1px solid color-mix(in srgb, var(--accent-blue, #26c281) 34%, transparent);
-    box-shadow: 0 16px 34px color-mix(in srgb, var(--accent-blue, #26c281) 20%, transparent);
+    box-shadow: none;
     display: grid;
     place-items: center;
     mask-image: none;
