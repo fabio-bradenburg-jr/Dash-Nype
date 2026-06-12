@@ -14566,38 +14566,40 @@ export default function DashboardShell({
           <span className="eyebrow weekly-icon-label"><i className="bx bx-pulse"></i>Operação semanal</span>
           <h2>Controle da Operação</h2>
           <p>Leitura executiva da semana, saúde da carteira e custos de aquisição por cliente em uma rotina de segunda a domingo.</p>
-
-          {(() => {
-            const hasChurn = weeklyPortfolioStats.churnedThisMonthCount > 0
-            const color = hasChurn ? '#ef4444' : '#10b981'
-            const bg = hasChurn ? 'rgba(239,68,68,0.08)' : 'rgba(16,185,129,0.08)'
-            const border = hasChurn ? 'rgba(239,68,68,0.3)' : 'rgba(16,185,129,0.3)'
-            return (
-              <div style={{
-                marginTop: 8, padding: '22px 24px', borderRadius: 20,
-                border: `1.5px solid ${border}`, background: bg,
-                display: 'flex', flexDirection: 'column', gap: 10, flex: 1,
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, color, fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                  <i className={hasChurn ? 'bx bx-user-minus' : 'bx bx-user-check'} style={{ fontSize: '1.1rem' }}></i>
-                  Churn do mês
-                </div>
-                <div style={{ fontSize: 'clamp(2.4rem,4vw,3.2rem)', fontWeight: 900, letterSpacing: '-0.04em', lineHeight: 1, color: 'var(--text-primary)' }}>
-                  {weeklyPortfolioStats.monthlyChurnRate == null ? '—' : weeklyPortfolioStats.monthlyChurnRate.toFixed(1) + '%'}
-                </div>
-                <div style={{ fontSize: '0.9rem', color: 'var(--muted-text)', lineHeight: 1.4 }}>
-                  <strong style={{ color: 'var(--text-primary)' }}>{weeklyPortfolioStats.churnedThisMonthCount}</strong> cliente{weeklyPortfolioStats.churnedThisMonthCount !== 1 ? 's' : ''} em churn
-                  {' '}de{' '}
-                  <strong style={{ color: 'var(--text-primary)' }}>{weeklyPortfolioStats.activeAtStartOfMonth}</strong> ativos no início do mês
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4, color, fontWeight: 700, fontSize: '0.85rem' }}>
-                  <i className={hasChurn ? 'bx bx-error-circle' : 'bx bx-check-circle'} style={{ fontSize: '1rem' }}></i>
-                  {hasChurn ? `${weeklyPortfolioStats.churnedThisMonthCount} churn este mês` : 'Nenhum churn este mês'}
-                </div>
-              </div>
-            )
-          })()}
         </div>
+
+        {/* Churn card — grid-column 1, grid-row 2, aligns with weekly-command-grid */}
+        {(() => {
+          const hasChurn = weeklyPortfolioStats.churnedThisMonthCount > 0
+          const color = hasChurn ? '#ef4444' : '#10b981'
+          const bg = hasChurn ? 'rgba(239,68,68,0.08)' : 'rgba(16,185,129,0.08)'
+          const border = hasChurn ? 'rgba(239,68,68,0.3)' : 'rgba(16,185,129,0.3)'
+          return (
+            <div style={{
+              gridColumn: 1, gridRow: 2,
+              padding: '22px 24px', borderRadius: 20,
+              border: `1.5px solid ${border}`, background: bg,
+              display: 'flex', flexDirection: 'column', gap: 10,
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, color, fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                <i className={hasChurn ? 'bx bx-user-minus' : 'bx bx-user-check'} style={{ fontSize: '1.1rem' }}></i>
+                Churn do mês
+              </div>
+              <div style={{ fontSize: 'clamp(2.2rem,3.5vw,3rem)', fontWeight: 900, letterSpacing: '-0.04em', lineHeight: 1, color: 'var(--text-primary)' }}>
+                {weeklyPortfolioStats.monthlyChurnRate == null ? '—' : weeklyPortfolioStats.monthlyChurnRate.toFixed(1) + '%'}
+              </div>
+              <div style={{ fontSize: '0.88rem', color: 'var(--muted-text)', lineHeight: 1.5 }}>
+                <strong style={{ color: 'var(--text-primary)' }}>{weeklyPortfolioStats.churnedThisMonthCount}</strong> cliente{weeklyPortfolioStats.churnedThisMonthCount !== 1 ? 's' : ''} em churn
+                {' '}de{' '}
+                <strong style={{ color: 'var(--text-primary)' }}>{weeklyPortfolioStats.activeAtStartOfMonth}</strong> ativos no início do mês
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2, color, fontWeight: 700, fontSize: '0.85rem' }}>
+                <i className={hasChurn ? 'bx bx-error-circle' : 'bx bx-check-circle'} style={{ fontSize: '1rem' }}></i>
+                {hasChurn ? `${weeklyPortfolioStats.churnedThisMonthCount} churn este mês` : 'Nenhum churn este mês'}
+              </div>
+            </div>
+          )
+        })()}
         <div className="weekly-command-filters">
           <label>
             <span>Carteira</span>
@@ -34056,7 +34058,9 @@ export default function DashboardShell({
           justify-content: flex-start;
           gap: 20px;
           padding-right: 12px;
-          grid-row: 1 / 3;
+          grid-column: 1;
+          grid-row: 1;
+          align-self: start;
         }
 
         .weekly-command-heading h2 {
