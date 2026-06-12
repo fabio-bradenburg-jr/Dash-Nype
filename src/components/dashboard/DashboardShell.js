@@ -3508,6 +3508,8 @@ export default function DashboardShell({
   const [savingUser, setSavingUser] = useState(false)
   const ADS_TABS = ['apresentacao', 'campanhas', 'anuncios', 'saldos', 'relatorios']
   const [isAdsMenuOpen, setIsAdsMenuOpen] = useState(() => ADS_TABS.includes(initialTab))
+  const SOCIAL_TABS = ['editorial', 'editorial-dash']
+  const [isSocialMenuOpen, setIsSocialMenuOpen] = useState(() => SOCIAL_TABS.includes(initialTab))
   const [globalIntegrations, setGlobalIntegrations] = useState({
     ...DEFAULT_PREFERENCES.globalIntegrations,
   })
@@ -16221,10 +16223,34 @@ export default function DashboardShell({
             <i className="bx bx-note"></i>
             {!isSidebarCollapsed && 'Notas'}
           </button>
-          <button type="button" data-tooltip="Calendário Editorial" aria-label="Calendário Editorial" className={`nav-item nav-button ${activeTab === 'editorial' ? 'active' : ''}`} onClick={() => setActiveTab('editorial')}>
-            <i className="bx bx-calendar-alt"></i>
-            {!isSidebarCollapsed && 'Editorial'}
+          {/* Social Media sub-menu group */}
+          <button
+            type="button"
+            data-tooltip="Social Media"
+            aria-label="Social Media"
+            className={`nav-item nav-button nav-group-trigger ${SOCIAL_TABS.includes(activeTab) ? 'active' : ''}`}
+            onClick={() => setIsSocialMenuOpen((v) => !v)}
+          >
+            <i className="bx bx-image-alt"></i>
+            {!isSidebarCollapsed && (
+              <>
+                <span style={{ flex: 1 }}>Social Media</span>
+                <i className={`bx bx-chevron-${isSocialMenuOpen ? 'up' : 'down'}`} style={{ fontSize: 16, marginLeft: 4 }}></i>
+              </>
+            )}
           </button>
+          {isSocialMenuOpen && (
+            <div className="nav-sub-group">
+              <button type="button" className={`nav-item nav-button nav-sub-item ${activeTab === 'editorial' ? 'active' : ''}`} onClick={() => setActiveTab('editorial')}>
+                <i className="bx bx-calendar-alt"></i>
+                {!isSidebarCollapsed && 'Calendário'}
+              </button>
+              <button type="button" className={`nav-item nav-button nav-sub-item ${activeTab === 'editorial-dash' ? 'active' : ''}`} onClick={() => setActiveTab('editorial-dash')}>
+                <i className="bx bx-bar-chart-alt-2"></i>
+                {!isSidebarCollapsed && 'Painel'}
+              </button>
+            </div>
+          )}
           <button type="button" data-tooltip="Controle da Operação" aria-label="Controle da Operação" className={`nav-item nav-button ${activeTab === 'semanal' ? 'active' : ''}`} onClick={() => setActiveTab('semanal')}>
             <i className="bx bx-pulse"></i>
             {!isSidebarCollapsed && 'Controle da Operação'}
@@ -16340,6 +16366,7 @@ export default function DashboardShell({
                 {activeTab === 'saldos' && 'Saldos de Anúncios'}
                 {activeTab === 'notas' && 'Notas de Clientes'}
                 {activeTab === 'editorial' && 'Calendário Editorial'}
+                {activeTab === 'editorial-dash' && 'Painel Social Media'}
                 {activeTab === 'relatorios' && 'Relatórios Salvos'}
                 {activeTab === 'settings' && 'Settings'}
               </h1>
@@ -16358,6 +16385,7 @@ export default function DashboardShell({
                   {activeTab === 'saldos' && 'Monitore saldo, cartão vinculado e valor pendente das contas de anúncio dos clientes.'}
                   {activeTab === 'notas' && 'Registre observações, histórico e informações relevantes sobre cada cliente da carteira.'}
                   {activeTab === 'editorial' && 'Planeje e acompanhe as publicações dos clientes com datas, temas, plataformas e status de cada post.'}
+                  {activeTab === 'editorial-dash' && 'Visão consolidada das publicações por status, cliente e plataforma com os próximos posts da semana.'}
                   {activeTab === 'relatorios' && 'Acesse e baixe os relatórios PDF gerados para cada cliente.'}
                   {activeTab === 'settings' && 'Ajuste integrações, IA, aparência, campos de clientes e estrutura operacional sem sair do domínio principal.'}
                 </p>
@@ -18216,6 +18244,16 @@ export default function DashboardShell({
             <EditorialCalendar
               clients={clients}
               isLightMode={isLightAppMode}
+            />
+          </section>
+        )}
+
+        {activeTab === 'editorial-dash' && (
+          <section style={{ padding: '16px 20px', height: '100%', boxSizing: 'border-box' }}>
+            <EditorialCalendar
+              clients={clients}
+              isLightMode={isLightAppMode}
+              defaultView="dash"
             />
           </section>
         )}

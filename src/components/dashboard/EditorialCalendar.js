@@ -39,7 +39,7 @@ const EMPTY_FORM = {
   status: 'pending', platforms: [],
 }
 
-export default function EditorialCalendar({ clients = [], isLightMode = false }) {
+export default function EditorialCalendar({ clients = [], isLightMode = false, defaultView = 'calendar' }) {
   const today = new Date()
   const [year, setYear]   = useState(today.getFullYear())
   const [month, setMonth] = useState(today.getMonth())
@@ -47,7 +47,7 @@ export default function EditorialCalendar({ clients = [], isLightMode = false })
   const [loading, setLoading] = useState(false)
   const [filterClient, setFilterClient] = useState('')
   const [filterStatus, setFilterStatus] = useState('')
-  const [view, setView]    = useState('calendar') // 'calendar' | 'list' | 'dash'
+  const [view, setView]    = useState(defaultView) // 'calendar' | 'list' | 'dash'
 
   // Modal
   const [modalOpen, setModalOpen]   = useState(false)
@@ -226,13 +226,15 @@ export default function EditorialCalendar({ clients = [], isLightMode = false })
       {/* Header */}
       <div className="editorial-header">
         <div className="editorial-header-left">
-          <h2 className="editorial-title">Calendário Editorial</h2>
-          <p className="editorial-subtitle">Planeje, agende e acompanhe as publicações dos clientes.</p>
+          <h2 className="editorial-title">{defaultView === 'dash' ? 'Painel Social Media' : 'Calendário Editorial'}</h2>
+          <p className="editorial-subtitle">{defaultView === 'dash' ? 'Visão consolidada das publicações por status, cliente e plataforma.' : 'Planeje, agende e acompanhe as publicações dos clientes.'}</p>
         </div>
-        <button className="editorial-new-btn" onClick={() => openNew()}>
-          <i className="bx bx-plus"></i>
-          Novo post
-        </button>
+        {defaultView !== 'dash' && (
+          <button className="editorial-new-btn" onClick={() => openNew()}>
+            <i className="bx bx-plus"></i>
+            Novo post
+          </button>
+        )}
       </div>
 
       {/* Toolbar */}
@@ -265,20 +267,18 @@ export default function EditorialCalendar({ clients = [], isLightMode = false })
           </select>
         </div>
 
-        <div className="editorial-toolbar-right">
-          <button
-            className={`editorial-view-btn ${view === 'calendar' ? 'active' : ''}`}
-            onClick={() => setView('calendar')}
-          ><i className="bx bx-calendar"></i> Calendário</button>
-          <button
-            className={`editorial-view-btn ${view === 'list' ? 'active' : ''}`}
-            onClick={() => setView('list')}
-          ><i className="bx bx-list-ul"></i> Lista</button>
-          <button
-            className={`editorial-view-btn ${view === 'dash' ? 'active' : ''}`}
-            onClick={() => setView('dash')}
-          ><i className="bx bx-bar-chart-alt-2"></i> Painel</button>
-        </div>
+        {!defaultView || defaultView === 'calendar' ? (
+          <div className="editorial-toolbar-right">
+            <button
+              className={`editorial-view-btn ${view === 'calendar' ? 'active' : ''}`}
+              onClick={() => setView('calendar')}
+            ><i className="bx bx-calendar"></i> Calendário</button>
+            <button
+              className={`editorial-view-btn ${view === 'list' ? 'active' : ''}`}
+              onClick={() => setView('list')}
+            ><i className="bx bx-list-ul"></i> Lista</button>
+          </div>
+        ) : null}
       </div>
 
       {/* Legend */}
