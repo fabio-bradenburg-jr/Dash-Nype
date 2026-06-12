@@ -18167,29 +18167,6 @@ export default function DashboardShell({
                             <strong>{row.clientName}</strong>
                             <small>{row.accountName || 'Sem conta vinculada'}</small>
                           </div>
-                          <button
-                            className={'ad-balance-alert-toggle ' + (row.balanceAlertsEnabled !== false ? 'active' : 'muted')}
-                            title={row.balanceAlertsEnabled !== false ? 'Notificações WhatsApp ativas — clique para desativar' : 'Notificações WhatsApp desativadas — clique para ativar'}
-                            onClick={async () => {
-                              const nextEnabled = row.balanceAlertsEnabled === false
-                              setAdAccountBalanceRows((prev) =>
-                                prev.map((r) => r.clientId === row.clientId ? { ...r, balanceAlertsEnabled: nextEnabled } : r)
-                              )
-                              try {
-                                await fetch(`/api/clients/${row.clientId}/balance-alert`, {
-                                  method: 'PATCH',
-                                  headers: { 'Content-Type': 'application/json' },
-                                  body: JSON.stringify({ enabled: nextEnabled }),
-                                })
-                              } catch {
-                                setAdAccountBalanceRows((prev) =>
-                                  prev.map((r) => r.clientId === row.clientId ? { ...r, balanceAlertsEnabled: !nextEnabled } : r)
-                                )
-                              }
-                            }}
-                          >
-                            <i className={'bx ' + (row.balanceAlertsEnabled !== false ? 'bx-bell' : 'bx-bell-off')}></i>
-                          </button>
                           {billingUrl && (
                             <a href={billingUrl} target="_blank" rel="noopener noreferrer" className="ad-balance-billing-link" title="Abrir configurações de verba no Meta Ads">
                               <i className="bx bx-link-external"></i>
@@ -18223,9 +18200,35 @@ export default function DashboardShell({
                           </span>
                         </div>
 
-                        {row.accountId && (
-                          <div className="ad-balance-card-account-id">act_{row.accountId}</div>
-                        )}
+                        <div className="ad-balance-card-bottom">
+                          {row.accountId && (
+                            <span className="ad-balance-card-account-id">act_{row.accountId}</span>
+                          )}
+                          <button
+                            className={'ad-balance-alert-toggle ' + (row.balanceAlertsEnabled !== false ? 'active' : 'muted')}
+                            title={row.balanceAlertsEnabled !== false ? 'Notificações WhatsApp ativas — clique para desativar' : 'Notificações WhatsApp desativadas — clique para ativar'}
+                            onClick={async () => {
+                              const nextEnabled = row.balanceAlertsEnabled === false
+                              setAdAccountBalanceRows((prev) =>
+                                prev.map((r) => r.clientId === row.clientId ? { ...r, balanceAlertsEnabled: nextEnabled } : r)
+                              )
+                              try {
+                                await fetch(`/api/clients/${row.clientId}/balance-alert`, {
+                                  method: 'PATCH',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({ enabled: nextEnabled }),
+                                })
+                              } catch {
+                                setAdAccountBalanceRows((prev) =>
+                                  prev.map((r) => r.clientId === row.clientId ? { ...r, balanceAlertsEnabled: !nextEnabled } : r)
+                                )
+                              }
+                            }}
+                          >
+                            <i className={'bx ' + (row.balanceAlertsEnabled !== false ? 'bx-bell' : 'bx-bell-off')}></i>
+                            {row.balanceAlertsEnabled !== false ? 'Notif. ativa' : 'Notif. desativada'}
+                          </button>
+                        </div>
                       </div>
                     )
                   })
@@ -32902,25 +32905,24 @@ export default function DashboardShell({
         .ad-balance-alert-toggle {
           display: flex;
           align-items: center;
-          justify-content: center;
-          width: 28px;
-          height: 28px;
-          border-radius: 8px;
+          gap: 5px;
+          padding: 4px 10px 4px 8px;
+          border-radius: 20px;
           border: none;
           cursor: pointer;
-          font-size: 1rem;
+          font-size: 0.75rem;
+          font-weight: 600;
           flex-shrink: 0;
-          transition: background 0.18s ease, color 0.18s ease, transform 0.18s ease;
+          transition: background 0.18s ease, color 0.18s ease, opacity 0.18s ease;
         }
 
         .ad-balance-alert-toggle.active {
-          background: rgba(16, 185, 129, 0.12);
+          background: rgba(16, 185, 129, 0.13);
           color: var(--accent-emerald, #10b981);
         }
 
         .ad-balance-alert-toggle.active:hover {
           background: rgba(16, 185, 129, 0.22);
-          transform: scale(1.08);
         }
 
         .ad-balance-alert-toggle.muted {
@@ -32930,7 +32932,6 @@ export default function DashboardShell({
 
         .ad-balance-alert-toggle.muted:hover {
           background: rgba(148, 163, 184, 0.18);
-          transform: scale(1.08);
         }
 
         .ad-balance-card-body {
@@ -32959,6 +32960,16 @@ export default function DashboardShell({
           gap: 6px;
           flex-wrap: wrap;
           margin-top: auto;
+        }
+
+        .ad-balance-card-bottom {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 8px;
+          border-top: 1px solid rgba(148, 163, 184, 0.1);
+          padding-top: 10px;
+          margin-top: 4px;
         }
 
         .ad-balance-card-account-id {
