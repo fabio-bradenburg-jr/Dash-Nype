@@ -18200,34 +18200,47 @@ export default function DashboardShell({
                           </span>
                         </div>
 
-                        <div className="ad-balance-card-bottom">
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, borderTop: '1px solid rgba(148,163,184,0.15)', paddingTop: 10, marginTop: 4 }}>
                           {row.accountId && (
-                            <span className="ad-balance-card-account-id">act_{row.accountId}</span>
+                            <span style={{ fontSize: '0.72rem', color: 'rgba(148,163,184,0.6)', fontFamily: 'monospace' }}>act_{row.accountId}</span>
                           )}
-                          <button
-                            className={'ad-balance-alert-toggle ' + (row.balanceAlertsEnabled !== false ? 'active' : 'muted')}
-                            title={row.balanceAlertsEnabled !== false ? 'Notificações WhatsApp ativas — clique para desativar' : 'Notificações WhatsApp desativadas — clique para ativar'}
-                            onClick={async () => {
-                              const nextEnabled = row.balanceAlertsEnabled === false
-                              setAdAccountBalanceRows((prev) =>
-                                prev.map((r) => r.clientId === row.clientId ? { ...r, balanceAlertsEnabled: nextEnabled } : r)
-                              )
-                              try {
-                                await fetch(`/api/clients/${row.clientId}/balance-alert`, {
-                                  method: 'PATCH',
-                                  headers: { 'Content-Type': 'application/json' },
-                                  body: JSON.stringify({ enabled: nextEnabled }),
-                                })
-                              } catch {
-                                setAdAccountBalanceRows((prev) =>
-                                  prev.map((r) => r.clientId === row.clientId ? { ...r, balanceAlertsEnabled: !nextEnabled } : r)
-                                )
-                              }
-                            }}
-                          >
-                            <i className={'bx ' + (row.balanceAlertsEnabled !== false ? 'bx-bell' : 'bx-bell-off')}></i>
-                            {row.balanceAlertsEnabled !== false ? 'Notif. ativa' : 'Notif. desativada'}
-                          </button>
+                          {(() => {
+                            const alertOn = row.balanceAlertsEnabled !== false
+                            return (
+                              <button
+                                onClick={async () => {
+                                  const nextEnabled = !alertOn
+                                  setAdAccountBalanceRows((prev) =>
+                                    prev.map((r) => r.clientId === row.clientId ? { ...r, balanceAlertsEnabled: nextEnabled } : r)
+                                  )
+                                  try {
+                                    await fetch(`/api/clients/${row.clientId}/balance-alert`, {
+                                      method: 'PATCH',
+                                      headers: { 'Content-Type': 'application/json' },
+                                      body: JSON.stringify({ enabled: nextEnabled }),
+                                    })
+                                  } catch {
+                                    setAdAccountBalanceRows((prev) =>
+                                      prev.map((r) => r.clientId === row.clientId ? { ...r, balanceAlertsEnabled: alertOn } : r)
+                                    )
+                                  }
+                                }}
+                                title={alertOn ? 'Notificações WhatsApp ativas — clique para desativar' : 'Notificações WhatsApp desativadas — clique para ativar'}
+                                style={{
+                                  display: 'flex', alignItems: 'center', gap: 5,
+                                  padding: '4px 10px 4px 8px', borderRadius: 20,
+                                  border: alertOn ? '1.5px solid #10b981' : '1.5px solid #64748b',
+                                  background: alertOn ? 'rgba(16,185,129,0.12)' : 'rgba(100,116,139,0.12)',
+                                  color: alertOn ? '#10b981' : '#94a3b8',
+                                  fontSize: '0.73rem', fontWeight: 700,
+                                  cursor: 'pointer', flexShrink: 0,
+                                }}
+                              >
+                                <i className={alertOn ? 'bx bx-bell' : 'bx bx-bell-off'} style={{ fontSize: '0.9rem' }}></i>
+                                {alertOn ? 'Notif. ativa' : 'Desativada'}
+                              </button>
+                            )
+                          })()}
                         </div>
                       </div>
                     )
