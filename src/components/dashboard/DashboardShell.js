@@ -22191,45 +22191,72 @@ export default function DashboardShell({
         }
 
         .dashboard-container:not([data-active-tab='apresentacao']) .nav-menu {
-          gap: 8px;
+          gap: 3px;
         }
 
         .dashboard-container:not([data-active-tab='apresentacao']) .sidebar :global(.nav-item) {
-          min-height: 48px;
-          padding: 0 12px;
-          border-radius: 14px;
+          min-height: 40px;
+          padding: 0 10px;
+          border-radius: 10px;
           border: 1px solid transparent;
-          color: rgba(241, 241, 241, 0.66);
+          color: rgba(241, 241, 241, 0.58);
           font-size: 13px;
-          font-weight: 760;
+          font-weight: 600;
           letter-spacing: 0;
           background: transparent;
+          gap: 9px;
         }
 
         .dashboard-container:not([data-active-tab='apresentacao']) .sidebar :global(.nav-item i) {
-          color: rgba(241, 241, 241, 0.48);
-          font-size: 20px;
+          color: rgba(241, 241, 241, 0.4);
+          font-size: 18px;
         }
 
         .dashboard-container:not([data-active-tab='apresentacao']) .sidebar :global(.nav-item:hover) {
-          color: #f1f1f1;
-          background: color-mix(in srgb, var(--button-primary, #26c281) 8%, rgba(255, 255, 255, 0.035));
-          border-color: color-mix(in srgb, var(--button-primary, #26c281) 22%, var(--lumina-dark-border));
-          box-shadow: inset 3px 0 0 color-mix(in srgb, var(--button-primary, #26c281) 62%, #f1f1f1);
-          transform: translateX(2px);
+          color: rgba(241, 241, 241, 0.9);
+          background: rgba(255, 255, 255, 0.06);
+          border-color: rgba(255, 255, 255, 0.08);
         }
 
         .dashboard-container:not([data-active-tab='apresentacao']) .sidebar :global(.nav-item.active) {
-          color: #f1f1f1;
-          border-color: color-mix(in srgb, var(--button-primary, #26c281) 30%, var(--lumina-dark-border));
-          background:
-            linear-gradient(90deg, color-mix(in srgb, var(--button-primary, #26c281) 16%, transparent), rgba(255, 255, 255, 0.034));
-          box-shadow: inset 3px 0 0 color-mix(in srgb, var(--button-primary, #26c281) 80%, #f1f1f1);
+          color: #ffffff;
+          border-color: color-mix(in srgb, var(--button-primary, #26c281) 26%, rgba(255,255,255,0.08));
+          background: color-mix(in srgb, var(--button-primary, #26c281) 14%, rgba(255,255,255,0.04));
+          box-shadow: inset 3px 0 0 var(--button-primary, #26c281);
         }
 
         .dashboard-container:not([data-active-tab='apresentacao']) .sidebar :global(.nav-item.active i),
         .dashboard-container:not([data-active-tab='apresentacao']) .sidebar :global(.nav-item:hover i) {
-          color: color-mix(in srgb, var(--button-primary, #26c281) 72%, #f1f1f1);
+          color: color-mix(in srgb, var(--button-primary, #26c281) 80%, #f1f1f1);
+        }
+
+        /* Sub-nav group */
+        .dashboard-container:not([data-active-tab='apresentacao']) .nav-sub-group {
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+          padding: 2px 0 4px 16px;
+          margin-top: -2px;
+          border-left: 1px solid rgba(255,255,255,0.08);
+          margin-left: 19px;
+        }
+
+        .dashboard-container:not([data-active-tab='apresentacao']) .sidebar :global(.nav-sub-item) {
+          min-height: 34px;
+          border-radius: 8px;
+          font-size: 12.5px;
+          color: rgba(241, 241, 241, 0.52);
+        }
+
+        .dashboard-container:not([data-active-tab='apresentacao']) .sidebar :global(.nav-sub-item i) {
+          font-size: 16px;
+        }
+
+        .dashboard-container:not([data-active-tab='apresentacao']) .sidebar :global(.nav-sub-item.active) {
+          color: #ffffff;
+          background: color-mix(in srgb, var(--button-primary, #26c281) 12%, rgba(255,255,255,0.04));
+          border-color: color-mix(in srgb, var(--button-primary, #26c281) 20%, rgba(255,255,255,0.06));
+          box-shadow: inset 2px 0 0 var(--button-primary, #26c281);
         }
 
         .dashboard-container:not([data-active-tab='apresentacao']) .sidebar-collapsed {
@@ -22266,11 +22293,11 @@ export default function DashboardShell({
         }
 
         .dashboard-container:not([data-active-tab='apresentacao']) .app-shell-topbar {
-          min-height: 58px;
-          margin-bottom: 22px;
+          min-height: 46px;
+          margin-bottom: 14px;
           display: grid;
           grid-template-columns: minmax(0, 1fr) auto;
-          gap: 16px;
+          gap: 14px;
           align-items: center;
         }
 
@@ -22333,20 +22360,18 @@ export default function DashboardShell({
 
         .dashboard-container:not([data-active-tab='apresentacao']) .page-title {
           width: 100%;
-          padding: 26px 28px;
-          border-radius: 20px;
+          padding: 18px 22px;
+          border-radius: 14px;
           border: 1px solid var(--lumina-dark-border);
-          background:
-            radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--button-primary, #26c281) 10%, transparent), transparent 34%),
-            linear-gradient(180deg, rgba(18, 24, 23, 0.84), rgba(13, 17, 16, 0.88));
-          box-shadow: 0 18px 44px rgba(0, 0, 0, 0.2);
+          background: rgba(255,255,255,0.03);
         }
 
         .dashboard-container:not([data-active-tab='apresentacao']) .page-title h1 {
           color: #f1f1f1;
-          font-size: clamp(32px, 4vw, 48px);
-          line-height: 1.02;
-          letter-spacing: -0.02em;
+          font-size: 20px;
+          line-height: 1.2;
+          letter-spacing: -0.01em;
+          font-weight: 700;
           margin: 0;
         }
 
@@ -22354,9 +22379,9 @@ export default function DashboardShell({
         .dashboard-container:not([data-active-tab='apresentacao']) .assistant-header-prompt {
           max-width: 760px;
           color: var(--lumina-muted);
-          font-size: 14px;
-          line-height: 1.62;
-          margin-top: 10px;
+          font-size: 13px;
+          line-height: 1.55;
+          margin-top: 4px;
         }
 
         .dashboard-container:not([data-active-tab='apresentacao']) .clients-layout,
@@ -22377,8 +22402,9 @@ export default function DashboardShell({
 
         .dashboard-container:not([data-active-tab='apresentacao']) .management-header-copy h2 {
           color: #f1f1f1;
-          font-size: clamp(28px, 3.3vw, 42px);
-          letter-spacing: -0.02em;
+          font-size: 18px;
+          font-weight: 700;
+          letter-spacing: -0.01em;
         }
 
         .dashboard-container:not([data-active-tab='apresentacao']) .management-header-copy p {
@@ -22568,9 +22594,24 @@ export default function DashboardShell({
         .dashboard-light-mode:not([data-active-tab='apresentacao']) .sidebar :global(.nav-item.active),
         .dashboard-light-mode:not([data-active-tab='apresentacao']) .sidebar :global(.nav-item:hover) {
           color: #1a1c1c;
-          border-color: color-mix(in srgb, #006c44 28%, #bbcabe);
-          background: color-mix(in srgb, #26c281 10%, #ffffff);
-          box-shadow: inset 3px 0 0 #006c44;
+          border-color: color-mix(in srgb, #006c44 22%, rgba(187,202,190,0.7));
+          background: color-mix(in srgb, #26c281 8%, #f8faf9);
+          box-shadow: inset 3px 0 0 #26c281;
+        }
+
+        .dashboard-light-mode:not([data-active-tab='apresentacao']) .nav-sub-group {
+          border-left-color: rgba(187, 202, 190, 0.7);
+        }
+
+        .dashboard-light-mode:not([data-active-tab='apresentacao']) .sidebar :global(.nav-sub-item) {
+          color: #3d4a41;
+        }
+
+        .dashboard-light-mode:not([data-active-tab='apresentacao']) .sidebar :global(.nav-sub-item.active) {
+          color: #1a1c1c;
+          background: color-mix(in srgb, #26c281 8%, #f8faf9);
+          border-color: color-mix(in srgb, #006c44 20%, rgba(187,202,190,0.7));
+          box-shadow: inset 2px 0 0 #26c281;
         }
 
         .dashboard-light-mode:not([data-active-tab='apresentacao']) input,
@@ -22980,15 +23021,12 @@ export default function DashboardShell({
         }
 
         .sidebar :global(.nav-item:hover) {
-          background: linear-gradient(90deg, rgba(175, 198, 255, 0.12), rgba(175, 198, 255, 0.04));
+          background: rgba(255, 255, 255, 0.06);
           color: #f8fbff;
-          transform: translateX(4px);
-          box-shadow: inset 0 0 0 1px rgba(175, 198, 255, 0.08);
         }
 
         .sidebar :global(.nav-item.active:hover) {
-          background: linear-gradient(90deg, rgba(175, 198, 255, 0.16), rgba(175, 198, 255, 0.05));
-          box-shadow: inset 0 0 0 1px rgba(175, 198, 255, 0.12);
+          background: rgba(255, 255, 255, 0.08);
         }
 
         .sidebar :global(.nav-item:hover i) {
@@ -23218,24 +23256,27 @@ export default function DashboardShell({
         }
 
         .management-header-copy h2 {
-          margin: 0 0 8px;
+          margin: 0 0 4px;
           color: #ffffff;
-          font-size: clamp(34px, 4vw, 48px);
-          line-height: 0.98;
-          letter-spacing: -0.04em;
+          font-size: 18px;
+          line-height: 1.2;
+          font-weight: 700;
+          letter-spacing: -0.01em;
         }
 
         .management-header-copy p {
           margin: 0;
           color: rgba(225, 226, 235, 0.62);
-          font-size: 16px;
-          line-height: 1.6;
+          font-size: 13px;
+          line-height: 1.55;
         }
 
         .management-header-button {
-          min-height: 54px;
-          padding: 0 24px;
-          border-radius: 18px;
+          min-height: 40px;
+          padding: 0 18px;
+          border-radius: 10px;
+          font-size: 13px;
+          font-weight: 700;
         }
 
         .management-hero {
