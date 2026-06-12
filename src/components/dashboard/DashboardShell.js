@@ -22204,6 +22204,90 @@ export default function DashboardShell({
           border: none;
         }
 
+        .dashboard-container[data-active-tab='apresentacao'] .logo-copy span {
+          color: #f1f1f1;
+          font-size: 14px;
+          font-weight: 700;
+          letter-spacing: -0.01em;
+        }
+
+        .dashboard-container[data-active-tab='apresentacao'] .logo-copy small {
+          color: rgba(241, 241, 241, 0.44);
+          font-size: 11px;
+        }
+
+        .dashboard-container[data-active-tab='apresentacao'] .sidebar-toggle {
+          width: 28px;
+          height: 28px;
+          top: 20px;
+          right: -14px;
+          color: rgba(241, 241, 241, 0.7);
+          border-color: rgba(190, 201, 191, 0.16);
+          background: color-mix(in srgb, var(--app-bg-color, #0d1110) 92%, rgba(255,255,255,0.06)) !important;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .dashboard-container[data-active-tab='apresentacao'] .main-content-expanded {
+          margin-left: 112px;
+          width: calc(100% - 112px);
+        }
+
+        /* Light mode — apresentacao tab */
+        .dashboard-light-mode[data-active-tab='apresentacao'] .sidebar {
+          background: #ffffff !important;
+          border-right: 1px solid rgba(187, 202, 190, 0.7) !important;
+          box-shadow: none !important;
+        }
+
+        .dashboard-light-mode[data-active-tab='apresentacao'] .logo-copy span {
+          color: #1a1c1c !important;
+        }
+
+        .dashboard-light-mode[data-active-tab='apresentacao'] .logo-copy small {
+          color: #3d4a41 !important;
+        }
+
+        .dashboard-light-mode[data-active-tab='apresentacao'] .sidebar :global(.nav-item) {
+          color: #3d4a41 !important;
+        }
+
+        .dashboard-light-mode[data-active-tab='apresentacao'] .sidebar :global(.nav-item i) {
+          color: rgba(61, 74, 65, 0.72) !important;
+        }
+
+        .dashboard-light-mode[data-active-tab='apresentacao'] .sidebar :global(.nav-item:hover) {
+          color: #1a1c1c !important;
+          background: rgba(0, 0, 0, 0.05) !important;
+        }
+
+        .dashboard-light-mode[data-active-tab='apresentacao'] .sidebar :global(.nav-item.active) {
+          color: #1a1c1c !important;
+          background: color-mix(in srgb, var(--button-primary, #26c281) 12%, #ffffff) !important;
+          box-shadow: inset 2px 0 0 var(--button-primary, #26c281) !important;
+        }
+
+        .dashboard-light-mode[data-active-tab='apresentacao'] .sidebar-theme-button,
+        .dashboard-light-mode[data-active-tab='apresentacao'] .sidebar-logout-button {
+          color: #3d4a41 !important;
+        }
+
+        /* Global light mode sidebar fix — catch-all for any tab */
+        .dashboard-light-mode .sidebar :global(.nav-item) {
+          color: #3d4a41;
+        }
+
+        .dashboard-light-mode .sidebar :global(.nav-item i) {
+          color: rgba(61, 74, 65, 0.7);
+        }
+
+        .dashboard-light-mode .sidebar :global(.nav-sub-item) {
+          color: #3d4a41;
+        }
+
+        .dashboard-light-mode .nav-sub-group {
+          border-left-color: rgba(187, 202, 190, 0.7) !important;
+        }
+
         /* Lumina app-wide pass, excluding the Presentation page. */
         .dashboard-container:not([data-active-tab='apresentacao']) {
           --lumina-dark-bg: color-mix(in srgb, var(--app-bg-color, #070908) 76%, #020605 24%);
