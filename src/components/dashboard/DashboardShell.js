@@ -16371,6 +16371,7 @@ export default function DashboardShell({
                 {activeTab === 'notas' && 'Notas de Clientes'}
                 {activeTab === 'editorial' && 'Calendário Editorial'}
                 {activeTab === 'editorial-dash' && 'Painel Social Media'}
+                {activeTab === 'editorial-plans' && 'Planejamentos'}
                 {activeTab === 'relatorios' && 'Relatórios Salvos'}
                 {activeTab === 'settings' && 'Settings'}
               </h1>
@@ -16390,6 +16391,7 @@ export default function DashboardShell({
                   {activeTab === 'notas' && 'Registre observações, histórico e informações relevantes sobre cada cliente da carteira.'}
                   {activeTab === 'editorial' && 'Planeje e acompanhe as publicações dos clientes com datas, temas, plataformas e status de cada post.'}
                   {activeTab === 'editorial-dash' && 'Visão consolidada das publicações por status, cliente e plataforma com os próximos posts da semana.'}
+                  {activeTab === 'editorial-plans' && 'Histórico de planejamentos salvos. Exporte em PDF ou crie novos diretamente pelo calendário.'}
                   {activeTab === 'relatorios' && 'Acesse e baixe os relatórios PDF gerados para cada cliente.'}
                   {activeTab === 'settings' && 'Ajuste integrações, IA, aparência, campos de clientes e estrutura operacional sem sair do domínio principal.'}
                 </p>
