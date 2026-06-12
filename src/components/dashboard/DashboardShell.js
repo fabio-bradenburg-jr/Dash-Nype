@@ -3507,9 +3507,9 @@ export default function DashboardShell({
   })
   const [savingUser, setSavingUser] = useState(false)
   const ADS_TABS = ['apresentacao', 'campanhas', 'anuncios', 'saldos', 'relatorios']
-  const [isAdsMenuOpen, setIsAdsMenuOpen] = useState(true)
+  const [isAdsMenuOpen, setIsAdsMenuOpen] = useState(() => ADS_TABS.includes(initialTab))
   const SOCIAL_TABS = ['editorial', 'editorial-dash', 'editorial-plans']
-  const [isSocialMenuOpen, setIsSocialMenuOpen] = useState(true)
+  const [isSocialMenuOpen, setIsSocialMenuOpen] = useState(() => SOCIAL_TABS.includes(initialTab))
   const [globalIntegrations, setGlobalIntegrations] = useState({
     ...DEFAULT_PREFERENCES.globalIntegrations,
   })
