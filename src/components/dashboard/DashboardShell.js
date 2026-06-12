@@ -2495,19 +2495,14 @@ function resolveDateWindow(datePreset, since, until, { excludeTodayForLast30d = 
     }
     case 'last_7d':
       return {
-        start: shiftLocalDays(endOfToday, -6),
-        end: endOfToday,
+        start: shiftLocalDays(endOfToday, -7),
+        end: shiftLocalDays(endOfToday, -1),
       }
     case 'last_30d':
-      return excludeTodayForLast30d
-        ? {
-            start: shiftLocalDays(endOfToday, -30),
-            end: shiftLocalDays(endOfToday, -1),
-          }
-        : {
-            start: shiftLocalDays(endOfToday, -29),
-            end: endOfToday,
-          }
+      return {
+        start: shiftLocalDays(endOfToday, -30),
+        end: shiftLocalDays(endOfToday, -1),
+      }
     case 'this_month':
       return {
         start: new Date(today.getFullYear(), today.getMonth(), 1),
@@ -4238,12 +4233,14 @@ export default function DashboardShell({
     return columns
   }, [effectiveClientImplementationPhases, filteredClients])
   const filteredOperationCards = useMemo(() => {
-    const now = Date.now()
+    const today = new Date()
+    const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime()
+    const startOfYesterday = startOfToday - 24 * 60 * 60 * 1000
     const periodThresholds = {
-      '7d': now - 7 * 24 * 60 * 60 * 1000,
-      '15d': now - 15 * 24 * 60 * 60 * 1000,
-      '30d': now - 30 * 24 * 60 * 60 * 1000,
-      '90d': now - 90 * 24 * 60 * 60 * 1000,
+      '7d': startOfYesterday - 6 * 24 * 60 * 60 * 1000,
+      '15d': startOfYesterday - 14 * 24 * 60 * 60 * 1000,
+      '30d': startOfYesterday - 29 * 24 * 60 * 60 * 1000,
+      '90d': startOfYesterday - 89 * 24 * 60 * 60 * 1000,
     }
     const threshold = operationPeriodFilter === 'all' ? null : periodThresholds[operationPeriodFilter]
     const term = operationSearch.trim().toLowerCase()
