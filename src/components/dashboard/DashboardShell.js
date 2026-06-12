@@ -3508,7 +3508,7 @@ export default function DashboardShell({
   const [savingUser, setSavingUser] = useState(false)
   const ADS_TABS = ['apresentacao', 'campanhas', 'anuncios', 'saldos', 'relatorios']
   const [isAdsMenuOpen, setIsAdsMenuOpen] = useState(() => ADS_TABS.includes(initialTab))
-  const SOCIAL_TABS = ['editorial', 'editorial-dash']
+  const SOCIAL_TABS = ['editorial', 'editorial-dash', 'editorial-plans']
   const [isSocialMenuOpen, setIsSocialMenuOpen] = useState(true)
   const [globalIntegrations, setGlobalIntegrations] = useState({
     ...DEFAULT_PREFERENCES.globalIntegrations,
@@ -16249,6 +16249,10 @@ export default function DashboardShell({
                 <i className="bx bx-calendar-alt"></i>
                 {!isSidebarCollapsed && 'Calendário'}
               </button>
+              <button type="button" className={`nav-item nav-button nav-sub-item ${activeTab === 'editorial-plans' ? 'active' : ''}`} onClick={() => setActiveTab('editorial-plans')}>
+                <i className="bx bx-spreadsheet"></i>
+                {!isSidebarCollapsed && 'Planejamentos'}
+              </button>
             </div>
           )}
           <button type="button" data-tooltip="Controle da Operação" aria-label="Controle da Operação" className={`nav-item nav-button ${activeTab === 'semanal' ? 'active' : ''}`} onClick={() => setActiveTab('semanal')}>
@@ -18254,6 +18258,16 @@ export default function DashboardShell({
               clients={clients}
               isLightMode={isLightAppMode}
               defaultView="dash"
+            />
+          </section>
+        )}
+
+        {activeTab === 'editorial-plans' && (
+          <section style={{ padding: '16px 20px', height: '100%', boxSizing: 'border-box' }}>
+            <EditorialCalendar
+              clients={clients}
+              isLightMode={isLightAppMode}
+              defaultView="plans"
             />
           </section>
         )}

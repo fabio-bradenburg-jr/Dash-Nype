@@ -66,6 +66,18 @@ export default function EditorialCalendar({ clients = [], isLightMode = false, d
   const [feedback, setFeedback]     = useState('')
   const titleRef = useRef(null)
 
+  // Saved plans (persisted in localStorage)
+  const [savedPlans, setSavedPlans] = useState(() => {
+    try {
+      const raw = typeof window !== 'undefined' ? localStorage.getItem('editorial_saved_plans') : null
+      return raw ? JSON.parse(raw) : []
+    } catch { return [] }
+  })
+  function persistPlans(plans) {
+    setSavedPlans(plans)
+    try { localStorage.setItem('editorial_saved_plans', JSON.stringify(plans)) } catch {}
+  }
+
   // Planning
   const [planOpen, setPlanOpen]     = useState(false)
   const [planItems, setPlanItems]   = useState([EMPTY_PLAN_ITEM()])
@@ -230,6 +242,15 @@ export default function EditorialCalendar({ clients = [], isLightMode = false, d
           }),
         })
       ))
+      // Save a snapshot to the plans list
+      const newPlan = {
+        id: Date.now().toString(),
+        createdAt: new Date().toISOString(),
+        label: `Planejamento ${MONTHS[month]} ${year}`,
+        month, year,
+        items: planItems,
+      }
+      persistPlans([newPlan, ...savedPlans])
       closePlanning()
       fetchPosts()
     } catch (e) {
@@ -237,6 +258,55 @@ export default function EditorialCalendar({ clients = [], isLightMode = false, d
     } finally {
       setPlanSaving(false)
     }
+  }
+
+  function deleteSavedPlan(id) {
+    persistPlans(savedPlans.filter(p => p.id !== id))
+  }
+
+  function exportSavedPlanPDF(plan) {
+    const clientMap2 = {}
+    for (const c of clients) clientMap2[c.id] = c.name
+    const rows = plan.items.map((it, i) => {
+      const sm = statusMeta(it.status)
+      const pls = (it.platforms || []).map(p => PLATFORMS.find(x => x.value === p)?.label || p).join(', ')
+      return `<tr>
+        <td>${i + 1}</td>
+        <td>${clientMap2[it.clientId] || it.clientId || '—'}</td>
+        <td>${it.title || '—'}</td>
+        <td>${it.scheduledDate ? it.scheduledDate.split('-').reverse().join('/') : '—'}${it.scheduledTime ? ' ' + it.scheduledTime.slice(0,5) : ''}</td>
+        <td>${pls || '—'}</td>
+        <td>${sm.label}</td>
+        <td>${it.description || '—'}</td>
+      </tr>`
+    }).join('')
+    const html = `<!DOCTYPE html><html lang="pt-BR"><head>
+      <meta charset="UTF-8"/><title>${plan.label}</title>
+      <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Helvetica Neue', Arial, sans-serif; color: #111; padding: 40px; font-size: 12px; }
+        h1 { font-size: 20px; font-weight: 800; margin-bottom: 4px; }
+        .sub { color: #666; margin-bottom: 24px; font-size: 12px; }
+        table { width: 100%; border-collapse: collapse; }
+        th { background: #111; color: #fff; padding: 8px 10px; text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; }
+        td { padding: 8px 10px; border-bottom: 1px solid #e5e7eb; vertical-align: top; }
+        tr:nth-child(even) td { background: #f9fafb; }
+        .footer { margin-top: 32px; font-size: 11px; color: #999; }
+      </style>
+    </head><body>
+      <h1>${plan.label}</h1>
+      <p class="sub">${plan.items.length} post${plan.items.length !== 1 ? 's' : ''} planejado${plan.items.length !== 1 ? 's' : ''}</p>
+      <table>
+        <thead><tr><th>#</th><th>Cliente</th><th>Título</th><th>Data</th><th>Plataformas</th><th>Status</th><th>Descrição</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+      <p class="footer">Gerado em ${new Date().toLocaleDateString('pt-BR', { dateStyle: 'long' })}</p>
+    </body></html>`
+    const win = window.open('', '_blank')
+    win.document.write(html)
+    win.document.close()
+    win.focus()
+    setTimeout(() => { win.print() }, 400)
   }
 
   function exportPlanPDF() {
@@ -334,10 +404,16 @@ export default function EditorialCalendar({ clients = [], isLightMode = false, d
       {/* Header */}
       <div className="editorial-header">
         <div className="editorial-header-left">
-          <h2 className="editorial-title">{defaultView === 'dash' ? 'Painel Social Media' : 'Calendário Editorial'}</h2>
-          <p className="editorial-subtitle">{defaultView === 'dash' ? 'Visão consolidada das publicações por status, cliente e plataforma.' : 'Planeje, agende e acompanhe as publicações dos clientes.'}</p>
+          <h2 className="editorial-title">
+            {defaultView === 'dash' ? 'Painel Social Media' : defaultView === 'plans' ? 'Planejamentos' : 'Calendário Editorial'}
+          </h2>
+          <p className="editorial-subtitle">
+            {defaultView === 'dash' ? 'Visão consolidada das publicações por status, cliente e plataforma.'
+              : defaultView === 'plans' ? 'Histórico de planejamentos salvos. Exporte em PDF ou crie novos.'
+              : 'Planeje, agende e acompanhe as publicações dos clientes.'}
+          </p>
         </div>
-        {defaultView !== 'dash' && (
+        {defaultView !== 'dash' && defaultView !== 'plans' && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <button className="editorial-plan-btn" onClick={openPlanning}>
               <i className="bx bx-spreadsheet"></i>
@@ -351,8 +427,8 @@ export default function EditorialCalendar({ clients = [], isLightMode = false, d
         )}
       </div>
 
-      {/* Toolbar */}
-      <div className="editorial-toolbar">
+      {/* Toolbar — hidden in plans view */}
+      {defaultView !== 'plans' && <div className="editorial-toolbar">
         <div className="editorial-toolbar-left">
           {/* Month nav */}
           <div className="editorial-month-nav">
@@ -393,17 +469,17 @@ export default function EditorialCalendar({ clients = [], isLightMode = false, d
             ><i className="bx bx-list-ul"></i> Lista</button>
           </div>
         ) : null}
-      </div>
+      </div>}
 
       {/* Legend */}
-      <div className="editorial-legend">
+      {defaultView !== 'plans' && <div className="editorial-legend">
         {STATUSES.map(s => (
           <span key={s.value} className="editorial-legend-item" style={{ color: s.color }}>
             <i className={`bx ${s.icon}`}></i> {s.label}
           </span>
         ))}
         <span className="editorial-post-count">{loading ? '…' : `${posts.length} post${posts.length !== 1 ? 's' : ''}`}</span>
-      </div>
+      </div>}
 
       {/* Calendar view */}
       {view === 'calendar' && (
@@ -726,6 +802,78 @@ export default function EditorialCalendar({ clients = [], isLightMode = false, d
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Plans view */}
+      {view === 'plans' && (
+        <div className="editorial-plans-view">
+          <div className="editorial-plans-header">
+            <div>
+              <h3 className="editorial-plans-title">Planejamentos salvos</h3>
+              <p className="editorial-plans-sub">Histórico de todos os planejamentos criados. Exporte ou aplique no calendário.</p>
+            </div>
+            <button className="editorial-plan-btn" onClick={openPlanning}>
+              <i className="bx bx-plus"></i>
+              Novo planejamento
+            </button>
+          </div>
+
+          {savedPlans.length === 0 && (
+            <div className="editorial-empty">
+              <i className="bx bx-spreadsheet"></i>
+              <p>Nenhum planejamento salvo ainda.</p>
+              <button className="editorial-new-btn" onClick={openPlanning}>Criar planejamento</button>
+            </div>
+          )}
+
+          {savedPlans.map(plan => (
+            <div key={plan.id} className="editorial-plan-card">
+              <div className="editorial-plan-card-header">
+                <div className="editorial-plan-card-info">
+                  <span className="editorial-plan-card-title">{plan.label}</span>
+                  <span className="editorial-plan-card-meta">
+                    {plan.items.length} post{plan.items.length !== 1 ? 's' : ''} &mdash; criado em {new Date(plan.createdAt).toLocaleDateString('pt-BR')}
+                  </span>
+                </div>
+                <div className="editorial-plan-card-actions">
+                  <button className="editorial-export-btn" onClick={() => exportSavedPlanPDF(plan)}>
+                    <i className="bx bx-file-export"></i>
+                    Exportar PDF
+                  </button>
+                  <button className="editorial-plan-delete-btn" onClick={() => deleteSavedPlan(plan.id)} title="Remover planejamento">
+                    <i className="bx bx-trash"></i>
+                  </button>
+                </div>
+              </div>
+              <div className="editorial-plan-card-items">
+                {plan.items.map((it, idx) => {
+                  const sm = statusMeta(it.status)
+                  const clientName = clientMap[it.clientId] || it.clientId || '—'
+                  return (
+                    <div key={it.id || idx} className="editorial-plan-card-row">
+                      <span className="editorial-plan-card-num">{idx + 1}</span>
+                      <div className="editorial-plan-card-row-body">
+                        <span className="editorial-plan-card-row-title">{it.title || <em>Sem título</em>}</span>
+                        <span className="editorial-plan-card-row-meta">
+                          <span><i className="bx bx-user"></i>{clientName}</span>
+                          {it.scheduledDate && <span><i className="bx bx-calendar"></i>{it.scheduledDate.split('-').reverse().join('/')}</span>}
+                          {(it.platforms || []).map(p => {
+                            const pm = PLATFORMS.find(x => x.value === p)
+                            return pm ? <span key={p}><i className={`bx ${pm.icon}`}></i>{pm.label}</span> : null
+                          })}
+                        </span>
+                      </div>
+                      <span className="editorial-plan-card-status" style={{ color: sm.color }}>
+                        <i className={`bx ${sm.icon}`}></i>
+                        {sm.label}
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
@@ -1417,6 +1565,131 @@ export default function EditorialCalendar({ clients = [], isLightMode = false, d
           background: #f8faf9; border-color: rgba(187,202,190,0.72);
         }
         :global(.dashboard-light-mode) .editorial-plan-count { color: #6b7280; }
+
+        /* Plans view */
+        .editorial-plans-view {
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+        }
+        .editorial-plans-header {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 16px;
+        }
+        .editorial-plans-title {
+          font-size: 18px;
+          font-weight: 700;
+          margin: 0 0 4px;
+          letter-spacing: -0.01em;
+        }
+        .editorial-plans-sub {
+          font-size: 13px;
+          color: var(--text-muted);
+          margin: 0;
+        }
+
+        .editorial-plan-card {
+          background: var(--theme-surface, rgba(255,255,255,0.03));
+          border: 1px solid var(--border-color, rgba(255,255,255,0.08));
+          border-radius: 16px;
+          overflow: hidden;
+        }
+        .editorial-plan-card-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 16px;
+          padding: 16px 20px;
+          border-bottom: 1px solid var(--border-color, rgba(255,255,255,0.07));
+        }
+        .editorial-plan-card-info {
+          display: flex;
+          flex-direction: column;
+          gap: 3px;
+        }
+        .editorial-plan-card-title {
+          font-size: 14px;
+          font-weight: 700;
+          color: var(--text-primary);
+        }
+        .editorial-plan-card-meta {
+          font-size: 12px;
+          color: var(--text-muted);
+        }
+        .editorial-plan-card-actions {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+        .editorial-plan-delete-btn {
+          width: 32px;
+          height: 32px;
+          border-radius: 8px;
+          border: 1px solid rgba(239,68,68,0.2);
+          background: rgba(239,68,68,0.08);
+          color: #f87171;
+          cursor: pointer;
+          display: grid;
+          place-items: center;
+          font-size: 16px;
+          transition: background 0.15s;
+        }
+        .editorial-plan-delete-btn:hover { background: rgba(239,68,68,0.16); }
+
+        .editorial-plan-card-items {
+          display: flex;
+          flex-direction: column;
+        }
+        .editorial-plan-card-row {
+          display: grid;
+          grid-template-columns: 28px 1fr auto;
+          gap: 12px;
+          align-items: start;
+          padding: 12px 20px;
+          border-bottom: 1px solid var(--border-color, rgba(255,255,255,0.05));
+        }
+        .editorial-plan-card-row:last-child { border-bottom: none; }
+        .editorial-plan-card-num {
+          font-size: 11px;
+          font-weight: 800;
+          color: var(--text-muted);
+          padding-top: 2px;
+        }
+        .editorial-plan-card-row-body {
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+        }
+        .editorial-plan-card-row-title {
+          font-size: 13px;
+          font-weight: 600;
+          color: var(--text-primary);
+        }
+        .editorial-plan-card-row-title em { color: var(--text-muted); font-style: italic; font-weight: 400; }
+        .editorial-plan-card-row-meta {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          font-size: 11px;
+          color: var(--text-muted);
+          flex-wrap: wrap;
+        }
+        .editorial-plan-card-row-meta span {
+          display: inline-flex;
+          align-items: center;
+          gap: 3px;
+        }
+        .editorial-plan-card-status {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          font-size: 11px;
+          font-weight: 700;
+          white-space: nowrap;
+          padding-top: 2px;
+        }
 
         /* Light mode */
         :global(.dashboard-light-mode) .editorial-title { color: #1a1c1c; }
