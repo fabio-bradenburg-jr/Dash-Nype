@@ -758,26 +758,26 @@ export default function EditorialCalendar({ clients = [], isLightMode = false, d
                     )}
                   </div>
 
+                  {/* Row 1: title full width */}
+                  <div className="editorial-field" style={{ marginBottom: 10 }}>
+                    <label>Título / Tema</label>
+                    <input
+                      type="text"
+                      value={item.title}
+                      onChange={e => updatePlanItem(item.id, 'title', e.target.value)}
+                      placeholder="Ex.: Lançamento, Dica da semana…"
+                    />
+                  </div>
+
+                  {/* Row 2: client + date + time + status */}
                   <div className="editorial-plan-item-grid">
-                    {/* Row 1: client + title */}
-                    <div className="editorial-field editorial-plan-field-client">
+                    <div className="editorial-field">
                       <label>Cliente</label>
                       <select value={item.clientId} onChange={e => updatePlanItem(item.id, 'clientId', e.target.value)}>
                         <option value="">Selecione…</option>
                         {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                       </select>
                     </div>
-                    <div className="editorial-field editorial-plan-field-title">
-                      <label>Título / Tema</label>
-                      <input
-                        type="text"
-                        value={item.title}
-                        onChange={e => updatePlanItem(item.id, 'title', e.target.value)}
-                        placeholder="Ex.: Lançamento, Dica da semana…"
-                      />
-                    </div>
-
-                    {/* Row 2: date + time + status */}
                     <div className="editorial-field">
                       <label>Data</label>
                       <input
@@ -794,7 +794,7 @@ export default function EditorialCalendar({ clients = [], isLightMode = false, d
                         onChange={e => updatePlanItem(item.id, 'scheduledTime', e.target.value)}
                       />
                     </div>
-                    <div className="editorial-field editorial-plan-field-status">
+                    <div className="editorial-field">
                       <label>Status</label>
                       <select value={item.status} onChange={e => updatePlanItem(item.id, 'status', e.target.value)}>
                         {STATUSES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
@@ -1372,12 +1372,9 @@ export default function EditorialCalendar({ clients = [], isLightMode = false, d
 
         .editorial-plan-item-grid {
           display: grid;
-          grid-template-columns: 1fr 1fr 140px 110px 140px;
+          grid-template-columns: 1fr 150px 120px 140px;
           gap: 10px;
         }
-        .editorial-plan-field-client { grid-column: 1; }
-        .editorial-plan-field-title  { grid-column: 2; }
-        .editorial-plan-field-status { grid-column: 5; }
 
         .editorial-plan-add-btn {
           display: inline-flex; align-items: center; gap: 8px;
