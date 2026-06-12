@@ -316,6 +316,7 @@ export interface ClientRecord {
   stakeholderFlag: string
   dashboardColor: string
   logoUrl: string
+  balanceAlertsEnabled: boolean
   metaAdAccountId: string
   googleAdsAccountId: string
   tiktokAdsAccountId: string
