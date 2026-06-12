@@ -32906,32 +32906,32 @@ export default function DashboardShell({
           display: flex;
           align-items: center;
           gap: 5px;
-          padding: 4px 10px 4px 8px;
+          padding: 5px 10px 5px 8px;
           border-radius: 20px;
-          border: none;
+          border: 1.5px solid currentColor;
           cursor: pointer;
-          font-size: 0.75rem;
-          font-weight: 600;
+          font-size: 0.73rem;
+          font-weight: 700;
           flex-shrink: 0;
-          transition: background 0.18s ease, color 0.18s ease, opacity 0.18s ease;
+          transition: opacity 0.18s ease;
         }
 
         .ad-balance-alert-toggle.active {
-          background: rgba(16, 185, 129, 0.13);
-          color: var(--accent-emerald, #10b981);
+          background: rgba(16, 185, 129, 0.1);
+          color: #10b981;
         }
 
         .ad-balance-alert-toggle.active:hover {
-          background: rgba(16, 185, 129, 0.22);
+          background: rgba(16, 185, 129, 0.2);
         }
 
         .ad-balance-alert-toggle.muted {
-          background: rgba(148, 163, 184, 0.1);
-          color: var(--muted-text);
+          background: rgba(100, 116, 139, 0.12);
+          color: #64748b;
         }
 
         .ad-balance-alert-toggle.muted:hover {
-          background: rgba(148, 163, 184, 0.18);
+          background: rgba(100, 116, 139, 0.2);
         }
 
         .ad-balance-card-body {
