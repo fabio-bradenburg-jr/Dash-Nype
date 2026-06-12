@@ -22134,23 +22134,21 @@ export default function DashboardShell({
 
         .dashboard-container:not([data-active-tab='apresentacao']) .sidebar {
           width: 112px;
-          padding: 20px 14px;
+          padding: 16px 10px;
           border-right: 1px solid var(--lumina-dark-border);
-          background:
-            linear-gradient(180deg, color-mix(in srgb, var(--app-bg-color, #121817) 26%, rgba(18, 24, 23, 0.94)), rgba(7, 9, 8, 0.92)),
-            rgba(var(--app-bg-rgb, 18, 24, 23), 0.12) !important;
-          box-shadow: 18px 0 46px rgba(0, 0, 0, 0.22);
-          backdrop-filter: blur(14px);
+          background: color-mix(in srgb, var(--app-bg-color, #0d1110) 88%, rgba(255,255,255,0.02)) !important;
+          box-shadow: 1px 0 0 var(--lumina-dark-border);
+          backdrop-filter: blur(12px);
         }
 
         .dashboard-container:not([data-active-tab='apresentacao']) .sidebar:not(.sidebar-collapsed) {
-          width: 244px;
+          width: 224px;
         }
 
         .dashboard-container:not([data-active-tab='apresentacao']) .main-content {
-          margin-left: 244px;
-          width: calc(100% - 244px);
-          padding: 26px 32px 42px;
+          margin-left: 224px;
+          width: calc(100% - 224px);
+          padding: 20px 24px 36px;
           background: transparent !important;
         }
 
@@ -22160,48 +22158,48 @@ export default function DashboardShell({
         }
 
         .dashboard-container:not([data-active-tab='apresentacao']) .logo {
-          min-height: 64px;
-          padding: 10px;
-          border-radius: 18px;
-          background: rgba(255, 255, 255, 0.035);
-          border: 1px solid rgba(190, 201, 191, 0.12);
+          min-height: 48px;
+          padding: 8px 10px;
+          border-radius: 12px;
+          background: transparent;
+          border: none;
         }
 
         .dashboard-container:not([data-active-tab='apresentacao']) .logo-copy span {
           color: #f1f1f1;
-          font-weight: 850;
+          font-size: 14px;
+          font-weight: 700;
           letter-spacing: -0.01em;
         }
 
         .dashboard-container:not([data-active-tab='apresentacao']) .logo-copy small {
           color: var(--lumina-soft);
+          font-size: 11px;
         }
 
         .dashboard-container:not([data-active-tab='apresentacao']) .sidebar-toggle {
-          width: 36px;
-          height: 36px;
-          top: 26px;
-          right: -18px;
-          color: #f1f1f1;
+          width: 28px;
+          height: 28px;
+          top: 20px;
+          right: -14px;
+          color: rgba(241, 241, 241, 0.7);
           border-color: var(--lumina-dark-border);
-          background:
-            linear-gradient(180deg, rgba(18, 24, 23, 0.98), rgba(13, 17, 16, 0.98)),
-            rgba(18, 24, 23, 0.9) !important;
-          box-shadow: 0 12px 26px rgba(0, 0, 0, 0.28);
+          background: color-mix(in srgb, var(--app-bg-color, #0d1110) 92%, rgba(255,255,255,0.06)) !important;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
         }
 
         .dashboard-container:not([data-active-tab='apresentacao']) .nav-menu {
-          gap: 3px;
+          gap: 2px;
         }
 
         .dashboard-container:not([data-active-tab='apresentacao']) .sidebar :global(.nav-item) {
-          min-height: 40px;
+          min-height: 36px;
           padding: 0 10px;
-          border-radius: 10px;
+          border-radius: 8px;
           border: 1px solid transparent;
-          color: rgba(241, 241, 241, 0.58);
+          color: rgba(241, 241, 241, 0.55);
           font-size: 13px;
-          font-weight: 600;
+          font-weight: 500;
           letter-spacing: 0;
           background: transparent;
           gap: 9px;
@@ -22219,10 +22217,10 @@ export default function DashboardShell({
         }
 
         .dashboard-container:not([data-active-tab='apresentacao']) .sidebar :global(.nav-item.active) {
-          color: #ffffff;
-          border-color: color-mix(in srgb, var(--button-primary, #26c281) 26%, rgba(255,255,255,0.08));
-          background: color-mix(in srgb, var(--button-primary, #26c281) 14%, rgba(255,255,255,0.04));
-          box-shadow: inset 3px 0 0 var(--button-primary, #26c281);
+          color: #f1f1f1;
+          border-color: transparent;
+          background: color-mix(in srgb, var(--button-primary, #26c281) 16%, rgba(255, 255, 255, 0.05));
+          box-shadow: inset 2px 0 0 var(--button-primary, #26c281);
         }
 
         .dashboard-container:not([data-active-tab='apresentacao']) .sidebar :global(.nav-item.active i),
@@ -22230,7 +22228,7 @@ export default function DashboardShell({
           color: color-mix(in srgb, var(--button-primary, #26c281) 80%, #f1f1f1);
         }
 
-        /* Sub-nav group */
+        /* Sub-nav group (Anúncios, Social Media) */
         .dashboard-container:not([data-active-tab='apresentacao']) .nav-sub-group {
           display: flex;
           flex-direction: column;
@@ -22242,14 +22240,14 @@ export default function DashboardShell({
         }
 
         .dashboard-container:not([data-active-tab='apresentacao']) .sidebar :global(.nav-sub-item) {
-          min-height: 34px;
-          border-radius: 8px;
+          min-height: 32px;
+          border-radius: 7px;
           font-size: 12.5px;
-          color: rgba(241, 241, 241, 0.52);
+          color: rgba(241, 241, 241, 0.5);
         }
 
         .dashboard-container:not([data-active-tab='apresentacao']) .sidebar :global(.nav-sub-item i) {
-          font-size: 16px;
+          font-size: 15px;
         }
 
         .dashboard-container:not([data-active-tab='apresentacao']) .sidebar :global(.nav-sub-item.active) {
@@ -22264,11 +22262,11 @@ export default function DashboardShell({
         }
 
         .dashboard-container:not([data-active-tab='apresentacao']) .sidebar-collapsed :global(.nav-item) {
-          width: 54px;
-          height: 54px;
-          min-width: 54px;
+          width: 44px;
+          height: 44px;
+          min-width: 44px;
           padding: 0;
-          border-radius: 16px;
+          border-radius: 10px;
           display: flex;
           align-items: center;
           justify-content: center;
@@ -22282,27 +22280,27 @@ export default function DashboardShell({
         .dashboard-container:not([data-active-tab='apresentacao']) .sidebar-bottom-actions {
           margin-top: auto;
           display: grid;
-          gap: 8px;
+          gap: 2px;
         }
 
         .dashboard-container:not([data-active-tab='apresentacao']) .sidebar-theme-button,
         .dashboard-container:not([data-active-tab='apresentacao']) .sidebar-logout-button {
-          color: rgba(241, 241, 241, 0.58);
-          border-color: rgba(190, 201, 191, 0.1);
-          background: rgba(255, 255, 255, 0.02);
+          color: rgba(241, 241, 241, 0.45);
+          border-color: transparent;
+          background: transparent;
         }
 
         .dashboard-container:not([data-active-tab='apresentacao']) .app-shell-topbar {
-          min-height: 46px;
-          margin-bottom: 14px;
+          min-height: 48px;
+          margin-bottom: 16px;
           display: grid;
           grid-template-columns: minmax(0, 1fr) auto;
-          gap: 14px;
+          gap: 12px;
           align-items: center;
         }
 
         .dashboard-container:not([data-active-tab='apresentacao']) .operation-stellar-search {
-          min-height: 54px;
+          min-height: 42px;
           border-radius: 999px;
           border: 1px solid var(--lumina-dark-border) !important;
           background:
@@ -22354,34 +22352,36 @@ export default function DashboardShell({
         }
 
         .dashboard-container:not([data-active-tab='apresentacao']) .header {
-          margin-bottom: 24px;
+          margin-bottom: 16px;
           padding: 0;
         }
 
         .dashboard-container:not([data-active-tab='apresentacao']) .page-title {
           width: 100%;
-          padding: 18px 22px;
-          border-radius: 14px;
-          border: 1px solid var(--lumina-dark-border);
-          background: rgba(255,255,255,0.03);
+          padding: 0 0 14px;
+          border-radius: 0;
+          border: none;
+          border-bottom: 1px solid var(--lumina-dark-border);
+          background: transparent;
+          box-shadow: none;
         }
 
         .dashboard-container:not([data-active-tab='apresentacao']) .page-title h1 {
           color: #f1f1f1;
           font-size: 20px;
           line-height: 1.2;
-          letter-spacing: -0.01em;
-          font-weight: 700;
+          letter-spacing: -0.02em;
           margin: 0;
+          font-weight: 700;
         }
 
         .dashboard-container:not([data-active-tab='apresentacao']) .page-title p,
         .dashboard-container:not([data-active-tab='apresentacao']) .assistant-header-prompt {
-          max-width: 760px;
-          color: var(--lumina-muted);
+          max-width: 680px;
+          color: var(--lumina-soft);
           font-size: 13px;
           line-height: 1.55;
-          margin-top: 4px;
+          margin-top: 6px;
         }
 
         .dashboard-container:not([data-active-tab='apresentacao']) .clients-layout,
@@ -22392,24 +22392,23 @@ export default function DashboardShell({
         }
 
         .dashboard-container:not([data-active-tab='apresentacao']) .management-header-row {
-          padding: 24px 26px;
-          border-radius: 20px;
-          border: 1px solid var(--lumina-dark-border);
-          background:
-            linear-gradient(180deg, rgba(18, 24, 23, 0.84), rgba(13, 17, 16, 0.9)),
-            rgba(18, 24, 23, 0.82);
+          padding: 0 0 16px;
+          border-radius: 0;
+          border: none;
+          border-bottom: 1px solid var(--lumina-dark-border);
+          background: transparent;
         }
 
         .dashboard-container:not([data-active-tab='apresentacao']) .management-header-copy h2 {
           color: #f1f1f1;
           font-size: 18px;
           font-weight: 700;
-          letter-spacing: -0.01em;
+          letter-spacing: -0.02em;
         }
 
         .dashboard-container:not([data-active-tab='apresentacao']) .management-header-copy p {
-          color: var(--lumina-muted);
-          font-size: 14px;
+          color: var(--lumina-soft);
+          font-size: 13px;
         }
 
         .dashboard-container:not([data-active-tab='apresentacao']) .glass-panel,
@@ -22418,36 +22417,36 @@ export default function DashboardShell({
         .dashboard-container:not([data-active-tab='apresentacao']) .users-toolbar-card,
         .dashboard-container:not([data-active-tab='apresentacao']) .simple-client-card,
         .dashboard-container:not([data-active-tab='apresentacao']) .empty-panel {
-          border-radius: 18px;
+          border-radius: 12px;
           border-color: var(--lumina-dark-border);
-          background:
-            linear-gradient(180deg, rgba(18, 24, 23, 0.84), rgba(13, 17, 16, 0.9)),
-            rgba(18, 24, 23, 0.78);
-          box-shadow: 0 18px 44px rgba(0, 0, 0, 0.18);
+          background: color-mix(in srgb, var(--app-bg-color, #0d1110) 60%, rgba(255,255,255,0.03));
+          box-shadow: none;
         }
 
         .dashboard-container:not([data-active-tab='apresentacao']) .btn {
-          border-radius: 10px;
-          min-height: 42px;
+          border-radius: 8px;
+          min-height: 34px;
+          padding: 0 14px;
           display: inline-flex;
           align-items: center;
           justify-content: center;
-          gap: 8px;
-          font-weight: 760;
+          gap: 6px;
+          font-size: 13px;
+          font-weight: 600;
         }
 
         .dashboard-container:not([data-active-tab='apresentacao']) .btn-primary {
-          border-color: rgba(38, 194, 129, 0.32);
-          background: linear-gradient(135deg, #006c44 0%, #26c281 100%) !important;
+          border-color: color-mix(in srgb, var(--button-primary, #26c281) 40%, transparent);
+          background: var(--button-primary, #26c281) !important;
           color: #ffffff !important;
-          box-shadow: 0 14px 30px rgba(38, 194, 129, 0.16);
+          box-shadow: none;
         }
 
         .dashboard-container:not([data-active-tab='apresentacao']) .btn-secondary,
         .dashboard-container:not([data-active-tab='apresentacao']) .modal-close {
           border-color: var(--lumina-dark-border);
-          background: rgba(255, 255, 255, 0.035);
-          color: #f1f1f1;
+          background: rgba(255, 255, 255, 0.04);
+          color: rgba(241, 241, 241, 0.8);
         }
 
         .dashboard-container:not([data-active-tab='apresentacao']) input,
@@ -22533,21 +22532,26 @@ export default function DashboardShell({
         }
 
         .dashboard-light-mode:not([data-active-tab='apresentacao']) {
-          background: linear-gradient(180deg, #f9f9f9 0%, #f1f4f2 100%) !important;
+          background: #f4f6f5 !important;
           color: #1a1c1c;
         }
 
         .dashboard-light-mode:not([data-active-tab='apresentacao']) .sidebar {
-          background: rgba(255, 255, 255, 0.94) !important;
-          border-right-color: #bbcabe;
-          box-shadow: 18px 0 36px rgba(20, 90, 50, 0.06);
+          background: #ffffff !important;
+          border-right: 1px solid rgba(187, 202, 190, 0.7) !important;
+          box-shadow: none;
         }
 
         .dashboard-light-mode:not([data-active-tab='apresentacao']) .sidebar-toggle,
         .dashboard-light-mode:not([data-active-tab='apresentacao']) .logo,
         .dashboard-light-mode:not([data-active-tab='apresentacao']) .operation-stellar-search,
         .dashboard-light-mode:not([data-active-tab='apresentacao']) .operation-stellar-icon-button,
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .operation-stellar-theme-toggle,
+        .dashboard-light-mode:not([data-active-tab='apresentacao']) .operation-stellar-theme-toggle {
+          background: #ffffff !important;
+          border-color: rgba(187, 202, 190, 0.8) !important;
+          box-shadow: none !important;
+        }
+
         .dashboard-light-mode:not([data-active-tab='apresentacao']) .glass-panel,
         .dashboard-light-mode:not([data-active-tab='apresentacao']) .glass-item,
         .dashboard-light-mode:not([data-active-tab='apresentacao']) .management-directory-card,
@@ -22557,8 +22561,8 @@ export default function DashboardShell({
         .dashboard-light-mode:not([data-active-tab='apresentacao']) .page-title,
         .dashboard-light-mode:not([data-active-tab='apresentacao']) .management-header-row {
           background: #ffffff !important;
-          border-color: rgba(187, 202, 190, 0.9) !important;
-          box-shadow: 0 14px 30px rgba(20, 90, 50, 0.055) !important;
+          border-color: rgba(187, 202, 190, 0.7) !important;
+          box-shadow: none !important;
         }
 
         .dashboard-light-mode:not([data-active-tab='apresentacao']) .logo-copy span,
@@ -22591,12 +22595,17 @@ export default function DashboardShell({
           color: rgba(61, 74, 65, 0.72);
         }
 
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .sidebar :global(.nav-item.active),
         .dashboard-light-mode:not([data-active-tab='apresentacao']) .sidebar :global(.nav-item:hover) {
           color: #1a1c1c;
-          border-color: color-mix(in srgb, #006c44 22%, rgba(187,202,190,0.7));
-          background: color-mix(in srgb, #26c281 8%, #f8faf9);
-          box-shadow: inset 3px 0 0 #26c281;
+          border-color: transparent;
+          background: rgba(0, 0, 0, 0.05);
+        }
+
+        .dashboard-light-mode:not([data-active-tab='apresentacao']) .sidebar :global(.nav-item.active) {
+          color: #1a1c1c;
+          border-color: transparent;
+          background: color-mix(in srgb, var(--button-primary, #26c281) 12%, #ffffff);
+          box-shadow: inset 2px 0 0 var(--button-primary, #26c281);
         }
 
         .dashboard-light-mode:not([data-active-tab='apresentacao']) .nav-sub-group {
@@ -22609,9 +22618,9 @@ export default function DashboardShell({
 
         .dashboard-light-mode:not([data-active-tab='apresentacao']) .sidebar :global(.nav-sub-item.active) {
           color: #1a1c1c;
-          background: color-mix(in srgb, #26c281 8%, #f8faf9);
-          border-color: color-mix(in srgb, #006c44 20%, rgba(187,202,190,0.7));
-          box-shadow: inset 2px 0 0 #26c281;
+          background: color-mix(in srgb, var(--button-primary, #26c281) 10%, #f8faf9);
+          border-color: transparent;
+          box-shadow: inset 2px 0 0 var(--button-primary, #26c281);
         }
 
         .dashboard-light-mode:not([data-active-tab='apresentacao']) input,
@@ -22999,7 +23008,7 @@ export default function DashboardShell({
           display: flex;
           align-items: center;
           justify-content: flex-start;
-          margin-bottom: 26px;
+          margin-bottom: 16px;
         }
 
         .nav-button {
@@ -23023,19 +23032,21 @@ export default function DashboardShell({
         .sidebar :global(.nav-item:hover) {
           background: rgba(255, 255, 255, 0.06);
           color: #f8fbff;
+          transform: none;
+          box-shadow: none;
         }
 
         .sidebar :global(.nav-item.active:hover) {
-          background: rgba(255, 255, 255, 0.08);
+          background: color-mix(in srgb, var(--button-primary, #26c281) 16%, rgba(255, 255, 255, 0.05));
         }
 
         .sidebar :global(.nav-item:hover i) {
-          color: var(--button-primary, var(--accent-blue));
+          color: color-mix(in srgb, var(--button-primary, #26c281) 80%, #f1f1f1);
         }
 
         .sidebar-collapsed :global(.nav-item:hover) {
-          background: color-mix(in srgb, var(--button-primary, var(--accent-blue)) 14%, transparent);
-          box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--button-primary, var(--accent-blue)) 28%, transparent);
+          background: rgba(255, 255, 255, 0.06);
+          box-shadow: none;
         }
 
 
@@ -23152,17 +23163,17 @@ export default function DashboardShell({
 
         .sidebar-collapsed :global(.nav-item) {
           justify-content: center;
-          width: 56px;
-          height: 56px;
+          width: 44px;
+          height: 44px;
           margin: 0 auto;
           padding: 0;
           font-size: 0;
-          border-radius: 18px;
+          border-radius: 10px;
           position: relative;
         }
 
         .sidebar-collapsed :global(.nav-item i) {
-          font-size: 24px;
+          font-size: 20px;
           margin: 0;
         }
 
@@ -23259,24 +23270,22 @@ export default function DashboardShell({
           margin: 0 0 4px;
           color: #ffffff;
           font-size: 18px;
-          line-height: 1.2;
           font-weight: 700;
-          letter-spacing: -0.01em;
+          line-height: 1.2;
+          letter-spacing: -0.02em;
         }
 
         .management-header-copy p {
           margin: 0;
-          color: rgba(225, 226, 235, 0.62);
+          color: rgba(225, 226, 235, 0.55);
           font-size: 13px;
-          line-height: 1.55;
+          line-height: 1.5;
         }
 
         .management-header-button {
-          min-height: 40px;
-          padding: 0 18px;
-          border-radius: 10px;
-          font-size: 13px;
-          font-weight: 700;
+          min-height: 38px;
+          padding: 0 16px;
+          border-radius: 8px;
         }
 
         .management-hero {
@@ -23310,17 +23319,17 @@ export default function DashboardShell({
         .management-hero h2 {
           margin: 0;
           color: #ffffff;
-          font-size: clamp(34px, 4vw, 54px);
-          line-height: 0.98;
-          letter-spacing: -0.04em;
+          font-size: clamp(22px, 2.5vw, 30px);
+          line-height: 1.1;
+          letter-spacing: -0.02em;
         }
 
         .management-hero p {
           margin: 0;
           max-width: 64ch;
-          color: rgba(225, 226, 235, 0.7);
-          font-size: 18px;
-          line-height: 1.65;
+          color: rgba(225, 226, 235, 0.65);
+          font-size: 14px;
+          line-height: 1.6;
         }
 
         .workspace-branding-card {
