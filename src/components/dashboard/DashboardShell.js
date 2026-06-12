@@ -22132,6 +22132,19 @@ export default function DashboardShell({
           margin-left: 224px;
           width: calc(100% - 224px);
           padding: 20px 24px 36px;
+          box-sizing: border-box;
+          min-height: 100vh;
+          overflow-y: auto;
+        }
+
+        .dashboard-container[data-active-tab='apresentacao'] .header {
+          border: none !important;
+          background: transparent !important;
+          box-shadow: none !important;
+          border-radius: 0 !important;
+          min-height: 0 !important;
+          backdrop-filter: none !important;
+          -webkit-backdrop-filter: none !important;
         }
 
         .dashboard-container[data-active-tab='apresentacao'] .sidebar :global(.nav-item) {
