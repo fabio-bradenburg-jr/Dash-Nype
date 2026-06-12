@@ -773,6 +773,7 @@ function normalizeClientRecord(client: LooseRecord): ClientRecord {
     stakeholderFlag: payload.stakeholderFlag || 'na',
     dashboardColor: payload.dashboardColor || 'blue',
     logoUrl: payload.logoUrl || '',
+    balanceAlertsEnabled: payload.balanceAlertsEnabled !== false,
     metaAdAccountId: payload.metaAdAccountId || '',
     googleAdsAccountId: payload.googleAdsAccountId || '',
     tiktokAdsAccountId: payload.tiktokAdsAccountId || '',

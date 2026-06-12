@@ -9813,6 +9813,7 @@ export default function DashboardShell({
               name: client.name,
               logoUrl: client.logoUrl,
               metaAdAccountId: client.metaAdAccountId,
+              balanceAlertsEnabled: client.balanceAlertsEnabled !== false,
             })),
           }),
         })
@@ -18166,6 +18167,29 @@ export default function DashboardShell({
                             <strong>{row.clientName}</strong>
                             <small>{row.accountName || 'Sem conta vinculada'}</small>
                           </div>
+                          <button
+                            className={'ad-balance-alert-toggle ' + (row.balanceAlertsEnabled !== false ? 'active' : 'muted')}
+                            title={row.balanceAlertsEnabled !== false ? 'Notificações WhatsApp ativas — clique para desativar' : 'Notificações WhatsApp desativadas — clique para ativar'}
+                            onClick={async () => {
+                              const nextEnabled = row.balanceAlertsEnabled === false
+                              setAdAccountBalanceRows((prev) =>
+                                prev.map((r) => r.clientId === row.clientId ? { ...r, balanceAlertsEnabled: nextEnabled } : r)
+                              )
+                              try {
+                                await fetch(`/api/clients/${row.clientId}/balance-alert`, {
+                                  method: 'PATCH',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({ enabled: nextEnabled }),
+                                })
+                              } catch {
+                                setAdAccountBalanceRows((prev) =>
+                                  prev.map((r) => r.clientId === row.clientId ? { ...r, balanceAlertsEnabled: !nextEnabled } : r)
+                                )
+                              }
+                            }}
+                          >
+                            <i className={'bx ' + (row.balanceAlertsEnabled !== false ? 'bx-bell' : 'bx-bell-off')}></i>
+                          </button>
                           {billingUrl && (
                             <a href={billingUrl} target="_blank" rel="noopener noreferrer" className="ad-balance-billing-link" title="Abrir configurações de verba no Meta Ads">
                               <i className="bx bx-link-external"></i>
@@ -32872,6 +32896,40 @@ export default function DashboardShell({
 
         .ad-balance-billing-link:hover {
           background: rgba(99, 102, 241, 0.22);
+          transform: scale(1.08);
+        }
+
+        .ad-balance-alert-toggle {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 28px;
+          height: 28px;
+          border-radius: 8px;
+          border: none;
+          cursor: pointer;
+          font-size: 1rem;
+          flex-shrink: 0;
+          transition: background 0.18s ease, color 0.18s ease, transform 0.18s ease;
+        }
+
+        .ad-balance-alert-toggle.active {
+          background: rgba(16, 185, 129, 0.12);
+          color: var(--accent-emerald, #10b981);
+        }
+
+        .ad-balance-alert-toggle.active:hover {
+          background: rgba(16, 185, 129, 0.22);
+          transform: scale(1.08);
+        }
+
+        .ad-balance-alert-toggle.muted {
+          background: rgba(148, 163, 184, 0.1);
+          color: var(--muted-text);
+        }
+
+        .ad-balance-alert-toggle.muted:hover {
+          background: rgba(148, 163, 184, 0.18);
           transform: scale(1.08);
         }
 

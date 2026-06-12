@@ -918,6 +918,7 @@ export function createClientRecord(overrides: ClientRecordOverrides = {}): Clien
     stakeholderFlag: 'na',
     dashboardColor: 'blue',
     logoUrl: '',
+    balanceAlertsEnabled: true,
     metaAdAccountId: '',
     googleAdsAccountId: '',
     tiktokAdsAccountId: '',
