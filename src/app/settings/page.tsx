@@ -1986,15 +1986,17 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
               <div className="settings-section-content">
               {activeSettingsTab === 'panel' && (
                 <div className="settings-panel-layout settings-panel-layout-obsidian">
-                  <div className="glass-item settings-block settings-block-full settings-block-hero">
-                    <div className="settings-section-head">
+                  <div className={`glass-item settings-block settings-block-full settings-block-hero settings-collapsible ${expandedSections.has('interface') ? 'expanded' : ''}`}>
+                    <button type="button" className="settings-collapsible-trigger" onClick={() => toggleSection('interface')}>
                       <div>
                         <span className="settings-hero-kicker">Configuração visual</span>
                         <h2>Interface do sistema</h2>
                         <p>Use o modo escuro padrão da Assessoria LP, alterne para a versão clara ou libere a personalização completa da interface.</p>
                       </div>
-                    </div>
-
+                      <i className={`bx ${expandedSections.has('interface') ? 'bx-chevron-up' : 'bx-chevron-down'}`}></i>
+                    </button>
+                    {expandedSections.has('interface') && (
+                    <div className="settings-collapsible-body">
                     <div className="settings-preset-grid">
                       {[
                         { mode: 'dark', label: 'Modo escuro', description: 'Contraste premium', icon: 'bx-moon' },
@@ -2249,20 +2251,24 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
                       </div>
                     </div>
                     ) : null}
+                    </div>
+                    )}
 
                   </div>
                 </div>
               )}
 
               {canEditIntegrations && activeSettingsTab === 'general' && (
-                <div className="glass-item settings-block settings-block-full">
-                  <div className="settings-section-head">
+                <div className={`glass-item settings-block settings-block-full settings-collapsible ${expandedSections.has('integracoes') ? 'expanded' : ''}`}>
+                  <button type="button" className="settings-collapsible-trigger" onClick={() => toggleSection('integracoes')}>
                     <div>
                       <h2>Integrações de ferramentas</h2>
                       <p>Conecte as plataformas operacionais usadas no dia a dia — mídia, CRM e outras fontes de dados.</p>
                     </div>
-                  </div>
-
+                    <i className={`bx ${expandedSections.has('integracoes') ? 'bx-chevron-up' : 'bx-chevron-down'}`}></i>
+                  </button>
+                  {expandedSections.has('integracoes') && (
+                  <div className="settings-collapsible-body">
                   <div className="settings-general-layout">
                     <section className="settings-integration-family settings-integration-family-tools">
                       <div className="settings-category-head settings-integration-family-head">
@@ -2592,18 +2598,22 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
                     </section>
 
                   </div>
+                  </div>
+                  )}
                 </div>
               )}
 
               {canEditIntegrations && activeSettingsTab === 'ai' && (
-                <div className="glass-item settings-block settings-block-full">
-                  <div className="settings-section-head">
+                <div className={`glass-item settings-block settings-block-full settings-collapsible ${expandedSections.has('ia') ? 'expanded' : ''}`}>
+                  <button type="button" className="settings-collapsible-trigger" onClick={() => toggleSection('ia')}>
                     <div>
                       <h2>Inteligência Artificial</h2>
                       <p>Configure os provedores de IA, o prompt global do dashboard e os agentes usados no chat.</p>
                     </div>
-                  </div>
-
+                    <i className={`bx ${expandedSections.has('ia') ? 'bx-chevron-up' : 'bx-chevron-down'}`}></i>
+                  </button>
+                  {expandedSections.has('ia') && (
+                  <div className="settings-collapsible-body">
                   <div className="settings-general-layout">
                     <section className="settings-integration-family settings-integration-family-ai">
                       <div className="settings-category-head settings-integration-family-head">
@@ -2873,6 +2883,8 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
                       </section>
                     </section>
                   </div>
+                  </div>
+                  )}
                 </div>
               )}
 
@@ -2882,15 +2894,17 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
 
               {canManageClients && activeSettingsTab === 'operation' && (
                 <div className="settings-panel-layout settings-panel-layout-obsidian">
-                  <div className="glass-item settings-block settings-block-full settings-block-hero">
-                    <div className="settings-section-head">
+                  <div className={`glass-item settings-block settings-block-full settings-block-hero settings-collapsible ${expandedSections.has('operacao') ? 'expanded' : ''}`}>
+                    <button type="button" className="settings-collapsible-trigger" onClick={() => toggleSection('operacao')}>
                       <div>
                         <span className="settings-hero-kicker">controle operacional</span>
                         <h2>Meta de saúde da carteira</h2>
                         <p>Defina o limite máximo de clientes em Crítico + Atenção. O painel compara a semana selecionada contra essa meta.</p>
                       </div>
-                    </div>
-
+                      <i className={`bx ${expandedSections.has('operacao') ? 'bx-chevron-up' : 'bx-chevron-down'}`}></i>
+                    </button>
+                    {expandedSections.has('operacao') && (
+                    <div className="settings-collapsible-body">
                     <div className="settings-operation-grid">
                       <div className="glass-item settings-operation-card">
                         <span>Alvo permitido</span>
@@ -2909,6 +2923,8 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
                         <small>Hoje o objetivo padrão do time é 20%.</small>
                       </label>
                     </div>
+                    </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -3298,6 +3314,28 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
         .settings-panel-layout-obsidian {
           gap: 28px;
         }
+
+        .settings-collapsible { padding: 0; overflow: hidden; }
+        .settings-collapsible-trigger {
+          width: 100%;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 20px 24px;
+          background: transparent;
+          border: none;
+          color: inherit;
+          font: inherit;
+          cursor: pointer;
+          text-align: left;
+          gap: 16px;
+        }
+        .settings-collapsible-trigger:hover { background: rgba(255,255,255,0.03); }
+        .settings-collapsible-trigger > i { font-size: 22px; opacity: 0.5; flex-shrink: 0; transition: opacity 0.15s; }
+        .settings-collapsible-trigger:hover > i { opacity: 0.9; }
+        .settings-collapsible-trigger h2 { font-size: 17px; font-weight: 700; margin: 0; }
+        .settings-collapsible-trigger p { font-size: 13px; opacity: 0.6; margin: 4px 0 0; }
+        .settings-collapsible-body { padding: 0 24px 24px; display: flex; flex-direction: column; gap: 20px; }
 
         .settings-grid {
           display: grid;
