@@ -22310,8 +22310,8 @@ export default function DashboardShell({
           border-left-color: rgba(187, 202, 190, 0.7) !important;
         }
 
-        /* Lumina app-wide pass, excluding the Presentation page. */
-        .dashboard-container:not([data-active-tab='apresentacao']) {
+        /* Lumina app-wide pass. */
+        .dashboard-container {
           --lumina-dark-bg: color-mix(in srgb, var(--app-bg-color, #070908) 76%, #020605 24%);
           --lumina-dark-surface: color-mix(in srgb, var(--app-bg-color, #0d1110) 62%, #0d1110 38%);
           --lumina-dark-raised: color-mix(in srgb, var(--app-bg-color, #121817) 42%, #121817 58%);
