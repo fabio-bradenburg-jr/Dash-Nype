@@ -28,6 +28,7 @@ const TYPE_ICONS = [
 const EMPTY_TRAINING_FORM = {
   title: '', description: '', client_id: '', training_type_id: '',
   scheduled_at: '', duration_minutes: 60, status: 'agendado', platform: '', link: '',
+  attendee_emails: '',
 }
 
 const EMPTY_TYPE_FORM = {
@@ -148,6 +149,7 @@ export default function PACCalendar({ clients = [], isLightMode = false, default
   const [trainingTypes, setTrainingTypes] = useState([])
   const [loadingTrainings, setLoadingTrainings] = useState(false)
   const [loadingTypes, setLoadingTypes] = useState(false)
+  const [gcalConnected, setGcalConnected] = useState(false)
 
   // Training modal
   const [trainingModal, setTrainingModal] = useState(false) // false | 'new' | training-obj
@@ -185,6 +187,7 @@ export default function PACCalendar({ clients = [], isLightMode = false, default
       const res = await fetch(`/api/pac/trainings?${qs}`)
       const json = await res.json()
       setTrainings(json.trainings || [])
+      if (json.gcalConnected !== undefined) setGcalConnected(Boolean(json.gcalConnected))
     } catch (e) {
       console.error(e)
     } finally {
@@ -835,7 +838,18 @@ export default function PACCalendar({ clients = [], isLightMode = false, default
                   </div>
                 </div>
               ))}
-              {detailTraining.link && (
+              {detailTraining.meet_link && (
+                <div style={{ padding: '10px 12px', borderRadius: 8, background: 'rgba(34,197,94,0.07)', border: '1px solid rgba(34,197,94,0.22)', gridColumn: 'span 2' }}>
+                  <div style={{ fontSize: 10, color: '#22c55e', fontWeight: 700, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 5 }}>
+                    <i className="bx bx-video" style={{ fontSize: 13 }}></i> Google Meet
+                  </div>
+                  <a href={detailTraining.meet_link} target="_blank" rel="noreferrer"
+                    style={{ fontSize: 12, color: '#22c55e', wordBreak: 'break-all', fontWeight: 600 }}>
+                    {detailTraining.meet_link}
+                  </a>
+                </div>
+              )}
+              {detailTraining.link && !detailTraining.meet_link && (
                 <div style={{ padding: '10px 12px', borderRadius: 8, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', gridColumn: 'span 2' }}>
                   <div style={{ fontSize: 10, opacity: 0.5, fontWeight: 600, marginBottom: 3 }}>Link</div>
                   <a href={detailTraining.link} target="_blank" rel="noreferrer" style={{ fontSize: 12, color: 'var(--button-primary, #6366f1)', wordBreak: 'break-all' }}>
@@ -996,6 +1010,29 @@ export default function PACCalendar({ clients = [], isLightMode = false, default
             <div className="pac-form-group">
               <label>Link</label>
               <input type="url" value={trainingForm.link} onChange={e => setTrainingForm(f => ({ ...f, link: e.target.value }))} placeholder="https://..." />
+            </div>
+
+            <div className="pac-form-group">
+              <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                Participantes (e-mails)
+                {gcalConnected && (
+                  <span style={{ fontSize: 11, fontWeight: 500, color: '#22c55e', background: 'rgba(34,197,94,0.12)', borderRadius: 99, padding: '1px 7px' }}>
+                    <i className="bx bx-calendar-check" style={{ marginRight: 3 }}></i>Google Meet será gerado
+                  </span>
+                )}
+              </label>
+              <textarea
+                value={trainingForm.attendee_emails}
+                onChange={e => setTrainingForm(f => ({ ...f, attendee_emails: e.target.value }))}
+                placeholder="email1@exemplo.com, email2@exemplo.com"
+                rows={2}
+                style={{ resize: 'vertical' }}
+              />
+              {gcalConnected && (
+                <small style={{ color: 'rgba(241,241,241,0.45)', fontSize: 11, marginTop: 4, display: 'block' }}>
+                  O evento será criado na sua agenda Google e um link do Google Meet será gerado automaticamente.
+                </small>
+              )}
             </div>
 
             <div className="pac-form-group">
