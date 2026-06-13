@@ -2971,15 +2971,16 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
 
         .settings-embedded-shell {
           width: 100%;
-          height: 100%;
+          height: 100vh;
           display: flex;
           flex-direction: column;
           position: relative;
+          overflow: hidden;
         }
 
         .settings-main-embedded {
           position: relative;
-          height: 100%;
+          height: 100vh;
           flex: 1;
           min-height: 0;
           display: flex;

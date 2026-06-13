@@ -22402,6 +22402,12 @@ export default function DashboardShell({
           overflow-y: hidden;
         }
 
+        .dashboard-container[data-active-tab='settings'] .main-content {
+          padding: 0 !important;
+          height: 100vh;
+          overflow-y: hidden;
+        }
+
         .dashboard-container .main-content-expanded {
           margin-left: 112px;
           width: calc(100% - 112px);
