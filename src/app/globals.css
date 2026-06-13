@@ -3837,26 +3837,26 @@ textarea:focus {
 }
 
 /* Dark mode sidebar: pure black/neutral — remove green tints */
-.dashboard-container:not([data-active-tab='apresentacao']):not(.dashboard-light-mode) .sidebar :global(.nav-item:hover) {
+.dashboard-container:not(.dashboard-light-mode) .sidebar :global(.nav-item:hover) {
     background: rgba(255, 255, 255, 0.06) !important;
     border-color: rgba(255, 255, 255, 0.1) !important;
     box-shadow: none !important;
     color: #f1f1f1 !important;
 }
-.dashboard-container:not([data-active-tab='apresentacao']):not(.dashboard-light-mode) .sidebar :global(.nav-item.active) {
+.dashboard-container:not(.dashboard-light-mode) .sidebar :global(.nav-item.active) {
     background: rgba(255, 255, 255, 0.09) !important;
     border-color: rgba(255, 255, 255, 0.14) !important;
     box-shadow: none !important;
     color: #ffffff !important;
 }
-.dashboard-container:not([data-active-tab='apresentacao']):not(.dashboard-light-mode) .sidebar :global(.nav-item.active i),
-.dashboard-container:not([data-active-tab='apresentacao']):not(.dashboard-light-mode) .sidebar :global(.nav-item:hover i) {
+.dashboard-container:not(.dashboard-light-mode) .sidebar :global(.nav-item.active i),
+.dashboard-container:not(.dashboard-light-mode) .sidebar :global(.nav-item:hover i) {
     color: #ffffff !important;
 }
-.dashboard-container:not([data-active-tab='apresentacao']):not(.dashboard-light-mode) .sidebar {
+.dashboard-container:not(.dashboard-light-mode) .sidebar {
     background: rgba(10, 10, 12, 0.97) !important;
 }
-.dashboard-container:not([data-active-tab='apresentacao']):not(.dashboard-light-mode) .nav-sub-group {
+.dashboard-container:not(.dashboard-light-mode) .nav-sub-group {
     border-left-color: rgba(255, 255, 255, 0.15) !important;
 }
 
