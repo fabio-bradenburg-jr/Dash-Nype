@@ -2930,12 +2930,19 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
         .settings-embedded-shell {
           width: 100%;
           height: 100%;
+          display: flex;
+          flex-direction: column;
           position: relative;
         }
 
         .settings-main-embedded {
           position: relative;
           height: 100%;
+          flex: 1;
+          min-height: 0;
+          display: flex;
+          flex-direction: column;
+          overflow: hidden;
         }
 
         .settings-workspace {
@@ -2944,6 +2951,8 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
           position: relative;
           flex: 1;
           min-height: 0;
+          display: flex;
+          flex-direction: column;
         }
 
         /* Category cards */
@@ -3021,11 +3030,11 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
           inset: 0;
           z-index: 800;
           display: flex;
-          align-items: stretch;
+          flex-direction: column;
         }
         .settings-popup-panel {
-          width: 100%;
-          height: 100%;
+          flex: 1;
+          min-height: 0;
           background: color-mix(in srgb, var(--app-bg-color, #0d1110) 80%, #060808 20%);
           border: none;
           border-radius: 0;
@@ -3263,12 +3272,19 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
             0 16px 30px rgba(15, 23, 42, 0.16);
         }
 
-        .settings-section-content,
-        .settings-panel-layout {
-          display: grid;
+        .settings-section-content {
+          display: flex;
+          flex-direction: column;
           gap: 24px;
           overflow-y: auto;
-          padding: 22px;
+          padding: 28px;
+          flex: 1;
+          min-height: 0;
+        }
+        .settings-panel-layout {
+          display: flex;
+          flex-direction: column;
+          gap: 24px;
           flex: 1;
           min-height: 0;
         }
