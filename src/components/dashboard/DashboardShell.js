@@ -16422,7 +16422,7 @@ export default function DashboardShell({
 
       <main className={`main-content ${isSidebarCollapsed ? 'main-content-expanded' : ''}`}>
         <header className="header" style={{ alignItems: 'flex-start' }}>
-          {activeTab !== 'apresentacao' && (
+          {false && (
             <div className="page-title">
               <h1>
                 {activeTab === 'clientes' && 'Global Client Dashboard'}
