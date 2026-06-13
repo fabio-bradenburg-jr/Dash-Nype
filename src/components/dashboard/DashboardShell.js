@@ -1510,8 +1510,6 @@ const CLIENT_DASHBOARD_INTEGRATION_OPTIONS = [
   { key: 'google_ads', label: 'Google Ads', description: 'Contas Google Ads e dados complementares.' },
   { key: 'tiktok_ads', label: 'TikTok Ads', description: 'Operação de mídia e contas do TikTok Ads.' },
   { key: 'linkedin_ads', label: 'LinkedIn Ads', description: 'Campanhas e contas do LinkedIn Ads.' },
-  { key: 'rd_station', label: 'RD Station', description: 'CRM, pipeline e leitura comercial.' },
-  { key: 'salesforce', label: 'Salesforce', description: 'Conta e estrutura de CRM no Salesforce.' },
   { key: 'agendor', label: 'Agendor', description: 'Conta comercial e pipeline no Agendor.' },
 ]
 
