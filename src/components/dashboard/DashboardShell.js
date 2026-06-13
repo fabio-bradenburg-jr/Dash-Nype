@@ -22286,9 +22286,40 @@ export default function DashboardShell({
           }
         }
 
-        /* Presentation page — sidebar width matches all other tabs */
+        /* Presentation page — sidebar identical to every other tab */
         .dashboard-container[data-active-tab='apresentacao'] .sidebar:not(.sidebar-collapsed) {
           width: 224px !important;
+        }
+        .dashboard-container[data-active-tab='apresentacao'] .sidebar :global(.nav-item) {
+          min-height: 36px;
+          padding: 0 10px;
+          border-radius: 8px;
+          border: 1px solid transparent;
+          color: rgba(241, 241, 241, 0.55);
+          font-size: 13px;
+          font-weight: 500;
+          letter-spacing: 0;
+          background: transparent;
+          gap: 9px;
+        }
+        .dashboard-container[data-active-tab='apresentacao'] .sidebar :global(.nav-item i) {
+          color: rgba(241, 241, 241, 0.4);
+          font-size: 18px;
+        }
+        .dashboard-container[data-active-tab='apresentacao'] .sidebar :global(.nav-item:hover) {
+          color: rgba(241, 241, 241, 0.9);
+          background: rgba(255, 255, 255, 0.06);
+          border-color: rgba(255, 255, 255, 0.08);
+        }
+        .dashboard-container[data-active-tab='apresentacao'] .sidebar :global(.nav-item.active) {
+          color: #f1f1f1;
+          border-color: transparent;
+          background: color-mix(in srgb, var(--button-primary, #26c281) 16%, rgba(255, 255, 255, 0.05));
+          box-shadow: inset 2px 0 0 var(--button-primary, #26c281);
+        }
+        .dashboard-container[data-active-tab='apresentacao'] .sidebar :global(.nav-item.active i),
+        .dashboard-container[data-active-tab='apresentacao'] .sidebar :global(.nav-item:hover i) {
+          color: color-mix(in srgb, var(--button-primary, #26c281) 80%, #f1f1f1);
         }
         .dashboard-container[data-active-tab='apresentacao'] .sidebar-collapsed {
           width: 72px !important;
