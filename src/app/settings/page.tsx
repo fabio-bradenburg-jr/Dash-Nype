@@ -2908,24 +2908,22 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
           position: fixed;
           inset: 0;
           z-index: 800;
-          background: rgba(0,0,0,0.55);
-          backdrop-filter: blur(8px);
-          -webkit-backdrop-filter: blur(8px);
-          display: grid;
-          place-items: center;
-          padding: 20px;
+          display: flex;
+          align-items: stretch;
+          padding: 0;
         }
         .settings-popup-panel {
           width: 100%;
-          max-width: min(960px, calc(100vw - 200px));
-          max-height: calc(100vh - 40px);
+          max-width: 100%;
+          max-height: 100vh;
+          height: 100vh;
           background: #161616;
-          border: 1px solid rgba(255,255,255,0.09);
-          border-radius: 22px;
+          border: none;
+          border-radius: 0;
           display: flex;
           flex-direction: column;
           overflow: hidden;
-          box-shadow: 0 32px 80px rgba(0,0,0,0.55);
+          box-shadow: none;
         }
         .settings-popup-header {
           display: flex;
