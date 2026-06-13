@@ -1936,115 +1936,48 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
 
       <main className={embeddedOverride ? "main-content settings-main settings-main-embedded" : "main-content settings-main"}>
         <div className="settings-workspace">
-          {/* Category cards — shown when no popup is open */}
-          {!settingsPopupOpen && (
-            <div className="settings-category-grid">
-              <button
-                type="button"
-                className="settings-category-card"
-                onClick={() => handleSettingsTabChange('panel')}
-              >
-                <div className="settings-category-icon"><i className="bx bx-layout"></i></div>
-                <div className="settings-category-info">
-                  <strong>Interface</strong>
-                  <span>Destaque, fundo e assinatura visual do sistema</span>
+          {/* Always-visible two-panel layout */}
+          <div className="settings-popup-overlay">
+            <div className="settings-popup-panel">
+              <div className="settings-popup-sidebar">
+                <div className="settings-popup-sidebar-brand">
+                  <i className="bx bx-cog"></i>
+                  <strong>Configurações</strong>
                 </div>
-                <i className="bx bx-chevron-right settings-category-arrow"></i>
-              </button>
-
-              {canEditIntegrations && (
-                <>
-                  <button
-                    type="button"
-                    className="settings-category-card"
-                    onClick={() => handleSettingsTabChange('general')}
-                  >
-                    <div className="settings-category-icon"><i className="bx bx-link-alt"></i></div>
-                    <div className="settings-category-info">
-                      <strong>Integrações</strong>
-                      <span>Meta, Google Ads e demais ferramentas</span>
-                    </div>
-                    <i className="bx bx-chevron-right settings-category-arrow"></i>
+                <nav className="settings-popup-nav">
+                  <button type="button" className={`settings-popup-nav-item ${activeSettingsTab === 'panel' ? 'active' : ''}`} onClick={() => handleSettingsTabChange('panel')}>
+                    <i className="bx bx-palette"></i>
+                    <span>Interface</span>
                   </button>
-                  <button
-                    type="button"
-                    className="settings-category-card"
-                    onClick={() => handleSettingsTabChange('ai')}
-                  >
-                    <div className="settings-category-icon"><i className="bx bx-bot"></i></div>
-                    <div className="settings-category-info">
-                      <strong>Inteligência Artificial</strong>
-                      <span>Providers, prompts e agentes</span>
-                    </div>
-                    <i className="bx bx-chevron-right settings-category-arrow"></i>
+                  {canEditIntegrations && (
+                    <button type="button" className={`settings-popup-nav-item ${activeSettingsTab === 'general' ? 'active' : ''}`} onClick={() => handleSettingsTabChange('general')}>
+                      <i className="bx bx-link-alt"></i>
+                      <span>Integrações</span>
+                    </button>
+                  )}
+                  {canEditIntegrations && (
+                    <button type="button" className={`settings-popup-nav-item ${activeSettingsTab === 'ai' ? 'active' : ''}`} onClick={() => handleSettingsTabChange('ai')}>
+                      <i className="bx bx-bot"></i>
+                      <span>Inteligência Artificial</span>
+                    </button>
+                  )}
+                  {canManageClients && (
+                    <button type="button" className={`settings-popup-nav-item ${activeSettingsTab === 'operation' ? 'active' : ''}`} onClick={() => handleSettingsTabChange('operation')}>
+                      <i className="bx bx-pulse"></i>
+                      <span>Operação</span>
+                    </button>
+                  )}
+                </nav>
+                <div className="settings-popup-sidebar-footer">
+                  <button type="button" className="btn btn-primary" style={{ width: '100%' }} onClick={handleSaveCurrentSettings}>
+                    Salvar alterações
                   </button>
-                </>
-              )}
-
-              {canManageClients && (
-                <button
-                  type="button"
-                  className="settings-category-card"
-                  onClick={() => handleSettingsTabChange('operation')}
-                >
-                  <div className="settings-category-icon"><i className="bx bx-pulse"></i></div>
-                  <div className="settings-category-info">
-                    <strong>Operação</strong>
-                    <span>Meta de risco e saúde semanal dos clientes</span>
-                  </div>
-                  <i className="bx bx-chevron-right settings-category-arrow"></i>
-                </button>
-              )}
-            </div>
-          )}
-
-          {/* Settings popup overlay */}
-          {settingsPopupOpen && (
-            <div className="settings-popup-overlay">
-              <div className="settings-popup-panel">
-                {/* Two-column layout: left sidebar nav + right content */}
-                <div className="settings-popup-sidebar">
-                  <div className="settings-popup-sidebar-top">
-                    <button type="button" className="settings-popup-back" onClick={() => setSettingsPopupOpen(false)}>
-                      <i className="bx bx-arrow-back"></i>
-                      <span>Voltar</span>
-                    </button>
-                    <div className="settings-popup-sidebar-brand">
-                      <i className="bx bx-cog"></i>
-                      <strong>Configurações</strong>
-                    </div>
-                  </div>
-                  <nav className="settings-popup-nav">
-                    <button type="button" className={`settings-popup-nav-item ${activeSettingsTab === 'panel' ? 'active' : ''}`} onClick={() => handleSettingsTabChange('panel')}>
-                      <i className="bx bx-palette"></i>
-                      <span>Interface</span>
-                    </button>
-                    {canEditIntegrations && (
-                      <button type="button" className={`settings-popup-nav-item ${activeSettingsTab === 'general' ? 'active' : ''}`} onClick={() => handleSettingsTabChange('general')}>
-                        <i className="bx bx-link-alt"></i>
-                        <span>Integrações</span>
-                      </button>
-                    )}
-                    {canEditIntegrations && (
-                      <button type="button" className={`settings-popup-nav-item ${activeSettingsTab === 'ai' ? 'active' : ''}`} onClick={() => handleSettingsTabChange('ai')}>
-                        <i className="bx bx-bot"></i>
-                        <span>Inteligência Artificial</span>
-                      </button>
-                    )}
-                    {canManageClients && (
-                      <button type="button" className={`settings-popup-nav-item ${activeSettingsTab === 'operation' ? 'active' : ''}`} onClick={() => handleSettingsTabChange('operation')}>
-                        <i className="bx bx-pulse"></i>
-                        <span>Operação</span>
-                      </button>
-                    )}
-                  </nav>
-                  <div className="settings-popup-sidebar-footer">
-                    <button type="button" className="btn btn-primary" style={{ width: '100%' }} onClick={handleSaveCurrentSettings}>
-                      Salvar alterações
-                    </button>
-                  </div>
+                  {settingsSaveFeedback && (
+                    <p style={{ fontSize: 12, color: '#22c55e', marginTop: 8, textAlign: 'center' }}>{settingsSaveFeedback}</p>
+                  )}
                 </div>
-                <div className="settings-section-content">
+              </div>
+              <div className="settings-section-content">
               {activeSettingsTab === 'panel' && (
                 <div className="settings-panel-layout settings-panel-layout-obsidian">
                   <div className="glass-item settings-block settings-block-full settings-block-hero">
@@ -2975,12 +2908,9 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
               )}
 
                 </div>
-                {settingsSaveFeedback && (
-                  <p className="settings-popup-feedback">{settingsSaveFeedback}</p>
-                )}
               </div>
             </div>
-          )}
+          </div>
         </div>
       </main>
 
@@ -3011,6 +2941,10 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
 
         .settings-workspace {
           width: 100%;
+          height: 100%;
+          position: relative;
+          flex: 1;
+          min-height: 0;
         }
 
         /* Category cards */
