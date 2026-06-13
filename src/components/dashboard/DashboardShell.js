@@ -16379,7 +16379,7 @@ export default function DashboardShell({
           </button>
         </nav>
 
-        {!isSidebarCollapsed && (activeTab === 'apresentacao' || activeTab === 'notas') && (
+        {!isSidebarCollapsed && activeTab === 'notas' && (
           <div className="sidebar-client glass-item">
             <span className="sidebar-client-label">Cliente ativo</span>
             <strong>{activeClient?.name || 'Nenhum cliente selecionado'}</strong>
