@@ -16259,13 +16259,9 @@ export default function DashboardShell({
 
         <div className="sidebar-top">
           <div className="logo">
-            {appLogoUrl ? (
-              <span className="brand-logo-mark workspace-logo-mark" aria-hidden="true">
-                <img src={appLogoUrl} alt="" />
-              </span>
-            ) : (
-              <span className="brand-logo-mark logo-image" aria-hidden="true"></span>
-            )}
+            <span className="brand-logo-mark workspace-logo-mark" aria-hidden="true">
+              <img src={appLogoUrl || '/assessoria-lp-logo.png'} alt="" />
+            </span>
             {!isSidebarCollapsed && (
               <div className="logo-copy">
                 <span>{appName}</span>
@@ -16649,11 +16645,7 @@ export default function DashboardShell({
                   <p>Defina nome, logo e cores que aparecem para sua equipe dentro da plataforma.</p>
                 </div>
                 <div className="workspace-branding-preview">
-                  {appLogoUrl ? (
-                    <span className="brand-logo-mark workspace-logo-mark"><img src={appLogoUrl} alt="" /></span>
-                  ) : (
-                    <span className="brand-logo-mark logo-image" aria-hidden="true"></span>
-                  )}
+                  <span className="brand-logo-mark workspace-logo-mark"><img src={appLogoUrl || '/assessoria-lp-logo.png'} alt="" /></span>
                   <div>
                     <strong>{appName}</strong>
                     <small>{appSubtitle}</small>
@@ -22286,23 +22278,8 @@ export default function DashboardShell({
           }
         }
 
-        /* Presentation page — sidebar layout identical to the rest of the app */
-        .dashboard-container[data-active-tab='apresentacao'] .sidebar {
-          width: 220px;
-          padding: 16px 10px;
-          border-right: 1px solid rgba(190, 201, 191, 0.16);
-          background: color-mix(in srgb, var(--app-bg-color, #0d1110) 88%, rgba(255,255,255,0.02)) !important;
-          box-shadow: 1px 0 0 rgba(190, 201, 191, 0.16);
-          backdrop-filter: blur(12px);
-        }
-
-        .dashboard-container[data-active-tab='apresentacao'] .sidebar.sidebar-collapsed {
-          width: 72px;
-        }
-
+        /* Presentation page — sidebar is identical to every other tab; only content area rules here */
         .dashboard-container[data-active-tab='apresentacao'] .main-content {
-          margin-left: 220px;
-          width: calc(100% - 220px);
           padding: 20px 24px 36px;
           box-sizing: border-box;
           min-height: 100vh;
@@ -22319,137 +22296,11 @@ export default function DashboardShell({
           -webkit-backdrop-filter: none !important;
         }
 
-        .dashboard-container[data-active-tab='apresentacao'] .sidebar :global(.nav-item) {
-          border: 1px solid transparent;
-          color: rgba(241, 241, 241, 0.55);
-          font-size: 13px;
-          font-weight: 500;
-          letter-spacing: 0;
-          background: transparent;
-        }
-
-        .dashboard-container[data-active-tab='apresentacao'] .sidebar :global(.nav-item i) {
-          font-size: 17px;
-          color: rgba(241, 241, 241, 0.4);
-        }
-
-        .dashboard-container[data-active-tab='apresentacao'] .sidebar :global(.nav-item.active) {
-          color: #ffffff;
-          background: color-mix(in srgb, var(--button-primary, #26c281) 14%, rgba(255,255,255,0.04));
-          border-color: color-mix(in srgb, var(--button-primary, #26c281) 26%, rgba(255,255,255,0.08));
-          box-shadow: inset 2px 0 0 var(--button-primary, #26c281);
-        }
-
-        .dashboard-container[data-active-tab='apresentacao'] .sidebar :global(.nav-item.active i),
-        .dashboard-container[data-active-tab='apresentacao'] .sidebar :global(.nav-item:hover i) {
-          color: color-mix(in srgb, var(--button-primary, #26c281) 80%, #f1f1f1);
-        }
-
-        .dashboard-container[data-active-tab='apresentacao'] .sidebar :global(.nav-item:hover) {
-          color: rgba(241, 241, 241, 0.9);
-          background: rgba(255, 255, 255, 0.06);
-          border-color: rgba(255, 255, 255, 0.08);
-        }
-
-        .dashboard-container[data-active-tab='apresentacao'] .nav-menu {
-          gap: 3px;
-        }
-
-        .dashboard-container[data-active-tab='apresentacao'] .sidebar-bottom-actions {
-          margin-top: auto;
-          display: grid;
-          gap: 2px;
-        }
-
-        .dashboard-container[data-active-tab='apresentacao'] .sidebar-theme-button,
-        .dashboard-container[data-active-tab='apresentacao'] .sidebar-logout-button {
-          color: rgba(241, 241, 241, 0.45);
-          border-color: transparent;
-          background: transparent;
-        }
-
-        .dashboard-container[data-active-tab='apresentacao'] .sidebar-collapsed {
-          width: 72px;
-        }
-
-        .dashboard-container[data-active-tab='apresentacao'] .sidebar-collapsed .main-content {
-          margin-left: 72px;
-          width: calc(100% - 72px);
-        }
-
-        .dashboard-container[data-active-tab='apresentacao'] .logo {
-          min-height: 48px;
-          padding: 8px 10px;
-          border-radius: 12px;
-          background: transparent;
-          border: none;
-        }
-
-        .dashboard-container[data-active-tab='apresentacao'] .logo-copy span {
-          color: #f1f1f1;
-          font-size: 14px;
-          font-weight: 700;
-          letter-spacing: -0.01em;
-        }
-
-        .dashboard-container[data-active-tab='apresentacao'] .logo-copy small {
-          color: rgba(241, 241, 241, 0.44);
-          font-size: 11px;
-        }
-
-        .dashboard-container[data-active-tab='apresentacao'] .sidebar-toggle {
-          width: 28px;
-          height: 28px;
-          top: 20px;
-          right: -14px;
-          color: rgba(241, 241, 241, 0.7);
-          border-color: rgba(190, 201, 191, 0.16);
-          background: color-mix(in srgb, var(--app-bg-color, #0d1110) 92%, rgba(255,255,255,0.06)) !important;
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-        }
-
-        .dashboard-container[data-active-tab='apresentacao'] .main-content-expanded {
-          margin-left: 112px;
-          width: calc(100% - 112px);
-        }
-
         /* Light mode — apresentacao tab */
         .dashboard-light-mode[data-active-tab='apresentacao'] .sidebar {
           background: #ffffff !important;
           border-right: 1px solid rgba(187, 202, 190, 0.7) !important;
           box-shadow: none !important;
-        }
-
-        .dashboard-light-mode[data-active-tab='apresentacao'] .logo-copy span {
-          color: #1a1c1c !important;
-        }
-
-        .dashboard-light-mode[data-active-tab='apresentacao'] .logo-copy small {
-          color: #3d4a41 !important;
-        }
-
-        .dashboard-light-mode[data-active-tab='apresentacao'] .sidebar :global(.nav-item) {
-          color: #3d4a41 !important;
-        }
-
-        .dashboard-light-mode[data-active-tab='apresentacao'] .sidebar :global(.nav-item i) {
-          color: rgba(61, 74, 65, 0.72) !important;
-        }
-
-        .dashboard-light-mode[data-active-tab='apresentacao'] .sidebar :global(.nav-item:hover) {
-          color: #1a1c1c !important;
-          background: rgba(0, 0, 0, 0.05) !important;
-        }
-
-        .dashboard-light-mode[data-active-tab='apresentacao'] .sidebar :global(.nav-item.active) {
-          color: #1a1c1c !important;
-          background: color-mix(in srgb, var(--button-primary, #26c281) 12%, #ffffff) !important;
-          box-shadow: inset 2px 0 0 var(--button-primary, #26c281) !important;
-        }
-
-        .dashboard-light-mode[data-active-tab='apresentacao'] .sidebar-theme-button,
-        .dashboard-light-mode[data-active-tab='apresentacao'] .sidebar-logout-button {
-          color: #3d4a41 !important;
         }
 
         /* Global light mode sidebar fix — catch-all for any tab */
