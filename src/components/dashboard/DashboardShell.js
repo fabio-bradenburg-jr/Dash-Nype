@@ -16677,7 +16677,7 @@ export default function DashboardShell({
         )}
 
         {activeTab === 'settings' && (
-          <section style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
+          <section style={{ display: 'flex', flex: 1, minHeight: 0, overflow: 'hidden' }}>
             <SettingsPage embeddedOverride={true} />
           </section>
         )}
@@ -22403,9 +22403,7 @@ export default function DashboardShell({
 
         .dashboard-container[data-active-tab='settings'] .main-content {
           padding: 0 !important;
-          height: 100vh;
-          overflow-y: hidden;
-          position: relative;
+          overflow: hidden;
         }
 
         .dashboard-container .main-content-expanded {

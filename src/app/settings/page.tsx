@@ -2973,29 +2973,24 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
           width: 100%;
           height: 100%;
           display: flex;
-          flex-direction: column;
-          position: relative;
-          overflow: hidden;
+          flex-direction: row;
         }
 
         .settings-main-embedded {
-          position: relative;
-          height: 100%;
           flex: 1;
-          min-height: 0;
+          min-width: 0;
           display: flex;
           flex-direction: column;
-          overflow: hidden;
+          height: 100%;
         }
 
         .settings-workspace {
           width: 100%;
-          height: 100%;
-          position: relative;
           flex: 1;
           min-height: 0;
           display: flex;
           flex-direction: column;
+          overflow: hidden;
         }
 
         /* Category cards */
@@ -3069,9 +3064,8 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
 
         /* Settings popup overlay */
         .settings-popup-overlay {
-          position: absolute;
-          inset: 0;
-          z-index: 800;
+          flex: 1;
+          min-height: 0;
           display: flex;
           flex-direction: column;
         }
