@@ -18633,7 +18633,7 @@ export default function DashboardShell({
                     </label>
                   </div>
 
-                  <div className="integration-block agendor-integration-block">
+                  {!activeClientUsesManualCrm && <div className="integration-block agendor-integration-block">
                     <div className="integration-heading">
                       <div className="integration-icon" style={{ color: '#f97316', borderColor: '#f9731633' }}>
                         <i className="bx bx-git-branch"></i>
@@ -18703,7 +18703,7 @@ export default function DashboardShell({
                         )}
                       </div>
                     </div>
-                  </div>
+                  </div>}
 
                 </div>
 
