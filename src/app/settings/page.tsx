@@ -2848,7 +2848,7 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
           display: flex;
           flex-direction: column;
           gap: 8px;
-          max-width: 600px;
+          max-width: 100%;
           margin-top: 8px;
         }
         .settings-category-card {
@@ -2917,7 +2917,7 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
         }
         .settings-popup-panel {
           width: 100%;
-          max-width: 700px;
+          max-width: min(960px, calc(100vw - 200px));
           max-height: calc(100vh - 40px);
           background: #161616;
           border: 1px solid rgba(255,255,255,0.09);
