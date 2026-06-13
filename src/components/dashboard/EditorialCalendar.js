@@ -422,6 +422,7 @@ export default function EditorialCalendar({ clients = [], isLightMode = false, d
   return (
     <div className="editorial-shell">
       {/* Header */}
+      {defaultView !== 'plans' && (
       <div className="editorial-header">
         <div className="editorial-header-left">
           <h2 className="editorial-title">
@@ -446,6 +447,7 @@ export default function EditorialCalendar({ clients = [], isLightMode = false, d
           </div>
         )}
       </div>
+      )}
 
       {/* Toolbar — hidden in plans view */}
       {defaultView !== 'plans' && <div className="editorial-toolbar">
