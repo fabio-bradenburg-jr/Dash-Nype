@@ -4846,6 +4846,7 @@ export default function DashboardShell({
           resultManagerName: manager?.full_name || manager?.email || row.resultManagerName || 'Sem gestor',
         }
       })
+      .filter((row) => !row.client?.isArchived)
       .filter((row) => {
         const matchesManager = adsOverviewManagerFilter === 'all'
           ? true
@@ -4892,6 +4893,7 @@ export default function DashboardShell({
           clientLogoUrl: client?.logoUrl || row.clientLogoUrl || '',
         }
       })
+      .filter((row) => !row.client?.isArchived)
       .filter((row) => {
         if (!query) return true
         const campaignNames = (row.campaigns || []).flatMap((campaign) => [
@@ -9843,7 +9845,7 @@ export default function DashboardShell({
             ...metaRequestHeaders,
           },
           body: JSON.stringify({
-            clients: clients.map((client) => ({
+            clients: clients.filter((client) => !client.isArchived).map((client) => ({
               id: client.id,
               name: client.name,
               logoUrl: client.logoUrl,
