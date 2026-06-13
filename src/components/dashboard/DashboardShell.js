@@ -16259,9 +16259,13 @@ export default function DashboardShell({
 
         <div className="sidebar-top">
           <div className="logo">
-            <span className="brand-logo-mark workspace-logo-mark" aria-hidden="true">
-              <img src={appLogoUrl || '/assessoria-lp-logo.png'} alt="" />
-            </span>
+            {appLogoUrl ? (
+              <span className="brand-logo-mark workspace-logo-mark" aria-hidden="true">
+                <img src={appLogoUrl} alt="" />
+              </span>
+            ) : (
+              <span className="brand-logo-mark logo-image" aria-hidden="true"></span>
+            )}
             {!isSidebarCollapsed && (
               <div className="logo-copy">
                 <span>{appName}</span>
@@ -16645,7 +16649,11 @@ export default function DashboardShell({
                   <p>Defina nome, logo e cores que aparecem para sua equipe dentro da plataforma.</p>
                 </div>
                 <div className="workspace-branding-preview">
-                  <span className="brand-logo-mark workspace-logo-mark"><img src={appLogoUrl || '/assessoria-lp-logo.png'} alt="" /></span>
+                  {appLogoUrl ? (
+                    <span className="brand-logo-mark workspace-logo-mark"><img src={appLogoUrl} alt="" /></span>
+                  ) : (
+                    <span className="brand-logo-mark logo-image" aria-hidden="true"></span>
+                  )}
                   <div>
                     <strong>{appName}</strong>
                     <small>{appSubtitle}</small>
@@ -22278,12 +22286,24 @@ export default function DashboardShell({
           }
         }
 
-        /* Presentation page — sidebar is identical to every other tab; only content area rules here */
+        /* Presentation page — sidebar width matches all other tabs */
+        .dashboard-container[data-active-tab='apresentacao'] .sidebar:not(.sidebar-collapsed) {
+          width: 224px !important;
+        }
+        .dashboard-container[data-active-tab='apresentacao'] .sidebar-collapsed {
+          width: 72px !important;
+        }
         .dashboard-container[data-active-tab='apresentacao'] .main-content {
+          margin-left: 224px !important;
+          width: calc(100% - 224px) !important;
           padding: 20px 24px 36px;
           box-sizing: border-box;
           min-height: 100vh;
           overflow-y: auto;
+        }
+        .dashboard-container[data-active-tab='apresentacao'] .main-content-expanded {
+          margin-left: 72px !important;
+          width: calc(100% - 72px) !important;
         }
 
         .dashboard-container[data-active-tab='apresentacao'] .header {
