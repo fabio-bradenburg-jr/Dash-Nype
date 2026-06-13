@@ -22819,10 +22819,15 @@ export default function DashboardShell({
         }
 
         .dashboard-light-mode .sidebar :global(.nav-item.active) {
-          color: #1a1c1c;
+          color: #1a1c1c !important;
           border-color: transparent;
           background: color-mix(in srgb, var(--button-primary, #26c281) 12%, #ffffff);
           box-shadow: inset 2px 0 0 var(--button-primary, #26c281);
+        }
+
+        .dashboard-light-mode .sidebar :global(.nav-item.active i),
+        .dashboard-light-mode .sidebar :global(.nav-item:hover i) {
+          color: color-mix(in srgb, var(--button-primary, #26c281) 90%, #1a1c1c) !important;
         }
 
         .dashboard-light-mode .nav-sub-group {
