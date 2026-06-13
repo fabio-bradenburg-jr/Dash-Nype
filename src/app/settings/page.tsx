@@ -2286,8 +2286,8 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
                           </div>
 
                       <div className="settings-integrations-grid settings-category-grid">
-                        <div className="integration-block integration-block-meta">
-                          <div className="integration-heading">
+                        <div className={`integration-block integration-block-meta${expandedSections.has('int-meta') ? ' int-open' : ''}`}>
+                          <button type="button" className="integration-heading integration-heading-toggle" onClick={() => toggleSection('int-meta')}>
                             <div className="integration-icon" style={{ color: 'var(--accent-blue)', borderColor: 'color-mix(in srgb, var(--accent-blue) 30%, transparent)' }}>
                               <i className="bx bxl-meta"></i>
                             </div>
@@ -2295,8 +2295,10 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
                               <h3>Meta Ads</h3>
                               <p>Escolha entre token manual ou conta conectada via Meta Login.</p>
                             </div>
-                          </div>
-
+                            <i className={`bx ${expandedSections.has('int-meta') ? 'bx-chevron-up' : 'bx-chevron-down'} int-chevron`}></i>
+                          </button>
+                          {expandedSections.has('int-meta') && (
+                          <div className="int-body">
                           <div className="settings-choice-row settings-choice-row-compact">
                             <button
                               type="button"
@@ -2397,10 +2399,12 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
                               {isMetaConnectionLoading ? <div className="settings-callout info">Carregando status da conexão da Meta...</div> : null}
                             </>
                           )}
+                          </div>
+                          )}
                         </div>
 
-                        <div className="integration-block integration-block-google-ads">
-                          <div className="integration-heading">
+                        <div className={`integration-block integration-block-google-ads${expandedSections.has('int-google-ads') ? ' int-open' : ''}`}>
+                          <button type="button" className="integration-heading integration-heading-toggle" onClick={() => toggleSection('int-google-ads')}>
                             <div className="integration-icon" style={{ color: 'var(--accent-emerald)', borderColor: 'color-mix(in srgb, var(--accent-emerald) 30%, transparent)' }}>
                               <i className="bx bxl-google"></i>
                             </div>
@@ -2408,8 +2412,10 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
                               <h3>Google Ads</h3>
                               <p>Conecte sua conta Google para listar clientes e puxar mídia logo depois da Meta no dashboard.</p>
                             </div>
-                          </div>
-
+                            <i className={`bx ${expandedSections.has('int-google-ads') ? 'bx-chevron-up' : 'bx-chevron-down'} int-chevron`}></i>
+                          </button>
+                          {expandedSections.has('int-google-ads') && (
+                          <div className="int-body">
                           <div className="meta-connection-card google-ads-connection-card">
                             <div className="meta-connection-copy">
                               <strong>{hasGoogleAdsConnection ? 'Conta conectada' : 'Conta ainda não conectada'}</strong>
@@ -2453,11 +2459,13 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
                           {googleAdsConnectionNotice ? <div className="settings-callout success">{googleAdsConnectionNotice}</div> : null}
                           {googleAdsConnectionError ? <div className="settings-callout error">{googleAdsConnectionError}</div> : null}
                           {isGoogleAdsConnectionLoading ? <div className="settings-callout info">Carregando status da conexão do Google Ads...</div> : null}
+                          </div>
+                          )}
                         </div>
 
                         {advertisingIntegrationGroups.map((group) => (
-                          <div key={group.title} className="integration-block">
-                            <div className="integration-heading">
+                          <div key={group.title} className={`integration-block${expandedSections.has('int-ads-' + group.title) ? ' int-open' : ''}`}>
+                            <button type="button" className="integration-heading integration-heading-toggle" onClick={() => toggleSection('int-ads-' + group.title)}>
                               <div className="integration-icon" style={{ color: group.accent, borderColor: `${group.accent}33` }}>
                                 <i className={`bx ${group.icon}`}></i>
                               </div>
@@ -2465,8 +2473,10 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
                                 <h3>{group.title}</h3>
                                 <p>{group.description}</p>
                               </div>
-                            </div>
-
+                              <i className={`bx ${expandedSections.has('int-ads-' + group.title) ? 'bx-chevron-up' : 'bx-chevron-down'} int-chevron`}></i>
+                            </button>
+                            {expandedSections.has('int-ads-' + group.title) && (
+                            <div className="int-body">
                             {group.fields.map((field) => (
                               <div key={field.name} className="input-group">
                                 <label>{field.label}</label>
@@ -2478,6 +2488,8 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
                                 />
                               </div>
                             ))}
+                            </div>
+                            )}
                           </div>
                         ))}
                       </div>
@@ -2492,8 +2504,8 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
 
                       <div className="settings-integrations-grid settings-category-grid">
                         {crmIntegrationGroups.map((group) => (
-                          <div key={group.title} className="integration-block">
-                            <div className="integration-heading">
+                          <div key={group.title} className={`integration-block${expandedSections.has('int-crm-' + group.title) ? ' int-open' : ''}`}>
+                            <button type="button" className="integration-heading integration-heading-toggle" onClick={() => toggleSection('int-crm-' + group.title)}>
                               <div className="integration-icon" style={{ color: group.accent, borderColor: `${group.accent}33` }}>
                                 <i className={`bx ${group.icon}`}></i>
                               </div>
@@ -2501,8 +2513,10 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
                                 <h3>{group.title}</h3>
                                 <p>{group.description}</p>
                               </div>
-                            </div>
-
+                              <i className={`bx ${expandedSections.has('int-crm-' + group.title) ? 'bx-chevron-up' : 'bx-chevron-down'} int-chevron`}></i>
+                            </button>
+                            {expandedSections.has('int-crm-' + group.title) && (
+                            <div className="int-body">
                             {group.fields.map((field) => (
                               <div key={field.name} className="input-group">
                                 <label>{field.label}</label>
@@ -2514,6 +2528,8 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
                                 />
                               </div>
                             ))}
+                            </div>
+                            )}
                           </div>
                         ))}
                       </div>
@@ -2528,8 +2544,8 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
                           </div>
 
                           <div className="settings-integrations-grid settings-category-grid">
-                            <div className="integration-block">
-                              <div className="integration-heading">
+                            <div className={`integration-block${expandedSections.has('int-gcal') ? ' int-open' : ''}`}>
+                              <button type="button" className="integration-heading integration-heading-toggle" onClick={() => toggleSection('int-gcal')}>
                                 <div className="integration-icon" style={{ color: '#4285F4', borderColor: 'rgba(66,133,244,0.25)', background: 'rgba(66,133,244,0.08)' }}>
                                   <i className="bx bxl-google" style={{ fontSize: 20 }}></i>
                                 </div>
@@ -2538,13 +2554,15 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
                                   <p>Sincronize treinamentos PAC com sua agenda e gere links do Google Meet automaticamente.</p>
                                 </div>
                                 {gcalConnection?.connected && (
-                                  <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 600, color: '#22c55e', background: 'rgba(34,197,94,0.1)', borderRadius: 99, padding: '3px 10px', whiteSpace: 'nowrap' }}>
+                                  <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 600, color: '#22c55e', background: 'rgba(34,197,94,0.1)', borderRadius: 99, padding: '3px 10px', whiteSpace: 'nowrap' }}>
                                     <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#22c55e', display: 'inline-block' }}></span>
                                     Conectado
                                   </span>
                                 )}
-                              </div>
-
+                                <i className={`bx ${expandedSections.has('int-gcal') ? 'bx-chevron-up' : 'bx-chevron-down'} int-chevron`}></i>
+                              </button>
+                              {expandedSections.has('int-gcal') && (
+                              <div className="int-body">
                               {gcalLoading ? (
                                 <div style={{ padding: '16px 0', opacity: 0.5, fontSize: 13 }}>Carregando...</div>
                               ) : gcalConnection?.connected ? (
@@ -2589,6 +2607,8 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
                                   <i className="bx bxl-google"></i>
                                   Conectar Google Calendar
                                 </a>
+                              )}
+                              </div>
                               )}
                             </div>
                           </div>
@@ -4526,20 +4546,35 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
         }
 
         .integration-block {
-          padding: 22px;
           border-radius: 18px;
           background: rgba(255, 255, 255, 0.03);
           border: 1px solid rgba(255, 255, 255, 0.05);
-          display: grid;
-          gap: 18px;
+          overflow: hidden;
         }
 
         .integration-heading {
           display: flex;
           gap: 14px;
-          align-items: flex-start;
-          margin-bottom: 6px;
+          align-items: center;
+          padding: 16px 20px;
+          margin-bottom: 0;
         }
+
+        button.integration-heading-toggle {
+          width: 100%;
+          background: transparent;
+          border: none;
+          color: inherit;
+          font: inherit;
+          cursor: pointer;
+          text-align: left;
+          transition: background 0.15s;
+        }
+        button.integration-heading-toggle:hover { background: rgba(255,255,255,0.04); }
+        .int-chevron { font-size: 18px; opacity: 0.4; flex-shrink: 0; margin-left: auto; transition: opacity 0.15s; }
+        button.integration-heading-toggle:hover .int-chevron { opacity: 0.8; }
+        .int-body { padding: 0 20px 20px; display: flex; flex-direction: column; gap: 16px; }
+        .integration-block.int-open { border-color: rgba(255,255,255,0.1); }
 
         .integration-icon {
           width: 46px;
