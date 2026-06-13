@@ -22286,67 +22286,6 @@ export default function DashboardShell({
           }
         }
 
-        /* Presentation page — sidebar identical to every other tab */
-        .dashboard-container[data-active-tab='apresentacao'] .sidebar:not(.sidebar-collapsed) {
-          width: 224px !important;
-        }
-        .dashboard-container[data-active-tab='apresentacao'] .sidebar :global(.nav-item) {
-          min-height: 36px;
-          padding: 0 10px;
-          border-radius: 8px;
-          border: 1px solid transparent;
-          color: rgba(241, 241, 241, 0.55);
-          font-size: 13px;
-          font-weight: 500;
-          letter-spacing: 0;
-          background: transparent;
-          gap: 9px;
-        }
-        .dashboard-container[data-active-tab='apresentacao'] .sidebar :global(.nav-item i) {
-          color: rgba(241, 241, 241, 0.4);
-          font-size: 18px;
-        }
-        .dashboard-container[data-active-tab='apresentacao'] .sidebar :global(.nav-item:hover) {
-          color: rgba(241, 241, 241, 0.9);
-          background: rgba(255, 255, 255, 0.06);
-          border-color: rgba(255, 255, 255, 0.08);
-        }
-        .dashboard-container[data-active-tab='apresentacao'] .sidebar :global(.nav-item.active) {
-          color: #f1f1f1;
-          border-color: transparent;
-          background: color-mix(in srgb, var(--button-primary, #26c281) 16%, rgba(255, 255, 255, 0.05));
-          box-shadow: inset 2px 0 0 var(--button-primary, #26c281);
-        }
-        .dashboard-container[data-active-tab='apresentacao'] .sidebar :global(.nav-item.active i),
-        .dashboard-container[data-active-tab='apresentacao'] .sidebar :global(.nav-item:hover i) {
-          color: color-mix(in srgb, var(--button-primary, #26c281) 80%, #f1f1f1);
-        }
-        .dashboard-container[data-active-tab='apresentacao'] .sidebar-collapsed {
-          width: 72px !important;
-        }
-        .dashboard-container[data-active-tab='apresentacao'] .main-content {
-          margin-left: 224px !important;
-          width: calc(100% - 224px) !important;
-          padding: 20px 24px 36px;
-          box-sizing: border-box;
-          min-height: 100vh;
-          overflow-y: auto;
-        }
-        .dashboard-container[data-active-tab='apresentacao'] .main-content-expanded {
-          margin-left: 72px !important;
-          width: calc(100% - 72px) !important;
-        }
-
-        .dashboard-container[data-active-tab='apresentacao'] .header {
-          border: none !important;
-          background: transparent !important;
-          box-shadow: none !important;
-          border-radius: 0 !important;
-          min-height: 0 !important;
-          backdrop-filter: none !important;
-          -webkit-backdrop-filter: none !important;
-        }
-
         /* Light mode — apresentacao tab */
         .dashboard-light-mode[data-active-tab='apresentacao'] .sidebar {
           background: #ffffff !important;
@@ -22389,7 +22328,7 @@ export default function DashboardShell({
           color: var(--lumina-text);
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) .sidebar {
+        .dashboard-container .sidebar {
           width: 112px;
           padding: 16px 10px;
           border-right: 1px solid var(--lumina-dark-border);
@@ -22398,11 +22337,11 @@ export default function DashboardShell({
           backdrop-filter: blur(12px);
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) .sidebar:not(.sidebar-collapsed) {
+        .dashboard-container .sidebar:not(.sidebar-collapsed) {
           width: 224px;
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) .main-content {
+        .dashboard-container .main-content {
           margin-left: 224px;
           width: calc(100% - 224px);
           padding: 20px 24px 36px;
@@ -22419,12 +22358,12 @@ export default function DashboardShell({
           overflow-y: hidden;
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) .main-content-expanded {
+        .dashboard-container .main-content-expanded {
           margin-left: 112px;
           width: calc(100% - 112px);
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) .header {
+        .dashboard-container .header {
           border: none !important;
           background: transparent !important;
           box-shadow: none !important;
@@ -22434,7 +22373,7 @@ export default function DashboardShell({
           -webkit-backdrop-filter: none !important;
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) .logo {
+        .dashboard-container .logo {
           min-height: 48px;
           padding: 8px 10px;
           border-radius: 12px;
@@ -22442,19 +22381,19 @@ export default function DashboardShell({
           border: none;
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) .logo-copy span {
+        .dashboard-container .logo-copy span {
           color: #f1f1f1;
           font-size: 14px;
           font-weight: 700;
           letter-spacing: -0.01em;
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) .logo-copy small {
+        .dashboard-container .logo-copy small {
           color: var(--lumina-soft);
           font-size: 11px;
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) .sidebar-toggle {
+        .dashboard-container .sidebar-toggle {
           width: 28px;
           height: 28px;
           top: 20px;
@@ -22469,7 +22408,7 @@ export default function DashboardShell({
           gap: 2px;
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) .sidebar :global(.nav-item) {
+        .dashboard-container .sidebar :global(.nav-item) {
           min-height: 36px;
           padding: 0 10px;
           border-radius: 8px;
@@ -22482,31 +22421,31 @@ export default function DashboardShell({
           gap: 9px;
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) .sidebar :global(.nav-item i) {
+        .dashboard-container .sidebar :global(.nav-item i) {
           color: rgba(241, 241, 241, 0.4);
           font-size: 18px;
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) .sidebar :global(.nav-item:hover) {
+        .dashboard-container .sidebar :global(.nav-item:hover) {
           color: rgba(241, 241, 241, 0.9);
           background: rgba(255, 255, 255, 0.06);
           border-color: rgba(255, 255, 255, 0.08);
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) .sidebar :global(.nav-item.active) {
+        .dashboard-container .sidebar :global(.nav-item.active) {
           color: #f1f1f1;
           border-color: transparent;
           background: color-mix(in srgb, var(--button-primary, #26c281) 16%, rgba(255, 255, 255, 0.05));
           box-shadow: inset 2px 0 0 var(--button-primary, #26c281);
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) .sidebar :global(.nav-item.active i),
-        .dashboard-container:not([data-active-tab='apresentacao']) .sidebar :global(.nav-item:hover i) {
+        .dashboard-container .sidebar :global(.nav-item.active i),
+        .dashboard-container .sidebar :global(.nav-item:hover i) {
           color: color-mix(in srgb, var(--button-primary, #26c281) 80%, #f1f1f1);
         }
 
         /* Sub-nav group (Anúncios, Social Media) */
-        .dashboard-container:not([data-active-tab='apresentacao']) .nav-sub-group {
+        .dashboard-container .nav-sub-group {
           display: flex;
           flex-direction: column;
           gap: 2px;
@@ -22516,29 +22455,29 @@ export default function DashboardShell({
           margin-left: 19px;
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) .sidebar :global(.nav-sub-item) {
+        .dashboard-container .sidebar :global(.nav-sub-item) {
           min-height: 32px;
           border-radius: 7px;
           font-size: 12.5px;
           color: rgba(241, 241, 241, 0.5);
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) .sidebar :global(.nav-sub-item i) {
+        .dashboard-container .sidebar :global(.nav-sub-item i) {
           font-size: 15px;
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) .sidebar :global(.nav-sub-item.active) {
+        .dashboard-container .sidebar :global(.nav-sub-item.active) {
           color: #ffffff;
           background: color-mix(in srgb, var(--button-primary, #26c281) 12%, rgba(255,255,255,0.04));
           border-color: color-mix(in srgb, var(--button-primary, #26c281) 20%, rgba(255,255,255,0.06));
           box-shadow: inset 2px 0 0 var(--button-primary, #26c281);
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) .sidebar-collapsed {
+        .dashboard-container .sidebar-collapsed {
           width: 112px;
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) .sidebar-collapsed :global(.nav-item) {
+        .dashboard-container .sidebar-collapsed :global(.nav-item) {
           width: 44px;
           height: 44px;
           min-width: 44px;
@@ -22550,18 +22489,18 @@ export default function DashboardShell({
           gap: 0;
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) .sidebar-collapsed :global(.nav-item i) {
+        .dashboard-container .sidebar-collapsed :global(.nav-item i) {
           margin: 0;
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) .sidebar-bottom-actions {
+        .dashboard-container .sidebar-bottom-actions {
           margin-top: auto;
           display: grid;
           gap: 2px;
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) .sidebar-theme-button,
-        .dashboard-container:not([data-active-tab='apresentacao']) .sidebar-logout-button {
+        .dashboard-container .sidebar-theme-button,
+        .dashboard-container .sidebar-logout-button {
           color: rgba(241, 241, 241, 0.45);
           border-color: transparent;
           background: transparent;
@@ -23228,23 +23167,23 @@ export default function DashboardShell({
         }
 
         @media (max-width: 1180px) {
-          .dashboard-container:not([data-active-tab='apresentacao']) .main-content,
-          .dashboard-container:not([data-active-tab='apresentacao']) .main-content-expanded {
+          .dashboard-container .main-content,
+          .dashboard-container .main-content-expanded {
             margin-left: 112px;
             width: calc(100% - 112px);
             padding: 22px;
           }
 
-          .dashboard-container:not([data-active-tab='apresentacao']) .sidebar:not(.sidebar-collapsed) {
+          .dashboard-container .sidebar:not(.sidebar-collapsed) {
             width: 112px;
           }
 
-          .dashboard-container:not([data-active-tab='apresentacao']) .sidebar:not(.sidebar-collapsed) .logo-copy,
-          .dashboard-container:not([data-active-tab='apresentacao']) .sidebar:not(.sidebar-collapsed) :global(.nav-item) {
+          .dashboard-container .sidebar:not(.sidebar-collapsed) .logo-copy,
+          .dashboard-container .sidebar:not(.sidebar-collapsed) :global(.nav-item) {
             font-size: 0;
           }
 
-          .dashboard-container:not([data-active-tab='apresentacao']) .sidebar:not(.sidebar-collapsed) :global(.nav-item) {
+          .dashboard-container .sidebar:not(.sidebar-collapsed) :global(.nav-item) {
             justify-content: center;
             width: 54px;
             height: 54px;
@@ -23254,12 +23193,12 @@ export default function DashboardShell({
         }
 
         @media (max-width: 720px) {
-          .dashboard-container:not([data-active-tab='apresentacao']) .sidebar {
+          .dashboard-container .sidebar {
             display: none;
           }
 
-          .dashboard-container:not([data-active-tab='apresentacao']) .main-content,
-          .dashboard-container:not([data-active-tab='apresentacao']) .main-content-expanded {
+          .dashboard-container .main-content,
+          .dashboard-container .main-content-expanded {
             margin-left: 0;
             width: 100%;
             padding: 18px;
