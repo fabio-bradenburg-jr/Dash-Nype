@@ -22404,7 +22404,7 @@ export default function DashboardShell({
           box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) .nav-menu {
+        .dashboard-container .nav-menu {
           gap: 2px;
         }
 
@@ -22506,7 +22506,7 @@ export default function DashboardShell({
           background: transparent;
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) .app-shell-topbar {
+        .dashboard-container .app-shell-topbar {
           min-height: 48px;
           margin-bottom: 16px;
           display: grid;
@@ -22515,7 +22515,7 @@ export default function DashboardShell({
           align-items: center;
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) .operation-stellar-search {
+        .dashboard-container .operation-stellar-search {
           min-height: 42px;
           border-radius: 999px;
           border: 1px solid var(--lumina-dark-border) !important;
@@ -22526,27 +22526,27 @@ export default function DashboardShell({
           backdrop-filter: blur(12px);
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) .operation-stellar-search i {
+        .dashboard-container .operation-stellar-search i {
           color: var(--lumina-soft) !important;
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) .operation-stellar-search input {
+        .dashboard-container .operation-stellar-search input {
           color: #f1f1f1 !important;
           font-size: 14px;
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) .operation-stellar-search input::placeholder {
+        .dashboard-container .operation-stellar-search input::placeholder {
           color: rgba(241, 241, 241, 0.42);
           opacity: 1;
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) .operation-stellar-actions {
+        .dashboard-container .operation-stellar-actions {
           gap: 10px;
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) .operation-stellar-icon-button,
-        .dashboard-container:not([data-active-tab='apresentacao']) .operation-stellar-theme-toggle,
-        .dashboard-container:not([data-active-tab='apresentacao']) .operation-stellar-user-avatar {
+        .dashboard-container .operation-stellar-icon-button,
+        .dashboard-container .operation-stellar-theme-toggle,
+        .dashboard-container .operation-stellar-user-avatar {
           border: 1px solid var(--lumina-dark-border) !important;
           background:
             linear-gradient(180deg, rgba(18, 24, 23, 0.86), rgba(13, 17, 16, 0.9)),
@@ -22555,24 +22555,24 @@ export default function DashboardShell({
           box-shadow: 0 14px 28px rgba(0, 0, 0, 0.16) !important;
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) .operation-stellar-theme-option.active {
+        .dashboard-container .operation-stellar-theme-option.active {
           background: color-mix(in srgb, var(--button-primary, #26c281) 18%, rgba(255, 255, 255, 0.05)) !important;
           color: #f1f1f1 !important;
           box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--button-primary, #26c281) 28%, transparent) !important;
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) .operation-stellar-user-avatar {
+        .dashboard-container .operation-stellar-user-avatar {
           background: linear-gradient(135deg, #006c44, #26c281) !important;
           color: #ffffff !important;
           border-color: rgba(38, 194, 129, 0.4) !important;
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) .header {
+        .dashboard-container .header {
           margin-bottom: 16px;
           padding: 0;
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) .page-title {
+        .dashboard-container .page-title {
           width: 100%;
           padding: 0 0 14px;
           border-radius: 0;
@@ -22582,7 +22582,7 @@ export default function DashboardShell({
           box-shadow: none;
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) .page-title h1 {
+        .dashboard-container .page-title h1 {
           color: #f1f1f1;
           font-size: 20px;
           line-height: 1.2;
@@ -22591,8 +22591,8 @@ export default function DashboardShell({
           font-weight: 700;
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) .page-title p,
-        .dashboard-container:not([data-active-tab='apresentacao']) .assistant-header-prompt {
+        .dashboard-container .page-title p,
+        .dashboard-container .assistant-header-prompt {
           max-width: 680px;
           color: var(--lumina-soft);
           font-size: 13px;
@@ -22600,14 +22600,14 @@ export default function DashboardShell({
           margin-top: 6px;
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) .clients-layout,
-        .dashboard-container:not([data-active-tab='apresentacao']) .integrations-layout,
-        .dashboard-container:not([data-active-tab='apresentacao']) .simple-clients-layout {
+        .dashboard-container .clients-layout,
+        .dashboard-container .integrations-layout,
+        .dashboard-container .simple-clients-layout {
           gap: 24px;
           min-width: 0;
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) .management-header-row {
+        .dashboard-container .management-header-row {
           padding: 0 0 16px;
           border-radius: 0;
           border: none;
@@ -22615,31 +22615,31 @@ export default function DashboardShell({
           background: transparent;
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) .management-header-copy h2 {
+        .dashboard-container .management-header-copy h2 {
           color: #f1f1f1;
           font-size: 18px;
           font-weight: 700;
           letter-spacing: -0.02em;
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) .management-header-copy p {
+        .dashboard-container .management-header-copy p {
           color: var(--lumina-soft);
           font-size: 13px;
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) .glass-panel,
-        .dashboard-container:not([data-active-tab='apresentacao']) .glass-item,
-        .dashboard-container:not([data-active-tab='apresentacao']) .management-directory-card,
-        .dashboard-container:not([data-active-tab='apresentacao']) .users-toolbar-card,
-        .dashboard-container:not([data-active-tab='apresentacao']) .simple-client-card,
-        .dashboard-container:not([data-active-tab='apresentacao']) .empty-panel {
+        .dashboard-container .glass-panel,
+        .dashboard-container .glass-item,
+        .dashboard-container .management-directory-card,
+        .dashboard-container .users-toolbar-card,
+        .dashboard-container .simple-client-card,
+        .dashboard-container .empty-panel {
           border-radius: 12px;
           border-color: var(--lumina-dark-border);
           background: color-mix(in srgb, var(--app-bg-color, #0d1110) 60%, rgba(255,255,255,0.03));
           box-shadow: none;
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) .btn {
+        .dashboard-container .btn {
           border-radius: 8px;
           min-height: 34px;
           padding: 0 14px;
@@ -22651,7 +22651,7 @@ export default function DashboardShell({
           font-weight: 600;
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) .btn-primary {
+        .dashboard-container .btn-primary {
           border-color: var(--button-primary, #26c281);
           background: var(--button-primary, #26c281) !important;
           color: #ffffff !important;
@@ -22659,88 +22659,88 @@ export default function DashboardShell({
           font-weight: 700;
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) .btn-secondary,
-        .dashboard-container:not([data-active-tab='apresentacao']) .modal-close {
+        .dashboard-container .btn-secondary,
+        .dashboard-container .modal-close {
           border-color: var(--lumina-dark-border);
           background: rgba(255, 255, 255, 0.04);
           color: rgba(241, 241, 241, 0.8);
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) input,
-        .dashboard-container:not([data-active-tab='apresentacao']) select,
-        .dashboard-container:not([data-active-tab='apresentacao']) textarea,
-        .dashboard-container:not([data-active-tab='apresentacao']) .client-select-input,
-        .dashboard-container:not([data-active-tab='apresentacao']) .client-registry-search,
-        .dashboard-container:not([data-active-tab='apresentacao']) .client-registry-filter-group {
+        .dashboard-container input,
+        .dashboard-container select,
+        .dashboard-container textarea,
+        .dashboard-container .client-select-input,
+        .dashboard-container .client-registry-search,
+        .dashboard-container .client-registry-filter-group {
           border-radius: 12px;
           border-color: var(--lumina-dark-border);
           background: rgba(7, 9, 8, 0.5);
           color: #f1f1f1;
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) input:focus,
-        .dashboard-container:not([data-active-tab='apresentacao']) select:focus,
-        .dashboard-container:not([data-active-tab='apresentacao']) textarea:focus {
+        .dashboard-container input:focus,
+        .dashboard-container select:focus,
+        .dashboard-container textarea:focus {
           outline: none;
           border-color: color-mix(in srgb, var(--button-primary, #26c281) 58%, #ffffff);
           box-shadow: 0 0 0 3px color-mix(in srgb, var(--button-primary, #26c281) 15%, transparent);
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) .input-group label,
-        .dashboard-container:not([data-active-tab='apresentacao']) .field-helper,
-        .dashboard-container:not([data-active-tab='apresentacao']) .chart-subtitle,
-        .dashboard-container:not([data-active-tab='apresentacao']) .empty-panel p {
+        .dashboard-container .input-group label,
+        .dashboard-container .field-helper,
+        .dashboard-container .chart-subtitle,
+        .dashboard-container .empty-panel p {
           color: var(--lumina-muted);
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) .simple-client-list {
+        .dashboard-container .simple-client-list {
           gap: 8px;
           overflow-x: visible;
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) .simple-client-row {
+        .dashboard-container .simple-client-row {
           border-radius: 14px;
           border-color: rgba(190, 201, 191, 0.13);
           background: rgba(255, 255, 255, 0.026);
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) .simple-client-row-head,
-        .dashboard-container:not([data-active-tab='apresentacao']) .simple-client-head {
+        .dashboard-container .simple-client-row-head,
+        .dashboard-container .simple-client-head {
           background: rgba(255, 255, 255, 0.045);
           color: var(--lumina-soft);
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) .simple-client-name strong,
-        .dashboard-container:not([data-active-tab='apresentacao']) .empty-panel h3,
-        .dashboard-container:not([data-active-tab='apresentacao']) .modal-header h3 {
+        .dashboard-container .simple-client-name strong,
+        .dashboard-container .empty-panel h3,
+        .dashboard-container .modal-header h3 {
           color: #f1f1f1;
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) .simple-client-name small,
-        .dashboard-container:not([data-active-tab='apresentacao']) .modal-header p {
+        .dashboard-container .simple-client-name small,
+        .dashboard-container .modal-header p {
           color: var(--lumina-muted);
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) .simple-client-icon,
-        .dashboard-container:not([data-active-tab='apresentacao']) .directory-card-icon,
-        .dashboard-container:not([data-active-tab='apresentacao']) .client-avatar-shell {
+        .dashboard-container .simple-client-icon,
+        .dashboard-container .directory-card-icon,
+        .dashboard-container .client-avatar-shell {
           border-color: var(--lumina-dark-border);
           background: rgba(255, 255, 255, 0.035);
           color: var(--lumina-soft);
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) .simple-client-icon.active {
+        .dashboard-container .simple-client-icon.active {
           color: #ffffff;
           border-color: rgba(38, 194, 129, 0.38);
           background: linear-gradient(135deg, #006c44, #26c281);
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) .modal-overlay {
+        .dashboard-container .modal-overlay {
           background: rgba(7, 9, 8, 0.72);
           backdrop-filter: blur(10px);
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) .modal-card {
+        .dashboard-container .modal-card {
           border-radius: 18px;
           border: 1px solid var(--lumina-dark-border);
           background:
@@ -22748,118 +22748,118 @@ export default function DashboardShell({
             linear-gradient(180deg, rgba(18, 24, 23, 0.96), rgba(13, 17, 16, 0.98));
         }
 
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) {
+        .dashboard-light-mode {
           background: #f4f6f5 !important;
           color: #1a1c1c;
         }
 
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .sidebar {
+        .dashboard-light-mode .sidebar {
           background: #ffffff !important;
           border-right: 1px solid rgba(187, 202, 190, 0.7) !important;
           box-shadow: none;
         }
 
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .sidebar-toggle,
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .logo,
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .operation-stellar-search,
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .operation-stellar-icon-button,
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .operation-stellar-theme-toggle {
+        .dashboard-light-mode .sidebar-toggle,
+        .dashboard-light-mode .logo,
+        .dashboard-light-mode .operation-stellar-search,
+        .dashboard-light-mode .operation-stellar-icon-button,
+        .dashboard-light-mode .operation-stellar-theme-toggle {
           background: #ffffff !important;
           border-color: rgba(187, 202, 190, 0.8) !important;
           box-shadow: none !important;
         }
 
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .glass-panel,
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .glass-item,
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .management-directory-card,
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .users-toolbar-card,
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .simple-client-card,
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .empty-panel,
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .page-title,
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .management-header-row {
+        .dashboard-light-mode .glass-panel,
+        .dashboard-light-mode .glass-item,
+        .dashboard-light-mode .management-directory-card,
+        .dashboard-light-mode .users-toolbar-card,
+        .dashboard-light-mode .simple-client-card,
+        .dashboard-light-mode .empty-panel,
+        .dashboard-light-mode .page-title,
+        .dashboard-light-mode .management-header-row {
           background: #ffffff !important;
           border-color: rgba(187, 202, 190, 0.7) !important;
           box-shadow: none !important;
         }
 
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .logo-copy span,
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .page-title h1,
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .management-header-copy h2,
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .simple-client-name strong,
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .empty-panel h3,
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .modal-header h3 {
+        .dashboard-light-mode .logo-copy span,
+        .dashboard-light-mode .page-title h1,
+        .dashboard-light-mode .management-header-copy h2,
+        .dashboard-light-mode .simple-client-name strong,
+        .dashboard-light-mode .empty-panel h3,
+        .dashboard-light-mode .modal-header h3 {
           color: #1a1c1c !important;
         }
 
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .logo-copy small,
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .page-title p,
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .assistant-header-prompt,
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .management-header-copy p,
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .simple-client-name small,
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .input-group label,
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .field-helper,
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .chart-subtitle,
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .empty-panel p,
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .modal-header p {
+        .dashboard-light-mode .logo-copy small,
+        .dashboard-light-mode .page-title p,
+        .dashboard-light-mode .assistant-header-prompt,
+        .dashboard-light-mode .management-header-copy p,
+        .dashboard-light-mode .simple-client-name small,
+        .dashboard-light-mode .input-group label,
+        .dashboard-light-mode .field-helper,
+        .dashboard-light-mode .chart-subtitle,
+        .dashboard-light-mode .empty-panel p,
+        .dashboard-light-mode .modal-header p {
           color: #3d4a41 !important;
         }
 
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .sidebar :global(.nav-item) {
+        .dashboard-light-mode .sidebar :global(.nav-item) {
           color: #3d4a41;
         }
 
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .sidebar :global(.nav-item i) {
+        .dashboard-light-mode .sidebar :global(.nav-item i) {
           color: rgba(61, 74, 65, 0.72);
         }
 
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .sidebar :global(.nav-item:hover) {
+        .dashboard-light-mode .sidebar :global(.nav-item:hover) {
           color: #1a1c1c;
           border-color: transparent;
           background: rgba(0, 0, 0, 0.05);
         }
 
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .sidebar :global(.nav-item.active) {
+        .dashboard-light-mode .sidebar :global(.nav-item.active) {
           color: #1a1c1c;
           border-color: transparent;
           background: color-mix(in srgb, var(--button-primary, #26c281) 12%, #ffffff);
           box-shadow: inset 2px 0 0 var(--button-primary, #26c281);
         }
 
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .nav-sub-group {
+        .dashboard-light-mode .nav-sub-group {
           border-left-color: rgba(187, 202, 190, 0.7);
         }
 
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .sidebar :global(.nav-sub-item) {
+        .dashboard-light-mode .sidebar :global(.nav-sub-item) {
           color: #3d4a41;
         }
 
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .sidebar :global(.nav-sub-item.active) {
+        .dashboard-light-mode .sidebar :global(.nav-sub-item.active) {
           color: #1a1c1c;
           background: color-mix(in srgb, var(--button-primary, #26c281) 10%, #f8faf9);
           border-color: transparent;
           box-shadow: inset 2px 0 0 var(--button-primary, #26c281);
         }
 
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) input,
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) select,
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) textarea,
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .client-select-input,
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .client-registry-search,
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .client-registry-filter-group,
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .simple-client-row {
+        .dashboard-light-mode input,
+        .dashboard-light-mode select,
+        .dashboard-light-mode textarea,
+        .dashboard-light-mode .client-select-input,
+        .dashboard-light-mode .client-registry-search,
+        .dashboard-light-mode .client-registry-filter-group,
+        .dashboard-light-mode .simple-client-row {
           background: #ffffff !important;
           border-color: rgba(187, 202, 190, 0.9) !important;
           color: #1a1c1c !important;
         }
 
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .simple-client-row-head,
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .simple-client-head {
+        .dashboard-light-mode .simple-client-row-head,
+        .dashboard-light-mode .simple-client-head {
           background: #f3f3f3 !important;
           color: #3d4a41 !important;
         }
 
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .btn-secondary,
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .modal-close {
+        .dashboard-light-mode .btn-secondary,
+        .dashboard-light-mode .modal-close {
           background: #ffffff !important;
           border-color: rgba(187, 202, 190, 0.9) !important;
           color: #1a1c1c !important;
@@ -23204,16 +23204,16 @@ export default function DashboardShell({
             padding: 18px;
           }
 
-          .dashboard-container:not([data-active-tab='apresentacao']) .app-shell-topbar {
+          .dashboard-container .app-shell-topbar {
             grid-template-columns: 1fr;
           }
 
-          .dashboard-container:not([data-active-tab='apresentacao']) .operation-stellar-actions {
+          .dashboard-container .operation-stellar-actions {
             justify-content: flex-start;
           }
 
-          .dashboard-container:not([data-active-tab='apresentacao']) .page-title,
-          .dashboard-container:not([data-active-tab='apresentacao']) .management-header-row {
+          .dashboard-container .page-title,
+          .dashboard-container .management-header-row {
             padding: 20px;
             border-radius: 16px;
           }
@@ -32638,38 +32638,38 @@ export default function DashboardShell({
           margin-bottom: 0;
         }
 
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .ads-overview-hero,
+        .dashboard-light-mode .ads-overview-hero,
         :root[data-ui-mode='light'] .ads-overview-hero {
           background:
             radial-gradient(circle at top right, rgba(38, 194, 129, 0.12), transparent 38%),
             linear-gradient(135deg, #ffffff, #f7fbf9);
         }
 
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .ads-overview-account,
+        .dashboard-light-mode .ads-overview-account,
         :root[data-ui-mode='light'] .ads-overview-account {
           border-color: #d8e5dc;
           color: #53645a;
           background: #ffffff;
         }
 
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .ads-overview-ad-row,
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .ads-overview-client-card,
+        .dashboard-light-mode .ads-overview-ad-row,
+        .dashboard-light-mode .ads-overview-client-card,
         :root[data-ui-mode='light'] .ads-overview-ad-row,
         :root[data-ui-mode='light'] .ads-overview-client-card {
           background: #ffffff;
           border-color: #d8e5dc;
         }
 
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .ads-overview-no-ads,
+        .dashboard-light-mode .ads-overview-no-ads,
         :root[data-ui-mode='light'] .ads-overview-no-ads {
           background: #f8fbf9;
           border-color: #c8d9ce;
         }
 
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .campaign-overview-total-pill,
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .campaign-overview-campaign-row,
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .campaign-overview-adset-row,
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .campaign-overview-ad-row,
+        .dashboard-light-mode .campaign-overview-total-pill,
+        .dashboard-light-mode .campaign-overview-campaign-row,
+        .dashboard-light-mode .campaign-overview-adset-row,
+        .dashboard-light-mode .campaign-overview-ad-row,
         :root[data-ui-mode='light'] .campaign-overview-total-pill,
         :root[data-ui-mode='light'] .campaign-overview-campaign-row,
         :root[data-ui-mode='light'] .campaign-overview-adset-row,
@@ -32678,15 +32678,15 @@ export default function DashboardShell({
           border-color: #d8e5dc;
         }
 
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .campaign-overview-campaign-row,
+        .dashboard-light-mode .campaign-overview-campaign-row,
         :root[data-ui-mode='light'] .campaign-overview-campaign-row {
           background:
             linear-gradient(90deg, rgba(38, 194, 129, 0.08), rgba(255, 255, 255, 0)),
             #ffffff;
         }
 
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .campaign-overview-adset-list,
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .campaign-overview-ad-list,
+        .dashboard-light-mode .campaign-overview-adset-list,
+        .dashboard-light-mode .campaign-overview-ad-list,
         :root[data-ui-mode='light'] .campaign-overview-adset-list,
         :root[data-ui-mode='light'] .campaign-overview-ad-list {
           border-left-color: #c8d9ce;
@@ -33152,9 +33152,9 @@ export default function DashboardShell({
           font-weight: 800;
         }
 
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .ad-balance-hero,
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .ad-balance-summary-card,
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .ad-balance-table-card {
+        .dashboard-light-mode .ad-balance-hero,
+        .dashboard-light-mode .ad-balance-summary-card,
+        .dashboard-light-mode .ad-balance-table-card {
           border-color: rgba(15, 23, 42, 0.08);
           background:
             radial-gradient(circle at top right, rgba(16, 185, 129, 0.12), transparent 36%),
@@ -33162,70 +33162,70 @@ export default function DashboardShell({
           box-shadow: 0 24px 70px rgba(15, 23, 42, 0.08);
         }
 
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .ad-balance-table-wrap {
+        .dashboard-light-mode .ad-balance-table-wrap {
           border-color: rgba(15, 23, 42, 0.08);
         }
 
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .ad-balance-table thead th {
+        .dashboard-light-mode .ad-balance-table thead th {
           background: #f8fafc;
         }
 
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .ad-balance-row {
+        .dashboard-light-mode .ad-balance-row {
           background: #ffffff;
         }
 
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .ad-balance-pill {
+        .dashboard-light-mode .ad-balance-pill {
           background: #f8fafc;
           color: #0f172a;
         }
 
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .ad-balance-pill.danger {
+        .dashboard-light-mode .ad-balance-pill.danger {
           background: #fef2f2;
           color: #b91c1c;
         }
 
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .ad-balance-pill.warning {
+        .dashboard-light-mode .ad-balance-pill.warning {
           background: #fffbeb;
           color: #92400e;
         }
 
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .ad-balance-pill.success,
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .ad-balance-card-status.active {
+        .dashboard-light-mode .ad-balance-pill.success,
+        .dashboard-light-mode .ad-balance-card-status.active {
           background: #ecfdf5;
           color: #047857;
         }
 
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .ad-balance-billing-badge {
+        .dashboard-light-mode .ad-balance-billing-badge {
           background: #f8fafc;
           color: #0f172a;
         }
 
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .ad-balance-billing-badge.prepaid {
+        .dashboard-light-mode .ad-balance-billing-badge.prepaid {
           background: #ecfdf5;
           color: #047857;
         }
 
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .ad-balance-billing-badge.postpaid {
+        .dashboard-light-mode .ad-balance-billing-badge.postpaid {
           background: #eff6ff;
           color: #1d4ed8;
         }
 
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .ad-balance-payment-status {
+        .dashboard-light-mode .ad-balance-payment-status {
           background: #f8fafc;
           color: #475569;
         }
 
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .ad-balance-payment-status.success {
+        .dashboard-light-mode .ad-balance-payment-status.success {
           background: #ecfdf5;
           color: #047857;
         }
 
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .ad-balance-payment-status.warning {
+        .dashboard-light-mode .ad-balance-payment-status.warning {
           background: #fffbeb;
           color: #92400e;
         }
 
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .ad-balance-payment-status.danger {
+        .dashboard-light-mode .ad-balance-payment-status.danger {
           background: #fef2f2;
           color: #b91c1c;
         }
