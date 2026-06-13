@@ -5,7 +5,8 @@ import { createAdminClient } from '@/lib/server/supabase-admin'
 import { getAccessContext } from '@/lib/server/access-control'
 import { PLATFORM_AUTH_COOKIE } from '@/lib/saas/auth'
 import { verifyLocalAccessToken } from '@/lib/server/platform-auth-fallback'
-import { getWorkspaceGoogleCalendarConnection, googleCalendarFetch } from '@/lib/server/google-calendar'
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const { getWorkspaceGoogleCalendarConnection, googleCalendarFetch } = require('@/lib/server/google-calendar') as { getWorkspaceGoogleCalendarConnection: any; googleCalendarFetch: any }
 
 async function getAuthorizedContext() {
   const supabase = await createClient()
