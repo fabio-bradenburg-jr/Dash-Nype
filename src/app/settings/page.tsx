@@ -436,6 +436,12 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
   const [gcalSelectedSummary, setGcalSelectedSummary] = useState('')
   const [gcalSaving, setGcalSaving] = useState(false)
   const [activeSettingsTab, setActiveSettingsTab] = useState<SettingsTab>('panel')
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set())
+  const toggleSection = (key: string) => setExpandedSections(prev => {
+    const next = new Set(prev)
+    if (next.has(key)) next.delete(key); else next.add(key)
+    return next
+  })
   const [settingsPopupOpen, setSettingsPopupOpen] = useState(false)
   const [panelDraft, setPanelDraft] = useState<UserAppearance>(appearance)
   const [panelFeedback, setPanelFeedback] = useState('')

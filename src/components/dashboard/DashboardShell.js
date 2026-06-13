@@ -16678,31 +16678,8 @@ export default function DashboardShell({
 
         {activeTab === 'settings' && (
           <section style={{ width: '100%', position: 'relative', flex: 1, minHeight: 0, overflow: 'hidden' }}>
-            {canManageUsers && (
-              <div className="glass-panel workspace-branding-card">
-                <div className="workspace-branding-head">
-                  <span className="management-card-kicker">White label</span>
-                  <h3>Marca do workspace</h3>
-                  <p>Defina nome, logo e cores que aparecem para sua equipe dentro da plataforma.</p>
-                </div>
-                <div className="workspace-branding-preview">
-                  {appLogoUrl ? (
-                    <span className="brand-logo-mark workspace-logo-mark"><img src={appLogoUrl} alt="" /></span>
-                  ) : (
-                    <span className="brand-logo-mark logo-image" aria-hidden="true"></span>
-                  )}
-                  <div>
-                    <strong>{appName}</strong>
-                    <small>{appSubtitle}</small>
-                  </div>
-                  <button type="button" className="btn btn-primary" onClick={() => { setBrandingForm(effectiveWorkspaceBranding); setIsBrandingModalOpen(true) }}>
-                    <i className="bx bx-palette" aria-hidden="true"></i>
-                    <span>Personalizar marca</span>
-                  </button>
-                </div>
-              </div>
-            )}
             <SettingsPage embeddedOverride={true} />
+                    <small>{appSubtitle}</small>
           </section>
         )}
 
