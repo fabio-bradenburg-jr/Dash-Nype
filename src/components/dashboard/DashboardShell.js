@@ -16677,7 +16677,7 @@ export default function DashboardShell({
         )}
 
         {activeTab === 'settings' && (
-          <section style={{ width: '100%' }}>
+          <section style={{ width: '100%', position: 'relative', flex: 1, minHeight: 0, overflow: 'hidden' }}>
             {canManageUsers && (
               <div className="glass-panel workspace-branding-card">
                 <div className="workspace-branding-head">

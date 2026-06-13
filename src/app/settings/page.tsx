@@ -2828,6 +2828,7 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
           padding-left: 0 !important;
           margin-left: calc(var(--sidebar-width) + 28px) !important;
           padding-top: 14px;
+          position: relative;
         }
 
         .settings-main-embedded {
@@ -2837,6 +2838,13 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
 
         .settings-embedded-shell {
           width: 100%;
+          height: 100%;
+          position: relative;
+        }
+
+        .settings-main-embedded {
+          position: relative;
+          height: 100%;
         }
 
         .settings-workspace {
@@ -2905,18 +2913,15 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
 
         /* Settings popup overlay */
         .settings-popup-overlay {
-          position: fixed;
+          position: absolute;
           inset: 0;
           z-index: 800;
           display: flex;
           align-items: stretch;
-          padding: 0;
         }
         .settings-popup-panel {
           width: 100%;
-          max-width: 100%;
-          max-height: 100vh;
-          height: 100vh;
+          height: 100%;
           background: #161616;
           border: none;
           border-radius: 0;
