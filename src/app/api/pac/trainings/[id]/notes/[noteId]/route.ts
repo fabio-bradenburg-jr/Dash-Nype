@@ -1,0 +1,105 @@
+import { NextResponse } from 'next/server'
+import { cookies } from 'next/headers'
+import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/server/supabase-admin'
+import { getAccessContext } from '@/lib/server/access-control'
+import { PLATFORM_AUTH_COOKIE } from '@/lib/saas/auth'
+import { verifyLocalAccessToken } from '@/lib/server/platform-auth-fallback'
+
+async function getAuthorizedContext() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  const adminSupabase = createAdminClient()
+
+  if (user) {
+    const accessContext = await getAccessContext(supabase, user, { adminSupabase })
+    return { adminSupabase, accessContext }
+  }
+
+  const token = (await cookies()).get(PLATFORM_AUTH_COOKIE)?.value
+  if (!token) return { errorResponse: NextResponse.json({ error: 'Não autenticado.' }, { status: 401 }) }
+
+  const payload = await verifyLocalAccessToken(token)
+  const userId = String(payload.sub || '').replace(/^supabase:/, '')
+  const { data: profile } = await adminSupabase.from('profiles').select('id, email, full_name, role, workspace_id').eq('id', userId).maybeSingle()
+  if (!profile?.workspace_id) return { errorResponse: NextResponse.json({ error: 'Workspace não encontrado.' }, { status: 404 }) }
+
+  return {
+    adminSupabase,
+    accessContext: { workspaceId: profile.workspace_id, role: profile.role, profile },
+  }
+}
+
+export async function PATCH(request: Request, { params }: { params: Promise<{ id: string; noteId: string }> }) {
+  try {
+    const { id: trainingId, noteId } = await params
+    const { errorResponse, adminSupabase, accessContext } = await getAuthorizedContext() as any
+    if (errorResponse) return errorResponse
+
+    const { workspaceId } = accessContext
+    const body = await request.json()
+    const { content } = body
+
+    if (!content?.trim()) {
+      return NextResponse.json({ error: 'Conteúdo é obrigatório.' }, { status: 400 })
+    }
+
+    // Verify training belongs to workspace
+    const { data: training } = await adminSupabase
+      .from('pac_trainings')
+      .select('id')
+      .eq('id', trainingId)
+      .eq('workspace_id', workspaceId)
+      .maybeSingle()
+
+    if (!training) return NextResponse.json({ error: 'Treinamento não encontrado.' }, { status: 404 })
+
+    const { data, error } = await adminSupabase
+      .from('pac_training_notes')
+      .update({ content: content.trim(), updated_at: new Date().toISOString() })
+      .eq('id', noteId)
+      .eq('training_id', trainingId)
+      .select()
+      .single()
+
+    if (error) throw error
+
+    return NextResponse.json({ note: data })
+  } catch (error) {
+    console.error('[PATCH /api/pac/trainings/[id]/notes/[noteId]]', error)
+    return NextResponse.json({ error: 'Erro ao atualizar nota.' }, { status: 500 })
+  }
+}
+
+export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string; noteId: string }> }) {
+  try {
+    const { id: trainingId, noteId } = await params
+    const { errorResponse, adminSupabase, accessContext } = await getAuthorizedContext() as any
+    if (errorResponse) return errorResponse
+
+    const { workspaceId } = accessContext
+
+    // Verify training belongs to workspace
+    const { data: training } = await adminSupabase
+      .from('pac_trainings')
+      .select('id')
+      .eq('id', trainingId)
+      .eq('workspace_id', workspaceId)
+      .maybeSingle()
+
+    if (!training) return NextResponse.json({ error: 'Treinamento não encontrado.' }, { status: 404 })
+
+    const { error } = await adminSupabase
+      .from('pac_training_notes')
+      .delete()
+      .eq('id', noteId)
+      .eq('training_id', trainingId)
+
+    if (error) throw error
+
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error('[DELETE /api/pac/trainings/[id]/notes/[noteId]]', error)
+    return NextResponse.json({ error: 'Erro ao excluir nota.' }, { status: 500 })
+  }
+}

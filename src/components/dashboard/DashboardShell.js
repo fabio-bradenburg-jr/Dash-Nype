@@ -7,6 +7,7 @@ import AssistantPage from '@/app/assistant/page'
 import SettingsPage from '@/app/settings/page'
 import ClientNotesPanel from '@/components/dashboard/ClientNotesPanel'
 import EditorialCalendar from '@/components/dashboard/EditorialCalendar'
+import PACCalendar from '@/components/dashboard/PACCalendar'
 import ReportsTab from '@/components/dashboard/ReportsTab'
 import { useUser } from '@/lib/contexts/UserContext'
 import { createClient } from '@/lib/supabase/client'
@@ -3504,6 +3505,8 @@ export default function DashboardShell({
   const [isAdsMenuOpen, setIsAdsMenuOpen] = useState(() => ADS_TABS.includes(initialTab))
   const SOCIAL_TABS = ['editorial', 'editorial-dash', 'editorial-plans']
   const [isSocialMenuOpen, setIsSocialMenuOpen] = useState(() => SOCIAL_TABS.includes(initialTab))
+  const PAC_TABS = ['pac-dash', 'pac-calendario', 'pac-tipos']
+  const [isPacMenuOpen, setIsPacMenuOpen] = useState(() => PAC_TABS.includes(initialTab))
   const [globalIntegrations, setGlobalIntegrations] = useState({
     ...DEFAULT_PREFERENCES.globalIntegrations,
   })
@@ -16328,6 +16331,38 @@ export default function DashboardShell({
             <i className="bx bx-pulse"></i>
             {!isSidebarCollapsed && 'Controle da Operação'}
           </button>
+          {/* PAC sub-menu group */}
+          <button
+            type="button"
+            data-tooltip="PAC"
+            aria-label="PAC"
+            className={`nav-item nav-button nav-group-trigger ${PAC_TABS.includes(activeTab) ? 'active' : ''}`}
+            onClick={() => setIsPacMenuOpen((v) => !v)}
+          >
+            <i className="bx bx-book-bookmark"></i>
+            {!isSidebarCollapsed && (
+              <>
+                <span style={{ flex: 1 }}>PAC</span>
+                <i className={`bx bx-chevron-${isPacMenuOpen ? 'up' : 'down'}`} style={{ fontSize: 16, marginLeft: 4 }}></i>
+              </>
+            )}
+          </button>
+          {isPacMenuOpen && !isSidebarCollapsed && (
+            <div className="nav-sub-group">
+              <button type="button" className={`nav-item nav-button nav-sub-item ${activeTab === 'pac-dash' ? 'active' : ''}`} onClick={() => setActiveTab('pac-dash')}>
+                <i className="bx bx-bar-chart-alt-2"></i>
+                {!isSidebarCollapsed && 'Painel'}
+              </button>
+              <button type="button" className={`nav-item nav-button nav-sub-item ${activeTab === 'pac-calendario' ? 'active' : ''}`} onClick={() => setActiveTab('pac-calendario')}>
+                <i className="bx bx-calendar-alt"></i>
+                {!isSidebarCollapsed && 'Calendário'}
+              </button>
+              <button type="button" className={`nav-item nav-button nav-sub-item ${activeTab === 'pac-tipos' ? 'active' : ''}`} onClick={() => setActiveTab('pac-tipos')}>
+                <i className="bx bx-category"></i>
+                {!isSidebarCollapsed && 'Tipos'}
+              </button>
+            </div>
+          )}
           {/* Anúncios sub-menu group */}
           <button
             type="button"
@@ -18357,6 +18392,36 @@ export default function DashboardShell({
               clients={clients}
               isLightMode={isLightAppMode}
               defaultView="plans"
+            />
+          </section>
+        )}
+
+        {activeTab === 'pac-dash' && (
+          <section style={{ padding: '16px 20px', height: '100%', boxSizing: 'border-box' }}>
+            <PACCalendar
+              clients={clients}
+              isLightMode={isLightAppMode}
+              defaultView="dash"
+            />
+          </section>
+        )}
+
+        {activeTab === 'pac-calendario' && (
+          <section style={{ padding: '16px 20px', height: '100%', boxSizing: 'border-box' }}>
+            <PACCalendar
+              clients={clients}
+              isLightMode={isLightAppMode}
+              defaultView="calendario"
+            />
+          </section>
+        )}
+
+        {activeTab === 'pac-tipos' && (
+          <section style={{ padding: '16px 20px', height: '100%', boxSizing: 'border-box' }}>
+            <PACCalendar
+              clients={clients}
+              isLightMode={isLightAppMode}
+              defaultView="tipos"
             />
           </section>
         )}
