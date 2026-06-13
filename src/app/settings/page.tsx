@@ -2911,7 +2911,6 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
               </div>
             </div>
           </div>
-        </div>
       </main>
 
       <style jsx>{`
