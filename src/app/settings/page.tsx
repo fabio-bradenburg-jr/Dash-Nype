@@ -2031,7 +2031,7 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
                         <span>Inteligência Artificial</span>
                       </button>
                     )}
-                    {canManageUsers && (
+                    {canManageClients && (
                       <button type="button" className={`settings-popup-nav-item ${activeSettingsTab === 'operation' ? 'active' : ''}`} onClick={() => handleSettingsTabChange('operation')}>
                         <i className="bx bx-pulse"></i>
                         <span>Operação</span>
