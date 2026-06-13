@@ -16331,15 +16331,15 @@ export default function DashboardShell({
           {/* Anúncios sub-menu group */}
           <button
             type="button"
-            data-tooltip="Anúncios"
-            aria-label="Anúncios"
+            data-tooltip="Performance"
+            aria-label="Performance"
             className={`nav-item nav-button nav-group-trigger ${ADS_TABS.includes(activeTab) ? 'active' : ''}`}
             onClick={() => setIsAdsMenuOpen((v) => !v)}
           >
             <i className="bx bx-bullseye"></i>
             {!isSidebarCollapsed && (
               <>
-                <span style={{ flex: 1 }}>Anúncios</span>
+                <span style={{ flex: 1 }}>Performance</span>
                 <i className={`bx bx-chevron-${isAdsMenuOpen ? 'up' : 'down'}`} style={{ fontSize: 16, marginLeft: 4 }}></i>
               </>
             )}
