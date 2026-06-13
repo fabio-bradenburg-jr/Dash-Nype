@@ -22202,9 +22202,9 @@ export default function DashboardShell({
           }
         }
 
-        /* Presentation page — same sidebar/layout as the rest of the app */
+        /* Presentation page — sidebar layout identical to the rest of the app */
         .dashboard-container[data-active-tab='apresentacao'] .sidebar {
-          width: 224px;
+          width: 220px;
           padding: 16px 10px;
           border-right: 1px solid rgba(190, 201, 191, 0.16);
           background: color-mix(in srgb, var(--app-bg-color, #0d1110) 88%, rgba(255,255,255,0.02)) !important;
@@ -22213,12 +22213,12 @@ export default function DashboardShell({
         }
 
         .dashboard-container[data-active-tab='apresentacao'] .sidebar.sidebar-collapsed {
-          width: 112px;
+          width: 72px;
         }
 
         .dashboard-container[data-active-tab='apresentacao'] .main-content {
-          margin-left: 224px;
-          width: calc(100% - 224px);
+          margin-left: 220px;
+          width: calc(100% - 220px);
           padding: 20px 24px 36px;
           box-sizing: border-box;
           min-height: 100vh;
@@ -22236,20 +22236,16 @@ export default function DashboardShell({
         }
 
         .dashboard-container[data-active-tab='apresentacao'] .sidebar :global(.nav-item) {
-          min-height: 36px;
-          padding: 0 10px;
-          border-radius: 8px;
           border: 1px solid transparent;
           color: rgba(241, 241, 241, 0.55);
           font-size: 13px;
           font-weight: 500;
           letter-spacing: 0;
           background: transparent;
-          gap: 9px;
         }
 
         .dashboard-container[data-active-tab='apresentacao'] .sidebar :global(.nav-item i) {
-          font-size: 18px;
+          font-size: 17px;
           color: rgba(241, 241, 241, 0.4);
         }
 
@@ -22289,12 +22285,12 @@ export default function DashboardShell({
         }
 
         .dashboard-container[data-active-tab='apresentacao'] .sidebar-collapsed {
-          width: 112px;
+          width: 72px;
         }
 
         .dashboard-container[data-active-tab='apresentacao'] .sidebar-collapsed .main-content {
-          margin-left: 112px;
-          width: calc(100% - 112px);
+          margin-left: 72px;
+          width: calc(100% - 72px);
         }
 
         .dashboard-container[data-active-tab='apresentacao'] .logo {
