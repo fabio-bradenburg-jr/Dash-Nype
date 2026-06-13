@@ -1275,6 +1275,7 @@ function normalizeClientStatus(client) {
 }
 
 function isClientActiveForDashboard(client) {
+  if (client?.isArchived) return false
   const normalizedStatus = normalizeClientStatus(client)
   return client?.dashboardEnabled !== false && (!normalizedStatus || normalizedStatus === 'ativo')
 }
@@ -3823,7 +3824,7 @@ export default function DashboardShell({
     })
   }, [activeClient?.id, activeClient?.manualCrmSummary])
   const operationEligibleClients = useMemo(
-    () => clients.filter((client) => client.operationEnabled !== false),
+    () => clients.filter((client) => !client.isArchived && client.operationEnabled !== false),
     [clients]
   )
   useEffect(() => {
@@ -6997,6 +6998,20 @@ export default function DashboardShell({
       await persistWorkspaceState({ clients: nextClients, clientGroups: nextClientGroups, activeClientId: nextActiveClientId })
     } catch (error) {
       alert(error.message || 'Cliente removido na tela, mas não foi possível atualizar o Supabase agora.')
+    }
+  }
+
+  const handleArchiveClient = async (clientId, archive) => {
+    if (!canEditClientRecord(clientId)) return
+    setClients((current) => current.map((c) => c.id === clientId ? { ...c, isArchived: archive } : c))
+    try {
+      await fetch(`/api/clients/${clientId}/archive`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_archived: archive }),
+      })
+    } catch (err) {
+      console.error('Erro ao arquivar cliente', err)
     }
   }
 
@@ -18387,6 +18402,7 @@ export default function DashboardShell({
 
                 {clients
                   .filter((client) => {
+                    if (client.isArchived) return false
                     const query = clientSearch.trim().toLowerCase()
                     if (!query) return true
                     return [client.name, client.cnpj, client.metaAdAccountId, client.agendorAccountId]
@@ -18439,19 +18455,31 @@ export default function DashboardShell({
                             <small>{metaAccount?.name || client.metaAdAccountId || client.cnpj || 'Sem conta de anúncio selecionada'}</small>
                           </span>
                         </button>
-                        <label className="simple-client-status-select" title="Status do cliente">
-                          <span>Status</span>
-                          <select
-                            value={['Ativo', 'Pausado', 'Churn'].includes(client.status) ? client.status : 'Ativo'}
-                            onChange={(event) => handleClientInlineFieldChange(client.id, 'status', event.target.value)}
-                            disabled={!canEditClientRecord(client.id)}
-                            aria-label={`Status de ${client.name}`}
-                          >
-                            <option value="Ativo">Ativo</option>
-                            <option value="Pausado">Pausado</option>
-                            <option value="Churn">Churn</option>
-                          </select>
-                        </label>
+                        <div className="simple-client-status-col">
+                          <label className="simple-client-status-select" title="Status do cliente">
+                            <span>Status</span>
+                            <select
+                              value={['Ativo', 'Pausado', 'Churn'].includes(client.status) ? client.status : 'Ativo'}
+                              onChange={(event) => handleClientInlineFieldChange(client.id, 'status', event.target.value)}
+                              disabled={!canEditClientRecord(client.id)}
+                              aria-label={`Status de ${client.name}`}
+                            >
+                              <option value="Ativo">Ativo</option>
+                              <option value="Pausado">Pausado</option>
+                              <option value="Churn">Churn</option>
+                            </select>
+                          </label>
+                          {isChurnClient && (
+                            <input
+                              type="date"
+                              className="simple-client-churn-date"
+                              value={client.churnDate || ''}
+                              onChange={(event) => handleClientInlineFieldChange(client.id, 'churnDate', event.target.value)}
+                              disabled={!canEditClientRecord(client.id)}
+                              title="Data do churn"
+                            />
+                          )}
+                        </div>
                         <span
                           className={'simple-client-health ' + (latestHealth ? 'active ' + (latestHealth.key || latestHealthRecord?.healthStatus || '') : 'empty')}
                           style={latestHealth ? { '--client-health-color': latestHealth.color } : undefined}
@@ -18468,28 +18496,86 @@ export default function DashboardShell({
                             <i className="bx bx-git-branch"></i>
                           </span>
                         </div>
-                        <button
-                          type="button"
-                          className="btn btn-secondary simple-client-edit"
-                          onClick={() => {
-                            setActiveClientId(client.id)
-                            setClientEditSection('geral')
-                            setIsEditClientModalOpen(true)
-                          }}
-                        >
-                          Editar
-                        </button>
+                        <div className="simple-client-actions">
+                          <button
+                            type="button"
+                            className="btn btn-secondary simple-client-edit"
+                            onClick={() => {
+                              setActiveClientId(client.id)
+                              setClientEditSection('geral')
+                              setIsEditClientModalOpen(true)
+                            }}
+                          >
+                            Editar
+                          </button>
+                          {canEditClientRecord(client.id) && (
+                            <button
+                              type="button"
+                              className="btn btn-ghost simple-client-archive"
+                              onClick={() => handleArchiveClient(client.id, true)}
+                              title="Arquivar cliente"
+                            >
+                              <i className="bx bx-archive-in"></i>
+                            </button>
+                          )}
+                        </div>
                       </div>
                     )
                   })}
               </div>
 
-              {!clients.length && (
+              {!clients.filter(c => !c.isArchived).length && (
                 <div className="empty-panel glass-item users-empty-state compact-empty-state">
                   <h3>Nenhum cliente cadastrado</h3>
                   <p>Crie um cliente e selecione a conta de anúncio da Meta para começar.</p>
                 </div>
               )}
+
+              {clients.some(c => c.isArchived) && (() => {
+                const archivedList = clients.filter(c => c.isArchived && (() => {
+                  const query = clientSearch.trim().toLowerCase()
+                  if (!query) return true
+                  return [c.name, c.cnpj].filter(Boolean).some(v => String(v).toLowerCase().includes(query))
+                })())
+                if (!archivedList.length) return null
+                return (
+                  <details className="archived-clients-section">
+                    <summary className="archived-clients-summary">
+                      <i className="bx bx-archive"></i>
+                      Arquivados ({archivedList.length})
+                    </summary>
+                    <div className="simple-client-list archived-client-list" role="table">
+                      {archivedList.map(client => (
+                        <div key={client.id} className="simple-client-row simple-client-row-archived" role="row">
+                          <span className="simple-client-name">
+                            <span className="simple-client-logo" aria-hidden="true">
+                              {client.logoUrl ? <img src={client.logoUrl} alt="" /> : <i className="bx bx-building-house"></i>}
+                            </span>
+                            <span className="simple-client-copy">
+                              <strong>{client.name}</strong>
+                              <small>{client.metaAdAccountId || client.cnpj || 'Arquivado'}</small>
+                            </span>
+                          </span>
+                          <span className="simple-client-archived-badge">Arquivado</span>
+                          <span />
+                          <span />
+                          <div className="simple-client-actions">
+                            {canEditClientRecord(client.id) && (
+                              <button
+                                type="button"
+                                className="btn btn-secondary simple-client-edit"
+                                onClick={() => handleArchiveClient(client.id, false)}
+                              >
+                                <i className="bx bx-archive-out"></i> Desarquivar
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </details>
+                )
+              })()}
             </div>
           </section>
         )}
@@ -33592,6 +33678,76 @@ export default function DashboardShell({
           color: var(--accent-blue);
         }
         .simple-client-edit { justify-self: end; }
+        .simple-client-actions {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          justify-self: end;
+        }
+        .simple-client-archive {
+          width: 36px;
+          height: 36px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          padding: 0;
+          border-radius: 10px;
+          border: 1px solid rgba(148,163,184,0.18);
+          background: transparent;
+          color: var(--muted-text);
+          cursor: pointer;
+          font-size: 1rem;
+        }
+        .simple-client-archive:hover { background: rgba(148,163,184,0.1); color: var(--text-primary); }
+        .simple-client-status-col {
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+          min-width: 0;
+        }
+        .simple-client-churn-date {
+          width: 100%;
+          min-height: 34px;
+          border: 1px solid rgba(148,163,184,0.2);
+          border-radius: 10px;
+          background: rgba(255,255,255,0.04);
+          color: var(--text-primary);
+          font: inherit;
+          font-size: 0.78rem;
+          padding: 0 10px;
+          outline: none;
+        }
+        .simple-client-churn-date:disabled { opacity: 0.6; cursor: not-allowed; }
+        .archived-clients-section {
+          margin-top: 12px;
+        }
+        .archived-clients-summary {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 10px 16px;
+          cursor: pointer;
+          font-size: 0.82rem;
+          font-weight: 700;
+          color: var(--muted-text);
+          border-radius: 12px;
+          border: 1px solid rgba(148,163,184,0.12);
+          background: rgba(255,255,255,0.02);
+          list-style: none;
+          user-select: none;
+        }
+        .archived-clients-summary:hover { background: rgba(255,255,255,0.04); color: var(--text-primary); }
+        .archived-client-list { margin-top: 8px; }
+        .simple-client-row-archived { opacity: 0.65; }
+        .simple-client-archived-badge {
+          display: inline-flex;
+          align-items: center;
+          font-size: 0.72rem;
+          font-weight: 700;
+          color: var(--muted-text);
+          letter-spacing: 0.06em;
+          text-transform: uppercase;
+        }
         .simple-client-modal {
           max-height: min(86vh, 920px);
           overflow-y: auto;

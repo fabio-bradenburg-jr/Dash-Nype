@@ -256,6 +256,7 @@ export interface ClientRecord {
   implementationObservation: string
   implementationChecklist: ClientChecklistItemRecord[]
   status: string
+  isArchived: boolean
   productId: string
   product: string
   okrs: ClientOkrRecord[]
