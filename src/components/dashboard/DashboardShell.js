@@ -13621,16 +13621,16 @@ export default function DashboardShell({
         /faturamento|taxa de convers|conversões totais|conversoes totais/i.test(String(metric?.title || metric?.label || ''))
       )
 
-      const drawPageBase = () => {
+      const drawPageBase = (withLogo = false) => {
         pdf.setFillColor(pageBackground)
         pdf.rect(0, 0, pageWidth, pageHeight, 'F')
-        if (logoDataUrl) {
+        if (withLogo && logoDataUrl) {
           pdf.addImage(logoDataUrl, 'PNG', pageWidth - margin - 42, 44, 38, 36)
         }
       }
 
       const drawTitle = () => {
-        drawPageBase()
+        drawPageBase(true)
         cursorY = 58
         pdf.setFont('helvetica', 'bold')
         pdf.setFontSize(24)
@@ -14075,7 +14075,8 @@ export default function DashboardShell({
         drawClientSectionTitle('Campanhas')
         drawClientCampaignTable(filteredCampaigns, campaignColumns)
 
-        if (hasRdConfigured) {
+        const hasCrmData = hasRdConfigured && rdAgendorFunnelKpis.some((m) => !m.hidden && m.value && m.value !== '-' && m.value !== '0')
+        if (hasCrmData) {
           drawClientSectionTitle(activeClientUsesManualCrm ? 'CRM manual' : crmSourceLabel)
           drawClientCrmFunnel()
         }
