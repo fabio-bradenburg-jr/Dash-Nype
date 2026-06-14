@@ -1,4 +1,4 @@
-export const USER_APPEARANCE_KEY_PREFIX = 'nype-user-appearance'
+export const USER_APPEARANCE_KEY_PREFIX = 'nype-appearance-v2'
 
 const LEGACY_GREEN_ACCENTS = ['#26c281', '#4fdf9b', '#006c44', '#0f766e', '#10b981', '#22c55e', '#16a34a', '#15803d', '#059669', '#34d399', '#6ee7b7']
 const MIGRATED_FLAG = 'nype-color-migrated-v3'
