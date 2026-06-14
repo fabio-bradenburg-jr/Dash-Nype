@@ -5005,7 +5005,7 @@ export default function DashboardShell({
     } catch (_) {
       setCampaignChartData((prev) => ({ ...prev, [chartKey]: [] }))
     }
-  }, [campaignChartData, campaignChartOpenKeys, metaRequestHeaders, dateRange, customSince, customUntil])
+  }, [campaignChartData, campaignChartOpenKeys, dateRange, customSince, customUntil])
 
   const renderCampaignChart = (chartKey) => {
     const isOpen = campaignChartOpenKeys[chartKey]
