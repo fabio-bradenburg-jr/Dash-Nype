@@ -1940,7 +1940,7 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
       </aside>
       )}
 
-      <main className={embeddedOverride ? "main-content settings-main settings-main-embedded" : "main-content settings-main"}>
+      <main className={embeddedOverride ? "settings-main settings-main-embedded" : "main-content settings-main"}>
         <div className="settings-workspace">
           {/* Always-visible two-panel layout */}
           <div className="settings-popup-overlay">
