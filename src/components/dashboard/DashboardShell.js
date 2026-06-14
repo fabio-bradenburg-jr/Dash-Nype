@@ -16375,6 +16375,12 @@ export default function DashboardShell({
             <i className="bx bx-search-alt"></i>
             {!isSidebarCollapsed && 'Busca'}
           </button>
+          {canAccessClientsTab && (
+            <button type="button" data-tooltip="Clientes" aria-label="Clientes" className={`nav-item nav-button ${activeTab === 'clientes' ? 'active' : ''}`} onClick={() => setActiveTab('clientes')}>
+              <i className="bx bxs-buildings"></i>
+              {!isSidebarCollapsed && 'Clientes'}
+            </button>
+          )}
           <button type="button" data-tooltip="Notas" aria-label="Notas" className={`nav-item nav-button ${activeTab === 'notas' ? 'active' : ''}`} onClick={() => setActiveTab('notas')}>
             <i className="bx bx-note"></i>
             {!isSidebarCollapsed && 'Notas'}
