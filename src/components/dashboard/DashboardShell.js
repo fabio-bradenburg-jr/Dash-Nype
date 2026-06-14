@@ -90,8 +90,8 @@ const DEFAULT_WORKSPACE_BRANDING = {
   companyName: 'Assessoria LP',
   logoUrl: '',
   mode: 'light',
-  primaryColor: '#26C281',
-  accentColor: '#4FDF9B',
+  primaryColor: '#e53935',
+  accentColor: '#ef5350',
   backgroundColor: '#070908',
   panelColor: '#121817',
   textColor: '#F4F7F5',
@@ -16736,11 +16736,11 @@ export default function DashboardShell({
                   </div>
                   <div className="input-group">
                     <label>Cor principal</label>
-                    <input type="color" value={brandingForm.primaryColor || '#26C281'} onChange={(event) => setBrandingForm((current) => ({ ...current, primaryColor: event.target.value, accentColor: event.target.value }))} />
+                    <input type="color" value={brandingForm.primaryColor || '#e53935'} onChange={(event) => setBrandingForm((current) => ({ ...current, primaryColor: event.target.value, accentColor: event.target.value }))} />
                   </div>
                   <div className="input-group">
                     <label>Detalhes</label>
-                    <input type="color" value={brandingForm.accentColor || '#26C281'} onChange={(event) => setBrandingForm((current) => ({ ...current, accentColor: event.target.value }))} />
+                    <input type="color" value={brandingForm.accentColor || '#ef5350'} onChange={(event) => setBrandingForm((current) => ({ ...current, accentColor: event.target.value }))} />
                   </div>
                   <div className="input-group">
                     <label>Fundo</label>
