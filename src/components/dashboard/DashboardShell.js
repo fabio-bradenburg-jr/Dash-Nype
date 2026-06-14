@@ -3304,6 +3304,7 @@ export default function DashboardShell({
   const [newClientDashboardEnabled, setNewClientDashboardEnabled] = useState(true)
   const [newClientDashboardIntegrationKeys, setNewClientDashboardIntegrationKeys] = useState(DEFAULT_CLIENT_DASHBOARD_INTEGRATION_KEYS)
   const [newClientManualCrmEnabled, setNewClientManualCrmEnabled] = useState(false)
+  const [newClientEcommerceEnabled, setNewClientEcommerceEnabled] = useState(false)
   const [newClientOperationLane, setNewClientOperationLane] = useState(resolveOperationLaneFromSalesModel('INSIDE_SALES'))
   const [newClientGroupName, setNewClientGroupName] = useState('')
   const [newClientMetaAdAccountId, setNewClientMetaAdAccountId] = useState('')
@@ -3425,6 +3426,10 @@ export default function DashboardShell({
     wonOpportunityCount: '',
     lostOpportunityCount: '',
     wonRevenue: '',
+    ecommerceCartCount: '',
+    ecommerceCheckoutCount: '',
+    ecommerceOrderCount: '',
+    ecommerceRevenue: '',
   })
   const [googleSheetsSummary, setGoogleSheetsSummary] = useState(null)
   const [googleSheetsError, setGoogleSheetsError] = useState('')
@@ -3651,6 +3656,7 @@ export default function DashboardShell({
     [clients, activeClientId]
   )
   const activeClientUsesManualCrm = String(activeClient?.crmProvider || '').trim().toLowerCase() === 'manual'
+  const activeClientUsesEcommerce = Boolean(activeClient?.ecommerceEnabled)
   const activeClientManualCrmSummary = useMemo(
     () => buildManualCrmSummary(activeClient?.manualCrmSummary || {}, insights),
     [activeClient?.manualCrmSummary, insights]
@@ -3824,6 +3830,10 @@ export default function DashboardShell({
       wonOpportunityCount: String(manual.wonOpportunityCount ?? ''),
       lostOpportunityCount: String(manual.lostOpportunityCount ?? ''),
       wonRevenue: String(manual.wonRevenue ?? ''),
+      ecommerceCartCount: String(manual.ecommerceCartCount ?? ''),
+      ecommerceCheckoutCount: String(manual.ecommerceCheckoutCount ?? ''),
+      ecommerceOrderCount: String(manual.ecommerceOrderCount ?? ''),
+      ecommerceRevenue: String(manual.ecommerceRevenue ?? ''),
     })
   }, [activeClient?.id, activeClient?.manualCrmSummary])
   const operationEligibleClients = useMemo(
@@ -6947,6 +6957,7 @@ export default function DashboardShell({
       dashboardEnabled: true,
       crmProvider: newClientManualCrmEnabled ? 'manual' : '',
       manualCrmSummary: newClientManualCrmEnabled ? {} : undefined,
+      ecommerceEnabled: newClientEcommerceEnabled || undefined,
       dashboardVisibleIntegrationKeys: normalizedDashboardIntegrationKeys,
       salesModel: '',
       implementationPhase: '',
@@ -10835,6 +10846,10 @@ export default function DashboardShell({
       wonOpportunityCount: normalizeManualCrmInput(manualCrmForm.wonOpportunityCount),
       lostOpportunityCount: normalizeManualCrmInput(manualCrmForm.lostOpportunityCount),
       wonRevenue: normalizeManualCrmInput(manualCrmForm.wonRevenue),
+      ecommerceCartCount: normalizeManualCrmInput(manualCrmForm.ecommerceCartCount),
+      ecommerceCheckoutCount: normalizeManualCrmInput(manualCrmForm.ecommerceCheckoutCount),
+      ecommerceOrderCount: normalizeManualCrmInput(manualCrmForm.ecommerceOrderCount),
+      ecommerceRevenue: normalizeManualCrmInput(manualCrmForm.ecommerceRevenue),
     }
 
     setIsSavingManualCrm(true)
@@ -14079,6 +14094,80 @@ export default function DashboardShell({
         if (hasCrmData) {
           drawClientSectionTitle(activeClientUsesManualCrm ? 'CRM manual' : crmSourceLabel)
           drawClientCrmFunnel()
+        }
+
+        const ecommerceSummary = activeClient?.manualCrmSummary || {}
+        const eCart = Number(ecommerceSummary.ecommerceCartCount) || 0
+        const eCheckout = Number(ecommerceSummary.ecommerceCheckoutCount) || 0
+        const eOrders = Number(ecommerceSummary.ecommerceOrderCount) || 0
+        const eRevenue = Number(ecommerceSummary.ecommerceRevenue) || 0
+        const hasEcommerceData = activeClientUsesEcommerce && (eCart > 0 || eCheckout > 0 || eOrders > 0 || eRevenue > 0)
+        if (hasEcommerceData) {
+          const metaInv = Number(insights?.totalInvestment || 0)
+          const eCartToCheckout = eCart > 0 ? ((eCheckout / eCart) * 100).toFixed(1) + '%' : '-'
+          const eCheckoutToSale = eCheckout > 0 ? ((eOrders / eCheckout) * 100).toFixed(1) + '%' : '-'
+          const eCartToSale = eCart > 0 ? ((eOrders / eCart) * 100).toFixed(1) + '%' : '-'
+          const eRoas = metaInv > 0 && eRevenue > 0 ? (eRevenue / metaInv).toFixed(2) + 'x' : '-'
+          const formatBRL = (v) => v > 0 ? 'R$ ' + v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-'
+
+          drawClientSectionTitle('E-commerce')
+          addPageIfNeeded(160)
+
+          const funnelSteps = [
+            { title: 'Carrinho', value: eCart > 0 ? String(eCart) : '-', note: 'Adição ao carrinho' },
+            { title: 'Checkout', value: eCheckout > 0 ? String(eCheckout) : '-', note: 'Checkout iniciado', rate: eCartToCheckout },
+            { title: 'Vendas', value: eOrders > 0 ? String(eOrders) : '-', note: 'Pedidos confirmados', rate: eCheckoutToSale },
+          ]
+          const stepW = (pageWidth - margin * 2 - 16 * (funnelSteps.length - 1)) / funnelSteps.length
+          const stepH = 82
+          funnelSteps.forEach((step, i) => {
+            const sx = margin + i * (stepW + 16)
+            pdf.setFillColor('#1a1f2e')
+            pdf.setDrawColor(panelBorder)
+            pdf.roundedRect(sx, cursorY, stepW, stepH, 8, 8, 'FD')
+            pdf.setFont('helvetica', 'bold')
+            pdf.setFontSize(7)
+            pdf.setTextColor(brandGreen)
+            pdf.text(step.title.toUpperCase(), sx + 12, cursorY + 18)
+            pdf.setFont('helvetica', 'bold')
+            pdf.setFontSize(20)
+            pdf.setTextColor(textMain)
+            pdf.text(step.value, sx + 12, cursorY + 38)
+            pdf.setFont('helvetica', 'normal')
+            pdf.setFontSize(9)
+            pdf.setTextColor(textMuted)
+            pdf.text(step.note, sx + 12, cursorY + 52)
+            if (step.rate && step.rate !== '-') {
+              pdf.setFontSize(8)
+              pdf.setTextColor(brandGreen)
+              pdf.text('Taxa: ' + step.rate, sx + 12, cursorY + 66)
+            }
+          })
+          cursorY += stepH + 18
+
+          const rateCards = [
+            { title: 'Conversão geral', value: eCartToSale },
+            { title: 'ROAS E-commerce', value: eRoas },
+            { title: 'Valor vendido', value: formatBRL(eRevenue) },
+          ]
+          addPageIfNeeded(72)
+          const rcW = (pageWidth - margin * 2 - 12 * (rateCards.length - 1)) / rateCards.length
+          const rcH = 60
+          rateCards.forEach((rc, i) => {
+            const rx = margin + i * (rcW + 12)
+            pdf.setFillColor('#1a1f2e')
+            pdf.setDrawColor(panelBorder)
+            pdf.roundedRect(rx, cursorY, rcW, rcH, 8, 8, 'FD')
+            pdf.setFont('helvetica', 'bold')
+            pdf.setFontSize(7)
+            pdf.setTextColor(brandGreen)
+            pdf.text(rc.title.toUpperCase(), rx + 12, cursorY + 18)
+            pdf.setFont('helvetica', 'bold')
+            pdf.setFontSize(16)
+            pdf.setTextColor(textMain)
+            pdf.text(String(rc.value), rx + 12, cursorY + 40)
+          })
+          cursorY += rcH + 18
         }
 
         if (format === 'client-pdf-save') {
@@ -18756,6 +18845,25 @@ export default function DashboardShell({
                     </label>
                   </div>
 
+                  <div className="integration-block manual-crm-toggle-block">
+                    <label className={'manual-crm-toggle ' + (activeClientUsesEcommerce ? 'active' : '')}>
+                      <input type="checkbox" checked={activeClientUsesEcommerce} onChange={async (event) => {
+                        if (!activeClient?.id || !canEditActiveClient) return
+                        await fetch(`/api/saas/clients/${activeClient.id}`, {
+                          method: 'PUT',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ ecommerceEnabled: event.target.checked, business_data: { ecommerceEnabled: event.target.checked } }),
+                        })
+                        setClients((prev) => prev.map((c) => c.id === activeClient.id ? { ...c, ecommerceEnabled: event.target.checked } : c))
+                      }} disabled={!canEditActiveClient} />
+                      <span className="manual-crm-switch" aria-hidden="true"></span>
+                      <span>
+                        <strong>E-commerce</strong>
+                        <small>Ative para preencher funil de e-commerce: adição ao carrinho, checkout, vendas e valor vendido com taxas de quebra automáticas.</small>
+                      </span>
+                    </label>
+                  </div>
+
                   {!activeClientUsesManualCrm && <div className="integration-block agendor-integration-block">
                     <div className="integration-heading">
                       <div className="integration-icon" style={{ color: '#f97316', borderColor: '#f9731633' }}>
@@ -19248,6 +19356,17 @@ export default function DashboardShell({
                           <span>
                             <strong>CRM manual</strong>
                             <small>Ligue para preencher oportunidades, qualificados, vendas e valor vendido nos cards do dashboard.</small>
+                          </span>
+                        </label>
+                      </div>
+
+                      <div className="integration-block client-create-integration-card manual-crm-create-card">
+                        <label className={'manual-crm-toggle ' + (newClientEcommerceEnabled ? 'active' : '')}>
+                          <input type="checkbox" checked={newClientEcommerceEnabled} onChange={(event) => setNewClientEcommerceEnabled(event.target.checked)} disabled={!isMaster} />
+                          <span className="manual-crm-switch" aria-hidden="true"></span>
+                          <span>
+                            <strong>E-commerce</strong>
+                            <small>Ative para preencher funil de e-commerce: adição ao carrinho, checkout, vendas e valor vendido com taxas de quebra automáticas.</small>
                           </span>
                         </label>
                       </div>
@@ -20743,34 +20862,77 @@ export default function DashboardShell({
               </div>
 
               <form className="client-editor-card modal-client-editor" onSubmit={handleSaveManualCrm}>
-                <div className="client-form-grid client-form-grid-2">
-                  <div className="input-group">
-                    <label>Oportunidades</label>
-                    <input type="number" min="0" value={manualCrmForm.opportunityCount} onChange={(event) => setManualCrmForm((current) => ({ ...current, opportunityCount: event.target.value }))} placeholder="0" />
-                  </div>
-                  <div className="input-group">
-                    <label>Qualificados</label>
-                    <input type="number" min="0" value={manualCrmForm.qualifiedOpportunityCount} onChange={(event) => setManualCrmForm((current) => ({ ...current, qualifiedOpportunityCount: event.target.value }))} placeholder="0" />
-                  </div>
-                  <div className="input-group">
-                    <label>Vendas</label>
-                    <input type="number" min="0" value={manualCrmForm.wonOpportunityCount} onChange={(event) => setManualCrmForm((current) => ({ ...current, wonOpportunityCount: event.target.value }))} placeholder="0" />
-                  </div>
-                </div>
-
-                <div className="input-group">
-                  <label>Valor vendido</label>
-                  <input type="number" min="0" step="0.01" value={manualCrmForm.wonRevenue} onChange={(event) => setManualCrmForm((current) => ({ ...current, wonRevenue: event.target.value }))} placeholder="0,00" />
-                  <span className="field-helper">O ROAS comercial será calculado automaticamente com base no investimento Meta do período selecionado.</span>
-                </div>
+                {activeClientUsesEcommerce ? (() => {
+                  const cart = Number(manualCrmForm.ecommerceCartCount) || 0
+                  const checkout = Number(manualCrmForm.ecommerceCheckoutCount) || 0
+                  const orders = Number(manualCrmForm.ecommerceOrderCount) || 0
+                  const revenue = Number(manualCrmForm.ecommerceRevenue) || 0
+                  const cartToCheckout = cart > 0 ? ((checkout / cart) * 100).toFixed(1) : null
+                  const checkoutToSale = checkout > 0 ? ((orders / checkout) * 100).toFixed(1) : null
+                  const cartToSale = cart > 0 ? ((orders / cart) * 100).toFixed(1) : null
+                  const metaInvestment = Number(insights?.totalInvestment || insights?.investment || 0)
+                  const roas = metaInvestment > 0 && revenue > 0 ? (revenue / metaInvestment).toFixed(2) : null
+                  return (
+                    <>
+                      <div className="client-form-grid client-form-grid-2">
+                        <div className="input-group">
+                          <label>Adição ao carrinho</label>
+                          <input type="number" min="0" value={manualCrmForm.ecommerceCartCount} onChange={(event) => setManualCrmForm((current) => ({ ...current, ecommerceCartCount: event.target.value }))} placeholder="0" />
+                        </div>
+                        <div className="input-group">
+                          <label>Checkout iniciado</label>
+                          <input type="number" min="0" value={manualCrmForm.ecommerceCheckoutCount} onChange={(event) => setManualCrmForm((current) => ({ ...current, ecommerceCheckoutCount: event.target.value }))} placeholder="0" />
+                        </div>
+                        <div className="input-group">
+                          <label>Vendas (pedidos)</label>
+                          <input type="number" min="0" value={manualCrmForm.ecommerceOrderCount} onChange={(event) => setManualCrmForm((current) => ({ ...current, ecommerceOrderCount: event.target.value }))} placeholder="0" />
+                        </div>
+                        <div className="input-group">
+                          <label>Valor vendido (R$)</label>
+                          <input type="number" min="0" step="0.01" value={manualCrmForm.ecommerceRevenue} onChange={(event) => setManualCrmForm((current) => ({ ...current, ecommerceRevenue: event.target.value }))} placeholder="0,00" />
+                        </div>
+                      </div>
+                      {(cartToCheckout || checkoutToSale || cartToSale || roas) && (
+                        <div className="ecommerce-funnel-rates">
+                          {cartToCheckout && <div className="funnel-rate-pill"><span className="funnel-rate-label">Carrinho → Checkout</span><strong>{cartToCheckout}%</strong></div>}
+                          {checkoutToSale && <div className="funnel-rate-pill"><span className="funnel-rate-label">Checkout → Venda</span><strong>{checkoutToSale}%</strong></div>}
+                          {cartToSale && <div className="funnel-rate-pill"><span className="funnel-rate-label">Conversão geral</span><strong>{cartToSale}%</strong></div>}
+                          {roas && <div className="funnel-rate-pill funnel-rate-highlight"><span className="funnel-rate-label">ROAS</span><strong>{roas}x</strong></div>}
+                        </div>
+                      )}
+                    </>
+                  )
+                })() : (
+                  <>
+                    <div className="client-form-grid client-form-grid-2">
+                      <div className="input-group">
+                        <label>Oportunidades</label>
+                        <input type="number" min="0" value={manualCrmForm.opportunityCount} onChange={(event) => setManualCrmForm((current) => ({ ...current, opportunityCount: event.target.value }))} placeholder="0" />
+                      </div>
+                      <div className="input-group">
+                        <label>Qualificados</label>
+                        <input type="number" min="0" value={manualCrmForm.qualifiedOpportunityCount} onChange={(event) => setManualCrmForm((current) => ({ ...current, qualifiedOpportunityCount: event.target.value }))} placeholder="0" />
+                      </div>
+                      <div className="input-group">
+                        <label>Vendas</label>
+                        <input type="number" min="0" value={manualCrmForm.wonOpportunityCount} onChange={(event) => setManualCrmForm((current) => ({ ...current, wonOpportunityCount: event.target.value }))} placeholder="0" />
+                      </div>
+                    </div>
+                    <div className="input-group">
+                      <label>Valor vendido</label>
+                      <input type="number" min="0" step="0.01" value={manualCrmForm.wonRevenue} onChange={(event) => setManualCrmForm((current) => ({ ...current, wonRevenue: event.target.value }))} placeholder="0,00" />
+                      <span className="field-helper">O ROAS comercial será calculado automaticamente com base no investimento Meta do período selecionado.</span>
+                    </div>
+                  </>
+                )}
 
                 <div className="client-editor-header">
                   <div>
                     <h3>Salvar no dashboard</h3>
-                    <p>Esses valores entram no mesmo visual do CRM e recalculam as taxas automaticamente.</p>
+                    <p>Esses valores entram no mesmo visual do {activeClientUsesEcommerce ? 'e-commerce' : 'CRM'} e recalculam as taxas automaticamente.</p>
                   </div>
                   <button type="submit" className="btn btn-primary" disabled={isSavingManualCrm}>
-                    {isSavingManualCrm ? 'Salvando...' : 'Salvar dados manuais'}
+                    {isSavingManualCrm ? 'Salvando...' : 'Salvar dados'}
                   </button>
                 </div>
               </form>
@@ -33926,6 +34088,47 @@ export default function DashboardShell({
 
         .client-dashboard-color-control input[type="color"]::-webkit-color-swatch-wrapper {
           padding: 0;
+        }
+
+        .ecommerce-funnel-rates {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px;
+          padding: 12px;
+          background: rgba(var(--accent-rgb), 0.06);
+          border: 1px solid rgba(var(--accent-rgb), 0.14);
+          border-radius: 12px;
+          margin-bottom: 4px;
+        }
+        .funnel-rate-pill {
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+          padding: 8px 14px;
+          background: rgba(255,255,255,0.04);
+          border: 1px solid rgba(255,255,255,0.07);
+          border-radius: 10px;
+          flex: 1;
+          min-width: 120px;
+        }
+        .funnel-rate-highlight {
+          border-color: rgba(var(--accent-rgb), 0.3);
+          background: rgba(var(--accent-rgb), 0.08);
+        }
+        .funnel-rate-label {
+          font-size: 11px;
+          color: var(--text-muted);
+          font-weight: 500;
+          text-transform: uppercase;
+          letter-spacing: 0.04em;
+        }
+        .funnel-rate-pill strong {
+          font-size: 18px;
+          font-weight: 700;
+          color: var(--text-primary);
+        }
+        .funnel-rate-highlight strong {
+          color: var(--button-primary);
         }
 
         .manual-crm-toggle-block {
