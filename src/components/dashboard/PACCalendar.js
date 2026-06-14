@@ -8,7 +8,7 @@ const WEEKDAYS = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb']
 
 const STATUS_META = {
   agendado:  { label: 'Agendado',  color: '#3b82f6', bg: 'rgba(59,130,246,0.13)',  icon: 'bx-calendar-check' },
-  realizado: { label: 'Realizado', color: '#e53935', bg: 'rgba(229,57,53,0.13)',   icon: 'bx-check-circle' },
+  realizado: { label: 'Realizado', color: '#22c55e', bg: 'rgba(34,197,94,0.13)',    icon: 'bx-check-circle' },
   cancelado: { label: 'Cancelado', color: '#ef4444', bg: 'rgba(239,68,68,0.13)',   icon: 'bx-x-circle' },
 }
 
@@ -646,7 +646,7 @@ export default function PACCalendar({ clients = [], isLightMode = false, default
               { num: todayTrainings.length,  lbl: 'Hoje',      color: '#6366f1', icon: 'bx-calendar-event' },
               { num: weekTrainings.length,   lbl: 'Esta semana', color: '#3b82f6', icon: 'bx-calendar-week' },
               { num: upcoming.length,        lbl: 'Agendados',  color: '#f59e0b', icon: 'bx-time-five' },
-              { num: completedCount,         lbl: 'Realizados', color: '#e53935', icon: 'bx-check-circle' },
+              { num: completedCount,         lbl: 'Realizados', color: '#22c55e', icon: 'bx-check-circle' },
             ].map(({ num, lbl, color, icon }) => (
               <div key={lbl} className="pac-summary-card">
                 <i className={`bx ${icon}`} style={{ fontSize: 22, color, marginBottom: 6 }}></i>

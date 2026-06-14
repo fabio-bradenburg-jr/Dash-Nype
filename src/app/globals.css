@@ -37,7 +37,7 @@
     --accent-purple: #8b5cf6;
     --accent-cyan: var(--accent-blue);
 
-    --accent-emerald: #ef5350;
+    --accent-emerald: #22c55e;
     --accent-orange: #f97316;
     --accent-red: #ff3b30;
     --accent-gold: #ffd60a;
@@ -2147,8 +2147,8 @@ textarea:focus {
 }
 
 .weekly-dashboard-panel .weekly-risk-badge.healthy {
-    border-color: rgba(var(--accent-rgb), 0.34) !important;
-    background: color-mix(in srgb, var(--weekly-accent) 10%, rgba(255, 255, 255, 0.035)) !important;
+    border-color: rgba(34, 197, 94, 0.34) !important;
+    background: rgba(34, 197, 94, 0.1) !important;
 }
 
 .weekly-dashboard-panel .weekly-risk-badge.critical {

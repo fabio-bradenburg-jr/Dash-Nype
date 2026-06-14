@@ -34643,9 +34643,9 @@ export default function DashboardShell({
           line-height: 1;
         }
 
-        .weekly-risk-badge.healthy {
-          border-color: rgba(var(--accent-rgb, 229, 57, 53), 0.28);
-          background: rgba(var(--accent-rgb, 229, 57, 53), 0.08);
+                .weekly-risk-badge.healthy {
+          border-color: rgba(34, 197, 94, 0.28);
+          background: rgba(34, 197, 94, 0.08);
         }
 
         .weekly-risk-badge.critical {

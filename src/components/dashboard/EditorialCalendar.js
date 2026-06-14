@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 const STATUSES = [
   { value: 'pending',   label: 'Pendente',   color: '#f59e0b', bg: 'rgba(245,158,11,0.12)',  icon: 'bx-time-five' },
   { value: 'scheduled', label: 'Agendado',   color: '#3b82f6', bg: 'rgba(59,130,246,0.12)', icon: 'bx-calendar-check' },
-  { value: 'published', label: 'Publicado',  color: '#e53935', bg: 'rgba(229,57,53,0.12)',  icon: 'bx-check-circle' },
+  { value: 'published', label: 'Publicado',  color: '#22c55e', bg: 'rgba(34,197,94,0.12)',   icon: 'bx-check-circle' },
   { value: 'cancelled', label: 'Cancelado',  color: '#ef4444', bg: 'rgba(239,68,68,0.12)',  icon: 'bx-x-circle' },
 ]
 
@@ -639,7 +639,7 @@ export default function EditorialCalendar({ clients = [], isLightMode = false, d
                       <div className="editorial-client-bar-pend" style={{ width: `${posts.length ? Math.round(c.pending / posts.length * 100) : 0}%` }} title={`${c.pending} pendentes`} />
                     </div>
                     <div className="editorial-client-chips">
-                      {c.published > 0 && <span style={{ color: '#e53935' }}><i className="bx bx-check-circle"></i>{c.published}</span>}
+                      {c.published > 0 && <span style={{ color: '#22c55e' }}><i className="bx bx-check-circle"></i>{c.published}</span>}
                       {c.scheduled > 0 && <span style={{ color: '#3b82f6' }}><i className="bx bx-calendar-check"></i>{c.scheduled}</span>}
                       {c.pending > 0 && <span style={{ color: '#f59e0b' }}><i className="bx bx-time-five"></i>{c.pending}</span>}
                       <span className="editorial-client-total">{c.total} total</span>
