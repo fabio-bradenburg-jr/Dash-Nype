@@ -6850,6 +6850,33 @@ export default function DashboardShell({
     })
   }
 
+  const handleToggleEcommerceForActiveClient = async (enabled) => {
+    if (!canEditActiveClient || !activeClient?.id) return
+    const nextClients = clients.map((c) =>
+      c.id === activeClient.id ? createClientRecord({ ...c, ecommerceEnabled: enabled }) : c
+    )
+    setClients(nextClients)
+    setIsSavingIntegrations(true)
+    try {
+      const response = await fetch(`/api/saas/clients/${activeClient.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ecommerceEnabled: enabled,
+          business_data: { ecommerceEnabled: enabled },
+        }),
+      })
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(data?.error || 'Não foi possível salvar.')
+      await persistWorkspaceState({ clients: nextClients, activeClientId })
+    } catch (error) {
+      alert(error?.message || 'Não foi possível salvar o modo e-commerce deste cliente.')
+      setClients(clients)
+    } finally {
+      setIsSavingIntegrations(false)
+    }
+  }
+
   const handleToggleManualCrmForActiveClient = async (enabled) => {
     if (!canEditActiveClient || !activeClient?.id) return
 
@@ -18853,15 +18880,7 @@ export default function DashboardShell({
 
                   <div className="integration-block manual-crm-toggle-block">
                     <label className={'manual-crm-toggle ' + (activeClientUsesEcommerce ? 'active' : '')}>
-                      <input type="checkbox" checked={activeClientUsesEcommerce} onChange={async (event) => {
-                        if (!activeClient?.id || !canEditActiveClient) return
-                        await fetch(`/api/saas/clients/${activeClient.id}`, {
-                          method: 'PUT',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ ecommerceEnabled: event.target.checked, business_data: { ecommerceEnabled: event.target.checked } }),
-                        })
-                        setClients((prev) => prev.map((c) => c.id === activeClient.id ? { ...c, ecommerceEnabled: event.target.checked } : c))
-                      }} disabled={!canEditActiveClient} />
+                      <input type="checkbox" checked={activeClientUsesEcommerce} onChange={(event) => handleToggleEcommerceForActiveClient(event.target.checked)} disabled={!canEditActiveClient} />
                       <span className="manual-crm-switch" aria-hidden="true"></span>
                       <span>
                         <strong>E-commerce</strong>
