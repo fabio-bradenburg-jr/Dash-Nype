@@ -199,9 +199,9 @@ body {
 }
 
 .saas-legacy-dashboard-frame {
-    --main: var(--saas-primary, #0f766e);
+    --main: var(--saas-primary, #e53935);
     --accent: var(--saas-accent, #f97316);
-    --accent-emerald: var(--saas-primary, #0f766e);
+    --accent-emerald: #22c55e;
     --accent-orange: var(--saas-accent, #f97316);
     --shell-sidebar: #020617;
     overflow: hidden;
@@ -270,7 +270,7 @@ body {
 
 .saas-legacy-dashboard-frame .btn.btn-primary,
 .saas-legacy-dashboard-frame .source-section-badge {
-    border-color: color-mix(in srgb, var(--saas-primary, #0f766e) 58%, white);
+    border-color: color-mix(in srgb, var(--saas-primary, #e53935) 58%, white);
 }
 
 @media (max-width: 1279px) {

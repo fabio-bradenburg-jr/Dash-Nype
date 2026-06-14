@@ -5495,7 +5495,7 @@ export default function DashboardShell({
       const pageWidth = pdf.internal.pageSize.getWidth()
       const pageHeight = pdf.internal.pageSize.getHeight()
       const margin = 32
-      const accent = activeClientDashboardHex || '#10b981'
+      const accent = activeClientDashboardHex || '#e53935'
       const tableColumns = [
         { key: 'Data', label: 'Data', width: 86 },
         { key: 'Cliente', label: 'Cliente', width: 110 },

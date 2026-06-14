@@ -816,7 +816,7 @@ export function DashboardShell({ snapshot }: { snapshot: PlatformSnapshot }) {
         agendorAccountIds: [],
         agendorQualifiedStageIds: [],
         manualCrm: createEmptyManualCrmForm(),
-        dashboardButtonColor: currentTheme.primaryColor || '#0f766e',
+        dashboardButtonColor: currentTheme.primaryColor || '#e53935',
         dashboardAccentColor: currentTheme.accentColor || '#f97316',
         logoUrl: '',
       })
