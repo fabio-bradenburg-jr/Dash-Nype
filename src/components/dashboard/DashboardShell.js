@@ -18009,41 +18009,43 @@ export default function DashboardShell({
 
                                 return (
                                   <div key={campaignKey} className="campaign-overview-tree-group">
-                                    <div className={'campaign-overview-tree-row campaign-overview-campaign-row' + (campaignChartOpenKeys[campaignKey] ? ' chart-open' : '')}>
-                                      <button type="button" className="campaign-overview-row-toggle" onClick={() => handleToggleCampaignOverviewCampaign(campaignKey)} aria-expanded={campaignExpanded}>
-                                        <span className="campaign-overview-row-title">
-                                          <strong>{campaign.name || 'Campanha sem nome'}</strong>
-                                          <small>{formatNumber(adsets.length)} conjunto(s)</small>
-                                        </span>
-                                        <span className="campaign-overview-metric">
-                                          <small>Investimento</small>
-                                          <strong>{formatCurrency(campaign.spend || 0)}</strong>
-                                        </span>
-                                        <span className="campaign-overview-metric">
-                                          <small>Resultados</small>
-                                          <strong>{formatNumber(campaign.results || 0)}</strong>
-                                        </span>
-                                        <span className="campaign-overview-metric">
-                                          <small>Custo/resultado</small>
-                                          <strong>{campaign.results > 0 ? formatCurrency((campaign.spend || 0) / campaign.results) : '—'}</strong>
-                                        </span>
-                                        <span className="campaign-overview-metric">
-                                          <small>Cliques</small>
-                                          <strong>{formatNumber(campaign.clicks || 0)}</strong>
-                                        </span>
-                                        <span className="campaign-overview-metric">
-                                          <small>Impressões</small>
-                                          <strong>{formatNumber(campaign.impressions || 0)}</strong>
-                                        </span>
-                                        <span className="campaign-overview-chevron">
-                                          <i className={'bx ' + (campaignExpanded ? 'bx-chevron-up' : 'bx-chevron-down')}></i>
-                                        </span>
-                                      </button>
-                                      <button type="button" className={'campaign-chart-toggle-btn' + (campaignChartOpenKeys[campaignKey] ? ' active' : '')} title="Ver gráfico de desempenho" onClick={(e) => handleToggleCampaignChart(campaignKey, campaign.campaignId, 'campaign', row.metaAdAccountId, e)}>
-                                        <i className="bx bx-bar-chart-alt-2"></i>
-                                      </button>
+                                    <div className={'campaign-overview-campaign-card' + (campaignChartOpenKeys[campaignKey] ? ' chart-open' : '')}>
+                                      <div className="campaign-overview-tree-row campaign-overview-campaign-row">
+                                        <button type="button" className="campaign-overview-row-toggle" onClick={() => handleToggleCampaignOverviewCampaign(campaignKey)} aria-expanded={campaignExpanded}>
+                                          <span className="campaign-overview-row-title">
+                                            <strong>{campaign.name || 'Campanha sem nome'}</strong>
+                                            <small>{formatNumber(adsets.length)} conjunto(s)</small>
+                                          </span>
+                                          <span className="campaign-overview-metric">
+                                            <small>Investimento</small>
+                                            <strong>{formatCurrency(campaign.spend || 0)}</strong>
+                                          </span>
+                                          <span className="campaign-overview-metric">
+                                            <small>Resultados</small>
+                                            <strong>{formatNumber(campaign.results || 0)}</strong>
+                                          </span>
+                                          <span className="campaign-overview-metric">
+                                            <small>Custo/resultado</small>
+                                            <strong>{campaign.results > 0 ? formatCurrency((campaign.spend || 0) / campaign.results) : '—'}</strong>
+                                          </span>
+                                          <span className="campaign-overview-metric">
+                                            <small>Cliques</small>
+                                            <strong>{formatNumber(campaign.clicks || 0)}</strong>
+                                          </span>
+                                          <span className="campaign-overview-metric">
+                                            <small>Impressões</small>
+                                            <strong>{formatNumber(campaign.impressions || 0)}</strong>
+                                          </span>
+                                          <span className="campaign-overview-chevron">
+                                            <i className={'bx ' + (campaignExpanded ? 'bx-chevron-up' : 'bx-chevron-down')}></i>
+                                          </span>
+                                        </button>
+                                        <button type="button" className={'campaign-chart-toggle-btn' + (campaignChartOpenKeys[campaignKey] ? ' active' : '')} title="Ver gráfico de desempenho" onClick={(e) => handleToggleCampaignChart(campaignKey, campaign.campaignId, 'campaign', row.metaAdAccountId, e)}>
+                                          <i className="bx bx-bar-chart-alt-2"></i>
+                                        </button>
+                                      </div>
+                                      {renderCampaignChart(campaignKey)}
                                     </div>
-                                    {renderCampaignChart(campaignKey)}
 
                                     {campaignExpanded ? (
                                       adsets.length ? (
@@ -18055,41 +18057,43 @@ export default function DashboardShell({
 
                                             return (
                                               <div key={adsetKey} className="campaign-overview-tree-group">
-                                                <div className={'campaign-overview-tree-row campaign-overview-adset-row' + (campaignChartOpenKeys[adsetKey] ? ' chart-open' : '')}>
-                                                  <button type="button" className="campaign-overview-row-toggle" onClick={() => handleToggleCampaignOverviewAdset(adsetKey)} aria-expanded={adsetExpanded}>
-                                                    <span className="campaign-overview-row-title">
-                                                      <strong>{adset.name || 'Conjunto sem nome'}</strong>
-                                                      <small>{formatNumber(ads.length)} anúncio(s)</small>
-                                                    </span>
-                                                    <span className="campaign-overview-metric">
-                                                      <small>Investimento</small>
-                                                      <strong>{formatCurrency(adset.spend || 0)}</strong>
-                                                    </span>
-                                                    <span className="campaign-overview-metric">
-                                                      <small>Resultados</small>
-                                                      <strong>{formatNumber(adset.results || 0)}</strong>
-                                                    </span>
-                                                    <span className="campaign-overview-metric">
-                                                      <small>Custo/resultado</small>
-                                                      <strong>{adset.results > 0 ? formatCurrency((adset.spend || 0) / adset.results) : '—'}</strong>
-                                                    </span>
-                                                    <span className="campaign-overview-metric">
-                                                      <small>Cliques</small>
-                                                      <strong>{formatNumber(adset.clicks || 0)}</strong>
-                                                    </span>
-                                                    <span className="campaign-overview-metric">
-                                                      <small>Impressões</small>
-                                                      <strong>{formatNumber(adset.impressions || 0)}</strong>
-                                                    </span>
-                                                    <span className="campaign-overview-chevron">
-                                                      <i className={'bx ' + (adsetExpanded ? 'bx-chevron-up' : 'bx-chevron-down')}></i>
-                                                    </span>
-                                                  </button>
-                                                  <button type="button" className={'campaign-chart-toggle-btn' + (campaignChartOpenKeys[adsetKey] ? ' active' : '')} title="Ver gráfico de desempenho" onClick={(e) => handleToggleCampaignChart(adsetKey, adset.adsetId, 'adset', row.metaAdAccountId, e)}>
-                                                    <i className="bx bx-bar-chart-alt-2"></i>
-                                                  </button>
+                                                <div className={'campaign-overview-adset-card' + (campaignChartOpenKeys[adsetKey] ? ' chart-open' : '')}>
+                                                  <div className="campaign-overview-tree-row campaign-overview-adset-row">
+                                                    <button type="button" className="campaign-overview-row-toggle" onClick={() => handleToggleCampaignOverviewAdset(adsetKey)} aria-expanded={adsetExpanded}>
+                                                      <span className="campaign-overview-row-title">
+                                                        <strong>{adset.name || 'Conjunto sem nome'}</strong>
+                                                        <small>{formatNumber(ads.length)} anúncio(s)</small>
+                                                      </span>
+                                                      <span className="campaign-overview-metric">
+                                                        <small>Investimento</small>
+                                                        <strong>{formatCurrency(adset.spend || 0)}</strong>
+                                                      </span>
+                                                      <span className="campaign-overview-metric">
+                                                        <small>Resultados</small>
+                                                        <strong>{formatNumber(adset.results || 0)}</strong>
+                                                      </span>
+                                                      <span className="campaign-overview-metric">
+                                                        <small>Custo/resultado</small>
+                                                        <strong>{adset.results > 0 ? formatCurrency((adset.spend || 0) / adset.results) : '—'}</strong>
+                                                      </span>
+                                                      <span className="campaign-overview-metric">
+                                                        <small>Cliques</small>
+                                                        <strong>{formatNumber(adset.clicks || 0)}</strong>
+                                                      </span>
+                                                      <span className="campaign-overview-metric">
+                                                        <small>Impressões</small>
+                                                        <strong>{formatNumber(adset.impressions || 0)}</strong>
+                                                      </span>
+                                                      <span className="campaign-overview-chevron">
+                                                        <i className={'bx ' + (adsetExpanded ? 'bx-chevron-up' : 'bx-chevron-down')}></i>
+                                                      </span>
+                                                    </button>
+                                                    <button type="button" className={'campaign-chart-toggle-btn' + (campaignChartOpenKeys[adsetKey] ? ' active' : '')} title="Ver gráfico de desempenho" onClick={(e) => handleToggleCampaignChart(adsetKey, adset.adsetId, 'adset', row.metaAdAccountId, e)}>
+                                                      <i className="bx bx-bar-chart-alt-2"></i>
+                                                    </button>
+                                                  </div>
+                                                  {renderCampaignChart(adsetKey)}
                                                 </div>
-                                                {renderCampaignChart(adsetKey)}
 
                                                 {adsetExpanded ? (
                                                   ads.length ? (
@@ -32909,29 +32913,44 @@ export default function DashboardShell({
           text-align: left;
         }
 
+        .campaign-overview-campaign-card {
+          border: 1px solid rgba(190, 201, 191, 0.14);
+          border-radius: 18px;
+          background:
+            linear-gradient(90deg, rgba(var(--accent-rgb, 229, 57, 53), 0.095), rgba(255, 255, 255, 0.018)),
+            rgba(255, 255, 255, 0.026);
+          overflow: hidden;
+          transition: border-color 0.2s ease;
+        }
+
+        .campaign-overview-campaign-card:hover {
+          border-color: rgba(129, 216, 167, 0.34);
+        }
+
+        .campaign-overview-adset-card {
+          border: 1px solid rgba(190, 201, 191, 0.14);
+          border-radius: 16px;
+          background: rgba(255, 255, 255, 0.026);
+          overflow: hidden;
+          transition: border-color 0.2s ease;
+        }
+
+        .campaign-overview-adset-card:hover {
+          border-color: rgba(129, 216, 167, 0.34);
+        }
+
         .campaign-overview-campaign-row,
         .campaign-overview-adset-row {
           grid-template-columns: minmax(240px, 1fr) repeat(5, minmax(100px, 0.4fr)) 38px;
           min-height: 72px;
           padding: 14px 16px;
-          border-radius: 18px;
-          background:
-            linear-gradient(90deg, rgba(var(--accent-rgb, 229, 57, 53), 0.095), rgba(255, 255, 255, 0.018)),
-            rgba(255, 255, 255, 0.026);
-          cursor: pointer;
-          transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+          border: none !important;
+          border-radius: 0;
+          background: transparent;
         }
 
         .campaign-overview-adset-row {
-          border-radius: 16px;
-          background: rgba(255, 255, 255, 0.026);
-        }
-
-        .campaign-overview-campaign-row:hover,
-        .campaign-overview-adset-row:hover {
-          transform: translateY(-1px);
-          border-color: rgba(129, 216, 167, 0.34);
-          background: rgba(var(--accent-rgb, 229, 57, 53), 0.07);
+          min-height: 64px;
         }
 
         .campaign-overview-row-title {
@@ -33059,11 +33078,8 @@ export default function DashboardShell({
         }
 
         .campaign-chart-panel {
-          margin-top: 8px;
-          border-radius: 14px;
-          border: 1px solid rgba(var(--accent-rgb, 229, 57, 53), 0.15);
+          border-top: 1px solid rgba(var(--accent-rgb, 229, 57, 53), 0.15);
           background: rgba(0, 0, 0, 0.08);
-          overflow: hidden;
         }
 
         .campaign-chart-header {
