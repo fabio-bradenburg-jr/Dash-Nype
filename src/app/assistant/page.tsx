@@ -907,6 +907,7 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
           height: 100%;
           display: flex;
           flex-direction: column;
+          padding-left: 20px;
         }
 
         .assistant-embedded-shell {
