@@ -129,6 +129,14 @@ const IMPLEMENTATION_PHASE_BY_SALES_MODEL = {
 function getDefaultClientImplementationPhases() {
   return DEFAULT_CLIENT_IMPLEMENTATION_PHASES.map((phase) => createClientImplementationPhaseRecord(phase))
 }
+const CAMPAIGN_CHART_METRICS = [
+  { key: 'results', label: 'Resultados' },
+  { key: 'spend', label: 'Investimento' },
+  { key: 'impressions', label: 'Impressões' },
+  { key: 'clicks', label: 'Cliques' },
+  { key: 'cpr', label: 'Custo/Resultado' },
+]
+
 const OPERATION_VIEW_OPTIONS = [
   { value: 'kanban', label: 'Kanban' },
   { value: 'table', label: 'Tabela' },
@@ -4968,14 +4976,6 @@ export default function DashboardShell({
         : [...current, adsetKey]
     )
   }, [])
-
-  const CAMPAIGN_CHART_METRICS = [
-    { key: 'results', label: 'Resultados' },
-    { key: 'spend', label: 'Investimento' },
-    { key: 'impressions', label: 'Impressões' },
-    { key: 'clicks', label: 'Cliques' },
-    { key: 'cpr', label: 'Custo/Resultado' },
-  ]
 
   const handleToggleCampaignChart = useCallback(async (chartKey, entityId, entityLevel, adAccountId, event) => {
     event.stopPropagation()
