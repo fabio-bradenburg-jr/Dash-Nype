@@ -1,7 +1,7 @@
 export const USER_APPEARANCE_KEY_PREFIX = 'nype-user-appearance'
 
-const LEGACY_GREEN_ACCENTS = ['#26c281', '#4fdf9b', '#006c44', '#0f766e', '#10b981']
-const MIGRATED_FLAG = 'nype-color-migrated-v2'
+const LEGACY_GREEN_ACCENTS = ['#26c281', '#4fdf9b', '#006c44', '#0f766e', '#10b981', '#22c55e', '#16a34a', '#15803d', '#059669', '#34d399', '#6ee7b7']
+const MIGRATED_FLAG = 'nype-color-migrated-v3'
 
 function migrateGreenToRed(appearance) {
   if (!appearance) return appearance
@@ -99,12 +99,12 @@ function hexToRgb(hex) {
 export function applyUserAppearance(appearance) {
   if (typeof document === 'undefined') return
 
-  const normalized = normalizeUserAppearance(appearance)
+  const normalized = normalizeUserAppearance(migrateGreenToRed(appearance) ?? appearance)
   const applied = normalized.mode === 'light'
     ? { ...normalized, accent: '#e53935', backgroundTint: '#fff5f5', panelColor: '#ffffff', textColor: '#1a0a0a' }
     : normalized.mode === 'dark'
       ? { ...normalized, ...DEFAULT_USER_APPEARANCE }
-      : normalized
+      : { ...normalized, accent: LEGACY_GREEN_ACCENTS.includes(normalized.accent) ? DEFAULT_USER_APPEARANCE.accent : normalized.accent }
   const uiMode = normalized.mode === 'light' ? 'light' : 'dark'
   const { r, g, b } = hexToRgb(applied.accent)
   const backgroundRgb = hexToRgb(applied.backgroundTint)
