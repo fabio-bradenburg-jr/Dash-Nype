@@ -5041,16 +5041,16 @@ export default function DashboardShell({
                 datasets: [{
                   label: metaConfig.label,
                   data: values,
-                  borderColor: 'var(--saas-primary, #e53935)',
-                  backgroundColor: 'rgba(229,57,53,0.18)',
-                  tension: 0.4,
+                  borderColor: '#ff1a1a',
+                  backgroundColor: 'rgba(255,26,26,0.15)',
+                  tension: 0,
                   fill: true,
                   pointRadius: 5,
-                  pointBackgroundColor: 'var(--saas-primary, #e53935)',
+                  pointBackgroundColor: '#ff1a1a',
                   pointBorderColor: '#fff',
                   pointBorderWidth: 2,
                   pointHoverRadius: 7,
-                  pointHoverBackgroundColor: 'var(--saas-primary, #e53935)',
+                  pointHoverBackgroundColor: '#ff1a1a',
                   pointHoverBorderColor: '#fff',
                   pointHoverBorderWidth: 2,
                 }],
@@ -33085,8 +33085,8 @@ export default function DashboardShell({
         }
 
         .campaign-chart-panel {
-          border-top: 1px solid rgba(var(--accent-rgb, 229, 57, 53), 0.15);
-          background: #0d0d0d;
+          border-top: 1px solid rgba(255, 26, 26, 0.2);
+          background: #050505;
           border-radius: 0 0 18px 18px;
           overflow: hidden;
         }
@@ -33138,7 +33138,7 @@ export default function DashboardShell({
         .campaign-chart-canvas {
           padding: 16px 8px 8px;
           height: 220px;
-          background: #0d0d0d;
+          background: #050505;
         }
 
         .campaign-chart-loading {
@@ -33146,7 +33146,7 @@ export default function DashboardShell({
           text-align: center;
           color: rgba(255, 255, 255, 0.4);
           font-size: 13px;
-          background: #0d0d0d;
+          background: #050505;
         }
 
         .client-form-grid-3 {
