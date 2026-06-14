@@ -243,7 +243,7 @@ const WEEKLY_HEALTH_OPTIONS = [
     key: 'healthy',
     label: 'Saudável',
     score: 3,
-    color: '#22c55e',
+    color: '#e53935',
     softColor: '#dcfce7',
     criteria: 'Meta atingida, feedbacks claros, sem riscos ou inconsistências no acompanhamento.',
   },
@@ -1450,7 +1450,7 @@ const META_RESULT_COMPARISON_OPTIONS = {
     resultLabel: 'Alcance',
     costLabel: 'Custo por alcance',
     resultTone: '#38bdf8',
-    costTone: '#22c55e',
+    costTone: '#e53935',
     icon: 'bx-radar',
   },
   truplays: {
@@ -5110,8 +5110,8 @@ export default function DashboardShell({
         {
           label: 'SQL',
           data: rows.map((row) => row.sql),
-          borderColor: '#22c55e',
-          backgroundColor: 'rgba(34, 197, 94, 0.12)',
+          borderColor: '#e53935',
+          backgroundColor: 'rgba(var(--accent-rgb, 229, 57, 53), 0.12)',
           tension: 0.35,
           yAxisID: 'volume',
         },
@@ -11819,7 +11819,7 @@ export default function DashboardShell({
             costLabel: resultConfig.costLabel,
             resultMetricKey: resultConfig.resultMetricKey,
             accent: '#38bdf8',
-            resultTone: '#22c55e',
+            resultTone: '#e53935',
             costTone: '#f59e0b',
             previewKicker: 'Estado',
             detailDescription: `Compare o estado selecionado com foco em ${resultLabel} para entender volume, eficiência e investimento.`,
@@ -11834,7 +11834,7 @@ export default function DashboardShell({
             costLabel: resultConfig.costLabel,
             resultMetricKey: resultConfig.resultMetricKey,
             accent: '#38bdf8',
-            resultTone: '#22c55e',
+            resultTone: '#e53935',
             costTone: '#f59e0b',
             previewKicker: breakdowns.geoScope === 'country'
               ? 'País'
@@ -13545,7 +13545,7 @@ export default function DashboardShell({
       const jsPdfModule = await import('jspdf')
       const JsPDF = jsPdfModule.default || jsPdfModule.jsPDF
       const pdf = new JsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' })
-      const logoDataUrl = await fetch('/assessoria-lp-logo.png')
+      const logoDataUrl = await fetch(appLogoUrl || '/assessoria-lp-logo.png')
         .then((response) => (response.ok ? response.blob() : null))
         .then((blob) => (
           blob
@@ -20399,7 +20399,7 @@ export default function DashboardShell({
                 {hasSheetsConfigured && (
                   <section className="source-section">
                     <div className="source-section-header">
-                      <div className="source-section-badge" style={{ color: '#22c55e', borderColor: '#22c55e' }}>
+                      <div className="source-section-badge" style={{ color: '#e53935', borderColor: '#e53935' }}>
                         <i className="bx bx-spreadsheet"></i>
                         <span>Google Sheets</span>
                       </div>
@@ -27221,13 +27221,13 @@ export default function DashboardShell({
         .ai-insight-chip-win {
           border-color: rgba(16, 185, 129, 0.28);
           background: rgba(16, 185, 129, 0.14);
-          color: #86efac;
+          color: #fca5a5;
         }
 
         .ai-insight-chip-positive {
           border-color: rgba(16, 185, 129, 0.28);
           background: rgba(16, 185, 129, 0.14);
-          color: #86efac;
+          color: #fca5a5;
         }
 
         .ai-insight-chip-attention {
@@ -27829,8 +27829,8 @@ export default function DashboardShell({
         }
 
         .client-fwo-chip.active {
-          border-color: rgba(34, 197, 94, 0.28);
-          background: rgba(34, 197, 94, 0.1);
+          border-color: rgba(var(--accent-rgb, 229, 57, 53), 0.28);
+          background: rgba(var(--accent-rgb, 229, 57, 53), 0.1);
           color: #dcfce7;
         }
 
@@ -27866,8 +27866,8 @@ export default function DashboardShell({
         }
 
         .client-okr-item.completed {
-          border-color: rgba(34, 197, 94, 0.28);
-          background: rgba(34, 197, 94, 0.08);
+          border-color: rgba(var(--accent-rgb, 229, 57, 53), 0.28);
+          background: rgba(var(--accent-rgb, 229, 57, 53), 0.08);
         }
 
         .client-okr-fields,
@@ -27895,7 +27895,7 @@ export default function DashboardShell({
         }
 
         .client-okr-action.ok {
-          color: #22c55e;
+          color: #e53935;
         }
 
         .client-okr-action.remove {
@@ -29235,7 +29235,7 @@ export default function DashboardShell({
         :root[data-ui-mode='light'] .management-stat-card-live {
           background:
             linear-gradient(180deg, rgba(240, 253, 244, 0.96), rgba(236, 253, 245, 0.98)) !important;
-          border-color: rgba(34, 197, 94, 0.16) !important;
+          border-color: rgba(var(--accent-rgb, 229, 57, 53), 0.16) !important;
         }
 
         :root[data-ui-mode='light'] .clients-metric-card-score,
@@ -34644,8 +34644,8 @@ export default function DashboardShell({
         }
 
         .weekly-risk-badge.healthy {
-          border-color: rgba(34, 197, 94, 0.28);
-          background: rgba(34, 197, 94, 0.08);
+          border-color: rgba(var(--accent-rgb, 229, 57, 53), 0.28);
+          background: rgba(var(--accent-rgb, 229, 57, 53), 0.08);
         }
 
         .weekly-risk-badge.critical {

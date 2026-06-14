@@ -140,7 +140,7 @@ const GLOBAL_INTEGRATION_GROUPS: IntegrationGroup[] = [
     title: 'LinkedIn Ads',
     description: 'Espaço reservado para a credencial central do LinkedIn Ads.',
     icon: 'bxl-linkedin-square',
-    accent: '#22c55e',
+    accent: '#e53935',
     fields: [
       {
         name: 'linkedinAdsToken',
@@ -1979,7 +1979,7 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
                     Salvar alterações
                   </button>
                   {settingsSaveFeedback && (
-                    <p style={{ fontSize: 12, color: '#22c55e', marginTop: 8, textAlign: 'center' }}>{settingsSaveFeedback}</p>
+                    <p style={{ fontSize: 12, color: '#e53935', marginTop: 8, textAlign: 'center' }}>{settingsSaveFeedback}</p>
                   )}
                 </div>
               </div>
@@ -2554,8 +2554,8 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
                                   <p>Sincronize treinamentos PAC com sua agenda e gere links do Google Meet automaticamente.</p>
                                 </div>
                                 {gcalConnection?.connected && (
-                                  <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 600, color: '#22c55e', background: 'rgba(34,197,94,0.1)', borderRadius: 99, padding: '3px 10px', whiteSpace: 'nowrap' }}>
-                                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#22c55e', display: 'inline-block' }}></span>
+                                  <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 600, color: '#e53935', background: 'rgba(229,57,53,0.1)', borderRadius: 99, padding: '3px 10px', whiteSpace: 'nowrap' }}>
+                                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#e53935', display: 'inline-block' }}></span>
                                     Conectado
                                   </span>
                                 )}
@@ -3016,7 +3016,7 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
           cursor: pointer;
           text-align: left;
           transition: all 0.15s;
-          border-left: 3px solid var(--button-primary, #26c281);
+          border-left: 3px solid var(--button-primary, #e53935);
           position: relative;
           overflow: hidden;
         }
@@ -3024,7 +3024,7 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
           content: '';
           position: absolute;
           inset: 0;
-          background: linear-gradient(135deg, color-mix(in srgb, var(--button-primary, #26c281) 5%, transparent), transparent 60%);
+          background: linear-gradient(135deg, color-mix(in srgb, var(--button-primary, #e53935) 5%, transparent), transparent 60%);
           opacity: 0;
           transition: opacity 0.2s;
         }
@@ -3034,12 +3034,12 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
           width: 40px;
           height: 40px;
           border-radius: 10px;
-          background: color-mix(in srgb, var(--button-primary, #26c281) 12%, transparent);
-          border: 1px solid color-mix(in srgb, var(--button-primary, #26c281) 24%, transparent);
+          background: color-mix(in srgb, var(--button-primary, #e53935) 12%, transparent);
+          border: 1px solid color-mix(in srgb, var(--button-primary, #e53935) 24%, transparent);
           display: grid;
           place-items: center;
           font-size: 19px;
-          color: var(--button-primary, #26c281);
+          color: var(--button-primary, #e53935);
           flex-shrink: 0;
         }
         .settings-category-info {
@@ -3121,7 +3121,7 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
           gap: 10px;
           padding: 0 4px;
         }
-        .settings-popup-sidebar-brand i { font-size: 18px; color: var(--button-primary, #26c281); }
+        .settings-popup-sidebar-brand i { font-size: 18px; color: var(--button-primary, #e53935); }
         .settings-popup-sidebar-brand strong { font-size: 15px; font-weight: 700; color: #f1f1f1; }
         .settings-popup-nav {
           display: flex;
@@ -3148,10 +3148,10 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
         .settings-popup-nav-item i { font-size: 16px; flex-shrink: 0; }
         .settings-popup-nav-item:hover { background: rgba(255,255,255,0.06); color: rgba(241,241,241,0.9); }
         .settings-popup-nav-item.active {
-          background: color-mix(in srgb, var(--button-primary, #26c281) 14%, rgba(255,255,255,0.04));
+          background: color-mix(in srgb, var(--button-primary, #e53935) 14%, rgba(255,255,255,0.04));
           color: #f1f1f1;
           font-weight: 600;
-          box-shadow: inset 3px 0 0 var(--button-primary, #26c281);
+          box-shadow: inset 3px 0 0 var(--button-primary, #e53935);
         }
         .settings-popup-sidebar-footer {
           padding-top: 12px;
@@ -3167,11 +3167,11 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
           letter-spacing: -0.01em;
           flex: 1;
         }
-        .settings-popup-tab-label i { font-size: 20px; color: var(--button-primary, #26c281); }
+        .settings-popup-tab-label i { font-size: 20px; color: var(--button-primary, #e53935); }
         .settings-popup-feedback {
           padding: 10px 22px;
           font-size: 13px;
-          color: var(--button-primary, #26c281);
+          color: var(--button-primary, #e53935);
           border-top: 1px solid rgba(255,255,255,0.07);
           flex-shrink: 0;
           margin: 0;
@@ -3924,13 +3924,13 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
         }
 
         .settings-theme-option.active .settings-theme-option-icon {
-          border-color: color-mix(in srgb, var(--button-primary, #26c281) 44%, transparent);
-          background: color-mix(in srgb, var(--button-primary, #26c281) 16%, transparent);
-          color: var(--button-primary, #26c281);
+          border-color: color-mix(in srgb, var(--button-primary, #e53935) 44%, transparent);
+          background: color-mix(in srgb, var(--button-primary, #e53935) 16%, transparent);
+          color: var(--button-primary, #e53935);
         }
 
         .settings-theme-option.active .settings-theme-option-check {
-          background: var(--button-primary, #26c281);
+          background: var(--button-primary, #e53935);
           color: #06110c;
         }
 
@@ -4672,8 +4672,8 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
         }
 
         .ai-provider-card-active {
-          border-color: color-mix(in srgb, var(--button-primary, #26c281) 40%, transparent);
-          background: color-mix(in srgb, var(--button-primary, #26c281) 5%, transparent);
+          border-color: color-mix(in srgb, var(--button-primary, #e53935) 40%, transparent);
+          background: color-mix(in srgb, var(--button-primary, #e53935) 5%, transparent);
         }
 
         .ai-provider-card-header {
@@ -4701,9 +4701,9 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
           font-weight: 700;
           padding: 2px 7px;
           border-radius: 20px;
-          background: color-mix(in srgb, var(--button-primary, #26c281) 18%, transparent);
-          color: var(--button-primary, #26c281);
-          border: 1px solid color-mix(in srgb, var(--button-primary, #26c281) 35%, transparent);
+          background: color-mix(in srgb, var(--button-primary, #e53935) 18%, transparent);
+          color: var(--button-primary, #e53935);
+          border: 1px solid color-mix(in srgb, var(--button-primary, #e53935) 35%, transparent);
         }
 
         .ai-provider-card-actions {
@@ -4715,7 +4715,7 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
 
         .ai-provider-key-link {
           font-size: 11px;
-          color: var(--button-primary, #26c281);
+          color: var(--button-primary, #e53935);
           text-decoration: none;
           display: inline-flex;
           align-items: center;
@@ -4747,7 +4747,7 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
         .ai-provider-active-label {
           font-size: 11px;
           font-weight: 700;
-          color: var(--button-primary, #26c281);
+          color: var(--button-primary, #e53935);
           display: inline-flex;
           align-items: center;
           gap: 3px;
@@ -4863,9 +4863,9 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
         }
 
         .settings-callout.success {
-          background: rgba(34, 197, 94, 0.12);
-          border: 1px solid rgba(34, 197, 94, 0.2);
-          color: #bbf7d0;
+          background: rgba(229, 57, 53, 0.12);
+          border: 1px solid rgba(229, 57, 53, 0.2);
+          color: #fecaca;
         }
 
         .settings-callout.error {
@@ -5012,7 +5012,7 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
         /* Lumina control-room pass for Settings. */
         .settings-page-shell {
           background:
-            radial-gradient(circle at top right, color-mix(in srgb, var(--button-primary, #26c281) 10%, transparent), transparent 34%),
+            radial-gradient(circle at top right, color-mix(in srgb, var(--button-primary, #e53935) 10%, transparent), transparent 34%),
             linear-gradient(180deg, #070908 0%, #0d1110 58%, #070908 100%) !important;
         }
 
@@ -5055,7 +5055,7 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
         .settings-hero-kicker,
         .settings-obsidian-head span,
         .settings-category-kicker {
-          color: color-mix(in srgb, var(--button-primary, #26c281) 72%, #f1f1f1);
+          color: color-mix(in srgb, var(--button-primary, #e53935) 72%, #f1f1f1);
           letter-spacing: 0.07em;
           font-size: 10px;
         }
@@ -5093,7 +5093,7 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
         }
 
         .settings-sidebar-link i {
-          color: color-mix(in srgb, var(--button-primary, #26c281) 68%, #f1f1f1);
+          color: color-mix(in srgb, var(--button-primary, #e53935) 68%, #f1f1f1);
           font-size: 19px;
         }
 
@@ -5109,11 +5109,11 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
 
         .settings-sidebar-link:hover,
         .settings-sidebar-link.active {
-          border-color: color-mix(in srgb, var(--button-primary, #26c281) 30%, rgba(190, 201, 191, 0.16));
+          border-color: color-mix(in srgb, var(--button-primary, #e53935) 30%, rgba(190, 201, 191, 0.16));
           background:
-            linear-gradient(90deg, color-mix(in srgb, var(--button-primary, #26c281) 14%, transparent), rgba(255, 255, 255, 0.035));
+            linear-gradient(90deg, color-mix(in srgb, var(--button-primary, #e53935) 14%, transparent), rgba(255, 255, 255, 0.035));
           transform: translateY(-1px);
-          box-shadow: inset 0 -3px 0 color-mix(in srgb, var(--button-primary, #26c281) 74%, #f1f1f1);
+          box-shadow: inset 0 -3px 0 color-mix(in srgb, var(--button-primary, #e53935) 74%, #f1f1f1);
         }
 
         .settings-panel {
@@ -5121,7 +5121,7 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
           gap: 26px;
           border-radius: 20px;
           background:
-            radial-gradient(circle at top left, color-mix(in srgb, var(--button-primary, #26c281) 10%, transparent), transparent 28%),
+            radial-gradient(circle at top left, color-mix(in srgb, var(--button-primary, #e53935) 10%, transparent), transparent 28%),
             linear-gradient(180deg, rgba(18, 24, 23, 0.86), rgba(13, 17, 16, 0.92));
           border-color: rgba(190, 201, 191, 0.16);
           box-shadow: 0 22px 52px rgba(0, 0, 0, 0.24);
@@ -5164,7 +5164,7 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
           padding: 26px;
           border-radius: 18px;
           background:
-            linear-gradient(135deg, color-mix(in srgb, var(--button-primary, #26c281) 12%, rgba(18, 24, 23, 0.88)), rgba(18, 24, 23, 0.86)),
+            linear-gradient(135deg, color-mix(in srgb, var(--button-primary, #e53935) 12%, rgba(18, 24, 23, 0.88)), rgba(18, 24, 23, 0.86)),
             rgba(18, 24, 23, 0.8);
         }
 
@@ -5199,8 +5199,8 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
         .settings-choice.active,
         .settings-preset.active,
         .settings-tab.active {
-          border-color: color-mix(in srgb, var(--button-primary, #26c281) 38%, rgba(190, 201, 191, 0.18));
-          background: color-mix(in srgb, var(--button-primary, #26c281) 14%, rgba(255, 255, 255, 0.035));
+          border-color: color-mix(in srgb, var(--button-primary, #e53935) 38%, rgba(190, 201, 191, 0.18));
+          background: color-mix(in srgb, var(--button-primary, #e53935) 14%, rgba(255, 255, 255, 0.035));
         }
 
         .input-group input,
@@ -5219,8 +5219,8 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
         .input-group textarea:focus,
         .settings-rgb-field input:focus,
         .settings-operation-field input:focus {
-          border-color: color-mix(in srgb, var(--button-primary, #26c281) 60%, white);
-          box-shadow: 0 0 0 3px color-mix(in srgb, var(--button-primary, #26c281) 16%, transparent);
+          border-color: color-mix(in srgb, var(--button-primary, #e53935) 60%, white);
+          box-shadow: 0 0 0 3px color-mix(in srgb, var(--button-primary, #e53935) 16%, transparent);
         }
 
         .settings-action-bar-global {
@@ -5234,7 +5234,7 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
         .settings-save-button {
           border-radius: 10px;
           background:
-            linear-gradient(135deg, var(--button-primary, var(--accent-blue)) 0%, color-mix(in srgb, var(--button-primary, var(--accent-blue)) 78%, #2ecc71 22%) 100%) !important;
+            linear-gradient(135deg, var(--button-primary, var(--accent-blue)) 0%, color-mix(in srgb, var(--button-primary, var(--accent-blue)) 78%, #ef5350 22%) 100%) !important;
           color: #ffffff !important;
           box-shadow: 0 14px 30px color-mix(in srgb, var(--button-primary, var(--accent-blue)) 18%, transparent);
         }

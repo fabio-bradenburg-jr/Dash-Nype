@@ -1506,8 +1506,8 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
           width: 8px;
           height: 8px;
           border-radius: 999px;
-          background: #22c55e;
-          box-shadow: 0 0 18px rgba(34, 197, 94, 0.8);
+          background: #e53935;
+          box-shadow: 0 0 18px rgba(229, 57, 53, 0.8);
         }
 
         .assistant-chat-panel {

@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 const STATUSES = [
   { value: 'pending',   label: 'Pendente',   color: '#f59e0b', bg: 'rgba(245,158,11,0.12)',  icon: 'bx-time-five' },
   { value: 'scheduled', label: 'Agendado',   color: '#3b82f6', bg: 'rgba(59,130,246,0.12)', icon: 'bx-calendar-check' },
-  { value: 'published', label: 'Publicado',  color: '#22c55e', bg: 'rgba(34,197,94,0.12)',  icon: 'bx-check-circle' },
+  { value: 'published', label: 'Publicado',  color: '#e53935', bg: 'rgba(229,57,53,0.12)',  icon: 'bx-check-circle' },
   { value: 'cancelled', label: 'Cancelado',  color: '#ef4444', bg: 'rgba(239,68,68,0.12)',  icon: 'bx-x-circle' },
 ]
 
@@ -639,7 +639,7 @@ export default function EditorialCalendar({ clients = [], isLightMode = false, d
                       <div className="editorial-client-bar-pend" style={{ width: `${posts.length ? Math.round(c.pending / posts.length * 100) : 0}%` }} title={`${c.pending} pendentes`} />
                     </div>
                     <div className="editorial-client-chips">
-                      {c.published > 0 && <span style={{ color: '#22c55e' }}><i className="bx bx-check-circle"></i>{c.published}</span>}
+                      {c.published > 0 && <span style={{ color: '#e53935' }}><i className="bx bx-check-circle"></i>{c.published}</span>}
                       {c.scheduled > 0 && <span style={{ color: '#3b82f6' }}><i className="bx bx-calendar-check"></i>{c.scheduled}</span>}
                       {c.pending > 0 && <span style={{ color: '#f59e0b' }}><i className="bx bx-time-five"></i>{c.pending}</span>}
                       <span className="editorial-client-total">{c.total} total</span>
@@ -1077,7 +1077,7 @@ export default function EditorialCalendar({ clients = [], isLightMode = false, d
         .editorial-new-btn {
           display: inline-flex; align-items: center; gap: 7px;
           padding: 9px 18px; border-radius: 10px; border: none;
-          background: var(--button-primary, #26c281); color: #fff;
+          background: var(--button-primary, var(--button-primary, #e53935)); color: #fff;
           font: inherit; font-weight: 700; font-size: 13px; cursor: pointer;
           transition: opacity 0.15s;
         }
@@ -1119,8 +1119,8 @@ export default function EditorialCalendar({ clients = [], isLightMode = false, d
           font: inherit; font-size: 13px; cursor: pointer; transition: all 0.15s;
         }
         .editorial-view-btn.active {
-          background: var(--button-primary, #26c281);
-          border-color: var(--button-primary, #26c281);
+          background: var(--button-primary, var(--button-primary, #e53935));
+          border-color: var(--button-primary, var(--button-primary, #e53935));
           color: #fff;
         }
 
@@ -1169,14 +1169,14 @@ export default function EditorialCalendar({ clients = [], isLightMode = false, d
         .editorial-cell:nth-child(7n) { border-right: none; }
         .editorial-cell-empty { cursor: default; background: rgba(0,0,0,0.03); }
         .editorial-cell-empty:hover { background: rgba(0,0,0,0.03); }
-        .editorial-cell-today { background: rgba(38,194,129,0.04); }
+        .editorial-cell-today { background: rgba(var(--accent-rgb, 229, 57, 53),0.04); }
         .editorial-day-num {
           font-size: 12px; font-weight: 600; color: var(--text-muted);
           width: 24px; height: 24px; display: grid; place-items: center;
           border-radius: 50%;
         }
         .editorial-day-num.today {
-          background: var(--button-primary, #26c281);
+          background: var(--button-primary, var(--button-primary, #e53935));
           color: #fff; font-weight: 800;
         }
         .editorial-cell-posts { display: flex; flex-direction: column; gap: 3px; }
@@ -1286,8 +1286,8 @@ export default function EditorialCalendar({ clients = [], isLightMode = false, d
         .editorial-field select:focus,
         .editorial-field textarea:focus {
           outline: none;
-          border-color: var(--button-primary, #26c281);
-          box-shadow: 0 0 0 3px color-mix(in srgb, var(--button-primary, #26c281) 18%, transparent);
+          border-color: var(--button-primary, var(--button-primary, #e53935));
+          box-shadow: 0 0 0 3px color-mix(in srgb, var(--button-primary, var(--button-primary, #e53935)) 18%, transparent);
         }
         .editorial-field textarea { resize: vertical; line-height: 1.6; }
         .editorial-field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
@@ -1314,9 +1314,9 @@ export default function EditorialCalendar({ clients = [], isLightMode = false, d
           transition: all 0.15s;
         }
         .editorial-platform-chip.active {
-          background: rgba(38,194,129,0.14);
-          border-color: rgba(38,194,129,0.4);
-          color: #26c281;
+          background: rgba(var(--accent-rgb, 229, 57, 53),0.14);
+          border-color: rgba(var(--accent-rgb, 229, 57, 53),0.4);
+          color: var(--button-primary, #e53935);
         }
         .editorial-platform-chip:hover { background: rgba(255,255,255,0.06); }
 
@@ -1333,7 +1333,7 @@ export default function EditorialCalendar({ clients = [], isLightMode = false, d
           align-items: center;
           gap: 5px;
           font-size: 11px;
-          color: var(--button-primary, #26c281);
+          color: var(--button-primary, var(--button-primary, #e53935));
           margin-top: 4px;
         }
 
@@ -1357,7 +1357,7 @@ export default function EditorialCalendar({ clients = [], isLightMode = false, d
           transition: opacity 0.15s;
         }
         .editorial-save-btn {
-          background: var(--button-primary, #26c281); color: #fff; border: none;
+          background: var(--button-primary, var(--button-primary, #e53935)); color: #fff; border: none;
         }
         .editorial-save-btn:disabled { opacity: 0.5; }
         .editorial-cancel-btn {
@@ -1447,7 +1447,7 @@ export default function EditorialCalendar({ clients = [], isLightMode = false, d
           display: flex;
         }
         .editorial-client-bar-pub {
-          height: 100%; background: #22c55e; transition: width 0.5s ease;
+          height: 100%; background: #e53935; transition: width 0.5s ease;
         }
         .editorial-client-bar-sched {
           height: 100%; background: #3b82f6; transition: width 0.5s ease;
@@ -1478,7 +1478,7 @@ export default function EditorialCalendar({ clients = [], isLightMode = false, d
         }
         .editorial-platform-stat-fill {
           height: 100%; border-radius: 99px;
-          background: var(--button-primary, #26c281);
+          background: var(--button-primary, var(--button-primary, #e53935));
           transition: width 0.5s ease;
         }
         .editorial-platform-stat-count {
@@ -1530,12 +1530,12 @@ export default function EditorialCalendar({ clients = [], isLightMode = false, d
         .editorial-export-btn {
           display: inline-flex; align-items: center; gap: 7px;
           padding: 8px 16px; border-radius: 10px;
-          border: 1px solid rgba(38,194,129,0.3);
-          background: rgba(38,194,129,0.1); color: #26c281;
+          border: 1px solid rgba(var(--accent-rgb, 229, 57, 53),0.3);
+          background: rgba(var(--accent-rgb, 229, 57, 53),0.1); color: var(--button-primary, #e53935);
           font: inherit; font-weight: 700; font-size: 12px; cursor: pointer;
           transition: all 0.15s;
         }
-        .editorial-export-btn:hover { background: rgba(38,194,129,0.18); }
+        .editorial-export-btn:hover { background: rgba(var(--accent-rgb, 229, 57, 53),0.18); }
 
         /* Planning modal */
         .editorial-plan-modal {
@@ -1602,9 +1602,9 @@ export default function EditorialCalendar({ clients = [], isLightMode = false, d
           transition: all 0.15s;
         }
         .editorial-plan-add-btn:hover {
-          border-color: var(--button-primary, #26c281);
-          color: var(--button-primary, #26c281);
-          background: rgba(38,194,129,0.04);
+          border-color: var(--button-primary, var(--button-primary, #e53935));
+          color: var(--button-primary, var(--button-primary, #e53935));
+          background: rgba(var(--accent-rgb, 229, 57, 53),0.04);
         }
 
         .editorial-plan-count {
@@ -1761,7 +1761,7 @@ export default function EditorialCalendar({ clients = [], isLightMode = false, d
           background: #ffffff; border-color: rgba(187,202,190,0.86); color: #1a1c1c;
         }
         :global(.dashboard-light-mode) .editorial-view-btn.active {
-          background: var(--button-primary, #26c281); border-color: var(--button-primary, #26c281); color: #fff;
+          background: var(--button-primary, var(--button-primary, #e53935)); border-color: var(--button-primary, var(--button-primary, #e53935)); color: #fff;
         }
         :global(.dashboard-light-mode) .editorial-calendar {
           background: #ffffff; border-color: rgba(187,202,190,0.72);
@@ -1771,11 +1771,11 @@ export default function EditorialCalendar({ clients = [], isLightMode = false, d
           border-color: rgba(187,202,190,0.4);
         }
         :global(.dashboard-light-mode) .editorial-cell:hover { background: #f8faf9; }
-        :global(.dashboard-light-mode) .editorial-cell-today { background: rgba(38,194,129,0.06); }
+        :global(.dashboard-light-mode) .editorial-cell-today { background: rgba(var(--accent-rgb, 229, 57, 53),0.06); }
         :global(.dashboard-light-mode) .editorial-list-row {
           background: #ffffff; border-color: rgba(187,202,190,0.72);
         }
-        :global(.dashboard-light-mode) .editorial-list-row:hover { background: #f8faf9; border-color: rgba(38,194,129,0.3); }
+        :global(.dashboard-light-mode) .editorial-list-row:hover { background: #f8faf9; border-color: rgba(var(--accent-rgb, 229, 57, 53),0.3); }
         :global(.dashboard-light-mode) .editorial-modal {
           background: #ffffff; border-color: rgba(187,202,190,0.72);
         }
