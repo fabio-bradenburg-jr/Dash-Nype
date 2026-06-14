@@ -247,6 +247,7 @@ export interface ClientRecord {
   dashboardVisibleIntegrationKeys: string[]
   crmProvider: string
   manualCrmSummary: Record<string, number | null>
+  ecommerceEnabled: boolean
   segment: string
   subsegment: string
   tier: string
