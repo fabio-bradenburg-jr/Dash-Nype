@@ -954,6 +954,7 @@ export function createClientRecord(overrides: ClientRecordOverrides = {}): Clien
     googleSheetsStatusColumn: String(overrides.googleSheetsStatusColumn || '').trim(),
     crmProvider,
     manualCrmSummary: overrides.manualCrmSummary || {},
+    ecommerceEnabled: Boolean(overrides.ecommerceEnabled),
     integrations: {
       ...DEFAULT_INTEGRATIONS,
       ...overrides.integrations,
