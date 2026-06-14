@@ -1,5 +1,17 @@
 export const USER_APPEARANCE_KEY_PREFIX = 'nype-user-appearance'
 
+const LEGACY_GREEN_ACCENTS = ['#26c281', '#4fdf9b', '#006c44', '#0f766e', '#10b981']
+const MIGRATED_FLAG = 'nype-color-migrated-v2'
+
+function migrateGreenToRed(appearance) {
+  if (!appearance) return appearance
+  const accent = String(appearance.accent || '').toLowerCase()
+  if (LEGACY_GREEN_ACCENTS.includes(accent)) {
+    return { ...appearance, accent: DEFAULT_USER_APPEARANCE.accent }
+  }
+  return appearance
+}
+
 export const DEFAULT_USER_APPEARANCE = {
   mode: 'dark',
   accent: '#e53935',
@@ -45,9 +57,20 @@ export function loadUserAppearance(userId) {
   }
 
   try {
-    const raw = window.localStorage.getItem(getStorageKey(userId))
+    const key = getStorageKey(userId)
+    const raw = window.localStorage.getItem(key)
     if (!raw) return DEFAULT_USER_APPEARANCE
-    return normalizeUserAppearance(JSON.parse(raw))
+
+    const parsed = JSON.parse(raw)
+    const migrated = migrateGreenToRed(parsed)
+
+    // Persist migration so user keeps the red going forward
+    if (migrated !== parsed && !window.localStorage.getItem(MIGRATED_FLAG)) {
+      window.localStorage.setItem(key, JSON.stringify(migrated))
+      window.localStorage.setItem(MIGRATED_FLAG, '1')
+    }
+
+    return normalizeUserAppearance(migrated)
   } catch (error) {
     console.error('Erro ao carregar aparência do usuário:', error)
     return DEFAULT_USER_APPEARANCE
