@@ -5056,10 +5056,14 @@ export default function DashboardShell({
                   label: metaConfig.label,
                   data: values,
                   borderColor: 'var(--saas-primary, #e53935)',
-                  backgroundColor: 'rgba(229,57,53,0.08)',
+                  backgroundColor: 'rgba(229,57,53,0.18)',
                   tension: 0.4,
                   fill: true,
-                  pointRadius: 3,
+                  pointRadius: 5,
+                  pointBackgroundColor: 'var(--saas-primary, #e53935)',
+                  pointBorderColor: '#fff',
+                  pointBorderWidth: 2,
+                  pointHoverRadius: 7,
                 }],
               }}
               options={{
@@ -33078,7 +33082,7 @@ export default function DashboardShell({
 
         .campaign-chart-panel {
           border-top: 1px solid rgba(var(--accent-rgb, 229, 57, 53), 0.15);
-          background: rgba(0, 0, 0, 0.32);
+          background: #0d0d0d;
           border-radius: 0 0 18px 18px;
           overflow: hidden;
         }
@@ -33090,17 +33094,10 @@ export default function DashboardShell({
         .campaign-chart-header {
           display: flex;
           align-items: center;
-          justify-content: space-between;
-          gap: 12px;
+          gap: 8px;
           padding: 10px 16px;
-          border-bottom: 1px solid rgba(var(--accent-rgb, 229, 57, 53), 0.1);
+          border-bottom: 1px solid rgba(255, 255, 255, 0.06);
           flex-wrap: wrap;
-        }
-
-        .campaign-chart-title {
-          font-size: 13px;
-          font-weight: 600;
-          color: var(--text-secondary);
         }
 
         .campaign-chart-metric-tabs {
@@ -33110,34 +33107,42 @@ export default function DashboardShell({
         }
 
         .campaign-chart-metric-tab {
-          padding: 4px 12px;
-          border-radius: 8px;
-          border: 1px solid rgba(var(--accent-rgb, 229, 57, 53), 0.2);
-          background: rgba(255, 255, 255, 0.04);
-          color: var(--text-muted);
+          padding: 5px 14px;
+          border-radius: 999px;
+          border: 1px solid rgba(255, 255, 255, 0.12);
+          background: rgba(255, 255, 255, 0.05);
+          color: rgba(255, 255, 255, 0.5);
           font-size: 12px;
+          font-weight: 500;
           cursor: pointer;
-          transition: background 0.15s ease, color 0.15s ease;
+          transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+          white-space: nowrap;
         }
 
-        .campaign-chart-metric-tab.active,
-        .campaign-chart-metric-tab:hover {
-          background: rgba(var(--accent-rgb, 229, 57, 53), 0.18);
+        .campaign-chart-metric-tab.active {
+          background: rgba(var(--accent-rgb, 229, 57, 53), 0.2);
           color: var(--saas-primary, #e53935);
-          border-color: rgba(var(--accent-rgb, 229, 57, 53), 0.45);
+          border-color: rgba(var(--accent-rgb, 229, 57, 53), 0.5);
+        }
+
+        .campaign-chart-metric-tab:hover:not(.active) {
+          background: rgba(255, 255, 255, 0.08);
+          color: rgba(255, 255, 255, 0.75);
+          border-color: rgba(255, 255, 255, 0.22);
         }
 
         .campaign-chart-canvas {
-          padding: 16px 16px 12px;
+          padding: 16px 8px 8px;
           height: 220px;
-          background: rgba(0, 0, 0, 0.18);
+          background: #0d0d0d;
         }
 
         .campaign-chart-loading {
           padding: 28px 16px;
           text-align: center;
-          color: var(--text-muted);
+          color: rgba(255, 255, 255, 0.4);
           font-size: 13px;
+          background: #0d0d0d;
         }
 
         .client-form-grid-3 {
