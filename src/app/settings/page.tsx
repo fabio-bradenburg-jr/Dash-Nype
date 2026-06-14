@@ -2974,6 +2974,7 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
           height: 100%;
           display: flex;
           flex-direction: row;
+          padding-left: 10px;
         }
 
         .settings-main-embedded {
