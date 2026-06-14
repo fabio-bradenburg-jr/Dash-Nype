@@ -16671,7 +16671,7 @@ export default function DashboardShell({
 
 
         {activeTab === 'assistant' && (
-          <section style={{ width: '100%', minHeight: 'calc(100vh - 220px)' }}>
+          <section style={{ display: 'flex', flex: 1, minHeight: 0, overflow: 'hidden' }}>
             <AssistantPage embeddedOverride={true} />
           </section>
         )}
@@ -22402,6 +22402,11 @@ export default function DashboardShell({
         }
 
         .dashboard-container[data-active-tab='settings'] .main-content {
+          padding: 0 !important;
+          overflow: hidden;
+        }
+
+        .dashboard-container[data-active-tab='assistant'] .main-content {
           padding: 0 !important;
           overflow: hidden;
         }

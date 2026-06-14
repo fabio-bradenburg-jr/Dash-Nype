@@ -904,11 +904,15 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
 
       <style jsx global>{`
         .assistant-shell-embedded {
-          min-height: 100%;
+          height: 100%;
+          display: flex;
+          flex-direction: column;
         }
 
         .assistant-embedded-shell {
-          min-height: 100%;
+          height: 100%;
+          display: flex;
+          flex-direction: column;
         }
 
         .assistant-shell {
@@ -918,12 +922,17 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
         }
 
         .assistant-main-embedded {
-          min-height: 100%;
+          flex: 1;
+          min-height: 0;
           padding: 0;
         }
 
         .assistant-embedded-content {
           width: 100%;
+          flex: 1;
+          min-height: 0;
+          display: flex;
+          flex-direction: column;
         }
 
         .assistant-page-header-embedded {
@@ -985,6 +994,12 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
           gap: 24px;
           min-height: 0;
         }
+        .assistant-main-embedded.assistant-main {
+          display: flex;
+          flex-direction: column;
+          flex: 1;
+          gap: 0;
+        }
 
         .assistant-empty {
           padding: 28px;
@@ -999,6 +1014,10 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
           gap: 24px;
           align-items: stretch;
           transition: grid-template-columns 220ms ease;
+        }
+        .assistant-main-embedded .assistant-content {
+          height: 100%;
+          flex: 1;
         }
 
         .assistant-content-history-collapsed {
