@@ -1569,7 +1569,7 @@ export default function AssistantPage({ embeddedOverride = null }: AssistantPage
         .assistant-message-row {
           display: flex;
           gap: 14px;
-          max-width: min(900px, 100%);
+          max-width: 100%;
         }
 
         .assistant-message-row-user {
