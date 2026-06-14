@@ -4985,8 +4985,6 @@ export default function DashboardShell({
     try {
       if (!adAccountId) return
 
-      const since = appliedDateRange.since
-      const until = appliedDateRange.until
       const params = new URLSearchParams({
         ad_account_id: adAccountId,
         date_preset: dateRange,
