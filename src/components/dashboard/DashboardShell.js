@@ -5030,7 +5030,6 @@ export default function DashboardShell({
     return (
       <div className="campaign-chart-panel">
         <div className="campaign-chart-header">
-          <span className="campaign-chart-title">Desempenho diário</span>
           <div className="campaign-chart-metric-tabs">
             {CAMPAIGN_CHART_METRICS.map((m) => (
               <button
