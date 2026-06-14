@@ -671,6 +671,10 @@ function normalizeManualCrmSummary(payload: unknown): Record<string, number | nu
     lostOpportunityCount: toNumber(pickValue('lostOpportunityCount', 'lostDeals', 'lostContacts')),
     wonRevenue: toNumber(pickValue('wonRevenue', 'wonOpportunityRevenue')),
     lostOpportunityValue: toNumber(pickValue('lostOpportunityValue')),
+    ecommerceCartCount: toNumber(pickValue('ecommerceCartCount')),
+    ecommerceCheckoutCount: toNumber(pickValue('ecommerceCheckoutCount')),
+    ecommerceOrderCount: toNumber(pickValue('ecommerceOrderCount')),
+    ecommerceRevenue: toNumber(pickValue('ecommerceRevenue')),
   }
 }
 
@@ -772,6 +776,7 @@ function normalizeClientRecord(client: LooseRecord): ClientRecord {
     adAccountsFlag: payload.adAccountsFlag || 'na',
     npsFlag: payload.npsFlag || 'na',
     stakeholderFlag: payload.stakeholderFlag || 'na',
+    ecommerceEnabled: Boolean(payload.ecommerceEnabled ?? businessData.ecommerceEnabled),
     dashboardColor: payload.dashboardColor || 'blue',
     logoUrl: payload.logoUrl || '',
     balanceAlertsEnabled: payload.balanceAlertsEnabled !== false,
