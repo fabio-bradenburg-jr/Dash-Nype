@@ -5029,20 +5029,6 @@ export default function DashboardShell({
 
     return (
       <div className="campaign-chart-panel">
-        <div className="campaign-chart-header">
-          <div className="campaign-chart-metric-tabs">
-            {CAMPAIGN_CHART_METRICS.map((m) => (
-              <button
-                key={m.key}
-                type="button"
-                className={'campaign-chart-metric-tab ' + (metric === m.key ? 'active' : '')}
-                onClick={(e) => { e.stopPropagation(); setCampaignChartMetric((prev) => ({ ...prev, [chartKey]: m.key })) }}
-              >
-                {m.label}
-              </button>
-            ))}
-          </div>
-        </div>
         {!daily ? (
           <div className="campaign-chart-loading"><i className="bx bx-loader-alt bx-spin"></i> Carregando...</div>
         ) : daily.length === 0 ? (
