@@ -5017,7 +5017,7 @@ export default function DashboardShell({
     const labels = daily ? daily.map((d) => d.date_start || d.date) : []
     const values = daily
       ? daily.map((d) => {
-          const results = Number(d.custom_metrics?.results || 0)
+          const results = Number(d.custom_metrics?.totalConversions || 0)
           if (metric === 'results') return results
           if (metric === 'cpr') {
             const spend = Number(d.spend || 0)
