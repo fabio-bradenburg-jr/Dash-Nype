@@ -32931,7 +32931,7 @@ export default function DashboardShell({
         }
 
         .campaign-overview-campaign-card:hover {
-          border-color: rgba(129, 216, 167, 0.34);
+          border-color: rgba(255, 255, 255, 0.25);
         }
 
         .campaign-overview-adset-card {
@@ -32943,7 +32943,7 @@ export default function DashboardShell({
         }
 
         .campaign-overview-adset-card:hover {
-          border-color: rgba(129, 216, 167, 0.34);
+          border-color: rgba(255, 255, 255, 0.25);
         }
 
         .campaign-overview-campaign-row,
