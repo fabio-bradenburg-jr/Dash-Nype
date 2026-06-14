@@ -5068,8 +5068,8 @@ export default function DashboardShell({
                 maintainAspectRatio: false,
                 plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false } },
                 scales: {
-                  x: { grid: { display: false }, ticks: { maxTicksLimit: 10, font: { size: 11 } } },
-                  y: { grid: { color: 'rgba(0,0,0,0.06)' }, ticks: { font: { size: 11 } } },
+                  x: { grid: { display: false }, ticks: { color: 'rgba(255,255,255,0.45)', maxTicksLimit: 10, font: { size: 11 } } },
+                  y: { grid: { color: 'rgba(255,255,255,0.06)' }, ticks: { color: 'rgba(255,255,255,0.45)', font: { size: 11 } } },
                 },
               }}
             />
@@ -33079,7 +33079,13 @@ export default function DashboardShell({
 
         .campaign-chart-panel {
           border-top: 1px solid rgba(var(--accent-rgb, 229, 57, 53), 0.15);
-          background: rgba(0, 0, 0, 0.08);
+          background: rgba(0, 0, 0, 0.32);
+          border-radius: 0 0 18px 18px;
+          overflow: hidden;
+        }
+
+        .campaign-overview-adset-card .campaign-chart-panel {
+          border-radius: 0 0 16px 16px;
         }
 
         .campaign-chart-header {
@@ -33088,7 +33094,7 @@ export default function DashboardShell({
           justify-content: space-between;
           gap: 12px;
           padding: 10px 16px;
-          border-bottom: 1px solid rgba(var(--accent-rgb, 229, 57, 53), 0.12);
+          border-bottom: 1px solid rgba(var(--accent-rgb, 229, 57, 53), 0.1);
           flex-wrap: wrap;
         }
 
@@ -33100,15 +33106,15 @@ export default function DashboardShell({
 
         .campaign-chart-metric-tabs {
           display: flex;
-          gap: 4px;
+          gap: 6px;
           flex-wrap: wrap;
         }
 
         .campaign-chart-metric-tab {
-          padding: 4px 10px;
+          padding: 4px 12px;
           border-radius: 8px;
           border: 1px solid rgba(var(--accent-rgb, 229, 57, 53), 0.2);
-          background: transparent;
+          background: rgba(255, 255, 255, 0.04);
           color: var(--text-muted);
           font-size: 12px;
           cursor: pointer;
@@ -33117,18 +33123,19 @@ export default function DashboardShell({
 
         .campaign-chart-metric-tab.active,
         .campaign-chart-metric-tab:hover {
-          background: rgba(var(--accent-rgb, 229, 57, 53), 0.14);
+          background: rgba(var(--accent-rgb, 229, 57, 53), 0.18);
           color: var(--saas-primary, #e53935);
-          border-color: rgba(var(--accent-rgb, 229, 57, 53), 0.4);
+          border-color: rgba(var(--accent-rgb, 229, 57, 53), 0.45);
         }
 
         .campaign-chart-canvas {
-          padding: 12px 16px;
-          height: 200px;
+          padding: 16px 16px 12px;
+          height: 220px;
+          background: rgba(0, 0, 0, 0.18);
         }
 
         .campaign-chart-loading {
-          padding: 24px 16px;
+          padding: 28px 16px;
           text-align: center;
           color: var(--text-muted);
           font-size: 13px;
