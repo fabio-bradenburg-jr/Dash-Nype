@@ -256,6 +256,7 @@ export interface ClientRecord {
   implementationObservation: string
   implementationChecklist: ClientChecklistItemRecord[]
   status: string
+  isArchived: boolean
   productId: string
   product: string
   okrs: ClientOkrRecord[]
@@ -316,6 +317,7 @@ export interface ClientRecord {
   stakeholderFlag: string
   dashboardColor: string
   logoUrl: string
+  balanceAlertsEnabled: boolean
   metaAdAccountId: string
   googleAdsAccountId: string
   tiktokAdsAccountId: string

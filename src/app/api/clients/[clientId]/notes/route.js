@@ -44,7 +44,7 @@ export async function GET(request, { params }) {
 
     // Validate client belongs to workspace
     const { data: client } = await adminSupabase
-      .from('clients')
+      .from('workspace_clients')
       .select('id')
       .eq('id', clientId)
       .eq('workspace_id', workspaceId)
@@ -89,13 +89,14 @@ export async function POST(request, { params }) {
 
     const body = await request.json()
     const content = String(body?.content || '').trim()
+    const parentId = body?.parentId || null
     if (!content) {
       return NextResponse.json({ error: 'O conteúdo da nota não pode estar vazio.' }, { status: 400 })
     }
 
     // Validate client belongs to workspace
     const { data: client } = await adminSupabase
-      .from('clients')
+      .from('workspace_clients')
       .select('id')
       .eq('id', clientId)
       .eq('workspace_id', workspaceId)
@@ -116,6 +117,7 @@ export async function POST(request, { params }) {
         content,
         created_by: createdBy,
         created_by_name: createdByName,
+        parent_id: parentId || null,
       })
       .select()
       .single()

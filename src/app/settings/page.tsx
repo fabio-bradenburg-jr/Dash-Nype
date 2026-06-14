@@ -429,7 +429,20 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
   const [isGoogleAdsConnectionLoading, setIsGoogleAdsConnectionLoading] = useState(false)
   const [googleAdsConnectionError, setGoogleAdsConnectionError] = useState('')
   const [googleAdsConnectionNotice, setGoogleAdsConnectionNotice] = useState('')
+  const [gcalConnection, setGcalConnection] = useState<{ connected: boolean; email: string; selectedCalendarId: string; selectedCalendarSummary: string } | null>(null)
+  const [gcalLoading, setGcalLoading] = useState(false)
+  const [gcalCalendars, setGcalCalendars] = useState<{ id: string; summary: string }[]>([])
+  const [gcalSelectedId, setGcalSelectedId] = useState('')
+  const [gcalSelectedSummary, setGcalSelectedSummary] = useState('')
+  const [gcalSaving, setGcalSaving] = useState(false)
   const [activeSettingsTab, setActiveSettingsTab] = useState<SettingsTab>('panel')
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set())
+  const toggleSection = (key: string) => setExpandedSections(prev => {
+    const next = new Set(prev)
+    if (next.has(key)) next.delete(key); else next.add(key)
+    return next
+  })
+  const [settingsPopupOpen, setSettingsPopupOpen] = useState(false)
   const [panelDraft, setPanelDraft] = useState<UserAppearance>(appearance)
   const [panelFeedback, setPanelFeedback] = useState('')
   const [settingsSaveFeedback, setSettingsSaveFeedback] = useState('')
@@ -807,6 +820,32 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
   }, [canEditIntegrations])
 
   useEffect(() => {
+    if (!canEditIntegrations) return
+    let cancelled = false
+    const loadGcal = async () => {
+      setGcalLoading(true)
+      try {
+        const res = await fetch('/api/google-calendar/connection', { cache: 'no-store' })
+        const data = await res.json().catch(() => null)
+        if (cancelled) return
+        const conn = data?.connection || null
+        setGcalConnection(conn)
+        if (conn?.connected) {
+          setGcalSelectedId(conn.selectedCalendarId || 'primary')
+          setGcalSelectedSummary(conn.selectedCalendarSummary || '')
+          const calRes = await fetch('/api/google-calendar/calendars', { cache: 'no-store' })
+          const calData = await calRes.json().catch(() => null)
+          if (!cancelled) setGcalCalendars(calData?.calendars || [])
+        }
+      } catch { /* non-fatal */ } finally {
+        if (!cancelled) setGcalLoading(false)
+      }
+    }
+    loadGcal()
+    return () => { cancelled = true }
+  }, [canEditIntegrations])
+
+  useEffect(() => {
     if (typeof window === 'undefined') return
 
     const params = new URLSearchParams(window.location.search)
@@ -1065,6 +1104,32 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
       handleGlobalIntegrationChange('aiDashboardPrompt', formatted)
     } catch (error) {
       console.error('Erro ao formatar prompt JSON:', error)
+    }
+  }
+
+  const handleGcalDisconnect = async () => {
+    if (!confirm('Desconectar o Google Calendar?')) return
+    try {
+      await fetch('/api/google-calendar/connection', { method: 'DELETE' })
+      setGcalConnection({ connected: false, email: '', selectedCalendarId: 'primary', selectedCalendarSummary: '' })
+      setGcalCalendars([])
+    } catch { /* non-fatal */ }
+  }
+
+  const handleGcalSaveCalendar = async () => {
+    if (!gcalSelectedId) return
+    setGcalSaving(true)
+    try {
+      const cal = gcalCalendars.find(c => c.id === gcalSelectedId)
+      const res = await fetch('/api/google-calendar/connection', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ calendarId: gcalSelectedId, calendarSummary: cal?.summary || gcalSelectedId }),
+      })
+      const data = await res.json()
+      if (data?.connection) setGcalConnection(data.connection)
+    } catch { /* non-fatal */ } finally {
+      setGcalSaving(false)
     }
   }
 
@@ -1836,6 +1901,7 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
 
   const handleSettingsTabChange = (nextTab: SettingsTab) => {
     setActiveSettingsTab(nextTab)
+    setSettingsPopupOpen(true)
 
     if (typeof window === 'undefined') return
     const params = new URLSearchParams(window.location.search)
@@ -1874,94 +1940,63 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
       </aside>
       )}
 
-      <main className={embeddedOverride ? "main-content settings-main settings-main-embedded" : "main-content settings-main"}>
+      <main className={embeddedOverride ? "settings-main settings-main-embedded" : "main-content settings-main"}>
         <div className="settings-workspace">
-          <aside className="glass-item settings-section-sidebar">
-            <div className="settings-sidebar-title">
-              <span>Configuração</span>
-              <strong>Ajustes do app</strong>
-            </div>
-
-            <div className="settings-sidebar-nav">
-              <button
-                type="button"
-                className={`settings-sidebar-link ${activeSettingsTab === 'panel' ? 'active' : ''}`}
-                onClick={() => handleSettingsTabChange('panel')}
-              >
-                <i className="bx bx-layout"></i>
-                <div>
-                  <strong>Interface</strong>
-                  <span>Destaque, fundo e assinatura visual do sistema.</span>
+          {/* Always-visible two-panel layout */}
+          <div className="settings-popup-overlay">
+            <div className="settings-popup-panel">
+              <div className="settings-popup-sidebar">
+                <div className="settings-popup-sidebar-brand">
+                  <i className="bx bx-cog"></i>
+                  <strong>Configurações</strong>
                 </div>
-              </button>
-
-              {canEditIntegrations && (
-                <>
-                  <button
-                    type="button"
-                    className={`settings-sidebar-link ${activeSettingsTab === 'general' ? 'active' : ''}`}
-                    onClick={() => handleSettingsTabChange('general')}
-                  >
-                    <i className="bx bx-link-alt"></i>
-                    <div>
-                      <strong>Integrações</strong>
-                      <span>Meta, Google Ads e demais ferramentas.</span>
-                    </div>
+                <nav className="settings-popup-nav">
+                  <button type="button" className={`settings-popup-nav-item ${activeSettingsTab === 'panel' ? 'active' : ''}`} onClick={() => handleSettingsTabChange('panel')}>
+                    <i className="bx bx-palette"></i>
+                    <span>Interface</span>
                   </button>
-                  <button
-                    type="button"
-                    className={`settings-sidebar-link ${activeSettingsTab === 'ai' ? 'active' : ''}`}
-                    onClick={() => handleSettingsTabChange('ai')}
-                  >
-                    <i className="bx bx-bot"></i>
-                    <div>
-                      <strong>Inteligência Artificial</strong>
-                      <span>Providers, prompts e agentes.</span>
-                    </div>
+                  {canEditIntegrations && (
+                    <button type="button" className={`settings-popup-nav-item ${activeSettingsTab === 'general' ? 'active' : ''}`} onClick={() => handleSettingsTabChange('general')}>
+                      <i className="bx bx-link-alt"></i>
+                      <span>Integrações</span>
+                    </button>
+                  )}
+                  {canEditIntegrations && (
+                    <button type="button" className={`settings-popup-nav-item ${activeSettingsTab === 'ai' ? 'active' : ''}`} onClick={() => handleSettingsTabChange('ai')}>
+                      <i className="bx bx-bot"></i>
+                      <span>Inteligência Artificial</span>
+                    </button>
+                  )}
+                  {canManageClients && (
+                    <button type="button" className={`settings-popup-nav-item ${activeSettingsTab === 'operation' ? 'active' : ''}`} onClick={() => handleSettingsTabChange('operation')}>
+                      <i className="bx bx-pulse"></i>
+                      <span>Operação</span>
+                    </button>
+                  )}
+                </nav>
+                <div className="settings-popup-sidebar-footer">
+                  <button type="button" className="btn btn-primary" style={{ width: '100%' }} onClick={handleSaveCurrentSettings}>
+                    Salvar alterações
                   </button>
-                </>
-              )}
-
-              {canManageClients && (
-                <button
-                  type="button"
-                  className={`settings-sidebar-link ${activeSettingsTab === 'operation' ? 'active' : ''}`}
-                  onClick={() => handleSettingsTabChange('operation')}
-                >
-                  <i className="bx bx-pulse"></i>
-                  <div>
-                    <strong>Operação</strong>
-                    <span>Meta de risco e saúde semanal dos clientes.</span>
-                  </div>
-                </button>
-              )}
-            </div>
-          </aside>
-
-          <section className="glass-panel settings-panel">
-          <div className="settings-head">
-            <div>
-              <h1>Configurações</h1>
-              <p>Centralize aqui a aparência da sua conta e as credenciais globais do app.</p>
-            </div>
-            {!embeddedOverride && (
-              <Link href="/home" className="btn btn-secondary">
-                Voltar
-              </Link>
-            )}
-          </div>
-          <div className="settings-section-content">
+                  {settingsSaveFeedback && (
+                    <p style={{ fontSize: 12, color: '#22c55e', marginTop: 8, textAlign: 'center' }}>{settingsSaveFeedback}</p>
+                  )}
+                </div>
+              </div>
+              <div className="settings-section-content">
               {activeSettingsTab === 'panel' && (
                 <div className="settings-panel-layout settings-panel-layout-obsidian">
-                  <div className="glass-item settings-block settings-block-full settings-block-hero">
-                    <div className="settings-section-head">
+                  <div className={`glass-item settings-block settings-block-full settings-block-hero settings-collapsible ${expandedSections.has('interface') ? 'expanded' : ''}`}>
+                    <button type="button" className="settings-collapsible-trigger" onClick={() => toggleSection('interface')}>
                       <div>
                         <span className="settings-hero-kicker">Configuração visual</span>
                         <h2>Interface do sistema</h2>
                         <p>Use o modo escuro padrão da Assessoria LP, alterne para a versão clara ou libere a personalização completa da interface.</p>
                       </div>
-                    </div>
-
+                      <i className={`bx ${expandedSections.has('interface') ? 'bx-chevron-up' : 'bx-chevron-down'}`}></i>
+                    </button>
+                    {expandedSections.has('interface') && (
+                    <div className="settings-collapsible-body">
                     <div className="settings-preset-grid">
                       {[
                         { mode: 'dark', label: 'Modo escuro', description: 'Contraste premium', icon: 'bx-moon' },
@@ -2216,20 +2251,24 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
                       </div>
                     </div>
                     ) : null}
+                    </div>
+                    )}
 
                   </div>
                 </div>
               )}
 
               {canEditIntegrations && activeSettingsTab === 'general' && (
-                <div className="glass-item settings-block settings-block-full">
-                  <div className="settings-section-head">
+                <div className={`glass-item settings-block settings-block-full settings-collapsible ${expandedSections.has('integracoes') ? 'expanded' : ''}`}>
+                  <button type="button" className="settings-collapsible-trigger" onClick={() => toggleSection('integracoes')}>
                     <div>
                       <h2>Integrações de ferramentas</h2>
                       <p>Conecte as plataformas operacionais usadas no dia a dia — mídia, CRM e outras fontes de dados.</p>
                     </div>
-                  </div>
-
+                    <i className={`bx ${expandedSections.has('integracoes') ? 'bx-chevron-up' : 'bx-chevron-down'}`}></i>
+                  </button>
+                  {expandedSections.has('integracoes') && (
+                  <div className="settings-collapsible-body">
                   <div className="settings-general-layout">
                     <section className="settings-integration-family settings-integration-family-tools">
                       <div className="settings-category-head settings-integration-family-head">
@@ -2247,8 +2286,8 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
                           </div>
 
                       <div className="settings-integrations-grid settings-category-grid">
-                        <div className="integration-block integration-block-meta">
-                          <div className="integration-heading">
+                        <div className={`integration-block integration-block-meta${expandedSections.has('int-meta') ? ' int-open' : ''}`}>
+                          <button type="button" className="integration-heading integration-heading-toggle" onClick={() => toggleSection('int-meta')}>
                             <div className="integration-icon" style={{ color: 'var(--accent-blue)', borderColor: 'color-mix(in srgb, var(--accent-blue) 30%, transparent)' }}>
                               <i className="bx bxl-meta"></i>
                             </div>
@@ -2256,8 +2295,10 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
                               <h3>Meta Ads</h3>
                               <p>Escolha entre token manual ou conta conectada via Meta Login.</p>
                             </div>
-                          </div>
-
+                            <i className={`bx ${expandedSections.has('int-meta') ? 'bx-chevron-up' : 'bx-chevron-down'} int-chevron`}></i>
+                          </button>
+                          {expandedSections.has('int-meta') && (
+                          <div className="int-body">
                           <div className="settings-choice-row settings-choice-row-compact">
                             <button
                               type="button"
@@ -2358,10 +2399,12 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
                               {isMetaConnectionLoading ? <div className="settings-callout info">Carregando status da conexão da Meta...</div> : null}
                             </>
                           )}
+                          </div>
+                          )}
                         </div>
 
-                        <div className="integration-block integration-block-google-ads">
-                          <div className="integration-heading">
+                        <div className={`integration-block integration-block-google-ads${expandedSections.has('int-google-ads') ? ' int-open' : ''}`}>
+                          <button type="button" className="integration-heading integration-heading-toggle" onClick={() => toggleSection('int-google-ads')}>
                             <div className="integration-icon" style={{ color: 'var(--accent-emerald)', borderColor: 'color-mix(in srgb, var(--accent-emerald) 30%, transparent)' }}>
                               <i className="bx bxl-google"></i>
                             </div>
@@ -2369,8 +2412,10 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
                               <h3>Google Ads</h3>
                               <p>Conecte sua conta Google para listar clientes e puxar mídia logo depois da Meta no dashboard.</p>
                             </div>
-                          </div>
-
+                            <i className={`bx ${expandedSections.has('int-google-ads') ? 'bx-chevron-up' : 'bx-chevron-down'} int-chevron`}></i>
+                          </button>
+                          {expandedSections.has('int-google-ads') && (
+                          <div className="int-body">
                           <div className="meta-connection-card google-ads-connection-card">
                             <div className="meta-connection-copy">
                               <strong>{hasGoogleAdsConnection ? 'Conta conectada' : 'Conta ainda não conectada'}</strong>
@@ -2414,11 +2459,13 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
                           {googleAdsConnectionNotice ? <div className="settings-callout success">{googleAdsConnectionNotice}</div> : null}
                           {googleAdsConnectionError ? <div className="settings-callout error">{googleAdsConnectionError}</div> : null}
                           {isGoogleAdsConnectionLoading ? <div className="settings-callout info">Carregando status da conexão do Google Ads...</div> : null}
+                          </div>
+                          )}
                         </div>
 
                         {advertisingIntegrationGroups.map((group) => (
-                          <div key={group.title} className="integration-block">
-                            <div className="integration-heading">
+                          <div key={group.title} className={`integration-block${expandedSections.has('int-ads-' + group.title) ? ' int-open' : ''}`}>
+                            <button type="button" className="integration-heading integration-heading-toggle" onClick={() => toggleSection('int-ads-' + group.title)}>
                               <div className="integration-icon" style={{ color: group.accent, borderColor: `${group.accent}33` }}>
                                 <i className={`bx ${group.icon}`}></i>
                               </div>
@@ -2426,8 +2473,10 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
                                 <h3>{group.title}</h3>
                                 <p>{group.description}</p>
                               </div>
-                            </div>
-
+                              <i className={`bx ${expandedSections.has('int-ads-' + group.title) ? 'bx-chevron-up' : 'bx-chevron-down'} int-chevron`}></i>
+                            </button>
+                            {expandedSections.has('int-ads-' + group.title) && (
+                            <div className="int-body">
                             {group.fields.map((field) => (
                               <div key={field.name} className="input-group">
                                 <label>{field.label}</label>
@@ -2439,6 +2488,8 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
                                 />
                               </div>
                             ))}
+                            </div>
+                            )}
                           </div>
                         ))}
                       </div>
@@ -2453,8 +2504,8 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
 
                       <div className="settings-integrations-grid settings-category-grid">
                         {crmIntegrationGroups.map((group) => (
-                          <div key={group.title} className="integration-block">
-                            <div className="integration-heading">
+                          <div key={group.title} className={`integration-block${expandedSections.has('int-crm-' + group.title) ? ' int-open' : ''}`}>
+                            <button type="button" className="integration-heading integration-heading-toggle" onClick={() => toggleSection('int-crm-' + group.title)}>
                               <div className="integration-icon" style={{ color: group.accent, borderColor: `${group.accent}33` }}>
                                 <i className={`bx ${group.icon}`}></i>
                               </div>
@@ -2462,8 +2513,10 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
                                 <h3>{group.title}</h3>
                                 <p>{group.description}</p>
                               </div>
-                            </div>
-
+                              <i className={`bx ${expandedSections.has('int-crm-' + group.title) ? 'bx-chevron-up' : 'bx-chevron-down'} int-chevron`}></i>
+                            </button>
+                            {expandedSections.has('int-crm-' + group.title) && (
+                            <div className="int-body">
                             {group.fields.map((field) => (
                               <div key={field.name} className="input-group">
                                 <label>{field.label}</label>
@@ -2475,26 +2528,112 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
                                 />
                               </div>
                             ))}
+                            </div>
+                            )}
                           </div>
                         ))}
                       </div>
                         </section>
+
+                        {/* Google Calendar */}
+                        <section className="settings-category-shell">
+                          <div className="settings-category-head">
+                            <span className="settings-category-kicker">Agenda & Reuniões</span>
+                            <h3>Google Calendar</h3>
+                            <p>Conecte sua agenda Google para criar eventos e links do Google Meet automaticamente ao agendar treinamentos no PAC.</p>
+                          </div>
+
+                          <div className="settings-integrations-grid settings-category-grid">
+                            <div className={`integration-block${expandedSections.has('int-gcal') ? ' int-open' : ''}`}>
+                              <button type="button" className="integration-heading integration-heading-toggle" onClick={() => toggleSection('int-gcal')}>
+                                <div className="integration-icon" style={{ color: '#4285F4', borderColor: 'rgba(66,133,244,0.25)', background: 'rgba(66,133,244,0.08)' }}>
+                                  <i className="bx bxl-google" style={{ fontSize: 20 }}></i>
+                                </div>
+                                <div>
+                                  <h3>Google Calendar</h3>
+                                  <p>Sincronize treinamentos PAC com sua agenda e gere links do Google Meet automaticamente.</p>
+                                </div>
+                                {gcalConnection?.connected && (
+                                  <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 600, color: '#22c55e', background: 'rgba(34,197,94,0.1)', borderRadius: 99, padding: '3px 10px', whiteSpace: 'nowrap' }}>
+                                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#22c55e', display: 'inline-block' }}></span>
+                                    Conectado
+                                  </span>
+                                )}
+                                <i className={`bx ${expandedSections.has('int-gcal') ? 'bx-chevron-up' : 'bx-chevron-down'} int-chevron`}></i>
+                              </button>
+                              {expandedSections.has('int-gcal') && (
+                              <div className="int-body">
+                              {gcalLoading ? (
+                                <div style={{ padding: '16px 0', opacity: 0.5, fontSize: 13 }}>Carregando...</div>
+                              ) : gcalConnection?.connected ? (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                                  <div style={{ fontSize: 13, color: 'rgba(241,241,241,0.6)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                    <i className="bx bx-envelope" style={{ fontSize: 14 }}></i>
+                                    {gcalConnection.email}
+                                  </div>
+                                  <div className="input-group" style={{ marginBottom: 0 }}>
+                                    <label>Agenda selecionada</label>
+                                    <select
+                                      value={gcalSelectedId}
+                                      onChange={e => {
+                                        setGcalSelectedId(e.target.value)
+                                        const cal = gcalCalendars.find(c => c.id === e.target.value)
+                                        setGcalSelectedSummary(cal?.summary || e.target.value)
+                                      }}
+                                    >
+                                      {gcalCalendars.length ? gcalCalendars.map(cal => (
+                                        <option key={cal.id} value={cal.id}>{cal.summary}</option>
+                                      )) : (
+                                        <option value={gcalSelectedId}>{gcalConnection.selectedCalendarSummary || 'Calendário principal'}</option>
+                                      )}
+                                    </select>
+                                  </div>
+                                  <div style={{ display: 'flex', gap: 8 }}>
+                                    <button type="button" className="btn btn-primary" onClick={handleGcalSaveCalendar} disabled={gcalSaving} style={{ fontSize: 13 }}>
+                                      {gcalSaving ? 'Salvando...' : 'Salvar agenda'}
+                                    </button>
+                                    <button type="button" className="btn btn-secondary" onClick={handleGcalDisconnect} style={{ fontSize: 13, color: '#ef4444', borderColor: 'rgba(239,68,68,0.3)' }}>
+                                      <i className="bx bx-unlink"></i>
+                                      Desconectar
+                                    </button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <a
+                                  href="/api/google-calendar/auth/start?return_to=/settings"
+                                  className="btn btn-primary"
+                                  style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 13, textDecoration: 'none', width: 'fit-content' }}
+                                >
+                                  <i className="bx bxl-google"></i>
+                                  Conectar Google Calendar
+                                </a>
+                              )}
+                              </div>
+                              )}
+                            </div>
+                          </div>
+                        </section>
+
                       </div>
                     </section>
 
                   </div>
+                  </div>
+                  )}
                 </div>
               )}
 
               {canEditIntegrations && activeSettingsTab === 'ai' && (
-                <div className="glass-item settings-block settings-block-full">
-                  <div className="settings-section-head">
+                <div className={`glass-item settings-block settings-block-full settings-collapsible ${expandedSections.has('ia') ? 'expanded' : ''}`}>
+                  <button type="button" className="settings-collapsible-trigger" onClick={() => toggleSection('ia')}>
                     <div>
                       <h2>Inteligência Artificial</h2>
                       <p>Configure os provedores de IA, o prompt global do dashboard e os agentes usados no chat.</p>
                     </div>
-                  </div>
-
+                    <i className={`bx ${expandedSections.has('ia') ? 'bx-chevron-up' : 'bx-chevron-down'}`}></i>
+                  </button>
+                  {expandedSections.has('ia') && (
+                  <div className="settings-collapsible-body">
                   <div className="settings-general-layout">
                     <section className="settings-integration-family settings-integration-family-ai">
                       <div className="settings-category-head settings-integration-family-head">
@@ -2764,6 +2903,8 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
                       </section>
                     </section>
                   </div>
+                  </div>
+                  )}
                 </div>
               )}
 
@@ -2773,15 +2914,17 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
 
               {canManageClients && activeSettingsTab === 'operation' && (
                 <div className="settings-panel-layout settings-panel-layout-obsidian">
-                  <div className="glass-item settings-block settings-block-full settings-block-hero">
-                    <div className="settings-section-head">
+                  <div className={`glass-item settings-block settings-block-full settings-block-hero settings-collapsible ${expandedSections.has('operacao') ? 'expanded' : ''}`}>
+                    <button type="button" className="settings-collapsible-trigger" onClick={() => toggleSection('operacao')}>
                       <div>
                         <span className="settings-hero-kicker">controle operacional</span>
                         <h2>Meta de saúde da carteira</h2>
                         <p>Defina o limite máximo de clientes em Crítico + Atenção. O painel compara a semana selecionada contra essa meta.</p>
                       </div>
-                    </div>
-
+                      <i className={`bx ${expandedSections.has('operacao') ? 'bx-chevron-up' : 'bx-chevron-down'}`}></i>
+                    </button>
+                    {expandedSections.has('operacao') && (
+                    <div className="settings-collapsible-body">
                     <div className="settings-operation-grid">
                       <div className="glass-item settings-operation-card">
                         <span>Alvo permitido</span>
@@ -2800,42 +2943,16 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
                         <small>Hoje o objetivo padrão do time é 20%.</small>
                       </label>
                     </div>
+                    </div>
+                    )}
                   </div>
                 </div>
               )}
 
-              <div className="settings-action-bar settings-action-bar-global">
-                <div className="settings-action-copy">
-                  <strong>Configuração pronta para aplicar</strong>
-                  <span>
-                    {settingsSaveFeedback ||
-                      panelFeedback ||
-                      (activeSettingsTab === 'panel'
-                        ? 'Ajuste aparência, modo e atmosfera. Salve quando quiser aplicar o tema em todo o app.'
-                        : activeSettingsTab === 'operation'
-                          ? 'Salve a meta operacional para aplicar no Controle da Operação.'
-                          : activeSettingsTab === 'ai'
-                            ? 'Salve para aplicar as configurações de IA — providers, prompt e agentes.'
-                            : 'As integrações do app já sincronizam em tempo real, mas você pode usar este botão para confirmar e reaplicar a configuração atual.')}
-                  </span>
-                </div>
-                <div className="settings-action-buttons">
-                  <button
-                    type="button"
-                    className="btn btn-secondary settings-ghost-button"
-                    onClick={handleResetPanelDraft}
-                    disabled={!hasPendingPanelChanges}
-                  >
-                    Descartar alterações
-                  </button>
-                  <button type="button" className="btn btn-primary settings-save-button" onClick={handleSaveCurrentSettings}>
-                    Salvar configuração
-                  </button>
                 </div>
               </div>
+            </div>
           </div>
-          </section>
-        </div>
       </main>
 
       <style jsx>{`
@@ -2844,6 +2961,7 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
           padding-left: 0 !important;
           margin-left: calc(var(--sidebar-width) + 28px) !important;
           padding-top: 14px;
+          position: relative;
         }
 
         .settings-main-embedded {
@@ -2853,26 +2971,214 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
 
         .settings-embedded-shell {
           width: 100%;
+          height: 100%;
+          display: flex;
+          flex-direction: row;
+          padding-left: 20px;
+        }
+
+        .settings-main-embedded {
+          flex: 1;
+          min-width: 0;
+          display: flex;
+          flex-direction: column;
+          height: 100%;
         }
 
         .settings-workspace {
           width: 100%;
+          flex: 1;
+          min-height: 0;
+          display: flex;
+          flex-direction: column;
+          overflow: hidden;
+        }
+
+        /* Category cards */
+        .settings-category-grid {
           display: grid;
-          grid-template-columns: minmax(210px, 236px) minmax(0, 1fr);
-          gap: 18px;
-          align-items: start;
+          grid-template-columns: repeat(2, 1fr);
+          gap: 12px;
+          max-width: 100%;
+          margin-top: 8px;
+        }
+        .settings-category-card {
+          display: flex;
+          align-items: flex-start;
+          gap: 14px;
+          width: 100%;
+          padding: 20px;
+          border-radius: 16px;
+          border: 1px solid rgba(255,255,255,0.07);
+          background: rgba(255,255,255,0.03);
+          color: inherit;
+          font: inherit;
+          cursor: pointer;
+          text-align: left;
+          transition: all 0.15s;
+          border-left: 3px solid var(--button-primary, #26c281);
+          position: relative;
+          overflow: hidden;
+        }
+        .settings-category-card::before {
+          content: '';
+          position: absolute;
+          inset: 0;
+          background: linear-gradient(135deg, color-mix(in srgb, var(--button-primary, #26c281) 5%, transparent), transparent 60%);
+          opacity: 0;
+          transition: opacity 0.2s;
+        }
+        .settings-category-card:hover { background: rgba(255,255,255,0.055); border-color: rgba(255,255,255,0.12); transform: translateY(-1px); box-shadow: 0 8px 24px rgba(0,0,0,0.15); }
+        .settings-category-card:hover::before { opacity: 1; }
+        .settings-category-icon {
+          width: 40px;
+          height: 40px;
+          border-radius: 10px;
+          background: color-mix(in srgb, var(--button-primary, #26c281) 12%, transparent);
+          border: 1px solid color-mix(in srgb, var(--button-primary, #26c281) 24%, transparent);
+          display: grid;
+          place-items: center;
+          font-size: 19px;
+          color: var(--button-primary, #26c281);
+          flex-shrink: 0;
+        }
+        .settings-category-info {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+        }
+        .settings-category-info strong {
+          font-size: 14px;
+          font-weight: 700;
+          color: #f1f1f1;
+        }
+        .settings-category-info span {
+          font-size: 12px;
+          color: rgba(241,241,241,0.45);
+        }
+        .settings-category-arrow {
+          font-size: 20px;
+          color: rgba(241,241,241,0.25);
+          flex-shrink: 0;
+        }
+
+        /* Settings popup overlay */
+        .settings-popup-overlay {
+          flex: 1;
+          min-height: 0;
+          display: flex;
+          flex-direction: column;
+        }
+        .settings-popup-panel {
+          flex: 1;
+          min-height: 0;
+          background: color-mix(in srgb, var(--app-bg-color, #0d1110) 80%, #060808 20%);
+          border: none;
+          border-radius: 0;
+          display: flex;
+          flex-direction: row;
+          overflow: hidden;
+          box-shadow: none;
+        }
+        /* Left sidebar nav */
+        .settings-popup-sidebar {
+          width: 220px;
+          flex-shrink: 0;
+          background: rgba(0,0,0,0.25);
+          border-right: 1px solid rgba(255,255,255,0.07);
+          display: flex;
+          flex-direction: column;
+          padding: 20px 12px;
+          gap: 4px;
+        }
+        .settings-popup-sidebar-top {
+          display: flex;
+          flex-direction: column;
+          gap: 20px;
+          padding-bottom: 16px;
+          margin-bottom: 8px;
+          border-bottom: 1px solid rgba(255,255,255,0.07);
+        }
+        .settings-popup-back {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          border: none;
+          background: transparent;
+          color: rgba(241,241,241,0.5);
+          cursor: pointer;
+          font-size: 13px;
+          font-weight: 500;
+          padding: 4px 0;
+          transition: color 0.15s;
+        }
+        .settings-popup-back i { font-size: 16px; }
+        .settings-popup-back:hover { color: rgba(241,241,241,0.9); }
+        .settings-popup-sidebar-brand {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 0 4px;
+        }
+        .settings-popup-sidebar-brand i { font-size: 18px; color: var(--button-primary, #26c281); }
+        .settings-popup-sidebar-brand strong { font-size: 15px; font-weight: 700; color: #f1f1f1; }
+        .settings-popup-nav {
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+          flex: 1;
+        }
+        .settings-popup-nav-item {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 9px 12px;
+          border-radius: 9px;
+          border: none;
+          background: transparent;
+          color: rgba(241,241,241,0.55);
+          font-size: 13px;
+          font-weight: 500;
+          cursor: pointer;
+          text-align: left;
+          transition: background 0.15s, color 0.15s;
+          width: 100%;
+        }
+        .settings-popup-nav-item i { font-size: 16px; flex-shrink: 0; }
+        .settings-popup-nav-item:hover { background: rgba(255,255,255,0.06); color: rgba(241,241,241,0.9); }
+        .settings-popup-nav-item.active {
+          background: color-mix(in srgb, var(--button-primary, #26c281) 14%, rgba(255,255,255,0.04));
+          color: #f1f1f1;
+          font-weight: 600;
+          box-shadow: inset 3px 0 0 var(--button-primary, #26c281);
+        }
+        .settings-popup-sidebar-footer {
+          padding-top: 12px;
+          border-top: 1px solid rgba(255,255,255,0.07);
+          margin-top: 8px;
+        }
+        .settings-popup-tab-label {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          font-size: 16px;
+          font-weight: 700;
+          letter-spacing: -0.01em;
+          flex: 1;
+        }
+        .settings-popup-tab-label i { font-size: 20px; color: var(--button-primary, #26c281); }
+        .settings-popup-feedback {
+          padding: 10px 22px;
+          font-size: 13px;
+          color: var(--button-primary, #26c281);
+          border-top: 1px solid rgba(255,255,255,0.07);
+          flex-shrink: 0;
+          margin: 0;
         }
 
         .settings-panel {
-          padding: 30px;
-          display: grid;
-          gap: 28px;
-          background:
-            radial-gradient(circle at 100% 0%, rgba(78, 137, 255, 0.1), transparent 26%),
-            radial-gradient(circle at 0% 100%, rgba(84, 121, 255, 0.08), transparent 24%),
-            rgba(8, 15, 30, 0.74);
-          border: 1px solid rgba(123, 148, 199, 0.14);
-          border-radius: 28px;
+          display: none;
         }
 
         .settings-head {
@@ -3004,15 +3310,48 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
             0 16px 30px rgba(15, 23, 42, 0.16);
         }
 
-        .settings-section-content,
-        .settings-panel-layout {
-          display: grid;
+        .settings-section-content {
+          display: flex;
+          flex-direction: column;
           gap: 24px;
+          overflow-y: auto;
+          padding: 28px;
+          flex: 1;
+          min-height: 0;
+        }
+        .settings-panel-layout {
+          display: flex;
+          flex-direction: column;
+          gap: 24px;
+          flex: 1;
+          min-height: 0;
         }
 
         .settings-panel-layout-obsidian {
           gap: 28px;
         }
+
+        .settings-collapsible { padding: 0; overflow: hidden; }
+        .settings-collapsible-trigger {
+          width: 100%;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 20px 24px;
+          background: transparent;
+          border: none;
+          color: inherit;
+          font: inherit;
+          cursor: pointer;
+          text-align: left;
+          gap: 16px;
+        }
+        .settings-collapsible-trigger:hover { background: rgba(255,255,255,0.03); }
+        .settings-collapsible-trigger > i { font-size: 22px; opacity: 0.5; flex-shrink: 0; transition: opacity 0.15s; }
+        .settings-collapsible-trigger:hover > i { opacity: 0.9; }
+        .settings-collapsible-trigger h2 { font-size: 17px; font-weight: 700; margin: 0; }
+        .settings-collapsible-trigger p { font-size: 13px; opacity: 0.6; margin: 4px 0 0; }
+        .settings-collapsible-body { padding: 0 24px 24px; display: flex; flex-direction: column; gap: 20px; }
 
         .settings-grid {
           display: grid;
@@ -4203,20 +4542,35 @@ export default function SettingsPage({ embeddedOverride = false }: { embeddedOve
         }
 
         .integration-block {
-          padding: 22px;
           border-radius: 18px;
           background: rgba(255, 255, 255, 0.03);
           border: 1px solid rgba(255, 255, 255, 0.05);
-          display: grid;
-          gap: 18px;
+          overflow: hidden;
         }
 
         .integration-heading {
           display: flex;
           gap: 14px;
-          align-items: flex-start;
-          margin-bottom: 6px;
+          align-items: center;
+          padding: 16px 20px;
+          margin-bottom: 0;
         }
+
+        button.integration-heading-toggle {
+          width: 100%;
+          background: transparent;
+          border: none;
+          color: inherit;
+          font: inherit;
+          cursor: pointer;
+          text-align: left;
+          transition: background 0.15s;
+        }
+        button.integration-heading-toggle:hover { background: rgba(255,255,255,0.04); }
+        .int-chevron { font-size: 18px; opacity: 0.4; flex-shrink: 0; margin-left: auto; transition: opacity 0.15s; }
+        button.integration-heading-toggle:hover .int-chevron { opacity: 0.8; }
+        .int-body { padding: 0 20px 20px; display: flex; flex-direction: column; gap: 16px; }
+        .integration-block.int-open { border-color: rgba(255,255,255,0.1); }
 
         .integration-icon {
           width: 46px;

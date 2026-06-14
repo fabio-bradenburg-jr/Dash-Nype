@@ -118,7 +118,8 @@ export async function GET(request: Request) {
 
     const eligibleClients = (clients || []).filter((c: any) => {
       const status = String(c.payload?.status || '').toLowerCase()
-      return c.payload?.metaAdAccountId && status !== 'churn' && status !== 'pausado'
+      const alertsEnabled = c.payload?.balanceAlertsEnabled !== false // default true
+      return c.payload?.metaAdAccountId && status !== 'churn' && status !== 'pausado' && alertsEnabled
     })
 
     for (const client of eligibleClients) {

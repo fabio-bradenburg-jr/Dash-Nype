@@ -5,6 +5,10 @@ import './globals.css'
 export const metadata = {
   title: 'Assessoria LP',
   description: 'Assessoria LP: dashboards, integrações e IA para leitura de performance de marketing.',
+  icons: {
+    icon: '/assessoria-lp-logo.png',
+    apple: '/assessoria-lp-logo.png',
+  },
 }
 
 export default function RootLayout({ children }) {

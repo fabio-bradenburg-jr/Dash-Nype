@@ -6,6 +6,8 @@ import { createPortal } from 'react-dom'
 import AssistantPage from '@/app/assistant/page'
 import SettingsPage from '@/app/settings/page'
 import ClientNotesPanel from '@/components/dashboard/ClientNotesPanel'
+import EditorialCalendar from '@/components/dashboard/EditorialCalendar'
+import PACCalendar from '@/components/dashboard/PACCalendar'
 import ReportsTab from '@/components/dashboard/ReportsTab'
 import { useUser } from '@/lib/contexts/UserContext'
 import { createClient } from '@/lib/supabase/client'
@@ -1274,6 +1276,7 @@ function normalizeClientStatus(client) {
 }
 
 function isClientActiveForDashboard(client) {
+  if (client?.isArchived) return false
   const normalizedStatus = normalizeClientStatus(client)
   return client?.dashboardEnabled !== false && (!normalizedStatus || normalizedStatus === 'ativo')
 }
@@ -1509,8 +1512,6 @@ const CLIENT_DASHBOARD_INTEGRATION_OPTIONS = [
   { key: 'google_ads', label: 'Google Ads', description: 'Contas Google Ads e dados complementares.' },
   { key: 'tiktok_ads', label: 'TikTok Ads', description: 'Operação de mídia e contas do TikTok Ads.' },
   { key: 'linkedin_ads', label: 'LinkedIn Ads', description: 'Campanhas e contas do LinkedIn Ads.' },
-  { key: 'rd_station', label: 'RD Station', description: 'CRM, pipeline e leitura comercial.' },
-  { key: 'salesforce', label: 'Salesforce', description: 'Conta e estrutura de CRM no Salesforce.' },
   { key: 'agendor', label: 'Agendor', description: 'Conta comercial e pipeline no Agendor.' },
 ]
 
@@ -2494,19 +2495,14 @@ function resolveDateWindow(datePreset, since, until, { excludeTodayForLast30d = 
     }
     case 'last_7d':
       return {
-        start: shiftLocalDays(endOfToday, -6),
-        end: endOfToday,
+        start: shiftLocalDays(endOfToday, -7),
+        end: shiftLocalDays(endOfToday, -1),
       }
     case 'last_30d':
-      return excludeTodayForLast30d
-        ? {
-            start: shiftLocalDays(endOfToday, -30),
-            end: shiftLocalDays(endOfToday, -1),
-          }
-        : {
-            start: shiftLocalDays(endOfToday, -29),
-            end: endOfToday,
-          }
+      return {
+        start: shiftLocalDays(endOfToday, -30),
+        end: shiftLocalDays(endOfToday, -1),
+      }
     case 'this_month':
       return {
         start: new Date(today.getFullYear(), today.getMonth(), 1),
@@ -3231,7 +3227,7 @@ export default function DashboardShell({
   const [mondayCustomUntil, setMondayCustomUntil] = useState('')
   const [draftMondayCustomUntil, setDraftMondayCustomUntil] = useState('')
   const [themeColor, setThemeColor] = useState('blue')
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(true)
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
   const [isHomeToolsExpanded, setIsHomeToolsExpanded] = useState(false)
   const [metric1, setMetric1] = useState('spend')
   const [metric2, setMetric2] = useState('roas')
@@ -3507,6 +3503,10 @@ export default function DashboardShell({
   const [savingUser, setSavingUser] = useState(false)
   const ADS_TABS = ['apresentacao', 'campanhas', 'anuncios', 'saldos', 'relatorios']
   const [isAdsMenuOpen, setIsAdsMenuOpen] = useState(() => ADS_TABS.includes(initialTab))
+  const SOCIAL_TABS = ['editorial', 'editorial-dash', 'editorial-plans']
+  const [isSocialMenuOpen, setIsSocialMenuOpen] = useState(() => SOCIAL_TABS.includes(initialTab))
+  const PAC_TABS = ['pac-dash', 'pac-calendario', 'pac-tipos']
+  const [isPacMenuOpen, setIsPacMenuOpen] = useState(() => PAC_TABS.includes(initialTab))
   const [globalIntegrations, setGlobalIntegrations] = useState({
     ...DEFAULT_PREFERENCES.globalIntegrations,
   })
@@ -3827,7 +3827,7 @@ export default function DashboardShell({
     })
   }, [activeClient?.id, activeClient?.manualCrmSummary])
   const operationEligibleClients = useMemo(
-    () => clients.filter((client) => client.operationEnabled !== false),
+    () => clients.filter((client) => !client.isArchived && client.operationEnabled !== false),
     [clients]
   )
   useEffect(() => {
@@ -4235,12 +4235,14 @@ export default function DashboardShell({
     return columns
   }, [effectiveClientImplementationPhases, filteredClients])
   const filteredOperationCards = useMemo(() => {
-    const now = Date.now()
+    const today = new Date()
+    const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime()
+    const startOfYesterday = startOfToday - 24 * 60 * 60 * 1000
     const periodThresholds = {
-      '7d': now - 7 * 24 * 60 * 60 * 1000,
-      '15d': now - 15 * 24 * 60 * 60 * 1000,
-      '30d': now - 30 * 24 * 60 * 60 * 1000,
-      '90d': now - 90 * 24 * 60 * 60 * 1000,
+      '7d': startOfYesterday - 6 * 24 * 60 * 60 * 1000,
+      '15d': startOfYesterday - 14 * 24 * 60 * 60 * 1000,
+      '30d': startOfYesterday - 29 * 24 * 60 * 60 * 1000,
+      '90d': startOfYesterday - 89 * 24 * 60 * 60 * 1000,
     }
     const threshold = operationPeriodFilter === 'all' ? null : periodThresholds[operationPeriodFilter]
     const term = operationSearch.trim().toLowerCase()
@@ -4847,6 +4849,7 @@ export default function DashboardShell({
           resultManagerName: manager?.full_name || manager?.email || row.resultManagerName || 'Sem gestor',
         }
       })
+      .filter((row) => !row.client?.isArchived)
       .filter((row) => {
         const matchesManager = adsOverviewManagerFilter === 'all'
           ? true
@@ -4893,6 +4896,7 @@ export default function DashboardShell({
           clientLogoUrl: client?.logoUrl || row.clientLogoUrl || '',
         }
       })
+      .filter((row) => !row.client?.isArchived)
       .filter((row) => {
         if (!query) return true
         const campaignNames = (row.campaigns || []).flatMap((campaign) => [
@@ -5374,6 +5378,25 @@ export default function DashboardShell({
       if (healthCounts[record.healthStatus] != null) healthCounts[record.healthStatus] += 1
     })
 
+    // Monthly churn calculation
+    const now = new Date()
+    const thisYear = now.getFullYear()
+    const thisMonth = now.getMonth()
+    const startOfMonth = new Date(thisYear, thisMonth, 1)
+
+    // Clients who churned this month (churnDate set and falls in current month)
+    const churnedThisMonth = clients.filter((client) => {
+      if (String(client?.status || '').trim().toLowerCase() !== 'churn') return false
+      const d = client.churnDate ? new Date(client.churnDate) : null
+      return d && d >= startOfMonth && d.getFullYear() === thisYear && d.getMonth() === thisMonth
+    })
+
+    // Active at start of month = all non-churn now + those who churned this month
+    const activeAtStartOfMonth = activeBaseClientsCount + churnedThisMonth.length
+    const monthlyChurnRate = activeAtStartOfMonth > 0
+      ? (churnedThisMonth.length / activeAtStartOfMonth) * 100
+      : null
+
     return {
       recordsCount: weeklyVisibleRecords.length,
       monitoredClients: uniqueClientIds.size,
@@ -5385,6 +5408,9 @@ export default function DashboardShell({
       withResultCount: healthCounts.with_result,
       integrationCount: healthCounts.integration,
       churnCount: healthCounts.churn,
+      churnedThisMonthCount: churnedThisMonth.length,
+      activeAtStartOfMonth,
+      monthlyChurnRate,
       latestWeekLabel: weeklyHistoryCards[0]
         ? formatWeekRangeLabel(weeklyHistoryCards[0].weekStart, weeklyHistoryCards[0].weekEnd)
         : 'Sem semanas registradas',
@@ -6977,6 +7003,20 @@ export default function DashboardShell({
       await persistWorkspaceState({ clients: nextClients, clientGroups: nextClientGroups, activeClientId: nextActiveClientId })
     } catch (error) {
       alert(error.message || 'Cliente removido na tela, mas não foi possível atualizar o Supabase agora.')
+    }
+  }
+
+  const handleArchiveClient = async (clientId, archive) => {
+    if (!canEditClientRecord(clientId)) return
+    setClients((current) => current.map((c) => c.id === clientId ? { ...c, isArchived: archive } : c))
+    try {
+      await fetch(`/api/clients/${clientId}/archive`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_archived: archive }),
+      })
+    } catch (err) {
+      console.error('Erro ao arquivar cliente', err)
     }
   }
 
@@ -9808,11 +9848,12 @@ export default function DashboardShell({
             ...metaRequestHeaders,
           },
           body: JSON.stringify({
-            clients: clients.map((client) => ({
+            clients: clients.filter((client) => !client.isArchived).map((client) => ({
               id: client.id,
               name: client.name,
               logoUrl: client.logoUrl,
               metaAdAccountId: client.metaAdAccountId,
+              balanceAlertsEnabled: client.balanceAlertsEnabled !== false,
             })),
           }),
         })
@@ -14544,6 +14585,40 @@ export default function DashboardShell({
           <h2>Controle da Operação</h2>
           <p>Leitura executiva da semana, saúde da carteira e custos de aquisição por cliente em uma rotina de segunda a domingo.</p>
         </div>
+
+        {/* Churn card — grid-column 1, grid-row 2, aligns with weekly-command-grid */}
+        {(() => {
+          const hasChurn = weeklyPortfolioStats.churnedThisMonthCount > 0
+          const color = hasChurn ? '#ef4444' : '#10b981'
+          const bg = hasChurn ? 'rgba(239,68,68,0.08)' : 'rgba(16,185,129,0.08)'
+          const border = hasChurn ? 'rgba(239,68,68,0.3)' : 'rgba(16,185,129,0.3)'
+          return (
+            <div style={{
+              gridColumn: 1, gridRow: 2,
+              padding: '18px 20px', borderRadius: 16,
+              border: `1.5px solid ${border}`, background: bg,
+              display: 'flex', flexDirection: 'column', gap: 8,
+              alignSelf: 'center', margin: '0 12px 12px 12px',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, color, fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                <i className={hasChurn ? 'bx bx-user-minus' : 'bx bx-user-check'} style={{ fontSize: '1.1rem' }}></i>
+                Churn do mês
+              </div>
+              <div style={{ fontSize: 'clamp(2.2rem,3.5vw,3rem)', fontWeight: 900, letterSpacing: '-0.04em', lineHeight: 1, color: isLightAppMode ? '#0f172a' : '#f8fafc' }}>
+                {weeklyPortfolioStats.monthlyChurnRate == null ? '—' : weeklyPortfolioStats.monthlyChurnRate.toFixed(1) + '%'}
+              </div>
+              <div style={{ fontSize: '0.88rem', color: isLightAppMode ? '#475569' : 'rgba(148,163,184,0.85)', lineHeight: 1.5 }}>
+                <strong style={{ color: isLightAppMode ? '#0f172a' : '#f8fafc' }}>{weeklyPortfolioStats.churnedThisMonthCount}</strong> cliente{weeklyPortfolioStats.churnedThisMonthCount !== 1 ? 's' : ''} em churn
+                {' '}de{' '}
+                <strong style={{ color: isLightAppMode ? '#0f172a' : '#f8fafc' }}>{weeklyPortfolioStats.activeAtStartOfMonth}</strong> ativos no início do mês
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2, color, fontWeight: 700, fontSize: '0.85rem' }}>
+                <i className={hasChurn ? 'bx bx-error-circle' : 'bx bx-check-circle'} style={{ fontSize: '1rem' }}></i>
+                {hasChurn ? `${weeklyPortfolioStats.churnedThisMonthCount} churn este mês` : 'Nenhum churn este mês'}
+              </div>
+            </div>
+          )
+        })()}
         <div className="weekly-command-filters">
           <label>
             <span>Carteira</span>
@@ -16220,27 +16295,91 @@ export default function DashboardShell({
             <i className="bx bx-note"></i>
             {!isSidebarCollapsed && 'Notas'}
           </button>
+          {/* Social Media sub-menu group */}
+          <button
+            type="button"
+            data-tooltip="Social Media"
+            aria-label="Social Media"
+            className={`nav-item nav-button nav-group-trigger ${SOCIAL_TABS.includes(activeTab) ? 'active' : ''}`}
+            onClick={() => setIsSocialMenuOpen((v) => !v)}
+          >
+            <i className="bx bx-image-alt"></i>
+            {!isSidebarCollapsed && (
+              <>
+                <span style={{ flex: 1 }}>Social Media</span>
+                <i className={`bx bx-chevron-${isSocialMenuOpen ? 'up' : 'down'}`} style={{ fontSize: 16, marginLeft: 4 }}></i>
+              </>
+            )}
+          </button>
+          {isSocialMenuOpen && !isSidebarCollapsed && (
+            <div className="nav-sub-group">
+              <button type="button" className={`nav-item nav-button nav-sub-item ${activeTab === 'editorial-dash' ? 'active' : ''}`} onClick={() => setActiveTab('editorial-dash')}>
+                <i className="bx bx-bar-chart-alt-2"></i>
+                {!isSidebarCollapsed && 'Painel'}
+              </button>
+              <button type="button" className={`nav-item nav-button nav-sub-item ${activeTab === 'editorial' ? 'active' : ''}`} onClick={() => setActiveTab('editorial')}>
+                <i className="bx bx-calendar-alt"></i>
+                {!isSidebarCollapsed && 'Calendário'}
+              </button>
+              <button type="button" className={`nav-item nav-button nav-sub-item ${activeTab === 'editorial-plans' ? 'active' : ''}`} onClick={() => setActiveTab('editorial-plans')}>
+                <i className="bx bx-spreadsheet"></i>
+                {!isSidebarCollapsed && 'Planejamentos'}
+              </button>
+            </div>
+          )}
           <button type="button" data-tooltip="Controle da Operação" aria-label="Controle da Operação" className={`nav-item nav-button ${activeTab === 'semanal' ? 'active' : ''}`} onClick={() => setActiveTab('semanal')}>
             <i className="bx bx-pulse"></i>
             {!isSidebarCollapsed && 'Controle da Operação'}
           </button>
+          {/* PAC sub-menu group */}
+          <button
+            type="button"
+            data-tooltip="PAC"
+            aria-label="PAC"
+            className={`nav-item nav-button nav-group-trigger ${PAC_TABS.includes(activeTab) ? 'active' : ''}`}
+            onClick={() => setIsPacMenuOpen((v) => !v)}
+          >
+            <i className="bx bx-book-bookmark"></i>
+            {!isSidebarCollapsed && (
+              <>
+                <span style={{ flex: 1 }}>PAC</span>
+                <i className={`bx bx-chevron-${isPacMenuOpen ? 'up' : 'down'}`} style={{ fontSize: 16, marginLeft: 4 }}></i>
+              </>
+            )}
+          </button>
+          {isPacMenuOpen && !isSidebarCollapsed && (
+            <div className="nav-sub-group">
+              <button type="button" className={`nav-item nav-button nav-sub-item ${activeTab === 'pac-dash' ? 'active' : ''}`} onClick={() => setActiveTab('pac-dash')}>
+                <i className="bx bx-bar-chart-alt-2"></i>
+                {!isSidebarCollapsed && 'Painel'}
+              </button>
+              <button type="button" className={`nav-item nav-button nav-sub-item ${activeTab === 'pac-calendario' ? 'active' : ''}`} onClick={() => setActiveTab('pac-calendario')}>
+                <i className="bx bx-calendar-alt"></i>
+                {!isSidebarCollapsed && 'Calendário'}
+              </button>
+              <button type="button" className={`nav-item nav-button nav-sub-item ${activeTab === 'pac-tipos' ? 'active' : ''}`} onClick={() => setActiveTab('pac-tipos')}>
+                <i className="bx bx-category"></i>
+                {!isSidebarCollapsed && 'Tipos'}
+              </button>
+            </div>
+          )}
           {/* Anúncios sub-menu group */}
           <button
             type="button"
-            data-tooltip="Anúncios"
-            aria-label="Anúncios"
+            data-tooltip="Performance"
+            aria-label="Performance"
             className={`nav-item nav-button nav-group-trigger ${ADS_TABS.includes(activeTab) ? 'active' : ''}`}
             onClick={() => setIsAdsMenuOpen((v) => !v)}
           >
             <i className="bx bx-bullseye"></i>
             {!isSidebarCollapsed && (
               <>
-                <span style={{ flex: 1 }}>Anúncios</span>
+                <span style={{ flex: 1 }}>Performance</span>
                 <i className={`bx bx-chevron-${isAdsMenuOpen ? 'up' : 'down'}`} style={{ fontSize: 16, marginLeft: 4 }}></i>
               </>
             )}
           </button>
-          {isAdsMenuOpen && (
+          {isAdsMenuOpen && !isSidebarCollapsed && (
             <div className="nav-sub-group">
               <button type="button" className={`nav-item nav-button nav-sub-item ${activeTab === 'apresentacao' ? 'active' : ''}`} onClick={() => setActiveTab('apresentacao')}>
                 <i className="bx bxs-dashboard"></i>
@@ -16277,7 +16416,7 @@ export default function DashboardShell({
           </button>
         </nav>
 
-        {!isSidebarCollapsed && (activeTab === 'apresentacao' || activeTab === 'notas') && (
+        {!isSidebarCollapsed && activeTab === 'notas' && (
           <div className="sidebar-client glass-item">
             <span className="sidebar-client-label">Cliente ativo</span>
             <strong>{activeClient?.name || 'Nenhum cliente selecionado'}</strong>
@@ -16318,7 +16457,7 @@ export default function DashboardShell({
 
       <main className={`main-content ${isSidebarCollapsed ? 'main-content-expanded' : ''}`}>
         <header className="header" style={{ alignItems: 'flex-start' }}>
-          {activeTab !== 'apresentacao' && (
+          {false && (
             <div className="page-title">
               <h1>
                 {activeTab === 'clientes' && 'Global Client Dashboard'}
@@ -16334,6 +16473,9 @@ export default function DashboardShell({
                 {activeTab === 'anuncios' && 'Anúncios'}
                 {activeTab === 'saldos' && 'Saldos de Anúncios'}
                 {activeTab === 'notas' && 'Notas de Clientes'}
+                {activeTab === 'editorial' && 'Calendário Editorial'}
+                {activeTab === 'editorial-dash' && 'Painel Social Media'}
+                {activeTab === 'editorial-plans' && 'Planejamentos'}
                 {activeTab === 'relatorios' && 'Relatórios Salvos'}
                 {activeTab === 'settings' && 'Settings'}
               </h1>
@@ -16351,6 +16493,9 @@ export default function DashboardShell({
                   {activeTab === 'anuncios' && 'Veja os top 5 anúncios com investimento por cliente, por período e por gestor de resultado.'}
                   {activeTab === 'saldos' && 'Monitore saldo, cartão vinculado e valor pendente das contas de anúncio dos clientes.'}
                   {activeTab === 'notas' && 'Registre observações, histórico e informações relevantes sobre cada cliente da carteira.'}
+                  {activeTab === 'editorial' && 'Planeje e acompanhe as publicações dos clientes com datas, temas, plataformas e status de cada post.'}
+                  {activeTab === 'editorial-dash' && 'Visão consolidada das publicações por status, cliente e plataforma com os próximos posts da semana.'}
+                  {activeTab === 'editorial-plans' && 'Histórico de planejamentos salvos. Exporte em PDF ou crie novos diretamente pelo calendário.'}
                   {activeTab === 'relatorios' && 'Acesse e baixe os relatórios PDF gerados para cada cliente.'}
                   {activeTab === 'settings' && 'Ajuste integrações, IA, aparência, campos de clientes e estrutura operacional sem sair do domínio principal.'}
                 </p>
@@ -16526,37 +16671,13 @@ export default function DashboardShell({
 
 
         {activeTab === 'assistant' && (
-          <section style={{ width: '100%', minHeight: 'calc(100vh - 220px)' }}>
+          <section style={{ display: 'flex', flex: 1, minHeight: 0, overflow: 'hidden' }}>
             <AssistantPage embeddedOverride={true} />
           </section>
         )}
 
         {activeTab === 'settings' && (
-          <section style={{ width: '100%' }}>
-            {canManageUsers && (
-              <div className="glass-panel workspace-branding-card">
-                <div className="workspace-branding-head">
-                  <span className="management-card-kicker">White label</span>
-                  <h3>Marca do workspace</h3>
-                  <p>Defina nome, logo e cores que aparecem para sua equipe dentro da plataforma.</p>
-                </div>
-                <div className="workspace-branding-preview">
-                  {appLogoUrl ? (
-                    <span className="brand-logo-mark workspace-logo-mark"><img src={appLogoUrl} alt="" /></span>
-                  ) : (
-                    <span className="brand-logo-mark logo-image" aria-hidden="true"></span>
-                  )}
-                  <div>
-                    <strong>{appName}</strong>
-                    <small>{appSubtitle}</small>
-                  </div>
-                  <button type="button" className="btn btn-primary" onClick={() => { setBrandingForm(effectiveWorkspaceBranding); setIsBrandingModalOpen(true) }}>
-                    <i className="bx bx-palette" aria-hidden="true"></i>
-                    <span>Personalizar marca</span>
-                  </button>
-                </div>
-              </div>
-            )}
+          <section style={{ display: 'flex', flex: 1, minHeight: 0, overflow: 'hidden' }}>
             <SettingsPage embeddedOverride={true} />
           </section>
         )}
@@ -18104,90 +18225,108 @@ export default function DashboardShell({
                 )}
               </div>
 
-              <div className="ad-balance-table-wrap">
-                <table className="data-table ad-balance-table">
-                  <thead>
-                    <tr>
-                      <th>Cliente</th>
-                      <th>Conta de anúncio</th>
-                      <th>Tipo</th>
-                      <th>Fundos disponíveis</th>
-                      <th>Forma de pagamento</th>
-                      <th>Saldo devedor</th>
-                      <th>Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {adAccountBalanceLoading && !adAccountBalanceRows.length ? (
-                      <tr>
-                        <td colSpan={7} className="ad-balance-empty-cell">
-                          Carregando saldos das contas cadastradas...
-                        </td>
-                      </tr>
-                    ) : filteredAdAccountBalanceRows.length ? (
-                      filteredAdAccountBalanceRows.map((row) => (
-                        <tr key={`${row.clientId}-${row.accountId || 'empty'}`} className={'ad-balance-row ' + (row.tone || 'empty')}>
-                          <td>
-                            <div className="ad-balance-client-cell">
-                              <span className="ad-balance-client-icon">
-                                {row.clientLogoUrl ? (
-                                  <img src={row.clientLogoUrl} alt={`Logo ${row.clientName}`} />
-                                ) : (
-                                  <i className="bx bx-building-house"></i>
-                                )}
-                              </span>
-                              <div>
-                                <strong>{row.clientName}</strong>
-                                <small>{row.error || (row.accountId ? 'Cliente cadastrado com Meta Ads' : 'Sem conta Meta vinculada')}</small>
-                              </div>
-                            </div>
-                          </td>
-                          <td>
-                            <div className="ad-balance-account-cell">
-                              <strong>{row.accountName || 'Sem conta'}</strong>
-                              <small>{row.accountId ? `act_${row.accountId}` : 'Configure no cadastro do cliente'}</small>
-                            </div>
-                          </td>
-                          <td>
-                            <span className={'ad-balance-billing-badge ' + (row.billingType || 'empty')}>
-                              <i className={'bx ' + (row.billingType === 'prepaid' ? 'bx-wallet' : row.billingType === 'postpaid' ? 'bx-credit-card' : 'bx-help-circle')}></i>
-                              {row.billingTypeLabel || 'Não identificado'}
-                            </span>
-                          </td>
-                          <td>
+              <div className="ad-balance-cards-grid">
+                {adAccountBalanceLoading && !adAccountBalanceRows.length ? (
+                  <div className="ad-balance-empty-cell" style={{ gridColumn: '1 / -1' }}>
+                    Carregando saldos das contas cadastradas...
+                  </div>
+                ) : filteredAdAccountBalanceRows.length ? (
+                  filteredAdAccountBalanceRows.map((row) => {
+                    const billingUrl = row.accountId
+                      ? `https://adsmanager.facebook.com/adsmanager/billing_hub/payment_settings/?act=${row.accountId}&nav_entry_point=ads_ecosystem_navigation_menu`
+                      : null
+                    return (
+                      <div key={`${row.clientId}-${row.accountId || 'empty'}`} className={'ad-balance-account-card ' + (row.tone || 'empty')}>
+                        <div className="ad-balance-card-header">
+                          <span className="ad-balance-client-icon">
+                            {row.clientLogoUrl ? (
+                              <img src={row.clientLogoUrl} alt={`Logo ${row.clientName}`} />
+                            ) : (
+                              <i className="bx bx-building-house"></i>
+                            )}
+                          </span>
+                          <div className="ad-balance-card-client-info">
+                            <strong>{row.clientName}</strong>
+                            <small>{row.accountName || 'Sem conta vinculada'}</small>
+                          </div>
+                          {billingUrl && (
+                            <a href={billingUrl} target="_blank" rel="noopener noreferrer" className="ad-balance-billing-link" title="Abrir configurações de verba no Meta Ads">
+                              <i className="bx bx-link-external"></i>
+                            </a>
+                          )}
+                        </div>
+
+                        <div className="ad-balance-card-body">
+                          <div className="ad-balance-card-funds">
+                            <span className="ad-balance-card-funds-label">Fundos disponíveis</span>
                             <span className={'ad-balance-pill ' + (row.tone || 'empty')}>
                               {row.fundsAvailable == null ? (row.billingType === 'postpaid' ? 'Pós-pago' : '-') : formatCurrencyByCode(row.fundsAvailable, row.currency)}
                             </span>
-                          </td>
-                          <td>
-                            <span className={'ad-balance-card-status ' + (row.hasCard || row.billingType === 'prepaid' ? 'active' : '')}>
-                              <i className={'bx ' + (row.hasCard ? 'bx-credit-card-front' : row.billingType === 'prepaid' ? 'bx-wallet' : 'bx-credit-card')}></i>
-                              {row.cardLabel || 'Sem forma de pagamento'}
-                            </span>
-                          </td>
-                          <td>
-                            <strong>{row.pendingAmount == null ? '-' : formatCurrencyByCode(row.pendingAmount, row.currency)}</strong>
-                          </td>
-                          <td>
-                            <span
-                              className={'ad-balance-payment-status ' + (row.statusTone || (row.accountId ? 'success' : 'empty'))}
-                              title={row.statusDescription || ''}
-                            >
-                              <i className={'bx ' + (row.statusIcon || (row.accountId ? 'bx-check-circle' : 'bx-link-alt'))}></i>
-                              {row.statusLabel || 'Sem status'}
-                            </span>
-                          </td>
-                        </tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <td colSpan={7} className="ad-balance-empty-cell">
-                          Nenhum cliente encontrado para os filtros selecionados.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
+                          </div>
+                          {row.pendingAmount != null && (
+                            <div className="ad-balance-card-pending">
+                              <span className="ad-balance-card-funds-label">Saldo devedor</span>
+                              <strong>{formatCurrencyByCode(row.pendingAmount, row.currency)}</strong>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="ad-balance-card-footer">
+                          <span className={'ad-balance-billing-badge ' + (row.billingType || 'empty')}>
+                            <i className={'bx ' + (row.billingType === 'prepaid' ? 'bx-wallet' : row.billingType === 'postpaid' ? 'bx-credit-card' : 'bx-help-circle')}></i>
+                            {row.billingTypeLabel || 'Não identificado'}
+                          </span>
+                          <span className={'ad-balance-payment-status ' + (row.statusTone || (row.accountId ? 'success' : 'empty'))} title={row.statusDescription || ''}>
+                            <i className={'bx ' + (row.statusIcon || (row.accountId ? 'bx-check-circle' : 'bx-link-alt'))}></i>
+                            {row.statusLabel || 'Sem status'}
+                          </span>
+                        </div>
+
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, borderTop: '1px solid rgba(148,163,184,0.15)', paddingTop: 10, marginTop: 4 }}>
+                          {row.accountId && (
+                            <span style={{ fontSize: '0.72rem', color: 'rgba(148,163,184,0.6)', fontFamily: 'monospace' }}>act_{row.accountId}</span>
+                          )}
+                          <button
+                            onClick={async () => {
+                              const nextEnabled = row.balanceAlertsEnabled === false
+                              setAdAccountBalanceRows((prev) =>
+                                prev.map((r) => r.clientId === row.clientId ? { ...r, balanceAlertsEnabled: nextEnabled } : r)
+                              )
+                              try {
+                                await fetch(`/api/clients/${row.clientId}/balance-alert`, {
+                                  method: 'PATCH',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({ enabled: nextEnabled }),
+                                })
+                              } catch {
+                                setAdAccountBalanceRows((prev) =>
+                                  prev.map((r) => r.clientId === row.clientId ? { ...r, balanceAlertsEnabled: row.balanceAlertsEnabled } : r)
+                                )
+                              }
+                            }}
+                            title={row.balanceAlertsEnabled !== false ? 'Notificações WhatsApp ativas — clique para desativar' : 'Notificações WhatsApp desativadas — clique para ativar'}
+                            style={{
+                              display: 'flex', alignItems: 'center', gap: 5,
+                              padding: '4px 10px 4px 8px', borderRadius: 20,
+                              border: row.balanceAlertsEnabled !== false ? '1.5px solid #10b981' : '1.5px solid #64748b',
+                              background: row.balanceAlertsEnabled !== false ? 'rgba(16,185,129,0.12)' : 'rgba(100,116,139,0.12)',
+                              color: row.balanceAlertsEnabled !== false ? '#10b981' : '#94a3b8',
+                              fontSize: '0.73rem', fontWeight: 700,
+                              cursor: 'pointer', flexShrink: 0,
+                            }}
+                          >
+                            <i className={row.balanceAlertsEnabled !== false ? 'bx bx-bell' : 'bx bx-bell-off'} style={{ fontSize: '0.9rem' }}></i>
+                            {row.balanceAlertsEnabled !== false ? 'Notif. ativa' : 'Desativada'}
+                          </button>
+                        </div>
+                      </div>
+                    )
+                  })
+                ) : (
+                  <div className="ad-balance-empty-cell" style={{ gridColumn: '1 / -1' }}>
+                    Nenhum cliente encontrado para os filtros selecionados.
+                  </div>
+                )}
               </div>
             </section>
           </section>
@@ -18200,6 +18339,65 @@ export default function DashboardShell({
               clientName={activeClient?.name || null}
               clients={clients}
               onSelectClient={(client) => setActiveClient(client)}
+            />
+          </section>
+        )}
+
+        {activeTab === 'editorial' && (
+          <section style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+            <EditorialCalendar
+              clients={clients}
+              isLightMode={isLightAppMode}
+            />
+          </section>
+        )}
+
+        {activeTab === 'editorial-dash' && (
+          <section style={{ padding: '16px 20px', height: '100%', boxSizing: 'border-box' }}>
+            <EditorialCalendar
+              clients={clients}
+              isLightMode={isLightAppMode}
+              defaultView="dash"
+            />
+          </section>
+        )}
+
+        {activeTab === 'editorial-plans' && (
+          <section style={{ padding: '16px 20px', height: '100%', boxSizing: 'border-box' }}>
+            <EditorialCalendar
+              clients={clients}
+              isLightMode={isLightAppMode}
+              defaultView="plans"
+            />
+          </section>
+        )}
+
+        {activeTab === 'pac-dash' && (
+          <section style={{ padding: '16px 20px', height: '100%', boxSizing: 'border-box' }}>
+            <PACCalendar
+              clients={clients}
+              isLightMode={isLightAppMode}
+              defaultView="dash"
+            />
+          </section>
+        )}
+
+        {activeTab === 'pac-calendario' && (
+          <section style={{ padding: '16px 20px', height: '100%', boxSizing: 'border-box' }}>
+            <PACCalendar
+              clients={clients}
+              isLightMode={isLightAppMode}
+              defaultView="calendario"
+            />
+          </section>
+        )}
+
+        {activeTab === 'pac-tipos' && (
+          <section style={{ padding: '16px 20px', height: '100%', boxSizing: 'border-box' }}>
+            <PACCalendar
+              clients={clients}
+              isLightMode={isLightAppMode}
+              defaultView="tipos"
             />
           </section>
         )}
@@ -18247,6 +18445,7 @@ export default function DashboardShell({
 
                 {clients
                   .filter((client) => {
+                    if (client.isArchived) return false
                     const query = clientSearch.trim().toLowerCase()
                     if (!query) return true
                     return [client.name, client.cnpj, client.metaAdAccountId, client.agendorAccountId]
@@ -18299,19 +18498,31 @@ export default function DashboardShell({
                             <small>{metaAccount?.name || client.metaAdAccountId || client.cnpj || 'Sem conta de anúncio selecionada'}</small>
                           </span>
                         </button>
-                        <label className="simple-client-status-select" title="Status do cliente">
-                          <span>Status</span>
-                          <select
-                            value={['Ativo', 'Pausado', 'Churn'].includes(client.status) ? client.status : 'Ativo'}
-                            onChange={(event) => handleClientInlineFieldChange(client.id, 'status', event.target.value)}
-                            disabled={!canEditClientRecord(client.id)}
-                            aria-label={`Status de ${client.name}`}
-                          >
-                            <option value="Ativo">Ativo</option>
-                            <option value="Pausado">Pausado</option>
-                            <option value="Churn">Churn</option>
-                          </select>
-                        </label>
+                        <div className="simple-client-status-col">
+                          <label className="simple-client-status-select" title="Status do cliente">
+                            <span>Status</span>
+                            <select
+                              value={['Ativo', 'Pausado', 'Churn'].includes(client.status) ? client.status : 'Ativo'}
+                              onChange={(event) => handleClientInlineFieldChange(client.id, 'status', event.target.value)}
+                              disabled={!canEditClientRecord(client.id)}
+                              aria-label={`Status de ${client.name}`}
+                            >
+                              <option value="Ativo">Ativo</option>
+                              <option value="Pausado">Pausado</option>
+                              <option value="Churn">Churn</option>
+                            </select>
+                          </label>
+                          {isChurnClient && (
+                            <input
+                              type="date"
+                              className="simple-client-churn-date"
+                              value={client.churnDate || ''}
+                              onChange={(event) => handleClientInlineFieldChange(client.id, 'churnDate', event.target.value)}
+                              disabled={!canEditClientRecord(client.id)}
+                              title="Data do churn"
+                            />
+                          )}
+                        </div>
                         <span
                           className={'simple-client-health ' + (latestHealth ? 'active ' + (latestHealth.key || latestHealthRecord?.healthStatus || '') : 'empty')}
                           style={latestHealth ? { '--client-health-color': latestHealth.color } : undefined}
@@ -18328,28 +18539,86 @@ export default function DashboardShell({
                             <i className="bx bx-git-branch"></i>
                           </span>
                         </div>
-                        <button
-                          type="button"
-                          className="btn btn-secondary simple-client-edit"
-                          onClick={() => {
-                            setActiveClientId(client.id)
-                            setClientEditSection('geral')
-                            setIsEditClientModalOpen(true)
-                          }}
-                        >
-                          Editar
-                        </button>
+                        <div className="simple-client-actions">
+                          <button
+                            type="button"
+                            className="btn btn-secondary simple-client-edit"
+                            onClick={() => {
+                              setActiveClientId(client.id)
+                              setClientEditSection('geral')
+                              setIsEditClientModalOpen(true)
+                            }}
+                          >
+                            Editar
+                          </button>
+                          {canEditClientRecord(client.id) && (
+                            <button
+                              type="button"
+                              className="btn btn-ghost simple-client-archive"
+                              onClick={() => handleArchiveClient(client.id, true)}
+                              title="Arquivar cliente"
+                            >
+                              <i className="bx bx-archive-in"></i>
+                            </button>
+                          )}
+                        </div>
                       </div>
                     )
                   })}
               </div>
 
-              {!clients.length && (
+              {!clients.filter(c => !c.isArchived).length && (
                 <div className="empty-panel glass-item users-empty-state compact-empty-state">
                   <h3>Nenhum cliente cadastrado</h3>
                   <p>Crie um cliente e selecione a conta de anúncio da Meta para começar.</p>
                 </div>
               )}
+
+              {clients.some(c => c.isArchived) && (() => {
+                const archivedList = clients.filter(c => c.isArchived && (() => {
+                  const query = clientSearch.trim().toLowerCase()
+                  if (!query) return true
+                  return [c.name, c.cnpj].filter(Boolean).some(v => String(v).toLowerCase().includes(query))
+                })())
+                if (!archivedList.length) return null
+                return (
+                  <details className="archived-clients-section">
+                    <summary className="archived-clients-summary">
+                      <i className="bx bx-archive"></i>
+                      Arquivados ({archivedList.length})
+                    </summary>
+                    <div className="simple-client-list archived-client-list" role="table">
+                      {archivedList.map(client => (
+                        <div key={client.id} className="simple-client-row simple-client-row-archived" role="row">
+                          <span className="simple-client-name">
+                            <span className="simple-client-logo" aria-hidden="true">
+                              {client.logoUrl ? <img src={client.logoUrl} alt="" /> : <i className="bx bx-building-house"></i>}
+                            </span>
+                            <span className="simple-client-copy">
+                              <strong>{client.name}</strong>
+                              <small>{client.metaAdAccountId || client.cnpj || 'Arquivado'}</small>
+                            </span>
+                          </span>
+                          <span className="simple-client-archived-badge">Arquivado</span>
+                          <span />
+                          <span />
+                          <div className="simple-client-actions">
+                            {canEditClientRecord(client.id) && (
+                              <button
+                                type="button"
+                                className="btn btn-secondary simple-client-edit"
+                                onClick={() => handleArchiveClient(client.id, false)}
+                              >
+                                <i className="bx bx-archive-out"></i> Desarquivar
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </details>
+                )
+              })()}
             </div>
           </section>
         )}
@@ -18493,7 +18762,7 @@ export default function DashboardShell({
                     </label>
                   </div>
 
-                  <div className="integration-block agendor-integration-block">
+                  {!activeClientUsesManualCrm && <div className="integration-block agendor-integration-block">
                     <div className="integration-heading">
                       <div className="integration-icon" style={{ color: '#f97316', borderColor: '#f9731633' }}>
                         <i className="bx bx-git-branch"></i>
@@ -18563,7 +18832,7 @@ export default function DashboardShell({
                         )}
                       </div>
                     </div>
-                  </div>
+                  </div>}
 
                 </div>
 
@@ -20926,7 +21195,7 @@ export default function DashboardShell({
                         <i className="bx bx-loader-alt bx-spin"></i>
                         <span>Carregando preview real...</span>
                       </div>
-                    ) : adsOverviewPreview?.previewHtml ? (
+                    ) : adsOverviewPreview?.previewHtml && !/expired|The requested preview has expired/i.test(adsOverviewPreview.previewHtml) ? (
                       <iframe
                         title={`Preview de ${adsOverviewPreviewItem.label}`}
                         srcDoc={adsOverviewPreview.previewHtml}
@@ -22060,8 +22329,32 @@ export default function DashboardShell({
           }
         }
 
-        /* Lumina app-wide pass, excluding the Presentation page. */
-        .dashboard-container:not([data-active-tab='apresentacao']) {
+        /* Light mode — apresentacao tab */
+        .dashboard-light-mode[data-active-tab='apresentacao'] .sidebar {
+          background: #ffffff !important;
+          border-right: 1px solid rgba(187, 202, 190, 0.7) !important;
+          box-shadow: none !important;
+        }
+
+        /* Global light mode sidebar fix — catch-all for any tab */
+        .dashboard-light-mode .sidebar :global(.nav-item) {
+          color: #3d4a41;
+        }
+
+        .dashboard-light-mode .sidebar :global(.nav-item i) {
+          color: rgba(61, 74, 65, 0.7);
+        }
+
+        .dashboard-light-mode .sidebar :global(.nav-sub-item) {
+          color: #3d4a41;
+        }
+
+        .dashboard-light-mode .nav-sub-group {
+          border-left-color: rgba(187, 202, 190, 0.7) !important;
+        }
+
+        /* Lumina app-wide pass. */
+        .dashboard-container {
           --lumina-dark-bg: color-mix(in srgb, var(--app-bg-color, #070908) 76%, #020605 24%);
           --lumina-dark-surface: color-mix(in srgb, var(--app-bg-color, #0d1110) 62%, #0d1110 38%);
           --lumina-dark-raised: color-mix(in srgb, var(--app-bg-color, #121817) 42%, #121817 58%);
@@ -22078,150 +22371,205 @@ export default function DashboardShell({
           color: var(--lumina-text);
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) .sidebar {
+        .dashboard-container .sidebar {
           width: 112px;
-          padding: 20px 14px;
+          padding: 16px 10px;
           border-right: 1px solid var(--lumina-dark-border);
-          background:
-            linear-gradient(180deg, color-mix(in srgb, var(--app-bg-color, #121817) 26%, rgba(18, 24, 23, 0.94)), rgba(7, 9, 8, 0.92)),
-            rgba(var(--app-bg-rgb, 18, 24, 23), 0.12) !important;
-          box-shadow: 18px 0 46px rgba(0, 0, 0, 0.22);
-          backdrop-filter: blur(14px);
+          background: color-mix(in srgb, var(--app-bg-color, #0d1110) 88%, rgba(255,255,255,0.02)) !important;
+          box-shadow: 1px 0 0 var(--lumina-dark-border);
+          backdrop-filter: blur(12px);
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) .sidebar:not(.sidebar-collapsed) {
-          width: 244px;
+        .dashboard-container .sidebar:not(.sidebar-collapsed) {
+          width: 224px;
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) .main-content {
-          margin-left: 244px;
-          width: calc(100% - 244px);
-          padding: 26px 32px 42px;
+        .dashboard-container .main-content {
+          margin-left: 224px;
+          width: calc(100% - 224px);
+          padding: 20px 24px 36px;
           background: transparent !important;
+          box-sizing: border-box;
+          display: flex;
+          flex-direction: column;
+          overflow-y: auto;
+          min-height: 100vh;
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) .main-content-expanded {
+        .dashboard-container[data-active-tab='editorial'] .main-content {
+          height: 100vh;
+          overflow-y: hidden;
+        }
+
+        .dashboard-container[data-active-tab='settings'] .main-content {
+          padding: 0 !important;
+          overflow: hidden;
+        }
+
+        .dashboard-container[data-active-tab='assistant'] .main-content {
+          padding: 0 !important;
+          overflow: hidden;
+        }
+
+        .dashboard-container .main-content-expanded {
           margin-left: 112px;
           width: calc(100% - 112px);
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) .logo {
-          min-height: 64px;
-          padding: 10px;
-          border-radius: 18px;
-          background: rgba(255, 255, 255, 0.035);
-          border: 1px solid rgba(190, 201, 191, 0.12);
+        .dashboard-container .header {
+          border: none !important;
+          background: transparent !important;
+          box-shadow: none !important;
+          border-radius: 0 !important;
+          min-height: 0 !important;
+          backdrop-filter: none !important;
+          -webkit-backdrop-filter: none !important;
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) .logo-copy span {
+        .dashboard-container .logo {
+          min-height: 48px;
+          padding: 8px 10px;
+          border-radius: 12px;
+          background: transparent;
+          border: none;
+        }
+
+        .dashboard-container .logo-copy span {
           color: #f1f1f1;
-          font-weight: 850;
+          font-size: 14px;
+          font-weight: 700;
           letter-spacing: -0.01em;
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) .logo-copy small {
+        .dashboard-container .logo-copy small {
           color: var(--lumina-soft);
+          font-size: 11px;
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) .sidebar-toggle {
-          width: 36px;
-          height: 36px;
-          top: 26px;
-          right: -18px;
-          color: #f1f1f1;
+        .dashboard-container .sidebar-toggle {
+          width: 28px;
+          height: 28px;
+          top: 20px;
+          right: -14px;
+          color: rgba(241, 241, 241, 0.7);
           border-color: var(--lumina-dark-border);
-          background:
-            linear-gradient(180deg, rgba(18, 24, 23, 0.98), rgba(13, 17, 16, 0.98)),
-            rgba(18, 24, 23, 0.9) !important;
-          box-shadow: 0 12px 26px rgba(0, 0, 0, 0.28);
+          background: color-mix(in srgb, var(--app-bg-color, #0d1110) 92%, rgba(255,255,255,0.06)) !important;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) .nav-menu {
-          gap: 8px;
+        .dashboard-container .nav-menu {
+          gap: 2px;
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) .sidebar :global(.nav-item) {
-          min-height: 48px;
-          padding: 0 12px;
-          border-radius: 14px;
+        .dashboard-container .sidebar :global(.nav-item) {
+          min-height: 36px;
+          padding: 0 10px;
+          border-radius: 8px;
           border: 1px solid transparent;
-          color: rgba(241, 241, 241, 0.66);
+          color: rgba(241, 241, 241, 0.55);
           font-size: 13px;
-          font-weight: 760;
+          font-weight: 500;
           letter-spacing: 0;
           background: transparent;
+          gap: 9px;
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) .sidebar :global(.nav-item i) {
-          color: rgba(241, 241, 241, 0.48);
-          font-size: 20px;
+        .dashboard-container .sidebar :global(.nav-item i) {
+          color: rgba(241, 241, 241, 0.4);
+          font-size: 18px;
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) .sidebar :global(.nav-item:hover) {
+        .dashboard-container .sidebar :global(.nav-item:hover) {
+          color: rgba(241, 241, 241, 0.9);
+          background: rgba(255, 255, 255, 0.06);
+          border-color: rgba(255, 255, 255, 0.08);
+        }
+
+        .dashboard-container .sidebar :global(.nav-item.active) {
           color: #f1f1f1;
-          background: color-mix(in srgb, var(--button-primary, #e53935) 8%, rgba(255, 255, 255, 0.035));
-          border-color: color-mix(in srgb, var(--button-primary, #e53935) 22%, var(--lumina-dark-border));
-          box-shadow: inset 3px 0 0 color-mix(in srgb, var(--button-primary, #e53935) 62%, #f1f1f1);
-          transform: translateX(2px);
+          border-color: transparent;
+          background: color-mix(in srgb, var(--button-primary, #e53935) 16%, rgba(255, 255, 255, 0.05));
+          box-shadow: inset 2px 0 0 var(--button-primary, #e53935);
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) .sidebar :global(.nav-item.active) {
-          color: #f1f1f1;
-          border-color: color-mix(in srgb, var(--button-primary, #e53935) 30%, var(--lumina-dark-border));
-          background:
-            linear-gradient(90deg, color-mix(in srgb, var(--button-primary, #e53935) 16%, transparent), rgba(255, 255, 255, 0.034));
-          box-shadow: inset 3px 0 0 color-mix(in srgb, var(--button-primary, #e53935) 80%, #f1f1f1);
+        .dashboard-container .sidebar :global(.nav-item.active i),
+        .dashboard-container .sidebar :global(.nav-item:hover i) {
+          color: color-mix(in srgb, var(--button-primary, #e53935) 80%, #f1f1f1);
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) .sidebar :global(.nav-item.active i),
-        .dashboard-container:not([data-active-tab='apresentacao']) .sidebar :global(.nav-item:hover i) {
-          color: color-mix(in srgb, var(--button-primary, #e53935) 72%, #f1f1f1);
+        /* Sub-nav group (Anúncios, Social Media) */
+        .dashboard-container .nav-sub-group {
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+          padding: 2px 0 4px 16px;
+          margin-top: -2px;
+          border-left: 1px solid rgba(255,255,255,0.08);
+          margin-left: 19px;
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) .sidebar-collapsed {
+        .dashboard-container .sidebar :global(.nav-sub-item) {
+          min-height: 32px;
+          border-radius: 7px;
+          font-size: 12.5px;
+          color: rgba(241, 241, 241, 0.5);
+        }
+
+        .dashboard-container .sidebar :global(.nav-sub-item i) {
+          font-size: 15px;
+        }
+
+        .dashboard-container .sidebar :global(.nav-sub-item.active) {
+          color: #ffffff;
+          background: color-mix(in srgb, var(--button-primary, #e53935) 12%, rgba(255,255,255,0.04));
+          border-color: color-mix(in srgb, var(--button-primary, #e53935) 20%, rgba(255,255,255,0.06));
+          box-shadow: inset 2px 0 0 var(--button-primary, #e53935);
+        }
+
+        .dashboard-container .sidebar-collapsed {
           width: 112px;
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) .sidebar-collapsed :global(.nav-item) {
-          width: 54px;
-          height: 54px;
-          min-width: 54px;
+        .dashboard-container .sidebar-collapsed :global(.nav-item) {
+          width: 44px;
+          height: 44px;
+          min-width: 44px;
           padding: 0;
-          border-radius: 16px;
+          border-radius: 10px;
           display: flex;
           align-items: center;
           justify-content: center;
           gap: 0;
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) .sidebar-collapsed :global(.nav-item i) {
+        .dashboard-container .sidebar-collapsed :global(.nav-item i) {
           margin: 0;
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) .sidebar-bottom-actions {
+        .dashboard-container .sidebar-bottom-actions {
           margin-top: auto;
           display: grid;
-          gap: 8px;
+          gap: 2px;
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) .sidebar-theme-button,
-        .dashboard-container:not([data-active-tab='apresentacao']) .sidebar-logout-button {
-          color: rgba(241, 241, 241, 0.58);
-          border-color: rgba(190, 201, 191, 0.1);
-          background: rgba(255, 255, 255, 0.02);
+        .dashboard-container .sidebar-theme-button,
+        .dashboard-container .sidebar-logout-button {
+          color: rgba(241, 241, 241, 0.45);
+          border-color: transparent;
+          background: transparent;
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) .app-shell-topbar {
-          min-height: 58px;
-          margin-bottom: 22px;
+        .dashboard-container .app-shell-topbar {
+          min-height: 48px;
+          margin-bottom: 16px;
           display: grid;
           grid-template-columns: minmax(0, 1fr) auto;
-          gap: 16px;
+          gap: 12px;
           align-items: center;
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) .operation-stellar-search {
-          min-height: 54px;
+        .dashboard-container .operation-stellar-search {
+          min-height: 42px;
           border-radius: 999px;
           border: 1px solid var(--lumina-dark-border) !important;
           background:
@@ -22231,27 +22579,27 @@ export default function DashboardShell({
           backdrop-filter: blur(12px);
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) .operation-stellar-search i {
+        .dashboard-container .operation-stellar-search i {
           color: var(--lumina-soft) !important;
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) .operation-stellar-search input {
+        .dashboard-container .operation-stellar-search input {
           color: #f1f1f1 !important;
           font-size: 14px;
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) .operation-stellar-search input::placeholder {
+        .dashboard-container .operation-stellar-search input::placeholder {
           color: rgba(241, 241, 241, 0.42);
           opacity: 1;
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) .operation-stellar-actions {
+        .dashboard-container .operation-stellar-actions {
           gap: 10px;
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) .operation-stellar-icon-button,
-        .dashboard-container:not([data-active-tab='apresentacao']) .operation-stellar-theme-toggle,
-        .dashboard-container:not([data-active-tab='apresentacao']) .operation-stellar-user-avatar {
+        .dashboard-container .operation-stellar-icon-button,
+        .dashboard-container .operation-stellar-theme-toggle,
+        .dashboard-container .operation-stellar-user-avatar {
           border: 1px solid var(--lumina-dark-border) !important;
           background:
             linear-gradient(180deg, rgba(18, 24, 23, 0.86), rgba(13, 17, 16, 0.9)),
@@ -22260,191 +22608,192 @@ export default function DashboardShell({
           box-shadow: 0 14px 28px rgba(0, 0, 0, 0.16) !important;
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) .operation-stellar-theme-option.active {
+        .dashboard-container .operation-stellar-theme-option.active {
           background: color-mix(in srgb, var(--button-primary, #e53935) 18%, rgba(255, 255, 255, 0.05)) !important;
           color: #f1f1f1 !important;
           box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--button-primary, #e53935) 28%, transparent) !important;
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) .operation-stellar-user-avatar {
-          background: linear-gradient(135deg, var(--button-primary, #e53935), color-mix(in srgb, var(--button-primary, #e53935) 70%, #ffffff)) !important;
+        .dashboard-container .operation-stellar-user-avatar {
+          background: linear-gradient(135deg, #c62828, #e53935) !important;
           color: #ffffff !important;
           border-color: rgba(var(--accent-rgb, 229, 57, 53), 0.4) !important;
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) .header {
-          margin-bottom: 24px;
+        .dashboard-container .header {
+          margin-bottom: 16px;
           padding: 0;
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) .page-title {
+        .dashboard-container .page-title {
           width: 100%;
-          padding: 26px 28px;
-          border-radius: 20px;
-          border: 1px solid var(--lumina-dark-border);
-          background:
-            radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--button-primary, #e53935) 10%, transparent), transparent 34%),
-            linear-gradient(180deg, rgba(18, 24, 23, 0.84), rgba(13, 17, 16, 0.88));
-          box-shadow: 0 18px 44px rgba(0, 0, 0, 0.2);
+          padding: 0 0 14px;
+          border-radius: 0;
+          border: none;
+          border-bottom: 1px solid var(--lumina-dark-border);
+          background: transparent;
+          box-shadow: none;
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) .page-title h1 {
+        .dashboard-container .page-title h1 {
           color: #f1f1f1;
-          font-size: clamp(32px, 4vw, 48px);
-          line-height: 1.02;
+          font-size: 20px;
+          line-height: 1.2;
           letter-spacing: -0.02em;
           margin: 0;
+          font-weight: 700;
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) .page-title p,
-        .dashboard-container:not([data-active-tab='apresentacao']) .assistant-header-prompt {
-          max-width: 760px;
-          color: var(--lumina-muted);
-          font-size: 14px;
-          line-height: 1.62;
-          margin-top: 10px;
+        .dashboard-container .page-title p,
+        .dashboard-container .assistant-header-prompt {
+          max-width: 680px;
+          color: var(--lumina-soft);
+          font-size: 13px;
+          line-height: 1.55;
+          margin-top: 6px;
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) .clients-layout,
-        .dashboard-container:not([data-active-tab='apresentacao']) .integrations-layout,
-        .dashboard-container:not([data-active-tab='apresentacao']) .simple-clients-layout {
+        .dashboard-container .clients-layout,
+        .dashboard-container .integrations-layout,
+        .dashboard-container .simple-clients-layout {
           gap: 24px;
           min-width: 0;
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) .management-header-row {
-          padding: 24px 26px;
-          border-radius: 20px;
-          border: 1px solid var(--lumina-dark-border);
-          background:
-            linear-gradient(180deg, rgba(18, 24, 23, 0.84), rgba(13, 17, 16, 0.9)),
-            rgba(18, 24, 23, 0.82);
+        .dashboard-container .management-header-row {
+          padding: 0 0 16px;
+          border-radius: 0;
+          border: none;
+          border-bottom: 1px solid var(--lumina-dark-border);
+          background: transparent;
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) .management-header-copy h2 {
+        .dashboard-container .management-header-copy h2 {
           color: #f1f1f1;
-          font-size: clamp(28px, 3.3vw, 42px);
+          font-size: 18px;
+          font-weight: 700;
           letter-spacing: -0.02em;
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) .management-header-copy p {
-          color: var(--lumina-muted);
-          font-size: 14px;
+        .dashboard-container .management-header-copy p {
+          color: var(--lumina-soft);
+          font-size: 13px;
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) .glass-panel,
-        .dashboard-container:not([data-active-tab='apresentacao']) .glass-item,
-        .dashboard-container:not([data-active-tab='apresentacao']) .management-directory-card,
-        .dashboard-container:not([data-active-tab='apresentacao']) .users-toolbar-card,
-        .dashboard-container:not([data-active-tab='apresentacao']) .simple-client-card,
-        .dashboard-container:not([data-active-tab='apresentacao']) .empty-panel {
-          border-radius: 18px;
+        .dashboard-container .glass-panel,
+        .dashboard-container .glass-item,
+        .dashboard-container .management-directory-card,
+        .dashboard-container .users-toolbar-card,
+        .dashboard-container .simple-client-card,
+        .dashboard-container .empty-panel {
+          border-radius: 12px;
           border-color: var(--lumina-dark-border);
-          background:
-            linear-gradient(180deg, rgba(18, 24, 23, 0.84), rgba(13, 17, 16, 0.9)),
-            rgba(18, 24, 23, 0.78);
-          box-shadow: 0 18px 44px rgba(0, 0, 0, 0.18);
+          background: color-mix(in srgb, var(--app-bg-color, #0d1110) 60%, rgba(255,255,255,0.03));
+          box-shadow: none;
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) .btn {
-          border-radius: 10px;
-          min-height: 42px;
+        .dashboard-container .btn {
+          border-radius: 8px;
+          min-height: 34px;
+          padding: 0 14px;
           display: inline-flex;
           align-items: center;
           justify-content: center;
-          gap: 8px;
-          font-weight: 760;
+          gap: 6px;
+          font-size: 13px;
+          font-weight: 600;
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) .btn-primary {
-          border-color: rgba(var(--accent-rgb, 229, 57, 53), 0.32);
-          background: linear-gradient(135deg, color-mix(in srgb, var(--button-primary, #e53935) 70%, #000) 0%, var(--button-primary, #e53935) 100%) !important;
+        .dashboard-container .btn-primary {
+          border-color: var(--button-primary, #e53935);
+          background: var(--button-primary, #e53935) !important;
           color: #ffffff !important;
-          box-shadow: 0 14px 30px rgba(var(--accent-rgb, 229, 57, 53), 0.16);
+          box-shadow: none;
+          font-weight: 700;
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) .btn-secondary,
-        .dashboard-container:not([data-active-tab='apresentacao']) .modal-close {
+        .dashboard-container .btn-secondary,
+        .dashboard-container .modal-close {
           border-color: var(--lumina-dark-border);
-          background: rgba(255, 255, 255, 0.035);
-          color: #f1f1f1;
+          background: rgba(255, 255, 255, 0.04);
+          color: rgba(241, 241, 241, 0.8);
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) input,
-        .dashboard-container:not([data-active-tab='apresentacao']) select,
-        .dashboard-container:not([data-active-tab='apresentacao']) textarea,
-        .dashboard-container:not([data-active-tab='apresentacao']) .client-select-input,
-        .dashboard-container:not([data-active-tab='apresentacao']) .client-registry-search,
-        .dashboard-container:not([data-active-tab='apresentacao']) .client-registry-filter-group {
+        .dashboard-container input,
+        .dashboard-container select,
+        .dashboard-container textarea,
+        .dashboard-container .client-select-input,
+        .dashboard-container .client-registry-search,
+        .dashboard-container .client-registry-filter-group {
           border-radius: 12px;
           border-color: var(--lumina-dark-border);
           background: rgba(7, 9, 8, 0.5);
           color: #f1f1f1;
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) input:focus,
-        .dashboard-container:not([data-active-tab='apresentacao']) select:focus,
-        .dashboard-container:not([data-active-tab='apresentacao']) textarea:focus {
+        .dashboard-container input:focus,
+        .dashboard-container select:focus,
+        .dashboard-container textarea:focus {
           outline: none;
           border-color: color-mix(in srgb, var(--button-primary, #e53935) 58%, #ffffff);
           box-shadow: 0 0 0 3px color-mix(in srgb, var(--button-primary, #e53935) 15%, transparent);
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) .input-group label,
-        .dashboard-container:not([data-active-tab='apresentacao']) .field-helper,
-        .dashboard-container:not([data-active-tab='apresentacao']) .chart-subtitle,
-        .dashboard-container:not([data-active-tab='apresentacao']) .empty-panel p {
+        .dashboard-container .input-group label,
+        .dashboard-container .field-helper,
+        .dashboard-container .chart-subtitle,
+        .dashboard-container .empty-panel p {
           color: var(--lumina-muted);
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) .simple-client-list {
+        .dashboard-container .simple-client-list {
           gap: 8px;
           overflow-x: visible;
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) .simple-client-row {
+        .dashboard-container .simple-client-row {
           border-radius: 14px;
           border-color: rgba(190, 201, 191, 0.13);
           background: rgba(255, 255, 255, 0.026);
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) .simple-client-row-head,
-        .dashboard-container:not([data-active-tab='apresentacao']) .simple-client-head {
+        .dashboard-container .simple-client-row-head,
+        .dashboard-container .simple-client-head {
           background: rgba(255, 255, 255, 0.045);
           color: var(--lumina-soft);
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) .simple-client-name strong,
-        .dashboard-container:not([data-active-tab='apresentacao']) .empty-panel h3,
-        .dashboard-container:not([data-active-tab='apresentacao']) .modal-header h3 {
+        .dashboard-container .simple-client-name strong,
+        .dashboard-container .empty-panel h3,
+        .dashboard-container .modal-header h3 {
           color: #f1f1f1;
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) .simple-client-name small,
-        .dashboard-container:not([data-active-tab='apresentacao']) .modal-header p {
+        .dashboard-container .simple-client-name small,
+        .dashboard-container .modal-header p {
           color: var(--lumina-muted);
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) .simple-client-icon,
-        .dashboard-container:not([data-active-tab='apresentacao']) .directory-card-icon,
-        .dashboard-container:not([data-active-tab='apresentacao']) .client-avatar-shell {
+        .dashboard-container .simple-client-icon,
+        .dashboard-container .directory-card-icon,
+        .dashboard-container .client-avatar-shell {
           border-color: var(--lumina-dark-border);
           background: rgba(255, 255, 255, 0.035);
           color: var(--lumina-soft);
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) .simple-client-icon.active {
+        .dashboard-container .simple-client-icon.active {
           color: #ffffff;
           border-color: rgba(var(--accent-rgb, 229, 57, 53), 0.38);
           background: linear-gradient(135deg, color-mix(in srgb, var(--button-primary, #e53935) 70%, #000), var(--button-primary, #e53935));
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) .modal-overlay {
+        .dashboard-container .modal-overlay {
           background: rgba(7, 9, 8, 0.72);
           backdrop-filter: blur(10px);
         }
 
-        .dashboard-container:not([data-active-tab='apresentacao']) .modal-card {
+        .dashboard-container .modal-card {
           border-radius: 18px;
           border: 1px solid var(--lumina-dark-border);
           background:
@@ -22452,93 +22801,123 @@ export default function DashboardShell({
             linear-gradient(180deg, rgba(18, 24, 23, 0.96), rgba(13, 17, 16, 0.98));
         }
 
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) {
-          background: linear-gradient(180deg, #f9f9f9 0%, #f1f4f2 100%) !important;
+        .dashboard-light-mode {
+          background: #f4f6f5 !important;
           color: #1a1c1c;
         }
 
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .sidebar {
-          background: rgba(255, 255, 255, 0.94) !important;
-          border-right-color: #bbcabe;
-          box-shadow: 18px 0 36px rgba(20, 90, 50, 0.06);
-        }
-
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .sidebar-toggle,
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .logo,
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .operation-stellar-search,
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .operation-stellar-icon-button,
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .operation-stellar-theme-toggle,
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .glass-panel,
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .glass-item,
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .management-directory-card,
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .users-toolbar-card,
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .simple-client-card,
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .empty-panel,
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .page-title,
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .management-header-row {
+        .dashboard-light-mode .sidebar {
           background: #ffffff !important;
-          border-color: rgba(187, 202, 190, 0.9) !important;
-          box-shadow: 0 14px 30px rgba(20, 90, 50, 0.055) !important;
+          border-right: 1px solid rgba(187, 202, 190, 0.7) !important;
+          box-shadow: none;
         }
 
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .logo-copy span,
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .page-title h1,
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .management-header-copy h2,
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .simple-client-name strong,
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .empty-panel h3,
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .modal-header h3 {
+        .dashboard-light-mode .sidebar-toggle,
+        .dashboard-light-mode .logo,
+        .dashboard-light-mode .operation-stellar-search,
+        .dashboard-light-mode .operation-stellar-icon-button,
+        .dashboard-light-mode .operation-stellar-theme-toggle {
+          background: #ffffff !important;
+          border-color: rgba(187, 202, 190, 0.8) !important;
+          box-shadow: none !important;
+        }
+
+        .dashboard-light-mode .glass-panel,
+        .dashboard-light-mode .glass-item,
+        .dashboard-light-mode .management-directory-card,
+        .dashboard-light-mode .users-toolbar-card,
+        .dashboard-light-mode .simple-client-card,
+        .dashboard-light-mode .empty-panel,
+        .dashboard-light-mode .page-title,
+        .dashboard-light-mode .management-header-row {
+          background: #ffffff !important;
+          border-color: rgba(187, 202, 190, 0.7) !important;
+          box-shadow: none !important;
+        }
+
+        .dashboard-light-mode .logo-copy span,
+        .dashboard-light-mode .page-title h1,
+        .dashboard-light-mode .management-header-copy h2,
+        .dashboard-light-mode .simple-client-name strong,
+        .dashboard-light-mode .empty-panel h3,
+        .dashboard-light-mode .modal-header h3 {
           color: #1a1c1c !important;
         }
 
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .logo-copy small,
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .page-title p,
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .assistant-header-prompt,
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .management-header-copy p,
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .simple-client-name small,
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .input-group label,
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .field-helper,
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .chart-subtitle,
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .empty-panel p,
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .modal-header p {
+        .dashboard-light-mode .logo-copy small,
+        .dashboard-light-mode .page-title p,
+        .dashboard-light-mode .assistant-header-prompt,
+        .dashboard-light-mode .management-header-copy p,
+        .dashboard-light-mode .simple-client-name small,
+        .dashboard-light-mode .input-group label,
+        .dashboard-light-mode .field-helper,
+        .dashboard-light-mode .chart-subtitle,
+        .dashboard-light-mode .empty-panel p,
+        .dashboard-light-mode .modal-header p {
           color: #3d4a41 !important;
         }
 
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .sidebar :global(.nav-item) {
+        .dashboard-light-mode .sidebar :global(.nav-item) {
           color: #3d4a41;
         }
 
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .sidebar :global(.nav-item i) {
+        .dashboard-light-mode .sidebar :global(.nav-item i) {
           color: rgba(61, 74, 65, 0.72);
         }
 
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .sidebar :global(.nav-item.active),
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .sidebar :global(.nav-item:hover) {
+        .dashboard-light-mode .sidebar :global(.nav-item:hover) {
           color: #1a1c1c;
-          border-color: color-mix(in srgb, var(--button-primary, #e53935) 28%, #bbcabe);
-          background: color-mix(in srgb, var(--button-primary, #e53935) 10%, #ffffff);
-          box-shadow: inset 3px 0 0 var(--button-primary, #e53935);
+          border-color: transparent;
+          background: rgba(0, 0, 0, 0.05);
         }
 
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) input,
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) select,
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) textarea,
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .client-select-input,
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .client-registry-search,
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .client-registry-filter-group,
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .simple-client-row {
+        .dashboard-light-mode .sidebar :global(.nav-item.active) {
+          color: #1a1c1c !important;
+          border-color: transparent;
+          background: color-mix(in srgb, var(--button-primary, #e53935) 12%, #ffffff);
+          box-shadow: inset 2px 0 0 var(--button-primary, #e53935);
+        }
+
+        .dashboard-light-mode .sidebar :global(.nav-item.active i),
+        .dashboard-light-mode .sidebar :global(.nav-item:hover i) {
+          color: color-mix(in srgb, var(--button-primary, #e53935) 90%, #1a1c1c) !important;
+        }
+
+        .dashboard-light-mode .nav-sub-group {
+          border-left-color: rgba(187, 202, 190, 0.7);
+        }
+
+        .dashboard-light-mode .sidebar :global(.nav-sub-item) {
+          color: #3d4a41;
+        }
+
+        .dashboard-light-mode .sidebar :global(.nav-sub-item.active) {
+          color: #1a1c1c;
+          background: color-mix(in srgb, var(--button-primary, #e53935) 10%, #f8faf9);
+          border-color: transparent;
+          box-shadow: inset 2px 0 0 var(--button-primary, #e53935);
+        }
+
+        .dashboard-light-mode input,
+        .dashboard-light-mode select,
+        .dashboard-light-mode textarea,
+        .dashboard-light-mode .client-select-input,
+        .dashboard-light-mode .client-registry-search,
+        .dashboard-light-mode .client-registry-filter-group,
+        .dashboard-light-mode .simple-client-row {
           background: #ffffff !important;
           border-color: rgba(187, 202, 190, 0.9) !important;
           color: #1a1c1c !important;
         }
 
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .simple-client-row-head,
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .simple-client-head {
+        .dashboard-light-mode .simple-client-row-head,
+        .dashboard-light-mode .simple-client-head {
           background: #f3f3f3 !important;
           color: #3d4a41 !important;
         }
 
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .btn-secondary,
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .modal-close {
+        .dashboard-light-mode .btn-secondary,
+        .dashboard-light-mode .modal-close {
           background: #ffffff !important;
           border-color: rgba(187, 202, 190, 0.9) !important;
           color: #1a1c1c !important;
@@ -22846,23 +23225,23 @@ export default function DashboardShell({
         }
 
         @media (max-width: 1180px) {
-          .dashboard-container:not([data-active-tab='apresentacao']) .main-content,
-          .dashboard-container:not([data-active-tab='apresentacao']) .main-content-expanded {
+          .dashboard-container .main-content,
+          .dashboard-container .main-content-expanded {
             margin-left: 112px;
             width: calc(100% - 112px);
             padding: 22px;
           }
 
-          .dashboard-container:not([data-active-tab='apresentacao']) .sidebar:not(.sidebar-collapsed) {
+          .dashboard-container .sidebar:not(.sidebar-collapsed) {
             width: 112px;
           }
 
-          .dashboard-container:not([data-active-tab='apresentacao']) .sidebar:not(.sidebar-collapsed) .logo-copy,
-          .dashboard-container:not([data-active-tab='apresentacao']) .sidebar:not(.sidebar-collapsed) :global(.nav-item) {
+          .dashboard-container .sidebar:not(.sidebar-collapsed) .logo-copy,
+          .dashboard-container .sidebar:not(.sidebar-collapsed) :global(.nav-item) {
             font-size: 0;
           }
 
-          .dashboard-container:not([data-active-tab='apresentacao']) .sidebar:not(.sidebar-collapsed) :global(.nav-item) {
+          .dashboard-container .sidebar:not(.sidebar-collapsed) :global(.nav-item) {
             justify-content: center;
             width: 54px;
             height: 54px;
@@ -22872,27 +23251,27 @@ export default function DashboardShell({
         }
 
         @media (max-width: 720px) {
-          .dashboard-container:not([data-active-tab='apresentacao']) .sidebar {
+          .dashboard-container .sidebar {
             display: none;
           }
 
-          .dashboard-container:not([data-active-tab='apresentacao']) .main-content,
-          .dashboard-container:not([data-active-tab='apresentacao']) .main-content-expanded {
+          .dashboard-container .main-content,
+          .dashboard-container .main-content-expanded {
             margin-left: 0;
             width: 100%;
             padding: 18px;
           }
 
-          .dashboard-container:not([data-active-tab='apresentacao']) .app-shell-topbar {
+          .dashboard-container .app-shell-topbar {
             grid-template-columns: 1fr;
           }
 
-          .dashboard-container:not([data-active-tab='apresentacao']) .operation-stellar-actions {
+          .dashboard-container .operation-stellar-actions {
             justify-content: flex-start;
           }
 
-          .dashboard-container:not([data-active-tab='apresentacao']) .page-title,
-          .dashboard-container:not([data-active-tab='apresentacao']) .management-header-row {
+          .dashboard-container .page-title,
+          .dashboard-container .management-header-row {
             padding: 20px;
             border-radius: 16px;
           }
@@ -22904,7 +23283,7 @@ export default function DashboardShell({
           display: flex;
           align-items: center;
           justify-content: flex-start;
-          margin-bottom: 26px;
+          margin-bottom: 16px;
         }
 
         .nav-button {
@@ -22926,24 +23305,23 @@ export default function DashboardShell({
         }
 
         .sidebar :global(.nav-item:hover) {
-          background: linear-gradient(90deg, rgba(175, 198, 255, 0.12), rgba(175, 198, 255, 0.04));
+          background: rgba(255, 255, 255, 0.06);
           color: #f8fbff;
-          transform: translateX(4px);
-          box-shadow: inset 0 0 0 1px rgba(175, 198, 255, 0.08);
+          transform: none;
+          box-shadow: none;
         }
 
         .sidebar :global(.nav-item.active:hover) {
-          background: linear-gradient(90deg, rgba(175, 198, 255, 0.16), rgba(175, 198, 255, 0.05));
-          box-shadow: inset 0 0 0 1px rgba(175, 198, 255, 0.12);
+          background: color-mix(in srgb, var(--button-primary, #e53935) 16%, rgba(255, 255, 255, 0.05));
         }
 
         .sidebar :global(.nav-item:hover i) {
-          color: var(--button-primary, var(--accent-blue));
+          color: color-mix(in srgb, var(--button-primary, #e53935) 80%, #f1f1f1);
         }
 
         .sidebar-collapsed :global(.nav-item:hover) {
-          background: color-mix(in srgb, var(--button-primary, var(--accent-blue)) 14%, transparent);
-          box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--button-primary, var(--accent-blue)) 28%, transparent);
+          background: rgba(255, 255, 255, 0.06);
+          box-shadow: none;
         }
 
 
@@ -23060,17 +23438,17 @@ export default function DashboardShell({
 
         .sidebar-collapsed :global(.nav-item) {
           justify-content: center;
-          width: 56px;
-          height: 56px;
+          width: 44px;
+          height: 44px;
           margin: 0 auto;
           padding: 0;
           font-size: 0;
-          border-radius: 18px;
+          border-radius: 10px;
           position: relative;
         }
 
         .sidebar-collapsed :global(.nav-item i) {
-          font-size: 24px;
+          font-size: 20px;
           margin: 0;
         }
 
@@ -23164,24 +23542,25 @@ export default function DashboardShell({
         }
 
         .management-header-copy h2 {
-          margin: 0 0 8px;
+          margin: 0 0 4px;
           color: #ffffff;
-          font-size: clamp(34px, 4vw, 48px);
-          line-height: 0.98;
-          letter-spacing: -0.04em;
+          font-size: 18px;
+          font-weight: 700;
+          line-height: 1.2;
+          letter-spacing: -0.02em;
         }
 
         .management-header-copy p {
           margin: 0;
-          color: rgba(225, 226, 235, 0.62);
-          font-size: 16px;
-          line-height: 1.6;
+          color: rgba(225, 226, 235, 0.55);
+          font-size: 13px;
+          line-height: 1.5;
         }
 
         .management-header-button {
-          min-height: 54px;
-          padding: 0 24px;
-          border-radius: 18px;
+          min-height: 38px;
+          padding: 0 16px;
+          border-radius: 8px;
         }
 
         .management-hero {
@@ -23215,17 +23594,17 @@ export default function DashboardShell({
         .management-hero h2 {
           margin: 0;
           color: #ffffff;
-          font-size: clamp(34px, 4vw, 54px);
-          line-height: 0.98;
-          letter-spacing: -0.04em;
+          font-size: clamp(22px, 2.5vw, 30px);
+          line-height: 1.1;
+          letter-spacing: -0.02em;
         }
 
         .management-hero p {
           margin: 0;
           max-width: 64ch;
-          color: rgba(225, 226, 235, 0.7);
-          font-size: 18px;
-          line-height: 1.65;
+          color: rgba(225, 226, 235, 0.65);
+          font-size: 14px;
+          line-height: 1.6;
         }
 
         .workspace-branding-card {
@@ -27189,7 +27568,32 @@ export default function DashboardShell({
         .meta-ranking-detail-stats {
           display: grid;
           grid-template-columns: repeat(2, minmax(0, 1fr));
-          gap: 12px;
+          gap: 14px 16px;
+        }
+
+        .meta-ranking-detail-stats span {
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+          background: rgba(255,255,255,0.04);
+          border-radius: 10px;
+          padding: 10px 12px;
+        }
+
+        .meta-ranking-detail-stats small {
+          font-size: 0.72rem;
+          color: var(--text-secondary);
+          font-weight: 500;
+          text-transform: uppercase;
+          letter-spacing: 0.04em;
+          line-height: 1;
+        }
+
+        .meta-ranking-detail-stats strong {
+          font-size: 1.15rem;
+          font-weight: 700;
+          color: var(--text-primary);
+          line-height: 1.2;
         }
 
         .meta-result-chart-head {
@@ -27801,14 +28205,12 @@ export default function DashboardShell({
         }
 
         .home-hub-hero-obsidian {
-          padding: 34px;
+          padding: 22px 24px;
           display: grid;
-          grid-template-columns: minmax(0, 1.3fr) minmax(320px, 0.95fr);
-          gap: 24px;
-          background:
-            linear-gradient(180deg, rgba(255, 255, 255, 0.018), rgba(255, 255, 255, 0.008)),
-            radial-gradient(circle at top right, rgba(175, 198, 255, 0.12), transparent 34%);
-          border-radius: 24px;
+          grid-template-columns: minmax(0, 1.3fr) minmax(280px, 0.95fr);
+          gap: 20px;
+          background: transparent;
+          border-radius: 16px;
         }
 
         .home-hub-copy {
@@ -27832,17 +28234,18 @@ export default function DashboardShell({
         .home-hub-copy h2 {
           margin: 0;
           color: #ffffff;
-          font-size: clamp(34px, 4vw, 54px);
-          line-height: 0.98;
-          letter-spacing: -0.05em;
+          font-size: 22px;
+          line-height: 1.2;
+          font-weight: 700;
+          letter-spacing: -0.02em;
         }
 
         .home-hub-copy p {
           margin: 0;
           max-width: 56ch;
-          color: rgba(225, 226, 235, 0.7);
-          font-size: 17px;
-          line-height: 1.65;
+          color: rgba(225, 226, 235, 0.65);
+          font-size: 13px;
+          line-height: 1.6;
         }
 
         .home-hub-metrics-obsidian {
@@ -32293,38 +32696,38 @@ export default function DashboardShell({
           margin-bottom: 0;
         }
 
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .ads-overview-hero,
+        .dashboard-light-mode .ads-overview-hero,
         :root[data-ui-mode='light'] .ads-overview-hero {
           background:
             radial-gradient(circle at top right, rgba(var(--accent-rgb, 229, 57, 53), 0.12), transparent 38%),
             linear-gradient(135deg, #ffffff, #f7fbf9);
         }
 
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .ads-overview-account,
+        .dashboard-light-mode .ads-overview-account,
         :root[data-ui-mode='light'] .ads-overview-account {
           border-color: #d8e5dc;
           color: #53645a;
           background: #ffffff;
         }
 
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .ads-overview-ad-row,
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .ads-overview-client-card,
+        .dashboard-light-mode .ads-overview-ad-row,
+        .dashboard-light-mode .ads-overview-client-card,
         :root[data-ui-mode='light'] .ads-overview-ad-row,
         :root[data-ui-mode='light'] .ads-overview-client-card {
           background: #ffffff;
           border-color: #d8e5dc;
         }
 
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .ads-overview-no-ads,
+        .dashboard-light-mode .ads-overview-no-ads,
         :root[data-ui-mode='light'] .ads-overview-no-ads {
           background: #f8fbf9;
           border-color: #c8d9ce;
         }
 
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .campaign-overview-total-pill,
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .campaign-overview-campaign-row,
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .campaign-overview-adset-row,
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .campaign-overview-ad-row,
+        .dashboard-light-mode .campaign-overview-total-pill,
+        .dashboard-light-mode .campaign-overview-campaign-row,
+        .dashboard-light-mode .campaign-overview-adset-row,
+        .dashboard-light-mode .campaign-overview-ad-row,
         :root[data-ui-mode='light'] .campaign-overview-total-pill,
         :root[data-ui-mode='light'] .campaign-overview-campaign-row,
         :root[data-ui-mode='light'] .campaign-overview-adset-row,
@@ -32333,15 +32736,15 @@ export default function DashboardShell({
           border-color: #d8e5dc;
         }
 
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .campaign-overview-campaign-row,
+        .dashboard-light-mode .campaign-overview-campaign-row,
         :root[data-ui-mode='light'] .campaign-overview-campaign-row {
           background:
             linear-gradient(90deg, rgba(var(--accent-rgb, 229, 57, 53), 0.08), rgba(255, 255, 255, 0)),
             #ffffff;
         }
 
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .campaign-overview-adset-list,
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .campaign-overview-ad-list,
+        .dashboard-light-mode .campaign-overview-adset-list,
+        .dashboard-light-mode .campaign-overview-ad-list,
         :root[data-ui-mode='light'] .campaign-overview-adset-list,
         :root[data-ui-mode='light'] .campaign-overview-ad-list {
           border-left-color: #c8d9ce;
@@ -32477,49 +32880,171 @@ export default function DashboardShell({
           font-weight: 800;
         }
 
-        .ad-balance-table-wrap {
-          overflow-x: auto;
-          border-radius: 22px;
+        .ad-balance-cards-grid {
+          display: grid;
+          grid-template-columns: repeat(5, 1fr);
+          gap: 14px;
+        }
+
+        .ad-balance-account-card {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+          padding: 16px;
+          border-radius: 16px;
+          background: rgba(255, 255, 255, 0.04);
           border: 1px solid rgba(148, 163, 184, 0.13);
-        }
-
-        .ad-balance-table {
-          min-width: 1120px;
-          border-collapse: separate;
-          border-spacing: 0;
-        }
-
-        .ad-balance-table thead th {
-          background: rgba(255, 255, 255, 0.035);
-        }
-
-        .ad-balance-row {
           transition: background 0.2s ease, box-shadow 0.2s ease;
+          position: relative;
+          overflow: hidden;
         }
 
-        .ad-balance-row.danger {
-          box-shadow: inset 4px 0 0 rgba(248, 113, 113, 0.92);
+        .ad-balance-account-card::before {
+          content: '';
+          position: absolute;
+          top: 0; left: 0; right: 0;
+          height: 3px;
+          border-radius: 16px 16px 0 0;
+          background: transparent;
+          transition: background 0.2s ease;
         }
 
-        .ad-balance-row.warning {
-          box-shadow: inset 4px 0 0 rgba(245, 158, 11, 0.92);
+        .ad-balance-account-card.danger::before {
+          background: rgba(248, 113, 113, 0.9);
         }
 
-        .ad-balance-row.success {
-          box-shadow: inset 4px 0 0 color-mix(in srgb, var(--accent-emerald) 85%, white 5%);
+        .ad-balance-account-card.warning::before {
+          background: rgba(245, 158, 11, 0.9);
         }
 
-        .ad-balance-client-cell,
-        .ad-balance-account-cell {
+        .ad-balance-account-card.success::before {
+          background: color-mix(in srgb, var(--accent-emerald) 85%, white 5%);
+        }
+
+        .ad-balance-card-header {
           display: flex;
           align-items: center;
-          gap: 12px;
+          gap: 10px;
           min-width: 0;
         }
 
-        .ad-balance-account-cell {
+        .ad-balance-card-client-info {
+          flex: 1;
+          min-width: 0;
           display: grid;
-          gap: 4px;
+          gap: 2px;
+        }
+
+        .ad-balance-card-client-info strong {
+          font-size: 0.88rem;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        .ad-balance-card-client-info small {
+          font-size: 0.75rem;
+          color: var(--muted-text);
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        .ad-balance-billing-link {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 28px;
+          height: 28px;
+          border-radius: 8px;
+          background: rgba(99, 102, 241, 0.12);
+          color: var(--accent-indigo, #6366f1);
+          font-size: 1rem;
+          text-decoration: none;
+          flex-shrink: 0;
+          transition: background 0.18s ease, transform 0.18s ease;
+        }
+
+        .ad-balance-billing-link:hover {
+          background: rgba(99, 102, 241, 0.22);
+          transform: scale(1.08);
+        }
+
+        .ad-balance-alert-toggle {
+          display: flex;
+          align-items: center;
+          gap: 5px;
+          padding: 5px 10px 5px 8px;
+          border-radius: 20px;
+          border: 1.5px solid currentColor;
+          cursor: pointer;
+          font-size: 0.73rem;
+          font-weight: 700;
+          flex-shrink: 0;
+          transition: opacity 0.18s ease;
+        }
+
+        .ad-balance-alert-toggle.active {
+          background: rgba(16, 185, 129, 0.1);
+          color: #10b981;
+        }
+
+        .ad-balance-alert-toggle.active:hover {
+          background: rgba(16, 185, 129, 0.2);
+        }
+
+        .ad-balance-alert-toggle.muted {
+          background: rgba(100, 116, 139, 0.12);
+          color: #64748b;
+        }
+
+        .ad-balance-alert-toggle.muted:hover {
+          background: rgba(100, 116, 139, 0.2);
+        }
+
+        .ad-balance-card-body {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+        }
+
+        .ad-balance-card-funds,
+        .ad-balance-card-pending {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 8px;
+        }
+
+        .ad-balance-card-funds-label {
+          font-size: 0.78rem;
+          color: var(--muted-text);
+        }
+
+        .ad-balance-card-footer {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 6px;
+          flex-wrap: wrap;
+          margin-top: auto;
+        }
+
+        .ad-balance-card-bottom {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 8px;
+          border-top: 1px solid rgba(148, 163, 184, 0.1);
+          padding-top: 10px;
+          margin-top: 4px;
+        }
+
+        .ad-balance-card-account-id {
+          font-size: 0.72rem;
+          color: var(--muted-text);
+          opacity: 0.6;
+          font-family: monospace;
         }
 
         .ad-balance-client-cell div {
@@ -32685,9 +33210,9 @@ export default function DashboardShell({
           font-weight: 800;
         }
 
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .ad-balance-hero,
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .ad-balance-summary-card,
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .ad-balance-table-card {
+        .dashboard-light-mode .ad-balance-hero,
+        .dashboard-light-mode .ad-balance-summary-card,
+        .dashboard-light-mode .ad-balance-table-card {
           border-color: rgba(15, 23, 42, 0.08);
           background:
             radial-gradient(circle at top right, rgba(16, 185, 129, 0.12), transparent 36%),
@@ -32695,70 +33220,70 @@ export default function DashboardShell({
           box-shadow: 0 24px 70px rgba(15, 23, 42, 0.08);
         }
 
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .ad-balance-table-wrap {
+        .dashboard-light-mode .ad-balance-table-wrap {
           border-color: rgba(15, 23, 42, 0.08);
         }
 
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .ad-balance-table thead th {
+        .dashboard-light-mode .ad-balance-table thead th {
           background: #f8fafc;
         }
 
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .ad-balance-row {
+        .dashboard-light-mode .ad-balance-row {
           background: #ffffff;
         }
 
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .ad-balance-pill {
+        .dashboard-light-mode .ad-balance-pill {
           background: #f8fafc;
           color: #0f172a;
         }
 
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .ad-balance-pill.danger {
+        .dashboard-light-mode .ad-balance-pill.danger {
           background: #fef2f2;
           color: #b91c1c;
         }
 
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .ad-balance-pill.warning {
+        .dashboard-light-mode .ad-balance-pill.warning {
           background: #fffbeb;
           color: #92400e;
         }
 
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .ad-balance-pill.success,
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .ad-balance-card-status.active {
+        .dashboard-light-mode .ad-balance-pill.success,
+        .dashboard-light-mode .ad-balance-card-status.active {
           background: #ecfdf5;
           color: #047857;
         }
 
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .ad-balance-billing-badge {
+        .dashboard-light-mode .ad-balance-billing-badge {
           background: #f8fafc;
           color: #0f172a;
         }
 
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .ad-balance-billing-badge.prepaid {
+        .dashboard-light-mode .ad-balance-billing-badge.prepaid {
           background: #ecfdf5;
           color: #047857;
         }
 
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .ad-balance-billing-badge.postpaid {
+        .dashboard-light-mode .ad-balance-billing-badge.postpaid {
           background: #eff6ff;
           color: #1d4ed8;
         }
 
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .ad-balance-payment-status {
+        .dashboard-light-mode .ad-balance-payment-status {
           background: #f8fafc;
           color: #475569;
         }
 
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .ad-balance-payment-status.success {
+        .dashboard-light-mode .ad-balance-payment-status.success {
           background: #ecfdf5;
           color: #047857;
         }
 
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .ad-balance-payment-status.warning {
+        .dashboard-light-mode .ad-balance-payment-status.warning {
           background: #fffbeb;
           color: #92400e;
         }
 
-        .dashboard-light-mode:not([data-active-tab='apresentacao']) .ad-balance-payment-status.danger {
+        .dashboard-light-mode .ad-balance-payment-status.danger {
           background: #fef2f2;
           color: #b91c1c;
         }
@@ -33052,6 +33577,76 @@ export default function DashboardShell({
           color: var(--accent-blue);
         }
         .simple-client-edit { justify-self: end; }
+        .simple-client-actions {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          justify-self: end;
+        }
+        .simple-client-archive {
+          width: 36px;
+          height: 36px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          padding: 0;
+          border-radius: 10px;
+          border: 1px solid rgba(148,163,184,0.18);
+          background: transparent;
+          color: var(--muted-text);
+          cursor: pointer;
+          font-size: 1rem;
+        }
+        .simple-client-archive:hover { background: rgba(148,163,184,0.1); color: var(--text-primary); }
+        .simple-client-status-col {
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+          min-width: 0;
+        }
+        .simple-client-churn-date {
+          width: 100%;
+          min-height: 34px;
+          border: 1px solid rgba(148,163,184,0.2);
+          border-radius: 10px;
+          background: rgba(255,255,255,0.04);
+          color: var(--text-primary);
+          font: inherit;
+          font-size: 0.78rem;
+          padding: 0 10px;
+          outline: none;
+        }
+        .simple-client-churn-date:disabled { opacity: 0.6; cursor: not-allowed; }
+        .archived-clients-section {
+          margin-top: 12px;
+        }
+        .archived-clients-summary {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 10px 16px;
+          cursor: pointer;
+          font-size: 0.82rem;
+          font-weight: 700;
+          color: var(--muted-text);
+          border-radius: 12px;
+          border: 1px solid rgba(148,163,184,0.12);
+          background: rgba(255,255,255,0.02);
+          list-style: none;
+          user-select: none;
+        }
+        .archived-clients-summary:hover { background: rgba(255,255,255,0.04); color: var(--text-primary); }
+        .archived-client-list { margin-top: 8px; }
+        .simple-client-row-archived { opacity: 0.65; }
+        .simple-client-archived-badge {
+          display: inline-flex;
+          align-items: center;
+          font-size: 0.72rem;
+          font-weight: 700;
+          color: var(--muted-text);
+          letter-spacing: 0.06em;
+          text-transform: uppercase;
+        }
         .simple-client-modal {
           max-height: min(86vh, 920px);
           overflow-y: auto;
@@ -33519,7 +34114,7 @@ export default function DashboardShell({
           grid-template-columns: minmax(320px, 0.72fr) minmax(520px, 1fr);
           column-gap: 24px;
           row-gap: 14px;
-          align-items: start;
+          align-items: stretch;
           border: 1px solid rgba(255, 255, 255, 0.08);
           border-radius: 28px;
           background:
@@ -33538,6 +34133,9 @@ export default function DashboardShell({
           justify-content: flex-start;
           gap: 20px;
           padding-right: 12px;
+          grid-column: 1;
+          grid-row: 1;
+          align-self: start;
         }
 
         .weekly-command-heading h2 {
@@ -33617,7 +34215,7 @@ export default function DashboardShell({
           align-self: start;
           justify-self: end;
           width: 100%;
-          margin-top: 128px;
+          margin-top: 0;
           z-index: 1;
         }
 
@@ -33640,6 +34238,58 @@ export default function DashboardShell({
         .weekly-command-primary div {
           display: grid;
           gap: 8px;
+        }
+
+        .weekly-churn-card {
+          margin-top: 24px;
+          padding: 18px 20px;
+          border-radius: 18px;
+          border: 1px solid rgba(248, 113, 113, 0.22);
+          background: rgba(248, 113, 113, 0.06);
+          display: grid;
+          gap: 6px;
+        }
+
+        .weekly-churn-card:has(.weekly-churn-ok) {
+          border-color: rgba(16, 185, 129, 0.22);
+          background: rgba(16, 185, 129, 0.06);
+        }
+
+        .weekly-churn-header {
+          display: flex;
+          align-items: center;
+          gap: 7px;
+          font-size: 0.8rem;
+          font-weight: 700;
+          color: var(--muted-text);
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+        }
+
+        .weekly-churn-header i {
+          font-size: 1rem;
+        }
+
+        .weekly-churn-rate {
+          font-size: clamp(2rem, 3.5vw, 2.8rem);
+          font-weight: 900;
+          letter-spacing: -0.04em;
+          line-height: 1;
+          color: var(--text-primary);
+        }
+
+        .weekly-churn-detail {
+          font-size: 0.82rem;
+          color: var(--muted-text);
+        }
+
+        .weekly-churn-ok {
+          display: flex;
+          align-items: center;
+          gap: 5px;
+          font-size: 0.82rem;
+          font-weight: 700;
+          color: #10b981;
         }
 
         .weekly-command-primary strong {
@@ -36266,19 +36916,17 @@ export default function DashboardShell({
         }
 
         /* Lumina global finish pass for every app page and popup. */
+        /* C6 Gold Theme Override */
         .dashboard-shell-stellar {
-          --lumina-page-bg: color-mix(in srgb, var(--app-bg-color, #070908) 76%, #020605 24%);
-          --lumina-page-surface: rgba(var(--app-bg-rgb, 18, 24, 23), 0.18);
-          --lumina-page-surface-strong: color-mix(in srgb, var(--app-bg-color, #171c1b) 22%, rgba(23, 28, 27, 0.94));
-          --lumina-page-border: rgba(190, 201, 191, 0.16);
-          --lumina-page-border-strong: rgba(190, 201, 191, 0.28);
-          --lumina-page-text: #f1f1f1;
-          --lumina-page-muted: rgba(241, 241, 241, 0.68);
-          --lumina-page-soft: rgba(241, 241, 241, 0.48);
-          background:
-            radial-gradient(circle at 78% 0%, color-mix(in srgb, var(--button-primary, #e53935) 10%, transparent), transparent 30%),
-            radial-gradient(circle at 10% 14%, rgba(var(--app-bg-rgb, 7, 9, 8), 0.34), transparent 28%),
-            linear-gradient(180deg, var(--lumina-page-bg) 0%, color-mix(in srgb, var(--app-bg-color, #0d1110) 54%, #0d1110 46%) 52%, var(--lumina-page-bg) 100%) !important;
+          --lumina-page-bg: #0c0c0c;
+          --lumina-page-surface: rgba(22, 22, 22, 0.98);
+          --lumina-page-surface-strong: #1a1a1a;
+          --lumina-page-border: rgba(255, 255, 255, 0.07);
+          --lumina-page-border-strong: rgba(255, 255, 255, 0.12);
+          --lumina-page-text: #ffffff;
+          --lumina-page-muted: rgba(255, 255, 255, 0.65);
+          --lumina-page-soft: rgba(255, 255, 255, 0.4);
+          background: #0c0c0c !important;
           color: var(--lumina-page-text);
         }
 
@@ -36314,13 +36962,11 @@ export default function DashboardShell({
         .dashboard-shell-stellar .simple-client-card,
         .dashboard-shell-stellar .simple-team-card,
         .dashboard-shell-stellar .empty-panel {
-          border: 1px solid var(--lumina-page-border) !important;
-          background:
-            linear-gradient(180deg, color-mix(in srgb, var(--app-bg-color, #121817) 16%, rgba(18, 24, 23, 0.88)), rgba(13, 17, 16, 0.9)),
-            var(--lumina-page-surface) !important;
-          box-shadow: 0 22px 52px rgba(0, 0, 0, 0.22) !important;
-          backdrop-filter: blur(14px);
-          -webkit-backdrop-filter: blur(14px);
+          border: 1px solid rgba(255, 255, 255, 0.07) !important;
+          background: #161616 !important;
+          box-shadow: none !important;
+          backdrop-filter: none;
+          -webkit-backdrop-filter: none;
         }
 
         .dashboard-shell-stellar .hero-panel,
@@ -36328,19 +36974,15 @@ export default function DashboardShell({
         .dashboard-shell-stellar .weekly-command-center,
         .dashboard-shell-stellar .monday-command-panel,
         .dashboard-shell-stellar .management-header-row {
-          background:
-            linear-gradient(135deg, color-mix(in srgb, var(--button-primary, #e53935) 10%, transparent), transparent 38%),
-            linear-gradient(180deg, color-mix(in srgb, var(--app-bg-color, #121817) 18%, rgba(18, 24, 23, 0.94)), rgba(13, 17, 16, 0.92)) !important;
-          border-color: var(--lumina-page-border-strong) !important;
+          background: #1a1a1a !important;
+          border-color: rgba(255, 255, 255, 0.09) !important;
         }
 
         .dashboard-shell-stellar .modal-overlay,
         .dashboard-shell-stellar .weekly-modal-overlay {
-          background:
-            radial-gradient(circle at 50% 0%, color-mix(in srgb, var(--button-primary, #e53935) 14%, transparent), transparent 32%),
-            rgba(2, 6, 5, 0.78) !important;
-          backdrop-filter: blur(18px) saturate(118%);
-          -webkit-backdrop-filter: blur(18px) saturate(118%);
+          background: rgba(0, 0, 0, 0.82) !important;
+          backdrop-filter: blur(18px);
+          -webkit-backdrop-filter: blur(18px);
           padding: clamp(16px, 3vw, 32px);
         }
 
@@ -36353,11 +36995,9 @@ export default function DashboardShell({
         .dashboard-shell-stellar .weekly-entry-modal,
         .dashboard-shell-stellar .weekly-history-modal,
         .dashboard-shell-stellar .operation-card-modal {
-          border: 1px solid var(--lumina-page-border-strong) !important;
+          border: 1px solid rgba(255, 255, 255, 0.1) !important;
           border-radius: 24px !important;
-          background:
-            linear-gradient(145deg, color-mix(in srgb, var(--button-primary, #e53935) 8%, transparent), transparent 30%),
-            linear-gradient(180deg, rgba(18, 24, 23, 0.98), rgba(9, 13, 12, 0.98)) !important;
+          background: #1a1a1a !important;
           color: var(--lumina-page-text) !important;
           box-shadow: 0 30px 90px rgba(0, 0, 0, 0.44) !important;
         }
@@ -36413,8 +37053,8 @@ export default function DashboardShell({
         .dashboard-shell-stellar .client-registry-display-btn:hover,
         .dashboard-shell-stellar .metric-library-chip:hover,
         .dashboard-shell-stellar .weekly-export-button:hover {
-          border-color: color-mix(in srgb, var(--button-primary, #e53935) 34%, var(--lumina-page-border)) !important;
-          background: color-mix(in srgb, var(--button-primary, #e53935) 10%, rgba(255, 255, 255, 0.035)) !important;
+          border-color: rgba(var(--accent-rgb, 229, 57, 53), 0.34) !important;
+          background: rgba(var(--accent-rgb, 229, 57, 53), 0.1) !important;
           color: var(--lumina-page-text) !important;
         }
 
@@ -36424,13 +37064,12 @@ export default function DashboardShell({
         .dashboard-shell-stellar .operation-assignee-dropdown,
         .dashboard-shell-stellar .meta-campaign-filter-panel,
         .dashboard-shell-stellar .client-select-menu {
-          border: 1px solid var(--lumina-page-border-strong) !important;
+          border: 1px solid rgba(255, 255, 255, 0.12) !important;
           border-radius: 18px !important;
-          background:
-            linear-gradient(180deg, rgba(18, 24, 23, 0.98), rgba(9, 13, 12, 0.98)) !important;
+          background: #1a1a1a !important;
           box-shadow: 0 26px 70px rgba(0, 0, 0, 0.36) !important;
-          backdrop-filter: blur(16px);
-          -webkit-backdrop-filter: blur(16px);
+          backdrop-filter: none;
+          -webkit-backdrop-filter: none;
         }
 
         .dashboard-shell-stellar .input-group input:not([type="checkbox"]):not([type="file"]),
@@ -36462,11 +37101,10 @@ export default function DashboardShell({
         }
 
         .dashboard-shell-stellar .btn-primary {
-          border-color: color-mix(in srgb, var(--button-primary, #e53935) 72%, #ffffff 8%) !important;
-          background:
-            linear-gradient(135deg, var(--button-primary, #e53935), color-mix(in srgb, var(--button-primary, #e53935) 78%, #ef5350 22%)) !important;
+          border-color: var(--button-primary, #e53935) !important;
+          background: var(--button-primary, #e53935) !important;
           color: #ffffff !important;
-          box-shadow: 0 14px 28px color-mix(in srgb, var(--button-primary, #e53935) 24%, transparent) !important;
+          box-shadow: none !important;
         }
 
         .dashboard-shell-stellar .btn-primary i,
@@ -36482,7 +37120,19 @@ export default function DashboardShell({
         .dashboard-shell-stellar .operation-stellar-tab.active,
         .dashboard-shell-stellar .metric-library-panel strong,
         .dashboard-shell-stellar .ai-insights-meta strong {
-          color: color-mix(in srgb, var(--button-primary, #e53935) 76%, #f1f1f1) !important;
+          color: var(--button-primary, #e53935) !important;
+        }
+
+        .dashboard-shell-stellar .sidebar :global(.nav-item.active) {
+          color: #ffffff !important;
+          border-color: transparent !important;
+          background: rgba(var(--accent-rgb, 229, 57, 53), 0.1) !important;
+          box-shadow: inset 2px 0 0 var(--button-primary, #e53935) !important;
+        }
+
+        .dashboard-shell-stellar .sidebar :global(.nav-item.active i),
+        .dashboard-shell-stellar .sidebar :global(.nav-item:hover i) {
+          color: var(--button-primary, #e53935) !important;
         }
 
         .dashboard-shell-stellar .stage-chip.active,
@@ -36491,8 +37141,8 @@ export default function DashboardShell({
         .dashboard-shell-stellar .operation-stellar-theme-option.active,
         .dashboard-shell-stellar .metric-library-chip.active,
         .dashboard-shell-stellar .weekly-range-pill.active {
-          border-color: color-mix(in srgb, var(--button-primary, #e53935) 38%, var(--lumina-page-border)) !important;
-          background: color-mix(in srgb, var(--button-primary, #e53935) 13%, rgba(255, 255, 255, 0.035)) !important;
+          border-color: rgba(var(--accent-rgb, 229, 57, 53), 0.38) !important;
+          background: rgba(var(--accent-rgb, 229, 57, 53), 0.13) !important;
         }
 
         .dashboard-shell-stellar .btn-secondary {

@@ -713,6 +713,7 @@ function normalizeClientRecord(client: LooseRecord): ClientRecord {
       return salesModel ? getDefaultImplementationChecklist(salesModel) : []
     })(),
     status: payload.status || 'Ativo',
+    isArchived: Boolean(client?.is_archived),
     productId: payload.productId || '',
     product: payload.product || '',
     okrs: normalizeClientOkrs(payload.okrs),
@@ -773,6 +774,7 @@ function normalizeClientRecord(client: LooseRecord): ClientRecord {
     stakeholderFlag: payload.stakeholderFlag || 'na',
     dashboardColor: payload.dashboardColor || 'blue',
     logoUrl: payload.logoUrl || '',
+    balanceAlertsEnabled: payload.balanceAlertsEnabled !== false,
     metaAdAccountId: payload.metaAdAccountId || '',
     googleAdsAccountId: payload.googleAdsAccountId || '',
     tiktokAdsAccountId: payload.tiktokAdsAccountId || '',
@@ -1025,7 +1027,7 @@ export async function getDashboardState(
       .maybeSingle(),
     adminSupabase
       .from('workspace_clients')
-      .select('id, name, payload')
+      .select('id, name, payload, is_archived')
       .eq('workspace_id', accessContext.workspaceId)
       .order('name', { ascending: true }),
     adminSupabase
