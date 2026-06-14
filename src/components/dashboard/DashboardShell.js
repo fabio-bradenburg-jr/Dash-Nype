@@ -5064,12 +5064,30 @@ export default function DashboardShell({
                   pointBorderColor: '#fff',
                   pointBorderWidth: 2,
                   pointHoverRadius: 7,
+                  pointHoverBackgroundColor: 'var(--saas-primary, #e53935)',
+                  pointHoverBorderColor: '#fff',
+                  pointHoverBorderWidth: 2,
                 }],
               }}
               options={{
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false } },
+                plugins: {
+                  legend: { display: false },
+                  tooltip: {
+                    mode: 'index',
+                    intersect: false,
+                    backgroundColor: 'rgba(15,15,15,0.95)',
+                    borderColor: 'rgba(229,57,53,0.5)',
+                    borderWidth: 1,
+                    titleColor: 'rgba(255,255,255,0.85)',
+                    bodyColor: 'rgba(255,255,255,0.7)',
+                    padding: 10,
+                    callbacks: {
+                      labelColor: () => ({ borderColor: '#e53935', backgroundColor: '#e53935' }),
+                    },
+                  },
+                },
                 scales: {
                   x: { grid: { display: false }, ticks: { color: 'rgba(255,255,255,0.45)', maxTicksLimit: 10, font: { size: 11 } } },
                   y: { grid: { color: 'rgba(255,255,255,0.06)' }, ticks: { color: 'rgba(255,255,255,0.45)', font: { size: 11 } } },
