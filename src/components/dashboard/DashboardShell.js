@@ -18495,7 +18495,7 @@ export default function DashboardShell({
                 ) : filteredAdAccountBalanceRows.length ? (
                   filteredAdAccountBalanceRows.map((row) => {
                     const billingUrl = row.accountId
-                      ? `https://adsmanager.facebook.com/adsmanager/billing_hub/payment_settings/?act=${row.accountId}&nav_entry_point=ads_ecosystem_navigation_menu`
+                      ? `https://adsmanager.facebook.com/adsmanager/billing_hub/accounts/details/?asset_id=${row.accountId}&placement=ads_manager`
                       : null
                     return (
                       <div key={`${row.clientId}-${row.accountId || 'empty'}`} className={'ad-balance-account-card ' + (row.tone || 'empty')}>
