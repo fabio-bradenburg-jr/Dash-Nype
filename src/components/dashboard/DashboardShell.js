@@ -5015,15 +5015,14 @@ export default function DashboardShell({
     const metaConfig = CAMPAIGN_CHART_METRICS.find((m) => m.key === metric) || CAMPAIGN_CHART_METRICS[0]
 
     const labels = daily ? daily.map((d) => d.date_start || d.date) : []
-    const values = daily
+    const resultsValues = daily
+      ? daily.map((d) => Number(d.custom_metrics?.totalConversions || 0))
+      : []
+    const cprValues = daily
       ? daily.map((d) => {
-          const results = Number(d.custom_metrics?.totalConversions || 0)
-          if (metric === 'results') return results
-          if (metric === 'cpr') {
-            const spend = Number(d.spend || 0)
-            return spend > 0 && results > 0 ? spend / results : 0
-          }
-          return Number(d[metric] || 0)
+          const res = Number(d.custom_metrics?.totalConversions || 0)
+          const spend = Number(d.spend || 0)
+          return res > 0 ? spend / res : 0
         })
       : []
 
@@ -5038,22 +5037,44 @@ export default function DashboardShell({
             <Line
               data={{
                 labels,
-                datasets: [{
-                  label: metaConfig.label,
-                  data: values,
-                  borderColor: '#ff1a1a',
-                  backgroundColor: 'rgba(255,26,26,0.15)',
-                  tension: 0,
-                  fill: true,
-                  pointRadius: 5,
-                  pointBackgroundColor: '#ff1a1a',
-                  pointBorderColor: '#fff',
-                  pointBorderWidth: 2,
-                  pointHoverRadius: 7,
-                  pointHoverBackgroundColor: '#ff1a1a',
-                  pointHoverBorderColor: '#fff',
-                  pointHoverBorderWidth: 2,
-                }],
+                datasets: [
+                  {
+                    label: 'Custo/Resultado',
+                    data: cprValues,
+                    borderColor: '#ff1a1a',
+                    backgroundColor: 'rgba(255,26,26,0.12)',
+                    tension: 0,
+                    fill: true,
+                    borderWidth: 2,
+                    pointRadius: 5,
+                    pointBackgroundColor: '#ff1a1a',
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 2,
+                    pointHoverRadius: 7,
+                    pointHoverBackgroundColor: '#ff1a1a',
+                    pointHoverBorderColor: '#fff',
+                    pointHoverBorderWidth: 2,
+                    yAxisID: 'yCpr',
+                  },
+                  {
+                    label: 'Resultados',
+                    data: resultsValues,
+                    borderColor: 'rgba(255,255,255,0.7)',
+                    backgroundColor: 'transparent',
+                    tension: 0,
+                    fill: false,
+                    borderWidth: 2,
+                    borderDash: [6, 4],
+                    pointRadius: 4,
+                    pointBackgroundColor: 'rgba(255,255,255,0.7)',
+                    pointBorderColor: 'rgba(255,255,255,0.3)',
+                    pointBorderWidth: 1,
+                    pointHoverRadius: 6,
+                    pointHoverBackgroundColor: '#fff',
+                    pointHoverBorderColor: '#fff',
+                    yAxisID: 'yResults',
+                  },
+                ],
               }}
               options={{
                 responsive: true,
@@ -5070,13 +5091,25 @@ export default function DashboardShell({
                     bodyColor: 'rgba(255,255,255,0.7)',
                     padding: 10,
                     callbacks: {
-                      labelColor: () => ({ borderColor: '#e53935', backgroundColor: '#e53935' }),
+                      labelColor: (ctx) => {
+                        const color = ctx.datasetIndex === 0 ? '#ff1a1a' : 'rgba(255,255,255,0.7)'
+                        return { borderColor: color, backgroundColor: color }
+                      },
                     },
                   },
                 },
                 scales: {
                   x: { grid: { display: false }, ticks: { color: 'rgba(255,255,255,0.45)', maxTicksLimit: 10, font: { size: 11 } } },
-                  y: { grid: { color: 'rgba(255,255,255,0.06)' }, ticks: { color: 'rgba(255,255,255,0.45)', font: { size: 11 } } },
+                  yCpr: {
+                    position: 'left',
+                    grid: { color: 'rgba(255,255,255,0.06)' },
+                    ticks: { color: '#ff1a1a', font: { size: 11 }, callback: (v) => `R$${v.toFixed(2)}` },
+                  },
+                  yResults: {
+                    position: 'right',
+                    grid: { display: false },
+                    ticks: { color: 'rgba(255,255,255,0.5)', font: { size: 11 } },
+                  },
                 },
               }}
             />
