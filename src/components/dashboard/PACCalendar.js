@@ -1,18 +1,18 @@
 'use client'
 import { useState, useEffect, useCallback, useRef } from 'react'
 
-// ─── Constants ────────────────────────────────────────────────────────────────
+// ─── Constants ─────────────────────────────────────────────────────────────────────────────────
 
 const MONTHS = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
 const WEEKDAYS = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb']
 
 const STATUS_META = {
   agendado:  { label: 'Agendado',  color: '#3b82f6', bg: 'rgba(59,130,246,0.13)',  icon: 'bx-calendar-check' },
-  realizado: { label: 'Realizado', color: '#22c55e', bg: 'rgba(34,197,94,0.13)',    icon: 'bx-check-circle' },
+  realizado: { label: 'Realizado', color: '#22c55e', bg: 'rgba(34,197,94,0.13)',   icon: 'bx-check-circle' },
   cancelado: { label: 'Cancelado', color: '#ef4444', bg: 'rgba(239,68,68,0.13)',   icon: 'bx-x-circle' },
 }
 
-const PRESET_COLORS = ['#6366f1','#3b82f6','#e53935','#f59e0b','#ef4444','#ec4899','#8b5cf6','#06b6d4']
+const PRESET_COLORS = ['#6366f1','#3b82f6','#22c55e','#f59e0b','#ef4444','#ec4899','#8b5cf6','#06b6d4']
 
 const TYPE_ICONS = [
   { value: 'bx-book-open',    label: 'Livro' },
@@ -35,7 +35,7 @@ const EMPTY_TYPE_FORM = {
   name: '', description: '', color: '#6366f1', icon: 'bx-book-open',
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────────────────────
 
 function buildCalendarGrid(year, month) {
   const firstDay = new Date(year, month, 1).getDay()
@@ -92,7 +92,7 @@ function isThisWeek(iso) {
   return d >= start && d < end
 }
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
+// ─── Sub-components ───────────────────────────────────────────────────────────────────────────────────
 
 function StatusBadge({ status }) {
   const meta = STATUS_META[status] || STATUS_META.agendado
@@ -136,7 +136,7 @@ function Spinner() {
   )
 }
 
-// ─── Main Component ───────────────────────────────────────────────────────────
+// ─── Main Component ───────────────────────────────────────────────────────────────────────────────────
 
 export default function PACCalendar({ clients = [], isLightMode = false, defaultView = 'dash' }) {
   const today = new Date()
@@ -173,7 +173,7 @@ export default function PACCalendar({ clients = [], isLightMode = false, default
   const [savingType, setSavingType] = useState(false)
   const [typeFeedback, setTypeFeedback] = useState('')
 
-  // ── Fetch ──────────────────────────────────────────────────────────────────
+  // ── Fetch ────────────────────────────────────────────────────────────────────────────
 
   const fetchTrainings = useCallback(async (opts = {}) => {
     setLoadingTrainings(true)
@@ -224,7 +224,7 @@ export default function PACCalendar({ clients = [], isLightMode = false, default
     }
   }, [])
 
-  // ── Calendar nav ───────────────────────────────────────────────────────────
+  // ── Calendar nav ───────────────────────────────────────────────────────────────────────
 
   function prevMonth() {
     if (month === 0) { setMonth(11); setYear(y => y - 1) }
@@ -235,7 +235,7 @@ export default function PACCalendar({ clients = [], isLightMode = false, default
     else setMonth(m => m + 1)
   }
 
-  // ── Training CRUD ──────────────────────────────────────────────────────────
+  // ── Training CRUD ────────────────────────────────────────────────────────────────────────
 
   function openNewTraining(prefill = {}) {
     setTrainingForm({ ...EMPTY_TRAINING_FORM, ...prefill })
@@ -323,7 +323,7 @@ export default function PACCalendar({ clients = [], isLightMode = false, default
     } catch (e) { console.error(e) }
   }
 
-  // ── Notes ──────────────────────────────────────────────────────────────────
+  // ── Notes ────────────────────────────────────────────────────────────────────────────
 
   async function addNote() {
     if (!noteInput.trim() || !detailTraining) return
@@ -367,7 +367,7 @@ export default function PACCalendar({ clients = [], isLightMode = false, default
     } catch (e) { console.error(e) }
   }
 
-  // ── Types CRUD ─────────────────────────────────────────────────────────────
+  // ── Types CRUD ───────────────────────────────────────────────────────────────────────────
 
   function openNewType() {
     setTypeForm(EMPTY_TYPE_FORM)
@@ -412,7 +412,7 @@ export default function PACCalendar({ clients = [], isLightMode = false, default
     } catch (e) { console.error(e) }
   }
 
-  // ── Detail panel open ──────────────────────────────────────────────────────
+  // ── Detail panel open ────────────────────────────────────────────────────────────────────────
 
   function openDetail(t) {
     setDetailTraining(t)
@@ -422,7 +422,7 @@ export default function PACCalendar({ clients = [], isLightMode = false, default
     fetchNotes(t.id)
   }
 
-  // ── Dashboard computations ─────────────────────────────────────────────────
+  // ── Dashboard computations ───────────────────────────────────────────────────────────────────────
 
   const todayTrainings = trainings.filter(t => isToday(t.scheduled_at))
   const weekTrainings  = trainings.filter(t => isThisWeek(t.scheduled_at))
@@ -432,7 +432,7 @@ export default function PACCalendar({ clients = [], isLightMode = false, default
     .slice(0, 10)
   const completedCount = trainings.filter(t => t.status === 'realizado').length
 
-  // ── Calendar grid ──────────────────────────────────────────────────────────
+  // ── Calendar grid ────────────────────────────────────────────────────────────────────────
 
   const calendarCells = buildCalendarGrid(year, month)
 
@@ -445,7 +445,7 @@ export default function PACCalendar({ clients = [], isLightMode = false, default
     })
   }
 
-  // ── Render ─────────────────────────────────────────────────────────────────
+  // ── Render ────────────────────────────────────────────────────────────────────────────
 
   const tabStyle = (v) => ({
     padding: '7px 16px', borderRadius: 8, border: 'none', cursor: 'pointer',
@@ -839,12 +839,12 @@ export default function PACCalendar({ clients = [], isLightMode = false, default
                 </div>
               ))}
               {detailTraining.meet_link && (
-                <div style={{ padding: '10px 12px', borderRadius: 8, background: 'rgba(229,57,53,0.07)', border: '1px solid rgba(229,57,53,0.22)', gridColumn: 'span 2' }}>
-                  <div style={{ fontSize: 10, color: '#e53935', fontWeight: 700, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 5 }}>
+                <div style={{ padding: '10px 12px', borderRadius: 8, background: 'rgba(34,197,94,0.07)', border: '1px solid rgba(34,197,94,0.22)', gridColumn: 'span 2' }}>
+                  <div style={{ fontSize: 10, color: '#22c55e', fontWeight: 700, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 5 }}>
                     <i className="bx bx-video" style={{ fontSize: 13 }}></i> Google Meet
                   </div>
                   <a href={detailTraining.meet_link} target="_blank" rel="noreferrer"
-                    style={{ fontSize: 12, color: '#e53935', wordBreak: 'break-all', fontWeight: 600 }}>
+                    style={{ fontSize: 12, color: '#22c55e', wordBreak: 'break-all', fontWeight: 600 }}>
                     {detailTraining.meet_link}
                   </a>
                 </div>
@@ -873,7 +873,7 @@ export default function PACCalendar({ clients = [], isLightMode = false, default
               </button>
               {detailTraining.status !== 'realizado' && (
                 <button className="pac-action-btn" onClick={() => quickStatus(detailTraining, 'realizado')}
-                  style={{ color: '#e53935', borderColor: '#e53935' }}>
+                  style={{ color: '#22c55e', borderColor: '#22c55e' }}>
                   <i className="bx bx-check-circle"></i> Realizado
                 </button>
               )}
@@ -1016,7 +1016,7 @@ export default function PACCalendar({ clients = [], isLightMode = false, default
               <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 Participantes (e-mails)
                 {gcalConnected && (
-                  <span style={{ fontSize: 11, fontWeight: 500, color: '#e53935', background: 'rgba(229,57,53,0.12)', borderRadius: 99, padding: '1px 7px' }}>
+                  <span style={{ fontSize: 11, fontWeight: 500, color: '#22c55e', background: 'rgba(34,197,94,0.12)', borderRadius: 99, padding: '1px 7px' }}>
                     <i className="bx bx-calendar-check" style={{ marginRight: 3 }}></i>Google Meet será gerado
                   </span>
                 )}
@@ -1133,7 +1133,7 @@ export default function PACCalendar({ clients = [], isLightMode = false, default
   )
 }
 
-// ─── TrainingRow sub-component ────────────────────────────────────────────────
+// ─── TrainingRow sub-component ────────────────────────────────────────────────────────────────────────────────
 
 function TrainingRow({ training: t, onOpen, onEdit, onDelete, onQuickStatus }) {
   return (
@@ -1160,7 +1160,7 @@ function TrainingRow({ training: t, onOpen, onEdit, onDelete, onQuickStatus }) {
         )}
         {t.status !== 'realizado' && (
           <button className="pac-action-btn" onClick={() => onQuickStatus(t, 'realizado')} title="Marcar como realizado"
-            style={{ color: '#e53935', borderColor: '#e53935' }}>
+            style={{ color: '#22c55e', borderColor: '#22c55e' }}>
             <i className="bx bx-check"></i>
           </button>
         )}
