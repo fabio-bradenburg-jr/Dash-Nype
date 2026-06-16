@@ -3,6 +3,7 @@ export const USER_ROLES = {
   OPERATOR: 'operador',
   VIEWER: 'visualizador',
   CLIENT: 'cliente',
+  GESTOR_RESULTADO: 'gestor_resultado',
 }
 
 export const AI_ACCESS_LEVELS = {
@@ -11,8 +12,8 @@ export const AI_ACCESS_LEVELS = {
   NONE: 'none',
 }
 
-export const PRIMARY_ADMIN_EMAIL = 'fabiobrandenburgjr@gmail.com'
-export const PRIMARY_ADMIN_EMAILS = ['fabiobrandenburgjr@gmail.com']
+export const PRIMARY_ADMIN_EMAIL = 'fabio@assessorialp.com.br'
+export const PRIMARY_ADMIN_EMAILS = ['fabio@assessorialp.com.br']
 export const PREVIOUS_PRIMARY_ADMIN_EMAILS = []
 export const ASSESSORIA_LP_MEMBER_EMAILS = []
 
