@@ -5,7 +5,10 @@ import { resolveWorkspaceForHost } from '@/lib/server/domain-config'
 
 const THRESHOLDS = [50, 100, 150] // checked from lowest to highest; zero handled separately
 // How many hours to wait before re-alerting the same account+threshold
-const COOLDOWN_HOURS = 12
+const COOLDOWN_HOURS = 6
+// Quiet hours in Brazil time (UTC-3): no alerts from 20:00 to 08:00
+const QUIET_START_HOUR = 20
+const QUIET_END_HOUR = 8
 
 function normalizeAdAccountId(value: string) {
   return String(value || '').replace(/^act_/, '').replace(/\D/g, '')
@@ -30,14 +33,35 @@ async function getMetaTokenForWorkspace(adminSupabase: any, workspaceId: string)
 }
 
 async function fetchBalance(token: string, adAccountId: string) {
-  const fields = 'balance,currency,is_prepay_account,account_status'
+  const fields = 'balance,currency,is_prepay_account,account_status,funding_source_details'
   const url = `https://graph.facebook.com/v19.0/act_${adAccountId}?fields=${fields}&access_token=${encodeURIComponent(token)}`
   const account = await fetchMetaJson(url, 'Meta timeout ao buscar saldo.')
   const currency = account.currency || 'BRL'
   const isPrepay = account.is_prepay_account === true || account.is_prepay_account === 'true'
+  if (!isPrepay) return { balance: null, currency, isPrepay }
+
+  // Use funding_source_details balance when available (matches what the UI shows)
   const rawBalance = normalizeCurrencyAmount(account.balance, currency)
-  // Only prepaid accounts have meaningful balance alerts
-  return { balance: isPrepay ? rawBalance : null, currency, isPrepay }
+  const fundingDetails = account.funding_source_details
+  let fundsAvailable = rawBalance
+
+  if (fundingDetails) {
+    const labelRaw = String(fundingDetails.display_string || fundingDetails.displayString || '')
+    const labelLower = `${labelRaw} ${fundingDetails.type || ''}`.toLowerCase()
+    const isStoredFunds = /saldo dispon[ií]vel|available balance|fundos|prepaid|prepay|balance/.test(labelLower)
+    if (isStoredFunds) {
+      const match = labelRaw.match(/(?:R\$|\$|€|£)?\s*(-?\d{1,3}(?:[.\s]\d{3})*(?:,\d+)?|-?\d+(?:\.\d+)?)/)
+      if (match) {
+        const normalized = match[1].replace(/\s/g, '').includes(',')
+          ? match[1].replace(/\s/g, '').replace(/\./g, '').replace(',', '.')
+          : match[1].replace(/\s/g, '')
+        const parsed = Number(normalized)
+        if (Number.isFinite(parsed)) fundsAvailable = parsed
+      }
+    }
+  }
+
+  return { balance: Math.max(fundsAvailable, 0), currency, isPrepay }
 }
 
 async function wasAlertedRecently(
@@ -82,6 +106,14 @@ export async function GET(request: Request) {
 
   if (!expectedSecret || secret !== expectedSecret) {
     return NextResponse.json({ error: 'Não autorizado.' }, { status: 401 })
+  }
+
+  // Quiet hours check (Brazil UTC-3): no alerts between 20:00 and 08:00
+  const nowBrazil = new Date(Date.now() - 3 * 60 * 60 * 1000)
+  const hourBrazil = nowBrazil.getUTCHours()
+  const isQuietHour = hourBrazil >= QUIET_START_HOUR || hourBrazil < QUIET_END_HOUR
+  if (isQuietHour) {
+    return NextResponse.json({ alerts: [], count: 0, skipped: 'quiet_hours', checkedAt: new Date().toISOString() })
   }
 
   const adminSupabase = createAdminClient()
@@ -170,7 +202,11 @@ export async function GET(request: Request) {
                 balance,
                 currency,
                 threshold,
-                message: `⚠️ *Alerta de Saldo Meta Ads*\n\nCliente: *${clientName}*\nConta: act_${adAccountId}\nSaldo atual: *R$ ${balance.toFixed(2)}*\nLimite atingido: *R$ ${threshold}*\n\nRecarregue antes que as campanhas pausem.`,
+                message: threshold === 50
+                ? `🔴 *Saldo Crítico - Meta Ads*\n\nCliente: *${clientName}*\nConta: act_${adAccountId}\nSaldo atual: *R$ ${balance.toFixed(2)}*\n\n⛔ As campanhas vão pausar em breve. Recarregue agora!`
+                : threshold === 100
+                  ? `🟠 *Saldo Baixo - Meta Ads*\n\nCliente: *${clientName}*\nConta: act_${adAccountId}\nSaldo atual: *R$ ${balance.toFixed(2)}*\n\n⚠️ Saldo abaixo de R$ 100. Providencie recarga para evitar pausa.`
+                  : `🟡 *Aviso de Saldo - Meta Ads*\n\nCliente: *${clientName}*\nConta: act_${adAccountId}\nSaldo atual: *R$ ${balance.toFixed(2)}*\n\nSaldo abaixo de R$ 150. Fique de olho e recarregue em breve.`,
               })
             }
             break

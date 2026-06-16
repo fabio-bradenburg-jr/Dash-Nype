@@ -208,9 +208,8 @@ export async function DELETE(_request, { params }) {
     const authorized = await getAuthorizedContext()
     if (authorized.errorResponse) return authorized.errorResponse
 
-    const { adminSupabase, user } = authorized
-    const resolvedParams = await params
-    const { userId } = resolvedParams
+    const { adminSupabase, accessContext, user } = authorized
+    const { userId } = await params
 
     if (user.id === userId) {
       return NextResponse.json({ error: 'A conta master não pode excluir a si mesma.' }, { status: 400 })
