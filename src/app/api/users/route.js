@@ -196,7 +196,8 @@ async function getAuthorizedContext(options = {}) {
     }
   }
 
-  const hasPermission = requireManageUsers ? accessContext.canManageUsers : (accessContext.canManageUsers || accessContext.canManageClients)
+  const isGestorResultado = accessContext.role === USER_ROLES.GESTOR_RESULTADO
+  const hasPermission = requireManageUsers ? accessContext.canManageUsers : (accessContext.canManageUsers || accessContext.canManageClients || isGestorResultado)
 
   if (!hasPermission || !accessContext.workspaceId) {
     return {
