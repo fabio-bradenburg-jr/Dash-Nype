@@ -247,7 +247,6 @@ export interface ClientRecord {
   dashboardVisibleIntegrationKeys: string[]
   crmProvider: string
   manualCrmSummary: Record<string, number | null>
-  ecommerceEnabled: boolean
   segment: string
   subsegment: string
   tier: string
@@ -323,6 +322,7 @@ export interface ClientRecord {
   googleAdsAccountId: string
   tiktokAdsAccountId: string
   linkedInAdsAccountId: string
+  leadsSheetUrl: string
   googleSheetsUrl: string
   googleSheetsHeaderRow: number
   googleSheetsStatusColumn: string
