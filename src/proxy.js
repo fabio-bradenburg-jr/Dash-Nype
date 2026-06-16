@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { PLATFORM_AUTH_COOKIE } from '@/lib/saas/auth'
 
-const ALLOWED_DOMAINS = ['app.assessorialp.com.br', 'app.nype.company']
+const ALLOWED_DOMAINS = ['app.assessorialp.com.br']
 
 const legacyPrefixes = [
   '/home',
@@ -70,6 +70,6 @@ export function proxy(request) {
 
 export const config = {
   matcher: [
-    '/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/((?!api|_next/static|_next/image|favicon.ico|.*\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 }
