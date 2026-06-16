@@ -18053,7 +18053,10 @@ export default function DashboardShell({
                                       <div className="campaign-overview-tree-row campaign-overview-campaign-row">
                                         <button type="button" className="campaign-overview-row-toggle" onClick={() => handleToggleCampaignOverviewCampaign(campaignKey)} aria-expanded={campaignExpanded}>
                                           <span className="campaign-overview-row-title">
-                                            <strong>{campaign.name || 'Campanha sem nome'}</strong>
+                                            <strong>
+                                              <span className={'campaign-status-dot ' + (campaign.effectiveStatus === 'ACTIVE' ? 'active' : 'paused')} title={campaign.effectiveStatus === 'ACTIVE' ? 'Ativa' : 'Pausada / Inativa'} />
+                                              {campaign.name || 'Campanha sem nome'}
+                                            </strong>
                                             <small>{formatNumber(adsets.length)} conjunto(s)</small>
                                           </span>
                                           <span className="campaign-overview-metric">
@@ -32997,6 +33000,27 @@ export default function DashboardShell({
           min-width: 0;
           display: grid;
           gap: 5px;
+        }
+
+        .campaign-status-dot {
+          display: inline-block;
+          width: 8px;
+          height: 8px;
+          border-radius: 50%;
+          margin-right: 7px;
+          flex-shrink: 0;
+          vertical-align: middle;
+          position: relative;
+          top: -1px;
+        }
+
+        .campaign-status-dot.active {
+          background: #22c55e;
+          box-shadow: 0 0 5px rgba(34, 197, 94, 0.6);
+        }
+
+        .campaign-status-dot.paused {
+          background: rgba(148, 163, 184, 0.5);
         }
 
         .campaign-overview-row-title strong {

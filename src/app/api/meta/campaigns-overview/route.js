@@ -228,15 +228,29 @@ async function fetchClientCampaignTree({ client, token, datePreset, since, until
   const params = buildBaseParams({ token, datePreset, since, until })
   const url = `https://graph.facebook.com/v19.0/act_${adAccountId}/insights?${params.toString()}`
 
+  const statusParams = new URLSearchParams({
+    access_token: token,
+    fields: 'id,effective_status',
+    limit: '500',
+  })
+  const statusUrl = `https://graph.facebook.com/v19.0/act_${adAccountId}/campaigns?${statusParams.toString()}`
+
   try {
-    const data = await fetchMetaJson(url, 'A Meta demorou para responder ao carregar campanhas.', {
-      cacheContext: {
-        clientKey: adAccountId,
-        resourceKind: 'campaigns_overview',
-      },
-      maxPages: 3,
-    })
+    const [data, statusData] = await Promise.all([
+      fetchMetaJson(url, 'A Meta demorou para responder ao carregar campanhas.', {
+        cacheContext: { clientKey: adAccountId, resourceKind: 'campaigns_overview' },
+        maxPages: 3,
+      }),
+      fetchMetaJson(statusUrl, 'Não foi possível carregar status das campanhas.').catch(() => ({ data: [] })),
+    ])
+
+    const statusById = new Map((statusData?.data || []).map((c) => [c.id, c.effective_status]))
     const hierarchy = aggregateHierarchy(data?.data || [])
+
+    const campaignsWithStatus = hierarchy.campaigns.map((campaign) => ({
+      ...campaign,
+      effectiveStatus: statusById.get(campaign.campaignId) || 'UNKNOWN',
+    }))
 
     return {
       clientId: client.id,
@@ -245,7 +259,7 @@ async function fetchClientCampaignTree({ client, token, datePreset, since, until
       clientStatus: client.status || '',
       metaAdAccountId: adAccountId,
       totals: hierarchy.totals,
-      campaigns: hierarchy.campaigns,
+      campaigns: campaignsWithStatus,
       error: '',
     }
   } catch (error) {
