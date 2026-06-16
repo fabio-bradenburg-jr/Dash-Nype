@@ -44,7 +44,7 @@ function normalizeHealthStatus(value) {
 }
 
 function normalizeActionItems(value) {
-  const items = Array.isArray(value) ? value : String(value || '').split('\\n')
+  const items = Array.isArray(value) ? value : String(value || '').split('\n')
   return items
     .map((item) => String(item || '').trim())
     .filter(Boolean)
@@ -66,8 +66,12 @@ function normalizeJsonArray(value) {
 
 
 function isMissingWeeklyTableError(error) {
+  const code = String(error?.code || '')
   const message = String(error?.message || '').toLowerCase()
-  return error?.code === 'PGRST205' || message.includes('schema cache') || message.includes('could not find the table') || message.includes('client_weekly_snapshots')
+  // Only match actual missing-table / schema-cache errors, NOT constraint violations (23514) or other DB errors
+  if (code === '23514' || code === '23502' || code === '23505' || code === '23503') return false
+  if (message.includes('violates') || message.includes('constraint') || message.includes('duplicate')) return false
+  return code === 'PGRST205' || message.includes('schema cache') || message.includes('could not find the table')
 }
 
 function normalizeStoredWeeklyRecords(payload) {

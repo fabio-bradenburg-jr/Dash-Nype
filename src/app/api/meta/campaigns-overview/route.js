@@ -100,6 +100,8 @@ function buildBaseParams({ token, datePreset, since, until }) {
   return params
 }
 
+const GHOST_AD_ACCOUNT_ID = '__ghost__'
+
 function normalizeClientStatus(value) {
   return String(value || '').trim().toLowerCase()
 }
@@ -108,7 +110,7 @@ function isVisibleClient(client) {
   const status = normalizeClientStatus(client?.status)
   return Boolean(
     client?.id &&
-    client?.metaAdAccountId &&
+    (client?.metaAdAccountId === GHOST_AD_ACCOUNT_ID || client?.metaAdAccountId) &&
     client?.dashboardEnabled !== false &&
     status !== 'churn' &&
     status !== 'pausado'
@@ -224,32 +226,46 @@ async function mapWithConcurrency(items, concurrency, mapper) {
 }
 
 async function fetchClientCampaignTree({ client, token, datePreset, since, until }) {
+  if (client.metaAdAccountId === GHOST_AD_ACCOUNT_ID) {
+    return {
+      clientId: client.id,
+      clientName: client.name || 'Cliente sem nome',
+      clientLogoUrl: client.logoUrl || '',
+      clientStatus: client.status || '',
+      metaAdAccountId: GHOST_AD_ACCOUNT_ID,
+      totals: emptyMetrics(),
+      campaigns: [],
+      isGhost: true,
+      error: '',
+    }
+  }
+
   const adAccountId = String(client.metaAdAccountId || '').replace(/^act_/, '')
   const params = buildBaseParams({ token, datePreset, since, until })
   const url = `https://graph.facebook.com/v19.0/act_${adAccountId}/insights?${params.toString()}`
 
-  const statusParams = new URLSearchParams({
-    access_token: token,
-    fields: 'id,effective_status',
-    limit: '500',
-  })
-  const statusUrl = `https://graph.facebook.com/v19.0/act_${adAccountId}/campaigns?${statusParams.toString()}`
-
   try {
-    const [data, statusData] = await Promise.all([
+    const [data, campaignsData] = await Promise.all([
       fetchMetaJson(url, 'A Meta demorou para responder ao carregar campanhas.', {
         cacheContext: { clientKey: adAccountId, resourceKind: 'campaigns_overview' },
         maxPages: 3,
       }),
-      fetchMetaJson(statusUrl, 'Não foi possível carregar status das campanhas.').catch(() => ({ data: [] })),
+      fetchMetaJson(
+        `https://graph.facebook.com/v19.0/act_${adAccountId}/campaigns?fields=id,effective_status&limit=500&access_token=${encodeURIComponent(token)}`,
+        'A Meta demorou para responder ao carregar status das campanhas.',
+        { cacheContext: { clientKey: adAccountId, resourceKind: 'campaigns_status' }, maxPages: 2 }
+      ).catch(() => ({ data: [] })),
     ])
 
-    const statusById = new Map((statusData?.data || []).map((c) => [c.id, c.effective_status]))
-    const hierarchy = aggregateHierarchy(data?.data || [])
+    const statusMap = new Map()
+    ;((campaignsData?.data) || []).forEach((c) => {
+      if (c.id) statusMap.set(c.id, c.effective_status || '')
+    })
 
-    const campaignsWithStatus = hierarchy.campaigns.map((campaign) => ({
-      ...campaign,
-      effectiveStatus: statusById.get(campaign.campaignId) || 'UNKNOWN',
+    const hierarchy = aggregateHierarchy(data?.data || [])
+    const campaigns = hierarchy.campaigns.map((c) => ({
+      ...c,
+      effectiveStatus: statusMap.get(c.campaignId) || '',
     }))
 
     return {
@@ -259,7 +275,7 @@ async function fetchClientCampaignTree({ client, token, datePreset, since, until
       clientStatus: client.status || '',
       metaAdAccountId: adAccountId,
       totals: hierarchy.totals,
-      campaigns: campaignsWithStatus,
+      campaigns,
       error: '',
     }
   } catch (error) {

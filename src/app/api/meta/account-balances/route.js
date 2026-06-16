@@ -224,6 +224,7 @@ async function fetchAdAccountBalance(request, token, client) {
     'currency',
     'is_prepay_account',
     'funding_source_details',
+    'business',
   ].join(',')
   const url = `https://graph.facebook.com/v19.0/act_${accountId}?fields=${encodeURIComponent(fields)}&access_token=${encodeURIComponent(token)}`
 
@@ -261,12 +262,15 @@ async function fetchAdAccountBalance(request, token, client) {
       hasCard: funding.hasCard,
     })
 
+    const businessId = account.business?.id || ''
+
     return {
       clientId: client.id,
       clientName: client.name || account.name || 'Cliente sem nome',
       clientLogoUrl: client.logoUrl || '',
       balanceAlertsEnabled: client.balanceAlertsEnabled !== false,
       accountId,
+      businessId,
       accountName: account.name || `Conta ${accountId}`,
       currency,
       availableBalance: fundsAvailable,
