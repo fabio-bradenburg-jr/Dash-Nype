@@ -33412,7 +33412,7 @@ export default function DashboardShell({
           border-radius: 16px;
           background: rgba(255, 255, 255, 0.04);
           border: 1px solid rgba(148, 163, 184, 0.13);
-          transition: background 0.2s ease, box-shadow 0.2s ease;
+          transition: background 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
           position: relative;
           overflow: hidden;
         }
@@ -33427,6 +33427,30 @@ export default function DashboardShell({
           transition: background 0.2s ease;
         }
 
+        .ad-balance-account-card.danger {
+          background:
+            radial-gradient(ellipse 140% 65% at 50% -10%, rgba(239,68,68,0.16) 0%, transparent 65%),
+            rgba(239,68,68,0.05);
+          border-color: rgba(239,68,68,0.28);
+        }
+        .ad-balance-account-card.danger:hover { border-color: rgba(239,68,68,0.42); box-shadow: 0 6px 24px rgba(239,68,68,0.10); }
+
+        .ad-balance-account-card.warning {
+          background:
+            radial-gradient(ellipse 140% 65% at 50% -10%, rgba(245,158,11,0.16) 0%, transparent 65%),
+            rgba(245,158,11,0.05);
+          border-color: rgba(245,158,11,0.28);
+        }
+        .ad-balance-account-card.warning:hover { border-color: rgba(245,158,11,0.42); box-shadow: 0 6px 24px rgba(245,158,11,0.10); }
+
+        .ad-balance-account-card.success {
+          background:
+            radial-gradient(ellipse 140% 65% at 50% -10%, rgba(34,197,94,0.16) 0%, transparent 65%),
+            rgba(34,197,94,0.05);
+          border-color: rgba(34,197,94,0.28);
+        }
+        .ad-balance-account-card.success:hover { border-color: rgba(34,197,94,0.42); box-shadow: 0 6px 24px rgba(34,197,94,0.10); }
+
         .ad-balance-account-card.danger::before {
           background: rgba(248, 113, 113, 0.9);
         }
@@ -33436,7 +33460,7 @@ export default function DashboardShell({
         }
 
         .ad-balance-account-card.success::before {
-          background: color-mix(in srgb, var(--accent-emerald) 85%, white 5%);
+          background: rgba(34, 197, 94, 0.9);
         }
 
         .ad-balance-card-header {
