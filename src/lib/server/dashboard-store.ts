@@ -671,10 +671,6 @@ function normalizeManualCrmSummary(payload: unknown): Record<string, number | nu
     lostOpportunityCount: toNumber(pickValue('lostOpportunityCount', 'lostDeals', 'lostContacts')),
     wonRevenue: toNumber(pickValue('wonRevenue', 'wonOpportunityRevenue')),
     lostOpportunityValue: toNumber(pickValue('lostOpportunityValue')),
-    ecommerceCartCount: toNumber(pickValue('ecommerceCartCount')),
-    ecommerceCheckoutCount: toNumber(pickValue('ecommerceCheckoutCount')),
-    ecommerceOrderCount: toNumber(pickValue('ecommerceOrderCount')),
-    ecommerceRevenue: toNumber(pickValue('ecommerceRevenue')),
   }
 }
 
@@ -776,7 +772,6 @@ function normalizeClientRecord(client: LooseRecord): ClientRecord {
     adAccountsFlag: payload.adAccountsFlag || 'na',
     npsFlag: payload.npsFlag || 'na',
     stakeholderFlag: payload.stakeholderFlag || 'na',
-    ecommerceEnabled: Boolean(payload.ecommerceEnabled ?? businessData.ecommerceEnabled),
     dashboardColor: payload.dashboardColor || 'blue',
     logoUrl: payload.logoUrl || '',
     balanceAlertsEnabled: payload.balanceAlertsEnabled !== false,
@@ -784,6 +779,7 @@ function normalizeClientRecord(client: LooseRecord): ClientRecord {
     googleAdsAccountId: payload.googleAdsAccountId || '',
     tiktokAdsAccountId: payload.tiktokAdsAccountId || '',
     linkedInAdsAccountId: payload.linkedInAdsAccountId || '',
+    leadsSheetUrl: payload.leadsSheetUrl || '',
     googleSheetsUrl: payload.googleSheetsUrl || '',
     googleSheetsHeaderRow: Number.isFinite(Number(payload.googleSheetsHeaderRow)) && Number(payload.googleSheetsHeaderRow) > 0
       ? Number(payload.googleSheetsHeaderRow)
