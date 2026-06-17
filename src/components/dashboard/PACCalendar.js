@@ -460,9 +460,45 @@ export default function PACCalendar({ clients = [], isLightMode = false, default
         @keyframes pac-spin { to { transform: rotate(360deg); } }
         @keyframes pac-fadein { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
         .pac-shell { font-family: inherit; }
+        .pac-hero-header {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 16px;
+          padding: 22px 24px;
+          border-radius: 20px;
+          border: 1px solid rgba(var(--accent-rgb, 229,57,53), 0.18);
+          background:
+            radial-gradient(ellipse 100% 55% at 15% -10%, rgba(var(--accent-rgb, 229,57,53), 0.11) 0%, transparent 60%),
+            linear-gradient(145deg, rgba(13,12,12,0.97), rgba(7,6,6,0.93));
+          box-shadow: 0 16px 48px rgba(0,0,0,0.28), 0 0 0 1px rgba(var(--accent-rgb, 229,57,53), 0.05);
+          position: relative;
+          overflow: hidden;
+          margin-bottom: 20px;
+        }
+        .pac-hero-header::after {
+          content: '';
+          position: absolute;
+          top: -60px; right: -60px;
+          width: 200px; height: 200px;
+          border-radius: 50%;
+          background: radial-gradient(circle, rgba(var(--accent-rgb, 229,57,53), 0.07) 0%, transparent 70%);
+          pointer-events: none;
+        }
+        .pac-hero-kicker {
+          display: inline-flex;
+          align-items: center;
+          font-size: 0.62rem;
+          font-weight: 800;
+          text-transform: uppercase;
+          letter-spacing: 0.12em;
+          color: var(--saas-primary, #e53935);
+          opacity: 0.9;
+          margin-bottom: 2px;
+        }
         .pac-card {
-          background: var(--card-bg, rgba(255,255,255,0.04));
-          border: 1px solid var(--lumina-dark-border, rgba(255,255,255,0.08));
+          background: linear-gradient(160deg, rgba(var(--accent-rgb, 229,57,53), 0.03) 0%, transparent 60%), var(--bg-panel, rgba(255,255,255,0.04));
+          border: 1px solid rgba(var(--accent-rgb, 229,57,53), 0.10);
           border-radius: 14px; padding: 20px;
           animation: pac-fadein 0.2s ease;
         }
@@ -488,7 +524,7 @@ export default function PACCalendar({ clients = [], isLightMode = false, default
           cursor: pointer; transition: background 0.15s; overflow: hidden;
         }
         .pac-day-cell:hover { background: rgba(255,255,255,0.05); }
-        .pac-day-cell.today { border-color: var(--button-primary, #6366f1); background: rgba(99,102,241,0.07); }
+        .pac-day-cell.today { border-color: var(--saas-primary, #e53935); background: rgba(var(--accent-rgb, 229,57,53), 0.07); }
         .pac-day-cell.empty { background: transparent; border-color: transparent; cursor: default; }
         .pac-training-dot {
           display: flex; align-items: center; gap: 4; padding: 2px 5px; border-radius: 5px;
@@ -564,9 +600,13 @@ export default function PACCalendar({ clients = [], isLightMode = false, default
         @media (max-width: 700px) { .pac-summary-grid { grid-template-columns: repeat(2, 1fr); } }
         .pac-summary-card {
           padding: 18px; border-radius: 12px; text-align: center;
-          background: var(--card-bg, rgba(255,255,255,0.04));
-          border: 1px solid var(--lumina-dark-border, rgba(255,255,255,0.08));
+          background:
+            radial-gradient(ellipse 140% 65% at 50% -10%, rgba(var(--accent-rgb, 229,57,53), 0.10) 0%, transparent 65%),
+            rgba(255,255,255,0.03);
+          border: 1px solid rgba(var(--accent-rgb, 229,57,53), 0.14);
+          transition: border-color 0.2s;
         }
+        .pac-summary-card:hover { border-color: rgba(var(--accent-rgb, 229,57,53), 0.26); }
         .pac-summary-card .num { font-size: 28px; font-weight: 800; }
         .pac-summary-card .lbl { font-size: 11px; font-weight: 600; opacity: 0.55; margin-top: 2px; }
         .pac-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
@@ -595,12 +635,13 @@ export default function PACCalendar({ clients = [], isLightMode = false, default
       `}</style>
 
       {/* Top header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 10 }}>
+      <div className="pac-hero-header">
         <div>
-          <h2 style={{ margin: 0, fontSize: 20, fontWeight: 800 }}>
-            {view === 'dash' ? 'PAC — Painel' : view === 'calendario' ? 'PAC — Calendário' : 'PAC — Tipos de Treinamento'}
+          <span className="pac-hero-kicker"><i className="bx bx-dumbbell" style={{ marginRight: 4 }}></i>PAC</span>
+          <h2 style={{ margin: '4px 0 0', fontSize: '1.35rem', fontWeight: 900, letterSpacing: '-0.02em' }}>
+            {view === 'dash' ? 'Painel de Treinamentos' : view === 'calendario' ? 'Calendário de Treinamentos' : 'Tipos de Treinamento'}
           </h2>
-          <p style={{ margin: '2px 0 0', fontSize: 13, opacity: 0.55 }}>
+          <p style={{ margin: '4px 0 0', fontSize: 13, opacity: 0.55 }}>
             {view === 'dash' ? 'Visão geral dos treinamentos agendados e realizados.'
               : view === 'calendario' ? 'Calendário mensal de treinamentos por cliente.'
               : 'Gerencie as categorias de treinamento do workspace.'}
@@ -643,8 +684,8 @@ export default function PACCalendar({ clients = [], isLightMode = false, default
           {/* Summary cards */}
           <div className="pac-summary-grid">
             {[
-              { num: todayTrainings.length,  lbl: 'Hoje',      color: '#6366f1', icon: 'bx-calendar-event' },
-              { num: weekTrainings.length,   lbl: 'Esta semana', color: '#3b82f6', icon: 'bx-calendar-week' },
+              { num: todayTrainings.length,  lbl: 'Hoje',      color: 'var(--saas-primary, #e53935)', icon: 'bx-calendar-event' },
+              { num: weekTrainings.length,   lbl: 'Esta semana', color: 'var(--saas-primary, #e53935)', icon: 'bx-calendar-week' },
               { num: upcoming.length,        lbl: 'Agendados',  color: '#f59e0b', icon: 'bx-time-five' },
               { num: completedCount,         lbl: 'Realizados', color: '#22c55e', icon: 'bx-check-circle' },
             ].map(({ num, lbl, color, icon }) => (

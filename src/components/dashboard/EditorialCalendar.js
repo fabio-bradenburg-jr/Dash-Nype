@@ -1065,15 +1065,33 @@ export default function EditorialCalendar({ clients = [], isLightMode = false, d
           align-items: flex-start;
           justify-content: space-between;
           gap: 16px;
+          padding: 22px 24px;
+          border-radius: 20px;
+          border: 1px solid rgba(var(--accent-rgb, 229,57,53), 0.18);
+          background:
+            radial-gradient(ellipse 100% 55% at 15% -10%, rgba(var(--accent-rgb, 229,57,53), 0.11) 0%, transparent 60%),
+            linear-gradient(145deg, rgba(13,12,12,0.97), rgba(7,6,6,0.93));
+          box-shadow: 0 16px 48px rgba(0,0,0,0.28), 0 0 0 1px rgba(var(--accent-rgb, 229,57,53), 0.05);
+          position: relative;
+          overflow: hidden;
+        }
+        .editorial-header::after {
+          content: '';
+          position: absolute;
+          top: -60px; right: -60px;
+          width: 200px; height: 200px;
+          border-radius: 50%;
+          background: radial-gradient(circle, rgba(var(--accent-rgb, 229,57,53), 0.07) 0%, transparent 70%);
+          pointer-events: none;
         }
         .editorial-title {
-          font-size: 20px;
-          font-weight: 700;
+          font-size: 1.35rem;
+          font-weight: 900;
           letter-spacing: -0.02em;
           margin: 0 0 4px;
           color: var(--text-primary);
         }
-        .editorial-subtitle { font-size: 13px; color: var(--text-secondary); margin: 0; }
+        .editorial-subtitle { font-size: 13px; color: var(--text-secondary); margin: 0; opacity: 0.72; }
         .editorial-new-btn {
           display: inline-flex; align-items: center; gap: 7px;
           padding: 9px 18px; border-radius: 10px; border: none;
@@ -1383,11 +1401,18 @@ export default function EditorialCalendar({ clients = [], isLightMode = false, d
         }
         .editorial-stat-card {
           position: relative;
-          background: var(--theme-surface, rgba(255,255,255,0.04));
-          border: 1px solid var(--border-color, rgba(255,255,255,0.08));
+          background:
+            radial-gradient(ellipse 140% 65% at 50% -10%, rgba(var(--accent-rgb, 229,57,53), 0.10) 0%, transparent 65%),
+            rgba(255,255,255,0.03);
+          border: 1px solid rgba(var(--accent-rgb, 229,57,53), 0.15);
           border-radius: 16px; padding: 16px 18px;
           display: flex; flex-direction: column; gap: 4px;
           overflow: hidden;
+          transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .editorial-stat-card:hover {
+          border-color: rgba(var(--accent-rgb, 229,57,53), 0.28);
+          box-shadow: 0 6px 24px rgba(var(--accent-rgb, 229,57,53), 0.08);
         }
         .editorial-stat-total {
           border-color: rgba(255,255,255,0.12);
@@ -1753,6 +1778,10 @@ export default function EditorialCalendar({ clients = [], isLightMode = false, d
         }
 
         /* Light mode */
+        :global(.dashboard-light-mode) .editorial-header {
+          background: linear-gradient(135deg, rgba(var(--accent-rgb, 229,57,53), 0.05) 0%, rgba(255,255,255,0.97) 100%) !important;
+          border-color: rgba(var(--accent-rgb, 229,57,53), 0.2) !important;
+        }
         :global(.dashboard-light-mode) .editorial-title { color: #1a1c1c; }
         :global(.dashboard-light-mode) .editorial-subtitle { color: #3d4a41; }
         :global(.dashboard-light-mode) .editorial-month-nav,
