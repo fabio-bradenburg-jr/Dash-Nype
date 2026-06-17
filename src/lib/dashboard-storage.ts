@@ -924,6 +924,7 @@ export function createClientRecord(overrides: ClientRecordOverrides = {}): Clien
     googleAdsAccountId: '',
     tiktokAdsAccountId: '',
     linkedInAdsAccountId: '',
+    leadsSheetUrl: '',
     googleSheetsUrl: '',
     rdStationAccountId: '',
     rdPipelineId: '',
@@ -954,7 +955,6 @@ export function createClientRecord(overrides: ClientRecordOverrides = {}): Clien
     googleSheetsStatusColumn: String(overrides.googleSheetsStatusColumn || '').trim(),
     crmProvider,
     manualCrmSummary: overrides.manualCrmSummary || {},
-    ecommerceEnabled: Boolean(overrides.ecommerceEnabled),
     integrations: {
       ...DEFAULT_INTEGRATIONS,
       ...overrides.integrations,
