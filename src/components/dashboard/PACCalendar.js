@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect, useCallback, useRef } from 'react'
 
-// ─── Constants ─────────────────────────────────────────────────────────────────────────────────
+// ─── Constants ────────────────────────────────────────────────────────────────
 
 const MONTHS = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
 const WEEKDAYS = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb']
@@ -35,7 +35,7 @@ const EMPTY_TYPE_FORM = {
   name: '', description: '', color: '#6366f1', icon: 'bx-book-open',
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function buildCalendarGrid(year, month) {
   const firstDay = new Date(year, month, 1).getDay()
@@ -92,7 +92,7 @@ function isThisWeek(iso) {
   return d >= start && d < end
 }
 
-// ─── Sub-components ───────────────────────────────────────────────────────────────────────────────────
+// ─── Sub-components ───────────────────────────────────────────────────────────
 
 function StatusBadge({ status }) {
   const meta = STATUS_META[status] || STATUS_META.agendado
@@ -136,7 +136,7 @@ function Spinner() {
   )
 }
 
-// ─── Main Component ───────────────────────────────────────────────────────────────────────────────────
+// ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function PACCalendar({ clients = [], isLightMode = false, defaultView = 'dash' }) {
   const today = new Date()
@@ -173,7 +173,7 @@ export default function PACCalendar({ clients = [], isLightMode = false, default
   const [savingType, setSavingType] = useState(false)
   const [typeFeedback, setTypeFeedback] = useState('')
 
-  // ── Fetch ────────────────────────────────────────────────────────────────────────────
+  // ── Fetch ──────────────────────────────────────────────────────────────────
 
   const fetchTrainings = useCallback(async (opts = {}) => {
     setLoadingTrainings(true)
@@ -224,7 +224,7 @@ export default function PACCalendar({ clients = [], isLightMode = false, default
     }
   }, [])
 
-  // ── Calendar nav ───────────────────────────────────────────────────────────────────────
+  // ── Calendar nav ───────────────────────────────────────────────────────────
 
   function prevMonth() {
     if (month === 0) { setMonth(11); setYear(y => y - 1) }
@@ -235,7 +235,7 @@ export default function PACCalendar({ clients = [], isLightMode = false, default
     else setMonth(m => m + 1)
   }
 
-  // ── Training CRUD ────────────────────────────────────────────────────────────────────────
+  // ── Training CRUD ──────────────────────────────────────────────────────────
 
   function openNewTraining(prefill = {}) {
     setTrainingForm({ ...EMPTY_TRAINING_FORM, ...prefill })
@@ -323,7 +323,7 @@ export default function PACCalendar({ clients = [], isLightMode = false, default
     } catch (e) { console.error(e) }
   }
 
-  // ── Notes ────────────────────────────────────────────────────────────────────────────
+  // ── Notes ──────────────────────────────────────────────────────────────────
 
   async function addNote() {
     if (!noteInput.trim() || !detailTraining) return
@@ -367,7 +367,7 @@ export default function PACCalendar({ clients = [], isLightMode = false, default
     } catch (e) { console.error(e) }
   }
 
-  // ── Types CRUD ───────────────────────────────────────────────────────────────────────────
+  // ── Types CRUD ─────────────────────────────────────────────────────────────
 
   function openNewType() {
     setTypeForm(EMPTY_TYPE_FORM)
@@ -412,7 +412,7 @@ export default function PACCalendar({ clients = [], isLightMode = false, default
     } catch (e) { console.error(e) }
   }
 
-  // ── Detail panel open ────────────────────────────────────────────────────────────────────────
+  // ── Detail panel open ──────────────────────────────────────────────────────
 
   function openDetail(t) {
     setDetailTraining(t)
@@ -422,7 +422,7 @@ export default function PACCalendar({ clients = [], isLightMode = false, default
     fetchNotes(t.id)
   }
 
-  // ── Dashboard computations ───────────────────────────────────────────────────────────────────────
+  // ── Dashboard computations ─────────────────────────────────────────────────
 
   const todayTrainings = trainings.filter(t => isToday(t.scheduled_at))
   const weekTrainings  = trainings.filter(t => isThisWeek(t.scheduled_at))
@@ -432,7 +432,7 @@ export default function PACCalendar({ clients = [], isLightMode = false, default
     .slice(0, 10)
   const completedCount = trainings.filter(t => t.status === 'realizado').length
 
-  // ── Calendar grid ────────────────────────────────────────────────────────────────────────
+  // ── Calendar grid ──────────────────────────────────────────────────────────
 
   const calendarCells = buildCalendarGrid(year, month)
 
@@ -445,7 +445,7 @@ export default function PACCalendar({ clients = [], isLightMode = false, default
     })
   }
 
-  // ── Render ────────────────────────────────────────────────────────────────────────────
+  // ── Render ─────────────────────────────────────────────────────────────────
 
   const tabStyle = (v) => ({
     padding: '7px 16px', borderRadius: 8, border: 'none', cursor: 'pointer',
@@ -1133,7 +1133,7 @@ export default function PACCalendar({ clients = [], isLightMode = false, default
   )
 }
 
-// ─── TrainingRow sub-component ────────────────────────────────────────────────────────────────────────────────
+// ─── TrainingRow sub-component ────────────────────────────────────────────────
 
 function TrainingRow({ training: t, onOpen, onEdit, onDelete, onQuickStatus }) {
   return (

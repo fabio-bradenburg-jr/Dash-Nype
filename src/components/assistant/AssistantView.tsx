@@ -383,7 +383,7 @@ export default function AssistantPage({ embeddedOverride }: AssistantPageProps =
             Assistente de IA
           </h2>
           <p style={{ color: 'var(--text-secondary, #666)', fontSize: '14px' }}>
-            {accessLevel === 'none'
+            {(accessLevel as string) === 'none'
               ? 'Você não tem acesso ao assistente de IA. Entre em contato com o administrador.'
               : 'Configure a integração de IA nas configurações para usar o assistente.'}
           </p>
