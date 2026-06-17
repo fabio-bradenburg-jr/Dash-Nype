@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { PLATFORM_AUTH_COOKIE } from '@/lib/saas/auth'
 
-const ALLOWED_DOMAINS = ['app.assessorialp.com.br']
+const ALLOWED_DOMAINS = ['app.nype.company']
 
 const legacyPrefixes = [
   '/home',
