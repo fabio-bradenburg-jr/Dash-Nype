@@ -1,7 +1,7 @@
 export const DEFAULT_WORKSPACE_BRANDING = {
-  appName: 'Assessoria LP',
+  appName: 'Nype',
   appSubtitle: 'Performance Hub',
-  companyName: 'Assessoria LP',
+  companyName: 'Nype',
   logoUrl: '',
   mode: 'dark',
   primaryColor: '#e53935',
