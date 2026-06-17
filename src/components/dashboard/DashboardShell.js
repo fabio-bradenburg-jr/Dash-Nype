@@ -85,11 +85,11 @@ const THEMES = Object.fromEntries(
 )
 
 const DEFAULT_WORKSPACE_BRANDING = {
-  appName: 'Assessoria LP',
+  appName: 'Nype',
   appSubtitle: 'Performance Hub',
-  companyName: 'Assessoria LP',
+  companyName: 'Nype',
   logoUrl: '',
-  mode: 'light',
+  mode: 'dark',
   primaryColor: '#e53935',
   accentColor: '#ef5350',
   backgroundColor: '#070908',
@@ -3571,7 +3571,7 @@ export default function DashboardShell({
     return rgbToHex(parsedColor).toUpperCase()
   }, [newClientDashboardColor, appAccentColor])
   const appLogoUrl = initialAppLogoUrl || effectiveWorkspaceBranding.logoUrl || globalIntegrations.appLogoUrl || ''
-  const appName = effectiveWorkspaceBranding.appName || effectiveWorkspaceBranding.companyName || 'Assessoria LP'
+  const appName = effectiveWorkspaceBranding.appName || effectiveWorkspaceBranding.companyName || 'Nype'
   const appSubtitle = effectiveWorkspaceBranding.appSubtitle || 'Performance Hub'
   const role = access?.role || profile?.role || 'visualizador'
   const canManageUsers = Boolean(access?.canManageUsers)
@@ -13835,7 +13835,7 @@ export default function DashboardShell({
         pdf.setFont('helvetica', 'normal')
         pdf.setFontSize(11)
         pdf.setTextColor(textMuted)
-        pdf.text(`Assessoria LP • ${getDatePresetLabel(dateRange, customSince, customUntil)}`, margin, cursorY)
+        pdf.text(`Nype • ${getDatePresetLabel(dateRange, customSince, customUntil)}`, margin, cursorY)
         cursorY += 34
       }
 
@@ -14233,7 +14233,7 @@ export default function DashboardShell({
         pdf.setFont('helvetica', 'normal')
         pdf.setFontSize(11)
         pdf.setTextColor(textMuted)
-        pdf.text(`Assessoria LP • ${activeClient?.name || 'Cliente'} • ${getDatePresetLabel(dateRange, customSince, customUntil)}`, margin, cursorY)
+        pdf.text(`Nype • ${activeClient?.name || 'Cliente'} • ${getDatePresetLabel(dateRange, customSince, customUntil)}`, margin, cursorY)
         cursorY += 30
 
         drawClientSectionTitle(`Contexto — ${getDatePresetLabel(dateRange, customSince, customUntil)}`)

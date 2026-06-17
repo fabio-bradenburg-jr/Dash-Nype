@@ -3512,7 +3512,7 @@ textarea:focus {
     font-weight: 600;
     padding: 3px 10px;
     border-radius: 999px;
-    background: var(--saas-accent, #26C281);
+    background: var(--saas-accent, #e53935);
     color: #fff;
     white-space: nowrap;
 }
@@ -3635,7 +3635,7 @@ textarea:focus {
     line-height: 1;
 }
 .client-access-item.selected .client-access-check {
-    color: #26C281;
+    color: #e53935;
 }
 .client-access-empty {
     grid-column: 1 / -1;
